@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, MapPin, Phone, Star, ShieldCheck, ArrowLeft, MoreHorizontal, Calendar, Briefcase, Award, TrendingUp, Users, Activity } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MascotLoader } from '@/components/mascot/MascotLoader';
 
 const mockRevenueData = [
   { month: 'Jan', revenue: 4000, bookings: 24 },
@@ -66,7 +67,7 @@ export default function AdminUserProfile() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <MascotLoader message="Đang tải hồ sơ..." />
       </div>
     );
   }
