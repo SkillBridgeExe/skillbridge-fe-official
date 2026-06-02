@@ -1,5 +1,11 @@
 import { useState } from "react";
 import { MascotSticker, type MascotState } from "@/components/mascot/MascotSticker";
+import {
+  useMascotLoading,
+  useMascotSuccess,
+  useMascotLove,
+  useMascotTip,
+} from "@/hooks/useMascot";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,6 +25,10 @@ const STATES: { state: MascotState; label: string; desc: string }[] = [
 
 export default function MascotShowcase() {
   const [active, setActive] = useState<MascotState>("loading");
+  const { show: showLoading, hide: hideLoading } = useMascotLoading();
+  const { celebrate } = useMascotSuccess();
+  const { love } = useMascotLove();
+  const { showTip } = useMascotTip();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white p-6 md:p-10">
@@ -55,6 +65,47 @@ export default function MascotShowcase() {
             ))}
           </div>
           <p className="mt-3 text-xs text-slate-400">Di chuột / bấm vào cá heo để xem gesture (hover + tap)</p>
+        </div>
+
+        {/* Hook demo — global overlay driven by the 4 hooks */}
+        <div className="mb-10 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+          <h2 className="mb-1 text-lg font-bold text-slate-800">4 Hook gọi cá heo từ bất kỳ đâu</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Bấm thử — overlay global (mount 1 lần ở App) sẽ hiện cá heo tương ứng.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                showLoading("AI đang quét CV của bạn...");
+                setTimeout(() => hideLoading(), 3000);
+              }}
+              className="rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-600"
+            >
+              useMascotLoading() — quét 3s
+            </button>
+            <button
+              type="button"
+              onClick={() => celebrate("Hoàn thành! CV của bạn 85 điểm 🎉")}
+              className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-600"
+            >
+              useMascotSuccess()
+            </button>
+            <button
+              type="button"
+              onClick={() => love("Cảm ơn bạn đã yêu thích ❤️")}
+              className="rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-600"
+            >
+              useMascotLove()
+            </button>
+            <button
+              type="button"
+              onClick={() => showTip("Mẹo: thêm số liệu vào mỗi bullet để CV mạnh hơn.")}
+              className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600"
+            >
+              useMascotTip()
+            </button>
+          </div>
         </div>
 
         {/* All states side by side */}
