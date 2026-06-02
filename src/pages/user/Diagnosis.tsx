@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { LOADING_MESSAGES, JD_LOADING_MESSAGES } from "@/lib/mock-data/diagnosis";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
+import { MascotSticker } from "@/components/mascot/MascotSticker";
 
 /* ── Step Indicator Dot ── */
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
@@ -64,11 +65,8 @@ export default function Diagnosis() {
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl"
             >
-              <div className="relative mb-8">
-                <div className="w-28 h-28 rounded-full border-4 border-slate-100 border-t-primary animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Brain className="w-10 h-10 text-primary animate-pulse" />
-                </div>
+              <div className="mb-6">
+                <MascotSticker state="loading" size={200} interactive={false} />
               </div>
               <div className="text-center space-y-2 min-h-[60px] mb-8">
                 <h3 className="text-xl font-bold text-slate-900">

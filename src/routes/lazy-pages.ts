@@ -54,3 +54,6 @@ export const AdminCommerceFinance = lazy(() => import("@/pages/admin/AdminCommer
 export const AdminCommunityManagement = lazy(() => import("@/pages/admin/AdminCommunityManagement"));
 export const AdminSystemAdministration = lazy(() => import("@/pages/admin/AdminSystemAdministration"));
 export const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
+
+// Dev-only mascot animation showcase (visit /mascot). Safe to remove later.
+export const MascotShowcase = lazy(() => import("@/pages/dev/MascotShowcase"));

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
+import { useMascotSuccess } from "@/hooks/useMascot";
 import { WEEKDAYS, AvailabilitySlot } from "@/lib/mock-data/mentor-dashboard";
 import { useMentorStore, PricingPlan } from "@/store/useMentorStore";
 
@@ -24,6 +25,7 @@ const TIME_OPTIONS = [
 
 export default function MentorAvailability() {
   const { myProfile, pricingPlans: initialPricingPlans, updateMyProfile, updatePricingPlans, setPricingSetupCompleted } = useMentorStore();
+  const { celebrate } = useMascotSuccess();
 
   const [pricingPlans, setPricingPlans] = useState(
     initialPricingPlans.length > 0 ? initialPricingPlans : [
@@ -69,7 +71,7 @@ export default function MentorAvailability() {
     updateMyProfile({ availableSlots: slots });
     updatePricingPlans(pricingPlans);
     setPricingSetupCompleted(true);
-    toast({ title: "Settings saved!", description: "Your schedule and pricing have been updated." });
+    celebrate("Đã lưu lịch & bảng giá! 🎉");
   };
 
   return (

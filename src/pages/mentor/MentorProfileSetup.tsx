@@ -15,11 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useMascotSuccess } from "@/hooks/useMascot";
 import { TIMEZONES, MONTHS, MONTH_NAMES, YEARS, WorkExperience } from "@/lib/mock-data/mentor-dashboard";
 import { useMentorStore } from "@/store/useMentorStore";
 
 export default function MentorProfileSetup() {
   const { myProfile, updateMyProfile, setProfileSetupCompleted } = useMentorStore();
+  const { celebrate } = useMascotSuccess();
 
   // Basic Info
   const [avatarUrl, setAvatarUrl] = useState(myProfile.avatar || "");
@@ -102,7 +104,7 @@ export default function MentorProfileSetup() {
       isActive
     });
     setProfileSetupCompleted(true);
-    toast({ title: "Profile saved!", description: "Your details have been successfully updated." });
+    celebrate("Đã lưu hồ sơ thành công! 🎉");
   };
 
   return (

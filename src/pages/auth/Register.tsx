@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
+import { useMascotSuccess } from "@/hooks/useMascot";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
 
@@ -114,10 +115,13 @@ export default function Register() {
     }
   }, [step]);
 
+  const { celebrate } = useMascotSuccess();
+
   const handleSubmit = async () => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
     login(form.role);
+    celebrate("Đăng ký thành công — chào mừng bạn! 🎉");
     const redirect =
       form.role === "admin" ? "/admin" :
       form.role === "business" ? "/business" :

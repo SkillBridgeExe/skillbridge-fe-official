@@ -7,6 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGuard from "@/components/layout/AuthGuard";
 import PageLoader from "@/components/common/PageLoader";
+import { MascotOverlay } from "@/components/mascot/MascotOverlay";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +29,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <MascotOverlay />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -54,6 +56,7 @@ const App = () => (
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/roadmap-generator" element={<Pages.RoadmapGenerator />} />
+              <Route path="/mascot" element={<Pages.MascotShowcase />} />
 
               <Route
                 path="/business"
