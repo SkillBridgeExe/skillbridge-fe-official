@@ -66,7 +66,7 @@ export default function Diagnosis() {
               className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl"
             >
               <div className="mb-6">
-                <MascotSticker state="loading" size={160} interactive={false} />
+                <MascotSticker state="loading" size={200} interactive={false} />
               </div>
               <div className="text-center space-y-2 min-h-[60px] mb-8">
                 <h3 className="text-xl font-bold text-slate-900">

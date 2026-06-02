@@ -5,6 +5,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, CreditCard, ShieldCheck, Lock, Info, ChevronRight, Globe, AlertCircle, CalendarClock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useMascotLoading, useMascotSuccess } from "@/hooks/useMascot";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
@@ -13,6 +14,8 @@ export default function Payment() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const { show: showLoading } = useMascotLoading();
+  const { celebrate } = useMascotSuccess();
 
   const mentor = searchParams.get("mentor") || "Mentor";
   const pkg = searchParams.get("package") || "Selected Package";
@@ -24,8 +27,12 @@ export default function Payment() {
 
   const handlePayment = () => {
     setIsProcessing(true);
+    showLoading("Đang xử lý thanh toán...");
     setTimeout(() => {
       setIsProcessing(false);
+      // celebrate() transitions the loading overlay into the success dolphin,
+      // then auto-dismisses it — no hideLoading() needed.
+      celebrate(`Đặt lịch với ${mentor} thành công! 🎉`);
       toast({
         title: "Deposit Paid Successfully",
         description: `Your session with ${mentor} has been booked! The remaining balance will be charged on the meeting day.`,
@@ -209,8 +216,7 @@ export default function Payment() {
                 >
                   {isProcessing ? (
                     <div className="flex items-center gap-3">
-                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                       Processing...
+                       Đang xử lý...
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2">

@@ -39,7 +39,7 @@ export function MascotOverlay() {
               !blocking && "rounded-3xl bg-white/95 px-8 py-6 shadow-xl ring-1 ring-slate-100",
             )}
           >
-            <MascotSticker state={state} size={blocking ? 180 : 140} interactive={false} />
+            <MascotSticker state={state} size={blocking ? 230 : 170} interactive={false} />
             {message && <p className="max-w-xs text-sm font-medium text-slate-600">{message}</p>}
           </motion.div>
         </motion.div>

@@ -8,7 +8,7 @@ import { MascotSticker } from "./MascotSticker";
  */
 export function MascotLoader({
   message,
-  size = 120,
+  size = 150,
   className,
 }: {
   message?: string;

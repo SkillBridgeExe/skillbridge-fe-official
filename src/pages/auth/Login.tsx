@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useMascotSuccess } from "@/hooks/useMascot";
 import { MOCK_LOGIN_ACCOUNTS, useAuthStore } from "@/store/useAuthStore";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
@@ -20,6 +21,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { loginWithMockAccount } = useAuthStore();
   const { toast } = useToast();
+  const { celebrate } = useMascotSuccess();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,11 +92,7 @@ export default function Login() {
         ? "/mentor-dashboard"
         : "/dashboard";
 
-    toast({
-      title: "Login successful",
-      description: `Signed in as ${role}.`,
-    });
-
+    celebrate(`Đăng nhập thành công — ${role} 👋`);
     navigate(redirect);
   };
 
