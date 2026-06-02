@@ -54,6 +54,7 @@ const App = () => (
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/roadmap-generator" element={<Pages.RoadmapGenerator />} />
+              <Route path="/mascot" element={<Pages.MascotShowcase />} />
 
               <Route
                 path="/business"
