@@ -4,6 +4,7 @@ import laptopPng from "@/assets/mascot/laptop.png";
 import lightbulbPng from "@/assets/mascot/lightbulb.png";
 import thumbsUpPng from "@/assets/mascot/thumbs-up.png";
 import heartsPng from "@/assets/mascot/hearts.png";
+import { MascotVideo } from "./MascotVideo";
 
 /**
  * SkillBridge mascot (blue dolphin) as an animated sticker.
@@ -12,17 +13,15 @@ import heartsPng from "@/assets/mascot/hearts.png";
  * Each `state` swaps to the matching pose PNG and plays a looping micro-animation
  * driven by Framer Motion (already in the project — zero new deps).
  *
- * - loading  → laptop pose, "typing bob" (fast vertical nudge) — perfect for the
- *              CV-scan / "AI đang xử lý" overlay.
- * - tip      → lightbulb pose, gentle float + scale "aha".
- * - success  → thumbs-up pose, celebratory bounce.
- * - love     → hearts pose, heartbeat + sway.
- * - idle     → laptop pose, slow breathing sway (the default "alive" state).
- *
- * Part-level motion (real typing, fin-wave, blink) is a future TIER 2 upgrade
- * that requires the pose cut into transparent layers — intentionally not done here.
+ * - loading       → laptop pose, "typing bob" (fast vertical nudge) — perfect for the
+ *                   CV-scan / "AI đang xử lý" overlay.
+ * - video_loading → video-based laptop loading animation using dolphin.mp4 (more interactive).
+ * - tip           → lightbulb pose, gentle float + scale "aha".
+ * - success       → thumbs-up pose, celebratory bounce.
+ * - love          → hearts pose, heartbeat + sway.
+ * - idle          → laptop pose, slow breathing sway (the default "alive" state).
  */
-export type MascotState = "idle" | "loading" | "tip" | "success" | "love";
+export type MascotState = "idle" | "loading" | "tip" | "success" | "love" | "video_loading" | "video_laptop1";
 
 const POSE: Record<MascotState, string> = {
   idle: laptopPng,
@@ -30,6 +29,8 @@ const POSE: Record<MascotState, string> = {
   tip: lightbulbPng,
   success: thumbsUpPng,
   love: heartsPng,
+  video_loading: "", // Video doesn't use PNG pose
+  video_laptop1: "", // Video doesn't use PNG pose
 };
 
 const MOTION: Record<MascotState, { animate: TargetAndTransition; transition: Transition }> = {
@@ -58,6 +59,15 @@ const MOTION: Record<MascotState, { animate: TargetAndTransition; transition: Tr
     animate: { scale: [1, 1.06, 1, 1.05, 1], rotate: [-2, 2, -2] },
     transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
   },
+  // Video loading: video itself has animation, so we leave this empty.
+  video_loading: {
+    animate: {},
+    transition: {},
+  },
+  video_laptop1: {
+    animate: {},
+    transition: {},
+  },
 };
 
 export interface MascotStickerProps {
@@ -75,6 +85,16 @@ export function MascotSticker({
   className,
   interactive = true,
 }: MascotStickerProps) {
+  // Tăng kích thước 1.3 lần riêng cho state 'love' để bù trừ khoảng trống thừa của file ảnh hearts.png
+  const adjustedSize = state === "love" ? size * 1.3 : size;
+
+  if (state === "video_loading") {
+    return <MascotVideo size={adjustedSize} className={className} type="dolphin" />;
+  }
+  if (state === "video_laptop1") {
+    return <MascotVideo size={adjustedSize} className={className} type="laptop1" />;
+  }
+
   const { animate, transition } = MOTION[state];
 
   return (
@@ -82,7 +102,13 @@ export function MascotSticker({
       src={POSE[state]}
       alt="SkillBridge mascot"
       draggable={false}
-      style={{ width: size, height: "auto", transformOrigin: "bottom center" }}
+      style={{ 
+        width: adjustedSize, 
+        height: "auto", 
+        transformOrigin: "bottom center",
+        // Đặt lề âm để kéo chữ sát lại gần chú cá heo
+        marginBottom: state === "love" ? -16 : 0
+      }}
       className={cn(
         "select-none drop-shadow-[0_10px_18px_rgba(56,130,246,0.20)]",
         className,

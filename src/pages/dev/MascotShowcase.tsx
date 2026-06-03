@@ -2,6 +2,8 @@ import { useState } from "react";
 import { MascotSticker, type MascotState } from "@/components/mascot/MascotSticker";
 import {
   useMascotLoading,
+  useMascotVideoLoading,
+  useMascotLaptop1Loading,
   useMascotSuccess,
   useMascotLove,
   useMascotTip,
@@ -17,6 +19,8 @@ import { cn } from "@/lib/utils";
  */
 const STATES: { state: MascotState; label: string; desc: string }[] = [
   { state: "loading", label: "Loading / Quét CV", desc: "laptop · nhún theo nhịp gõ" },
+  { state: "video_loading", label: "Video Dolphin", desc: "video dolphin.mp4" },
+  { state: "video_laptop1", label: "Video Laptop 1 (Mới)", desc: "video laptop1.mp4" },
   { state: "tip", label: "Gợi ý AI", desc: "lightbulb · float + pop" },
   { state: "success", label: "Success", desc: "thumbs-up · nảy ăn mừng" },
   { state: "love", label: "Yêu thích", desc: "hearts · nhịp tim + lắc" },
@@ -26,6 +30,8 @@ const STATES: { state: MascotState; label: string; desc: string }[] = [
 export default function MascotShowcase() {
   const [active, setActive] = useState<MascotState>("loading");
   const { show: showLoading, hide: hideLoading } = useMascotLoading();
+  const { show: showVideoLoading, hide: hideVideoLoading } = useMascotVideoLoading();
+  const { show: showLaptop1Loading, hide: hideLaptop1Loading } = useMascotLaptop1Loading();
   const { celebrate } = useMascotSuccess();
   const { love } = useMascotLove();
   const { showTip } = useMascotTip();
@@ -44,8 +50,8 @@ export default function MascotShowcase() {
 
         {/* Big interactive stage */}
         <div className="mb-10 flex flex-col items-center rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
-          <div className="flex h-64 items-end justify-center">
-            <MascotSticker state={active} size={230} />
+          <div className="flex h-[420px] items-end justify-center">
+            <MascotSticker state={active} size={380} />
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {STATES.map((s) => (
@@ -82,7 +88,27 @@ export default function MascotShowcase() {
               }}
               className="rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-600"
             >
-              useMascotLoading() — quét 3s
+              useMascotLoading() — quét 3s (Ảnh)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                showVideoLoading("AI đang phân tích dữ liệu chuyên sâu...");
+                setTimeout(() => hideVideoLoading(), 3000);
+              }}
+              className="rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:from-teal-600 hover:to-blue-700 shadow-md transition-all"
+            >
+              useMascotVideoLoading() — quét 3s (Dolphin)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                showLaptop1Loading("AI đang tải dữ liệu Laptop 1...");
+                setTimeout(() => hideLaptop1Loading(), 3000);
+              }}
+              className="rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:from-purple-600 hover:to-indigo-700 shadow-md transition-all"
+            >
+              useMascotLaptop1Loading() — quét 3s (Laptop 1)
             </button>
             <button
               type="button"
@@ -109,14 +135,14 @@ export default function MascotShowcase() {
         </div>
 
         {/* All states side by side */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-7">
           {STATES.map((s) => (
             <div
               key={s.state}
               className="flex flex-col items-center rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100"
             >
-              <div className="flex h-40 items-end">
-                <MascotSticker state={s.state} size={130} />
+              <div className="flex h-56 items-end">
+                <MascotSticker state={s.state} size={180} />
               </div>
               <div className="mt-3 text-center">
                 <div className="text-sm font-semibold text-slate-700">{s.label}</div>
