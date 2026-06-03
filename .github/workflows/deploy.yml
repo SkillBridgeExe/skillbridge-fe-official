@@ -1,0 +1,67 @@
+name: Deploy to Cloud Run
+
+# Auto-deploy on every push to main (i.e. every merged PR).
+# Builds from the Dockerfile via Cloud Build, then deploys to Cloud Run.
+#
+# ── ONE-TIME SETUP (only the GCP owner can do this — it's the auth boundary) ──
+# 1. Create a Service Account in GCP with these roles:
+#      - Cloud Run Admin            (roles/run.admin)
+#      - Cloud Build Editor         (roles/cloudbuild.builds.editor)
+#      - Artifact Registry Writer   (roles/artifactregistry.writer)
+#      - Storage Admin              (roles/storage.admin)
+#      - Service Account User       (roles/iam.serviceAccountUser)
+# 2. Create a JSON key for that SA and download it.
+# 3. GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
+#      name  = GCP_SA_KEY
+#      value = (paste the whole JSON key)
+# Until GCP_SA_KEY exists, this workflow runs GREEN but skips the deploy.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Match your Cloud Run service. Change region if your service lives elsewhere.
+env:
+  SERVICE: skillbridge-fe
+  REGION: asia-southeast1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard — require GCP_SA_KEY secret
+        id: guard
+        env:
+          KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::notice::GCP_SA_KEY secret not set — skipping deploy. Add it in Settings → Secrets → Actions to enable auto-deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.skip == 'false'
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        if: steps.guard.outputs.skip == 'false'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy to Cloud Run (build from source)
+        if: steps.guard.outputs.skip == 'false'
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          source: .
+          flags: '--allow-unauthenticated'
+
+      - name: Show deployed URL
+        if: steps.guard.outputs.skip == 'false'
+        run: echo "Deployed → ${{ steps.deploy.outputs.url }}"
