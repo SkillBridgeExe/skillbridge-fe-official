@@ -24,23 +24,17 @@ export function MascotOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className={cn(
-            "fixed inset-0 z-[200] flex items-center justify-center",
-            blocking ? "bg-white/75 backdrop-blur-sm" : "pointer-events-none",
-          )}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-white/75 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.85, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.85, y: 16, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 22 }}
-            className={cn(
-              "flex flex-col items-center gap-3 text-center",
-              !blocking && "rounded-3xl bg-white/95 px-8 py-6 shadow-xl ring-1 ring-slate-100",
-            )}
+            className="flex flex-col items-center gap-2 text-center p-6"
           >
-            <MascotSticker state={state} size={blocking ? 230 : 170} interactive={false} />
-            {message && <p className="max-w-xs text-sm font-medium text-slate-600">{message}</p>}
+            <MascotSticker state={state} size={360} interactive={false} />
+            {message && <p className="max-w-md text-xl font-bold text-slate-800">{message}</p>}
           </motion.div>
         </motion.div>
       )}

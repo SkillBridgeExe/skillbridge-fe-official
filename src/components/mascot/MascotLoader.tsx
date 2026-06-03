@@ -8,7 +8,7 @@ import { MascotSticker } from "./MascotSticker";
  */
 export function MascotLoader({
   message,
-  size = 150,
+  size = 240,
   className,
 }: {
   message?: string;
@@ -16,9 +16,9 @@ export function MascotLoader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
+    <div className={cn("flex flex-col items-center justify-center gap-4", className)}>
       <MascotSticker state="loading" size={size} interactive={false} />
-      {message && <p className="text-sm text-slate-500">{message}</p>}
+      {message && <p className="text-base font-semibold text-slate-500">{message}</p>}
     </div>
   );
 }

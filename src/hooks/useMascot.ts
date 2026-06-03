@@ -31,6 +31,38 @@ export function useMascotLoading() {
   };
 }
 
+/** Persistent full-screen video loading dolphin (uses MP4 laptop animation). */
+export function useMascotVideoLoading() {
+  const show = useMascotStore((s) => s.show);
+  const hide = useMascotStore((s) => s.hide);
+  const isLoading = useMascotStore((s) => s.active && s.state === "video_loading");
+
+  return {
+    isLoading,
+    show: useCallback(
+      (message?: string) => show({ state: "video_loading", message, blocking: true }),
+      [show],
+    ),
+    hide,
+  };
+}
+
+/** Persistent full-screen video loading laptop1 (uses MP4 laptop1 animation). */
+export function useMascotLaptop1Loading() {
+  const show = useMascotStore((s) => s.show);
+  const hide = useMascotStore((s) => s.hide);
+  const isLoading = useMascotStore((s) => s.active && s.state === "video_laptop1");
+
+  return {
+    isLoading,
+    show: useCallback(
+      (message?: string) => show({ state: "video_laptop1", message, blocking: true }),
+      [show],
+    ),
+    hide,
+  };
+}
+
 /** Shared impl for the auto-dismissing moods (success / love / tip). */
 function useTransientMascot(state: MascotState, defaultDuration: number) {
   const show = useMascotStore((s) => s.show);
