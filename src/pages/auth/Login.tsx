@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useMascotSuccess } from "@/hooks/useMascot";
-import { MOCK_LOGIN_ACCOUNTS, useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, UserRole } from "@/store/useAuthStore";
+import { loginApi } from "@/api/auth/login";
+import { googleLoginApi } from "@/api/auth/google";
+import { GoogleOAuthProvider, GoogleLogin, CredentialResponse } from "@react-oauth/google";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
 
@@ -19,7 +22,7 @@ const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d
 
 export default function Login() {
   const navigate = useNavigate();
-  const { loginWithMockAccount } = useAuthStore();
+  const { setAuthUser } = useAuthStore();
   const { toast } = useToast();
   const { celebrate } = useMascotSuccess();
 
@@ -66,40 +69,142 @@ export default function Login() {
       return;
     }
 
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
+    // setLoading(true);
+    // await new Promise((r) => setTimeout(r, 900));
 
-    const result = loginWithMockAccount(email, password);
-    if (!result.success) {
-      setLoading(false);
-      const errorMessage = "message" in result ? result.message : "Invalid email or password";
-      toast({
-        title: "Login failed",
-        description: `${errorMessage}. Use one of the mock accounts below.`,
-        variant: "destructive",
+    // const result = loginWithMockAccount(email, password);
+    // if (!result.success) {
+    //   setLoading(false);
+    //   const errorMessage = "message" in result ? result.message : "Invalid email or password";
+    //   toast({
+    //     title: "Login failed",
+    //     description: `${errorMessage}. Use one of the mock accounts below.`,
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
+    // const role = result.role;
+
+    try {
+      setLoading(true);
+
+      const result = await loginApi({
+        email,
+        password,
       });
-      return;
+
+      const accessToken = result.data.accessToken;
+      const user = result.data.user;
+      const roleStr = user.roles?.[0]?.toLowerCase() || "user";
+
+      const role = (["admin", "business", "mentor"].includes(roleStr) ? roleStr : "user") as UserRole;
+
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Update auth store so components relying on currentUser work
+      setAuthUser({
+        id: user.id,
+        name: user.displayName || user.email,
+        email: user.email,
+        role: role,
+      });
+
+      const redirect =
+        role === "admin"
+          ? "/admin"
+          : role === "business"
+            ? "/business"
+            : role === "mentor"
+              ? "/mentor-dashboard"
+              : "/dashboard";
+
+      celebrate(`Đăng nhập thành công — ${role} 👋`);
+
+      navigate(redirect);
     }
 
-    const role = result.role;
-
-    const redirect =
-      role === "admin"
-        ? "/admin"
-        : role === "business"
-        ? "/business"
-        : role === "mentor"
-        ? "/mentor-dashboard"
-        : "/dashboard";
-
-    celebrate(`Đăng nhập thành công — ${role} 👋`);
-    navigate(redirect);
+    catch (err) {
+      toast({
+        title: "Login failed",
+        description:
+          err instanceof Error ? err.message : "Invalid email or password.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUseMockAccount = (_role: string, accountEmail: string, accountPassword: string) => {
-    setEmail(accountEmail);
-    setPassword(accountPassword);
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error("No credential received from Google");
+      }
+
+      setLoading(true);
+      // console.log("credentialResponse", credentialResponse);
+      const result = await googleLoginApi({
+        idToken: credentialResponse.credential,
+
+      });
+
+      const accessToken = result.data.accessToken;
+      // Depending on whether result.data.accessToken is returned or we just rely on refresh tokens
+      // But typically, google login returns it in JSON too.
+      if (accessToken) {
+        localStorage.setItem("accessToken", accessToken);
+      }
+
+      const user = result.data.user;
+      const roleStr = user.roles?.[0]?.toLowerCase() || "user";
+      const role = (["admin", "business", "mentor"].includes(roleStr) ? roleStr : "user") as UserRole;
+
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setAuthUser({
+        id: user.id,
+        name: user.displayName || user.email,
+        email: user.email,
+        role: role,
+      });
+
+      const redirect =
+        role === "admin"
+          ? "/admin"
+          : role === "business"
+            ? "/business"
+            : role === "mentor"
+              ? "/mentor-dashboard"
+              : "/dashboard";
+
+      celebrate(`Đăng nhập Google thành công — ${role} 👋`);
+
+      navigate(redirect);
+    } catch (err) {
+      toast({
+        title: "Google Login failed",
+        description: err instanceof Error ? err.message : "Failed to authenticate with Google.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleGoogleError = () => {
+    toast({
+      title: "Google Login failed",
+      description: "Could not authenticate with Google.",
+      variant: "destructive",
+    });
+  };
+
+  // const handleUseMockAccount = (_role: string, accountEmail: string, accountPassword: string) => {
+  //   setEmail(accountEmail);
+  //   setPassword(accountPassword);
+  // };
 
   return (
     <div className=" flex overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -112,7 +217,7 @@ export default function Login() {
             "linear-gradient(145deg, #0f172a 0%, #1e1b4b 35%, #0f172a 60%, #0c1a2e 100%)",
         }}
       >
-      </div> 
+      </div>
 
       {/* ── RIGHT PANEL: FORM ── */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
@@ -161,6 +266,7 @@ export default function Login() {
                   Forgot password?
                 </button>
               </div>
+
               <div className="relative">
                 <Input
                   type={showPass ? "text" : "password"}
@@ -172,6 +278,7 @@ export default function Login() {
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   className="h-11 rounded-xl border-slate-200 focus:border-primary pr-10 bg-slate-50/50"
                 />
+
                 <button
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
@@ -210,30 +317,28 @@ export default function Login() {
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className=" px-3 text-slate-400 font-medium">Or continue with</span>
+              <span className="bg-white px-3 text-slate-400 font-medium">Or continue with</span>
             </div>
           </div>
 
           {/* Social */}
-          {/* <div className="grid grid-cols-2 gap-3"> */}
-          <div className="grid gap-3">
-            {[
-              { label: "Google", icon: "G", color: "text-red-500" },
-              // { label: "GitHub", icon: "GH", color: "text-slate-700" },
-            ].map((s) => (
-              <Button
-                key={s.label}
-                variant="outline"
-                className="h-11 rounded-xl border-slate-200 hover:bg-slate-50 font-medium text-slate-700"
-                onClick={handleLogin}
-              >
-                <span className={cn("font-black text-sm mr-2", s.color)}>{s.icon}</span>
-                {s.label}
-              </Button>
-            ))}
+          <div className="grid gap-3 w-full justify-center">
+            <GoogleOAuthProvider clientId="623397197354-7b3pae48gui0nkn2s4ml2vjatfm15mqt.apps.googleusercontent.com">
+              {/* import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com" */}
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                // khi gọi thành công sẽ gọi successUrl của backend 
+                onError={handleGoogleError}
+                useOneTap
+                theme="outline"
+                // locale="eng"
+                size="large"
+                shape="circle"
+              />
+            </GoogleOAuthProvider>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+          {/* <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
             <p className="text-xs font-semibold text-slate-700">Mock accounts</p>
             <div className="space-y-2">
               {MOCK_LOGIN_ACCOUNTS.map((account) => (
@@ -250,7 +355,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

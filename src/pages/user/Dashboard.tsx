@@ -15,6 +15,7 @@ import {
 import AISidebar from "@/components/dashboard/AISidebar";
 import AIChatWidget from "@/components/dashboard/AIChatWidget";
 import { MOCK_USER } from "@/lib/mock-data/dashboard";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // ─── Scroll-aware section tracking ───────────────
 function useSectionObserver(sectionIds: string[]) {
@@ -57,6 +58,13 @@ function useSectionObserver(sectionIds: string[]) {
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTabValue>("overview");
   const { activeSection, setRef } = useSectionObserver(["hero", "stats", "tabs"]);
+  const { currentUser } = useAuthStore();
+  
+  const dashboardUser = {
+    ...MOCK_USER,
+    name: currentUser?.name || MOCK_USER.name,
+    avatar: currentUser?.avatar || "https://github.com/shadcn.png",
+  };
 
   return (
     <Layout>
@@ -73,7 +81,7 @@ export default function Dashboard() {
         <div className="flex-1 min-w-0 px-4 md:px-6 py-6 space-y-8">
           {/* Banner */}
           <div ref={setRef("hero")} data-section="hero">
-            <DashboardHero user={MOCK_USER} />
+            <DashboardHero user={dashboardUser} />
           </div>
 
           {/* Ecosystem Notification Widget */}

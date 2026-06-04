@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
+import { registerApi } from "@/api/auth/register";
+import { resendVerificationEmailApi } from "@/api/auth/resendVerificationEmail";
 import { useMascotSuccess } from "@/hooks/useMascot";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
@@ -28,17 +31,7 @@ const ROLES = [
     iconColor: "text-blue-600",
     perks: ["Personalized AI learning path", "Detailed skill dashboard", "Connect with mentors"],
   },
-  {
-    value: "admin" as UserRole,
-    label: "Admin",
-    icon: Shield,
-    desc: "I manage the platform system",
-    gradient: "from-violet-600 to-purple-500",
-    ring: "ring-violet-400",
-    bg: "bg-violet-50",
-    iconColor: "text-violet-600",
-    perks: ["Full analytics dashboard", "Manage users and content", "AI business intelligence"],
-  },
+
   {
     value: "business" as UserRole,
     label: "Business",
@@ -79,9 +72,12 @@ interface FormData {
 export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(60);
   const [form, setForm] = useState<FormData>({
     role: "user",
     fullName: "",
@@ -114,22 +110,112 @@ export default function Register() {
       });
     }
   }, [step]);
+  useEffect(() => {
+    if (isSuccess && countdown > 0) {
+      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, countdown]);
+
+  const handleResend = async () => {
+    try {
+      await resendVerificationEmailApi({ email: form.email });
+      toast({
+        title: "Email resent",
+        description: "A new verification email has been sent. Please check your inbox.",
+      });
+      setCountdown(60); // Reset timer 60s
+    } catch (error) {
+      toast({
+        title: "Resend failed",
+        description: error instanceof Error ? error.message : "Could not resend email.",
+        variant: "destructive",
+      });
+    }
+  };
+  // const handleSubmit = async () => {
+  //   setLoading(true);
+  //   await new Promise((r) => setTimeout(r, 1000));
+  //   login(form.role);
+  //   const redirect =
+  //     form.role === "admin" ? "/admin" :
+  //     form.role === "business" ? "/business" :
+  //     form.role === "mentor" ? "/mentor" : "/dashboard";
+  //   navigate(redirect);
+  // };
 
   const { celebrate } = useMascotSuccess();
 
   const handleSubmit = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    login(form.role);
-    celebrate("Đăng ký thành công — chào mừng bạn! 🎉");
-    const redirect =
-      form.role === "admin" ? "/admin" :
-      form.role === "business" ? "/business" :
-      form.role === "mentor" ? "/mentor" : "/dashboard";
-    navigate(redirect);
+    try {
+      setLoading(true);
+
+      await registerApi({
+        email: form.email,
+        password: form.password,
+        displayName: form.fullName,
+        role: form.role.toUpperCase(),
+      });
+
+      celebrate("Đăng ký thành công — kiểm tra email để xác thực nhé! 🎉");
+      setIsSuccess(true);
+      setCountdown(60);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Registration failed",
+        description: error instanceof Error ? error.message : "Registration failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedRole = ROLES.find((r) => r.value === form.role)!;
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-8 text-center"
+        >
+          <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Mail className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold font-poppins text-slate-900 mb-3">Check your email</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            We've sent a verification link to <br />
+            <span className="font-semibold text-slate-900">{form.email}</span>. <br />
+            Please verify your account to continue.
+          </p>
+
+          <Button
+            onClick={() => navigate("/login")}
+            className="w-full h-12 rounded-xl text-base font-bold bg-primary hover:bg-primary/90 text-white shadow-glow mb-6"
+          >
+            Proceed to Login <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+
+          <div className="text-sm text-slate-500">
+            Didn't receive the email?{" "}
+            {countdown > 0 ? (
+              <span className="font-semibold text-slate-700">Resend in {countdown}s</span>
+            ) : (
+              <button
+                onClick={handleResend}
+                className="text-primary font-semibold hover:underline"
+              >
+                Click to resend
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
@@ -156,8 +242,8 @@ export default function Register() {
                 <div className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300",
                   i < step ? "bg-primary text-white" :
-                  i === step ? "bg-primary text-white ring-4 ring-primary/20" :
-                  "bg-slate-200 text-slate-400"
+                    i === step ? "bg-primary text-white ring-4 ring-primary/20" :
+                      "bg-slate-200 text-slate-400"
                 )}>
                   {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                 </div>
@@ -419,7 +505,7 @@ export default function Register() {
                   </Button>
                   <Button
                     onClick={handleSubmit}
-                    disabled={loading || !form.password || form.password !== form.confirmPassword}
+                    disabled={loading || !form.password || form.password !== form.confirmPassword || form.password.length < 8 || !/[A-Z]/.test(form.password) || !/\d/.test(form.password)}
                     className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-glow"
                   >
                     {loading ? (

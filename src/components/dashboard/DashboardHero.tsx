@@ -16,14 +16,14 @@ export default function DashboardHero({ user }: DashboardHeroProps) {
         {/* Left: Avatar + greeting */}
         <div className="flex items-center gap-4 md:gap-6 min-w-0">
             <img
-              src="/taithi.png"
+              src={user.avatar || "https://github.com/shadcn.png"}
               alt={user.name}
-              className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-[3px] border-white/40 shadow-lg"
+              className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-[3px] border-white/40 shadow-lg bg-white/20"
             />
 
           <div className="space-y-1.5">
             <h1 className="text-2xl md:text-[48px] font-poppins font-bold tracking-tight whitespace-nowrap">
-              Hi Tai Thi
+              Hi {user.name}
             </h1>
             <p className="text-white/80 text-base font-medium opacity-90">
               Keep pushing forward — hard work pays off!
