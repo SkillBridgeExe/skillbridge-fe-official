@@ -1,32 +1,23 @@
-export const API_URL_ME = "https://skillbridge-ai-2rrb.onrender.com/api/auth/me";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  unwrapEnvelope,
+  type ApiEnvelope,
+  type AuthUserDto,
+} from "./envelope";
 
-export interface UserSummaryResponse {
-  success: boolean;
-  message: string;
-  data: {
-    id: string;
-    email: string;
-    displayName: string;
-    isEmailVerified: boolean;
-    roles: string[];
-  };
-  errors: unknown;
-}
+export type UserSummaryResponse = ApiEnvelope<AuthUserDto>;
 
-export const getMeApi = async (accessToken: string): Promise<UserSummaryResponse> => {
-  const res = await fetch(API_URL_ME, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-    },
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    let errMsg = data.message || "Failed to fetch user profile";
-    throw new Error(errMsg);
-  }
-
-  return data;
-};
+// httpClient already injects the stored Bearer token; the explicit param is
+// kept so callers can check a token that isn't in localStorage yet.
+export const getMeApi = (accessToken?: string): Promise<UserSummaryResponse> =>
+  unwrapEnvelope(
+    httpClient.get<UserSummaryResponse>(API_ROUTES.AUTH.ME, {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+      ...(accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` } }
+        : {}),
+    }),
+    "Failed to fetch user profile",
+  );

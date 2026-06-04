@@ -1,47 +1,29 @@
-const API_URL = "https://skillbridge-ai-2rrb.onrender.com/api/auth/login";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  unwrapEnvelope,
+  type ApiEnvelope,
+  type AuthUserDto,
+} from "./envelope";
 
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface LoginResponse {
-  success: boolean;
-  message: string;
-  data: {
-    accessToken: string;
-    accessTokenExpiresAt: string;
-    user: {
-      id: string;
-      email: string;
-      displayName: string;
-      isEmailVerified: boolean;
-      roles: string[];
-    };
-  };
-  errors: unknown;
-}
+export type LoginResponse = ApiEnvelope<{
+  accessToken: string;
+  accessTokenExpiresAt: string;
+  user: AuthUserDto;
+}>;
 
-export const loginApi = async (
-  payload: LoginRequest
-): Promise<LoginResponse> => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email: payload.email.trim(),
-      password: payload.password,
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || "Login failed");
-  }
-
-  return data;
-};
+export const loginApi = (payload: LoginRequest): Promise<LoginResponse> =>
+  unwrapEnvelope(
+    httpClient.post<LoginResponse>(
+      API_ROUTES.AUTH.LOGIN,
+      { email: payload.email.trim(), password: payload.password },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS },
+    ),
+    "Login failed",
+  );

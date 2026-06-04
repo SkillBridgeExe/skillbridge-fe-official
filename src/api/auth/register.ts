@@ -1,4 +1,11 @@
-const API_URL = "https://skillbridge-ai-2rrb.onrender.com/api/auth/register";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  unwrapEnvelope,
+  type ApiEnvelope,
+  type AuthUserDto,
+} from "./envelope";
 
 export interface RegisterRequest {
   email: string;
@@ -7,50 +14,16 @@ export interface RegisterRequest {
   role: string;
 }
 
-export interface RegisterResponse {
-  success: boolean;
-  message: string;
-  data: {
-    accessToken: string | null;
-    accessTokenExpiresAt: string | null;
-    user: {
-      id: string;
-      email: string;
-      displayName: string;
-      isEmailVerified: boolean;
-      roles: string[];
-    };
-  };
-  errors: unknown;
-}
+export type RegisterResponse = ApiEnvelope<{
+  accessToken: string | null;
+  accessTokenExpiresAt: string | null;
+  user: AuthUserDto;
+}>;
 
-export const registerApi = async (
-  payload: RegisterRequest
-): Promise<RegisterResponse> => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    let errMsg = data.message || "Register failed";
-    if (data.errors) {
-      if (typeof data.errors === "object" && !Array.isArray(data.errors)) {
-        const details = Object.values(data.errors).flat();
-        if (details.length > 0) {
-          errMsg += ": " + details.join(", ");
-        }
-      } else if (Array.isArray(data.errors) && data.errors.length > 0) {
-        errMsg += ": " + data.errors.join(", ");
-      }
-    }
-    throw new Error(errMsg);
-  }
-
-  return data;
-};
+export const registerApi = (payload: RegisterRequest): Promise<RegisterResponse> =>
+  unwrapEnvelope(
+    httpClient.post<RegisterResponse>(API_ROUTES.AUTH.REGISTER, payload, {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    }),
+    "Register failed",
+  );

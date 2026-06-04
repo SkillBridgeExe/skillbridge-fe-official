@@ -1,35 +1,21 @@
-const API_URL =
-  "https://skillbridge-ai-2rrb.onrender.com/api/auth/resend-verification-email";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import { AUTH_REQUEST_TIMEOUT_MS, unwrapEnvelope, type ApiEnvelope } from "./envelope";
 
 export interface ResendVerificationEmailRequest {
   email: string;
 }
 
-export interface ResendVerificationEmailResponse {
-  success: boolean;
-  message: string;
-  data: null;
-  errors: unknown;
-}
+export type ResendVerificationEmailResponse = ApiEnvelope<null>;
 
-export const resendVerificationEmailApi = async (
-  payload: ResendVerificationEmailRequest
-): Promise<ResendVerificationEmailResponse> => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email: payload.email.trim(),
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || "Resend verification email failed");
-  }
-
-  return data;
-};
+export const resendVerificationEmailApi = (
+  payload: ResendVerificationEmailRequest,
+): Promise<ResendVerificationEmailResponse> =>
+  unwrapEnvelope(
+    httpClient.post<ResendVerificationEmailResponse>(
+      API_ROUTES.AUTH.RESEND_VERIFICATION,
+      { email: payload.email.trim() },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS },
+    ),
+    "Resend verification email failed",
+  );
