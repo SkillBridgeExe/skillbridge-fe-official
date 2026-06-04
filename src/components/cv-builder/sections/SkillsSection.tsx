@@ -32,6 +32,10 @@ export function SkillsSection() {
   
   const suggestions = getSuggestions();
 
+  // Lookup from the values already subscribed above — calling the store hook
+  // inside the render loop below violates the Rules of Hooks.
+  const skillsByField = { technicalSkills, softSkills, tools, languages };
+
   return (
     <div className="space-y-6 p-4">
       {suggestions.length > 0 && (
@@ -56,7 +60,7 @@ export function SkillsSection() {
         <div key={field} className="space-y-2">
           <Label className="capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</Label>
           <div className="flex flex-wrap gap-2 mb-2">
-            {useCvBuilderStore(state => state[field]).map((skill) => (
+            {skillsByField[field].map((skill) => (
               <Badge key={skill} variant="secondary" className="pl-2 pr-1 py-1 text-[13px]">
                 {skill}
                 <button onClick={() => removeSkill(field, skill)} className="ml-1 hover:bg-slate-200 rounded-full p-0.5">
