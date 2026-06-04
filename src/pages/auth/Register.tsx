@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
 import { registerApi } from "@/api/auth/register";
 import { resendVerificationEmailApi } from "@/api/auth/resendVerificationEmail";
+import { useMascotSuccess } from "@/hooks/useMascot";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
 
@@ -143,6 +144,8 @@ export default function Register() {
   //   navigate(redirect);
   // };
 
+  const { celebrate } = useMascotSuccess();
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
@@ -154,6 +157,7 @@ export default function Register() {
         role: form.role.toUpperCase(),
       });
 
+      celebrate("Đăng ký thành công — kiểm tra email để xác thực nhé! 🎉");
       setIsSuccess(true);
       setCountdown(60);
     } catch (error) {

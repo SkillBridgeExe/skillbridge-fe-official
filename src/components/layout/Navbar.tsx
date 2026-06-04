@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, LayoutDashboard, Shield, Building2, Users } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import logoGif from "@/assets/logo/logo.gif";
 
 
 const NAV_ITEMS = [
@@ -49,9 +50,12 @@ export default function Navbar() {
       isLanding ? "bg-white/10 backdrop-blur-sm" : "bg-white/80 backdrop-blur-md border-b border-white/20"
     )}>
       <div className="flex items-center gap-2">
-        <Link to="/" className="flex items-center gap-0 mb-0 group">
-          <span className="font-poppins font-black text-xl text-slate-900 leading-none tracking-tight">SkillBridge</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5 mb-2.5" />
+        <Link to="/" className="flex items-center group">
+          <img
+            src={logoGif}
+            alt="SkillBridge"
+            className="h-20 w-auto object-contain transition-transform group-hover:scale-105"
+          />
         </Link>
       </div>
 

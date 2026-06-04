@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useMascotLoading, useMascotSuccess } from "@/hooks/useMascot";
 import {
   Sparkles, ChevronRight, Clock, BookOpen, Target, AlertCircle,
   CheckCircle2, Zap, Brain, Calendar, RefreshCw,
@@ -43,6 +44,8 @@ const DEMO_GAPS: SkillGap[] = [
 export default function RoadmapGenerator() {
   const navigate = useNavigate();
   const { setGeneratedRoadmap, setWeekPlans } = useRoadmapStore();
+  const { show: showLoading, hide: hideLoading } = useMascotLoading();
+  const { celebrate } = useMascotSuccess();
 
   // Try to get skill gaps from diagnosis store; fall back to demo
   const [gaps] = useState<SkillGap[]>(DEMO_GAPS);
@@ -57,13 +60,18 @@ export default function RoadmapGenerator() {
     setLoading(true);
     setError(null);
     setRoadmap(null);
+    showLoading("AI đang xây lộ trình học cho bạn...");
     try {
       const result = await generateRoadmapWithAI(gaps, targetRole, hoursPerWeek);
       setRoadmap(result);
+      setLoading(false);
+      // celebrate() overwrites the loading overlay with the success dolphin,
+      // which then auto-dismisses — so we must NOT call hideLoading() here.
+      celebrate("Lộ trình học đã sẵn sàng! 🎉");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Generation failed");
-    } finally {
       setLoading(false);
+      hideLoading();
     }
   };
 
@@ -73,6 +81,7 @@ export default function RoadmapGenerator() {
     setGeneratedRoadmap(roadmap);
     setWeekPlans(weekPlans);
     setApplied(true);
+    celebrate("Đã áp dụng lộ trình vào lịch học! 📚");
     setTimeout(() => navigate("/learning"), 1200);
   };
 
@@ -188,7 +197,7 @@ export default function RoadmapGenerator() {
                 className="w-full h-11 rounded-xl font-bold text-sm shadow-md gap-2"
               >
                 {loading ? (
-                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> AI is building your roadmap...</>
+                  <>AI đang xây lộ trình...</>
                 ) : (
                   <><Sparkles className="w-4 h-4" /> Generate AI Roadmap</>
                 )}

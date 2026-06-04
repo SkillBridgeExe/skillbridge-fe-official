@@ -1,0 +1,8 @@
+# Files NOT uploaded to Cloud Build when running `gcloud run deploy --source .`
+# (keeps uploads small/fast). Build deps are reinstalled in the Dockerfile.
+node_modules
+dist
+.git
+.github
+npm-debug.log
+eslint-report.txt

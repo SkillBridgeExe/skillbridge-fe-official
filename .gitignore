@@ -35,3 +35,14 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+
+# AI Context & Guide files (local only, do not commit)
+*.md
+.agent/
+.agents/
+.builder/
+
+# Database & Notion Sprint board files
+*.dbml
+*.csv
+

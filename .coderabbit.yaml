@@ -1,0 +1,37 @@
+# CodeRabbit config — AI PR review for SkillBridge FE.
+# Docs: https://docs.coderabbit.ai/getting-started/configure-coderabbit
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# Reviews + summaries written in Vietnamese to match the team.
+language: "vi-VN"
+
+reviews:
+  # "chill" = focus on real bugs/risks, fewer style nitpicks (ESLint/Prettier already cover formatting).
+  # Switch to "assertive" later if you want stricter reviews.
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false            # don't review draft PRs
+    base_branches:
+      - "main"
+  # Don't waste review on generated / vendored / lock files.
+  path_filters:
+    - "!**/dist/**"
+    - "!**/node_modules/**"
+    - "!**/package-lock.json"
+    - "!**/*.gif"
+    - "!**/*.png"
+  path_instructions:
+    - path: "src/**/*.{ts,tsx}"
+      instructions: >
+        React 18 + Vite + TypeScript codebase. Prioritise: real bugs, type-safety
+        holes, React hooks misuse (deps, conditional hooks), state/store correctness,
+        accessibility, and security. Do NOT nitpick formatting — ESLint + Prettier
+        handle that. Keep comments concise and actionable.
+
+chat:
+  auto_reply: true

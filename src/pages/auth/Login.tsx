@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useMascotSuccess } from "@/hooks/useMascot";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { loginApi } from "@/api/auth/login";
 import { googleLoginApi } from "@/api/auth/google";
@@ -23,6 +24,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { setAuthUser } = useAuthStore();
   const { toast } = useToast();
+  const { celebrate } = useMascotSuccess();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,10 +120,7 @@ export default function Login() {
               ? "/mentor-dashboard"
               : "/dashboard";
 
-      toast({
-        title: "Login successful",
-        description: `Signed in as ${role}.`,
-      });
+      celebrate(`Đăng nhập thành công — ${role} 👋`);
 
       navigate(redirect);
     }
@@ -180,10 +179,7 @@ export default function Login() {
               ? "/mentor-dashboard"
               : "/dashboard";
 
-      toast({
-        title: "Google Login successful",
-        description: `Signed in as ${role}.`,
-      });
+      celebrate(`Đăng nhập Google thành công — ${role} 👋`);
 
       navigate(redirect);
     } catch (err) {
