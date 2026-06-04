@@ -441,8 +441,7 @@ export default function Index() {
               style={ms({ color: mutedTextColor })}
               className="text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed font-medium"
             >
-              The industry's most advanced CV analysis and personalized learning roadmap.
-              Let our AI guide you to your career goals with extreme precision.
+              Analyze your CV, build a professional resume from scratch, and get a personalized roadmap to reach your dream job.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -471,7 +470,7 @@ export default function Index() {
                 </motion.button>
               </Link>
 
-              <Link to="/dashboard">
+              {/* <Link to="/dashboard">
                 <motion.button
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
@@ -487,8 +486,36 @@ export default function Index() {
                   </span>
                   Watch Demo
                 </motion.button>
+              </Link> */}
+
+              <Link to="/cv-builder">
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="group h-16 rounded-full px-12 text-lg font-semibold border-2 backdrop-blur-sm flex items-center gap-3 transition-all duration-300"
+                  style={ms({
+                    borderColor: "rgba(99,102,241,0.4)",
+                    background: "rgba(99,102,241,0.05)",
+                    color: "inherit",
+                  })}
+                >
+                  <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-500/40">
+                    <BrainCircuit className="w-4 h-4 text-blue-400" />
+                  </span>
+                  Create CV with AI
+                </motion.button>
               </Link>
             </motion.div>
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-sm font-medium mt-4 text-center"
+              style={ms({ color: mutedTextColor })}
+            >
+              Already have a CV? Scan it. No CV yet? Build one with AI.
+            </motion.p>
 
             {/* Social proof mini row */}
             <motion.div

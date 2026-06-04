@@ -11,6 +11,7 @@ export const NotFound = lazy(() => import("@/pages/public/NotFound"));
 
 export const Login = lazy(() => import("@/pages/auth/Login"));
 export const Register = lazy(() => import("@/pages/auth/Register"));
+export const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 
 export const Dashboard = lazy(() => import("@/pages/user/Dashboard"));
 export const Diagnosis = lazy(() => import("@/pages/user/Diagnosis"));
@@ -22,6 +23,7 @@ export const Payment = lazy(() => import("@/pages/user/Payment"));
 export const MentorConnect = lazy(() => import("@/pages/user/MentorConnect"));
 export const Jobs = lazy(() => import("@/pages/user/Jobs"));
 export const RoadmapGenerator = lazy(() => import("@/pages/user/RoadmapGenerator"));
+export const CvBuilder = lazy(() => import("@/pages/user/CvBuilder"));
 export const SuccessStats = lazy(() => import("@/pages/user/SuccessStats"));
 export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 export const MentorLanding = lazy(() => import("@/pages/user/MentorLanding"));

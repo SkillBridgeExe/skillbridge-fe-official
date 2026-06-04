@@ -21,6 +21,11 @@ interface DiagnosisState {
   apiError: string | null;
   analysisMode: AnalysisMode;
 
+  // Builder-sourced CV state
+  isFromBuilder: boolean;
+  builderCvId: string | null;
+  builderCvName: string | null;
+
   // Actions
   setStep: (step: Step) => void;
   setIsAnalyzing: (isAnalyzing: boolean) => void;
@@ -37,6 +42,12 @@ interface DiagnosisState {
   setReviewData: (data: CvReviewData | null) => void;
   setApiError: (error: string | null) => void;
   setAnalysisMode: (mode: AnalysisMode) => void;
+
+  // Builder-sourced CV actions
+  setIsFromBuilder: (isFromBuilder: boolean) => void;
+  setBuilderCvId: (id: string | null) => void;
+  setBuilderCvName: (name: string | null) => void;
+  clearBuilderState: () => void;
 
   reset: () => void;
   scanAgain: () => void;
@@ -60,6 +71,10 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   apiError: null,
   analysisMode: "cv-only",
 
+  isFromBuilder: false,
+  builderCvId: null,
+  builderCvName: null,
+
   setStep: (step) => set({ step }),
   setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
   setCvFile: (cvFile) => set({ cvFile }),
@@ -80,6 +95,11 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   setApiError: (apiError) => set({ apiError }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
 
+  setIsFromBuilder: (isFromBuilder) => set({ isFromBuilder }),
+  setBuilderCvId: (builderCvId) => set({ builderCvId }),
+  setBuilderCvName: (builderCvName) => set({ builderCvName }),
+  clearBuilderState: () => set({ isFromBuilder: false, builderCvId: null, builderCvName: null }),
+
   reset: () => set({
     step: "input",
     cvFile: null,
@@ -92,6 +112,9 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     reviewData: null,
     apiError: null,
     analysisMode: "cv-only",
+    isFromBuilder: false,
+    builderCvId: null,
+    builderCvName: null,
   }),
 
   scanAgain: () => set({
@@ -106,6 +129,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     apiError: null,
     analysisMode: "cv-only",
     // cvFile is preserved
+    // Builder state is preserved so user can re-analyze
   }),
 
   goBack: () => set((state) => {

@@ -40,6 +40,7 @@ const App = () => (
               <Route path="/privacy" element={<Pages.PrivacyPolicy />} />
               <Route path="/help" element={<Pages.HelpCenter />} />
               <Route path="/contact" element={<Pages.Contact />} />
+              <Route path="/verify-email" element={<Pages.VerifyEmail />} />
 
               <Route path="/dashboard" element={<Pages.Dashboard />} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/roadmap-generator" element={<Pages.RoadmapGenerator />} />
+              <Route path="/cv-builder" element={<Pages.CvBuilder />} />
 
               <Route
                 path="/business"

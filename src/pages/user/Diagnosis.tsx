@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import { CheckCircle2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { LOADING_MESSAGES, JD_LOADING_MESSAGES } from "@/lib/mock-data/diagnosis";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
@@ -31,8 +32,30 @@ export default function Diagnosis() {
   const {
     step, isAnalyzing, hasActivatedJdMode,
     targetStep, loadingMsgIdx, loadingProgress,
-    setLoadingProgress, setLoadingMsgIdx
+    setLoadingProgress, setLoadingMsgIdx,
+    setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState
   } = useDiagnosisStore();
+
+  const location = useLocation();
+
+  // Handle initialization from builder
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const source = params.get("source") || (location.state as any)?.source;
+    const cvId = params.get("cvId") || (location.state as any)?.cvId;
+    
+    if (source === "builder") {
+      setIsFromBuilder(true);
+      if (cvId) setBuilderCvId(cvId);
+      // Mocking the builder CV name since we don't have a real backend to fetch it from yet
+      setBuilderCvName("Generated_CV.pdf");
+    } else {
+      // User came here without source=builder, e.g. from homepage "Scan my CV"
+      // Clear builder state so we don't persist it inappropriately
+      clearBuilderState();
+    }
+  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState]);
+
 
   const loadingMsgArray = targetStep === "results" ? JD_LOADING_MESSAGES : LOADING_MESSAGES;
 

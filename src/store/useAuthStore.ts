@@ -84,6 +84,7 @@ interface AuthState {
   currentUser: AuthUser | null;
   login: (role: UserRole) => void;
   loginWithMockAccount: (email: string, password: string) => LoginResult;
+  setAuthUser: (user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -116,11 +117,19 @@ export const useAuthStore = create<AuthState>()(
 
           return { success: true, role: account.role };
         },
-        logout: () =>
+        setAuthUser: (user) => 
+          set({
+            isAuthenticated: true,
+            currentUser: user,
+          }),
+        logout: () => {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
           set({
             isAuthenticated: false,
             currentUser: null,
-          }),
+          });
+        },
       }),
       { name: "skillbridge-auth" }
     )

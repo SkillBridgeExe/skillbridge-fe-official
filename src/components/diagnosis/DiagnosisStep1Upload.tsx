@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,14 +12,15 @@ import { getApiErrorMessage } from "@/lib/api-error";
 
 export function DiagnosisStep1Upload() {
   const {
-    cvFile, jobDescription,
-    setCvFile,
+    cvFile, jobDescription, isFromBuilder, builderCvName, builderCvId,
+    setCvFile, clearBuilderState,
     setHasActivatedJdMode, setTargetStep, setLoadingProgress, setLoadingMsgIdx, setIsAnalyzing,
     setReviewData, setApiError, setAnalysisMode, setStep
   } = useDiagnosisStore();
   
   const { toast } = useToast();
   const reviewCvMutation = useReviewCvMutation();
+  const navigate = useNavigate();
 
   const handleCVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,7 +36,7 @@ export function DiagnosisStep1Upload() {
   };
 
   const analyzeCvOnly = async () => {
-    if (!cvFile) { return toast({ title: "Missing CV", description: "Please upload your resume first.", variant: "destructive" }); }
+    if (!cvFile && !isFromBuilder) { return toast({ title: "Missing CV", description: "Please upload your resume first.", variant: "destructive" }); }
 
     setHasActivatedJdMode(false);
     setAnalysisMode("cv-only");
@@ -46,7 +48,10 @@ export function DiagnosisStep1Upload() {
     setIsAnalyzing(true);
 
     try {
-      const data = await reviewCvMutation.mutateAsync({ cvFile });
+      // Mocking the builder CV case for now since we don't have a real file payload
+      // In reality, you'd send `cvFile` or `builderCvId` to the backend.
+      const payload = isFromBuilder ? { cvFile: new File(["mock"], "generated.pdf") } : { cvFile: cvFile! };
+      const data = await reviewCvMutation.mutateAsync(payload);
       setReviewData(data);
       setStep("cv-review");
     } catch (error) {
@@ -60,7 +65,7 @@ export function DiagnosisStep1Upload() {
   };
 
   const analyzeWithJd = async () => {
-    if (!cvFile) {
+    if (!cvFile && !isFromBuilder) {
       return toast({ title: "Missing CV", description: "Please upload your resume first.", variant: "destructive" });
     }
     if (!jobDescription.trim()) {
@@ -76,7 +81,8 @@ export function DiagnosisStep1Upload() {
     setIsAnalyzing(true);
 
     try {
-      const data = await reviewCvMutation.mutateAsync({ cvFile, jobDescription: jobDescription.trim() });
+      const payload = isFromBuilder ? { cvFile: new File(["mock"], "generated.pdf"), jobDescription: jobDescription.trim() } : { cvFile: cvFile!, jobDescription: jobDescription.trim() };
+      const data = await reviewCvMutation.mutateAsync(payload);
       setReviewData(data);
       setHasActivatedJdMode(true);
       setStep("results");
@@ -103,24 +109,50 @@ export function DiagnosisStep1Upload() {
       {/* Split Screen: CV Left | JD Right */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* LEFT: CV Upload */}
+        {/* LEFT: CV Upload or Builder State */}
         <Card className="glass border-white/50 shadow-sm overflow-hidden group relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0 group-hover:opacity-100 opacity-50 transition-opacity" />
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="text-primary w-5 h-5" />
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isFromBuilder ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary")}>
+                  {isFromBuilder ? <Sparkles className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                 </div>
                 <div>
-                  <CardTitle className="text-base text-slate-800">Your Resume</CardTitle>
-                  <CardDescription>PDF or Image (PNG, JPG, WEBP) — Max 5MB</CardDescription>
+                  <CardTitle className="text-base text-slate-800">{isFromBuilder ? "Generated CV Selected" : "Your Resume"}</CardTitle>
+                  <CardDescription>{isFromBuilder ? "Created with AI Builder" : "PDF or Image (PNG, JPG, WEBP) — Max 5MB"}</CardDescription>
                 </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {cvFile ? (
+            {isFromBuilder ? (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  Your CV has been created with SkillBridge AI Builder. We'll use this CV for analysis, so you don't need to upload it again.
+                </p>
+                <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{builderCvName || "Generated_CV.pdf"}</p>
+                    <p className="text-xs text-slate-500">Created from AI CV Builder</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {/*
+                  <Button variant="outline" className="flex-1 text-sm rounded-full">Preview CV</Button>
+                  <Button variant="outline" className="flex-1 text-sm rounded-full text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => { clearBuilderState(); setCvFile(null); }}>Replace CV</Button>
+                  */}
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 text-sm rounded-full border-primary text-primary hover:bg-primary/5" 
+                    onClick={() => navigate("/cv-builder")}
+                  >
+                    Back to Edit CV
+                  </Button>
+                </div>
+              </div>
+            ) : cvFile ? (
               <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -148,17 +180,17 @@ export function DiagnosisStep1Upload() {
 
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-        <Button size="lg" variant="outline" onClick={analyzeCvOnly} disabled={!cvFile || reviewCvMutation.isPending}
+        <Button size="lg" variant="outline" onClick={analyzeCvOnly} disabled={(!cvFile && !isFromBuilder) || reviewCvMutation.isPending}
           className={cn("rounded-full px-8 text-sm font-semibold border-2 transition-all",
-            cvFile ? "border-slate-300 hover:border-primary hover:text-primary hover:-translate-y-0.5" : "border-slate-200 text-slate-400 cursor-not-allowed"
+            (cvFile || isFromBuilder) ? "border-slate-300 hover:border-primary hover:text-primary hover:-translate-y-0.5" : "border-slate-200 text-slate-400 cursor-not-allowed"
           )}>
-          <FileText className="mr-2 w-4 h-4" /> Analyze CV Quality Only
+          <FileText className="mr-2 w-4 h-4" /> {isFromBuilder ? "Analyze Generated CV" : "Analyze CV Quality Only"}
         </Button>
-        <Button size="lg" onClick={analyzeWithJd} disabled={!cvFile || !jobDescription.trim() || reviewCvMutation.isPending}
+        <Button size="lg" onClick={analyzeWithJd} disabled={(!cvFile && !isFromBuilder) || !jobDescription.trim() || reviewCvMutation.isPending}
           className={cn("rounded-full px-8 text-sm font-semibold transition-all",
-            cvFile && jobDescription.trim() ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            (cvFile || isFromBuilder) && jobDescription.trim() ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5" : "bg-slate-200 text-slate-400 cursor-not-allowed"
           )}>
-          <Sparkles className="mr-2 w-4 h-4" /> Compare CV against JD
+          <Sparkles className="mr-2 w-4 h-4" /> {isFromBuilder ? "Compare Generated CV against JD" : "Compare CV against JD"}
         </Button>
       </div>
 
