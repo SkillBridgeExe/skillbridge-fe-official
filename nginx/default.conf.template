@@ -14,6 +14,29 @@ server {
     gzip_types      text/plain text/css application/javascript application/json
                     application/xml image/svg+xml font/woff2;
 
+    # Same-origin API: proxy /api/* to the NestJS backend (Render).
+    # The browser only ever talks to THIS origin → no CORS needed on the BE,
+    # and the refresh-token cookie becomes first-party (survives browser
+    # third-party-cookie blocking). Mirrored in dev by Vite's server.proxy.
+    location /api/ {
+        # Re-resolve the Render hostname periodically (its IPs rotate);
+        # a variable in proxy_pass forces per-request resolution.
+        resolver 8.8.8.8 1.1.1.1 valid=300s;
+        set $api_backend "skillbridge-ai-2rrb.onrender.com";
+
+        proxy_pass https://$api_backend;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $api_backend;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        # Scope any host-bound Set-Cookie back to our domain.
+        proxy_cookie_domain $api_backend $host;
+
+        # Render free tier cold-starts (~50s) — don't cut the first request short.
+        proxy_connect_timeout 75s;
+        proxy_read_timeout 90s;
+    }
+
     # Content-hashed build assets (Vite emits hashed filenames) → cache forever.
     location /assets/ {
         expires    1y;
