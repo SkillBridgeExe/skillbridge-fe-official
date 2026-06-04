@@ -8,21 +8,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useMascotSuccess } from "@/hooks/useMascot";
-import { useAuthStore, UserRole } from "@/store/useAuthStore";
-import { loginApi } from "@/api/auth/login";
-import { googleLoginApi } from "@/api/auth/google";
+import { MOCK_LOGIN_ACCOUNTS } from "@/store/useAuthStore";
+import { dashboardPathFor, login, loginWithGoogle } from "@/services/auth.service";
 import { GoogleOAuthProvider, GoogleLogin, CredentialResponse } from "@react-oauth/google";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
 
-
+// Google OAuth client ID — public by design (it ships in the JS bundle anyway);
+// override per environment via VITE_GOOGLE_CLIENT_ID.
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  "623397197354-7b3pae48gui0nkn2s4ml2vjatfm15mqt.apps.googleusercontent.com";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setAuthUser } = useAuthStore();
   const { toast } = useToast();
   const { celebrate } = useMascotSuccess();
 
@@ -69,63 +70,19 @@ export default function Login() {
       return;
     }
 
-    // setLoading(true);
-    // await new Promise((r) => setTimeout(r, 900));
-
-    // const result = loginWithMockAccount(email, password);
-    // if (!result.success) {
-    //   setLoading(false);
-    //   const errorMessage = "message" in result ? result.message : "Invalid email or password";
-    //   toast({
-    //     title: "Login failed",
-    //     description: `${errorMessage}. Use one of the mock accounts below.`,
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
-
-    // const role = result.role;
-
     try {
       setLoading(true);
 
-      const result = await loginApi({
-        email,
-        password,
-      });
+      // API thật trước; service tự fallback sang 4 account demo khi BE từ chối.
+      const { role, source } = await login(email, password);
 
-      const accessToken = result.data.accessToken;
-      const user = result.data.user;
-      const roleStr = user.roles?.[0]?.toLowerCase() || "user";
-
-      const role = (["admin", "business", "mentor"].includes(roleStr) ? roleStr : "user") as UserRole;
-
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      // Update auth store so components relying on currentUser work
-      setAuthUser({
-        id: user.id,
-        name: user.displayName || user.email,
-        email: user.email,
-        role: role,
-      });
-
-      const redirect =
-        role === "admin"
-          ? "/admin"
-          : role === "business"
-            ? "/business"
-            : role === "mentor"
-              ? "/mentor-dashboard"
-              : "/dashboard";
-
-      celebrate(`Đăng nhập thành công — ${role} 👋`);
-
-      navigate(redirect);
-    }
-
-    catch (err) {
+      celebrate(
+        source === "mock"
+          ? `Đăng nhập demo thành công — ${role} 👋`
+          : `Đăng nhập thành công — ${role} 👋`,
+      );
+      navigate(dashboardPathFor(role));
+    } catch (err) {
       toast({
         title: "Login failed",
         description:
@@ -144,44 +101,10 @@ export default function Login() {
       }
 
       setLoading(true);
-      // console.log("credentialResponse", credentialResponse);
-      const result = await googleLoginApi({
-        idToken: credentialResponse.credential,
-
-      });
-
-      const accessToken = result.data.accessToken;
-      // Depending on whether result.data.accessToken is returned or we just rely on refresh tokens
-      // But typically, google login returns it in JSON too.
-      if (accessToken) {
-        localStorage.setItem("accessToken", accessToken);
-      }
-
-      const user = result.data.user;
-      const roleStr = user.roles?.[0]?.toLowerCase() || "user";
-      const role = (["admin", "business", "mentor"].includes(roleStr) ? roleStr : "user") as UserRole;
-
-      localStorage.setItem("user", JSON.stringify(user));
-
-      setAuthUser({
-        id: user.id,
-        name: user.displayName || user.email,
-        email: user.email,
-        role: role,
-      });
-
-      const redirect =
-        role === "admin"
-          ? "/admin"
-          : role === "business"
-            ? "/business"
-            : role === "mentor"
-              ? "/mentor-dashboard"
-              : "/dashboard";
+      const { role } = await loginWithGoogle(credentialResponse.credential);
 
       celebrate(`Đăng nhập Google thành công — ${role} 👋`);
-
-      navigate(redirect);
+      navigate(dashboardPathFor(role));
     } catch (err) {
       toast({
         title: "Google Login failed",
@@ -201,10 +124,10 @@ export default function Login() {
     });
   };
 
-  // const handleUseMockAccount = (_role: string, accountEmail: string, accountPassword: string) => {
-  //   setEmail(accountEmail);
-  //   setPassword(accountPassword);
-  // };
+  const handleUseMockAccount = (accountEmail: string, accountPassword: string) => {
+    setEmail(accountEmail);
+    setPassword(accountPassword);
+  };
 
   return (
     <div className=" flex overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -323,8 +246,7 @@ export default function Login() {
 
           {/* Social */}
           <div className="grid gap-3 w-full justify-center">
-            <GoogleOAuthProvider clientId="623397197354-7b3pae48gui0nkn2s4ml2vjatfm15mqt.apps.googleusercontent.com">
-              {/* import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com" */}
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 // khi gọi thành công sẽ gọi successUrl của backend 
@@ -338,14 +260,15 @@ export default function Login() {
             </GoogleOAuthProvider>
           </div>
 
-          {/* <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
-            <p className="text-xs font-semibold text-slate-700">Mock accounts</p>
+          {/* Demo accounts — chạy song song với auth thật (luật CLAUDE.md) */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+            <p className="text-xs font-semibold text-slate-700">Demo accounts</p>
             <div className="space-y-2">
               {MOCK_LOGIN_ACCOUNTS.map((account) => (
                 <button
                   key={account.role}
                   type="button"
-                  onClick={() => handleUseMockAccount(account.role, account.email, account.password)}
+                  onClick={() => handleUseMockAccount(account.email, account.password)}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors"
                 >
                   <p className="text-xs font-semibold text-slate-800">
@@ -355,7 +278,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
-          </div> */}
+          </div>
         </div>
       </div>
     </div>
