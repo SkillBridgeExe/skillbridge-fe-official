@@ -1,18 +1,15 @@
-export const API_URL_LOGOUT = "https://skillbridge-ai-2rrb.onrender.com/api/auth/logout";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import { AUTH_REQUEST_TIMEOUT_MS, unwrapEnvelope, type ApiEnvelope } from "./envelope";
 
-export const logoutApi = async (): Promise<{ success: boolean; message: string }> => {
-  const res = await fetch(API_URL_LOGOUT, {
-    method: "POST",
-    // Must include credentials to send the HttpOnly refresh token cookie to clear it
-    credentials: "include", 
-  });
+export type LogoutResponse = ApiEnvelope<null>;
 
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    let errMsg = data.message || "Logout failed";
-    throw new Error(errMsg);
-  }
-
-  return data;
-};
+// httpClient sends the HttpOnly refresh-token cookie (withCredentials: true)
+// so the BE can clear it.
+export const logoutApi = (): Promise<LogoutResponse> =>
+  unwrapEnvelope(
+    httpClient.post<LogoutResponse>(API_ROUTES.AUTH.LOGOUT, undefined, {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    }),
+    "Logout failed",
+  );

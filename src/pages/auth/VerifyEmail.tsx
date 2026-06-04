@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { verifyEmailApi } from "@/api/auth/verifyEmail";
-import { resendVerificationEmailApi } from "@/api/auth/resendVerificationEmail";
+import { resendVerificationEmail, verifyEmail } from "@/services/auth.service";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -24,7 +23,7 @@ export default function VerifyEmail() {
       return;
     }
 
-    verifyEmailApi({ token })
+    verifyEmail(token)
       .then(() => {
         setStatus("success");
         setMessage("Email verified successfully. Redirecting to login...");
@@ -48,7 +47,7 @@ export default function VerifyEmail() {
       setResending(true);
       setResendMessage("");
 
-      await resendVerificationEmailApi({ email });
+      await resendVerificationEmail(email);
 
       setResendMessage(
         "If this email exists and is not verified, a new verification email has been sent."

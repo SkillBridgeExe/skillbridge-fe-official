@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import {
   ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle2,
-  GraduationCap, Shield, Building2, Users,
+  GraduationCap, Building2, Users,
   User, Mail, Briefcase, MapPin, Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthStore, type UserRole } from "@/store/useAuthStore";
-import { registerApi } from "@/api/auth/register";
-import { resendVerificationEmailApi } from "@/api/auth/resendVerificationEmail";
+import { type UserRole } from "@/store/useAuthStore";
+import { register, resendVerificationEmail } from "@/services/auth.service";
 import { useMascotSuccess } from "@/hooks/useMascot";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
@@ -71,7 +70,6 @@ interface FormData {
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
@@ -119,7 +117,7 @@ export default function Register() {
 
   const handleResend = async () => {
     try {
-      await resendVerificationEmailApi({ email: form.email });
+      await resendVerificationEmail(form.email);
       toast({
         title: "Email resent",
         description: "A new verification email has been sent. Please check your inbox.",
@@ -133,24 +131,13 @@ export default function Register() {
       });
     }
   };
-  // const handleSubmit = async () => {
-  //   setLoading(true);
-  //   await new Promise((r) => setTimeout(r, 1000));
-  //   login(form.role);
-  //   const redirect =
-  //     form.role === "admin" ? "/admin" :
-  //     form.role === "business" ? "/business" :
-  //     form.role === "mentor" ? "/mentor" : "/dashboard";
-  //   navigate(redirect);
-  // };
-
   const { celebrate } = useMascotSuccess();
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
 
-      await registerApi({
+      await register({
         email: form.email,
         password: form.password,
         displayName: form.fullName,

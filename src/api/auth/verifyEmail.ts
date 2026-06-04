@@ -1,32 +1,17 @@
-const API_URL = "https://skillbridge-ai-2rrb.onrender.com/api/auth/verify-email";
+import { httpClient } from "@/api/core/http-client";
+import { API_ROUTES } from "@/constants/api-routes";
+import { AUTH_REQUEST_TIMEOUT_MS, unwrapEnvelope, type ApiEnvelope } from "./envelope";
 
 export interface VerifyEmailRequest {
   token: string;
 }
 
-export interface VerifyEmailResponse {
-  success: boolean;
-  message: string;
-  data: null;
-  errors: unknown;
-}
+export type VerifyEmailResponse = ApiEnvelope<null>;
 
-export const verifyEmailApi = async (
-  payload: VerifyEmailRequest
-): Promise<VerifyEmailResponse> => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || "Email verification failed");
-  }
-
-  return data;
-};
+export const verifyEmailApi = (payload: VerifyEmailRequest): Promise<VerifyEmailResponse> =>
+  unwrapEnvelope(
+    httpClient.post<VerifyEmailResponse>(API_ROUTES.AUTH.VERIFY_EMAIL, payload, {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    }),
+    "Email verification failed",
+  );
