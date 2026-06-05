@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { MascotSticker } from "./MascotSticker";
 import { useMascotStore } from "@/store/useMascotStore";
 
@@ -13,7 +12,6 @@ export function MascotOverlay() {
   const active = useMascotStore((s) => s.active);
   const state = useMascotStore((s) => s.state);
   const message = useMascotStore((s) => s.message);
-  const blocking = useMascotStore((s) => s.blocking);
 
   return (
     <AnimatePresence>

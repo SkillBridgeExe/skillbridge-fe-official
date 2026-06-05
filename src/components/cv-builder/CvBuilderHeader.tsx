@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Download, BrainCircuit, Save } from "lucide-react";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 

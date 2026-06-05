@@ -1,7 +1,6 @@
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, LayoutTemplate } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function CvPreviewPanel() {
   const store = useCvBuilderStore();
@@ -26,7 +25,7 @@ export function CvPreviewPanel() {
           <div className="w-px h-4 bg-slate-200" />
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-slate-500" />
-            <Select value={store.cvLanguage} onValueChange={(v) => store.setCvLanguage(v as any)}>
+            <Select value={store.cvLanguage} onValueChange={(v) => store.setCvLanguage(v as CvLanguage)}>
               <SelectTrigger className="h-8 text-xs w-[120px] border-none shadow-none focus:ring-0 bg-slate-50">
                 <SelectValue placeholder="Language" />
               </SelectTrigger>

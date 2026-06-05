@@ -12,8 +12,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 
 export function DiagnosisStep1Upload() {
   const {
-    cvFile, jobDescription, isFromBuilder, builderCvName, builderCvId,
-    setCvFile, clearBuilderState,
+    cvFile, jobDescription, isFromBuilder, builderCvName,
+    setCvFile,
     setHasActivatedJdMode, setTargetStep, setLoadingProgress, setLoadingMsgIdx, setIsAnalyzing,
     setReviewData, setApiError, setAnalysisMode, setStep
   } = useDiagnosisStore();

@@ -14,7 +14,6 @@ import { LogOut, LayoutDashboard, Shield, Building2, Users } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore";
 import logoGif from "@/assets/logo/logo.gif";
 
-
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Diagnosis", href: "/diagnosis" },
@@ -34,7 +33,6 @@ const ROLE_DASHBOARD: Record<string, { href: string; label: string; icon: React.
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isLanding = location.pathname === "/";
   const { isAuthenticated, currentUser, logout } = useAuthStore();
 
   const handleLogout = () => {
@@ -45,11 +43,8 @@ export default function Navbar() {
   const roleDash = currentUser ? ROLE_DASHBOARD[currentUser.role] : null;
 
   return (
-    <nav className={cn(
-      "fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 transition-all duration-300",
-      isLanding ? "bg-white/10 backdrop-blur-sm" : "bg-white/80 backdrop-blur-md border-b border-white/20"
-    )}>
-      <div className="flex items-center gap-2">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 transition-all duration-300">
+      <div className="flex items-center gap-12">
         <Link to="/" className="flex items-center group">
           <img
             src={logoGif}
@@ -57,47 +52,39 @@ export default function Navbar() {
             className="h-20 w-auto object-contain transition-transform group-hover:scale-105"
           />
         </Link>
-      </div>
 
-      <div className="hidden md:flex items-center gap-8">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            to={item.href}
-            className={cn(
-              "text-sm font-medium transition-all hover:text-primary relative py-1",
-              location.pathname === item.href
-                ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                : "text-slate-600 hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:right-0 hover:after:h-0.5 hover:after:bg-primary/30 hover:after:rounded-full"
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
+        <div className="hidden md:flex items-center gap-8">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                "text-sm font-medium transition-all hover:text-primary relative py-1",
+                location.pathname === item.href
+                  ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                  : "text-slate-600 hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:right-0 hover:after:h-0.5 hover:after:bg-primary/30 hover:after:rounded-full"
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
         {!isAuthenticated ? (
-          isLanding ? (
-            <div className="flex items-center gap-2">
-              <Link to="/login">
-                <Button variant="ghost" className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100">
-                  Login
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow font-semibold">
-                  Start Free
-                </Button>
-              </Link>
-            </div>
-          ) : (
+          <div className="flex items-center gap-2">
             <Link to="/login">
-              <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow">
+              <Button variant="ghost" className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100">
                 Login
               </Button>
             </Link>
-          )
+            <Link to="/register">
+              <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow font-semibold">
+                Start Free
+              </Button>
+            </Link>
+          </div>
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
