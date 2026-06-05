@@ -50,7 +50,7 @@ export default function Navbar() {
           <img
             src={logoGif}
             alt="SkillBridge"
-            className="h-12 w-auto object-contain transition-transform group-hover:scale-105"
+            className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
           />
         </Link>
       </div>

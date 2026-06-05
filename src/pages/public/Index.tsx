@@ -4,15 +4,18 @@ import {
   Search, GraduationCap, Briefcase, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { useRef, useEffect } from "react";
+import { motion, useInView, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
 import ParticleField from "@/components/shared/ParticleField";
 import HeroDashboardDemo from "@/components/home/HeroDashboardDemo";
+import HeroRoadmapDemo from "@/components/home/HeroRoadmapDemo";
+import HeroInterviewDemo from "@/components/home/HeroInterviewDemo";
 import MetricsStrip from "@/components/home/MetricsStrip";
 import LogoMarquee from "@/components/home/LogoMarquee";
 import AssessmentShowcase from "@/components/home/AssessmentShowcase";
 import CountUp from "@/components/shared/CountUp";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import { cn } from "@/lib/utils";
 
 
 
@@ -136,6 +139,23 @@ function ExaminerTypingPreview() {
 ───────────────────────────────────────────── */
 export default function Index() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<"cv" | "roadmap" | "interview">("cv");
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  // Auto-play loop to rotate between different feature demos
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+
+    const tabs: ("cv" | "roadmap" | "interview")[] = ["cv", "roadmap", "interview"];
+    const interval = setInterval(() => {
+      setActiveTab((prev) => {
+        const nextIndex = (tabs.indexOf(prev) + 1) % tabs.length;
+        return tabs[nextIndex];
+      });
+    }, 18000); // 18 seconds switch to allow full simulation sequence to play
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying]);
 
   // Spotlight properties using Framer Motion values to prevent component-wide re-renders
   const mouseX = useMotionValue(0);
@@ -273,16 +293,65 @@ export default function Index() {
               </motion.div>
             </div>
 
-            {/* Right Column: Hero Dashboard Demo */}
-            <div className="lg:col-span-7 w-full flex justify-center lg:justify-end">
+            {/* Right Column: Hero Demos Showcase with interactive switching tabs */}
+            <div className="lg:col-span-7 w-full flex flex-col items-center gap-6">
+              {/* Tab Selector (Premium Floating Glassmorphism design) */}
               <motion.div
-                initial={{ opacity: 0, y: 40 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 0.4, type: "spring", stiffness: 45 }}
-                className="w-full"
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="inline-flex p-1 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm relative z-30 overflow-hidden"
               >
-                <HeroDashboardDemo />
+                {[
+                  { id: "cv", label: "CV Diagnosis", icon: FileText },
+                  { id: "roadmap", label: "Learning Roadmap", icon: GraduationCap },
+                  { id: "interview", label: "AI Interview", icon: Search },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as "cv" | "roadmap" | "interview");
+                        setIsAutoPlaying(false); // Stop autoplay on user click
+                      }}
+                      className={cn(
+                        "relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 select-none",
+                        isActive ? "text-blue-600" : "text-slate-500 hover:text-slate-800"
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="active-hero-tab"
+                          className="absolute inset-0 bg-blue-50/70 border border-blue-100/50 rounded-xl -z-10"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <Icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </motion.div>
+
+              {/* Demo Showcase Container with smooth exit/enter animations */}
+              <div className="w-full min-h-[420px] flex justify-center items-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-full"
+                  >
+                    {activeTab === "cv" && <HeroDashboardDemo />}
+                    {activeTab === "roadmap" && <HeroRoadmapDemo />}
+                    {activeTab === "interview" && <HeroInterviewDemo />}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
 
           </div>
