@@ -42,8 +42,9 @@ export default function Diagnosis() {
   // Handle initialization from builder
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const source = params.get("source") || (location.state as any)?.source;
-    const cvId = params.get("cvId") || (location.state as any)?.cvId;
+    const navState = location.state as { source?: string; cvId?: string } | null;
+    const source = params.get("source") || navState?.source;
+    const cvId = params.get("cvId") || navState?.cvId;
     
     if (source === "builder") {
       setIsFromBuilder(true);

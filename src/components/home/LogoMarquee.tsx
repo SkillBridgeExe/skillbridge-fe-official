@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 export default function LogoMarquee() {
   const employers = [
     { name: "FPT Software", icon: "⚡" },
