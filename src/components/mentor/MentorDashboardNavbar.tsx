@@ -1,4 +1,4 @@
-﻿import { Search, Bell, Menu, User, Wallet, LogOut, Sun, Moon } from "lucide-react";
+import { Search, Bell, Menu, User, Wallet, LogOut, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -109,7 +109,7 @@ export default function MentorDashboardNavbar({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center px-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 w-full transition-colors relative">
+    <header className="sticky top-0 z-50 flex h-16 items-center px-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 w-full transition-colors">
       {/* Left side: Hamburger + Logo */}
       <div className="flex items-center gap-4 w-64 shrink-0">
         <Button

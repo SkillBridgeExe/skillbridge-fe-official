@@ -161,7 +161,7 @@ export default function HeroDashboardDemo() {
   const diagnosisActive = clicked || phase !== "idle";
   const scored = phase === "score" || phase === "advice";
 
-  const radius = 48;
+  const radius = 40;
   const circumference = 2 * Math.PI * radius;
 
   return (
@@ -441,19 +441,19 @@ export default function HeroDashboardDemo() {
                         <circle
                           cx="48"
                           cy="48"
-                          r="40"
+                          r={radius}
                           className="stroke-slate-200 fill-none"
                           strokeWidth="6"
                         />
                         <motion.circle
                           cx="48"
                           cy="48"
-                          r="40"
+                          r={radius}
                           className="stroke-blue-600 fill-none"
                           strokeWidth="6"
-                          strokeDasharray={2 * Math.PI * 40}
+                          strokeDasharray={circumference}
                           animate={{
-                            strokeDashoffset: scored ? (2 * Math.PI * 40) * (1 - 0.92) : (2 * Math.PI * 40)
+                            strokeDashoffset: scored ? circumference * (1 - 0.92) : circumference
                           }}
                           transition={{
                             duration: scored ? 1.5 : 0.3,
