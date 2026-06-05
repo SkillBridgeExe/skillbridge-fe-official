@@ -38,6 +38,9 @@ coverage/
 
 # AI Context & Guide files (local only, do not commit)
 *.md
+# ...except team-facing docs — every dev must see these on GitHub
+!RULES.md
+!docs/API_GUIDE.md
 .agent/
 .agents/
 .builder/
