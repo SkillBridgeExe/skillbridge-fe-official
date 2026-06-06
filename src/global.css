@@ -1,5 +1,4 @@
 /** @import must precede all other statements */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -202,4 +201,11 @@
   opacity: 1;
   background-color: rgba(148, 163, 184, 0.4);
 }
+}
+
+/* Tiếng Việt: Poppins/Outfit không có glyph có dấu → dùng Be Vietnam Pro
+   đồng bộ cả cụm chữ (tránh lẫn 2 font trong 1 từ). <html lang> do i18n sync. */
+html[lang="vi"] .font-poppins,
+html[lang="vi"] .font-display {
+  font-family: "Be Vietnam Pro", sans-serif;
 }
