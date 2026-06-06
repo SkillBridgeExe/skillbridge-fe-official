@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FileText, CheckCircle2, Upload, History, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { JobDescriptionInput } from "./JobDescriptionInput";
@@ -23,6 +24,7 @@ const IT_ROLES = [
 ];
 
 export function DiagnosisStep1Upload() {
+  const { t } = useTranslation("diagnosis");
   const {
     cvFile, jobDescription, isFromBuilder, builderCvName, targetRole,
     setCvFile, setTargetRole,
@@ -41,15 +43,15 @@ export function DiagnosisStep1Upload() {
     const ext = file?.name.toLowerCase().slice(file.name.lastIndexOf("."));
     if (file && (validTypes.includes(file.type) || validExts.includes(ext ?? ""))) {
       setCvFile(file);
-      toast({ title: "✅ CV Uploaded", description: file.name });
+      toast({ title: t("upload.toastUploadedTitle"), description: file.name });
     } else {
-      toast({ title: "Invalid File", description: "Please upload PDF, PNG, JPG, or WEBP.", variant: "destructive" });
+      toast({ title: t("upload.toastInvalidTitle"), description: t("upload.toastInvalidDesc"), variant: "destructive" });
     }
   };
 
   const analyzeCvOnly = async () => {
-    if (!cvFile && !isFromBuilder) { return toast({ title: "Missing CV", description: "Please upload or generate your CV first.", variant: "destructive" }); }
-    if (!targetRole) { return toast({ title: "Missing Target Role", description: "Please select a target role first.", variant: "destructive" }); }
+    if (!cvFile && !isFromBuilder) { return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" }); }
+    if (!targetRole) { return toast({ title: t("upload.toastMissingRoleTitle"), description: t("upload.toastMissingRoleDesc"), variant: "destructive" }); }
 
     setHasActivatedJdMode(false);
     setAnalysisMode("cv-only");
@@ -66,9 +68,9 @@ export function DiagnosisStep1Upload() {
       setReviewData(data);
       setStep("cv-review");
     } catch (error) {
-      const message = getApiErrorMessage(error, "Failed to analyze CV.");
+      const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
       setApiError(message);
-      toast({ title: "Analysis Failed", description: message, variant: "destructive" });
+      toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });
     } finally {
       setIsAnalyzing(false);
       setLoadingProgress(0);
@@ -77,13 +79,13 @@ export function DiagnosisStep1Upload() {
 
   const analyzeWithJd = async () => {
     if (!cvFile && !isFromBuilder) {
-      return toast({ title: "Missing CV", description: "Please upload or generate your CV first.", variant: "destructive" });
+      return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" });
     }
     if (!targetRole) {
-      return toast({ title: "Missing Target Role", description: "Please select a target role first.", variant: "destructive" });
+      return toast({ title: t("upload.toastMissingRoleTitle"), description: t("upload.toastMissingRoleDesc"), variant: "destructive" });
     }
     if (!jobDescription.trim()) {
-      return toast({ title: "Missing Job", description: "Please paste the job description text first.", variant: "destructive" });
+      return toast({ title: t("upload.toastMissingJdTitle"), description: t("upload.toastMissingJdDesc"), variant: "destructive" });
     }
 
     setAnalysisMode("cv-jd");
@@ -101,10 +103,10 @@ export function DiagnosisStep1Upload() {
       setHasActivatedJdMode(true);
       setStep("results");
     } catch (error) {
-      const message = getApiErrorMessage(error, "Failed to compare CV with JD.");
+      const message = getApiErrorMessage(error, t("upload.errorCompare"));
       setHasActivatedJdMode(false);
       setApiError(message);
-      toast({ title: "Analysis Failed", description: message, variant: "destructive" });
+      toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });
     } finally {
       setIsAnalyzing(false);
       setLoadingProgress(0);
@@ -118,10 +120,10 @@ export function DiagnosisStep1Upload() {
         <div className="flex items-center justify-between p-3 bg-[#FBF3DB] border border-[#F5E6BE] rounded-lg text-slate-700 text-xs">
           <div className="flex items-center gap-2 font-medium">
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>Đăng nhập để lưu lại lịch sử phân tích CV và so khớp JD của bạn.</span>
+            <span>{t("authBanner.message")}</span>
           </div>
           <Link to="/login" className="text-primary font-bold hover:underline shrink-0 ml-4">
-            Đăng nhập ngay
+            {t("authBanner.cta")}
           </Link>
         </div>
       )}
@@ -129,7 +131,7 @@ export function DiagnosisStep1Upload() {
       {/* History Link */}
       <div className="flex justify-end">
         <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary gap-2 font-medium text-sm">
-          <History className="w-4 h-4" /> View Recent Scans
+          <History className="w-4 h-4" /> {t("upload.historyLink")}
         </Button>
       </div>
 
@@ -145,8 +147,8 @@ export function DiagnosisStep1Upload() {
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <CardTitle className="text-base text-slate-800">Cung cấp CV của bạn</CardTitle>
-                <CardDescription>Chọn cách thức cung cấp CV để tiến hành phân tích</CardDescription>
+                <CardTitle className="text-base text-slate-800">{t("upload.cardTitle")}</CardTitle>
+                <CardDescription>{t("upload.cardSubtitle")}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -154,14 +156,14 @@ export function DiagnosisStep1Upload() {
             {isFromBuilder ? (
               <div className="space-y-4 w-full">
                 <p className="text-xs text-slate-600">
-                  CV được tạo thành công từ AI CV Builder. Bạn có thể chỉnh sửa lại CV hoặc tiếp tục phân tích.
+                  {t("upload.builderReady")}
                 </p>
                 <div className="flex items-center justify-between p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl">
                   <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate">{builderCvName || "Generated_CV.pdf"}</p>
-                      <p className="text-xs text-slate-500">Tạo từ AI CV Builder</p>
+                      <p className="text-xs text-slate-500">{t("upload.builderSource")}</p>
                     </div>
                   </div>
                 </div>
@@ -171,21 +173,21 @@ export function DiagnosisStep1Upload() {
                     className="flex-1 text-xs rounded-lg border-primary text-primary hover:bg-primary/5 h-9" 
                     onClick={() => setStep("builder")}
                   >
-                    Sửa CV trong Builder
+                    {t("upload.editInBuilder")}
                   </Button>
                   <Button 
                     variant="outline" 
                     className="flex-1 text-xs rounded-lg text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50 hover:border-red-300 h-9" 
                     onClick={() => { clearBuilderState(); setCvFile(null); }}
                   >
-                    Xóa CV chọn lại
+                    {t("upload.removeCv")}
                   </Button>
                 </div>
               </div>
             ) : cvFile ? (
               <div className="space-y-4 w-full">
                 <p className="text-xs text-slate-600">
-                  File CV đã sẵn sàng để phân tích chất lượng.
+                  {t("upload.fileReady")}
                 </p>
                 <div className="flex items-center justify-between p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl">
                   <div className="flex items-center gap-3 min-w-0">
@@ -202,26 +204,26 @@ export function DiagnosisStep1Upload() {
                     className="w-full text-xs rounded-lg text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50 hover:border-red-300 h-9" 
                     onClick={() => setCvFile(null)}
                   >
-                    Xóa CV chọn lại
+                    {t("upload.removeCv")}
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="space-y-4 w-full">
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Chọn một trong hai phương thức sau:</label>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">{t("upload.twoDoorLabel")}</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Door 1: Upload */}
                   <label htmlFor="cv-upload-2door" className="border border-slate-200 bg-white rounded-xl p-4 flex flex-col justify-between min-h-[140px] transition-all hover:border-slate-300 cursor-pointer group/upload">
                     <div className="space-y-1">
                       <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 group-hover/upload:text-primary transition-colors">
-                        <Upload className="w-4 h-4 text-slate-400 group-hover/upload:text-primary" /> Tải lên CV có sẵn
+                        <Upload className="w-4 h-4 text-slate-400 group-hover/upload:text-primary" /> {t("upload.doorUploadTitle")}
                       </h4>
                       <p className="text-[11px] text-slate-500 leading-relaxed">
-                        Tải file PDF, PNG, JPG từ thiết bị của bạn.
+                        {t("upload.doorUploadDesc")}
                       </p>
                     </div>
                     <div className="mt-3 inline-flex items-center justify-center w-full py-1.5 px-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 transition-colors text-center">
-                      Chọn file
+                      {t("upload.doorUploadCta")}
                     </div>
                     <input id="cv-upload-2door" type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" onChange={handleCVUpload} />
                   </label>
@@ -230,15 +232,15 @@ export function DiagnosisStep1Upload() {
                   <div className="border-2 border-primary bg-primary/5 rounded-xl p-4 flex flex-col justify-between min-h-[140px] transition-all hover:bg-primary/10">
                     <div className="space-y-1">
                       <h4 className="font-bold text-primary text-xs flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-primary" /> Tạo CV mới bằng AI
+                        <Sparkles className="w-4 h-4 text-primary" /> {t("upload.doorBuilderTitle")}
                       </h4>
                       <p className="text-[11px] text-slate-600 leading-relaxed">
-                        Chưa có CV? Hãy tạo một bản CV chuyên nghiệp, chuẩn ATS.
+                        {t("upload.doorBuilderDesc")}
                       </p>
                     </div>
                     <div className="mt-3">
                       <Button onClick={() => setStep("builder")} className="w-full h-8 text-[11px] font-semibold bg-primary hover:bg-primary/90 text-white rounded-lg">
-                        Bắt đầu tạo
+                        {t("upload.doorBuilderCta")}
                       </Button>
                     </div>
                   </div>
@@ -255,7 +257,7 @@ export function DiagnosisStep1Upload() {
       {/* Target Role Selector */}
       <div className="space-y-3 bg-slate-50/50 border border-slate-200/60 p-5 rounded-2xl">
         <label className="text-sm font-bold text-slate-800 block">
-          Vị trí ứng tuyển mục tiêu (Target Role) <span className="text-red-500">*</span>
+          {t("upload.roleLabel")} <span className="text-red-500">*</span>
         </label>
         <div className="flex flex-wrap gap-2">
           {IT_ROLES.map((role) => {
@@ -290,7 +292,7 @@ export function DiagnosisStep1Upload() {
             (cvFile || isFromBuilder) && targetRole ? "border-slate-300 hover:border-primary hover:text-primary hover:-translate-y-0.5" : "border-slate-200 text-slate-400 cursor-not-allowed"
           )}
         >
-          <FileText className="mr-2 w-4 h-4" /> {isFromBuilder ? "Phân tích CV vừa tạo" : "Phân tích chất lượng CV"}
+          <FileText className="mr-2 w-4 h-4" /> {isFromBuilder ? t("upload.analyzeGeneratedCv") : t("upload.analyzeCv")}
         </Button>
         <Button 
           size="lg" 
@@ -300,12 +302,12 @@ export function DiagnosisStep1Upload() {
             (cvFile || isFromBuilder) && targetRole && jobDescription.trim() ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5" : "bg-slate-200 text-slate-400 cursor-not-allowed"
           )}
         >
-          <Sparkles className="mr-2 w-4 h-4" /> {isFromBuilder ? "So khớp CV vừa tạo với JD" : "So khớp CV với JD"}
+          <Sparkles className="mr-2 w-4 h-4" /> {isFromBuilder ? t("upload.compareGeneratedJd") : t("upload.compareJd")}
         </Button>
       </div>
 
       {/* Helper text */}
-      <p className="text-center text-xs text-slate-400 mt-1">Cung cấp CV và chọn Vị trí ứng tuyển mục tiêu để bắt đầu</p>
+      <p className="text-center text-xs text-slate-400 mt-1">{t("upload.helper")}</p>
     </div>
   );
 }
