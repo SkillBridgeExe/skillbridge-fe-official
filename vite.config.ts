@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
       "/api": {
         target:
           loadEnv(mode, process.cwd(), "").VITE_DEV_API_PROXY ||
-          "https://skillbridge-ai-2rrb.onrender.com",
+          "https://skillbridge-be-973344038436.asia-southeast1.run.app",
         changeOrigin: true,
       },
     },
