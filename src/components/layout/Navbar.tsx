@@ -10,17 +10,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Shield, Building2, Users } from "lucide-react";
+import { LogOut, LayoutDashboard, Shield, Building2, Users, Globe, Check } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Diagnosis", href: "/diagnosis" },
-  { label: "Learning", href: "/learning" },
-  { label: "Interview", href: "/interview" },
-  { label: "Mentorship", href: "/ecosystem" },
-  { label: "Jobs", href: "/jobs", highlight: true },
+  { labelKey: "nav.dashboard", href: "/dashboard" },
+  { labelKey: "nav.diagnosis", href: "/diagnosis" },
+  { labelKey: "nav.learning", href: "/learning" },
+  { labelKey: "nav.interview", href: "/interview" },
+  { labelKey: "nav.mentorship", href: "/ecosystem" },
+  { labelKey: "nav.jobs", href: "/jobs", highlight: true },
 ];
 
 const ROLE_DASHBOARD: Record<string, { href: string; label: string; icon: React.ElementType }> = {
@@ -34,6 +35,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, currentUser, logout } = useAuthStore();
+  const { t, i18n } = useTranslation("common");
 
   const handleLogout = () => {
     logout();
@@ -41,6 +43,7 @@ export default function Navbar() {
   };
 
   const roleDash = currentUser ? ROLE_DASHBOARD[currentUser.role] : null;
+  const currentLang = i18n.language === "vi" ? "VI" : "EN";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 transition-all duration-300">
@@ -65,23 +68,48 @@ export default function Navbar() {
                   : "text-slate-600 hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:right-0 hover:after:h-0.5 hover:after:bg-primary/30 hover:after:rounded-full"
               )}
             >
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           ))}
         </div>
       </div>
 
       <div className="flex items-center gap-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 h-9">
+              <Globe className="w-4 h-4" />
+              <span className="text-xs font-semibold">{currentLang}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32 rounded-xl border-slate-200 shadow-md">
+            <DropdownMenuItem 
+              onClick={() => i18n.changeLanguage("en")} 
+              className="flex items-center justify-between cursor-pointer"
+            >
+              <span>English</span>
+              {i18n.language !== "vi" && <Check className="w-4 h-4 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => i18n.changeLanguage("vi")} 
+              className="flex items-center justify-between cursor-pointer"
+            >
+              <span>Tiếng Việt</span>
+              {i18n.language === "vi" && <Check className="w-4 h-4 text-primary" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         {!isAuthenticated ? (
           <div className="flex items-center gap-2">
             <Link to="/login">
               <Button variant="ghost" className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100">
-                Login
+                {t("actions.login")}
               </Button>
             </Link>
             <Link to="/register">
               <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow font-semibold">
-                Start Free
+                {t("actions.startFree")}
               </Button>
             </Link>
           </div>
