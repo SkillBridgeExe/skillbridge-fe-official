@@ -1,4 +1,5 @@
 import "./global.css";
+import "@/i18n";
 
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
