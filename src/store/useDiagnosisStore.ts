@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { CvReviewData } from "@shared/api";
 
-export type Step = "input" | "cv-review" | "results";
+export type Step = "input" | "cv-review" | "results" | "builder";
 export type AnalysisMode = "cv-only" | "cv-jd";
 
 interface DiagnosisState {
@@ -20,6 +20,7 @@ interface DiagnosisState {
   reviewData: CvReviewData | null;
   apiError: string | null;
   analysisMode: AnalysisMode;
+  targetRole: string | null;
 
   // Builder-sourced CV state
   isFromBuilder: boolean;
@@ -42,6 +43,7 @@ interface DiagnosisState {
   setReviewData: (data: CvReviewData | null) => void;
   setApiError: (error: string | null) => void;
   setAnalysisMode: (mode: AnalysisMode) => void;
+  setTargetRole: (role: string | null) => void;
 
   // Builder-sourced CV actions
   setIsFromBuilder: (isFromBuilder: boolean) => void;
@@ -70,6 +72,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   reviewData: null,
   apiError: null,
   analysisMode: "cv-only",
+  targetRole: null,
 
   isFromBuilder: false,
   builderCvId: null,
@@ -94,6 +97,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   setReviewData: (reviewData) => set({ reviewData }),
   setApiError: (apiError) => set({ apiError }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
+  setTargetRole: (targetRole) => set({ targetRole }),
 
   setIsFromBuilder: (isFromBuilder) => set({ isFromBuilder }),
   setBuilderCvId: (builderCvId) => set({ builderCvId }),
@@ -112,6 +116,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     reviewData: null,
     apiError: null,
     analysisMode: "cv-only",
+    targetRole: null,
     isFromBuilder: false,
     builderCvId: null,
     builderCvName: null,
@@ -128,6 +133,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     reviewData: null,
     apiError: null,
     analysisMode: "cv-only",
+    targetRole: null,
     // cvFile is preserved
     // Builder state is preserved so user can re-analyze
   }),
@@ -135,6 +141,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   goBack: () => set((state) => {
     if (state.step === "results") return { step: "cv-review" };
     if (state.step === "cv-review") return { step: "input" };
+    if (state.step === "builder") return { step: "input" };
     return state;
   }),
 }));
