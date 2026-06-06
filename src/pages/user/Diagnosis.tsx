@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
 import { CheckCircle2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,11 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { LOADING_MESSAGES, JD_LOADING_MESSAGES } from "@/lib/mock-data/diagnosis";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
+import PageLoader from "@/components/common/PageLoader";
+
+const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
+const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
+const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel").then(m => ({ default: m.CvPreviewPanel })));
 
 /* ── Step Indicator Dot ── */
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
@@ -34,29 +39,34 @@ export default function Diagnosis() {
     step, isAnalyzing, hasActivatedJdMode,
     targetStep, loadingMsgIdx, loadingProgress,
     setLoadingProgress, setLoadingMsgIdx,
-    setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState
+    setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
+    setStep
   } = useDiagnosisStore();
 
   const location = useLocation();
 
-  // Handle initialization from builder
+  // Handle initialization from builder and mode parameter
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const navState = location.state as { source?: string; cvId?: string } | null;
     const source = params.get("source") || navState?.source;
     const cvId = params.get("cvId") || navState?.cvId;
+    const mode = params.get("mode");
     
-    if (source === "builder") {
+    if (mode === "builder") {
+      setStep("builder");
+    } else if (source === "builder") {
       setIsFromBuilder(true);
       if (cvId) setBuilderCvId(cvId);
       // Mocking the builder CV name since we don't have a real backend to fetch it from yet
       setBuilderCvName("Generated_CV.pdf");
+      setStep("input");
     } else {
       // User came here without source=builder, e.g. from homepage "Scan my CV"
       // Clear builder state so we don't persist it inappropriately
       clearBuilderState();
     }
-  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState]);
+  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState, setStep]);
 
 
   const loadingMsgArray = targetStep === "results" ? JD_LOADING_MESSAGES : LOADING_MESSAGES;
@@ -75,6 +85,27 @@ export default function Diagnosis() {
       clearInterval(progressTimer);
     };
   }, [isAnalyzing, loadingMsgArray.length, setLoadingMsgIdx, setLoadingProgress]);
+
+  // If in builder step, render full-screen builder interface
+  if (step === "builder") {
+    return (
+      <Layout hideFooter>
+        <Suspense fallback={<PageLoader />}>
+          <div className="h-[calc(100vh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
+            <CvBuilderHeader />
+            <div className="flex-1 flex overflow-hidden">
+              <div className="w-[45%] h-full border-r border-slate-200 bg-white overflow-y-auto">
+                <CvFormPanel />
+              </div>
+              <div className="w-[55%] h-full bg-slate-100 overflow-y-auto p-4 lg:p-8">
+                <CvPreviewPanel />
+              </div>
+            </div>
+          </div>
+        </Suspense>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

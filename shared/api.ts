@@ -64,6 +64,40 @@ export interface CvJdMatch {
   criticalGaps: string[];
 }
 
+/** ① Skill trích xuất kèm trình độ + dẫn chứng (BE field: skills_extracted; skills_raw là alias cũ). */
+export type SkillProficiencyHint = "beginner" | "intermediate" | "advanced" | "unknown";
+
+export interface ExtractedSkill {
+  name: string;
+  proficiency_hint: SkillProficiencyHint;
+  evidence_text: string | null;
+}
+
+/** ② Phân loại kỹ năng theo rubric của target_role — BE tính deterministic, FE CHỈ hiển thị
+ *  (❌ không tự tính lại điểm/band). Contract: Notion "FE — Quy tắc nối API" §6.2. */
+export type SkillImportance = "REQUIRED" | "PREFERRED" | "NICE_TO_HAVE";
+
+export interface RelevanceSkillItem {
+  name: string;
+  importance: SkillImportance;
+  /** Mức rubric yêu cầu, 1-5. */
+  required_level: number;
+  /** Mức trên CV — chỉ có ở matched/partial. */
+  cv_level?: number;
+}
+
+export interface SkillsRelevanceBreakdown {
+  matched: RelevanceSkillItem[];
+  partial: RelevanceSkillItem[];
+  missing: RelevanceSkillItem[];
+}
+
+/** ③ Lead "sửa N việc này trước" — BE tính từ dim thấp nhất + ATS fail nặng nhất. */
+export interface TopSummary {
+  headline: string;
+  prioritized_actions: string[];
+}
+
 export interface CvReviewData {
   overallScore: number;
   breakdown: CvScoreBreakdown;
@@ -73,6 +107,12 @@ export interface CvReviewData {
   actionPlan: string[];
   parsedCv: ParsedCvSummary;
   jdMatch?: CvJdMatch;
+  /** Field bổ sung từ BE (snake_case theo contract Notion §6) — VẮNG/null thì FE ẩn block.
+   *  Lưu ý mapping W1: trên response thật, skills_extracted nằm ở `ats_extracted.skills_extracted`
+   *  — tầng service lift lên field phẳng này cho UI. */
+  skills_extracted?: ExtractedSkill[];
+  skills_relevance_breakdown?: SkillsRelevanceBreakdown | null;
+  top_summary?: TopSummary;
 }
 
 export interface CvReviewSuccessResponse {
