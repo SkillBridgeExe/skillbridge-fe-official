@@ -1,0 +1,218 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { ListChecks, Quote } from "lucide-react";
+import type {
+  ExtractedSkill,
+  RelevanceSkillItem,
+  SkillImportance,
+  SkillProficiencyHint,
+  SkillsRelevanceBreakdown,
+  TopSummary,
+} from "@shared/api";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 3 block insights bổ sung trên màn kết quả diagnosis. Cả 3 chỉ render khi
+ * field tương ứng CÓ trên response (backward-compat: BE chưa trả → ẩn).
+ * Design theo minimalist-ui: chip pastel theo trạng thái, border #EAEAEA,
+ * radius 8-12px, không gradient/neon, shadow siêu nhẹ.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Pastel state palette (minimalist-ui §4.A) */
+const PASTEL = {
+  green: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  yellow: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  red: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+  gray: "bg-slate-50 text-slate-500 border-slate-200",
+} as const;
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ③ TOP SUMMARY — lead "sửa N việc này trước" (đặt ĐẦU trang kết quả)
+ * ═══════════════════════════════════════════════════════════════════ */
+export function TopSummaryCard({ summary }: { summary: TopSummary }) {
+  return (
+    <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          <ListChecks className="w-3.5 h-3.5" />
+          Fix these first
+        </div>
+        <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
+          {summary.headline}
+        </h2>
+        {summary.prioritized_actions.length > 0 && (
+          <ol className="mt-4 space-y-2">
+            {summary.prioritized_actions.map((action, idx) => (
+              <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
+                <span className="w-5 h-5 rounded-md bg-[#FBF3DB] text-[#956400] text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  {idx + 1}
+                </span>
+                <span className="font-medium leading-relaxed">{action}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ① SKILLS EXTRACTED — chip skill + badge trình độ + dẫn chứng (tooltip)
+ * ═══════════════════════════════════════════════════════════════════ */
+const PROFICIENCY_ORDER: Record<SkillProficiencyHint, number> = {
+  advanced: 0,
+  intermediate: 1,
+  beginner: 2,
+  unknown: 3,
+};
+
+const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
+  advanced: { label: "Advanced", chip: PASTEL.green },
+  intermediate: { label: "Intermediate", chip: PASTEL.yellow },
+  beginner: { label: "Beginner", chip: PASTEL.gray },
+};
+
+function SkillChip({ skill }: { skill: ExtractedSkill }) {
+  // Contract §6.3: proficiency 'unknown' → ẨN badge, chỉ hiện tên.
+  const proficiency =
+    skill.proficiency_hint !== "unknown" ? PROFICIENCY_STYLE[skill.proficiency_hint] : null;
+  const chip = (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg border border-[#EAEAEA] bg-white px-2.5 py-1.5",
+        skill.evidence_text && "cursor-help",
+      )}
+    >
+      <span className="text-[13px] font-semibold text-[#2F3437]">{skill.name}</span>
+      {proficiency && (
+        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold border", proficiency.chip)}>
+          {proficiency.label}
+        </span>
+      )}
+      {skill.evidence_text && <Quote className="w-3 h-3 text-slate-300" />}
+    </span>
+  );
+
+  if (!skill.evidence_text) {
+    return chip;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+          {chip}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <p className="text-xs leading-relaxed">“{skill.evidence_text}”</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
+  const sorted = [...skills].sort(
+    (a, b) => PROFICIENCY_ORDER[a.proficiency_hint] - PROFICIENCY_ORDER[b.proficiency_hint],
+  );
+
+  return (
+    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <CardContent className="pt-5 pb-5">
+        <h3 className="text-sm font-bold text-[#2F3437]">Skills found in your CV</h3>
+        <p className="text-xs text-[#787774] mt-0.5 mb-3">
+          Hover a skill to see the evidence the AI extracted.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {sorted.map((skill) => (
+            <SkillChip key={skill.name} skill={skill} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ② SKILLS RELEVANCE — matched/partial/missing vs rubric của target role
+ *    Contract §6.2: SkillItem objects; sort REQUIRED trước trong mỗi nhóm;
+ *    partial hiện cv_level/required_level. (null = role chưa có rubric →
+ *    call-site ẩn cả block.) FE KHÔNG tự tính lại điểm — chỉ hiển thị.
+ * ═══════════════════════════════════════════════════════════════════ */
+const IMPORTANCE_ORDER: Record<SkillImportance, number> = {
+  REQUIRED: 0,
+  PREFERRED: 1,
+  NICE_TO_HAVE: 2,
+};
+
+const RELEVANCE_GROUPS: {
+  key: keyof SkillsRelevanceBreakdown;
+  label: string;
+  hint?: string;
+  dot: string;
+  chip: string;
+  showLevels: boolean;
+}[] = [
+  { key: "matched", label: "Matched", dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
+  { key: "partial", label: "Partial", dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
+  { key: "missing", label: "Missing", hint: "add these first", dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
+];
+
+function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
+  return [...items].sort(
+    (a, b) => IMPORTANCE_ORDER[a.importance] - IMPORTANCE_ORDER[b.importance],
+  );
+}
+
+export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceBreakdown }) {
+  const groups = RELEVANCE_GROUPS.filter((group) => breakdown[group.key].length > 0);
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#2F3437]">Skill relevance</h3>
+          <p className="text-xs text-[#787774] mt-0.5">
+            Your skills vs. the target role's requirements.
+          </p>
+        </div>
+        {groups.map((group) => (
+          <div key={group.key}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className={cn("w-1.5 h-1.5 rounded-full", group.dot)} />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+                {group.label}
+              </span>
+              {group.hint && (
+                <span className="text-[11px] text-[#9F2F2D] font-medium">— {group.hint}</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {sortByImportance(breakdown[group.key]).map((item) => (
+                <span
+                  key={item.name}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold",
+                    group.chip,
+                  )}
+                  title={`${item.importance.replace(/_/g, " ").toLowerCase()} · level ${item.required_level} required`}
+                >
+                  {item.name}
+                  {group.showLevels && item.cv_level != null && (
+                    <span className="font-mono tabular-nums text-[10px] opacity-80">
+                      {item.cv_level}/{item.required_level}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}

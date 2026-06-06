@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, X, Download, ArrowLeft, Code, RotateCcw, Briefcase, Search, ChevronRight, Trophy } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
+import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
 import { useReviewCvMutation } from "@/hooks/use-diagnosis";
@@ -166,6 +167,9 @@ export function DiagnosisStep2Review() {
         </Card>
       )}
 
+      {/* ── ③ Lead: "fix these first" (ẩn khi BE chưa trả field) ── */}
+      {reviewData?.top_summary && <TopSummaryCard summary={reviewData.top_summary} />}
+
       {/* ── Overall CV Score Hero ── */}
       <Card className="glass border-white/50 shadow-sm mb-6 overflow-hidden">
         <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
@@ -231,6 +235,16 @@ export function DiagnosisStep2Review() {
               </CardContent>
             </Card>
           ))}
+
+          {/* ── ① Skill chips + trình độ + dẫn chứng (ẩn khi field vắng) ── */}
+          {reviewData?.skills_extracted && reviewData.skills_extracted.length > 0 && (
+            <SkillsExtractedCard skills={reviewData.skills_extracted} />
+          )}
+
+          {/* ── ② Độ phù hợp kỹ năng vs target role (ẩn khi field vắng) ── */}
+          {reviewData?.skills_relevance_breakdown && (
+            <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
+          )}
 
           {/* ATS Parse simulation */}
           <Card className="glass shadow-sm overflow-hidden border-orange-200/50 bg-orange-50/30">
