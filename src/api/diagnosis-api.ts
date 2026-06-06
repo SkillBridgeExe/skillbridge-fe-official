@@ -1,5 +1,6 @@
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
+import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type { CvReviewData, CvReviewResponse } from "@shared/api";
 
 export interface ReviewCvInput {
@@ -27,5 +28,6 @@ export async function reviewCv({ cvFile, jobDescription }: ReviewCvInput): Promi
     throw new Error(payload.error.message);
   }
 
-  return payload.data;
+  // Mock 3 field insights khi BE chưa trả (đắp-khi-vắng) — xem TODO trong mock module.
+  return withMockInsights(payload.data);
 }
