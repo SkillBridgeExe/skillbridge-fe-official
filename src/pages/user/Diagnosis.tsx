@@ -4,6 +4,7 @@ import { CheckCircle2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { LOADING_MESSAGES, JD_LOADING_MESSAGES } from "@/lib/mock-data/diagnosis";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
@@ -35,6 +36,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 
 /* ── Main Diagnosis Page ── */
 export default function Diagnosis() {
+  const { t } = useTranslation("diagnosis");
   const {
     step, isAnalyzing, hasActivatedJdMode,
     targetStep, loadingMsgIdx, loadingProgress,
@@ -125,7 +127,7 @@ export default function Diagnosis() {
               </div>
               <div className="text-center space-y-2 min-h-[60px] mb-8">
                 <h3 className="text-xl font-bold text-slate-900">
-                  {targetStep === "results" ? "AI is running Skill Gap Analysis..." : "AI is analyzing CV Quality..."}
+                  {targetStep === "results" ? t("loading.skillGap") : t("loading.cvQuality")}
                 </h3>
                 <p className="text-slate-500 transition-all duration-300 animate-in fade-in">
                   {loadingMsgArray[loadingMsgIdx]}
@@ -135,7 +137,7 @@ export default function Diagnosis() {
                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all duration-100 ease-linear" style={{ width: `${loadingProgress}%` }} />
                 </div>
-                <p className="text-xs text-center text-slate-500 font-semibold">{loadingProgress}% completed</p>
+                <p className="text-xs text-center text-slate-500 font-semibold">{t("loading.completed", { percent: loadingProgress })}</p>
               </div>
             </motion.div>
           )}
@@ -144,21 +146,21 @@ export default function Diagnosis() {
         {/* ── Header ── */}
         <header className="mb-10 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4">
-            <Brain className="w-3.5 h-3.5" /> AI Analysis
+            <Brain className="w-3.5 h-3.5" /> {t("header.badge")}
           </div>
           <h1 className="text-4xl md:text-5xl font-poppins font-black text-slate-900 mb-3">
-            Where does your CV stand?
+            {t("header.title")}
           </h1>
           <p className="text-slate-500 max-w-xl mx-auto">
-            Upload your resume and get instant AI-powered feedback on format, ATS compatibility, and skill alignment.
+            {t("header.subtitle")}
           </p>
         </header>
 
         {/* ── Dynamic Step Indicator ── */}
         <div className="mb-10 flex items-center justify-center gap-1 sm:gap-4">
-          <StepDot n={1} label="Upload CV" active={step === "input"} done={step !== "input"} />
+          <StepDot n={1} label={t("steps.upload")} active={step === "input"} done={step !== "input"} />
           <div className={cn("flex-1 max-w-[60px] h-0.5 transition-colors", step !== "input" ? "bg-primary" : "bg-slate-200")} />
-          <StepDot n={2} label="CV Review" active={step === "cv-review"} done={step === "results"} />
+          <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />
 
           {/* Framer Motion for animating Step 3 in/out based on JD mode */}
           <AnimatePresence>
@@ -170,7 +172,7 @@ export default function Diagnosis() {
                 className="flex items-center gap-1 sm:gap-4 overflow-hidden"
               >
                 <div className={cn("flex-1 w-[60px] h-0.5 transition-colors", step === "results" ? "bg-primary" : "bg-slate-200")} />
-                <StepDot n={3} label="Gap Results" active={step === "results"} done={false} />
+                <StepDot n={3} label={t("steps.results")} active={step === "results"} done={false} />
               </motion.div>
             )}
           </AnimatePresence>
