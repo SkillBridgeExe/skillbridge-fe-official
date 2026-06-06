@@ -276,7 +276,7 @@ export default function Index() {
                     </motion.button>
                   </Link>
 
-                  <Link to="/cv-builder">
+                  <Link to="/diagnosis?mode=builder">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}

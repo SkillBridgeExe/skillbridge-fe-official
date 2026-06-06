@@ -2,7 +2,7 @@ import "./global.css";
 
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGuard from "@/components/layout/AuthGuard";
@@ -57,7 +57,7 @@ const App = () => (
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/roadmap-generator" element={<Pages.RoadmapGenerator />} />
-              <Route path="/cv-builder" element={<Pages.CvBuilder />} />
+              <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
 
               <Route
