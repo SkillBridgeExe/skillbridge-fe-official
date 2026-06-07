@@ -1,33 +1,31 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { memo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, X, ArrowLeft, ArrowRight, Share2, Download,
-  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw, Trophy
+  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useTranslation } from "react-i18next";
 import type { SkillMatchItem } from "@shared/api";
 
+/* ── Design tokens (§0b) ── */
+const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 const MAX_INSIGHT_ITEMS = 3;
 
 function truncateText(value: string, maxLength = 140): string {
   const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
-/* ── CountUpCircle ── */
-const CountUpCircle = React.memo(function CountUpCircle({ target, size = 192, label = "Match" }: { target: number; size?: number; label?: string }) {
+/* ── Flat Mono Score Display ── */
+const FlatScore = memo(function FlatScore({ target, label }: { target: number; label: string }) {
   const [displayed, setDisplayed] = useState(0);
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  const circumference = 2 * Math.PI * 80;
 
   useEffect(() => {
     if (prefersReducedMotion) { setDisplayed(target); return; }
@@ -41,44 +39,48 @@ const CountUpCircle = React.memo(function CountUpCircle({ target, size = 192, la
     return () => clearInterval(timer);
   }, [target, prefersReducedMotion]);
 
-  const dashOffset = circumference - (circumference * displayed) / 100;
-  const color = displayed >= 80 ? "#10b981" : displayed >= 50 ? "#f59e0b" : "#ef4444";
-  const glowFilter = displayed >= 80 ? "drop-shadow(0 0 12px rgba(16,185,129,0.5))" : "none";
-
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }} role="img" aria-label={`${label}: ${target}%`}>
-      <svg className="-rotate-90" width={size} height={size} style={{ filter: glowFilter }}>
-        <circle cx={size / 2} cy={size / 2} r={80} stroke="#e2e8f0" strokeWidth={12} fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={80} stroke={color} strokeWidth={12} fill="none" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" style={{ transition: prefersReducedMotion ? "none" : "stroke-dashoffset 0.016s linear" }} />
-      </svg>
-      <div className="absolute text-center">
-        <span className="text-5xl font-black text-slate-900 leading-none">{displayed}%</span>
-        <span className="block text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">{label}</span>
+    <div className="flex flex-col items-center" role="img" aria-label={`${label}: ${target}%`}>
+      <div className="flex items-baseline gap-1">
+        <span className="text-[64px] font-mono tabular-nums font-black text-[#2F3437] leading-none tracking-[-0.02em]">
+          {displayed}
+        </span>
+        <span className="text-sm text-[#787774] font-medium">%</span>
       </div>
+      <span className="text-[11px] font-bold text-[#787774] uppercase tracking-widest mt-1">{label}</span>
     </div>
   );
 });
 
 /* ── KeywordRow ── */
-function KeywordRow({ skill, index }: { skill: SkillMatchItem; index: number }) {
+function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number; t: (key: string) => string }) {
   const statusConfig = {
-    present: { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, badge: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Found" },
-    partial:  { icon: <AlertCircle  className="w-4 h-4 text-amber-500"   />, badge: "bg-amber-50 text-amber-700 border-amber-200",   label: "Partial" },
-    missing:  { icon: <X            className="w-4 h-4 text-red-400"      />, badge: "bg-red-50 text-red-700 border-red-200",         label: "Missing" },
+    present: { icon: <CheckCircle2 className="w-4 h-4 text-[#346538]" />, badge: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", label: t("results.found") },
+    partial:  { icon: <AlertCircle  className="w-4 h-4 text-[#956400]" />, badge: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", label: t("results.partial") },
+    missing:  { icon: <X            className="w-4 h-4 text-[#9F2F2D]" />, badge: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", label: t("results.missing") },
   }[skill.status];
 
   return (
-    <div className="flex items-center gap-4 py-3 border-b border-slate-100 last:border-0 animate-in fade-in slide-in-from-left-4" style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}>
+    <div
+      className="flex items-center gap-4 py-3 border-b border-[#F1F1EF] last:border-0 animate-in fade-in duration-500"
+      style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
+    >
       <div className="w-6 flex justify-center shrink-0">{statusConfig.icon}</div>
-      <span className="flex-1 text-sm font-medium text-slate-800 truncate pr-4">{skill.name}</span>
+      <span className="flex-1 text-sm font-medium text-[#2F3437] truncate pr-4">{skill.name}</span>
       <div className="flex items-center gap-3 w-40 shrink-0">
-        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div className={cn("h-full rounded-full transition-all duration-700", skill.status === "present" ? "bg-emerald-400" : skill.status === "partial" ? "bg-amber-400" : "bg-red-300")} style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }} />
+        <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-700",
+              skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
+            )}
+            style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
+          />
         </div>
-        <span className="text-xs text-slate-500 w-9 text-right shrink-0">{skill.cvScore}%</span>
+        <span className="font-mono tabular-nums text-xs text-[#787774] w-9 text-right shrink-0">{skill.cvScore}%</span>
       </div>
       <div className="w-24 shrink-0 flex justify-end md:justify-center">
-        <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full border w-[72px] text-center", statusConfig.badge)}>{statusConfig.label}</span>
+        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border w-[72px] text-center", statusConfig.badge)}>{statusConfig.label}</span>
       </div>
     </div>
   );
@@ -86,15 +88,14 @@ function KeywordRow({ skill, index }: { skill: SkillMatchItem; index: number }) 
 
 /* ── Main Component ── */
 export function DiagnosisStep3Results() {
+  const { t } = useTranslation("diagnosis");
   const { goBack, scanAgain, skillTab, setSkillTab, reviewData } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
-  const fallbackHardSkills: SkillMatchItem[] = [];
-  const fallbackSoftSkills: SkillMatchItem[] = [];
 
-  const hardSkills = jdMatch?.hardSkills ?? fallbackHardSkills;
-  const softSkills = jdMatch?.softSkills ?? fallbackSoftSkills;
+  const hardSkills = jdMatch?.hardSkills ?? [];
+  const softSkills = jdMatch?.softSkills ?? [];
   const activeSkills = skillTab === "hard" ? hardSkills : softSkills;
   const radarData = jdMatch?.radar ?? [];
   const strengths = (reviewData?.strengths ?? []).slice(0, MAX_INSIGHT_ITEMS).map((item) => truncateText(item));
@@ -104,7 +105,7 @@ export function DiagnosisStep3Results() {
   const actionPlan = (reviewData?.actionPlan ?? []).slice(0, MAX_INSIGHT_ITEMS).map((item) => truncateText(item));
 
   const matchScore = jdMatch?.matchScore ?? reviewData?.overallScore ?? 0;
-  const scoreLabel = isJdMode ? "Match" : "CV Score";
+  const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
   const partialCount = hardSkills.filter((s) => s.status === "partial").length;
@@ -118,32 +119,32 @@ export function DiagnosisStep3Results() {
         const fire = mod.default;
         fire({ particleCount: 120, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
         setTimeout(() => fire({ particleCount: 60, spread: 100, origin: { y: 0.5 }, zIndex: 9999 }), 300);
-      }).catch(() => { /* silent — confetti is optional */ });
+      }).catch(() => { /* silent */ });
     }
   }, [matchScore]);
 
   /* ── Dynamic UX copy ── */
   const scoreMessage = matchScore >= 85
-    ? "Outstanding profile. Your CV is highly competitive and ready for top-tier applications."
+    ? t("results.scoreMsg.excellent")
     : matchScore >= 80
-      ? "Strong profile. Minor improvements can make your CV even sharper."
+      ? t("results.scoreMsg.strong")
       : matchScore >= 50
-        ? "Decent baseline. Improve quantified impact and clarity to stand out."
-        : "Your CV needs major improvements. Prioritize action-plan items before applying broadly.";
+        ? t("results.scoreMsg.decent")
+        : t("results.scoreMsg.weak");
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-600">
+    <div className="space-y-6 animate-in fade-in duration-600">
       {/* Back + Actions */}
       <div className="flex items-center justify-between">
-        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-primary transition-colors group">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to CV Review
+        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
         </button>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="rounded-full gap-2 text-xs font-semibold border-slate-200">
-            <Share2 className="w-3.5 h-3.5" /> Share Result
+          <Button variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+            <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
           </Button>
-          <Button variant="outline" size="sm" className="rounded-full gap-2 text-xs font-semibold border-slate-200">
-            <Download className="w-3.5 h-3.5" /> Download Report
+          <Button variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+            <Download className="w-3.5 h-3.5" /> {t("results.download")}
           </Button>
         </div>
       </div>
@@ -151,209 +152,201 @@ export function DiagnosisStep3Results() {
       {/* Row 1: Score + Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Score card */}
-        <Card className="glass border-white/50 shadow-sm lg:col-span-2 flex flex-col items-center justify-center py-8">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest text-slate-500 font-bold">
-              {isJdMode ? "Overall Match" : "Overall CV Score"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-6">
-            <CountUpCircle target={matchScore} label={scoreLabel} />
-            {/* Badge for high scores */}
-            {matchScore >= 85 && (
-              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 font-bold text-sm animate-pulse shadow-md">
-                <Trophy className="w-4 h-4" />
-                Top 5% CV Profile
+        <div className={cn(CARD, "lg:col-span-2 flex flex-col items-center justify-center py-10")}>
+          <div className="text-[11px] uppercase tracking-widest text-[#787774] font-bold mb-4">
+            {isJdMode ? t("results.overallMatch") : t("results.overallScore")}
+          </div>
+          <FlatScore target={matchScore} label={scoreLabel} />
+          {/* Band message */}
+          <p className="text-xs text-[#787774] font-medium mt-4 text-center px-6 max-w-xs">
+            {scoreMessage}
+          </p>
+
+          {isJdMode ? (
+            <div className="grid grid-cols-3 gap-3 w-full mt-6 px-6">
+              <div className="flex flex-col items-center p-3 bg-[#EDF3EC] rounded-xl border border-[#DCE9D7]">
+                <CheckCircle2 className="w-4 h-4 text-[#346538] mb-1" />
+                <span className="text-xl font-mono tabular-nums font-bold text-[#346538]">{presentCount}</span>
+                <span className="text-[10px] text-[#346538] font-bold uppercase mt-0.5">{t("results.matched")}</span>
               </div>
-            )}
-            {/* Dynamic message */}
-            <p className="text-xs text-slate-500 font-medium -mt-2 text-center px-2">
-              {scoreMessage}
-            </p>
-            {isJdMode ? (
-              <div className="grid grid-cols-3 gap-3 w-full">
-                <div className="flex flex-col items-center p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mb-1" />
-                  <span className="text-xl font-bold text-emerald-600">{presentCount}</span>
-                  <span className="text-[10px] text-emerald-500 font-bold uppercase mt-0.5">Matched</span>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                  <AlertCircle className="w-4 h-4 text-amber-500 mb-1" />
-                  <span className="text-xl font-bold text-amber-600">{partialCount}</span>
-                  <span className="text-[10px] text-amber-500 font-bold uppercase mt-0.5">Partial</span>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-red-50 rounded-2xl border border-red-100">
-                  <X className="w-4 h-4 text-red-500 mb-1" />
-                  <span className="text-xl font-bold text-red-600">{missingCount}</span>
-                  <span className="text-[10px] text-red-600 font-bold uppercase mt-0.5">Missing</span>
-                </div>
+              <div className="flex flex-col items-center p-3 bg-[#FBF3DB] rounded-xl border border-[#F1E5C0]">
+                <AlertCircle className="w-4 h-4 text-[#956400] mb-1" />
+                <span className="text-xl font-mono tabular-nums font-bold text-[#956400]">{partialCount}</span>
+                <span className="text-[10px] text-[#956400] font-bold uppercase mt-0.5">{t("results.partial")}</span>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <div className="flex flex-col items-center p-3 bg-blue-50 rounded-2xl border border-blue-100">
-                  <Shield className="w-4 h-4 text-blue-500 mb-1" />
-                  <span className="text-xl font-bold text-blue-600">{reviewData?.breakdown.ats ?? 0}</span>
-                  <span className="text-[10px] text-blue-500 font-bold uppercase mt-0.5">ATS</span>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-violet-50 rounded-2xl border border-violet-100">
-                  <Code className="w-4 h-4 text-violet-500 mb-1" />
-                  <span className="text-xl font-bold text-violet-600">{reviewData?.breakdown.structure ?? 0}</span>
-                  <span className="text-[10px] text-violet-500 font-bold uppercase mt-0.5">Structure</span>
-                </div>
+              <div className="flex flex-col items-center p-3 bg-[#FDEBEC] rounded-xl border border-[#F6D4D5]">
+                <X className="w-4 h-4 text-[#9F2F2D] mb-1" />
+                <span className="text-xl font-mono tabular-nums font-bold text-[#9F2F2D]">{missingCount}</span>
+                <span className="text-[10px] text-[#9F2F2D] font-bold uppercase mt-0.5">{t("results.missing")}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 w-full mt-6 px-6">
+              <div className="flex flex-col items-center p-3 bg-[#F1F1EF] rounded-xl border border-[#E3E3E0]">
+                <Shield className="w-4 h-4 text-[#787774] mb-1" />
+                <span className="text-xl font-mono tabular-nums font-bold text-[#2F3437]">{reviewData?.breakdown.ats ?? 0}</span>
+                <span className="text-[10px] text-[#787774] font-bold uppercase mt-0.5">{t("results.ats")}</span>
+              </div>
+              <div className="flex flex-col items-center p-3 bg-[#F1F1EF] rounded-xl border border-[#E3E3E0]">
+                <Code className="w-4 h-4 text-[#787774] mb-1" />
+                <span className="text-xl font-mono tabular-nums font-bold text-[#2F3437]">{reviewData?.breakdown.structure ?? 0}</span>
+                <span className="text-[10px] text-[#787774] font-bold uppercase mt-0.5">{t("results.structure")}</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Radar Chart */}
-        <Card className="glass border-white/50 shadow-sm lg:col-span-3">
-          <CardHeader className="border-b border-slate-100">
-            <CardTitle className="text-base font-bold text-slate-800">Skill Assessment Radar</CardTitle>
-            <CardDescription>
-              {isJdMode ? "Visual comparison of your profile vs job expectations" : "Radar appears when a JD is provided for comparison."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4">
+        <div className={cn(CARD, "lg:col-span-3")}>
+          <div className="border-b border-[#EAEAEA] p-5">
+            <h3 className="text-base font-bold text-[#2F3437]">{t("results.radarTitle")}</h3>
+            <p className="text-xs text-[#787774] mt-0.5">
+              {isJdMode ? t("results.radarDescJd") : t("results.radarDescNoJd")}
+            </p>
+          </div>
+          <div className="p-5">
             {isJdMode && radarData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={260}>
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                    <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+                    <PolarGrid stroke="#E3E3E0" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600, boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? "You" : "Required"]} />
-                    <Radar name="required" dataKey="required" stroke="#cbd5e1" fill="#cbd5e1" fillOpacity={0.3} strokeDasharray="4 2" />
-                    <Radar name="you" dataKey="you" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                    <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
+                    <Radar name="you" dataKey="you" stroke="#2F3437" fill="#2F3437" fillOpacity={0.1} strokeWidth={2} />
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="flex justify-center gap-6 mt-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-600"><div className="w-3 h-1 rounded-full bg-indigo-400" /><span>Your Profile</span></div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><div className="w-3 h-0.5 bg-slate-400 border-dashed" /><span>Required by JD</span></div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#2F3437]"><div className="w-3 h-1 rounded-full bg-[#2F3437]" /><span>{t("results.radarYou")}</span></div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
                 </div>
               </>
             ) : (
-              <p className="py-16 text-center text-sm text-slate-500">Provide a Job Description to unlock radar comparison and skill-gap visualization.</p>
+              <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Row 2: Keyword Table */}
-      <Card className="glass border-white/50 shadow-sm">
-        <CardHeader className="border-b border-slate-100">
+      <div className={CARD}>
+        <div className="border-b border-[#EAEAEA] p-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-base font-bold text-slate-800">
-                {isJdMode ? "Keyword Gap Analysis" : "Keyword Gap Analysis (JD Required)"}
-              </CardTitle>
-              <CardDescription>
-                {isJdMode ? "Exact skills extracted from JD vs detected in your resume" : "Upload a JD to compare keyword match and missing skills."}
-              </CardDescription>
+              <h3 className="text-base font-bold text-[#2F3437]">
+                {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
+              </h3>
+              <p className="text-xs text-[#787774] mt-0.5">
+                {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
+              </p>
             </div>
-            {/* Summary bar */}
             {isJdMode && (
-              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 w-fit">
-                <span className="flex items-center gap-1.5 text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} Found</span>
-                <span className="flex items-center gap-1.5 text-amber-600"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} Partial</span>
-                <span className="flex items-center gap-1.5 text-red-500"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} Missing</span>
+              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
+                <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
+                <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
+                <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
               </div>
             )}
           </div>
 
-          {/* Hard/Soft skills tabs */}
           {isJdMode && (
-            <div className="flex gap-1 mt-4 p-1 bg-slate-100 rounded-lg w-fit">
-              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                <Code className="w-4 h-4" /> Hard Skills
-                {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none">{hardSkills.length}</span>}
+            <div className="flex gap-1 mt-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
+              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                <Code className="w-4 h-4" /> {t("results.hardSkills")}
+                {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
               </button>
-              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                <Users className="w-4 h-4" /> Soft Skills
-                {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none">{softSkills.length}</span>}
+              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                <Users className="w-4 h-4" /> {t("results.softSkills")}
+                {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
               </button>
             </div>
           )}
-        </CardHeader>
-        <CardContent className="pt-4 p-0 md:p-6">
+        </div>
+        <div className="p-5">
           {isJdMode && (
-            <div className="hidden md:flex items-center gap-4 pb-3 border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 px-4">
+            <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774] px-0">
               <div className="w-6 shrink-0" />
-              <span className="flex-1">Skill Keyword</span>
-              <span className="w-40 shrink-0 text-left pl-2">Score in CV</span>
-              <span className="w-24 shrink-0 text-center">Status</span>
+              <span className="flex-1">{t("results.thSkill")}</span>
+              <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
+              <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
             </div>
           )}
-          <div className="px-4 pb-2">
+          <div>
             {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
-              <KeywordRow key={`${skill.name}-${i}`} skill={skill} index={i} />
+              <KeywordRow key={`${skill.name}-${i}`} skill={skill} index={i} t={t} />
             )) : (
-              <p className="py-6 text-sm text-slate-500">No JD skill mapping found. Upload or paste a job description to see detailed gaps.</p>
+              <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Row 3: AI Insights */}
-      <Card className="glass border-white/50 shadow-sm overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <Sparkles className="w-5 h-5 text-indigo-500" /> Strategic AI Insights
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-0 p-0 sm:divide-x divide-slate-100">
-          <div className="p-6 space-y-4 bg-emerald-50/30">
+      <div className={cn(CARD, "overflow-hidden")}>
+        <div className="border-b border-[#EAEAEA] p-5">
+          <h3 className="flex items-center gap-2 text-base font-bold text-[#2F3437]">
+            <Sparkles className="w-5 h-5 text-primary" /> {t("results.insightsTitle")}
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-[#F1F1EF]">
+          <div className="p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><Shield className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-slate-800">Key Strengths</h4>
+              <div className="w-8 h-8 rounded-lg bg-[#EDF3EC] text-[#346538] flex items-center justify-center shrink-0"><Shield className="w-4 h-4" /></div>
+              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.strengths")}</h4>
             </div>
             <ul className="space-y-3">
-              {(strengths.length > 0 ? strengths : ["No major strengths identified yet."]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-slate-600 font-medium"><TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-emerald-500" />{item}</li>
+              {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}</li>
               ))}
             </ul>
           </div>
-          <div className="p-6 space-y-4 bg-red-50/30">
+          <div className="p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0"><Target className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-slate-800">Critical Gaps</h4>
+              <div className="w-8 h-8 rounded-lg bg-[#FDEBEC] text-[#9F2F2D] flex items-center justify-center shrink-0"><Target className="w-4 h-4" /></div>
+              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.gaps")}</h4>
             </div>
             <ul className="space-y-3">
-              {(criticalGaps.length > 0 ? criticalGaps : ["No critical gaps detected for this profile."]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-slate-600 font-medium"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />{item}</li>
+              {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}</li>
               ))}
             </ul>
           </div>
-          <div className="p-6 space-y-4 bg-blue-50/30">
+          <div className="p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><Lightbulb className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-slate-800">Action Plan</h4>
+              <div className="w-8 h-8 rounded-lg bg-[#F1F1EF] text-[#787774] flex items-center justify-center shrink-0"><Lightbulb className="w-4 h-4" /></div>
+              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.actionPlan")}</h4>
             </div>
             <ul className="space-y-3">
-              {(actionPlan.length > 0 ? actionPlan : ["No action plan generated yet. Re-run analysis with a detailed JD."]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-slate-600 font-medium"><Zap className="w-4 h-4 mt-0.5 shrink-0 text-blue-500" />{item}</li>
+              {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><Zap className="w-4 h-4 mt-0.5 shrink-0 text-[#787774]" />{item}</li>
               ))}
             </ul>
           </div>
-        </CardContent>
+        </div>
 
-        {/* CTA footer */}
-        <div className="p-6 bg-gradient-to-r from-slate-900 to-indigo-900 flex flex-col sm:flex-row items-center justify-between gap-6 m-4 rounded-2xl shadow-xl">
+        {/* CTA footer — de-glassed from dark gradient to simple bordered card */}
+        <div className="m-4 p-6 bg-[#FBFBFA] border border-[#EAEAEA] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <p className="font-bold text-white text-base">Ready to bridge these gaps and reach a 90%+ match?</p>
-            <p className="text-sm text-slate-300 mt-1">Let our AI generate a personalized learning roadmap based on this specific gap report.</p>
+            <p className="font-bold text-[#2F3437] text-base">{t("results.roadmapTitle")}</p>
+            <p className="text-sm text-[#787774] mt-1">{t("results.roadmapDesc")}</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
-            <Button variant="ghost" onClick={scanAgain} className="h-12 rounded-full gap-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10">
-              <RotateCcw className="w-4 h-4" /> Scan Again
+            <Button
+              variant="ghost"
+              onClick={scanAgain}
+              className="h-12 rounded-lg gap-2 text-sm font-semibold text-[#787774] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <RotateCcw className="w-4 h-4" /> {t("results.scanAgain")}
             </Button>
-            <Button className="h-12 rounded-full bg-white hover:bg-slate-100 text-slate-900 shadow-glow text-sm font-bold shrink-0" asChild>
+            <Button className="h-12 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-sm text-sm font-bold shrink-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40" asChild>
               <a href="/roadmap-generator" className="px-6 flex items-center h-full gap-2">
-                Generate Study Plan <ArrowRight className="w-4 h-4" />
+                {t("results.generatePlan")} <ArrowRight className="w-4 h-4" />
               </a>
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
