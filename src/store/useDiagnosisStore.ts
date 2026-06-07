@@ -21,6 +21,8 @@ interface DiagnosisState {
   apiError: string | null;
   analysisMode: AnalysisMode;
   targetRole: string | null;
+  /** Id CV trên BE của lần chấm gần nhất — dùng cho JD match / job reco / builder CTA. */
+  lastCvId: string | null;
 
   // Builder-sourced CV state
   isFromBuilder: boolean;
@@ -44,6 +46,7 @@ interface DiagnosisState {
   setApiError: (error: string | null) => void;
   setAnalysisMode: (mode: AnalysisMode) => void;
   setTargetRole: (role: string | null) => void;
+  setLastCvId: (id: string | null) => void;
 
   // Builder-sourced CV actions
   setIsFromBuilder: (isFromBuilder: boolean) => void;
@@ -73,6 +76,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   apiError: null,
   analysisMode: "cv-only",
   targetRole: null,
+  lastCvId: null,
 
   isFromBuilder: false,
   builderCvId: null,
@@ -98,6 +102,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   setApiError: (apiError) => set({ apiError }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
   setTargetRole: (targetRole) => set({ targetRole }),
+  setLastCvId: (lastCvId) => set({ lastCvId }),
 
   setIsFromBuilder: (isFromBuilder) => set({ isFromBuilder }),
   setBuilderCvId: (builderCvId) => set({ builderCvId }),
@@ -117,6 +122,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     apiError: null,
     analysisMode: "cv-only",
     targetRole: null,
+    lastCvId: null,
     isFromBuilder: false,
     builderCvId: null,
     builderCvName: null,
@@ -134,6 +140,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     apiError: null,
     analysisMode: "cv-only",
     targetRole: null,
+    lastCvId: null,
     // cvFile is preserved
     // Builder state is preserved so user can re-analyze
   }),
