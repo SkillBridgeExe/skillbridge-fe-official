@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { BookOpen, ChevronRight, MessageSquare, Timer, Users } from "lucide-react";
 
@@ -56,7 +57,15 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function AssessmentShowcase() {
+  const { t } = useTranslation("home");
   const [activeTab, setActiveTab] = useState<TabId>("fe");
+
+  const TAB_LABELS: Record<TabId, string> = {
+    fe: t("assess.tabFe"),
+    be: t("assess.tabBe"),
+    ai: t("assess.tabAi"),
+    soft: t("assess.tabSoft"),
+  };
 
   return (
     <motion.section
@@ -73,13 +82,13 @@ export default function AssessmentShowcase() {
           <div className="lg:col-span-4 space-y-6">
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 uppercase tracking-widest">
               <BookOpen className="w-3.5 h-3.5" />
-              Capability Library
+              {t("assess.badge")}
             </div>
             <h3 className="text-3xl font-extrabold text-slate-900 font-display leading-tight">
-              Verify your core skills
+              {t("assess.title")}
             </h3>
             <p className="text-slate-500 text-xs md:text-sm font-medium leading-relaxed">
-              Try our standardized skill tests matching leading enterprise requirements to verify your current standing.
+              {t("assess.subtitle")}
             </p>
 
             {/* Tab selections */}
@@ -95,7 +104,7 @@ export default function AssessmentShowcase() {
                       : "bg-slate-50/60 text-slate-500 border-slate-100 hover:text-slate-800 hover:bg-slate-100"
                   )}
                 >
-                  {tab.label}
+                  {TAB_LABELS[tab.id]}
                   <ChevronRight className="w-4 h-4" />
                 </button>
               ))}
@@ -116,7 +125,7 @@ export default function AssessmentShowcase() {
                       {item.level}
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" /> {item.completions} taken
+                      <Users className="w-3.5 h-3.5" /> {t("assess.taken", { count: item.completions })}
                     </span>
                   </div>
                   <h4 className="text-sm font-bold text-slate-800 leading-tight">{item.title}</h4>
@@ -125,14 +134,14 @@ export default function AssessmentShowcase() {
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-400 font-semibold">
                   <div className="flex gap-4">
                     <span className="flex items-center gap-1"><Timer className="w-3.5 h-3.5 text-blue-500" /> {item.duration}</span>
-                    <span className="flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> {item.questions} questions</span>
+                    <span className="flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> {t("assess.questions", { count: item.questions })}</span>
                   </div>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 animate-shimmer"
                   >
-                    Start Test <ChevronRight className="w-3.5 h-3.5" />
+                    {t("assess.start")} <ChevronRight className="w-3.5 h-3.5" />
                   </motion.button>
                 </div>
               </motion.div>

@@ -62,10 +62,10 @@ export default function Navbar() {
               key={item.href}
               to={item.href}
               className={cn(
-                "text-sm font-medium transition-all hover:text-primary relative py-1",
+                "text-sm font-medium transition-colors hover:text-primary relative py-1",
                 location.pathname === item.href
                   ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                  : "text-slate-600 hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:right-0 hover:after:h-0.5 hover:after:bg-primary/30 hover:after:rounded-full"
+                  : "text-slate-600" // hover chỉ đổi màu chữ — không hiện thanh gạch dưới (user chốt 06-08)
               )}
             >
               {t(item.labelKey)}
