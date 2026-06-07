@@ -114,6 +114,7 @@ export default {
       toastMissingJdTitle: "Missing job description",
       toastMissingJdDesc: "Paste the job description first.",
       toastFailedTitle: "Analysis failed",
+      praiseHigh: "Strong work — this CV already beats most of the screening bar.",
     },
     results: {
       backToReview: "Back to CV review",
@@ -161,6 +162,7 @@ export default {
       roadmapDesc: "Let our AI generate a personalized learning roadmap based on this gap report.",
       scanAgain: "Scan again",
       generatePlan: "Generate study plan",
+      jdHighlightTitle: "See the keywords in your JD",
     },
     jdInput: {
       title: "Job description",
@@ -198,6 +200,19 @@ export default {
       "proficiency.advanced": "Advanced",
       "proficiency.intermediate": "Intermediate",
       "proficiency.beginner": "Beginner",
+      evidenceHint: "Click a skill to see where the AI found it in your CV.",
+      actionsDone: "{{done}}/{{total}} done",
+    },
+    preview: {
+      title: "Document preview",
+      parsed: "AI parsed",
+      waiting: "Waiting",
+      empty: "Upload and analyze a CV to see parsed information here.",
+      experience: "Experience",
+      projects: "Projects",
+      education: "Education",
+      certifications: "Certifications",
+      activities: "Activities",
     },
     builder: {
       sections: "Sections",

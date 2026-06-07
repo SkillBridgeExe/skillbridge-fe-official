@@ -114,6 +114,7 @@ export default {
       toastMissingJdTitle: "Thiếu mô tả công việc",
       toastMissingJdDesc: "Hãy dán nội dung JD trước.",
       toastFailedTitle: "Phân tích thất bại",
+      praiseHigh: "Làm tốt lắm — CV này đã vượt phần lớn vòng lọc hồ sơ.",
     },
     results: {
       backToReview: "Về màn chấm CV",
@@ -161,6 +162,7 @@ export default {
       roadmapDesc: "Để AI tạo lộ trình học cá nhân hoá dựa trên chính báo cáo khoảng trống này.",
       scanAgain: "Chấm lại",
       generatePlan: "Tạo lộ trình học",
+      jdHighlightTitle: "Xem từ khoá trong JD của bạn",
     },
     jdInput: {
       title: "Mô tả công việc",
@@ -198,6 +200,19 @@ export default {
       "proficiency.advanced": "Thành thạo",
       "proficiency.intermediate": "Khá",
       "proficiency.beginner": "Mới bắt đầu",
+      evidenceHint: "Bấm vào kỹ năng để xem AI tìm thấy nó ở đâu trong CV của bạn.",
+      actionsDone: "Xong {{done}}/{{total}}",
+    },
+    preview: {
+      title: "Xem trước tài liệu",
+      parsed: "AI đã đọc",
+      waiting: "Chờ dữ liệu",
+      empty: "Tải lên và phân tích CV để xem dữ liệu đã bóc tách tại đây.",
+      experience: "Kinh nghiệm",
+      projects: "Dự án",
+      education: "Học vấn",
+      certifications: "Chứng chỉ",
+      activities: "Hoạt động",
     },
     builder: {
       sections: "Các mục",
