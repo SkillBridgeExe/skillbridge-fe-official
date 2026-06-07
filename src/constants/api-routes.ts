@@ -1,19 +1,15 @@
 const API = "/api";
 
 /**
- * API endpoint constants — mirror of docs/api-contract.md (FE ↔ .NET public API).
+ * API endpoint constants — mirror of the NestJS backend (skillbridge-ai).
  *
- * Canonical source: docs/api-contract.md. FE only ever calls .NET (`/api/*`);
- * the one exception is the Gemini Live WebSocket, which uses an ephemeral token
- * brokered by .NET (see INTERVIEW.LIVE_TOKEN).
- *
- * NOTE: FE currently runs on mock auth/data — several endpoints are not yet wired
- * to a live backend. Keys tagged "legacy" are pre-.NET paths still referenced by
- * mock service code; they will be migrated to the canonical paths during the API
- * wiring phase (see docs/NEXT_TASKS.md, Features 2–5).
+ * Canonical source: BE controllers (trích 2026-06-07 — docs/FE-diagnosis-rewire-plan.md §5).
+ * FE only ever calls NestJS (`/api/*`) qua same-origin proxy; the one exception is
+ * the Gemini Live WebSocket, which uses an ephemeral token brokered by the BE
+ * (see INTERVIEW.LIVE_TOKEN).
  */
 export const API_ROUTES = {
-  // §1.1 Auth
+  // §1.1 Auth (auth.controller.ts)
   AUTH: {
     REGISTER: `${API}/auth/register`,
     VERIFY_EMAIL: `${API}/auth/verify-email`,
@@ -25,30 +21,41 @@ export const API_ROUTES = {
     ME: `${API}/auth/me`,
   },
 
-  // §1.2 CV (upload / list / detail / delete)
+  // §1.2 CV (cvs.controller.ts) — POST /api/cvs = upload + chấm ĐỒNG BỘ (multipart:
+  // file, title?, targetRole?, consentAccepted bắt buộc). Quota 10 upload/24h.
   CV: {
     LIST: `${API}/cvs`,
     CREATE: `${API}/cvs`,
     DETAIL: (id: string) => `${API}/cvs/${id}`,
     DELETE: (id: string) => `${API}/cvs/${id}`,
+    FILE: (id: string) => `${API}/cvs/${id}/file`,
+    // CV × JD match (cv-matches.controller.ts)
+    MATCH: (cvId: string) => `${API}/cvs/${cvId}/match`,
+    MATCH_FILE: (cvId: string) => `${API}/cvs/${cvId}/match/file`,
+    MATCHES: (cvId: string) => `${API}/cvs/${cvId}/matches`,
+    MATCH_DETAIL: (cvId: string, matchId: string) => `${API}/cvs/${cvId}/matches/${matchId}`,
+    // Top-N job thật cho CV (jobs.controller.ts) — ?limit&role
+    JOB_RECOMMENDATIONS: (cvId: string) => `${API}/cvs/${cvId}/job-recommendations`,
+    // CV Builder (W5 sẽ dùng — endpoints đã LIVE trên BE)
+    BUILDER_CREATE: `${API}/cvs/builder`,
+    BUILDER_UPDATE: (id: string) => `${API}/cvs/${id}/builder`,
+    BUILDER_EVALUATE: (id: string) => `${API}/cvs/${id}/builder/evaluate`,
+    BUILDER_REWRITE: (id: string) => `${API}/cvs/${id}/builder/rewrite`,
+    RENDER_PDF: (id: string) => `${API}/cvs/${id}/render-pdf`,
   },
 
-  // §1.3 Job Description
-  JOB_DESCRIPTION: {
-    CREATE: `${API}/job-descriptions`,
-  },
-
-  // §1.4 Diagnosis (CV review + CV/JD match)
+  // §1.4 Diagnosis (diagnosis.controller.ts)
   DIAGNOSIS: {
+    /** Chấm LẠI một CV đã upload — body { cvId }. */
     CV_REVIEW: `${API}/diagnosis/cv-review`,
-    CV_JD_MATCH: `${API}/diagnosis/cv-jd-match`,
+    /** Alias của GET /api/cvs (paginated list). */
     HISTORY: `${API}/diagnosis/history`,
-    MATCH_DETAIL: (id: string) => `${API}/diagnosis/matches/${id}`,
+  },
 
-    // legacy (pre-.NET mock services) — migrate during API wiring
-    CV_ANALYZE: `${API}/cv-analyze`,
-    CV_JD_REVIEW: `${API}/cv-jd-review`,
-    ANALYZE: `${API}/cv-analyze`,
+  // §1.7 Skill trends (trends.controller.ts) — SKILLS là public, GAP cần JWT
+  TRENDS: {
+    SKILLS: `${API}/trends/skills`,
+    SKILL_GAP: (cvId: string) => `${API}/trends/skills/gap/${cvId}`,
   },
 
   // §1.5 Interview

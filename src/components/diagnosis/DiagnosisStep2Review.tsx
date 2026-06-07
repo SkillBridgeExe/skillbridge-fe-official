@@ -8,7 +8,7 @@ import { JobDescriptionInput } from "./JobDescriptionInput";
 import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
-import { useReviewCvMutation } from "@/hooks/use-diagnosis";
+import { useCompareJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 /** Mini progress bar with percentage label + dynamic colors */
@@ -40,7 +40,6 @@ function truncateText(value: string, maxLength = 150): string {
 
 export function DiagnosisStep2Review() {
   const {
-    cvFile,
     reviewData,
     apiError,
     goBack,
@@ -48,6 +47,8 @@ export function DiagnosisStep2Review() {
     showJdInput,
     setShowJdInput,
     jobDescription,
+    lastCvId,
+    targetRole,
     setHasActivatedJdMode,
     setTargetStep,
     setLoadingProgress,
@@ -59,11 +60,12 @@ export function DiagnosisStep2Review() {
   } = useDiagnosisStore();
 
   const { toast } = useToast();
-  const reviewCvMutation = useReviewCvMutation();
+  const compareJdMutation = useCompareJdMutation();
 
   const compareFromCvReview = async () => {
-    if (!cvFile) {
-      toast({ title: "Missing CV", description: "Please upload a CV before running JD comparison.", variant: "destructive" });
+    // CV đã chấm xong ở step này → match theo lastCvId trên BE, KHÔNG upload lại file.
+    if (!lastCvId) {
+      toast({ title: "Missing CV", description: "Please analyze a CV before running JD comparison.", variant: "destructive" });
       return;
     }
     if (!jobDescription.trim()) { return toast({ title: "Missing Job Description", description: "Paste the job description first.", variant: "destructive" }); }
@@ -78,8 +80,12 @@ export function DiagnosisStep2Review() {
     setIsAnalyzing(true);
 
     try {
-      const data = await reviewCvMutation.mutateAsync({ cvFile, jobDescription: jobDescription.trim() });
-      setReviewData(data);
+      const jdMatch = await compareJdMutation.mutateAsync({
+        cvId: lastCvId,
+        jdText: jobDescription.trim(),
+        targetRole,
+      });
+      setReviewData(previousReviewData ? { ...previousReviewData, jdMatch } : null);
       setHasActivatedJdMode(true);
       setApiError(null);
       setStep("results");

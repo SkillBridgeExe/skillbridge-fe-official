@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { JobDescriptionInput } from "./JobDescriptionInput";
-import { useReviewCvMutation } from "@/hooks/use-diagnosis";
+import { useAnalyzeCvMutation, useAnalyzeCvWithJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 const IT_ROLES = [
@@ -26,15 +26,19 @@ const IT_ROLES = [
 export function DiagnosisStep1Upload() {
   const { t } = useTranslation("diagnosis");
   const {
-    cvFile, jobDescription, isFromBuilder, builderCvName, targetRole,
+    cvFile, jobDescription, isFromBuilder, builderCvId, builderCvName, targetRole,
     setCvFile, setTargetRole,
     setHasActivatedJdMode, setTargetStep, setLoadingProgress, setLoadingMsgIdx, setIsAnalyzing,
-    setReviewData, setApiError, setAnalysisMode, setStep, clearBuilderState
+    setReviewData, setApiError, setAnalysisMode, setStep, setLastCvId, clearBuilderState
   } = useDiagnosisStore();
   
   const { isAuthenticated } = useAuthStore();
   const { toast } = useToast();
-  const reviewCvMutation = useReviewCvMutation();
+  const analyzeCvMutation = useAnalyzeCvMutation();
+  const analyzeCvWithJdMutation = useAnalyzeCvWithJdMutation();
+
+  /** CV builder phải có id thật trên BE mới chấm lại được (hack File giả đã bỏ khi re-wire). */
+  const hasUsableCv = Boolean(cvFile) || (isFromBuilder && Boolean(builderCvId));
 
   const handleCVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,7 +54,7 @@ export function DiagnosisStep1Upload() {
   };
 
   const analyzeCvOnly = async () => {
-    if (!cvFile && !isFromBuilder) { return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" }); }
+    if (!hasUsableCv) { return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" }); }
     if (!targetRole) { return toast({ title: t("upload.toastMissingRoleTitle"), description: t("upload.toastMissingRoleDesc"), variant: "destructive" }); }
 
     setHasActivatedJdMode(false);
@@ -63,9 +67,12 @@ export function DiagnosisStep1Upload() {
     setIsAnalyzing(true);
 
     try {
-      const payload = isFromBuilder ? { cvFile: new File(["mock"], "generated.pdf") } : { cvFile: cvFile! };
-      const data = await reviewCvMutation.mutateAsync(payload);
-      setReviewData(data);
+      const payload = isFromBuilder
+        ? { builderCvId, targetRole }
+        : { file: cvFile!, targetRole };
+      const { cvId, review } = await analyzeCvMutation.mutateAsync(payload);
+      setLastCvId(cvId);
+      setReviewData(review);
       setStep("cv-review");
     } catch (error) {
       const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
@@ -78,7 +85,7 @@ export function DiagnosisStep1Upload() {
   };
 
   const analyzeWithJd = async () => {
-    if (!cvFile && !isFromBuilder) {
+    if (!hasUsableCv) {
       return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" });
     }
     if (!targetRole) {
@@ -97,9 +104,12 @@ export function DiagnosisStep1Upload() {
     setIsAnalyzing(true);
 
     try {
-      const payload = isFromBuilder ? { cvFile: new File(["mock"], "generated.pdf"), jobDescription: jobDescription.trim() } : { cvFile: cvFile!, jobDescription: jobDescription.trim() };
-      const data = await reviewCvMutation.mutateAsync(payload);
-      setReviewData(data);
+      const payload = isFromBuilder
+        ? { builderCvId, targetRole, jdText: jobDescription.trim() }
+        : { file: cvFile!, targetRole, jdText: jobDescription.trim() };
+      const { cvId, review } = await analyzeCvWithJdMutation.mutateAsync(payload);
+      setLastCvId(cvId);
+      setReviewData(review);
       setHasActivatedJdMode(true);
       setStep("results");
     } catch (error) {
@@ -286,8 +296,8 @@ export function DiagnosisStep1Upload() {
         <Button 
           size="lg" 
           variant="outline" 
-          onClick={analyzeCvOnly} 
-          disabled={(!cvFile && !isFromBuilder) || !targetRole || reviewCvMutation.isPending}
+          onClick={analyzeCvOnly}
+          disabled={!hasUsableCv || !targetRole || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
           className={cn("rounded-lg px-8 text-sm font-semibold border-2 transition-all h-11",
             (cvFile || isFromBuilder) && targetRole ? "border-slate-300 hover:border-primary hover:text-primary hover:-translate-y-0.5" : "border-slate-200 text-slate-400 cursor-not-allowed"
           )}
@@ -296,8 +306,8 @@ export function DiagnosisStep1Upload() {
         </Button>
         <Button 
           size="lg" 
-          onClick={analyzeWithJd} 
-          disabled={(!cvFile && !isFromBuilder) || !targetRole || !jobDescription.trim() || reviewCvMutation.isPending}
+          onClick={analyzeWithJd}
+          disabled={!hasUsableCv || !targetRole || !jobDescription.trim() || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
           className={cn("rounded-lg px-8 text-sm font-semibold transition-all h-11",
             (cvFile || isFromBuilder) && targetRole && jobDescription.trim() ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5" : "bg-slate-200 text-slate-400 cursor-not-allowed"
           )}
