@@ -98,9 +98,19 @@ export interface TopSummary {
   prioritized_actions: string[];
 }
 
+/** 1 chiều chấm LLM thật của BE (0-20) kèm giải thích — để UI render 4 dim + rationale. */
+export interface ReviewDimension {
+  key: "action_verbs" | "skills_relevance" | "experience" | "education";
+  /** Điểm BE 0-20 — UI tự nhân 5 khi cần thang 100 (đơn vị hiển thị). */
+  score20: number;
+  rationale: string;
+}
+
 export interface CvReviewData {
   overallScore: number;
   breakdown: CvScoreBreakdown;
+  /** 4 dim LLM thật + rationale (BE llm_score_dimensions/rationale) — W3 UI render từ đây. */
+  dimensions?: ReviewDimension[];
   issues: CvIssue[];
   rewriteSuggestions: CvRewriteSuggestion[];
   strengths: string[];

@@ -161,6 +161,14 @@ describe("mapCvDtoToReviewData", () => {
     expect(ui.issues[1].suggestion).toBe("");
   });
 
+  it("pass-through 4 dim thật + rationale cho W3 UI", () => {
+    const ui = mapCvDtoToReviewData(cvDto);
+    expect(ui.dimensions).toHaveLength(4);
+    expect(ui.dimensions?.[0]).toEqual({ key: "action_verbs", score20: 12, rationale: "" });
+    expect(ui.dimensions?.[3].key).toBe("education");
+    expect(ui.dimensions?.[3].score20).toBe(16);
+  });
+
   it("lift skills_extracted từ ats_extracted (Δ3) + giữ insights thật (mock KHÔNG đè)", () => {
     const ui = mapCvDtoToReviewData(cvDto);
     expect(ui.skills_extracted).toHaveLength(1);

@@ -90,16 +90,26 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
     );
   }
 
+  const dims = review.llm_score_dimensions;
+
   return withMockInsights({
     overallScore: Math.round(review.overall_score),
     breakdown: {
       ats: Math.round(review.ats_rule_score),
       // UI Step2 hiện có 4 ô ats/structure/skills/experience — map dim gần nghĩa nhất.
-      // Dim `education` + rationale 4 chiều sẽ lên UI ở W3 (redesign Step2).
-      structure: dimToPct(review.llm_score_dimensions.action_verbs),
-      skills: dimToPct(review.llm_score_dimensions.skills_relevance),
-      experience: dimToPct(review.llm_score_dimensions.experience),
+      // W3 render 4 dim thật từ `dimensions` bên dưới; breakdown giữ cho UI cũ.
+      structure: dimToPct(dims.action_verbs),
+      skills: dimToPct(dims.skills_relevance),
+      experience: dimToPct(dims.experience),
     },
+    // 4 dim LLM thật + rationale — nguồn cho cards Step2 (W3).
+    dimensions: (
+      ["action_verbs", "skills_relevance", "experience", "education"] as const
+    ).map((key) => ({
+      key,
+      score20: dims[key],
+      rationale: review.rationale?.[key] ?? "",
+    })),
     issues: review.sections.flatMap((section) =>
       section.issues.map((issue) => ({
         title: section.name,
