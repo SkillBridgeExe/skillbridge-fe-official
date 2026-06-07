@@ -205,7 +205,7 @@
 
 /* Tiếng Việt: Poppins/Outfit không có glyph có dấu → dùng Be Vietnam Pro
    đồng bộ cả cụm chữ (tránh lẫn 2 font trong 1 từ). <html lang> do i18n sync. */
-html[lang="vi"] .font-poppins,
-html[lang="vi"] .font-display {
+html[lang^="vi"] .font-poppins,
+html[lang^="vi"] .font-display {
   font-family: "Be Vietnam Pro", sans-serif;
 }

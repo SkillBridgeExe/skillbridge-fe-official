@@ -21,7 +21,8 @@ i18n
 
 // Đồng bộ thẻ <html lang> theo ngôn ngữ hiện tại
 i18n.on("languageChanged", (lng) => {
-  document.documentElement.lang = lng;
+  const baseLang = lng.split("-")[0];
+  document.documentElement.lang = baseLang;
 });
 
 export default i18n;
