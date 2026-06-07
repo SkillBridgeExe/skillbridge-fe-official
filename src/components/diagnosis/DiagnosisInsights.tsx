@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ListChecks, Quote } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type {
   ExtractedSkill,
   RelevanceSkillItem,
@@ -30,12 +31,13 @@ const PASTEL = {
  * ③ TOP SUMMARY — lead "sửa N việc này trước" (đặt ĐẦU trang kết quả)
  * ═══════════════════════════════════════════════════════════════════ */
 export function TopSummaryCard({ summary }: { summary: TopSummary }) {
+  const { t } = useTranslation("diagnosis");
   return (
     <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="p-6">
         <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
           <ListChecks className="w-3.5 h-3.5" />
-          Fix these first
+          {t("insights.fixFirst")}
         </div>
         <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
           {summary.headline}
@@ -67,13 +69,13 @@ const PROFICIENCY_ORDER: Record<SkillProficiencyHint, number> = {
   unknown: 3,
 };
 
-const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
-  advanced: { label: "Advanced", chip: PASTEL.green },
-  intermediate: { label: "Intermediate", chip: PASTEL.yellow },
-  beginner: { label: "Beginner", chip: PASTEL.gray },
-};
+function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => string }) {
+  const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
+    advanced: { label: t("insights.proficiency.advanced"), chip: PASTEL.green },
+    intermediate: { label: t("insights.proficiency.intermediate"), chip: PASTEL.yellow },
+    beginner: { label: t("insights.proficiency.beginner"), chip: PASTEL.gray },
+  };
 
-function SkillChip({ skill }: { skill: ExtractedSkill }) {
   // Contract §6.3: proficiency 'unknown' → ẨN badge, chỉ hiện tên.
   const proficiency =
     skill.proficiency_hint !== "unknown" ? PROFICIENCY_STYLE[skill.proficiency_hint] : null;
@@ -106,13 +108,14 @@ function SkillChip({ skill }: { skill: ExtractedSkill }) {
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs">
-        <p className="text-xs leading-relaxed">“{skill.evidence_text}”</p>
+        <p className="text-xs leading-relaxed">"{skill.evidence_text}"</p>
       </TooltipContent>
     </Tooltip>
   );
 }
 
 export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
+  const { t } = useTranslation("diagnosis");
   const sorted = [...skills].sort(
     (a, b) => PROFICIENCY_ORDER[a.proficiency_hint] - PROFICIENCY_ORDER[b.proficiency_hint],
   );
@@ -120,13 +123,13 @@ export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
   return (
     <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="pt-5 pb-5">
-        <h3 className="text-sm font-bold text-[#2F3437]">Skills found in your CV</h3>
+        <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.skillsTitle")}</h3>
         <p className="text-xs text-[#787774] mt-0.5 mb-3">
-          Hover a skill to see the evidence the AI extracted.
+          {t("insights.skillsHint")}
         </p>
         <div className="flex flex-wrap gap-2">
           {sorted.map((skill) => (
-            <SkillChip key={skill.name} skill={skill} />
+            <SkillChip key={skill.name} skill={skill} t={t} />
           ))}
         </div>
       </CardContent>
@@ -146,19 +149,6 @@ const IMPORTANCE_ORDER: Record<SkillImportance, number> = {
   NICE_TO_HAVE: 2,
 };
 
-const RELEVANCE_GROUPS: {
-  key: keyof SkillsRelevanceBreakdown;
-  label: string;
-  hint?: string;
-  dot: string;
-  chip: string;
-  showLevels: boolean;
-}[] = [
-  { key: "matched", label: "Matched", dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
-  { key: "partial", label: "Partial", dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
-  { key: "missing", label: "Missing", hint: "add these first", dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
-];
-
 function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
   return [...items].sort(
     (a, b) => IMPORTANCE_ORDER[a.importance] - IMPORTANCE_ORDER[b.importance],
@@ -166,6 +156,21 @@ function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
 }
 
 export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceBreakdown }) {
+  const { t } = useTranslation("diagnosis");
+
+  const RELEVANCE_GROUPS: {
+    key: keyof SkillsRelevanceBreakdown;
+    label: string;
+    hint?: string;
+    dot: string;
+    chip: string;
+    showLevels: boolean;
+  }[] = [
+    { key: "matched", label: t("insights.matched"), dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
+    { key: "partial", label: t("insights.partial"), dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
+    { key: "missing", label: t("insights.missing"), hint: t("insights.addFirst"), dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
+  ];
+
   const groups = RELEVANCE_GROUPS.filter((group) => breakdown[group.key].length > 0);
   if (groups.length === 0) {
     return null;
@@ -175,9 +180,9 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
     <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="pt-5 pb-5 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-[#2F3437]">Skill relevance</h3>
+          <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.relevanceTitle")}</h3>
           <p className="text-xs text-[#787774] mt-0.5">
-            Your skills vs. the target role's requirements.
+            {t("insights.relevanceHint")}
           </p>
         </div>
         {groups.map((group) => (
