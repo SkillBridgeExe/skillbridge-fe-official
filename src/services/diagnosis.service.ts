@@ -60,7 +60,7 @@ export interface AnalyzeOutcome {
  * AI thật. Chặn sớm với message rõ thay vì để interceptor 401 đá về /login
  * giữa chừng (P0.3 — auth gate, UI đẹp hơn ở W3).
  */
-function requireSession(): void {
+export function requireSession(): void {
   if (!localStorage.getItem("accessToken")) {
     throw new Error(
       "Please sign in with a real account to run the AI analysis. Demo accounts can't reach the AI service yet.",
