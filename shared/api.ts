@@ -394,6 +394,145 @@ export interface JobRecommendationsResponse {
   recommendations: JobRecommendationDto[];
 }
 
+// ── CV Builder AI (POST /api/cvs/:id/builder/*) — R1b contract ─────────────
+// BE DTO khớp store FE field-for-field (evaluate-section.dto.ts): FE gửi state
+// section NGUYÊN VĂN, không remap. Label/checklist/missing đã localize theo `language`.
+
+export type BuilderSection =
+  | "basic"
+  | "summary"
+  | "experience"
+  | "education"
+  | "projects"
+  | "skills"
+  | "certifications";
+
+export interface BuilderBasicContent {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+}
+
+export interface BuilderExperienceEntry {
+  position?: string;
+  company?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  responsibilities?: string;
+  achievements?: string;
+}
+
+export interface BuilderEducationEntry {
+  school?: string;
+  major?: string;
+  degree?: string;
+  startYear?: string;
+  endYear?: string;
+  gpa?: string;
+  coursework?: string;
+  achievements?: string;
+}
+
+export interface BuilderProjectEntry {
+  name?: string;
+  role?: string;
+  tools?: string;
+  description?: string;
+  contribution?: string;
+  result?: string;
+}
+
+export interface BuilderSkillsContent {
+  technicalSkills?: string[];
+  softSkills?: string[];
+  tools?: string[];
+  languages?: string[];
+}
+
+export interface BuilderCertificationEntry {
+  name?: string;
+  organization?: string;
+  issueDate?: string;
+  credentialUrl?: string;
+}
+
+export type BuilderSectionContent =
+  | BuilderBasicContent
+  | { summary?: string }
+  | { entries: BuilderExperienceEntry[] }
+  | { entries: BuilderEducationEntry[] }
+  | { entries: BuilderProjectEntry[] }
+  | BuilderSkillsContent
+  | { entries: BuilderCertificationEntry[] };
+
+export interface EvaluateSectionRequest {
+  section: BuilderSection;
+  /** 1 trong 8 role code IT — làm sắc gợi ý "missing"; optional. */
+  role_code?: string;
+  language?: "vi" | "en";
+  content: BuilderSectionContent;
+}
+
+export interface BuilderChecklistItem {
+  /** Id ổn định, vd 'exp_verb_first' — FE key ✅/❌ theo đây. */
+  id: string;
+  /** Label đã localize theo request language. */
+  criterion: string;
+  pass: boolean;
+}
+
+export interface EvaluateSectionResponse {
+  /** round(passed/total × 100); 0 khi section trống. */
+  score: number;
+  /** Đã localize: 'Rất tốt' ≥80 · 'Cần cải thiện' 1-79 · 'Chưa có thông tin' 0. */
+  label: string;
+  checklist: BuilderChecklistItem[];
+  /** "Cần bổ sung" — gợi ý hành động từ tiêu chí fail (+ role rubric). */
+  missing: string[];
+}
+
+export type RewriteMode = "harvard" | "translate" | "custom";
+
+export interface RewriteRequest {
+  /** 1 field text duy nhất (1 bullet / 1 đoạn summary). */
+  text: string;
+  mode: RewriteMode;
+  /** Bắt buộc khi mode='translate'. */
+  target_lang?: "vi" | "en";
+  /** Bắt buộc khi mode='custom' (≤500 ký tự). */
+  instruction?: string;
+  role_code?: string;
+  section?: BuilderSection;
+}
+
+export interface RewriteResponse {
+  /** "AI đề xuất" — KHÔNG tự ghi đè input; user bấm [Sử dụng] mới áp. */
+  suggestion: string;
+  /** true nếu guardrail deterministic trả về nguyên bản (vd nghi bịa số liệu). */
+  fallback?: boolean;
+}
+
+export interface CreateBuilderDraftInput {
+  /** Prefill từ CV đã chấm (parsed_json); bỏ trống = seed từ upload gần nhất hoặc trống. */
+  sourceCvId?: string;
+  title?: string;
+  targetRole?: string;
+  language?: "vi" | "en";
+}
+
+export interface UpdateBuilderDraftInput {
+  /** BẮT BUỘC — toàn bộ CV canonical từ form builder. */
+  parsedJson: CanonicalCvDocument;
+  title?: string;
+  targetRole?: string;
+  language?: "vi" | "en";
+}
+
 // ── Skill trends (GET /api/trends/skills[/gap/:cvId]) ──────────────────────
 
 export interface SkillDemandRow {

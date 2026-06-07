@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { BuilderSection, EvaluateSectionResponse } from "@shared/api";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -118,6 +119,10 @@ interface CvBuilderState {
   template: string;
   cvLanguage: CvLanguage;
 
+  // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
+  draftId: string | null;
+  sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
+
   // Actions — Basic Info
   setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github">, value: string) => void;
 
@@ -158,6 +163,10 @@ interface CvBuilderState {
   setTemplate: (template: string) => void;
   setCvLanguage: (lang: CvLanguage) => void;
 
+  // Actions — BE draft (W5)
+  setDraftId: (id: string | null) => void;
+  setSectionEvaluation: (section: BuilderSection, result: EvaluateSectionResponse) => void;
+
   // Computed
   getSectionStatuses: () => SectionMeta[];
   getCompletionPercent: () => number;
@@ -178,6 +187,8 @@ const initialState = {
   activeSection: 0,
   template: "ats-modern",
   cvLanguage: "en" as CvLanguage,
+  draftId: null as string | null,
+  sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
 };
 
 export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
@@ -242,6 +253,9 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
 
   // UI
   setActiveSection: (section) => set({ activeSection: section }),
+  setDraftId: (draftId) => set({ draftId }),
+  setSectionEvaluation: (section, result) =>
+    set((s) => ({ sectionEvaluations: { ...s.sectionEvaluations, [section]: result } })),
   setTemplate: (template) => set({ template }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
 
