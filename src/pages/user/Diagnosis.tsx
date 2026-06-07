@@ -209,7 +209,7 @@ export default function Diagnosis() {
 
         if (timeoutId) clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
-          saveDraft(false);
+          saveDraft();
         }, 1500);
       }
     });
