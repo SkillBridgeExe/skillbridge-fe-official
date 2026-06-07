@@ -111,6 +111,8 @@ export interface CvReviewData {
   breakdown: CvScoreBreakdown;
   /** 4 dim LLM thật + rationale (BE llm_score_dimensions/rationale) — W3 UI render từ đây. */
   dimensions?: ReviewDimension[];
+  /** Checklist ATS rule-based đầy đủ (10 rule + summary) — tab ATS (W3c) render từ đây. */
+  atsCheck?: AtsCheckResult;
   issues: CvIssue[];
   rewriteSuggestions: CvRewriteSuggestion[];
   strengths: string[];
@@ -173,6 +175,24 @@ export interface CanonicalCvDocument {
   activities: Array<{ org: string; role: string | null; bullets: string[] }>;
 }
 
+/** 1 rule ATS deterministic (BE AtsRuleChecker) — label hiện BE trả sẵn tiếng Việt. */
+export interface AtsRuleResult {
+  rule_id: string;
+  label: string;
+  status: "pass" | "warn" | "fail";
+  score: number;
+  /** Trích dẫn bằng chứng từ CV (vd email/SĐT tìm thấy). */
+  evidence?: string;
+  /** Gợi ý sửa khi warn/fail. */
+  hint?: string;
+}
+
+export interface AtsCheckResult {
+  ats_rule_score: number;
+  rules: AtsRuleResult[];
+  summary: { total: number; passed: number; warned: number; failed: number };
+}
+
 export type BeIssueSeverity = "info" | "warning" | "error";
 
 export interface BeReviewSection {
@@ -188,7 +208,7 @@ export interface CvReviewParsedResponse {
   /** = ats_rule_score*0.4 + llm_normalized*0.6 — FE KHÔNG tự tính lại. */
   overall_score: number;
   ats_rule_score: number;
-  ats_check?: unknown;
+  ats_check?: AtsCheckResult;
   /** 4 dim LLM-rubric, 0-20 mỗi dim. */
   llm_score_dimensions: {
     action_verbs: number;

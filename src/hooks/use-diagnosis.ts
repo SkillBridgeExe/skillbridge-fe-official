@@ -1,5 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { analyzeCv, analyzeCvWithJd, compareJdForCv } from "@/services/diagnosis.service";
+import {
+  analyzeCv,
+  analyzeCvWithJd,
+  compareJdForCv,
+  reanalyzeCv,
+} from "@/services/diagnosis.service";
 
 /** Chấm CV (không JD) — POST /api/cvs thật, trả { cvId, review }. */
 export function useAnalyzeCvMutation() {
@@ -19,5 +24,12 @@ export function useAnalyzeCvWithJdMutation() {
 export function useCompareJdMutation() {
   return useMutation({
     mutationFn: compareJdForCv,
+  });
+}
+
+/** "Phân tích lại" CV đã có trên BE theo cvId — tốn 1 lượt quota chấm, không upload lại. */
+export function useReanalyzeCvMutation() {
+  return useMutation({
+    mutationFn: reanalyzeCv,
   });
 }

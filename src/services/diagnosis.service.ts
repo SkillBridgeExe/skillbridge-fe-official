@@ -110,6 +110,8 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
       score20: dims[key],
       rationale: review.rationale?.[key] ?? "",
     })),
+    // Checklist ATS đầy đủ — tab ATS (W3c).
+    atsCheck: review.ats_check,
     issues: review.sections.flatMap((section) =>
       section.issues.map((issue) => ({
         title: section.name,
@@ -220,6 +222,17 @@ export async function analyzeCvWithJd(
     cvId: base.cvId,
     review: { ...base.review, jdMatch: mapMatchDtoToJdMatch(match) },
   };
+}
+
+/** Chấm LẠI một CV đã có trên BE theo cvId (nút "Phân tích lại") — không upload lại. */
+export function reanalyzeCv({
+  cvId,
+  targetRole,
+}: {
+  cvId: string;
+  targetRole: string;
+}): Promise<AnalyzeOutcome> {
+  return analyzeCv({ builderCvId: cvId, targetRole });
 }
 
 export interface CompareJdInput {
