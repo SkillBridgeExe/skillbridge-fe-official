@@ -13,6 +13,20 @@ export default {
       startFree: "Start Free",
     },
   },
+  home: {
+    hero: {
+      badge: "The Intelligent Career Growth Engine",
+      titleLead: "Bridge Your ",
+      titleSkills: "Skills",
+      titleMid: " to Your ",
+      titleDream: "Dream Job",
+      subtitle: "Analyze your CV, build a professional resume from scratch, and get a personalized roadmap to reach your dream job.",
+      ctaScan: "Scan My CV Free",
+      ctaBuild: "Create CV with AI",
+      helper: "Already have a CV? Scan it. No CV yet? Build one with AI.",
+      tabs: { cv: "CV Diagnosis", roadmap: "Learning Roadmap", interview: "AI Interview" },
+    },
+  },
   diagnosis: {
     header: {
       badge: "AI Analysis",
