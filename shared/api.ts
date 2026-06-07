@@ -113,6 +113,9 @@ export interface CvReviewData {
   dimensions?: ReviewDimension[];
   /** Checklist ATS rule-based đầy đủ (10 rule + summary) — tab ATS (W3c) render từ đây. */
   atsCheck?: AtsCheckResult;
+  /** CV cấu trúc hoá ĐẦY ĐỦ (BE review.document) — DocumentPreview render education/
+   *  experience/projects bullets + W3d highlight evidence_text trong bullets. */
+  document?: CanonicalCvDocument;
   issues: CvIssue[];
   rewriteSuggestions: CvRewriteSuggestion[];
   strengths: string[];

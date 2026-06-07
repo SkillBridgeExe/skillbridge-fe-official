@@ -112,6 +112,8 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
     })),
     // Checklist ATS đầy đủ — tab ATS (W3c).
     atsCheck: review.ats_check,
+    // CV cấu trúc hoá đầy đủ — preview giàu + highlight evidence (W3d).
+    document: review.document,
     issues: review.sections.flatMap((section) =>
       section.issues.map((issue) => ({
         title: section.name,
