@@ -16,6 +16,7 @@ import AssessmentShowcase from "@/components/home/AssessmentShowcase";
 import CountUp from "@/components/shared/CountUp";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 
 
@@ -138,6 +139,7 @@ function ExaminerTypingPreview() {
    Main Export
 ───────────────────────────────────────────── */
 export default function Index() {
+  const { t } = useTranslation("home");
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"cv" | "roadmap" | "interview">("cv");
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -225,7 +227,7 @@ export default function Index() {
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-bold text-blue-600 tracking-wider uppercase"
               >
                 <Zap className="w-3.5 h-3.5 fill-blue-100" />
-                The Intelligent Career Growth Engine
+                {t("hero.badge")}
               </motion.div>
 
               {/* Headline */}
@@ -235,8 +237,14 @@ export default function Index() {
                 transition={{ duration: 0.8, delay: 0.1 }}
                 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.15] text-slate-900"
               >
-                Bridge Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 italic pr-1 animate-gradient">Skills</span>
-                {" "}to Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 italic pr-1 animate-gradient">Dream Job</span>
+                {t("hero.titleLead")}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 italic pr-1 animate-gradient">
+                  {t("hero.titleSkills")}
+                </span>
+                {t("hero.titleMid")}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 italic pr-1 animate-gradient">
+                  {t("hero.titleDream")}
+                </span>
               </motion.h1>
 
               {/* Subtext */}
@@ -246,7 +254,7 @@ export default function Index() {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="text-base md:text-lg text-slate-500 leading-relaxed font-medium max-w-xl"
               >
-                Analyze your CV, build a professional resume from scratch, and get a personalized roadmap to reach your dream job.
+                {t("hero.subtitle")}
               </motion.p>
 
               {/* CTAs */}
@@ -270,7 +278,7 @@ export default function Index() {
                       <span className="animate-shimmer absolute inset-0" />
                       <span className="relative flex items-center justify-center gap-2">
                         <Search className="w-5 h-5" />
-                        Scan My CV Free
+                        {t("hero.ctaScan")}
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </span>
                     </motion.button>
@@ -283,12 +291,12 @@ export default function Index() {
                       className="group h-16 rounded-2xl px-8 text-base font-bold border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300 flex items-center justify-center gap-2 text-slate-700 shadow-sm min-w-[200px]"
                     >
                       <Sparkles className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform duration-300" />
-                      Create CV with AI
+                      {t("hero.ctaBuild")}
                     </motion.button>
                   </Link>
                 </div>
                 <p className="text-xs text-slate-400 font-semibold">
-                  Already have a CV? Scan it. No CV yet? Build one with AI.
+                  {t("hero.helper")}
                 </p>
               </motion.div>
             </div>
@@ -303,9 +311,9 @@ export default function Index() {
                 className="inline-flex p-1 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm relative z-30 overflow-hidden"
               >
                 {[
-                  { id: "cv", label: "CV Diagnosis", icon: FileText },
-                  { id: "roadmap", label: "Learning Roadmap", icon: GraduationCap },
-                  { id: "interview", label: "AI Interview", icon: Search },
+                  { id: "cv", label: t("hero.tabs.cv"), icon: FileText },
+                  { id: "roadmap", label: t("hero.tabs.roadmap"), icon: GraduationCap },
+                  { id: "interview", label: t("hero.tabs.interview"), icon: Search },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -647,7 +655,7 @@ export default function Index() {
                     whileTap={{ scale: 0.97 }}
                     className="h-14 rounded-2xl px-9 bg-white text-blue-700 text-sm font-black flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
                   >
-                    Scan My CV Free <ArrowRight className="w-4 h-4" />
+                    {t("hero.ctaScan")} <ArrowRight className="w-4 h-4" />
                   </motion.button>
                 </Link>
                 <span className="text-[11px] text-blue-200/80 font-semibold">

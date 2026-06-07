@@ -13,6 +13,20 @@ export default {
       startFree: "Dùng thử miễn phí",
     },
   },
+  home: {
+    hero: {
+      badge: "Cỗ máy phát triển sự nghiệp thông minh",
+      titleLead: "Đưa ",
+      titleSkills: "Kỹ năng",
+      titleMid: " chạm tới ",
+      titleDream: "Công việc mơ ước",
+      subtitle: "Phân tích CV, xây hồ sơ chuyên nghiệp từ con số 0 và nhận lộ trình học cá nhân hoá để chạm tới công việc mơ ước.",
+      ctaScan: "Chấm điểm CV miễn phí",
+      ctaBuild: "Tạo CV với AI",
+      helper: "Đã có CV? Chấm ngay. Chưa có? Để AI giúp bạn tạo.",
+      tabs: { cv: "Chẩn đoán CV", roadmap: "Lộ trình học", interview: "Phỏng vấn AI" },
+    },
+  },
   diagnosis: {
     header: {
       badge: "Phân tích AI",
