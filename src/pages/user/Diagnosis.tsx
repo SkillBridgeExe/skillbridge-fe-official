@@ -9,6 +9,11 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import PageLoader from "@/components/common/PageLoader";
+import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useToast } from "@/hooks/use-toast";
+import type { BuilderSnapshot } from "@/services/cv-builder.service";
 
 const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -83,6 +88,138 @@ export default function Diagnosis() {
     elapsed < 3 ? t("loading.uploading")
     : elapsed < 10 ? t("loading.parsing")
     : t("loading.scoring");
+
+  const ensureDraftMutation = useEnsureBuilderDraftMutation();
+  const saveDraftMutation = useSaveBuilderDraftMutation();
+  const { toast } = useToast();
+
+  const getBuilderSnapshot = (state: any): BuilderSnapshot => ({
+    fullName: state.fullName,
+    email: state.email,
+    phone: state.phone,
+    location: state.location,
+    linkedin: state.linkedin,
+    portfolio: state.portfolio,
+    github: state.github,
+    targetPosition: state.targetPosition,
+    summary: state.summary,
+    education: state.education,
+    experience: state.experience,
+    projects: state.projects,
+    technicalSkills: state.technicalSkills,
+    softSkills: state.softSkills,
+    tools: state.tools,
+    languages: state.languages,
+    certifications: state.certifications,
+    cvLanguage: state.cvLanguage,
+  });
+
+  useEffect(() => {
+    if (step !== "builder") return;
+
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      useAutosaveStore.getState().setSaveStatus("local");
+      return;
+    }
+
+    const currentDraftId = useCvBuilderStore.getState().draftId;
+    if (currentDraftId === null && !ensureDraftMutation.isPending) {
+      ensureDraftMutation.mutate(
+        { language: useCvBuilderStore.getState().cvLanguage },
+        {
+          onSuccess: (data) => {
+            useCvBuilderStore.getState().setDraftId(data.id);
+            useAutosaveStore.getState().setSaveStatus("saved");
+            const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+            useAutosaveStore.getState().setLastSavedTime(timeStr);
+          },
+          onError: (err: any) => {
+            toast({
+              title: "Error creating draft",
+              description: err?.message || "Failed to create a builder draft on the server. Working in local mode.",
+              variant: "destructive",
+            });
+            useAutosaveStore.getState().setSaveStatus("error");
+          },
+        }
+      );
+    }
+  }, [step, ensureDraftMutation, toast]);
+
+  useEffect(() => {
+    if (step !== "builder") return;
+
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    let lastSnapshotJson = JSON.stringify(getBuilderSnapshot(useCvBuilderStore.getState()));
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const saveDraft = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      const state = useCvBuilderStore.getState();
+      const draftId = state.draftId;
+      if (!draftId) return;
+
+      const snapshot = getBuilderSnapshot(state);
+      lastSnapshotJson = JSON.stringify(snapshot);
+
+      useAutosaveStore.getState().setSaveStatus("saving");
+
+      saveDraftMutation.mutate(
+        {
+          draftId,
+          snapshot,
+          title: "CV Builder draft",
+          targetRole: useDiagnosisStore.getState().targetRole,
+        },
+        {
+          onSuccess: () => {
+            useAutosaveStore.getState().setSaveStatus("saved");
+            const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+            useAutosaveStore.getState().setLastSavedTime(timeStr);
+          },
+          onError: () => {
+            useAutosaveStore.getState().setSaveStatus("error");
+          },
+        }
+      );
+    };
+
+    useAutosaveStore.getState().triggerSaveRef.current = () => {
+      saveDraft();
+    };
+
+    const unsubscribe = useCvBuilderStore.subscribe((state) => {
+      const draftId = state.draftId;
+      if (!draftId) return;
+
+      const currentSnapshot = getBuilderSnapshot(state);
+      const currentSnapshotJson = JSON.stringify(currentSnapshot);
+
+      if (currentSnapshotJson !== lastSnapshotJson) {
+        lastSnapshotJson = currentSnapshotJson;
+
+        useAutosaveStore.getState().setSaveStatus("saving");
+
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          saveDraft(false);
+        }, 1500);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
+      useAutosaveStore.getState().triggerSaveRef.current = null;
+    };
+  }, [step, saveDraftMutation, toast]);
 
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
