@@ -1,9 +1,11 @@
-import { memo, useState, useEffect, useRef } from "react";
+import React, { memo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, X, ArrowLeft, ArrowRight, Share2, Download,
-  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw
+  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -89,7 +91,7 @@ function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number;
 /* ── Main Component ── */
 export function DiagnosisStep3Results() {
   const { t } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData } = useDiagnosisStore();
+  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -347,6 +349,154 @@ export function DiagnosisStep3Results() {
           </div>
         </div>
       </div>
+
+      {isJdMode && jobDescription && (
+        <JdHighlightBlock
+          jobDescription={jobDescription}
+          hardSkills={hardSkills}
+          softSkills={softSkills}
+          t={t}
+        />
+      )}
     </div>
   );
 }
+
+/* ── helper và component JD Highlight ── */
+interface MatchRange {
+  start: number;
+  end: number;
+  skillName: string;
+  status: "present" | "partial" | "missing";
+}
+
+const getHighlightedJd = (text: string, skills: SkillMatchItem[]) => {
+  if (!text) return [];
+  const matches: MatchRange[] = [];
+  const sortedSkills = [...skills].sort((a, b) => b.name.length - a.name.length);
+  
+  for (const skill of sortedSkills) {
+    const skillName = skill.name.trim();
+    if (!skillName) continue;
+    
+    const isSingleWord = !/\s/.test(skillName);
+    const escaped = skillName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const pattern = isSingleWord ? `\\b${escaped}\\b` : escaped;
+    const regex = new RegExp(pattern, "gi");
+    
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const start = match.index;
+      const end = regex.lastIndex;
+      
+      const isOverlapping = matches.some(
+        m => (start >= m.start && start < m.end) || (end > m.start && end <= m.end) || (start <= m.start && end >= m.end)
+      );
+      
+      if (!isOverlapping) {
+        matches.push({
+          start,
+          end,
+          skillName,
+          status: skill.status
+        });
+      }
+    }
+  }
+  
+  matches.sort((a, b) => a.start - b.start);
+  
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  
+  matches.forEach((m, idx) => {
+    if (m.start > lastIndex) {
+      nodes.push(text.substring(lastIndex, m.start));
+    }
+    
+    const matchedText = text.substring(m.start, m.end);
+    const classes = {
+      present: "bg-[#EDF3EC] text-[#346538] rounded px-0.5 font-medium border border-[#DCE9D7]/50",
+      partial: "bg-[#FBF3DB] text-[#956400] rounded px-0.5 font-medium border border-[#F1E5C0]/50",
+      missing: "bg-[#FDEBEC] text-[#9F2F2D] rounded px-0.5 font-medium border border-[#F6D4D5]/50 underline decoration-dotted decoration-1",
+    }[m.status];
+    
+    nodes.push(
+      <mark key={idx} className={classes}>
+        {matchedText}
+      </mark>
+    );
+    
+    lastIndex = m.end;
+  });
+  
+  if (lastIndex < text.length) {
+    nodes.push(text.substring(lastIndex));
+  }
+  
+  return nodes;
+};
+
+const JdHighlightBlock = memo(function JdHighlightBlock({
+  jobDescription,
+  hardSkills,
+  softSkills,
+  t
+}: {
+  jobDescription: string;
+  hardSkills: SkillMatchItem[];
+  softSkills: SkillMatchItem[];
+  t: (key: string) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const allSkills = React.useMemo(() => [...hardSkills, ...softSkills], [hardSkills, softSkills]);
+  
+  const highlightedNodes = React.useMemo(() => {
+    return getHighlightedJd(jobDescription, allSkills);
+  }, [jobDescription, allSkills]);
+
+  const toggleText = isOpen 
+    ? ((t("common.collapse" as any) !== "common.collapse" && t("common.collapse" as any)) || "Thu nhỏ")
+    : ((t("common.expand" as any) !== "common.expand" && t("common.expand" as any)) || "Xem thêm");
+
+  return (
+    <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden mt-6">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-5 border-b border-[#EAEAEA] hover:bg-slate-50 transition-colors focus:outline-none"
+      >
+        <div className="flex flex-col items-start gap-1">
+          <h3 className="text-base font-bold text-[#2F3437] flex items-center gap-2">
+            <Target className="w-5 h-5 text-indigo-600" />
+            {t("results.jdHighlightTitle")}
+          </h3>
+          {isOpen && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDF3EC] text-[#346538] border border-[#DCE9D7]">
+                {t("results.matched")}
+              </span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F1E5C0]">
+                {t("results.partial")}
+              </span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FDEBEC] text-[#9F2F2D] border border-[#F6D4D5] underline decoration-dotted">
+                {t("results.missing")}
+              </span>
+            </div>
+          )}
+        </div>
+        <span className="text-xs font-semibold text-[#787774] flex items-center gap-1">
+          {toggleText}
+          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="p-5 bg-slate-50">
+          <div className="bg-white border border-[#EAEAEA] rounded-lg p-4 max-h-80 overflow-y-auto text-[13px] leading-relaxed text-[#2F3437] whitespace-pre-wrap font-normal">
+            {highlightedNodes.length > 0 ? highlightedNodes : jobDescription}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+});
