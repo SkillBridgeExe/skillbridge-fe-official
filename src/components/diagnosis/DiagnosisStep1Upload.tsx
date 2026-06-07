@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { FileText, CheckCircle2, Upload, History, Sparkles } from "lucide-react";
+import { FileText, CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
@@ -26,8 +26,8 @@ const IT_ROLES = [
 export function DiagnosisStep1Upload() {
   const { t } = useTranslation("diagnosis");
   const {
-    cvFile, jobDescription, isFromBuilder, builderCvId, builderCvName, targetRole,
-    setCvFile, setTargetRole,
+    cvFile, jobDescription, isFromBuilder, builderCvId, builderCvName, targetRole, consentAccepted,
+    setCvFile, setTargetRole, setConsentAccepted,
     setHasActivatedJdMode, setTargetStep, setLoadingProgress, setLoadingMsgIdx, setIsAnalyzing,
     setReviewData, setApiError, setAnalysisMode, setStep, setLastCvId, clearBuilderState
   } = useDiagnosisStore();
@@ -45,6 +45,11 @@ export function DiagnosisStep1Upload() {
     const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
     const validExts = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
     const ext = file?.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file && file.size > MAX_FILE_SIZE) {
+      toast({ title: t("upload.toastInvalidTitle"), description: t("upload.errorFileTooLarge"), variant: "destructive" });
+      return;
+    }
     if (file && (validTypes.includes(file.type) || validExts.includes(ext ?? ""))) {
       setCvFile(file);
       toast({ title: t("upload.toastUploadedTitle"), description: file.name });
@@ -149,8 +154,8 @@ export function DiagnosisStep1Upload() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* LEFT: CV Upload or Builder State (2-Door Input) */}
-        <Card className="glass border-white/50 shadow-sm overflow-hidden group relative flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0 group-hover:opacity-100 opacity-50 transition-opacity" />
+        <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden flex flex-col justify-between">
+
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary")}>
@@ -291,13 +296,29 @@ export function DiagnosisStep1Upload() {
         </div>
       </div>
 
+      {/* Consent Checkbox */}
+      {hasUsableCv && (
+        <label className="flex items-start gap-3 p-4 bg-[#FBFBFA] border border-[#EAEAEA] rounded-xl cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={consentAccepted}
+            onChange={(e) => setConsentAccepted(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-[#EAEAEA] text-primary focus:ring-primary/40 accent-primary shrink-0"
+          />
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
+            <span className="text-xs text-[#787774] leading-relaxed">{t("upload.consentLabel")}</span>
+          </div>
+        </label>
+      )}
+
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
         <Button 
           size="lg" 
           variant="outline" 
           onClick={analyzeCvOnly}
-          disabled={!hasUsableCv || !targetRole || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
+          disabled={!hasUsableCv || !targetRole || !consentAccepted || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
           className={cn("rounded-lg px-8 text-sm font-semibold border-2 transition-all h-11",
             (cvFile || isFromBuilder) && targetRole ? "border-slate-300 hover:border-primary hover:text-primary hover:-translate-y-0.5" : "border-slate-200 text-slate-400 cursor-not-allowed"
           )}
@@ -307,7 +328,7 @@ export function DiagnosisStep1Upload() {
         <Button 
           size="lg" 
           onClick={analyzeWithJd}
-          disabled={!hasUsableCv || !targetRole || !jobDescription.trim() || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
+          disabled={!hasUsableCv || !targetRole || !jobDescription.trim() || !consentAccepted || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
           className={cn("rounded-lg px-8 text-sm font-semibold transition-all h-11",
             (cvFile || isFromBuilder) && targetRole && jobDescription.trim() ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5" : "bg-slate-200 text-slate-400 cursor-not-allowed"
           )}

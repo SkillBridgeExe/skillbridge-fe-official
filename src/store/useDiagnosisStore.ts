@@ -23,6 +23,8 @@ interface DiagnosisState {
   targetRole: string | null;
   /** Id CV trên BE của lần chấm gần nhất — dùng cho JD match / job reco / builder CTA. */
   lastCvId: string | null;
+  /** PDPL consent checkbox — gates Analyze buttons (commit ③) */
+  consentAccepted: boolean;
 
   // Builder-sourced CV state
   isFromBuilder: boolean;
@@ -47,6 +49,7 @@ interface DiagnosisState {
   setAnalysisMode: (mode: AnalysisMode) => void;
   setTargetRole: (role: string | null) => void;
   setLastCvId: (id: string | null) => void;
+  setConsentAccepted: (val: boolean) => void;
 
   // Builder-sourced CV actions
   setIsFromBuilder: (isFromBuilder: boolean) => void;
@@ -77,6 +80,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   analysisMode: "cv-only",
   targetRole: null,
   lastCvId: null,
+  consentAccepted: false,
 
   isFromBuilder: false,
   builderCvId: null,
@@ -103,6 +107,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
   setTargetRole: (targetRole) => set({ targetRole }),
   setLastCvId: (lastCvId) => set({ lastCvId }),
+  setConsentAccepted: (consentAccepted) => set({ consentAccepted }),
 
   setIsFromBuilder: (isFromBuilder) => set({ isFromBuilder }),
   setBuilderCvId: (builderCvId) => set({ builderCvId }),
@@ -123,6 +128,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     analysisMode: "cv-only",
     targetRole: null,
     lastCvId: null,
+    consentAccepted: false,
     isFromBuilder: false,
     builderCvId: null,
     builderCvName: null,
@@ -141,6 +147,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     analysisMode: "cv-only",
     targetRole: null,
     lastCvId: null,
+    consentAccepted: false,
     // cvFile is preserved
     // Builder state is preserved so user can re-analyze
   }),
