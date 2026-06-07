@@ -19,7 +19,12 @@ i18n
     interpolation: { escapeValue: false },
   });
 
-// Đồng bộ thẻ <html lang> theo ngôn ngữ hiện tại
+// Đồng bộ thẻ <html lang> ngay lập tức và theo dõi thay đổi sau đó
+if (i18n.language) {
+  const baseLang = i18n.language.split("-")[0];
+  document.documentElement.lang = baseLang;
+}
+
 i18n.on("languageChanged", (lng) => {
   const baseLang = lng.split("-")[0];
   document.documentElement.lang = baseLang;

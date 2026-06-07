@@ -1,7 +1,7 @@
 import Layout from "@/components/layout/Layout";
 import {
   ArrowRight, Zap, Layers, ChevronRight, FileText,
-  Search, GraduationCap, Briefcase, Sparkles
+  Search, GraduationCap, Sparkles, CheckCircle2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, useInView, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
@@ -235,7 +235,7 @@ export default function Index() {
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.22] text-slate-900"
+                className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.22] text-slate-900 [text-wrap:balance]"
               >
                 {t("hero.titleLead")}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
@@ -381,13 +381,13 @@ export default function Index() {
           <div className="text-center mb-16 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs font-bold tracking-widest text-blue-600 uppercase">
               <Layers className="w-3.5 h-3.5" />
-              Platform Capabilities
+              {t("bento.badge")}
             </div>
             <h2 className="font-display text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
-              A Unified Intelligent Ecosystem
+              {t("bento.title")}
             </h2>
             <p className="text-slate-500 max-w-xl mx-auto text-sm md:text-base font-medium">
-              We leverage advanced AI analytics and professional workflows to accelerate your career transition.
+              {t("bento.subtitle")}
             </p>
           </div>
 
@@ -400,13 +400,13 @@ export default function Index() {
               className="md:col-span-2 border border-slate-100 bg-white rounded-3xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden group hover:border-blue-500/20 transition-all duration-300 min-h-[300px] shadow-sm hover:shadow-md"
             >
               <div className="space-y-4 max-w-[60%] z-10">
-                <div className="text-xs text-blue-600 font-bold uppercase tracking-wider">Deep AI Diagnosis</div>
-                <h3 className="text-2xl font-bold text-slate-900 font-display">Granular Skill Gap Analysis</h3>
+                <div className="text-xs text-blue-600 font-bold uppercase tracking-wider">{t("bento.diagEyebrow")}</div>
+                <h3 className="text-2xl font-bold text-slate-900 font-display">{t("bento.diagTitle")}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed font-medium">
-                  Upload your CV and match it directly against job descriptions. AI automatically calculates requirements and outlines exact missing skills.
+                  {t("bento.diagDesc")}
                 </p>
                 <Link to="/diagnosis" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 pt-2 hover:text-blue-700 transition-colors">
-                  Start Analysis <ChevronRight className="w-4 h-4" />
+                  {t("bento.diagCta")} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
               
@@ -445,10 +445,10 @@ export default function Index() {
               className="border border-slate-100 bg-white rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group hover:border-indigo-500/20 transition-all duration-300 min-h-[300px] shadow-sm hover:shadow-md"
             >
               <div className="space-y-4 z-10">
-                <div className="text-xs text-indigo-600 font-bold uppercase tracking-wider">Adaptive Roadmap</div>
-                <h3 className="text-2xl font-bold text-slate-900 font-display">Targeted Roadmaps</h3>
+                <div className="text-xs text-indigo-600 font-bold uppercase tracking-wider">{t("bento.roadmapEyebrow")}</div>
+                <h3 className="text-2xl font-bold text-slate-900 font-display">{t("bento.roadmapTitle")}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed font-medium">
-                  We generate target-focused paths based on your gap analysis using efficient 20/80 study frameworks.
+                  {t("bento.roadmapDesc")}
                 </p>
               </div>
 
@@ -485,13 +485,13 @@ export default function Index() {
               className="md:col-span-2 border border-slate-100 bg-white rounded-3xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden group hover:border-cyan-500/20 transition-all duration-300 min-h-[300px] shadow-sm hover:shadow-md"
             >
               <div className="space-y-4 max-w-[60%] z-10">
-                <div className="text-xs text-cyan-600 font-bold uppercase tracking-wider">Real-time Practice</div>
-                <h3 className="text-2xl font-bold text-slate-900 font-display">AI Simulation Practice</h3>
+                <div className="text-xs text-cyan-600 font-bold uppercase tracking-wider">{t("bento.interviewEyebrow")}</div>
+                <h3 className="text-2xl font-bold text-slate-900 font-display">{t("bento.interviewTitle")}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed font-medium">
-                  Refine your responses with voice dialogue, real-time expression tracking, and detailed scorecards detailing weaknesses.
+                  {t("bento.interviewDesc")}
                 </p>
                 <Link to="/interview" className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-600 pt-2 hover:text-cyan-700 transition-colors">
-                  Try Simulator <ChevronRight className="w-4 h-4" />
+                  {t("bento.interviewCta")} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
 
@@ -506,10 +506,10 @@ export default function Index() {
               className="border border-slate-100 bg-white rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300 min-h-[300px] shadow-sm hover:shadow-md"
             >
               <div className="space-y-4 z-10">
-                <div className="text-xs text-emerald-600 font-bold uppercase tracking-wider">Builder</div>
-                <h3 className="text-2xl font-bold text-slate-900 font-display">ATS CV Builder</h3>
+                <div className="text-xs text-emerald-600 font-bold uppercase tracking-wider">{t("bento.builderEyebrow")}</div>
+                <h3 className="text-2xl font-bold text-slate-900 font-display">{t("bento.builderTitle")}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed font-medium">
-                  Build a professional, recruitment-ready resume from scratch with interactive guidance.
+                  {t("bento.builderDesc")}
                 </p>
               </div>
 
@@ -549,67 +549,194 @@ export default function Index() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className="relative px-6 py-20 z-10 max-w-7xl mx-auto"
+          className="relative px-6 py-20 lg:py-28 z-10 max-w-7xl mx-auto"
         >
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="font-display text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
-              Our Process
-            </h2>
-            <p className="text-slate-500 max-w-md mx-auto text-xs md:text-sm font-medium">
-              Three streamlined steps to optimize your skill validation and onboarding pipeline.
-            </p>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            {/* Left Column: Stacked Mockup CVs */}
+            <motion.div
+              variants={cardVariants}
+              className="lg:col-span-5 relative flex items-center justify-center min-h-[460px] md:min-h-[500px] w-full rounded-[2.5rem] bg-gradient-to-br from-blue-50/50 via-indigo-50/20 to-transparent border border-slate-100/50 p-6 md:p-12 overflow-hidden shadow-inner group"
+            >
+              {/* Soft decorative background circles */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-blue-100/30 blur-3xl pointer-events-none" />
+              <div className="absolute top-10 right-10 w-20 h-20 rounded-full bg-indigo-100/20 blur-xl pointer-events-none" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { 
-                num: "01", 
-                title: "Upload & Scan Profile", 
-                desc: "Submit your current CV and core targets. Our system extracts keyword requirements and maps your standing.",
-                icon: <Search className="w-6 h-6 text-blue-600" />
-              },
-              { 
-                num: "02", 
-                title: "Targeted Micro-Learning", 
-                desc: "Follow dynamically-generated educational steps to efficiently build missing technical proficiencies.",
-                icon: <GraduationCap className="w-6 h-6 text-indigo-600" />
-              },
-              { 
-                num: "03", 
-                title: "Validate & Onboard", 
-                desc: "Practice with AI mock interview tools and share verified credentials directly with corporate partners.",
-                icon: <Briefcase className="w-6 h-6 text-emerald-600" />
-              }
-            ].map((step, idx) => (
-              <motion.div 
-                key={idx}
-                variants={cardVariants}
-                className="border border-slate-100 bg-white rounded-3xl p-8 relative overflow-hidden group hover:border-slate-200 transition-all duration-300 shadow-sm hover:shadow-md flex flex-col justify-between min-h-[250px]"
-              >
-                {/* Top row: Icon & Number */}
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300">
-                    {step.icon}
+              {/* Stacked CV Cards */}
+              <div className="relative w-[280px] md:w-[320px] h-[380px] flex items-center justify-center select-none pointer-events-none">
+                {/* CV 1 (Bottom Left) */}
+                <div className="absolute w-[240px] md:w-[260px] h-[340px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(15,23,42,0.03)] border border-slate-100 p-5 transform -rotate-[6deg] -translate-x-[40px] translateY-[15px] opacity-40 scale-[0.9] transition-transform duration-500 ease-out group-hover:-rotate-[12deg] group-hover:-translate-x-[65px] group-hover:translate-y-[20px]">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 mb-4" />
+                  <div className="h-4 w-2/3 bg-slate-100 rounded-md mb-6" />
+                  <div className="space-y-3">
+                    <div className="h-2.5 w-full bg-slate-50 rounded" />
+                    <div className="h-2.5 w-5/6 bg-slate-50 rounded" />
+                    <div className="h-2.5 w-4/5 bg-slate-50 rounded" />
+                    <div className="h-2.5 w-full bg-slate-50 rounded" />
                   </div>
-                  <span className="font-display font-black text-4xl text-slate-100 group-hover:text-slate-200/60 transition-colors duration-300 select-none">
-                    {step.num}
-                  </span>
                 </div>
 
-                {/* Bottom info */}
-                <div className="space-y-3 mt-8">
-                  <h4 className="text-lg font-bold text-slate-800 leading-tight font-display transition-colors duration-300">
-                    {step.title}
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                    {step.desc}
-                  </p>
+                {/* CV 3 (Bottom Right) */}
+                <div className="absolute w-[240px] md:w-[260px] h-[340px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(15,23,42,0.03)] border border-slate-100 p-5 transform rotate-[6deg] translate-x-[40px] translateY-[20px] opacity-40 scale-[0.85] transition-transform duration-500 ease-out group-hover:rotate-[12deg] group-hover:translate-x-[65px] group-hover:translate-y-[25px]">
+                  <div className="h-4 w-1/2 bg-slate-100 rounded-md mb-6" />
+                  <div className="space-y-3">
+                    <div className="h-2.5 w-full bg-slate-50 rounded" />
+                    <div className="h-2.5 w-full bg-slate-50 rounded" />
+                    <div className="h-2.5 w-3/4 bg-slate-50 rounded" />
+                    <div className="h-2.5 w-5/6 bg-slate-50 rounded" />
+                  </div>
                 </div>
-                
-                {/* Subtle bottom gradient glow */}
-                <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-slate-500/[0.01] rounded-full blur-xl pointer-events-none" />
-              </motion.div>
-            ))}
+
+                {/* CV 2 (Top Center - Main) */}
+                <div className="absolute w-[260px] md:w-[280px] h-[360px] bg-white rounded-2xl shadow-[0_20px_40px_rgba(15,23,42,0.06)] border border-slate-100/80 p-6 z-10 transform scale-100 transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:-translate-y-2 group-hover:shadow-[0_25px_50px_rgba(15,23,42,0.08)]">
+                  {/* Score chip — kể chuyện sản phẩm: CV này ĐÃ được AI chấm */}
+                  <div className="absolute -top-3.5 -right-3.5 w-12 h-12 rounded-full bg-white border-2 border-[#DCE9D7] shadow-[0_6px_16px_rgba(15,23,42,0.08)] flex flex-col items-center justify-center z-20">
+                    <span className="font-mono tabular-nums text-sm font-extrabold text-[#346538] leading-none">94</span>
+                    <span className="text-[7px] font-bold text-slate-400 leading-none mt-0.5">/100</span>
+                  </div>
+                  {/* ATS pill */}
+                  <div className="absolute -top-3 -left-2 z-20 bg-[#EDF3EC] border border-[#DCE9D7] rounded-full px-2.5 py-1 shadow-sm flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-[#346538]" />
+                    <span className="text-[9px] font-bold text-[#346538] whitespace-nowrap">{t("process.atsPill")}</span>
+                  </div>
+                  {/* CV Header */}
+                  <div className="flex items-center gap-3 border-b border-slate-100 pb-3 mb-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] font-black text-white shadow-sm">
+                      LA
+                    </div>
+                    <div>
+                      <div className="h-3.5 w-24 bg-slate-900 rounded-sm mb-1">
+                        <div className="h-full w-full bg-slate-900 rounded-sm" />
+                      </div>
+                      <div className="h-2 w-16 bg-slate-400 rounded-sm" />
+                    </div>
+                  </div>
+                  {/* CV Content */}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="h-2 w-1/3 bg-blue-600/20 rounded-sm mb-2" />
+                      <div className="space-y-1.5">
+                        <div className="h-2 w-full bg-slate-100 rounded-sm" />
+                        <div className="h-2 w-11/12 bg-slate-100 rounded-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="h-2 w-1/4 bg-blue-600/20 rounded-sm mb-2" />
+                      <div className="space-y-1.5">
+                        <div className="h-2 w-full bg-slate-100 rounded-sm" />
+                        <div className="h-2 w-5/6 bg-slate-100 rounded-sm" />
+                      </div>
+                    </div>
+                    {/* Simulated Skill Tags */}
+                    <div className="pt-2">
+                      <div className="h-2 w-1/4 bg-blue-600/20 rounded-sm mb-2.5" />
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="h-5 px-2 rounded-md bg-blue-50/60 border border-blue-100/40 text-[9px] font-bold text-blue-600 flex items-center justify-center">React</span>
+                        <span className="h-5 px-2 rounded-md bg-indigo-50/60 border border-indigo-100/40 text-[9px] font-bold text-indigo-600 flex items-center justify-center">TypeScript</span>
+                        <span className="h-5 px-2 rounded-md bg-slate-50 border border-slate-100/50 text-[9px] font-bold text-slate-500 flex items-center justify-center">Tailwind</span>
+                      </div>
+                    </div>
+                    {/* Match bar — điểm khớp như màn kết quả thật */}
+                    <div className="pt-3 mt-1 border-t border-slate-100 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 bg-[#F1F1EF] rounded-full overflow-hidden">
+                        <div className="h-full w-[94%] bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
+                      </div>
+                      <span className="text-[9px] font-mono tabular-nums font-bold text-blue-600 shrink-0">94%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating Black Badge — KHÔNG dùng framer whileHover ở đây:
+                  motion ghi đè inline transform sẽ nuốt mất -translate-x-1/2 (badge nhảy phải).
+                  Tailwind transform utilities compose qua CSS vars nên hover:scale an toàn. */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-slate-950 text-white rounded-2xl shadow-[0_12px_24px_-6px_rgba(0,0,0,0.3)] border border-slate-800 px-5 py-3.5 flex items-center gap-3 transition-transform duration-300 hover:scale-[1.03] hover:border-slate-700 justify-center">
+                <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+                  <Zap className="w-3 h-3 text-slate-950 fill-slate-950" />
+                </div>
+                <span className="text-xs font-bold tracking-tight whitespace-nowrap">
+                  {t("process.badge")}
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Right Column: Steps & CTA */}
+            <div className="lg:col-span-7 flex flex-col justify-center space-y-10">
+              <div className="space-y-4">
+                <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                  {t("process.title")}
+                </h2>
+                <p className="text-slate-500 max-w-xl text-sm md:text-base font-medium leading-relaxed">
+                  {t("process.subtitle")}
+                </p>
+              </div>
+
+              {/* Vertical Steps */}
+              <div className="relative pl-3 space-y-8">
+                {/* Connecting Vertical Line */}
+                <div className="absolute left-[23px] top-6 bottom-6 w-0.5 border-l-2 border-dashed border-slate-200" />
+
+                {[
+                  {
+                    num: "01",
+                    title: t("process.step1Title"),
+                    desc: t("process.step1Desc"),
+                    colorClass: "bg-blue-50/70 text-blue-600 border-blue-100/50",
+                  },
+                  {
+                    num: "02",
+                    title: t("process.step2Title"),
+                    desc: t("process.step2Desc"),
+                    colorClass: "bg-blue-50/70 text-blue-600 border-blue-100/50",
+                  },
+                  {
+                    num: "03",
+                    title: t("process.step3Title"),
+                    desc: t("process.step3Desc"),
+                    colorClass: "bg-blue-50/70 text-blue-600 border-blue-100/50",
+                  },
+                ].map((step, idx) => (
+                  <motion.div
+                    key={idx}
+                    variants={cardVariants}
+                    className="flex items-start gap-5 relative group"
+                  >
+                    {/* Circle Indicator */}
+                    <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center text-sm font-bold border shadow-sm z-10 shrink-0 transition-transform duration-300 group-hover:scale-105 ${step.colorClass}`}>
+                      {step.num}
+                    </div>
+                    {/* Step Description */}
+                    <div className="space-y-1.5 pt-1.5">
+                      <h3 className="text-base md:text-lg font-bold text-slate-800 transition-colors duration-300 group-hover:text-slate-950">
+                        {step.title}
+                      </h3>
+                      <p className="text-xs md:text-sm text-slate-500 leading-relaxed max-w-lg">
+                        {step.desc}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Bottom CTA */}
+              <div className="pt-4 flex justify-start">
+                <Link to="/diagnosis">
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative group h-14 rounded-2xl px-8 text-sm text-white font-bold overflow-hidden shadow-[0_10px_25px_-5px_rgba(37,99,235,0.25)] flex items-center justify-center gap-2 transition-all duration-300"
+                    style={{
+                      background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                    }}
+                  >
+                    <span className="animate-shimmer absolute inset-0" />
+                    <span className="relative flex items-center justify-center gap-2">
+                      {t("process.cta")}
+                      <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </span>
+                  </motion.button>
+                </Link>
+              </div>
+            </div>
           </div>
         </motion.section>
 
@@ -630,22 +757,23 @@ export default function Index() {
 
             <div className="relative z-10 max-w-3xl mx-auto space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-blue-100 tracking-widest uppercase">
-                Measured Results
+                {t("moat.badge")}
               </div>
               <h2 className="font-display text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
-                Same CV. Same score.{" "}
+                {t("moat.title1")}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-200">
-                  Every time.
+                  {t("moat.title2")}
                 </span>
               </h2>
               <p className="text-blue-100/90 text-sm md:text-base font-medium leading-relaxed max-w-2xl mx-auto">
-                Deterministic scoring with{" "}
+                {t("moat.body1")}
                 <span className="font-bold text-white">
-                  <CountUp to={94} suffix="%" /> repeat consistency
+                  <CountUp to={94} suffix="%" />
+                  {t("moat.body2")}
                 </span>
-                , benchmarked against{" "}
-                <span className="font-bold text-white">3,101 real Vietnamese IT job descriptions</span>.
-                Every point is explainable — no AI mood swings.
+                {t("moat.body3")}
+                <span className="font-bold text-white">{t("moat.jds")}</span>
+                {t("moat.body4")}
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -659,7 +787,7 @@ export default function Index() {
                   </motion.button>
                 </Link>
                 <span className="text-[11px] text-blue-200/80 font-semibold">
-                  Free for students · every score explainable
+                  {t("moat.note")}
                 </span>
               </div>
             </div>
@@ -682,43 +810,43 @@ export default function Index() {
                 <span className="font-display font-black text-lg text-slate-800 leading-none tracking-tight">SkillBridge</span>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed font-medium">
-                Bridging the gap between learning and earning with AI-powered career growth and skill matching.
+                {t("footer.tagline")}
               </p>
             </div>
             
             <div>
-              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">Product</h4>
+              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.product")}</h4>
               <ul className="space-y-2 text-xs text-slate-500 font-semibold">
-                <li><Link to="/diagnosis" className="hover:text-blue-600 transition-colors">CV Diagnosis</Link></li>
-                <li><Link to="/learning" className="hover:text-blue-600 transition-colors">Adaptive Roadmap</Link></li>
-                <li><Link to="/interview" className="hover:text-blue-600 transition-colors">AI Simulation</Link></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">Mentor Network</a></li>
+                <li><Link to="/diagnosis" className="hover:text-blue-600 transition-colors">{t("footer.linkDiagnosis")}</Link></li>
+                <li><Link to="/learning" className="hover:text-blue-600 transition-colors">{t("footer.linkRoadmap")}</Link></li>
+                <li><Link to="/interview" className="hover:text-blue-600 transition-colors">{t("footer.linkInterview")}</Link></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkMentor")}</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">Company</h4>
+              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.company")}</h4>
               <ul className="space-y-2 text-xs text-slate-500 font-semibold">
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">About Us</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">Success Stats</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">Testimonials</a></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkAbout")}</a></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkStats")}</a></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkTestimonials")}</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">Support</h4>
+              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.support")}</h4>
               <ul className="space-y-2 text-xs text-slate-500 font-semibold">
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">Help Center</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">Community</a></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkHelp")}</a></li>
+                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkCommunity")}</a></li>
               </ul>
             </div>
           </div>
 
           <div className="max-w-7xl mx-auto border-t border-slate-100 mt-12 pt-8 flex items-center justify-between text-xs text-slate-400 font-semibold">
-            <p>© 2026 SkillBridge. All rights reserved.</p>
+            <p>{t("footer.rights")}</p>
             <div className="flex gap-4">
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">Privacy Policy</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">Terms of Service</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">{t("footer.privacy")}</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">{t("footer.terms")}</a>
             </div>
           </div>
         </footer>

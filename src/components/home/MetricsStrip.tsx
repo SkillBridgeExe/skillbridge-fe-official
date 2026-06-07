@@ -1,28 +1,30 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import CountUp from "@/components/shared/CountUp";
 
 export default function MetricsStrip() {
+  const { t } = useTranslation("home");
   const metrics = [
     {
       to: 94,
       suffix: "%",
-      label: "Scoring Consistency",
-      description: "AI grading precision score"
+      label: t("metrics.consistencyLabel"),
+      description: t("metrics.consistencyDesc")
     },
     {
       to: 8,
-      label: "IT Roles Configured",
-      description: "Supported tech careers"
+      label: t("metrics.rolesLabel"),
+      description: t("metrics.rolesDesc")
     },
     {
       to: 3101,
-      label: "Vietnam IT JDs",
-      description: "Vietnam IT JD repository"
+      label: t("metrics.jdsLabel"),
+      description: t("metrics.jdsDesc")
     },
     {
       to: 4,
-      label: "AI Agent Modules",
-      description: "Autonomous AI modules"
+      label: t("metrics.modulesLabel"),
+      description: t("metrics.modulesDesc")
     }
   ];
 
