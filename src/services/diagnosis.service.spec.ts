@@ -161,6 +161,12 @@ describe("mapCvDtoToReviewData", () => {
     expect(ui.issues[1].suggestion).toBe("");
   });
 
+  it("pass-through document đầy đủ cho preview giàu (W3d)", () => {
+    const ui = mapCvDtoToReviewData(cvDto);
+    expect(ui.document?.contact.name).toBe("An");
+    expect(ui.document?.summary).toContain("Frontend intern");
+  });
+
   it("pass-through ats_check đầy đủ cho tab ATS (W3c)", () => {
     const withAts = {
       ...cvDto,
