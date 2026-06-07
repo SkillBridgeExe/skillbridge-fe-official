@@ -6,6 +6,7 @@ import {
   User, Target, FileText, GraduationCap, Briefcase, 
   FolderGit2, Wrench, Award, CheckCircle, Check
 } from "lucide-react";
+import type { BuilderSection } from "@shared/api";
 
 const SECTIONS = [
   { id: "basic-info", icon: User },
@@ -31,11 +32,22 @@ const sectionTitleMap: Record<string, { en: string; vi: string }> = {
   "review": { en: "Review & Polish", vi: "Hoàn thiện CV" },
 };
 
+const sectionUiToBeMap: Record<string, BuilderSection> = {
+  "basic-info": "basic",
+  "summary": "summary",
+  "education": "education",
+  "experience": "experience",
+  "projects": "projects",
+  "skills": "skills",
+  "certifications": "certifications",
+};
+
 export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | "horizontal" }) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { activeSection, setActiveSection, getSectionStatuses } = useCvBuilderStore();
+  const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations } = useCvBuilderStore();
   const statuses = getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
+  const isLoggedIn = !!localStorage.getItem("accessToken");
 
   // Calculate completion
   const doneCount = statuses.filter(s => s.status === "completed").length;
@@ -84,6 +96,8 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
           const isSelected = activeSection === index;
           const status = index < 8 ? statuses[index]?.status : null;
           const title = sectionTitleMap[section.id][currentLang];
+          const beSection = sectionUiToBeMap[section.id];
+          const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
 
           return (
             <button
@@ -93,17 +107,27 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
                 "px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap outline-none shrink-0",
                 isSelected
                   ? "bg-primary text-white border-primary shadow-sm"
-                  : "bg-[#FBFBFA] border-[#EAEAEA] text-[#2F3437] hover:border-slate-350"
+                  : "bg-[#FBFBFA] border-[#EAEAEA] text-[#2F3437] hover:border-slate-355"
               )}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{title}</span>
               
-              {/* Status dot in horizontal view */}
-              {status === "completed" && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              {/* Status / Score in horizontal view */}
+              {evaluation ? (
+                <span className={cn("text-[9px] font-mono font-bold px-1 rounded-full shrink-0 shadow-sm",
+                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
+                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
+                  : "bg-[#FBFBFA] border border-slate-200 text-slate-500"
+                )}>
+                  {evaluation.score}%
+                </span>
+              ) : (
+                status === "completed" && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                )
               )}
-              {status === "needs-improvement" && (
+              {!evaluation && status === "needs-improvement" && (
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               )}
             </button>
@@ -131,6 +155,8 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
           const isSelected = activeSection === index;
           const status = index < 8 ? statuses[index]?.status : null;
           const title = sectionTitleMap[section.id][currentLang];
+          const beSection = sectionUiToBeMap[section.id];
+          const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
 
           return (
             <button
@@ -148,17 +174,29 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
                 <span className="truncate">{title}</span>
               </div>
 
-              {/* Status indicator on the right */}
-              {status === "completed" && (
-                <span className="w-5 h-5 rounded-full bg-[#EDF3EC] flex items-center justify-center text-[#346538] shrink-0 ml-2">
-                  <Check className="w-3 h-3" />
+              {/* Status/Score indicator on the right */}
+              {evaluation ? (
+                <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-2 shadow-sm",
+                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
+                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
+                  : "bg-[#FBFBFA] border border-slate-200 text-slate-500"
+                )}>
+                  {evaluation.score}%
                 </span>
-              )}
-              {status === "needs-improvement" && (
-                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 ml-2" />
-              )}
-              {status === "missing" && (
-                <span className="w-2 h-2 rounded-full border border-[#EAEAEA] shrink-0 ml-2" />
+              ) : (
+                <>
+                  {status === "completed" && (
+                    <span className="w-5 h-5 rounded-full bg-[#EDF3EC] flex items-center justify-center text-[#346538] shrink-0 ml-2">
+                      <Check className="w-3 h-3" />
+                    </span>
+                  )}
+                  {status === "needs-improvement" && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 ml-2" />
+                  )}
+                  {status === "missing" && (
+                    <span className="w-2 h-2 rounded-full border border-[#EAEAEA] shrink-0 ml-2" />
+                  )}
+                </>
               )}
             </button>
           );
