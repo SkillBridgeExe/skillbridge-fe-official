@@ -17,9 +17,9 @@ export default {
     hero: {
       badge: "Nền tảng phát triển sự nghiệp bằng AI",
       titleLead: "Cầu nối ",
-      titleSkills: "kỹ năng",
-      titleMid: ", dẫn bước ",
-      titleDream: "sự nghiệp.",
+      titleSkills: "kỹ năng,",
+      titleMid: " dẫn bước ",
+      titleDream: "sự nghiệp",
       subtitle: "Chấm điểm CV, tạo CV chuẩn tuyển dụng từ con số 0 và nhận lộ trình học cá nhân hoá — sẵn sàng cho công việc bạn nhắm tới.",
       ctaScan: "Chấm điểm CV miễn phí",
       ctaBuild: "Tạo CV bằng AI",

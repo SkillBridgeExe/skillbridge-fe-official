@@ -10,10 +10,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Shield, Building2, Users, Globe } from "lucide-react";
+import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
+
+const VNFlagCircle = () => (
+  <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
+    <circle cx="15" cy="15" r="15" fill="#da251d" />
+    <polygon points="15,6 16.65,11.08 22,11.08 17.68,14.22 19.33,19.3 15,16.18 10.67,19.3 12.32,14.22 8,11.08 13.35,11.08" fill="#ffff00" />
+  </svg>
+);
+
+const UKFlagCircle = () => (
+  <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
+    <clipPath id="circleView">
+      <circle cx="15" cy="15" r="15" />
+    </clipPath>
+    <g clipPath="url(#circleView)">
+      <rect width="30" height="30" fill="#012169" />
+      <path d="M0,0 L30,30 M30,0 L0,30" stroke="#fff" strokeWidth="5" />
+      <path d="M0,0 L30,30 M30,0 L0,30" stroke="#C8102E" strokeWidth="2" />
+      <path d="M15,0 L15,30 M0,15 L30,15" stroke="#fff" strokeWidth="8" />
+      <path d="M15,0 L15,30 M0,15 L30,15" stroke="#C8102E" strokeWidth="5" />
+    </g>
+  </svg>
+);
 
 const NAV_ITEMS = [
   { labelKey: "nav.dashboard", href: "/dashboard" },
@@ -75,16 +97,41 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => i18n.changeLanguage(i18n.language === "vi" ? "en" : "vi")}
-          className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 h-9 transition-all active:scale-95"
-          title={i18n.language === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
-        >
-          <Globe className="w-4 h-4 text-slate-500" />
-          <span className="text-xs font-bold tracking-wider">{currentLang}</span>
-        </Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-2 h-9 transition-all active:scale-95 border border-slate-100"
+            >
+              {i18n.language === "vi" ? <VNFlagCircle /> : <UKFlagCircle />}
+              <span className="text-xs font-bold tracking-wider">{i18n.language === "vi" ? "VI" : "EN"}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 shadow-lg p-1">
+            <DropdownMenuItem
+              onClick={() => i18n.changeLanguage("en")}
+              className={cn(
+                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                i18n.language === "en" ? "bg-primary/5 text-primary" : "text-slate-600"
+              )}
+            >
+              <UKFlagCircle />
+              <span>English</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => i18n.changeLanguage("vi")}
+              className={cn(
+                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                i18n.language === "vi" ? "bg-primary/5 text-primary" : "text-slate-600"
+              )}
+            >
+              <VNFlagCircle />
+              <span>Tiếng Việt</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {!isAuthenticated ? (
           <div className="flex items-center gap-2">
@@ -100,7 +147,7 @@ export default function Navbar() {
             </Link>
           </div>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all">
                 <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />

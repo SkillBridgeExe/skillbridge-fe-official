@@ -217,8 +217,8 @@ export default function Index() {
           />
         </div>
 
-        <section className="relative min-h-[calc(100vh-76px)] flex items-center pt-24 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 lg:px-16 max-w-[1536px] mx-auto z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center w-full">
+        <section className="relative min-h-[calc(100vh-76px)] flex items-center pt-24 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 lg:px-16 max-w-[1600px] mx-auto z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 xl:gap-16 items-center w-full">
             
             {/* Left Column: Hero Content */}
             <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left space-y-8">
@@ -244,9 +244,12 @@ export default function Index() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
                   {t("hero.titleSkills")}
                 </span>
-                {t("hero.titleMid")}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
-                  {t("hero.titleDream")}
+                <br className="hidden lg:inline" />
+                <span className="lg:whitespace-nowrap">
+                  {t("hero.titleMid")}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
+                    {t("hero.titleDream")}
+                  </span>
                 </span>
               </motion.h1>
 
