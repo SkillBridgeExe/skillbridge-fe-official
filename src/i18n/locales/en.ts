@@ -42,6 +42,7 @@ export default {
       s3Title: "Practice until you're ready",
       s3Desc: "Voice interviews with an AI examiner — every answer scored, every weak spot called out before the real thing.",
       s3Cta: "Try the AI interviewer",
+      atsPill: "ATS-ready",
     },
     eco: {
       title: "You're not doing this alone",

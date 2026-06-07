@@ -42,6 +42,7 @@ export default {
       s3Title: "Luyện đến khi sẵn sàng",
       s3Desc: "Phỏng vấn giọng nói với AI — từng câu trả lời được chấm điểm, từng điểm yếu được chỉ ra trước buổi thật.",
       s3Cta: "Thử phỏng vấn AI",
+      atsPill: "Chuẩn ATS",
     },
     eco: {
       title: "Bạn không đi một mình",
