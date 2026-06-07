@@ -177,6 +177,33 @@ export function DiagnosisStep2Review() {
   const atsScore = reviewData?.breakdown.ats ?? 0;
   const dimensions = reviewData?.dimensions ?? [];
 
+  const [displayedScore, setDisplayedScore] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 800;
+    const startScore = 0;
+    const endScore = overallCvScore;
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const currentScore = Math.floor(easeProgress * (endScore - startScore) + startScore);
+
+      setDisplayedScore(currentScore);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [overallCvScore]);
+
   /* ── Confetti for high scores ── */
   const confettiFired = useRef(false);
   useEffect(() => {
@@ -228,11 +255,16 @@ export function DiagnosisStep2Review() {
           <div className="flex flex-col items-center shrink-0">
             <div className="flex items-baseline gap-1">
               <span className="text-[56px] font-mono tabular-nums font-black text-[#2F3437] leading-none tracking-[-0.02em]">
-                {overallCvScore}
+                {displayedScore}
               </span>
               <span className="text-sm text-[#787774] font-medium">/100</span>
             </div>
             <BandPill score={overallCvScore} t={t} />
+            {overallCvScore >= 70 && (
+              <p className="text-[12px] text-[#346538] font-medium mt-1 text-center max-w-[150px] leading-snug">
+                {t("review.praiseHigh")}
+              </p>
+            )}
           </div>
 
           <div className="flex-1 text-center sm:text-left">

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -33,26 +34,88 @@ const PASTEL = {
  * ═══════════════════════════════════════════════════════════════════ */
 export function TopSummaryCard({ summary }: { summary: TopSummary }) {
   const { t } = useTranslation("diagnosis");
+  const lastCvId = useDiagnosisStore((s) => s.lastCvId);
+  const storageKey = lastCvId ? `sb-actions-${lastCvId}` : null;
+
+  const [tickedIndexes, setTickedIndexes] = useState<number[]>([]);
+
+  // Load from localStorage on mount or lastCvId change
+  useEffect(() => {
+    if (!storageKey) {
+      setTickedIndexes([]);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setTickedIndexes(JSON.parse(stored));
+      } else {
+        setTickedIndexes([]);
+      }
+    } catch {
+      setTickedIndexes([]);
+    }
+  }, [storageKey]);
+
+  // Save to localStorage
+  const toggleTick = (index: number) => {
+    const next = tickedIndexes.includes(index)
+      ? tickedIndexes.filter((i) => i !== index)
+      : [...tickedIndexes, index];
+    setTickedIndexes(next);
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
+
+  const total = summary.prioritized_actions.length;
+  const done = tickedIndexes.filter((i) => i < total).length;
+
   return (
     <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="p-6">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-          <ListChecks className="w-3.5 h-3.5" />
-          {t("insights.fixFirst")}
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <ListChecks className="w-3.5 h-3.5" />
+            {t("insights.fixFirst")}
+          </div>
+          {total > 0 && (
+            <span className="text-[11px] font-mono text-slate-400">
+              {t("insights.actionsDone", { done, total })}
+            </span>
+          )}
         </div>
         <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
           {summary.headline}
         </h2>
-        {summary.prioritized_actions.length > 0 && (
-          <ol className="mt-4 space-y-2">
-            {summary.prioritized_actions.map((action, idx) => (
-              <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
-                <span className="w-5 h-5 rounded-md bg-[#FBF3DB] text-[#956400] text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="font-medium leading-relaxed">{action}</span>
-              </li>
-            ))}
+        {total > 0 && (
+          <ol className="mt-4 space-y-3">
+            {summary.prioritized_actions.map((action, idx) => {
+              const isTicked = tickedIndexes.includes(idx);
+              return (
+                <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
+                  <input
+                    type="checkbox"
+                    checked={isTicked}
+                    onChange={() => toggleTick(idx)}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1 shrink-0 cursor-pointer"
+                  />
+                  <span
+                    onClick={() => toggleTick(idx)}
+                    className={cn(
+                      "font-medium leading-relaxed cursor-pointer select-none transition-all duration-200",
+                      isTicked && "line-through text-[#B9B9B7]"
+                    )}
+                  >
+                    {action}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
       </CardContent>
