@@ -456,8 +456,8 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
   }, [jobDescription, allSkills]);
 
   const toggleText = isOpen 
-    ? ((t("common.collapse" as any) !== "common.collapse" && t("common.collapse" as any)) || "Thu nhỏ")
-    : ((t("common.expand" as any) !== "common.expand" && t("common.expand" as any)) || "Xem thêm");
+    ? ((t("common.collapse" as never) !== "common.collapse" && t("common.collapse" as never)) || "Thu nhỏ")
+    : ((t("common.expand" as never) !== "common.expand" && t("common.expand" as never)) || "Xem thêm");
 
   return (
     <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden mt-6">
