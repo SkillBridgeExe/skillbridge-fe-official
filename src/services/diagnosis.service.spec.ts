@@ -161,6 +161,26 @@ describe("mapCvDtoToReviewData", () => {
     expect(ui.issues[1].suggestion).toBe("");
   });
 
+  it("pass-through ats_check đầy đủ cho tab ATS (W3c)", () => {
+    const withAts = {
+      ...cvDto,
+      review: {
+        ...review,
+        ats_check: {
+          ats_rule_score: 95,
+          rules: [
+            { rule_id: "email_present", label: "Có email", status: "pass" as const, score: 1, evidence: "an@x.dev" },
+            { rule_id: "reasonable_length", label: "Độ dài hợp lý", status: "warn" as const, score: 0.5, hint: "CV ngắn" },
+          ],
+          summary: { total: 2, passed: 1, warned: 1, failed: 0 },
+        },
+      },
+    };
+    const ui = mapCvDtoToReviewData(withAts);
+    expect(ui.atsCheck?.summary.passed).toBe(1);
+    expect(ui.atsCheck?.rules[1].hint).toBe("CV ngắn");
+  });
+
   it("pass-through 4 dim thật + rationale cho W3 UI", () => {
     const ui = mapCvDtoToReviewData(cvDto);
     expect(ui.dimensions).toHaveLength(4);
