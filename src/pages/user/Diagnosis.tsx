@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
 import { CheckCircle2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { LOADING_MESSAGES, JD_LOADING_MESSAGES } from "@/lib/mock-data/diagnosis";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import PageLoader from "@/components/common/PageLoader";
@@ -38,9 +37,8 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
   const {
-    step, isAnalyzing, hasActivatedJdMode,
-    targetStep, loadingMsgIdx, loadingProgress,
-    setLoadingProgress, setLoadingMsgIdx,
+    step, isAnalyzing, hasActivatedJdMode, reviewData,
+    targetStep,
     setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
     setStep
   } = useDiagnosisStore();
@@ -67,26 +65,23 @@ export default function Diagnosis() {
       // User came here without source=builder, e.g. from homepage "Scan my CV"
       // Clear builder state so we don't persist it inappropriately
       clearBuilderState();
+      // Reset to input step when navigating fresh (e.g. clicking nav link)
+      if (!reviewData) setStep("input");
     }
-  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState, setStep]);
+  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState, setStep, reviewData]);
 
-
-  const loadingMsgArray = targetStep === "results" ? JD_LOADING_MESSAGES : LOADING_MESSAGES;
-
-  /* Rotate loading messages while async analysis is in-flight */
+  /* ── Honest elapsed timer ── */
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (!isAnalyzing) return;
+    if (!isAnalyzing) { setElapsed(0); return; }
+    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isAnalyzing]);
 
-    const msgTimer = setInterval(() => setLoadingMsgIdx((i: number) => (i + 1) % loadingMsgArray.length), 1000);
-    const progressTimer = setInterval(() => {
-      setLoadingProgress((p: number) => (p >= 95 ? 95 : p + 2));
-    }, 120);
-
-    return () => {
-      clearInterval(msgTimer);
-      clearInterval(progressTimer);
-    };
-  }, [isAnalyzing, loadingMsgArray.length, setLoadingMsgIdx, setLoadingProgress]);
+  const loadingPhase =
+    elapsed < 3 ? t("loading.uploading")
+    : elapsed < 10 ? t("loading.parsing")
+    : t("loading.scoring");
 
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
@@ -130,15 +125,17 @@ export default function Diagnosis() {
                   {targetStep === "results" ? t("loading.skillGap") : t("loading.cvQuality")}
                 </h3>
                 <p className="text-slate-500 transition-all duration-300 animate-in fade-in">
-                  {loadingMsgArray[loadingMsgIdx]}
+                  {loadingPhase}
                 </p>
+                {elapsed >= 8 && (
+                  <p className="text-xs text-slate-400 animate-in fade-in duration-500">
+                    {t("loading.coldStart")}
+                  </p>
+                )}
               </div>
-              <div className="w-full max-w-sm space-y-2">
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all duration-100 ease-linear" style={{ width: `${loadingProgress}%` }} />
-                </div>
-                <p className="text-xs text-center text-slate-500 font-semibold">{t("loading.completed", { percent: loadingProgress })}</p>
-              </div>
+              <p className="text-xs text-slate-400 font-mono tabular-nums">
+                {t("loading.elapsed", { seconds: elapsed })}
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
