@@ -24,6 +24,7 @@ export default {
       upload: "Upload CV",
       review: "CV Review",
       results: "Skill Gap Results",
+      progress: "Step 1 of 2 — Upload",
     },
     loading: {
       cvQuality: "AI is analyzing CV Quality...",
@@ -76,6 +77,9 @@ export default {
       consentLabel: "I agree to the processing of the personal data in this CV for analysis purposes.",
       errorFileTooLarge: "The file exceeds 5MB. Please upload a smaller file.",
       changeFile: "Change file",
+      addJd: "Add a job description (optional)",
+      hideJd: "Hide job description",
+      dropActive: "Drop your CV here",
     },
     review: {
       backToUpload: "Back to upload",
@@ -194,6 +198,11 @@ export default {
       "proficiency.advanced": "Advanced",
       "proficiency.intermediate": "Intermediate",
       "proficiency.beginner": "Beginner",
+    },
+    builder: {
+      sections: "Sections",
+      sectionsDone: "{{done}}/{{total}} completed",
+      previewEmpty: "Your CV preview appears here as you fill in the sections.",
     },
   },
 } as const;

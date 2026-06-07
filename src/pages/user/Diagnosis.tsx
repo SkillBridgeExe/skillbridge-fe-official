@@ -141,39 +141,55 @@ export default function Diagnosis() {
         </AnimatePresence>
 
         {/* ── Header ── */}
-        <header className="mb-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4">
-            <Brain className="w-3.5 h-3.5" /> {t("header.badge")}
-          </div>
-          <h1 className="text-4xl md:text-5xl font-poppins font-black text-slate-900 mb-3">
-            {t("header.title")}
-          </h1>
-          <p className="text-slate-500 max-w-xl mx-auto">
-            {t("header.subtitle")}
-          </p>
-        </header>
+        {step === "input" ? (
+          <header className="mb-6 text-center">
+            <h1 className="text-3xl font-poppins font-black text-[#2F3437] mb-1.5 tracking-tight">
+              {t("header.title")}
+            </h1>
+            <p className="text-sm text-[#787774] max-w-xl mx-auto leading-normal flex flex-wrap items-center justify-center gap-2">
+              <span>{t("header.subtitle")}</span>
+              <span className="inline-block text-[11px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2.5 py-0.5 rounded-full shrink-0">
+                {t("steps.progress")}
+              </span>
+            </p>
+          </header>
+        ) : (
+          <header className="mb-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+              <Brain className="w-3.5 h-3.5" /> {t("header.badge")}
+            </div>
+            <h1 className="text-4xl md:text-5xl font-poppins font-black text-slate-900 mb-3">
+              {t("header.title")}
+            </h1>
+            <p className="text-slate-500 max-w-xl mx-auto">
+              {t("header.subtitle")}
+            </p>
+          </header>
+        )}
 
         {/* ── Dynamic Step Indicator ── */}
-        <div className="mb-10 flex items-center justify-center gap-1 sm:gap-4">
-          <StepDot n={1} label={t("steps.upload")} active={step === "input"} done={step !== "input"} />
-          <div className={cn("flex-1 max-w-[60px] h-0.5 transition-colors", step !== "input" ? "bg-primary" : "bg-slate-200")} />
-          <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />
+        {step !== "input" && (
+          <div className="mb-10 flex items-center justify-center gap-1 sm:gap-4">
+            <StepDot n={1} label={t("steps.upload")} active={false} done={true} />
+            <div className="flex-1 max-w-[60px] h-0.5 transition-colors bg-primary" />
+            <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />
 
-          {/* Framer Motion for animating Step 3 in/out based on JD mode */}
-          <AnimatePresence>
-            {hasActivatedJdMode && (
-              <motion.div
-                initial={{ opacity: 0, width: 0, x: -20 }}
-                animate={{ opacity: 1, width: "auto", x: 0 }}
-                exit={{ opacity: 0, width: 0, x: -20 }}
-                className="flex items-center gap-1 sm:gap-4 overflow-hidden"
-              >
-                <div className={cn("flex-1 w-[60px] h-0.5 transition-colors", step === "results" ? "bg-primary" : "bg-slate-200")} />
-                <StepDot n={3} label={t("steps.results")} active={step === "results"} done={false} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            {/* Framer Motion for animating Step 3 in/out based on JD mode */}
+            <AnimatePresence>
+              {hasActivatedJdMode && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0, x: -20 }}
+                  animate={{ opacity: 1, width: "auto", x: 0 }}
+                  exit={{ opacity: 0, width: 0, x: -20 }}
+                  className="flex items-center gap-1 sm:gap-4 overflow-hidden"
+                >
+                  <div className={cn("flex-1 w-[60px] h-0.5 transition-colors", step === "results" ? "bg-primary" : "bg-slate-200")} />
+                  <StepDot n={3} label={t("steps.results")} active={step === "results"} done={false} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 1: INPUT                                  */}

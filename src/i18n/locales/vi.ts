@@ -24,6 +24,7 @@ export default {
       upload: "Tải CV lên",
       review: "Đánh giá CV",
       results: "Kết quả Skill Gap",
+      progress: "Bước 1/2 — Tải CV",
     },
     loading: {
       cvQuality: "AI đang phân tích chất lượng CV...",
@@ -76,6 +77,9 @@ export default {
       consentLabel: "Tôi đồng ý cho phép xử lý dữ liệu cá nhân trong CV này để phục vụ việc phân tích.",
       errorFileTooLarge: "Tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.",
       changeFile: "Đổi tệp",
+      addJd: "Thêm mô tả công việc (không bắt buộc)",
+      hideJd: "Ẩn mô tả công việc",
+      dropActive: "Thả CV vào đây",
     },
     review: {
       backToUpload: "Về màn tải CV",
@@ -104,7 +108,7 @@ export default {
       deeperTitle: "Muốn phân tích sâu hơn nữa?",
       deeperDesc: "Thêm một bản mô tả công việc cụ thể để xem chính xác khoảng trống kỹ năng và điểm khớp.",
       startOver: "Làm lại từ đầu",
-      compareJd: "So sánh với JD",
+      compareJd: "So khớp với JD",
       toastMissingCvTitle: "Thiếu CV",
       toastMissingCvDesc: "Hãy chấm một CV trước khi so sánh với JD.",
       toastMissingJdTitle: "Thiếu mô tả công việc",
@@ -194,6 +198,11 @@ export default {
       "proficiency.advanced": "Thành thạo",
       "proficiency.intermediate": "Khá",
       "proficiency.beginner": "Mới bắt đầu",
+    },
+    builder: {
+      sections: "Các mục",
+      sectionsDone: "Hoàn thành {{done}}/{{total}}",
+      previewEmpty: "Bản xem trước CV sẽ hiện ở đây khi bạn điền các mục.",
     },
   },
 } as const;

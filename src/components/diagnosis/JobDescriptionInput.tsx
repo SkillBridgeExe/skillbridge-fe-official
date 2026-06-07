@@ -159,7 +159,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
               <label htmlFor="jd-input-compact" className="sr-only">{t("jdInput.title")}</label>
               <textarea
                 id="jd-input-compact"
-                className="w-full h-[180px] p-4 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-[13px] resize-none font-sans"
+                className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-[13px] resize-none font-sans"
                 placeholder={t("jdInput.placeholderCompact")}
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
@@ -167,7 +167,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
               />
             </motion.div>
           ) : jdFile ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">{jdFile.name}</p>
@@ -181,7 +181,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
+              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
                 <FileUp className="w-9 h-9 text-slate-300 mb-3 group-hover/drop:text-primary transition-colors" />
                 <p className="text-sm text-slate-500"><span className="font-semibold text-primary">{t("jdInput.dropHint").split(" or ")[0]?.split("hoặc")[0]}</span></p>
                 <p className="text-xs text-slate-400 mt-1">{t("jdInput.dropTypes")}</p>
@@ -197,14 +197,14 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
               <label htmlFor="jd-input-full" className="sr-only">{t("jdInput.title")}</label>
               <textarea
                 id="jd-input-full"
-                className="w-full h-[180px] p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-sm resize-none placeholder:text-slate-400 font-sans leading-relaxed"
+                className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-sm resize-none placeholder:text-slate-400 font-sans leading-relaxed"
                 placeholder={t("jdInput.placeholder")}
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
             </motion.div>
           ) : jdFile ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">{jdFile.name}</p>
@@ -218,7 +218,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
+              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
                 <FileUp className="w-9 h-9 text-slate-300 mb-3 group-hover/drop:text-primary transition-colors" />
                 <p className="text-sm text-slate-500"><span className="font-semibold text-primary">{t("jdInput.dropHint").split(" or ")[0]?.split("hoặc")[0]}</span></p>
                 <p className="text-xs text-slate-400 mt-1">{t("jdInput.dropTypes")}</p>

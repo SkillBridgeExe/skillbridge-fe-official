@@ -147,7 +147,6 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     analysisMode: "cv-only",
     targetRole: null,
     lastCvId: null,
-    consentAccepted: false,
     // cvFile is preserved
     // Builder state is preserved so user can re-analyze
   }),
