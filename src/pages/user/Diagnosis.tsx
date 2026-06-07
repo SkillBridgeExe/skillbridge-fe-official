@@ -13,6 +13,7 @@ import PageLoader from "@/components/common/PageLoader";
 const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
 const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel").then(m => ({ default: m.CvPreviewPanel })));
+const CvSectionNav = lazy(() => import("@/components/cv-builder/CvSectionNav").then(m => ({ default: m.CvSectionNav })));
 
 /* ── Step Indicator Dot ── */
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
@@ -91,8 +92,18 @@ export default function Diagnosis() {
           <div className="h-[calc(100vh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
             <CvBuilderHeader />
             <div className="flex-1 flex overflow-hidden">
-              <div className="w-[45%] h-full border-r border-slate-200 bg-white overflow-y-auto">
-                <CvFormPanel />
+              <div className="w-[45%] h-full border-r border-slate-200 bg-white flex overflow-hidden shrink-0">
+                <div className="hidden xl:block w-[220px] border-r border-slate-150 h-full overflow-y-auto shrink-0 bg-white p-4">
+                  <CvSectionNav variant="vertical" />
+                </div>
+                <div className="flex-1 h-full overflow-y-auto flex flex-col">
+                  <div className="xl:hidden sticky top-0 bg-white z-20 border-b border-slate-150 shrink-0">
+                    <CvSectionNav variant="horizontal" />
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <CvFormPanel />
+                  </div>
+                </div>
               </div>
               <div className="w-[55%] h-full bg-slate-100 overflow-y-auto p-4 lg:p-8">
                 <CvPreviewPanel />
