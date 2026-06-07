@@ -1,7 +1,8 @@
 import Layout from "@/components/layout/Layout";
 import {
   ArrowRight, Zap, Layers, ChevronRight, FileText,
-  Search, GraduationCap, Sparkles, CheckCircle2
+  Search, GraduationCap, Sparkles,
+  Users, Briefcase
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, useInView, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
@@ -93,14 +94,7 @@ const containerVariants = {
   }
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" as const }
-  }
-};
+
 
 /* ─────────────────────────────────────────────
    Bento cell graphic: AI examiner question types
@@ -541,6 +535,82 @@ export default function Index() {
               </div>
             </div>
 
+          </div>
+        </motion.section>
+
+        {/* ══════════════════════════════════════
+            ECOSYSTEM SECTION
+            ══════════════════════════════════════ */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="relative px-6 pb-20 lg:pb-28 z-10 max-w-7xl mx-auto"
+        >
+          {/* Header */}
+          <div className="text-center mb-16 space-y-3">
+            <h2 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              {t("eco.title")}
+            </h2>
+            <p className="text-slate-500 max-w-xl mx-auto text-xs md:text-sm font-medium leading-relaxed">
+              {t("eco.subtitle")}
+            </p>
+          </div>
+
+          {/* Grid 2 Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Card Mentor */}
+            <div className="bg-white border border-[#EAEAEA] rounded-2xl p-8 shadow-sm hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-slate-300 transition-all duration-300 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-xl bg-[#EDF3EC] flex items-center justify-center text-[#2e7d32] shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-slate-900">
+                  {t("eco.mentorTitle")}
+                </h3>
+                <p className="text-slate-500 text-sm leading-relaxed font-medium">
+                  {t("eco.mentorDesc")}
+                </p>
+              </div>
+              <div className="pt-6">
+                <Link to="/ecosystem">
+                  <motion.span
+                    whileTap={{ scale: 0.98 }}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+                  >
+                    {t("eco.mentorCta")}
+                    <ChevronRight className="w-4 h-4" />
+                  </motion.span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Card Jobs */}
+            <div className="bg-white border border-[#EAEAEA] rounded-2xl p-8 shadow-sm hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-slate-300 transition-all duration-300 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-xl bg-[#E1F3FE] flex items-center justify-center text-[#0288d1] shrink-0">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-slate-900">
+                  {t("eco.jobsTitle")}
+                </h3>
+                <p className="text-slate-500 text-sm leading-relaxed font-medium">
+                  {t("eco.jobsDesc")}
+                </p>
+              </div>
+              <div className="pt-6">
+                <Link to="/jobs">
+                  <motion.span
+                    whileTap={{ scale: 0.98 }}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+                  >
+                    {t("eco.jobsCta")}
+                    <ChevronRight className="w-4 h-4" />
+                  </motion.span>
+                </Link>
+              </div>
+            </div>
           </div>
         </motion.section>
 
