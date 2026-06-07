@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ListChecks, Quote } from "lucide-react";
+import { ListChecks, Quote, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type {
   ExtractedSkill,
   RelevanceSkillItem,
@@ -70,6 +71,19 @@ const PROFICIENCY_ORDER: Record<SkillProficiencyHint, number> = {
 };
 
 function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => string }) {
+  const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
+  const setHighlightEvidence = useDiagnosisStore((s) => s.setHighlightEvidence);
+  const isActive = !!skill.evidence_text && highlightEvidence === skill.evidence_text;
+
+  const handleClick = () => {
+    if (!skill.evidence_text) return;
+    if (isActive) {
+      setHighlightEvidence(null);
+    } else {
+      setHighlightEvidence(skill.evidence_text);
+    }
+  };
+
   const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
     advanced: { label: t("insights.proficiency.advanced"), chip: PASTEL.green },
     intermediate: { label: t("insights.proficiency.intermediate"), chip: PASTEL.yellow },
@@ -79,20 +93,27 @@ function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => st
   // Contract §6.3: proficiency 'unknown' → ẨN badge, chỉ hiện tên.
   const proficiency =
     skill.proficiency_hint !== "unknown" ? PROFICIENCY_STYLE[skill.proficiency_hint] : null;
+
   const chip = (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border border-[#EAEAEA] bg-white px-2.5 py-1.5",
-        skill.evidence_text && "cursor-help",
+        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-all duration-200",
+        isActive
+          ? "border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20"
+          : "border-[#EAEAEA] bg-white hover:border-slate-300",
+        skill.evidence_text && "cursor-pointer"
       )}
     >
+      {skill.evidence_text && (
+        <Eye className={cn("w-3 h-3 transition-opacity", isActive ? "text-indigo-600 opacity-90" : "text-slate-400 opacity-40")} />
+      )}
       <span className="text-[13px] font-semibold text-[#2F3437]">{skill.name}</span>
       {proficiency && (
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold border", proficiency.chip)}>
           {proficiency.label}
         </span>
       )}
-      {skill.evidence_text && <Quote className="w-3 h-3 text-slate-300" />}
+      {skill.evidence_text && <Quote className="w-3 h-3 text-slate-300 shrink-0" />}
     </span>
   );
 
@@ -103,7 +124,12 @@ function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => st
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-pressed={isActive}
+          className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        >
           {chip}
         </button>
       </TooltipTrigger>
@@ -124,9 +150,14 @@ export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
     <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="pt-5 pb-5">
         <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.skillsTitle")}</h3>
-        <p className="text-xs text-[#787774] mt-0.5 mb-3">
-          {t("insights.skillsHint")}
-        </p>
+        <div className="text-xs text-[#787774] mt-0.5 mb-3 leading-relaxed">
+          <span>{t("insights.skillsHint")}</span>
+          {skills.some((s) => s.evidence_text) && (
+            <span className="block text-[11px] text-indigo-600 font-medium mt-1">
+              {t("insights.evidenceHint")}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           {sorted.map((skill) => (
             <SkillChip key={skill.name} skill={skill} t={t} />

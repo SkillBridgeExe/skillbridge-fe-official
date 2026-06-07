@@ -19,9 +19,51 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 import type { CanonicalCvDocument } from "@shared/api";
 
+const getSearchMatch = (text: string, search: string | null): string | null => {
+  if (!search) return null;
+  const cleanText = text.toLowerCase().trim();
+  const cleanSearch = search.toLowerCase().trim();
+  if (cleanText.includes(cleanSearch)) {
+    const idx = cleanText.indexOf(cleanSearch);
+    return text.substring(idx, idx + cleanSearch.length);
+  }
+  const minLen = Math.floor(cleanSearch.length * 0.6);
+  if (minLen >= 4) {
+    const partialSearch = cleanSearch.substring(0, minLen);
+    if (cleanText.includes(partialSearch)) {
+      const idx = cleanText.indexOf(partialSearch);
+      return text.substring(idx, idx + partialSearch.length);
+    }
+  }
+  return null;
+};
+
+const renderHighlightedText = (text: string, search: string | null) => {
+  const match = getSearchMatch(text, search);
+  if (!match) return text;
+  const idx = text.toLowerCase().indexOf(match.toLowerCase());
+  if (idx === -1) return text;
+  const before = text.substring(0, idx);
+  const matchedPart = text.substring(idx, idx + match.length);
+  const after = text.substring(idx + match.length);
+  return (
+    <>
+      {before}
+      <mark className="bg-[#FBF3DB] text-[#956400] rounded px-0.5 font-medium">
+        {matchedPart}
+      </mark>
+      {after}
+    </>
+  );
+};
+
 export function DocumentPreview() {
   const { t } = useTranslation("diagnosis");
   const reviewData = useDiagnosisStore((s) => s.reviewData);
+  const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
+
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const doc: CanonicalCvDocument | null = React.useMemo(() => {
     if (reviewData?.document) return reviewData.document;
@@ -55,6 +97,29 @@ export function DocumentPreview() {
 
   const isReal = !!doc;
 
+  React.useEffect(() => {
+    if (!highlightEvidence || !containerRef.current || !scrollContainerRef.current) return;
+
+    const timer = setTimeout(() => {
+      const markEl = containerRef.current?.querySelector("mark") as HTMLElement | null;
+      const scrollContainer = scrollContainerRef.current;
+      if (markEl && scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const markRect = markEl.getBoundingClientRect();
+        
+        const relativeTop = markRect.top - containerRect.top + scrollContainer.scrollTop;
+        const targetScrollTop = relativeTop - containerRect.height / 2 + markRect.height / 2;
+        
+        scrollContainer.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: "smooth"
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [highlightEvidence]);
+
   return (
     <div className="lg:sticky lg:top-6 lg:self-start">
       <Card className="bg-white border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col">
@@ -70,8 +135,8 @@ export function DocumentPreview() {
             {isReal ? t("preview.parsed") : t("preview.waiting")}
           </span>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100vh - 10rem)" }}>
-          <div className="p-4 sm:p-6 pb-12">
+        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100vh - 10rem)" }}>
+          <div className="p-4 sm:p-6 pb-12" ref={containerRef}>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-sm">
               {!isReal || !doc ? (
                 /* ── No data yet ── */
@@ -124,7 +189,9 @@ export function DocumentPreview() {
                   <div className="p-5 space-y-6">
                     {/* Summary */}
                     {doc.summary && (
-                      <p className="text-slate-600 leading-relaxed">{doc.summary}</p>
+                      <p className="text-slate-600 leading-relaxed" data-bullet={doc.summary}>
+                        {renderHighlightedText(doc.summary, highlightEvidence)}
+                      </p>
                     )}
 
                     {/* Skills (Technical & Soft & Tools & Languages) */}
@@ -186,7 +253,9 @@ export function DocumentPreview() {
                                 <ul className="list-disc pl-4 space-y-1 text-[12px] text-slate-600">
                                   {exp.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
-                                      <span data-bullet={bullet}>{bullet}</span>
+                                      <span data-bullet={bullet}>
+                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                      </span>
                                     </li>
                                   ))}
                                 </ul>
@@ -233,7 +302,9 @@ export function DocumentPreview() {
                                 <ul className="list-disc pl-4 space-y-1 text-[12px] text-slate-600">
                                   {proj.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
-                                      <span data-bullet={bullet}>{bullet}</span>
+                                      <span data-bullet={bullet}>
+                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                      </span>
                                     </li>
                                   ))}
                                 </ul>
@@ -278,7 +349,9 @@ export function DocumentPreview() {
                                 <ul className="list-disc pl-4 space-y-1 text-[12px] text-slate-600">
                                   {edu.highlights.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
-                                      <span data-bullet={bullet}>{bullet}</span>
+                                      <span data-bullet={bullet}>
+                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                      </span>
                                     </li>
                                   ))}
                                 </ul>
@@ -338,7 +411,9 @@ export function DocumentPreview() {
                                 <ul className="list-disc pl-4 space-y-1 text-[12px] text-slate-600">
                                   {act.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
-                                      <span data-bullet={bullet}>{bullet}</span>
+                                      <span data-bullet={bullet}>
+                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                      </span>
                                     </li>
                                   ))}
                                 </ul>
