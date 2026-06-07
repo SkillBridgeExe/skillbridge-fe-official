@@ -100,7 +100,7 @@ export function CvFormPanel() {
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
 
-  const handleEvaluateSection = useCallback((beSection: BuilderSection, sectionId: string) => {
+  const handleEvaluateSection = useCallback((beSection: BuilderSection, _sectionId: string) => {
     const token = localStorage.getItem("accessToken");
     if (!token || !draftId) return;
 
