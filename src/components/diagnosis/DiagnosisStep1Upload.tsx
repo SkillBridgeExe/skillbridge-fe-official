@@ -11,17 +11,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { useAnalyzeCvMutation, useAnalyzeCvWithJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
-
-const IT_ROLES = [
-  "Frontend",
-  "Backend",
-  "Fullstack",
-  "Data Analyst",
-  "Mobile",
-  "DevOps",
-  "QA/Tester",
-  "AI/ML Engineer"
-];
+import { IT_ROLES } from "@/constants/it-roles";
 
 export function DiagnosisStep1Upload() {
   const { t } = useTranslation("diagnosis");
@@ -307,13 +297,13 @@ export function DiagnosisStep1Upload() {
           </label>
           <div className="flex flex-wrap gap-2">
             {IT_ROLES.map((role) => {
-              const isSelected = targetRole === role;
+              const isSelected = targetRole === role.code;
               return (
                 <button
-                  key={role}
+                  key={role.code}
                   type="button"
                   aria-pressed={isSelected}
-                  onClick={() => setTargetRole(isSelected ? null : role)}
+                  onClick={() => setTargetRole(isSelected ? null : role.code)}
                   className={cn(
                     "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 outline-none active:scale-[0.98]",
                     isSelected
@@ -321,7 +311,7 @@ export function DiagnosisStep1Upload() {
                       : "bg-white border-[#EAEAEA] text-[#2F3437] hover:border-slate-350"
                   )}
                 >
-                  {role}
+                  {role.label}
                 </button>
               );
             })}

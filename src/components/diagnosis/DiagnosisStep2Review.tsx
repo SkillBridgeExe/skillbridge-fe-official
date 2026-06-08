@@ -9,6 +9,7 @@ import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation } from "@/hooks/use-diagnosis";
@@ -208,7 +209,7 @@ export function DiagnosisStep2Review() {
 
     const builder = useCvBuilderStore.getState();
     builder.hydrateFromCanonical(seedDoc);
-    if (targetRole) builder.setCareerTarget("targetPosition", targetRole);
+    if (targetRole) builder.setCareerTarget("targetPosition", getRoleLabel(targetRole));
     setStep("builder");
   };
 
