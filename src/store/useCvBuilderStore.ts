@@ -90,7 +90,6 @@ interface CvBuilderState {
   targetPosition: string;
   careerLevel: CareerLevel | "";
   industry: string;
-  preferredLanguage: string;
 
   // Section 3: Professional Summary
   summary: string;
@@ -131,7 +130,7 @@ interface CvBuilderState {
   setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github">, value: string) => void;
 
   // Actions — Career Target
-  setCareerTarget: (field: keyof Pick<CvBuilderState, "targetPosition" | "careerLevel" | "industry" | "preferredLanguage">, value: string) => void;
+  setCareerTarget: (field: keyof Pick<CvBuilderState, "targetPosition" | "careerLevel" | "industry">, value: string) => void;
 
   // Actions — Summary
   setSummary: (value: string) => void;
@@ -186,7 +185,7 @@ interface CvBuilderState {
 
 const initialState = {
   fullName: "", email: "", phone: "", location: "", linkedin: "", portfolio: "", github: "",
-  targetPosition: "", careerLevel: "" as const, industry: "", preferredLanguage: "",
+  targetPosition: "", careerLevel: "" as const, industry: "",
   summary: "", summaryMode: "manual" as SummaryMode,
   education: [emptyEducation()],
   experience: [emptyExperience()],

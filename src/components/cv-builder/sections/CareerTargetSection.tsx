@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCvBuilderStore, CareerLevel } from "@/store/useCvBuilderStore";
 
 export function CareerTargetSection() {
-  const { targetPosition, careerLevel, industry, preferredLanguage, setCareerTarget } = useCvBuilderStore();
+  const { targetPosition, careerLevel, industry, setCareerTarget } = useCvBuilderStore();
 
   return (
     <div className="space-y-4 p-4">
@@ -32,18 +32,6 @@ export function CareerTargetSection() {
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
           <Label htmlFor="industry">Industry</Label>
           <Input id="industry" value={industry} onChange={(e) => setCareerTarget("industry", e.target.value)} placeholder="e.g. Software / EdTech" />
-        </div>
-        <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <Label htmlFor="preferredLanguage">Preferred Language</Label>
-          <Select value={preferredLanguage} onValueChange={(v) => setCareerTarget("preferredLanguage", v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="english">English</SelectItem>
-              <SelectItem value="vietnamese">Vietnamese</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
     </div>
