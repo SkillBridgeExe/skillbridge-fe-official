@@ -530,6 +530,15 @@ export default {
       turnIntoBullets: "Chuyển thành gạch đầu dòng",
       toastAiApplied: "Đã áp dụng đề xuất AI (mẫu)",
       noCerts: "Chưa thêm chứng chỉ nào.",
+      remove: "Xóa",
+      skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
+      aiSkillSuggest: "AI gợi ý cho {{role}}",
+      skills: {
+        technicalSkills: "Kỹ năng kỹ thuật",
+        softSkills: "Kỹ năng mềm",
+        tools: "Công cụ",
+        languages: "Ngôn ngữ",
+      },
       entry: {
         education: "Học vấn",
         experience: "Kinh nghiệm",

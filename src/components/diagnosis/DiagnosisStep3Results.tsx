@@ -463,7 +463,7 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
     <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden mt-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-5 border-b border-[#EAEAEA] hover:bg-slate-50 transition-colors focus:outline-none"
+        className="w-full flex items-center justify-between p-5 border-b border-[#EAEAEA] hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <div className="flex flex-col items-start gap-1">
           <h3 className="text-base font-bold text-[#2F3437] flex items-center gap-2">

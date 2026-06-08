@@ -185,6 +185,7 @@ export function ExperienceSection() {
               variant="ghost" size="icon"
               className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => removeExperience(exp.id)} disabled={experience.length === 1}
+              aria-label={`${t("builder.remove")} ${t("builder.entry.experience")} ${index + 1}`}
             >
               <Trash2 className="w-4 h-4" />
             </Button>

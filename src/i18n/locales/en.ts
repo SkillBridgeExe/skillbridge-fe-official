@@ -530,6 +530,15 @@ export default {
       turnIntoBullets: "Turn into bullet points",
       toastAiApplied: "AI suggestion applied (mock)",
       noCerts: "No certifications added yet.",
+      remove: "Remove",
+      skillInputPlaceholder: "Type a skill and press Enter...",
+      aiSkillSuggest: "AI suggestions for {{role}}",
+      skills: {
+        technicalSkills: "Technical Skills",
+        softSkills: "Soft Skills",
+        tools: "Tools",
+        languages: "Languages",
+      },
       entry: {
         education: "Education",
         experience: "Experience",
