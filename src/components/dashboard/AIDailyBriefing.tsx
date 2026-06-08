@@ -70,7 +70,7 @@ export default function AIDailyBriefing({ onOpenChat }: AIDailyBriefingProps) {
                 AI Daily Briefing
               </CardTitle>
               <p className="text-xs text-slate-400 font-medium">
-                Personalized insights • Updated just now
+                Sample insights · demo
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function AIDailyBriefing({ onOpenChat }: AIDailyBriefingProps) {
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
-            <span className="text-xs text-slate-400 font-medium">Analyzing your data...</span>
+            <span className="text-xs text-slate-400 font-medium">Loading...</span>
           </div>
         ) : (
           <div className="flex flex-col bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm">

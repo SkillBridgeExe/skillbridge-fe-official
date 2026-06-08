@@ -122,7 +122,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-sm">SkillBridge AI</p>
-            <p className="text-[11px] text-slate-500">Online</p>
+            <p className="text-[11px] text-slate-500">Demo · scripted</p>
           </div>
         </div>
         {onClose && (
