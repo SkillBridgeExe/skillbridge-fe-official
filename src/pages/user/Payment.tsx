@@ -30,12 +30,12 @@ export default function Payment() {
     showLoading("Đang xử lý thanh toán...");
     setTimeout(() => {
       setIsProcessing(false);
-      // celebrate() transitions the loading overlay into the success dolphin,
-      // then auto-dismisses it — no hideLoading() needed.
-      celebrate(`Đặt lịch với ${mentor} thành công! 🎉`);
+      // DEMO ONLY: no payment processor is wired. celebrate() transitions the
+      // loading overlay into the success dolphin, then auto-dismisses itself.
+      celebrate(`Demo: đặt lịch thử với ${mentor}`);
       toast({
-        title: "Deposit Paid Successfully",
-        description: `Your session with ${mentor} has been booked! The remaining balance will be charged on the meeting day.`,
+        title: "Demo booking confirmed",
+        description: `This is a demo — no payment was processed and no real booking was made with ${mentor}.`,
       });
       navigate(`/mentor-connect?mentor=${encodeURIComponent(mentor || "")}`);
     }, 2500);
@@ -49,12 +49,20 @@ export default function Payment() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-10 text-center space-y-2"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-widest border border-emerald-100">
-            <Lock className="w-3 h-3" /> 256-bit Secure Checkout
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FBF3DB] text-[#956400] rounded-full text-[10px] font-bold uppercase tracking-widest border border-[#F1E5C0]">
+            <Info className="w-3 h-3" /> Demo checkout — no real charge
           </div>
           <h1 className="text-4xl font-poppins font-bold text-slate-900">Complete Your Booking</h1>
           <p className="text-slate-500 max-w-xl mx-auto">Confirm your mentorship package and secure your spot with {mentor}.</p>
         </motion.header>
+
+        <div className="mb-8 flex items-start gap-3 rounded-xl border border-[#F1E5C0] bg-[#FBF3DB] px-4 py-3 text-[#956400]">
+          <Info className="w-5 h-5 shrink-0 mt-0.5" />
+          <p className="text-sm font-medium leading-relaxed">
+            This is a <strong>demo</strong> checkout — it is not connected to a real payment processor.
+            No card is charged and no booking is actually created.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <motion.div 
@@ -220,7 +228,7 @@ export default function Payment() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
-                       Pay Deposit Securely <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                       Pay Deposit (Demo) <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </div>
                   )}
                 </Button>
