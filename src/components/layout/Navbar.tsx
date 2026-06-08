@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +58,8 @@ const ROLE_DASHBOARD: Record<string, { href: string; label: string; icon: React.
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const { isAuthenticated, currentUser, logout } = useAuthStore();
   const { t, i18n } = useTranslation("common");
 
@@ -135,16 +139,27 @@ export default function Navbar() {
 
         {!isAuthenticated ? (
           <div className="flex items-center gap-2">
-            <Link to="/login">
-              <Button variant="ghost" className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100">
-                {t("actions.login")}
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow font-semibold">
-                {t("actions.startFree")}
-              </Button>
-            </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setAuthMode("login");
+                setLoginOpen(true);
+              }}
+              className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100"
+            >
+              {t("actions.login")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setAuthMode("register");
+                setLoginOpen(true);
+              }}
+              className="rounded-full px-6 bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold"
+            >
+              {t("actions.startFree")}
+            </Button>
           </div>
         ) : (
           <DropdownMenu modal={false}>
@@ -187,6 +202,12 @@ export default function Navbar() {
           </DropdownMenu>
         )}
       </div>
+      <LoginDialog
+        open={loginOpen}
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onOpenChange={setLoginOpen}
+      />
     </nav>
   );
 }
