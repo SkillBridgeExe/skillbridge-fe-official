@@ -16,6 +16,9 @@ import AISidebar from "@/components/dashboard/AISidebar";
 import AIChatWidget from "@/components/dashboard/AIChatWidget";
 import { MOCK_USER } from "@/lib/mock-data/dashboard";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useQuery } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/constants/app";
+import { getMyAvatarUrl } from "@/services/user-profile.service";
 
 // ─── Scroll-aware section tracking ───────────────
 function useSectionObserver(sectionIds: string[]) {
@@ -59,11 +62,17 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTabValue>("overview");
   const { activeSection, setRef } = useSectionObserver(["hero", "stats", "tabs"]);
   const { currentUser } = useAuthStore();
+
+  const avatarQuery = useQuery({
+    queryKey: QUERY_KEYS.USER_AVATAR,
+    queryFn: getMyAvatarUrl,
+    enabled: !!currentUser,
+  });
   
   const dashboardUser = {
     ...MOCK_USER,
     name: currentUser?.name || MOCK_USER.name,
-    avatar: currentUser?.avatar || "https://github.com/shadcn.png",
+    avatar: avatarQuery.data || currentUser?.avatar || "https://github.com/shadcn.png",
   };
 
   return (
