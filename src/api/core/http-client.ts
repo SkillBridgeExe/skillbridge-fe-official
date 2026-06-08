@@ -51,8 +51,8 @@ httpClient.interceptors.response.use(
       // state when the server confirms the session is unrecoverable.
       // TODO: wire auth service to call refresh before forcing redirect.
       localStorage.removeItem("accessToken");
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.location.href = "/";
       }
     }
 
