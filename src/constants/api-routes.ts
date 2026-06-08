@@ -81,10 +81,9 @@ export const API_ROUTES = {
     PROGRESS: (id: string) => `${API}/roadmaps/${id}/progress`,
   },
 
-  // Profile comes from /api/auth/me in the MVP contract.
-  // (A dedicated update-profile endpoint is not yet defined in docs/api-contract.md.)
   USER: {
-    PROFILE: `${API}/auth/me`,
-    UPDATE: `${API}/users/profile`,
+    PROFILE: `${API}/users/me/profile`,
+    AVATAR: `${API}/users/me/avatar`,
+    SKILLS: `${API}/users/me/skills`,
   },
 } as const;

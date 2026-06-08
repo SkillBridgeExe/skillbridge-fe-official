@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown } from "lucide-react";
+import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCircle } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
+import { useQuery } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/constants/app";
+import { getMyAvatarUrl } from "@/services/user-profile.service";
 
 const VNFlagCircle = () => (
   <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
@@ -46,25 +51,41 @@ const NAV_ITEMS = [
   { labelKey: "nav.jobs", href: "/jobs", highlight: true },
 ];
 
-const ROLE_DASHBOARD: Record<string, { href: string; label: string; icon: React.ElementType }> = {
-  user: { href: "/dashboard", label: "User Dashboard", icon: LayoutDashboard },
-  admin: { href: "/admin", label: "Admin Panel", icon: Shield },
-  business: { href: "/business", label: "Business Portal", icon: Building2 },
-  mentor: { href: "/mentor-dashboard", label: "Mentor Hub", icon: Users },
+const ROLE_DASHBOARD: Record<string, { href: string; labelKey: string; icon: React.ElementType }> = {
+  user: { href: "/dashboard", labelKey: "account.userDashboard", icon: LayoutDashboard },
+  admin: { href: "/admin", labelKey: "account.adminPanel", icon: Shield },
+  business: { href: "/business", labelKey: "account.businessPortal", icon: Building2 },
+  mentor: { href: "/mentor-dashboard", labelKey: "account.mentorHub", icon: Users },
+};
+
+const ROLE_PROFILE: Record<string, string> = {
+  user: "/profile",
+  admin: "/admin/settings",
+  business: "/business/profile",
+  mentor: "/mentor-dashboard/profile",
 };
 
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const { isAuthenticated, currentUser, logout } = useAuthStore();
   const { t, i18n } = useTranslation("common");
 
+  const avatarQuery = useQuery({
+    queryKey: QUERY_KEYS.USER_AVATAR,
+    queryFn: getMyAvatarUrl,
+    enabled: isAuthenticated,
+  });
+
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const roleDash = currentUser ? ROLE_DASHBOARD[currentUser.role] : null;
+  const profileHref = currentUser ? ROLE_PROFILE[currentUser.role] : "/profile";
   const currentLang = i18n.language === "vi" ? "VI" : "EN";
 
   return (
@@ -79,7 +100,7 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => isAuthenticated || item.href !== "/dashboard").map((item) => (
             <Link
               key={item.href}
               to={item.href}
@@ -87,7 +108,7 @@ export default function Navbar() {
                 "text-sm font-medium transition-colors hover:text-primary relative py-1",
                 location.pathname === item.href
                   ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                  : "text-slate-600" // hover chỉ đổi màu chữ — không hiện thanh gạch dưới (user chốt 06-08)
+                  : "text-slate-600"
               )}
             >
               {t(item.labelKey)}
@@ -135,22 +156,33 @@ export default function Navbar() {
 
         {!isAuthenticated ? (
           <div className="flex items-center gap-2">
-            <Link to="/login">
-              <Button variant="ghost" className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100">
-                {t("actions.login")}
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-glow font-semibold">
-                {t("actions.startFree")}
-              </Button>
-            </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setAuthMode("login");
+                setLoginOpen(true);
+              }}
+              className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100"
+            >
+              {t("actions.login")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setAuthMode("register");
+                setLoginOpen(true);
+              }}
+              className="rounded-full px-6 bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold"
+            >
+              {t("actions.startFree")}
+            </Button>
           </div>
         ) : (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all">
-                <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />
+                <AvatarImage src={avatarQuery.data || currentUser?.avatar || "https://github.com/shadcn.png"} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-blue-400 text-white text-xs font-bold">
                   {currentUser?.name?.slice(0, 2).toUpperCase() || "SK"}
                 </AvatarFallback>
@@ -171,22 +203,34 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link to={roleDash.href} className="flex items-center gap-2 cursor-pointer">
                     <roleDash.icon className="w-4 h-4 text-slate-500" />
-                    {roleDash.label}
+                    {t(roleDash.labelKey)}
                   </Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem asChild>
+                <Link to={profileHref} className="flex items-center gap-2 cursor-pointer">
+                  <UserCircle className="w-4 h-4 text-slate-500" />
+                  {t("account.myProfile")}
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-red-500 focus:text-red-500 cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
-                Logout
+                {t("account.logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
       </div>
+      <LoginDialog
+        open={loginOpen}
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onOpenChange={setLoginOpen}
+      />
     </nav>
   );
 }

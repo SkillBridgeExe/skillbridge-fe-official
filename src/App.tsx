@@ -46,6 +46,7 @@ const App = () => (
               <Route path="/verify-email" element={<Pages.VerifyEmail />} />
 
               <Route path="/dashboard" element={<Pages.Dashboard />} />
+              <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>}/>
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
               <Route path="/learning" element={<Pages.Learning />} />
               <Route path="/practice" element={<Pages.Practice />} />

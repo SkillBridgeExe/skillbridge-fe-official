@@ -17,6 +17,8 @@ export const LIMITS = {
 
 export const QUERY_KEYS = {
   USER_PROFILE: ['user', 'profile'] as const,
+  USER_AVATAR: ['user', 'avatar'] as const,
+  USER_SKILLS: ['user', 'skills'] as const,
   DIAGNOSIS_HISTORY: ['diagnosis', 'history'] as const,
   INTERVIEW_HISTORY: ['interviews'] as const,
   INTERVIEW_DETAIL: (id: string) => ['interviews', id] as const,

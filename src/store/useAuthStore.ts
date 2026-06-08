@@ -85,6 +85,7 @@ interface AuthState {
   login: (role: UserRole) => void;
   loginWithMockAccount: (email: string, password: string) => LoginResult;
   setAuthUser: (user: AuthUser) => void;
+  updateAuthUser: (patch: Partial<AuthUser>) => void;
   logout: () => void;
 }
 
@@ -122,6 +123,10 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             currentUser: user,
           }),
+        updateAuthUser: (patch) =>
+          set((state) => ({
+            currentUser: state.currentUser ? { ...state.currentUser, ...patch } : state.currentUser,
+          })),
         logout: () => {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
