@@ -8,6 +8,19 @@ export default {
       mentorship: "Mentor",
       jobs: "Việc làm",
     },
+    comingSoon: {
+      badge: "Sắp ra mắt",
+      backHome: "Về trang chủ",
+      tryDiagnosis: "Thử Chẩn đoán CV",
+      interview: {
+        title: "Phỏng vấn thử với AI",
+        body: "Phỏng vấn thử với AI đang được nối với backend mới — sắp ra mắt. Trong lúc chờ, hãy tối ưu CV bằng công cụ Chẩn đoán.",
+      },
+      roadmap: {
+        title: "Tạo lộ trình học",
+        body: "Lộ trình học cá nhân hoá đang được nối với kết quả chẩn đoán thật của bạn — sắp ra mắt. Hãy chẩn đoán CV trước để sẵn sàng.",
+      },
+    },
     actions: {
       login: "Đăng nhập",
       startFree: "Dùng thử miễn phí",

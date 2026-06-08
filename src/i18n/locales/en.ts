@@ -8,6 +8,19 @@ export default {
       mentorship: "Mentorship",
       jobs: "Jobs",
     },
+    comingSoon: {
+      badge: "Coming soon",
+      backHome: "Back to home",
+      tryDiagnosis: "Try CV Diagnosis",
+      interview: {
+        title: "AI Mock Interview",
+        body: "Live AI mock interviews are being wired to our new backend — coming very soon. Meanwhile, sharpen your CV with the Diagnosis tool.",
+      },
+      roadmap: {
+        title: "Learning Roadmap Generator",
+        body: "The personalized learning roadmap is being connected to your real diagnosis — coming very soon. Run a CV diagnosis to get ready.",
+      },
+    },
     actions: {
       login: "Login",
       startFree: "Start Free",
