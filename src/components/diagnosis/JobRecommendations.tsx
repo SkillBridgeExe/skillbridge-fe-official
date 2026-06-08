@@ -26,6 +26,8 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 
 function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string) => string }) {
   const salary = formatSalary(job.salary_min, job.salary_max, job.currency);
+  // BE trả envelope.data thô (không chuẩn hoá) — guard kẻo 1 job thiếu missing_skills làm trắng cả lưới.
+  const missing = job.missing_skills ?? [];
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
@@ -44,16 +46,16 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string) => st
         )}
         {salary && <span className="font-mono tabular-nums text-[#346538] font-semibold">{salary}</span>}
       </div>
-      {job.missing_skills.length > 0 && (
+      {missing.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           <span className="text-[11px] text-[#787774]">{t("jobs.missing")}</span>
-          {job.missing_skills.slice(0, 3).map((s) => (
+          {missing.slice(0, 3).map((s) => (
             <span key={s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FDEBEC] text-[#9F2F2D]">
               {s.display_name}
             </span>
           ))}
-          {job.missing_skills.length > 3 && (
-            <span className="text-[10px] text-[#787774]">+{job.missing_skills.length - 3}</span>
+          {missing.length > 3 && (
+            <span className="text-[10px] text-[#787774]">+{missing.length - 3}</span>
           )}
         </div>
       )}
@@ -82,6 +84,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string) => st
 export function JobRecommendations({ cvId }: { cvId: string | null }) {
   const { t } = useTranslation("diagnosis");
   const { data, isLoading, isError } = useJobRecommendationsQuery(cvId, { limit: 5 });
+  const recs = data?.recommendations ?? [];
 
   if (!cvId || isError) return null;
 
@@ -96,7 +99,7 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#F1F1EF] rounded-xl animate-pulse" />)}
         </div>
-      ) : !data || data.recommendations.length === 0 ? (
+      ) : recs.length === 0 ? (
         <div className={cn(CARD, "p-6 text-center")}>
           <Briefcase className="w-7 h-7 text-[#B9B9B7] mx-auto mb-2" />
           <p className="text-[13px] text-[#787774]">{t("jobs.empty")}</p>
@@ -104,7 +107,7 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {data.recommendations.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
+            {recs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
           </div>
           <p className="text-[11px] text-[#787774] mt-2.5 leading-relaxed">{t("jobs.disclaimer")}</p>
         </>
