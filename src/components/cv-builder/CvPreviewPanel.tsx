@@ -1,9 +1,26 @@
 import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, LayoutTemplate } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function CvPreviewPanel() {
   const store = useCvBuilderStore();
+  const { t, i18n } = useTranslation("diagnosis");
+  const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
+
+  const isEmpty = !store.fullName.trim() && 
+    !store.targetPosition.trim() && 
+    !store.email.trim() && 
+    !store.phone.trim() && 
+    !store.summary.trim() && 
+    !store.experience.some(e => e.company || e.position) && 
+    !store.education.some(e => e.school || e.major) && 
+    !store.projects.some(p => p.name) && 
+    !store.certifications.some(c => c.name) &&
+    store.technicalSkills.length === 0 && 
+    store.softSkills.length === 0 && 
+    store.tools.length === 0 && 
+    store.languages.length === 0;
 
   return (
     <div className="flex flex-col h-full w-full max-w-[800px] mx-auto">
@@ -44,8 +61,75 @@ export function CvPreviewPanel() {
           className="bg-white mx-auto min-h-[1056px] w-[793px] p-8 origin-top scale-[0.85] sm:scale-90 md:scale-100 transition-transform"
           style={{ fontFamily: store.template === "ats-modern" ? "Inter, sans-serif" : "inherit" }}
         >
-          {/* Header */}
-          <div className="text-center border-b-2 border-slate-800 pb-4 mb-4">
+          {isEmpty ? (
+            <div className="w-full h-full min-h-[900px] flex flex-col justify-between py-10 px-8 select-none animate-none">
+              {/* Header Skeleton */}
+              <div className="flex flex-col items-center border-b border-slate-200 pb-6 mb-6">
+                <div className="w-48 h-8 bg-[#F1F1EF] rounded mb-2.5 animate-none" />
+                <div className="w-32 h-4 bg-[#F1F1EF] rounded mb-4 animate-none" />
+                <div className="flex gap-4">
+                  <div className="w-24 h-3 bg-[#F1F1EF] rounded animate-none" />
+                  <div className="w-24 h-3 bg-[#F1F1EF] rounded animate-none" />
+                </div>
+              </div>
+
+              {/* Body skeleton với overlay caption ở giữa */}
+              <div className="flex-1 space-y-8 relative">
+                {/* Caption ở giữa overlay */}
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-4 text-center">
+                  <div className="bg-white/95 border border-[#EAEAEA] rounded-xl p-5 max-w-[320px] shadow-lg pointer-events-auto">
+                    <p className="text-[11px] font-bold text-[#2F3437] uppercase tracking-wider mb-1">
+                      {currentLang === "vi" ? "BẢN XEM TRƯỚC CV" : "CV PREVIEW"}
+                    </p>
+                    <p className="text-[13px] text-[#787774] leading-normal font-medium">
+                      {t("builder.previewEmpty")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Nhóm 1 (Summary/Experience) */}
+                <div className="space-y-3 opacity-60">
+                  <div className="w-28 h-4 bg-[#F1F1EF] rounded animate-none" />
+                  <div className="w-full h-3 bg-[#F1F1EF] rounded animate-none" />
+                  <div className="w-[90%] h-3 bg-[#F1F1EF] rounded animate-none" />
+                </div>
+
+                {/* Nhóm 2 (Experience) */}
+                <div className="space-y-4 opacity-50">
+                  <div className="w-28 h-4 bg-[#F1F1EF] rounded animate-none" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <div className="w-36 h-3 bg-[#F1F1EF] rounded animate-none" />
+                      <div className="w-16 h-3 bg-[#F1F1EF] rounded animate-none" />
+                    </div>
+                    <div className="w-24 h-3 bg-[#F1F1EF] rounded animate-none" />
+                    <div className="w-[95%] h-3 bg-[#F1F1EF] rounded animate-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <div className="w-40 h-3 bg-[#F1F1EF] rounded animate-none" />
+                      <div className="w-16 h-3 bg-[#F1F1EF] rounded animate-none" />
+                    </div>
+                    <div className="w-24 h-3 bg-[#F1F1EF] rounded animate-none" />
+                    <div className="w-[85%] h-3 bg-[#F1F1EF] rounded animate-none" />
+                  </div>
+                </div>
+
+                {/* Nhóm 3 (Education) */}
+                <div className="space-y-3 opacity-40">
+                  <div className="w-28 h-4 bg-[#F1F1EF] rounded animate-none" />
+                  <div className="flex justify-between">
+                    <div className="w-48 h-3 bg-[#F1F1EF] rounded animate-none" />
+                    <div className="w-16 h-3 bg-[#F1F1EF] rounded animate-none" />
+                  </div>
+                  <div className="w-32 h-3 bg-[#F1F1EF] rounded animate-none" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="text-center border-b-2 border-slate-800 pb-4 mb-4">
             <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
               {store.fullName || "YOUR NAME"}
             </h1>
@@ -190,7 +274,8 @@ export function CvPreviewPanel() {
               </div>
             </div>
           )}
-
+            </>
+          )}
         </div>
       </div>
     </div>

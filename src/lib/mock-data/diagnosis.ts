@@ -145,16 +145,3 @@ export const MOCK_INSIGHTS = {
   ],
 };
 
-export const LOADING_MESSAGES = [
-  "Reading and parsing your CV...",
-  "Running ATS compatibility checks...",
-  "Evaluating layout and keyword density...",
-  "Generating actionable improvements...",
-];
-
-export const JD_LOADING_MESSAGES = [
-  "Extracting skill requirements from JD...",
-  "Performing cross-comparison of your profile vs expectations...",
-  "Mapping keyword frequencies...",
-  "Generating Skill Gap analytical report...",
-];

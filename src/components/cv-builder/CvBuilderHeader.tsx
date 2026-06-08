@@ -1,31 +1,83 @@
 import { Button } from "@/components/ui/button";
-import { Download, BrainCircuit, Save } from "lucide-react";
+import { Download, BrainCircuit, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useTranslation } from "react-i18next";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 
 export function CvBuilderHeader() {
+  const { t } = useTranslation("diagnosis");
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
+  const draftId = useCvBuilderStore((s) => s.draftId);
+  const title = useCvBuilderStore((s) => s.fullName); // sử dụng fullName làm title CV hoặc mặc định
+  const renderPdfMutation = useRenderBuilderPdfMutation();
 
   const handleSaveDraft = () => {
-    toast({
-      title: "Draft Saved",
-      description: "Your CV draft has been saved successfully.",
-    });
+    if (triggerSaveRef.current) {
+      triggerSaveRef.current();
+    } else {
+      toast({
+        title: "Draft Saved",
+        description: "Your CV draft has been saved successfully.",
+      });
+    }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    if (!draftId) return;
+
+    // 1. Flush draft changes trước khi download
+    if (triggerSaveRef.current) {
+      triggerSaveRef.current();
+    }
+
     toast({
-      title: "Generating PDF",
+      title: t("builder.rendering"),
       description: "Preparing your CV for download...",
     });
-    // TODO: Implement actual PDF generation
+
+    renderPdfMutation.mutate(draftId, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${title || "cv"}-skillbridge.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Download failed",
+          description: err?.message || "Failed to render PDF on the server.",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   const handleAnalyze = () => {
-    // Navigate to /diagnosis with source=builder
-    // The store should retain its state, so when they come back it's still there.
-    navigate("/diagnosis?source=builder");
+    if (!draftId) return;
+
+    // 1. Flush changes trước
+    if (triggerSaveRef.current) {
+      triggerSaveRef.current();
+    }
+
+    // 2. Set diagnosis store values
+    const diagnosisStore = useDiagnosisStore.getState();
+    diagnosisStore.setIsFromBuilder(true);
+    diagnosisStore.setBuilderCvId(draftId);
+    diagnosisStore.setBuilderCvName(title || "CV Builder draft");
+
+    // 3. Navigate to /diagnosis
+    navigate("/diagnosis");
   };
 
   return (
@@ -41,15 +93,67 @@ export function CvBuilderHeader() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={handleSaveDraft} className="gap-2">
-          <Save className="w-4 h-4" /> Save Draft
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2">
-          <Download className="w-4 h-4" /> Download CV
-        </Button>
-        <Button onClick={handleAnalyze} size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md">
-          <BrainCircuit className="w-4 h-4" /> Analyze CV
-        </Button>
+        {saveStatus === "local" ? (
+          <span className="text-xs text-[#787774] max-w-[280px] text-right font-medium">
+            {t("builder.localOnly")}
+          </span>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveDraft}
+              className="gap-2 min-w-[125px]"
+              disabled={saveStatus === "saving"}
+            >
+              {saveStatus === "saving" ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
+                  <span>{t("builder.saving")}</span>
+                </>
+              ) : saveStatus === "saved" && lastSavedTime ? (
+                <>
+                  <Save className="w-4 h-4 text-emerald-500" />
+                  <span>{t("builder.savedAt", { time: lastSavedTime })}</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Save Draft</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="gap-2"
+              disabled={renderPdfMutation.isPending}
+            >
+              {renderPdfMutation.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{t("builder.rendering")}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Download CV</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleAnalyze}
+              size="sm"
+              className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md"
+            >
+              <BrainCircuit className="w-4 h-4" />
+              <span>Analyze CV</span>
+            </Button>
+          </>
+        )}
       </div>
     </header>
   );

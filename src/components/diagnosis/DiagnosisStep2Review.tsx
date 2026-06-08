@@ -1,46 +1,118 @@
-import React, { useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, X, Download, ArrowLeft, Code, RotateCcw, Briefcase, Search, ChevronRight, Trophy } from "lucide-react";
+import { ArrowLeft, Download, RotateCcw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
-import { useReviewCvMutation } from "@/hooks/use-diagnosis";
+import { useTranslation } from "react-i18next";
+import { useCompareJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
+import type { ReviewDimension, CvIssue } from "@shared/api";
 
-/** Mini progress bar with percentage label + dynamic colors */
-function ScoreBar({ score, label }: { score: number; label: string }) {
-  const color = score >= 80 ? "bg-emerald-500" : score >= 50 ? "bg-amber-400" : "bg-red-500";
-  const textColor = score >= 80 ? "text-emerald-600" : score >= 50 ? "text-amber-600" : "text-red-500";
-  const glow = score >= 80 ? "shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "";
+/* ── Design tokens (§0b DESIGN SPEC) ── */
+const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
+const SEV = {
+  high:   "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+  medium: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  low:    "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+} as const;
+
+/** Score band pill */
+function BandPill({ score, t }: { score: number; t: (key: string) => string }) {
+  const band =
+    score >= 70 ? { cls: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", key: "review.scoreMsg.excellent" }
+    : score >= 55 ? { cls: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", key: "review.scoreMsg.good" }
+    : score >= 40 ? { cls: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", key: "review.scoreMsg.fair" }
+    : { cls: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", key: "review.scoreMsg.poor" };
 
   return (
-    <div className="flex items-center gap-3 mb-1">
-      <h3 className="text-sm font-bold text-slate-800 flex-1">{label}</h3>
-      <span className={cn("text-xs font-bold", textColor)}>{score}%</span>
-      <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all duration-700", color, glow)} style={{ width: `${score}%` }} />
+    <p className={cn("inline-block text-[13px] font-medium border rounded-lg px-3 py-1 mt-2", band.cls)}>
+      {t(band.key)}
+    </p>
+  );
+}
+
+/** ScoreBar for dimensions (0-20 scale, display as percentage) */
+function DimScoreBar({ score20 }: { score20: number }) {
+  const pct = Math.round(score20 * 5);
+  const color = pct >= 70 ? "bg-[#346538]" : pct >= 50 ? "bg-[#956400]" : "bg-[#9F2F2D]";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${pct}%` }} />
       </div>
+      <span className="font-mono tabular-nums text-xs text-[#787774] w-10 text-right shrink-0">{score20}/20</span>
     </div>
   );
 }
 
-const MAX_SECTION_ITEMS = 3;
+/** Severity badge */
+function SeverityBadge({ severity, t }: { severity: "high" | "medium" | "low"; t: (key: string) => string }) {
+  return (
+    <span className={cn("text-[11px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0", SEV[severity])}>
+      {t(`review.severity.${severity}`)}
+    </span>
+  );
+}
 
-function truncateText(value: string, maxLength = 150): string {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+/** Collapsible dimension card */
+function DimensionCard({ dim, issues, index, t }: { dim: ReviewDimension; issues: CvIssue[]; index: number; t: (key: string) => string }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasLongRationale = dim.rationale.length > 120;
+
+  return (
+    <div
+      className={cn(CARD, "p-5 animate-in fade-in duration-500")}
+      style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h3 className="text-sm font-bold text-[#2F3437]">{t(`review.dims.${dim.key}`)}</h3>
+        <span className="font-mono tabular-nums text-xs text-[#787774] shrink-0">{Math.round(dim.score20 * 5)}%</span>
+      </div>
+      <DimScoreBar score20={dim.score20} />
+
+      {/* Rationale */}
+      <p className={cn("text-xs text-[#787774] mt-3 leading-relaxed", !expanded && hasLongRationale && "line-clamp-3")}>
+        {dim.rationale}
+      </p>
+      {hasLongRationale && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="text-[11px] font-semibold text-primary hover:underline mt-1 focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
+        >
+          {expanded ? t("review.seeLess") : t("review.seeMore")}
+        </button>
+      )}
+
+      {/* Issues */}
+      {issues.length > 0 && (
+        <ul className="mt-3 space-y-2 border-t border-[#F1F1EF] pt-3">
+          {issues.map((issue, i) => (
+            <li key={i} className="text-[13px] text-[#2F3437]">
+              <div className="flex items-start gap-2">
+                <SeverityBadge severity={issue.severity} t={t} />
+                <span className="font-medium leading-relaxed">{issue.detail}</span>
+              </div>
+              {issue.suggestion && (
+                <p className="ml-[calc(theme(spacing.1.5)+theme(spacing.12))] mt-1 text-[11px] text-[#787774] leading-snug">
+                  {issue.suggestion}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function DiagnosisStep2Review() {
+  const { t } = useTranslation("diagnosis");
   const {
-    cvFile,
     reviewData,
     apiError,
     goBack,
@@ -48,6 +120,8 @@ export function DiagnosisStep2Review() {
     showJdInput,
     setShowJdInput,
     jobDescription,
+    lastCvId,
+    targetRole,
     setHasActivatedJdMode,
     setTargetStep,
     setLoadingProgress,
@@ -59,14 +133,14 @@ export function DiagnosisStep2Review() {
   } = useDiagnosisStore();
 
   const { toast } = useToast();
-  const reviewCvMutation = useReviewCvMutation();
+  const compareJdMutation = useCompareJdMutation();
 
   const compareFromCvReview = async () => {
-    if (!cvFile) {
-      toast({ title: "Missing CV", description: "Please upload a CV before running JD comparison.", variant: "destructive" });
+    if (!lastCvId) {
+      toast({ title: t("review.toastMissingCvTitle"), description: t("review.toastMissingCvDesc"), variant: "destructive" });
       return;
     }
-    if (!jobDescription.trim()) { return toast({ title: "Missing Job Description", description: "Paste the job description first.", variant: "destructive" }); }
+    if (!jobDescription.trim()) { return toast({ title: t("review.toastMissingJdTitle"), description: t("review.toastMissingJdDesc"), variant: "destructive" }); }
 
     const previousReviewData = reviewData;
     setShowJdInput(false);
@@ -78,8 +152,12 @@ export function DiagnosisStep2Review() {
     setIsAnalyzing(true);
 
     try {
-      const data = await reviewCvMutation.mutateAsync({ cvFile, jobDescription: jobDescription.trim() });
-      setReviewData(data);
+      const jdMatch = await compareJdMutation.mutateAsync({
+        cvId: lastCvId,
+        jdText: jobDescription.trim(),
+        targetRole,
+      });
+      setReviewData(previousReviewData ? { ...previousReviewData, jdMatch } : null);
       setHasActivatedJdMode(true);
       setApiError(null);
       setStep("results");
@@ -88,7 +166,7 @@ export function DiagnosisStep2Review() {
       setHasActivatedJdMode(false);
       setReviewData(previousReviewData ?? null);
       setApiError(message);
-      toast({ title: "Analysis Failed", description: message, variant: "destructive" });
+      toast({ title: t("review.toastFailedTitle"), description: message, variant: "destructive" });
     } finally {
       setIsAnalyzing(false);
       setLoadingProgress(0);
@@ -96,6 +174,35 @@ export function DiagnosisStep2Review() {
   };
 
   const overallCvScore = reviewData?.overallScore ?? 0;
+  const atsScore = reviewData?.breakdown.ats ?? 0;
+  const dimensions = reviewData?.dimensions ?? [];
+
+  const [displayedScore, setDisplayedScore] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 800;
+    const startScore = 0;
+    const endScore = overallCvScore;
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const currentScore = Math.floor(easeProgress * (endScore - startScore) + startScore);
+
+      setDisplayedScore(currentScore);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [overallCvScore]);
 
   /* ── Confetti for high scores ── */
   const confettiFired = useRef(false);
@@ -110,196 +217,171 @@ export function DiagnosisStep2Review() {
     }
   }, [overallCvScore]);
 
-  /* ── Dynamic UX copy ── */
-  const scoreMessage = overallCvScore >= 70
-    ? "🎉 Outstanding! Your CV is exceptionally strong. Apply with confidence!"
-    : overallCvScore >= 55
-      ? "👍 Good job! Your CV is competitive but has room for improvement."
-      : overallCvScore >= 40
-        ? "⚠️ Your CV meets basic standards. Focus on quantifying achievements."
-        : "🔴 Your CV needs significant improvement. Follow the suggestions below.";
-  const reviewSections = reviewData ? [
-    {
-      title: "CV Format & Structure",
-      score: reviewData.breakdown.structure,
-      items: reviewData.issues
-        .filter((issue) => issue.title.toLowerCase().includes("format") || issue.title.toLowerCase().includes("structure"))
-        .slice(0, MAX_SECTION_ITEMS)
-        .map((issue) => ({ text: truncateText(issue.detail), ok: false, hint: truncateText(issue.suggestion, 120) })),
-    },
-    {
-      title: "ATS Compatibility",
-      score: reviewData.breakdown.ats,
-      items: reviewData.issues
-        .filter((issue) => issue.title.toLowerCase().includes("ats") || issue.title.toLowerCase().includes("keyword"))
-        .slice(0, MAX_SECTION_ITEMS)
-        .map((issue) => ({ text: truncateText(issue.detail), ok: false, hint: truncateText(issue.suggestion, 120) })),
-    },
-    {
-      title: "Content Quality",
-      score: reviewData.breakdown.skills,
-      items: reviewData.issues
-        .filter((issue) => issue.title.toLowerCase().includes("content") || issue.title.toLowerCase().includes("experience") || issue.title.toLowerCase().includes("skill"))
-        .slice(0, MAX_SECTION_ITEMS)
-        .map((issue) => ({ text: truncateText(issue.detail), ok: false, hint: truncateText(issue.suggestion, 120) })),
-    },
-    {
-      title: "Basic Information",
-      score: reviewData.breakdown.experience,
-      items: reviewData.rewriteSuggestions.slice(0, MAX_SECTION_ITEMS).map((item) => ({
-        text: truncateText(`${item.section}: ${item.original}`),
-        ok: false,
-        hint: truncateText(item.improved, 120),
-      })),
-    },
-  ] : [];
+  /* ── Distribute issues across dim cards ── */
+  const allIssues = reviewData?.issues ?? [];
+  const issueGroups: CvIssue[][] = dimensions.length > 0
+    ? dimensions.map((_, i) => {
+        const perDim = Math.ceil(allIssues.length / dimensions.length);
+        return allIssues.slice(i * perDim, (i + 1) * perDim);
+      })
+    : [allIssues];
+
+  /* ── Raw parsed accordion ── */
+  const [rawOpen, setRawOpen] = useState(false);
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="animate-in fade-in duration-500" style={{ '--tw-translate-y': '12px' } as React.CSSProperties}>
       {/* Back button */}
-      <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-primary mb-4 transition-colors group">
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to Upload
+      <button
+        onClick={goBack}
+        className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary mb-4 transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("review.backToUpload")}
       </button>
 
       {apiError && (
-        <Card className="mb-6 border-red-200 bg-red-50/80">
-          <CardContent className="py-4 text-sm text-red-700 font-medium">{apiError}</CardContent>
-        </Card>
+        <div className={cn(CARD, "mb-6 border-[#F6D4D5] bg-[#FDEBEC]")}>
+          <div className="p-4 text-sm text-[#9F2F2D] font-medium">{apiError}</div>
+        </div>
       )}
 
-      {/* ── ③ Lead: "fix these first" (ẩn khi BE chưa trả field) ── */}
+      {/* Lead: "fix these first" */}
       {reviewData?.top_summary && <TopSummaryCard summary={reviewData.top_summary} />}
 
-      {/* ── Overall CV Score Hero ── */}
-      <Card className="glass border-white/50 shadow-sm mb-6 overflow-hidden">
-        <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative w-24 h-24 shrink-0">
-            <svg className="-rotate-90 w-24 h-24">
-              <circle cx={48} cy={48} r={40} stroke="#e2e8f0" strokeWidth={8} fill="none" />
-              <circle cx={48} cy={48} r={40} stroke={overallCvScore >= 70 ? "#10b981" : overallCvScore >= 50 ? "#f59e0b" : "#ef4444"} strokeWidth={8} fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 - (2 * Math.PI * 40 * overallCvScore) / 100} strokeLinecap="round" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-black text-slate-900">{overallCvScore}</span>
+      {/* ── Overall Score Hero ── */}
+      <div className={cn(CARD, "mb-6 p-6")}>
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          {/* Flat mono score */}
+          <div className="flex flex-col items-center shrink-0">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[56px] font-mono tabular-nums font-black text-[#2F3437] leading-none tracking-[-0.02em]">
+                {displayedScore}
+              </span>
+              <span className="text-sm text-[#787774] font-medium">/100</span>
             </div>
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-xl font-bold text-slate-900">Your CV Quality Score</h2>
-            <p className="text-sm text-slate-500 mt-1">{scoreMessage}</p>
+            <BandPill score={overallCvScore} t={t} />
             {overallCvScore >= 70 && (
-              <div className="flex items-center gap-2 px-4 py-1.5 mt-2 rounded-full bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 font-bold text-sm animate-pulse shadow-md w-fit">
-                <Trophy className="w-4 h-4" />
-                Outstanding Profile
-              </div>
+              <p className="text-[12px] text-[#346538] font-medium mt-1 text-center max-w-[150px] leading-snug">
+                {t("review.praiseHigh")}
+              </p>
             )}
-            <div className="flex flex-wrap gap-3 mt-3 justify-center sm:justify-start">
-              {reviewSections.map(s => (
-                <span key={s.title} className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                  s.score >= 70 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : s.score >= 50 ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-red-50 text-red-700 border-red-200"
-                }`}>{s.title.split(" ")[0]} {s.score}%</span>
-              ))}
-            </div>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full gap-2 text-xs font-semibold border-slate-200 shrink-0">
-            <Download className="w-3.5 h-3.5" /> Export Report
+
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="text-lg font-bold text-[#2F3437]">{t("review.heroTitle")}</h2>
+            {/* ATS mini */}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">{t("review.atsTitle")}</span>
+              <span className="font-mono tabular-nums text-xs text-[#2F3437] font-semibold">{atsScore}%</span>
+              <div className="w-16 h-1 bg-[#F1F1EF] rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", atsScore >= 70 ? "bg-[#346538]" : atsScore >= 50 ? "bg-[#956400]" : "bg-[#9F2F2D]")}
+                  style={{ width: `${atsScore}%` }}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-[#787774] mt-1">{t("review.atsNote")}</p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <Download className="w-3.5 h-3.5" /> {t("review.exportReport")}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: CV Quality Review */}
+        {/* LEFT: Dimension Cards + Insights */}
         <div className="space-y-4">
-          {reviewSections.map((section, si) => (
-            <Card key={section.title} className="glass border-white/50 shadow-sm animate-in fade-in slide-in-from-left-4" style={{ animationDelay: `${si * 100}ms`, animationFillMode: "both" }}>
-              <CardContent className="pt-5 pb-4">
-                <ScoreBar score={section.score} label={section.title} />
-                <ul className="mt-3 space-y-1.5">
-                  {(section.items.length > 0 ? section.items : [{ text: "No critical issues detected in this section.", ok: true }]).map((item, ii) => (
-                    <li key={ii} className="text-[13px] text-slate-600">
-                      <div className="flex items-start gap-2">
-                        {item.ok
-                          ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                          : <X className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                        }
-                        <span className={item.ok ? "" : "text-red-700 font-medium"}>{item.text}</span>
-                      </div>
-                      {!item.ok && item.hint && (
-                        <p className="ml-6 mt-1 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 leading-snug">
-                          💡 {item.hint}
-                        </p>
-                      )}
+          {/* 4 Dimension cards from BE */}
+          {dimensions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dimensions.map((dim, i) => (
+                <DimensionCard key={dim.key} dim={dim} issues={issueGroups[i] ?? []} index={i} t={t} />
+              ))}
+            </div>
+          ) : (
+            /* Fallback: render issues as flat list if no dimensions */
+            allIssues.length > 0 && (
+              <div className={cn(CARD, "p-5")}>
+                <h3 className="text-sm font-bold text-[#2F3437] mb-3">Issues</h3>
+                <ul className="space-y-2">
+                  {allIssues.map((issue, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px] text-[#2F3437]">
+                      <SeverityBadge severity={issue.severity} t={t} />
+                      <span className="font-medium">{issue.detail}</span>
                     </li>
                   ))}
                 </ul>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            )
+          )}
 
-          {/* ── ① Skill chips + trình độ + dẫn chứng (ẩn khi field vắng) ── */}
+          {/* Skill chips */}
           {reviewData?.skills_extracted && reviewData.skills_extracted.length > 0 && (
             <SkillsExtractedCard skills={reviewData.skills_extracted} />
           )}
 
-          {/* ── ② Độ phù hợp kỹ năng vs target role (ẩn khi field vắng) ── */}
+          {/* Skill relevance */}
           {reviewData?.skills_relevance_breakdown && (
             <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
           )}
 
-          {/* ATS Parse simulation */}
-          <Card className="glass shadow-sm overflow-hidden border-orange-200/50 bg-orange-50/30">
-            <CardHeader className="py-4 border-b border-orange-100 bg-orange-50/50">
-              <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
-                <Code className="w-4 h-4" /> Raw AI Parsed Data
-              </CardTitle>
-              <CardDescription className="text-xs text-orange-600/80">This is what robot ATS systems "see" from your layout.</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4 p-4 text-xs font-mono text-slate-700 leading-relaxed max-h-[120px] overflow-y-auto">
-              {JSON.stringify(reviewData?.parsedCv ?? {}, null, 2)}
-            </CardContent>
-          </Card>
+          {/* Raw parsed accordion */}
+          <div className={cn(CARD, "overflow-hidden")}>
+            <button
+              type="button"
+              onClick={() => setRawOpen(!rawOpen)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-[#FBFBFA] transition-colors focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <div>
+                <h3 className="text-sm font-bold text-[#2F3437]">{t("review.rawParsedTitle")}</h3>
+                <p className="text-xs text-[#787774] mt-0.5">{t("review.rawParsedDesc")}</p>
+              </div>
+              {rawOpen ? <ChevronUp className="w-4 h-4 text-[#787774]" /> : <ChevronDown className="w-4 h-4 text-[#787774]" />}
+            </button>
+            {rawOpen && (
+              <div className="border-t border-[#EAEAEA] p-4">
+                <pre className="text-[11px] font-mono text-[#787774] leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">
+                  {JSON.stringify(reviewData?.parsedCv ?? {}, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* RIGHT: Document Preview (Sticky) */}
         <DocumentPreview />
       </div>
 
-      {/* Matching jobs CTA */}
-      <div className="mt-6">
-        <Card className="glass shadow-sm bg-indigo-50 border-indigo-100 group cursor-pointer hover:border-indigo-300 transition-colors">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
-              <Search className="w-6 h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="flex-1">
-              <p className="text-[15px] font-bold text-slate-800">Found <span className="text-indigo-600">95 open roles</span> for your profile</p>
-              <p className="text-xs text-slate-500">Based on your base skills, without Job Description targeting.</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* CTA: Compare with JD */}
-      <div className="mt-8 pt-6 border-t border-slate-200">
+      {/* CTA Row */}
+      <div className="mt-8 pt-6 border-t border-[#EAEAEA]">
         {!showJdInput ? (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200/50 shadow-sm relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-blue-100 rounded-full blur-3xl opacity-50" />
-            <div className="relative z-10">
-              <p className="font-bold text-slate-800 text-base">Want even deeper analysis?</p>
-              <p className="text-sm text-slate-600 mt-0.5">Add a specific Job Description to see your precise <span className="font-semibold text-indigo-600">Skill Gap</span> and <span className="font-semibold text-indigo-600">Match %</span></p>
+          <div className={cn(CARD, "p-5 flex flex-col sm:flex-row items-center justify-between gap-4")}>
+            <div>
+              <p className="font-bold text-[#2F3437] text-base">{t("review.deeperTitle")}</p>
+              <p className="text-sm text-[#787774] mt-0.5">{t("review.deeperDesc")}</p>
             </div>
-            <div className="flex gap-3 shrink-0 relative z-10">
-              <Button variant="ghost" onClick={reset} className="rounded-full text-sm font-semibold hover:bg-slate-200 gap-2">
-                <RotateCcw className="w-4 h-4" /> Start Over
+            <div className="flex gap-3 shrink-0">
+              <Button
+                variant="ghost"
+                onClick={reset}
+                className="rounded-lg text-sm font-semibold text-[#787774] hover:bg-[#F1F1EF] gap-2 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <RotateCcw className="w-4 h-4" /> {t("review.startOver")}
               </Button>
-              <Button onClick={() => setShowJdInput(true)} className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white shadow-lg text-sm font-semibold gap-2 hover:-translate-y-0.5 transition-transform">
-                <Briefcase className="w-4 h-4" /> Compare with JD
+              <Button
+                onClick={() => setShowJdInput(true)}
+                className="rounded-lg px-6 bg-primary hover:bg-primary/90 text-white shadow-sm text-sm font-semibold gap-2 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <Briefcase className="w-4 h-4" /> {t("review.compareJd")}
               </Button>
             </div>
           </div>
         ) : (
-          /* Reusable JD input in compact mode with action buttons */
           <JobDescriptionInput
             compact
             showActions

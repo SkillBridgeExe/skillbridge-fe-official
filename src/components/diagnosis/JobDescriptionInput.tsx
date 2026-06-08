@@ -1,10 +1,11 @@
-import React from "react";
+import type { ChangeEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Briefcase, CheckCircle2, X, Type, FileUp, Sparkles, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 interface JobDescriptionInputProps {
@@ -23,8 +24,9 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
   } = useDiagnosisStore();
   
   const { toast } = useToast();
+  const { t } = useTranslation("diagnosis");
 
-  const handleJDUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleJDUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -43,14 +45,14 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
 
       if (!normalized) {
         toast({
-          title: "JD text is empty",
-          description: "TXT file does not contain readable content.",
+          title: t("jdInput.toastEmptyTitle"),
+          description: t("jdInput.toastEmptyDesc"),
           variant: "destructive",
         });
         return;
       }
 
-      toast({ title: "JD Uploaded", description: `${file.name} loaded successfully.` });
+      toast({ title: t("jdInput.toastUploadedTitle"), description: t("jdInput.toastUploadedDesc", { fileName: file.name }) });
       return;
     }
 
@@ -58,13 +60,13 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
       setJdFile(file);
       setJobDescription("");
       toast({
-        title: "JD file uploaded",
-        description: "PDF/DOCX auto-extract chưa bật. Vui lòng paste JD text để phân tích chính xác.",
+        title: t("jdInput.toastUploadedTitle"),
+        description: t("jdInput.toastExtractOffDesc"),
       });
       return;
     }
 
-    toast({ title: "Invalid File", description: "Please upload PDF, DOCX, or TXT.", variant: "destructive" });
+    toast({ title: t("jdInput.toastInvalidTitle"), description: t("jdInput.toastInvalidDesc"), variant: "destructive" });
   };
 
   const handleRemoveJDFile = () => {
@@ -76,26 +78,21 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
   const wrapperProps = compact ? {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
-    className: "space-y-4 p-6 bg-slate-50/50 rounded-2xl border border-slate-200 shadow-sm"
+    className: "space-y-4 p-6 bg-[#FBFBFA] rounded-xl border border-[#EAEAEA] shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
   } : {
-    className: "glass border-white/50 shadow-sm relative overflow-hidden group"
+    className: "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative overflow-hidden group"
   };
 
   return (
     <Wrapper {...wrapperProps}>
-      {!compact && (
-        <>
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400/0 via-blue-500 to-blue-400/0 group-hover:opacity-100 opacity-50 transition-opacity" />
-          <div className="absolute top-[-50%] right-[-5%] w-64 h-64 bg-blue-400/5 rounded-full blur-3xl pointer-events-none" />
-        </>
-      )}
+      {/* No decorative elements in §0b */}
       
       {/* Header Area */}
       {compact ? (
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Briefcase className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-base text-slate-900">Target Job Description</h3>
+            <h3 className="font-bold text-base text-slate-900">{t("jdInput.titleCompact")}</h3>
           </div>
           {/* Tab toggle */}
           <div className="flex gap-1 p-1 bg-slate-100 rounded-lg shrink-0">
@@ -105,7 +102,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                 jdInputMode === "paste" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
               )}
             >
-              <Type className="w-3.5 h-3.5" /> Paste
+              <Type className="w-3.5 h-3.5" /> {t("jdInput.tabPaste")}
             </button>
             <button
               onClick={() => setJdInputMode("file")}
@@ -113,7 +110,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                 jdInputMode === "file" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
               )}
             >
-              <FileUp className="w-3.5 h-3.5" /> Upload
+              <FileUp className="w-3.5 h-3.5" /> {t("jdInput.tabUpload")}
             </button>
           </div>
         </div>
@@ -126,9 +123,9 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
               </div>
               <div>
                 <CardTitle className="text-base text-slate-800">
-                  Job Description <span className="text-slate-400 font-normal">(Optional)</span>
+                  {t("jdInput.title")} <span className="text-slate-400 font-normal">{t("jdInput.optional")}</span>
                 </CardTitle>
-                <CardDescription>Enable Skill Gap Analysis</CardDescription>
+                <CardDescription>{t("jdInput.subtitle")}</CardDescription>
               </div>
             </div>
             {/* Tab toggle */}
@@ -139,7 +136,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                   jdInputMode === "paste" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                <Type className="w-3.5 h-3.5" /> Paste
+                <Type className="w-3.5 h-3.5" /> {t("jdInput.tabPaste")}
               </button>
               <button
                 onClick={() => setJdInputMode("file")}
@@ -147,7 +144,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                   jdInputMode === "file" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                <FileUp className="w-3.5 h-3.5" /> Upload
+                <FileUp className="w-3.5 h-3.5" /> {t("jdInput.tabUpload")}
               </button>
             </div>
           </div>
@@ -159,23 +156,23 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
         <div className="pt-2">
           {jdInputMode === "paste" ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label htmlFor="jd-input-compact" className="sr-only">Job Description</label>
+              <label htmlFor="jd-input-compact" className="sr-only">{t("jdInput.title")}</label>
               <textarea
                 id="jd-input-compact"
-                className="w-full h-[180px] p-4 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-[13px] resize-none font-sans"
-                placeholder="Paste the raw text of the job description here..."
+                className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-[13px] resize-none font-sans"
+                placeholder={t("jdInput.placeholderCompact")}
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 autoFocus
               />
             </motion.div>
           ) : jdFile ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">{jdFile.name}</p>
                 <p className="text-xs text-slate-500">
-                  {(jdFile.size / 1024 / 1024).toFixed(2)} MB · {jobDescription.trim() ? "Ready for analysis" : "Text extraction required"}
+                  {(jdFile.size / 1024 / 1024).toFixed(2)} MB · {jobDescription.trim() ? t("jdInput.fileReady") : t("jdInput.fileNeedsText")}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleRemoveJDFile} className="rounded-full hover:bg-red-50 hover:text-red-500 shrink-0" aria-label="Remove file">
@@ -184,11 +181,11 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
+              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
                 <FileUp className="w-9 h-9 text-slate-300 mb-3 group-hover/drop:text-primary transition-colors" />
-                <p className="text-sm text-slate-500"><span className="font-semibold text-primary">Click to select file</span> or drag & drop</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, or TXT (Max 5MB)</p>
-                <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={handleJDUpload} aria-label="Upload Job Description" />
+                <p className="text-sm text-slate-500"><span className="font-semibold text-primary">{t("jdInput.dropHint").split(" or ")[0]?.split("hoặc")[0]}</span></p>
+                <p className="text-xs text-slate-400 mt-1">{t("jdInput.dropTypes")}</p>
+                <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={handleJDUpload} aria-label={t("jdInput.tabUpload")} />
               </label>
             </motion.div>
           )}
@@ -197,22 +194,22 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
         <CardContent>
           {jdInputMode === "paste" ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label htmlFor="jd-input-full" className="sr-only">Job Description</label>
+              <label htmlFor="jd-input-full" className="sr-only">{t("jdInput.title")}</label>
               <textarea
                 id="jd-input-full"
-                className="w-full h-[180px] p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-sm resize-none placeholder:text-slate-400 font-sans leading-relaxed"
-                placeholder="Paste the job description here...&#10;&#10;Example: We are looking for a Frontend Engineer with 2+ years of experience in React, TypeScript..."
+                className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-sm resize-none placeholder:text-slate-400 font-sans leading-relaxed"
+                placeholder={t("jdInput.placeholder")}
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
             </motion.div>
           ) : jdFile ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">{jdFile.name}</p>
                 <p className="text-xs text-slate-500">
-                  {(jdFile.size / 1024 / 1024).toFixed(2)} MB · {jobDescription.trim() ? "Ready for analysis" : "Text extraction required"}
+                  {(jdFile.size / 1024 / 1024).toFixed(2)} MB · {jobDescription.trim() ? t("jdInput.fileReady") : t("jdInput.fileNeedsText")}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleRemoveJDFile} className="rounded-full hover:bg-red-50 hover:text-red-500 shrink-0" aria-label="Remove file">
@@ -221,11 +218,11 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
+              <label className="flex flex-col items-center justify-center w-full h-[180px] border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all group/drop">
                 <FileUp className="w-9 h-9 text-slate-300 mb-3 group-hover/drop:text-primary transition-colors" />
-                <p className="text-sm text-slate-500"><span className="font-semibold text-primary">Click to select file</span> or drag & drop</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, or TXT (Max 5MB)</p>
-                <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={handleJDUpload} aria-label="Upload Job Description" />
+                <p className="text-sm text-slate-500"><span className="font-semibold text-primary">{t("jdInput.dropHint").split(" or ")[0]?.split("hoặc")[0]}</span></p>
+                <p className="text-xs text-slate-400 mt-1">{t("jdInput.dropTypes")}</p>
+                <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={handleJDUpload} aria-label={t("jdInput.tabUpload")} />
               </label>
             </motion.div>
           )}
@@ -236,14 +233,14 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
       {showActions && (
         <div className={cn("flex gap-3 justify-end items-center", compact ? "mt-2" : "p-4 pt-0")}>
           <Button variant="ghost" onClick={onCancel} className="rounded-full text-sm font-semibold hover:bg-slate-200">
-            Cancel
+            {t("jdInput.cancel")}
           </Button>
           <Button
             onClick={onAnalyze}
             disabled={!jobDescription.trim()}
             className="rounded-full px-8 bg-primary hover:bg-primary/90 text-white font-bold gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all"
           >
-            <Sparkles className="w-4 h-4" /> Analyze Skill Gap <ArrowRight className="w-4 h-4" />
+            <Sparkles className="w-4 h-4" /> {t("jdInput.analyze")} <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       )}

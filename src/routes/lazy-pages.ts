@@ -23,7 +23,6 @@ export const Payment = lazy(() => import("@/pages/user/Payment"));
 export const MentorConnect = lazy(() => import("@/pages/user/MentorConnect"));
 export const Jobs = lazy(() => import("@/pages/user/Jobs"));
 export const RoadmapGenerator = lazy(() => import("@/pages/user/RoadmapGenerator"));
-export const CvBuilder = lazy(() => import("@/pages/user/CvBuilder"));
 export const SuccessStats = lazy(() => import("@/pages/user/SuccessStats"));
 export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 export const MentorLanding = lazy(() => import("@/pages/user/MentorLanding"));

@@ -10,10 +10,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Shield, Building2, Users, Globe, Check } from "lucide-react";
+import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
+
+const VNFlagCircle = () => (
+  <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
+    <circle cx="15" cy="15" r="15" fill="#da251d" />
+    <polygon points="15,6 16.65,11.08 22,11.08 17.68,14.22 19.33,19.3 15,16.18 10.67,19.3 12.32,14.22 8,11.08 13.35,11.08" fill="#ffff00" />
+  </svg>
+);
+
+const UKFlagCircle = () => (
+  <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
+    <clipPath id="circleView">
+      <circle cx="15" cy="15" r="15" />
+    </clipPath>
+    <g clipPath="url(#circleView)">
+      <rect width="30" height="30" fill="#012169" />
+      <path d="M0,0 L30,30 M30,0 L0,30" stroke="#fff" strokeWidth="5" />
+      <path d="M0,0 L30,30 M30,0 L0,30" stroke="#C8102E" strokeWidth="2" />
+      <path d="M15,0 L15,30 M0,15 L30,15" stroke="#fff" strokeWidth="8" />
+      <path d="M15,0 L15,30 M0,15 L30,15" stroke="#C8102E" strokeWidth="5" />
+    </g>
+  </svg>
+);
 
 const NAV_ITEMS = [
   { labelKey: "nav.dashboard", href: "/dashboard" },
@@ -46,7 +68,7 @@ export default function Navbar() {
   const currentLang = i18n.language === "vi" ? "VI" : "EN";
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 transition-all duration-300">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100">
       <div className="flex items-center gap-12">
         <Link to="/" className="flex items-center group">
           <img
@@ -62,10 +84,10 @@ export default function Navbar() {
               key={item.href}
               to={item.href}
               className={cn(
-                "text-sm font-medium transition-all hover:text-primary relative py-1",
+                "text-sm font-medium transition-colors hover:text-primary relative py-1",
                 location.pathname === item.href
                   ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                  : "text-slate-600 hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:right-0 hover:after:h-0.5 hover:after:bg-primary/30 hover:after:rounded-full"
+                  : "text-slate-600" // hover chỉ đổi màu chữ — không hiện thanh gạch dưới (user chốt 06-08)
               )}
             >
               {t(item.labelKey)}
@@ -75,27 +97,38 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 h-9">
-              <Globe className="w-4 h-4" />
-              <span className="text-xs font-semibold">{currentLang}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-2 h-9 transition-all active:scale-95 border border-slate-100"
+            >
+              {i18n.language === "vi" ? <VNFlagCircle /> : <UKFlagCircle />}
+              <span className="text-xs font-bold tracking-wider">{i18n.language === "vi" ? "VI" : "EN"}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 rounded-xl border-slate-200 shadow-md">
-            <DropdownMenuItem 
-              onClick={() => i18n.changeLanguage("en")} 
-              className="flex items-center justify-between cursor-pointer"
+          <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 shadow-lg p-1">
+            <DropdownMenuItem
+              onClick={() => i18n.changeLanguage("en")}
+              className={cn(
+                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                i18n.language === "en" ? "bg-primary/5 text-primary" : "text-slate-600"
+              )}
             >
+              <UKFlagCircle />
               <span>English</span>
-              {i18n.language !== "vi" && <Check className="w-4 h-4 text-primary" />}
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => i18n.changeLanguage("vi")} 
-              className="flex items-center justify-between cursor-pointer"
+            <DropdownMenuItem
+              onClick={() => i18n.changeLanguage("vi")}
+              className={cn(
+                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                i18n.language === "vi" ? "bg-primary/5 text-primary" : "text-slate-600"
+              )}
             >
+              <VNFlagCircle />
               <span>Tiếng Việt</span>
-              {i18n.language === "vi" && <Check className="w-4 h-4 text-primary" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -114,7 +147,7 @@ export default function Navbar() {
             </Link>
           </div>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all">
                 <AvatarImage src={currentUser?.avatar || "https://github.com/shadcn.png"} />

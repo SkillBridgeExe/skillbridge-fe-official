@@ -3,27 +3,176 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Trash2, Sparkles, Wand2 } from "lucide-react";
+import { Plus, Trash2, Sparkles, X, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useRewriteFieldMutation } from "@/hooks/use-cv-builder";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useTranslation } from "react-i18next";
+
 
 export function ExperienceSection() {
-  const { experience, addExperience, updateExperience, removeExperience } = useCvBuilderStore();
+  const { experience, addExperience, updateExperience, removeExperience, draftId } = useCvBuilderStore();
   const { toast } = useToast();
-  const [improvingId, setImprovingId] = useState<string | null>(null);
+  const { t } = useTranslation("diagnosis");
 
-  const handleImproveWithAI = (id: string, text: string) => {
-    if (!text.trim()) {
-      return toast({ title: "Please write some description first", variant: "destructive" });
+  // AI suggest states per field per entry
+  const [activeSuggestion, setActiveSuggestion] = useState<{
+    entryId: string;
+    field: "description" | "achievements";
+    suggestion: string;
+    isFallback: boolean;
+  } | null>(null);
+
+  const [pendingTarget, setPendingTarget] = useState<{
+    id: string;
+    field: "description" | "achievements";
+  } | null>(null);
+
+  const [originalTextMap, setOriginalTextMap] = useState<Record<string, string>>({});
+
+  const rewriteMutation = useRewriteFieldMutation();
+  const targetRole = useDiagnosisStore((s) => s.targetRole);
+  const isLoggedIn = !!localStorage.getItem("accessToken");
+
+  const handleAiSuggest = (entryId: string, field: "description" | "achievements", currentText: string) => {
+    if (!draftId) return;
+    if (!currentText.trim()) {
+      return toast({ title: "Please write some text first", variant: "destructive" });
     }
-    setImprovingId(id);
-    // MOCK: Simulate AI rewrite
-    setTimeout(() => {
-      const improved = `- Developed comprehensive event proposals, timelines, and execution plans for corporate events.\n- Coordinated effectively with clients, vendors, and internal teams to ensure smooth delivery.\n- Supported onsite operations and post-event reporting.`;
-      updateExperience(id, "aiRewrite", improved);
-      setImprovingId(null);
-      toast({ title: "Improved with AI!" });
-    }, 1500);
+
+    setPendingTarget({ id: entryId, field });
+    setActiveSuggestion(null);
+
+    rewriteMutation.mutate(
+      {
+        draftId,
+        text: currentText,
+        mode: "harvard",
+        role_code: targetRole ?? undefined,
+        section: "experience",
+      },
+      {
+        onSuccess: (data) => {
+          setActiveSuggestion({
+            entryId,
+            field,
+            suggestion: data.suggestion,
+            isFallback: !!data.fallback,
+          });
+          setPendingTarget(null);
+        },
+        onError: (err: any) => {
+          setPendingTarget(null);
+          toast({
+            title: "AI Suggestion failed",
+            description: err?.message || "Something went wrong.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleUseIt = (entryId: string, field: "description" | "achievements") => {
+    if (!activeSuggestion) return;
+    const entry = experience.find((e) => e.id === entryId);
+    if (!entry) return;
+
+    const oldValue = entry[field];
+    updateExperience(entryId, field, activeSuggestion.suggestion);
+    updateExperience(entryId, "aiRewrite", oldValue); // Sử dụng aiRewrite để lưu backup
+    setOriginalTextMap((prev) => ({ ...prev, [`${entryId}_${field}`]: oldValue }));
+  };
+
+  const handleUndo = (entryId: string, field: "description" | "achievements") => {
+    const backupValue = originalTextMap[`${entryId}_${field}`];
+    if (!backupValue) return;
+
+    updateExperience(entryId, field, backupValue);
+    updateExperience(entryId, "aiRewrite", "");
+    setOriginalTextMap((prev) => {
+      const copy = { ...prev };
+      delete copy[`${entryId}_${field}`];
+      return copy;
+    });
+  };
+
+  const handleClose = () => {
+    setActiveSuggestion(null);
+    setPendingTarget(null);
+  };
+
+  const renderSuggestionBox = (entryId: string, field: "description" | "achievements") => {
+    const isPending = rewriteMutation.isPending && pendingTarget?.id === entryId && pendingTarget?.field === field;
+    const entry = experience.find((e) => e.id === entryId);
+    const hasUndo = entry && entry.aiRewrite && originalTextMap[`${entryId}_${field}`] === entry.aiRewrite;
+
+    if (!isPending && (!activeSuggestion || activeSuggestion.entryId !== entryId || activeSuggestion.field !== field)) {
+      return null;
+    }
+
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3 mt-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {t("builder.aiSuggestLabel")}
+          </span>
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isPending ? (
+          <div className="space-y-2 py-1 animate-pulse">
+            <div className="h-3.5 bg-slate-200 rounded w-full" />
+            <div className="h-3.5 bg-slate-200 rounded w-5/6" />
+          </div>
+        ) : (
+          <>
+            <p className="text-[13px] text-slate-700 leading-relaxed font-sans font-medium">
+              {activeSuggestion?.suggestion}
+            </p>
+
+            {activeSuggestion?.isFallback ? (
+              <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded p-2 leading-relaxed">
+                {t("builder.fallbackNote")}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-1">
+                {hasUndo && entry[field] === activeSuggestion?.suggestion ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handleUndo(entryId, field)}
+                    variant="outline"
+                    className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{t("builder.undo")}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => handleUseIt(entryId, field)}
+                    className="h-7 text-xs bg-primary hover:bg-primary/90 text-white"
+                  >
+                    {t("builder.useIt")}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAiSuggest(entryId, field, entry ? entry[field] : "")}
+                  className="h-7 text-xs text-slate-500 hover:text-slate-750 hover:bg-slate-200/50"
+                >
+                  {t("builder.retry")}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -59,51 +208,66 @@ export function ExperienceSection() {
               <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder="e.g. Present" />
             </div>
 
+            {/* Description/Responsibilities field */}
             <div className="space-y-2 col-span-2 pt-2">
               <div className="flex items-center justify-between">
                 <Label>Description / Responsibilities</Label>
-                <Button 
-                  variant="outline" size="sm" 
-                  className="h-7 text-xs border-primary text-primary hover:bg-primary/5"
-                  onClick={() => handleImproveWithAI(exp.id, exp.description)}
-                  disabled={improvingId === exp.id}
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  {improvingId === exp.id ? "Improving..." : "Improve with AI"}
-                </Button>
+                {isLoggedIn && draftId && exp.description.trim() && (
+                  <Button 
+                    variant="ghost" size="sm" 
+                    className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
+                    onClick={() => handleAiSuggest(exp.id, "description", exp.description)}
+                    disabled={rewriteMutation.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t("builder.aiSuggest")}</span>
+                  </Button>
+                )}
               </div>
-              
-              {!exp.aiRewrite ? (
-                <Textarea 
-                  value={exp.description} 
-                  onChange={(e) => updateExperience(exp.id, "description", e.target.value)} 
-                  placeholder="e.g. Em từng viết proposal, làm timeline, làm việc với khách hàng..." 
-                  className="text-[13px] resize-none h-24 font-sans"
-                />
-              ) : (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                    <Wand2 className="w-3.5 h-3.5" /> AI Improved Version
-                  </div>
-                  <Textarea 
-                    value={exp.aiRewrite} 
-                    onChange={(e) => updateExperience(exp.id, "aiRewrite", e.target.value)}
-                    className="text-[13px] resize-none h-24 bg-white border-primary/20"
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => updateExperience(exp.id, "aiRewrite", "")}>
-                      Discard
-                    </Button>
-                    <Button size="sm" className="h-7 text-xs bg-primary hover:bg-primary/90 text-white" onClick={() => {
-                      updateExperience(exp.id, "description", exp.aiRewrite);
-                      updateExperience(exp.id, "aiRewrite", "");
-                    }}>
-                      Use This Version
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Textarea 
+                value={exp.description} 
+                onChange={(e) => updateExperience(exp.id, "description", e.target.value)} 
+                placeholder="e.g. Em từng viết proposal, làm timeline, làm việc với khách hàng..." 
+                className="text-[13px] resize-none h-24 font-sans"
+              />
+
+              {/* Suggestion Box for Description */}
+              {((pendingTarget?.id === exp.id && pendingTarget?.field === "description") || 
+                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) && 
+                renderSuggestionBox(exp.id, "description")
+              }
             </div>
+
+            {/* Achievements field */}
+            <div className="space-y-2 col-span-2 pt-2">
+              <div className="flex items-center justify-between">
+                <Label>Key Achievements</Label>
+                {isLoggedIn && draftId && exp.achievements.trim() && (
+                  <Button 
+                    variant="ghost" size="sm" 
+                    className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
+                    onClick={() => handleAiSuggest(exp.id, "achievements", exp.achievements)}
+                    disabled={rewriteMutation.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t("builder.aiSuggest")}</span>
+                  </Button>
+                )}
+              </div>
+              <Textarea 
+                value={exp.achievements} 
+                onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)} 
+                placeholder="e.g. Increased website performance by 40%. Led a team of 3 developers to deliver the project 2 weeks ahead of schedule." 
+                className="text-[13px] resize-none h-20 font-sans"
+              />
+
+              {/* Suggestion Box for Achievements */}
+              {((pendingTarget?.id === exp.id && pendingTarget?.field === "achievements") || 
+                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) && 
+                renderSuggestionBox(exp.id, "achievements")
+              }
+            </div>
+
           </div>
         </div>
       ))}

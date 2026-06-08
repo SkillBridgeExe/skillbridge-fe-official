@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 export default function LogoMarquee() {
+  const { t } = useTranslation("home");
   const employers = [
     { name: "FPT Software", icon: "⚡" },
     { name: "VNG Corporation", icon: "🎮" },
@@ -25,7 +28,7 @@ export default function LogoMarquee() {
 
       <div className="max-w-7xl mx-auto px-6 text-center mb-6">
         <h3 className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-          Preparing candidates for top-tier tech employers in Vietnam
+          {t("marquee")}
         </h3>
       </div>
 

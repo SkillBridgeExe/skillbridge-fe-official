@@ -1,7 +1,10 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ListChecks, Quote } from "lucide-react";
+import { ListChecks, Quote, Eye } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type {
   ExtractedSkill,
   RelevanceSkillItem,
@@ -30,26 +33,89 @@ const PASTEL = {
  * ③ TOP SUMMARY — lead "sửa N việc này trước" (đặt ĐẦU trang kết quả)
  * ═══════════════════════════════════════════════════════════════════ */
 export function TopSummaryCard({ summary }: { summary: TopSummary }) {
+  const { t } = useTranslation("diagnosis");
+  const lastCvId = useDiagnosisStore((s) => s.lastCvId);
+  const storageKey = lastCvId ? `sb-actions-${lastCvId}` : null;
+
+  const [tickedIndexes, setTickedIndexes] = useState<number[]>([]);
+
+  // Load from localStorage on mount or lastCvId change
+  useEffect(() => {
+    if (!storageKey) {
+      setTickedIndexes([]);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setTickedIndexes(JSON.parse(stored));
+      } else {
+        setTickedIndexes([]);
+      }
+    } catch {
+      setTickedIndexes([]);
+    }
+  }, [storageKey]);
+
+  // Save to localStorage
+  const toggleTick = (index: number) => {
+    const next = tickedIndexes.includes(index)
+      ? tickedIndexes.filter((i) => i !== index)
+      : [...tickedIndexes, index];
+    setTickedIndexes(next);
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
+
+  const total = summary.prioritized_actions.length;
+  const done = tickedIndexes.filter((i) => i < total).length;
+
   return (
     <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="p-6">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-          <ListChecks className="w-3.5 h-3.5" />
-          Fix these first
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <ListChecks className="w-3.5 h-3.5" />
+            {t("insights.fixFirst")}
+          </div>
+          {total > 0 && (
+            <span className="text-[11px] font-mono text-slate-400">
+              {t("insights.actionsDone", { done, total })}
+            </span>
+          )}
         </div>
         <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
           {summary.headline}
         </h2>
-        {summary.prioritized_actions.length > 0 && (
-          <ol className="mt-4 space-y-2">
-            {summary.prioritized_actions.map((action, idx) => (
-              <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
-                <span className="w-5 h-5 rounded-md bg-[#FBF3DB] text-[#956400] text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="font-medium leading-relaxed">{action}</span>
-              </li>
-            ))}
+        {total > 0 && (
+          <ol className="mt-4 space-y-3">
+            {summary.prioritized_actions.map((action, idx) => {
+              const isTicked = tickedIndexes.includes(idx);
+              return (
+                <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
+                  <input
+                    type="checkbox"
+                    checked={isTicked}
+                    onChange={() => toggleTick(idx)}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1 shrink-0 cursor-pointer"
+                  />
+                  <span
+                    onClick={() => toggleTick(idx)}
+                    className={cn(
+                      "font-medium leading-relaxed cursor-pointer select-none transition-all duration-200",
+                      isTicked && "line-through text-[#B9B9B7]"
+                    )}
+                  >
+                    {action}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
       </CardContent>
@@ -67,30 +133,50 @@ const PROFICIENCY_ORDER: Record<SkillProficiencyHint, number> = {
   unknown: 3,
 };
 
-const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
-  advanced: { label: "Advanced", chip: PASTEL.green },
-  intermediate: { label: "Intermediate", chip: PASTEL.yellow },
-  beginner: { label: "Beginner", chip: PASTEL.gray },
-};
+function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => string }) {
+  const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
+  const setHighlightEvidence = useDiagnosisStore((s) => s.setHighlightEvidence);
+  const isActive = !!skill.evidence_text && highlightEvidence === skill.evidence_text;
 
-function SkillChip({ skill }: { skill: ExtractedSkill }) {
+  const handleClick = () => {
+    if (!skill.evidence_text) return;
+    if (isActive) {
+      setHighlightEvidence(null);
+    } else {
+      setHighlightEvidence(skill.evidence_text);
+    }
+  };
+
+  const PROFICIENCY_STYLE: Record<Exclude<SkillProficiencyHint, "unknown">, { label: string; chip: string }> = {
+    advanced: { label: t("insights.proficiency.advanced"), chip: PASTEL.green },
+    intermediate: { label: t("insights.proficiency.intermediate"), chip: PASTEL.yellow },
+    beginner: { label: t("insights.proficiency.beginner"), chip: PASTEL.gray },
+  };
+
   // Contract §6.3: proficiency 'unknown' → ẨN badge, chỉ hiện tên.
   const proficiency =
     skill.proficiency_hint !== "unknown" ? PROFICIENCY_STYLE[skill.proficiency_hint] : null;
+
   const chip = (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border border-[#EAEAEA] bg-white px-2.5 py-1.5",
-        skill.evidence_text && "cursor-help",
+        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-all duration-200",
+        isActive
+          ? "border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20"
+          : "border-[#EAEAEA] bg-white hover:border-slate-300",
+        skill.evidence_text && "cursor-pointer"
       )}
     >
+      {skill.evidence_text && (
+        <Eye className={cn("w-3 h-3 transition-opacity", isActive ? "text-indigo-600 opacity-90" : "text-slate-400 opacity-40")} />
+      )}
       <span className="text-[13px] font-semibold text-[#2F3437]">{skill.name}</span>
       {proficiency && (
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold border", proficiency.chip)}>
           {proficiency.label}
         </span>
       )}
-      {skill.evidence_text && <Quote className="w-3 h-3 text-slate-300" />}
+      {skill.evidence_text && <Quote className="w-3 h-3 text-slate-300 shrink-0" />}
     </span>
   );
 
@@ -101,18 +187,24 @@ function SkillChip({ skill }: { skill: ExtractedSkill }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-pressed={isActive}
+          className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        >
           {chip}
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs">
-        <p className="text-xs leading-relaxed">“{skill.evidence_text}”</p>
+        <p className="text-xs leading-relaxed">"{skill.evidence_text}"</p>
       </TooltipContent>
     </Tooltip>
   );
 }
 
 export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
+  const { t } = useTranslation("diagnosis");
   const sorted = [...skills].sort(
     (a, b) => PROFICIENCY_ORDER[a.proficiency_hint] - PROFICIENCY_ORDER[b.proficiency_hint],
   );
@@ -120,13 +212,18 @@ export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
   return (
     <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="pt-5 pb-5">
-        <h3 className="text-sm font-bold text-[#2F3437]">Skills found in your CV</h3>
-        <p className="text-xs text-[#787774] mt-0.5 mb-3">
-          Hover a skill to see the evidence the AI extracted.
-        </p>
+        <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.skillsTitle")}</h3>
+        <div className="text-xs text-[#787774] mt-0.5 mb-3 leading-relaxed">
+          <span>{t("insights.skillsHint")}</span>
+          {skills.some((s) => s.evidence_text) && (
+            <span className="block text-[11px] text-indigo-600 font-medium mt-1">
+              {t("insights.evidenceHint")}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           {sorted.map((skill) => (
-            <SkillChip key={skill.name} skill={skill} />
+            <SkillChip key={skill.name} skill={skill} t={t} />
           ))}
         </div>
       </CardContent>
@@ -146,19 +243,6 @@ const IMPORTANCE_ORDER: Record<SkillImportance, number> = {
   NICE_TO_HAVE: 2,
 };
 
-const RELEVANCE_GROUPS: {
-  key: keyof SkillsRelevanceBreakdown;
-  label: string;
-  hint?: string;
-  dot: string;
-  chip: string;
-  showLevels: boolean;
-}[] = [
-  { key: "matched", label: "Matched", dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
-  { key: "partial", label: "Partial", dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
-  { key: "missing", label: "Missing", hint: "add these first", dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
-];
-
 function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
   return [...items].sort(
     (a, b) => IMPORTANCE_ORDER[a.importance] - IMPORTANCE_ORDER[b.importance],
@@ -166,6 +250,21 @@ function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
 }
 
 export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceBreakdown }) {
+  const { t } = useTranslation("diagnosis");
+
+  const RELEVANCE_GROUPS: {
+    key: keyof SkillsRelevanceBreakdown;
+    label: string;
+    hint?: string;
+    dot: string;
+    chip: string;
+    showLevels: boolean;
+  }[] = [
+    { key: "matched", label: t("insights.matched"), dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
+    { key: "partial", label: t("insights.partial"), dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
+    { key: "missing", label: t("insights.missing"), hint: t("insights.addFirst"), dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
+  ];
+
   const groups = RELEVANCE_GROUPS.filter((group) => breakdown[group.key].length > 0);
   if (groups.length === 0) {
     return null;
@@ -175,9 +274,9 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
     <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <CardContent className="pt-5 pb-5 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-[#2F3437]">Skill relevance</h3>
+          <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.relevanceTitle")}</h3>
           <p className="text-xs text-[#787774] mt-0.5">
-            Your skills vs. the target role's requirements.
+            {t("insights.relevanceHint")}
           </p>
         </div>
         {groups.map((group) => (
