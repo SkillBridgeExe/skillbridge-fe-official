@@ -49,6 +49,12 @@ server {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
+    # Runtime config (regenerated from env each boot) — must never be cached,
+    # else a browser keeps stale config across deploys / env changes.
+    location = /config.js {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
     # SPA fallback: any unknown path → index.html (React Router handles routing).
     location / {
         try_files $uri $uri/ /index.html;

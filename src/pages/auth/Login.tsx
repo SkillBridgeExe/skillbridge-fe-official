@@ -13,16 +13,9 @@ import { useMascotSuccess } from "@/hooks/useMascot";
 import { MOCK_LOGIN_ACCOUNTS } from "@/store/useAuthStore";
 import { dashboardPathFor, login, loginWithGoogle } from "@/services/auth.service";
 import { GoogleOAuthProvider, GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import { GOOGLE_CLIENT_ID } from "@/lib/runtime-config";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
-
-// Google OAuth client ID — public by design (it ships in the JS bundle anyway).
-// Default = the client in the lithe-camp-490011-d4 project (same as Cloud Run).
-// Local dev can override via VITE_GOOGLE_CLIENT_ID in .env (build-time only —
-// production bakes the default below because .env is gitignored / not in CI).
-const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-  "973344038436-p701b3b89iiium7eitf1mik4n6t5novi.apps.googleusercontent.com";
 
 export default function Login() {
   const navigate = useNavigate();
