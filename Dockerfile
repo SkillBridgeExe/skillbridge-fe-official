@@ -31,5 +31,12 @@ COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 # The compiled static site.
 COPY --from=build /app/dist/spa /usr/share/nginx/html
 
+# Runtime config: the base image runs every /docker-entrypoint.d/*.sh before nginx
+# starts. 40-render-runtime-config.sh envsubst's config.template.js → config.js
+# using the Cloud Run service env (PUBLIC vars only). One image, many environments.
+COPY nginx/config.template.js /usr/share/nginx/config.template.js
+COPY nginx/40-render-runtime-config.sh /docker-entrypoint.d/40-render-runtime-config.sh
+RUN chmod +x /docker-entrypoint.d/40-render-runtime-config.sh
+
 EXPOSE 8080
 # The base nginx entrypoint runs envsubst on templates, then `nginx -g 'daemon off;'`.

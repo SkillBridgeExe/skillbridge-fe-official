@@ -33,10 +33,7 @@ import {
 } from "@/services/auth.service";
 import laptopMascot from "@/assets/mascot/laptop.png";
 import logoGif from "@/assets/logo/logo.gif";
-
-const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-  "623397197354-7b3pae48gui0nkn2s4ml2vjatfm15mqt.apps.googleusercontent.com";
+import { GOOGLE_CLIENT_ID } from "@/lib/runtime-config";
 
 type AuthMode = "login" | "register";
 

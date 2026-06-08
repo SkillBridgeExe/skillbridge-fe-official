@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { API_URL } from "@/lib/runtime-config";
 
 function normalizeApiBaseUrl(value: string | undefined): string {
   const normalized = value?.trim().replace(/\/+$/, "") ?? "";
@@ -21,7 +22,7 @@ function normalizeApiBaseUrl(value: string | undefined): string {
  * proposed but not yet finalized with .NET dev — fall back to status + message.
  */
 export const httpClient = axios.create({
-  baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL),
+  baseURL: normalizeApiBaseUrl(API_URL),
   timeout: 15_000,
   withCredentials: true,
   headers: {

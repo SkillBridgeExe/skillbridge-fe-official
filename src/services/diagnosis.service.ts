@@ -10,7 +10,7 @@
 import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi } from "@/api/cv/match";
-import { getCvListApi, type CvListQuery } from "@/api/cv/list";
+import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type {
   BeIssueSeverity,
@@ -264,4 +264,15 @@ export async function getDiagnosisHistory(
 ): Promise<Paginated<CvListItemDto>> {
   requireSession();
   return getCvListApi(query);
+}
+
+/**
+ * Mở lại 1 CV cũ từ lịch sử (GET /api/cvs/:id) → map về UI model để render
+ * thẳng màn kết quả. KHÔNG tốn quota chấm (chỉ đọc review đã lưu).
+ * Trả null cho review nếu CV cũ chưa từng được chấm (cv_kind=BUILT chưa analyze).
+ */
+export async function loadCvFromHistory(id: string): Promise<AnalyzeOutcome> {
+  requireSession();
+  const dto = await getCvDetailApi(id);
+  return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
 }
