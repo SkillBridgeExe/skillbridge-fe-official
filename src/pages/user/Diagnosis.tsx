@@ -149,8 +149,8 @@ export default function Diagnosis() {
           },
           onError: (err: any) => {
             toast({
-              title: "Error creating draft",
-              description: err?.message || "Failed to create a builder draft on the server. Working in local mode.",
+              title: t("builder.toastDraftErrorTitle"),
+              description: err?.message || t("builder.toastDraftErrorDesc"),
               variant: "destructive",
             });
             useAutosaveStore.getState().setSaveStatus("error");

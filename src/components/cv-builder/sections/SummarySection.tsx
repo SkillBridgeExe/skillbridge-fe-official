@@ -29,7 +29,7 @@ export function SummarySection() {
   const handleAiSuggest = () => {
     if (!draftId) return;
     if (!summary.trim()) {
-      return toast({ title: "Please write some summary first", variant: "destructive" });
+      return toast({ title: t("builder.toastWriteSummaryFirst"), variant: "destructive" });
     }
 
     setShowSuggestion(true);
@@ -52,8 +52,8 @@ export function SummarySection() {
         onError: (err: any) => {
           setShowSuggestion(false);
           toast({
-            title: "AI Suggestion failed",
-            description: err?.message || "Something went wrong.",
+            title: t("builder.toastAiSuggestFailed"),
+            description: err?.message || t("builder.toastSomethingWrong"),
             variant: "destructive",
           });
         },
@@ -81,7 +81,7 @@ export function SummarySection() {
 
   const handleGenerate = () => {
     if (!summary.trim()) {
-      return toast({ title: "Please tell us about yourself first", variant: "destructive" });
+      return toast({ title: t("builder.toastTellAboutFirst"), variant: "destructive" });
     }
     setIsGenerating(true);
     setTimeout(() => {
@@ -91,7 +91,7 @@ export function SummarySection() {
       );
       setIsGenerating(false);
       setSummaryMode("manual");
-      toast({ title: "Summary Generated" });
+      toast({ title: t("builder.toastSummaryGenerated") });
     }, 1500);
   };
 
@@ -104,7 +104,7 @@ export function SummarySection() {
           className={cn("flex-1", summaryMode === "manual" && "border-primary text-primary bg-primary/5")}
           onClick={() => setSummaryMode("manual")}
         >
-          <Edit3 className="w-4 h-4 mr-2" /> Write Manually
+          <Edit3 className="w-4 h-4 mr-2" /> {t("builder.writeManually")}
         </Button>
         <Button
           variant="outline"
@@ -112,13 +112,13 @@ export function SummarySection() {
           className={cn("flex-1", summaryMode === "ai" && "border-primary text-primary bg-primary/5")}
           onClick={() => setSummaryMode("ai")}
         >
-          <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+          <Sparkles className="w-4 h-4 mr-2" /> {t("builder.generateWithAi")}
         </Button>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>{summaryMode === "ai" ? "Tell AI about yourself" : "Professional Summary"}</Label>
+          <Label>{summaryMode === "ai" ? t("builder.tellAiLabel") : t("builder.summaryLabel")}</Label>
           {isLoggedIn && draftId && summary.trim() && (
             <Button
               variant="ghost"
@@ -136,8 +136,8 @@ export function SummarySection() {
           className="min-h-[120px] resize-none text-[13px]"
           placeholder={
             summaryMode === "ai"
-              ? "Example: I am a final-year Software Engineering student interested in Business Analysis. I have experience writing user stories..."
-              : "Write a brief summary of your background, skills, and career goals..."
+              ? t("builder.summaryAiPlaceholder")
+              : t("builder.summaryManualPlaceholder")
           }
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
@@ -211,7 +211,7 @@ export function SummarySection() {
         <div className="flex justify-end gap-2">
           <Button onClick={handleGenerate} disabled={isGenerating} size="sm" className="bg-primary hover:bg-primary/90 text-white">
             <Sparkles className="w-4 h-4 mr-2" />
-            {isGenerating ? "Generating..." : "Generate Summary"}
+            {isGenerating ? t("builder.generating") : t("builder.generateSummary")}
           </Button>
         </div>
       )}
@@ -219,7 +219,7 @@ export function SummarySection() {
       {summaryMode === "manual" && summary && !showSuggestion && (
         <div className="flex flex-wrap gap-2 pt-2">
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSummaryMode("ai")}>
-            <Sparkles className="w-3 h-3 mr-1" /> Regenerate
+            <Sparkles className="w-3 h-3 mr-1" /> {t("builder.regenerate")}
           </Button>
         </div>
       )}

@@ -38,7 +38,7 @@ export function ExperienceSection() {
   const handleAiSuggest = (entryId: string, field: "description" | "achievements", currentText: string) => {
     if (!draftId) return;
     if (!currentText.trim()) {
-      return toast({ title: "Please write some text first", variant: "destructive" });
+      return toast({ title: t("builder.toastWriteTextFirst"), variant: "destructive" });
     }
 
     setPendingTarget({ id: entryId, field });
@@ -65,8 +65,8 @@ export function ExperienceSection() {
         onError: (err: any) => {
           setPendingTarget(null);
           toast({
-            title: "AI Suggestion failed",
-            description: err?.message || "Something went wrong.",
+            title: t("builder.toastAiSuggestFailed"),
+            description: err?.message || t("builder.toastSomethingWrong"),
             variant: "destructive",
           });
         },
@@ -180,7 +180,7 @@ export function ExperienceSection() {
       {experience.map((exp, index) => (
         <div key={exp.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 relative group">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-sm text-slate-700">Experience #{index + 1}</h4>
+            <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.experience")} #{index + 1}</h4>
             <Button
               variant="ghost" size="icon"
               className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -192,26 +192,26 @@ export function ExperienceSection() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>Company / Organization *</Label>
-              <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder="e.g. SkillBridge Inc." />
+              <Label>{t("builder.fields.company")} *</Label>
+              <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder={t("builder.ph.company")} />
             </div>
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>Position *</Label>
-              <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder="e.g. Frontend Developer" />
+              <Label>{t("builder.fields.position")} *</Label>
+              <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder={t("builder.ph.position")} />
             </div>
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>Start Date</Label>
-              <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} placeholder="e.g. Jan 2023" />
+              <Label>{t("builder.fields.startDate")}</Label>
+              <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} placeholder={t("builder.ph.startDate")} />
             </div>
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>End Date (or Present)</Label>
-              <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder="e.g. Present" />
+              <Label>{t("builder.fields.endDate")}</Label>
+              <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder={t("builder.ph.endDate")} />
             </div>
 
             {/* Description/Responsibilities field */}
             <div className="space-y-2 col-span-2 pt-2">
               <div className="flex items-center justify-between">
-                <Label>Description / Responsibilities</Label>
+                <Label>{t("builder.fields.expDescription")}</Label>
                 {isLoggedIn && draftId && exp.description.trim() && (
                   <Button 
                     variant="ghost" size="sm" 
@@ -224,10 +224,10 @@ export function ExperienceSection() {
                   </Button>
                 )}
               </div>
-              <Textarea 
-                value={exp.description} 
-                onChange={(e) => updateExperience(exp.id, "description", e.target.value)} 
-                placeholder="e.g. Em từng viết proposal, làm timeline, làm việc với khách hàng..." 
+              <Textarea
+                value={exp.description}
+                onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
+                placeholder={t("builder.ph.expDescription")}
                 className="text-[13px] resize-none h-24 font-sans"
               />
 
@@ -241,7 +241,7 @@ export function ExperienceSection() {
             {/* Achievements field */}
             <div className="space-y-2 col-span-2 pt-2">
               <div className="flex items-center justify-between">
-                <Label>Key Achievements</Label>
+                <Label>{t("builder.fields.keyAchievements")}</Label>
                 {isLoggedIn && draftId && exp.achievements.trim() && (
                   <Button 
                     variant="ghost" size="sm" 
@@ -254,10 +254,10 @@ export function ExperienceSection() {
                   </Button>
                 )}
               </div>
-              <Textarea 
-                value={exp.achievements} 
-                onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)} 
-                placeholder="e.g. Increased website performance by 40%. Led a team of 3 developers to deliver the project 2 weeks ahead of schedule." 
+              <Textarea
+                value={exp.achievements}
+                onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)}
+                placeholder={t("builder.ph.keyAchievements")}
                 className="text-[13px] resize-none h-20 font-sans"
               />
 
@@ -272,7 +272,7 @@ export function ExperienceSection() {
         </div>
       ))}
       <Button variant="outline" className="w-full border-dashed" onClick={addExperience}>
-        <Plus className="w-4 h-4 mr-2" /> Add Experience
+        <Plus className="w-4 h-4 mr-2" /> {t("builder.add.experience")}
       </Button>
     </div>
   );
