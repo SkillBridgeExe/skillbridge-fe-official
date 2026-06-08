@@ -129,10 +129,23 @@ export default function Diagnosis() {
         { language: useCvBuilderStore.getState().cvLanguage },
         {
           onSuccess: (data) => {
-            useCvBuilderStore.getState().setDraftId(data.id);
+            const builder = useCvBuilderStore.getState();
+            builder.setDraftId(data.id);
             useAutosaveStore.getState().setSaveStatus("saved");
             const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
             useAutosaveStore.getState().setLastSavedTime(timeStr);
+
+            // Seeded từ CV đã chẩn đoán → đẩy ngay nội dung parse vào draft vừa tạo
+            // để "Download CV" (render-pdf) có dữ liệu mà không phải chờ user chỉnh.
+            if (builder.seededFromDiagnosis) {
+              builder.setSeededFromDiagnosis(false);
+              saveDraftMutation.mutate({
+                draftId: data.id,
+                snapshot: getBuilderSnapshot(useCvBuilderStore.getState()),
+                title: useCvBuilderStore.getState().fullName || "CV Builder draft",
+                targetRole: useDiagnosisStore.getState().targetRole,
+              });
+            }
           },
           onError: (err: any) => {
             toast({
@@ -145,7 +158,7 @@ export default function Diagnosis() {
         }
       );
     }
-  }, [step, ensureDraftMutation, toast]);
+  }, [step, ensureDraftMutation, saveDraftMutation, toast]);
 
   useEffect(() => {
     if (step !== "builder") return;

@@ -1,18 +1,19 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Download, RotateCcw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
 import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
-import type { ReviewDimension, CvIssue } from "@shared/api";
+import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -175,6 +176,42 @@ export function DiagnosisStep2Review() {
     }
   };
 
+  /** "Sửa CV & tải PDF": nạp CV đã chẩn đoán vào Builder rồi mở Builder (edit → live preview → render PDF). */
+  const handleEditCv = () => {
+    const parsed = reviewData?.parsedCv;
+    const seedDoc: CanonicalCvDocument | null =
+      reviewData?.document ??
+      (parsed
+        ? {
+            language: "en",
+            contact: {
+              name: parsed.name ?? null,
+              email: parsed.email ?? null,
+              phone: parsed.phone ?? null,
+              location: null,
+              links: [],
+            },
+            summary: parsed.summary ?? "",
+            education: [],
+            experience: [],
+            projects: [],
+            skills: { technical: parsed.skills ?? [], soft: [], languages: [], tools: [] },
+            certifications: [],
+            activities: [],
+          }
+        : null);
+
+    if (!seedDoc) {
+      toast({ title: t("review.editNoDataTitle"), description: t("review.editNoDataDesc"), variant: "destructive" });
+      return;
+    }
+
+    const builder = useCvBuilderStore.getState();
+    builder.hydrateFromCanonical(seedDoc);
+    if (targetRole) builder.setCareerTarget("targetPosition", targetRole);
+    setStep("builder");
+  };
+
   const overallCvScore = reviewData?.overallScore ?? 0;
   const atsScore = reviewData?.breakdown.ats ?? 0;
   const dimensions = reviewData?.dimensions ?? [];
@@ -286,11 +323,11 @@ export function DiagnosisStep2Review() {
           </div>
 
           <Button
-            variant="outline"
+            onClick={handleEditCv}
             size="sm"
-            className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="rounded-lg gap-2 text-xs font-semibold bg-[#2F3437] text-white hover:bg-[#1f2426] active:scale-[0.98] transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            <Download className="w-3.5 h-3.5" /> {t("review.exportReport")}
+            <Pencil className="w-3.5 h-3.5" /> {t("review.editCta")}
           </Button>
         </div>
       </div>
