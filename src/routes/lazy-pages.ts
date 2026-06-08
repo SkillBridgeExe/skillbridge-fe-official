@@ -14,6 +14,7 @@ export const Register = lazy(() => import("@/pages/auth/Register"));
 export const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 
 export const Dashboard = lazy(() => import("@/pages/user/Dashboard"));
+export const UserProfile = lazy(() => import("@/pages/user/Profile"));
 export const Diagnosis = lazy(() => import("@/pages/user/Diagnosis"));
 export const Learning = lazy(() => import("@/pages/user/Learning"));
 export const Practice = lazy(() => import("@/pages/user/Practice"));
