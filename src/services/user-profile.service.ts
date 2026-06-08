@@ -18,7 +18,10 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 
 function hasApiSession() {
-  return Boolean(localStorage.getItem("accessToken") || localStorage.getItem("user"));
+  // Only a real bearer token counts as an API session. A lingering "user" key
+  // (mock login / stale state) must NOT trigger authed calls — those 401 and
+  // used to bounce the user to the homepage.
+  return Boolean(localStorage.getItem("accessToken"));
 }
 
 function getLocalProfile(): UserProfileDto {

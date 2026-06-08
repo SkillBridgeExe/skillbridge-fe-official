@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { API_URL } from "@/lib/runtime-config";
+import { useAuthStore } from "@/store/useAuthStore";
 
 function normalizeApiBaseUrl(value: string | undefined): string {
   const normalized = value?.trim().replace(/\/+$/, "") ?? "";
@@ -50,11 +51,13 @@ httpClient.interceptors.response.use(
       // Refresh-token handling lives in the auth service so it can call
       // /api/auth/refresh before falling through. Here we only clear local
       // state when the server confirms the session is unrecoverable.
-      // TODO: wire auth service to call refresh before forcing redirect.
-      localStorage.removeItem("accessToken");
-      if (typeof window !== "undefined" && window.location.pathname !== "/") {
-        window.location.href = "/";
-      }
+      // TODO: wire auth service to call refresh before clearing the session.
+      //
+      // Clear the session client-side (token + user + auth store) so authed
+      // background queries (e.g. the navbar avatar) stop firing and re-tripping
+      // this 401. No hard redirect: public pages (e.g. /diagnosis) stay put as
+      // guest, while AuthGuard sends protected pages to login on its own.
+      useAuthStore.getState().logout();
     }
 
     if (status === 403) {
