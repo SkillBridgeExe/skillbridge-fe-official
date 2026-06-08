@@ -258,6 +258,19 @@ export default {
       generatePlan: "Tạo lộ trình học",
       jdHighlightTitle: "Xem từ khoá trong JD của bạn",
     },
+    jobs: {
+      title: "Việc làm khớp với CV của bạn",
+      empty: "Chưa có việc khớp cho vai trò này — quay lại sau nhé.",
+      missing: "Còn thiếu:",
+      apply: "Xem & ứng tuyển",
+      disclaimer: "Điểm khớp phản ánh độ phù hợp kỹ năng CV–JD, không đảm bảo trúng tuyển.",
+    },
+    trends: {
+      title: "Kỹ năng thị trường đang cần",
+      subtitle: "Kỹ năng đang được tuyển nhiều mà CV bạn chưa có.",
+      empty: "CV của bạn đã phủ những kỹ năng được tuyển nhiều nhất ở đây.",
+      hot: "đang hot",
+    },
     jdInput: {
       title: "Mô tả công việc",
       titleCompact: "JD mục tiêu",

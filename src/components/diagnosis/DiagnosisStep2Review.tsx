@@ -5,6 +5,8 @@ import { ArrowLeft, Download, RotateCcw, Briefcase, ChevronDown, ChevronUp } fro
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
+import { JobRecommendations } from "./JobRecommendations";
+import { SkillGapTrends } from "./SkillGapTrends";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -356,6 +358,10 @@ export function DiagnosisStep2Review() {
         {/* RIGHT: Document Preview (Sticky) */}
         <DocumentPreview />
       </div>
+
+      {/* Moat L2 — top job thật + skill-gap thị trường (W8) */}
+      <JobRecommendations cvId={lastCvId} />
+      <SkillGapTrends cvId={lastCvId} />
 
       {/* CTA Row */}
       <div className="mt-8 pt-6 border-t border-[#EAEAEA]">

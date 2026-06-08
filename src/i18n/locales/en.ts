@@ -258,6 +258,19 @@ export default {
       generatePlan: "Generate study plan",
       jdHighlightTitle: "See the keywords in your JD",
     },
+    jobs: {
+      title: "Jobs that match your CV",
+      empty: "No matching jobs for this role yet — check back soon.",
+      missing: "Missing:",
+      apply: "View & apply",
+      disclaimer: "Match score reflects CV–JD skill fit, not a guarantee of selection.",
+    },
+    trends: {
+      title: "Skills the market wants",
+      subtitle: "In-demand skills your CV doesn't show yet.",
+      empty: "Your CV already covers the most in-demand skills here.",
+      hot: "hot",
+    },
     jdInput: {
       title: "Job description",
       titleCompact: "Target job description",
