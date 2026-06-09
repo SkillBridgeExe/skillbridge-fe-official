@@ -49,6 +49,7 @@ const NAV_ITEMS = [
   { labelKey: "nav.interview", href: "/interview" },
   { labelKey: "nav.mentorship", href: "/ecosystem" },
   { labelKey: "nav.jobs", href: "/jobs", highlight: true },
+  { labelKey: "nav.pricing", href: "/pricing" },
 ];
 
 const ROLE_DASHBOARD: Record<string, { href: string; labelKey: string; icon: React.ElementType }> = {

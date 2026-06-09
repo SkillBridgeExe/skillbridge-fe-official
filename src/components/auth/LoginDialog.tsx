@@ -11,7 +11,6 @@ import {
   GraduationCap,
   LockKeyhole,
   Mail,
-  Sparkles,
   User,
   Users,
   X,
@@ -31,8 +30,7 @@ import {
   register,
   resendVerificationEmail,
 } from "@/services/auth.service";
-import laptopMascot from "@/assets/mascot/laptop.png";
-import logoGif from "@/assets/logo/logo.gif";
+import loginPanel from "@/assets/panel/loginpanel.jpg";
 import { GOOGLE_CLIENT_ID } from "@/lib/runtime-config";
 
 type AuthMode = "login" | "register";
@@ -289,7 +287,7 @@ export function LoginDialog({
             ease: "easeOut",
             layout: { type: "spring", stiffness: 95, damping: 18, mass: 0.85 },
           }}
-          className="relative z-10 grid h-[44rem] max-h-[calc(100vh-1rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white p-4 shadow-[0_26px_90px_rgba(14,5,37,0.42)] lg:grid-cols-[1.04fr_1fr]"
+          className="relative z-10 grid h-[44rem] max-h-[calc(100vh-1rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white p-4 shadow-[0_26px_90px_rgba(14,5,37,0.42)] lg:grid-cols-2"
         >
           <button
             type="button"
@@ -304,52 +302,23 @@ export function LoginDialog({
             layout
             animate={{ scale: isRegister ? 1.015 : 1 }}
             transition={{ layout: { type: "spring", stiffness: 95, damping: 18, mass: 0.85 } }}
-            className={`relative hidden h-full min-h-0 overflow-hidden rounded-[1.45rem] bg-gradient-to-br from-[#00AEEF] via-[#2cc8ff] to-[#98ecff] lg:block ${
+            className={`relative hidden h-full min-h-0 overflow-hidden rounded-[1.45rem] bg-[#00AEEF] lg:block ${
               isRegister ? "lg:order-2" : "lg:order-1"
             }`}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_30%,rgba(255,255,255,0.24),transparent_22%),radial-gradient(circle_at_78%_82%,rgba(255,255,255,0.22),transparent_26%)]" />
+            <img
+              src={loginPanel}
+              alt=""
+              draggable={false}
+              className="h-full w-full object-cover object-[center_34%]"
+            />
             <motion.div
               key={mode}
-              className="pointer-events-none absolute inset-y-0 -left-28 w-24 rotate-12 bg-white/20 blur-xl"
+              className="pointer-events-none absolute inset-y-0 -left-28 w-24 rotate-12 bg-white/25 blur-xl"
               initial={{ x: 0, opacity: 0 }}
               animate={{ x: 720, opacity: [0, 0.7, 0] }}
               transition={{ duration: 0.75, ease: "easeInOut" }}
             />
-            <div className="absolute left-8 top-8 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-white/20 p-1.5 shadow-sm">
-                <img src={logoGif} alt="SkillBridge" className="h-full w-full object-contain" />
-              </div>
-              <span className="font-poppins text-xl font-black text-white">SkillBridge</span>
-            </div>
-            <Sparkles className="absolute left-12 top-32 h-9 w-9 text-yellow-200" />
-            <Sparkles className="absolute right-12 top-40 h-6 w-6 text-yellow-200" />
-            <div className="absolute left-12 top-56 h-28 w-52 rounded-3xl bg-lime-300 shadow-[0_16px_36px_rgba(84,33,160,0.22)]" />
-            <div className="absolute left-20 top-52 h-28 w-44 rounded-2xl border-[6px] border-lime-200 bg-white shadow-[0_8px_0_rgba(62,23,116,0.18)]">
-              <div className="mx-5 mt-5 h-5 rounded bg-violet-200" />
-              <div className="mx-5 mt-3 grid grid-cols-[1fr_2.1rem] gap-3">
-                <div className="space-y-2">
-                  <div className="h-3 rounded bg-violet-200" />
-                  <div className="h-3 rounded bg-orange-200" />
-                  <div className="h-3 rounded bg-orange-200" />
-                </div>
-                <div className="rounded-lg bg-orange-400" />
-              </div>
-            </div>
-            <motion.img
-              src={laptopMascot}
-              alt=""
-              draggable={false}
-              className="absolute -bottom-6 left-4 h-[21rem] w-[28rem] max-w-none object-contain drop-shadow-[0_22px_30px_rgba(45,12,91,0.22)]"
-              animate={{
-                y: [0, -8, 0],
-                rotate: isRegister ? [1.3, -1.3, 1.3] : [-1.5, 1.5, -1.5],
-                scale: isRegister ? [1.02, 1.06, 1.02] : [1, 1.03, 1],
-              }}
-              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="absolute bottom-16 left-10 h-2 w-44 rounded-full bg-white/90" />
-            <div className="absolute bottom-0 right-[-4rem] h-48 w-48 rounded-full bg-white/80" />
           </motion.div>
 
           <motion.div
