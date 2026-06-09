@@ -149,7 +149,7 @@ export function DiagnosisStep1Upload() {
             <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span>{t("authBanner.message")}</span>
           </div>
-          <Link to="/login" className="text-primary font-bold hover:underline shrink-0 ml-4">
+          <Link to="/?auth=login" className="text-primary font-bold hover:underline shrink-0 ml-4">
             {t("authBanner.cta")}
           </Link>
         </div>

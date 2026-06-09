@@ -1,5 +1,6 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -41,6 +42,18 @@ const NAV_ITEMS: AdminNavItem[] = [
   { key: "operations", label: "Core Operations", href: "/admin/operations", icon: Briefcase },
   { key: "commerce", label: "Commerce & Finance", href: "/admin/commerce", icon: BadgeDollarSign },
   {
+    key: "billing",
+    label: "Billing",
+    href: "/admin/billing/plans",
+    icon: BadgeDollarSign,
+    children: [
+      { key: "billing-plans", label: "Plans", href: "/admin/billing/plans" },
+      { key: "billing-orders", label: "Orders", href: "/admin/billing/orders" },
+      { key: "billing-subscriptions", label: "Subscriptions", href: "/admin/billing/subscriptions" },
+      { key: "billing-mentor-bookings", label: "Mentor Bookings", href: "/admin/billing/mentor-bookings" },
+    ],
+  },
+  {
     key: "community",
     label: "Community Management",
     href: "/admin/community",
@@ -62,10 +75,11 @@ export default function AdminSidebar({
   forceExpanded?: boolean;
   onHoverChange?: (hovering: boolean) => void;
 }) {
+  const { t } = useTranslation("common");
   const location = useLocation();
   const navigate = useNavigate();
   const [isHovering, setIsHovering] = useState(false);
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ users: true });
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ users: true, billing: true });
 
   const expanded = forceExpanded || isHovering;
 
@@ -73,10 +87,22 @@ export default function AdminSidebar({
     setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const billingLabel = (key: string, fallback: string) => {
+    const labels: Record<string, string> = {
+      billing: t("billing.admin.nav.billing"),
+      "billing-plans": t("billing.admin.nav.plans"),
+      "billing-orders": t("billing.admin.nav.orders"),
+      "billing-subscriptions": t("billing.admin.nav.subscriptions"),
+      "billing-mentor-bookings": t("billing.admin.nav.mentorBookings"),
+    };
+    return labels[key] ?? fallback;
+  };
+
   const activeKey = useMemo(() => {
     const path = location.pathname;
     const found = NAV_ITEMS.find((it) => {
       if (it.href === "/admin") return path === "/admin";
+      if (it.children?.some((child) => path.startsWith(child.href.split("?")[0]))) return true;
       return path.startsWith(it.href);
     });
     return found?.key ?? "overview";
@@ -109,6 +135,7 @@ export default function AdminSidebar({
             const Icon = item.icon;
             const hasChildren = item.children && item.children.length > 0;
             const menuOpen = openMenus[item.key];
+            const itemLabel = billingLabel(item.key, item.label);
 
             const itemBtn = (
               <div
@@ -143,7 +170,7 @@ export default function AdminSidebar({
                     expanded ? "opacity-100" : "opacity-0 w-0 hidden"
                   )}
                 >
-                  {item.label}
+                  {itemLabel}
                 </span>
                 
                 {hasChildren && expanded && (
@@ -160,7 +187,7 @@ export default function AdminSidebar({
                   <TooltipTrigger asChild>
                     <Link to={item.href}>{itemBtn}</Link>
                   </TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
+                  <TooltipContent side="right">{itemLabel}</TooltipContent>
                 </Tooltip>
               );
             }
@@ -171,8 +198,12 @@ export default function AdminSidebar({
                 {hasChildren && expanded && menuOpen && (
                   <div className="ml-9 mt-1 flex flex-col space-y-1 animate-in slide-in-from-top-2 duration-200 mb-2">
                     {item.children?.map(child => {
-                      const roleParam = new URLSearchParams(child.href.split('?')[1]).get('role');
-                      const isChildActive = location.pathname.startsWith('/admin/users') && location.search.includes('role=' + roleParam);
+                      const [childPath, childSearch = ""] = child.href.split("?");
+                      const roleParam = new URLSearchParams(childSearch).get("role");
+                      const isChildActive = roleParam
+                        ? location.pathname.startsWith(childPath) && location.search.includes("role=" + roleParam)
+                        : location.pathname === childPath;
+                      const childLabel = billingLabel(child.key, child.label);
                       return (
                         <Link 
                           key={child.key} 
@@ -184,7 +215,7 @@ export default function AdminSidebar({
                               : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                           )}
                         >
-                          {child.label}
+                          {childLabel}
                         </Link>
                       );
                     })}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { LoginDialog } from "@/components/auth/LoginDialog";
@@ -49,6 +49,7 @@ const NAV_ITEMS = [
   { labelKey: "nav.interview", href: "/interview" },
   { labelKey: "nav.mentorship", href: "/ecosystem" },
   { labelKey: "nav.jobs", href: "/jobs", highlight: true },
+  { labelKey: "nav.pricing", href: "/pricing" },
 ];
 
 const ROLE_DASHBOARD: Record<string, { href: string; labelKey: string; icon: React.ElementType }> = {
@@ -72,6 +73,24 @@ export default function Navbar() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const { isAuthenticated, currentUser, logout } = useAuthStore();
   const { t, i18n } = useTranslation("common");
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const auth = searchParams.get("auth");
+    if (auth !== "login" && auth !== "register") return;
+
+    setAuthMode(auth);
+    setLoginOpen(true);
+    searchParams.delete("auth");
+    navigate(
+      {
+        pathname: location.pathname,
+        search: searchParams.toString() ? `?${searchParams.toString()}` : "",
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   const avatarQuery = useQuery({
     queryKey: QUERY_KEYS.USER_AVATAR,

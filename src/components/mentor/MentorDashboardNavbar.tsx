@@ -105,7 +105,7 @@ export default function MentorDashboardNavbar({
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/?auth=login");
   };
 
   return (

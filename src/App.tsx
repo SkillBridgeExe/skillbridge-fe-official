@@ -37,7 +37,6 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Pages.Index />} />
-              <Route path="/login" element={<Pages.Login />} />
               <Route path="/register" element={<Pages.Register />} />
               <Route path="/about" element={<Pages.About />} />
               <Route path="/success" element={<Pages.SuccessStats />} />
@@ -48,7 +47,7 @@ const App = () => (
               <Route path="/verify-email" element={<Pages.VerifyEmail />} />
 
               <Route path="/dashboard" element={<Pages.Dashboard />} />
-              <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>}/>
+              <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
               <Route path="/learning" element={<Pages.Learning />} />
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
@@ -58,6 +57,10 @@ const App = () => (
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
               <Route path="/payment" element={<Pages.Payment />} />
+              <Route path="/pricing" element={<Pages.Pricing />} />
+              <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />
+              <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
+              <Route path="/billing/mentor" element={<AuthGuard requireAuth><Pages.MentorBilling /></AuthGuard>} />
               <Route path="/mentor-connect" element={<Pages.MentorConnect />} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
@@ -113,6 +116,10 @@ const App = () => (
                 <Route path="users/:id" element={<Pages.AdminUserProfile />} />
                 <Route path="operations" element={<Pages.AdminCoreOperations />} />
                 <Route path="commerce" element={<Pages.AdminCommerceFinance />} />
+                <Route path="billing/plans" element={<Pages.AdminBillingPlans />} />
+                <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
+                <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
+                <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
                 <Route path="community" element={<Pages.AdminCommunityManagement />} />
                 <Route path="system" element={<Pages.AdminSystemAdministration />} />
                 <Route path="settings" element={<Pages.AdminSettings />} />

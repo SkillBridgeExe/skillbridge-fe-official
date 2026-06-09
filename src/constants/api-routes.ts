@@ -81,6 +81,23 @@ export const API_ROUTES = {
     PROGRESS: (id: string) => `${API}/roadmaps/${id}/progress`,
   },
 
+  BILLING: {
+    PLANS: `${API}/billing/plans`,
+    CHECKOUT: `${API}/billing/checkout`,
+    ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}`,
+    MY_SUBSCRIPTION: `${API}/billing/me/subscription`,
+    MY_USAGE: `${API}/billing/me/usage`,
+  },
+
+  ADMIN_BILLING: {
+    PLANS: `${API}/admin/billing/plans`,
+    PLAN: (code: string) => `${API}/admin/billing/plans/${code}`,
+    PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,
+    ORDERS: `${API}/admin/billing/orders`,
+    SUBSCRIPTIONS: `${API}/admin/billing/subscriptions`,
+    MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,
+  },
+
   USER: {
     PROFILE: `${API}/users/me/profile`,
     AVATAR: `${API}/users/me/avatar`,

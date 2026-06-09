@@ -137,7 +137,7 @@ export default function MentorDashboardShell() {
           <span>View Mentor Page</span>
         </a>
         <button
-          onClick={() => { logout(); navigate("/login"); setMobileOpen(false); }}
+          onClick={() => { logout(); navigate("/?auth=login"); setMobileOpen(false); }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 transition-all"
         >
           <LogOut className="w-5 h-5" />

@@ -180,7 +180,7 @@ export default function Register() {
           </p>
 
           <Button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/?auth=login")}
             className="w-full h-12 rounded-xl text-base font-bold bg-primary hover:bg-primary/90 text-white shadow-glow mb-6"
           >
             Proceed to Login <ArrowRight className="w-4 h-4 ml-1" />
@@ -209,7 +209,7 @@ export default function Register() {
       <div className="register-panel w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Link to="/login" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors p-1.5">
               <img src={LOGO_URL} alt="SkillBridge" className="w-full h-full object-contain" />
             </div>
@@ -217,7 +217,7 @@ export default function Register() {
           </Link>
           <p className="text-sm text-slate-500">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
+            <Link to="/?auth=login" className="text-primary font-semibold hover:underline">Sign in</Link>
           </p>
         </div>
 
