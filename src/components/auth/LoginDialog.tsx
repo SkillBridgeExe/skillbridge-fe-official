@@ -271,7 +271,7 @@ export function LoginDialog({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-[#2b0b55]/78 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[#2b0b55]/78 backdrop-blur-[2px]">
       <div className="flex min-h-full items-center justify-center px-3 py-2 sm:px-4">
         <button
           type="button"

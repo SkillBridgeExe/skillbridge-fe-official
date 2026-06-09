@@ -42,7 +42,7 @@ export function Toaster() {
                   </ToastTitle>
                 )}
                 {description && (
-                  <ToastDescription className="text-[12px] leading-snug opacity-75 truncate max-w-[260px]">
+                  <ToastDescription className="max-w-[340px] text-[12px] leading-snug opacity-75">
                     {description}
                   </ToastDescription>
                 )}
