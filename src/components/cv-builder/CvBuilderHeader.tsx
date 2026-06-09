@@ -22,8 +22,8 @@ export function CvBuilderHeader() {
       triggerSaveRef.current();
     } else {
       toast({
-        title: "Draft Saved",
-        description: "Your CV draft has been saved successfully.",
+        title: t("builder.toastSavedTitle"),
+        description: t("builder.toastSavedDesc"),
       });
     }
   };
@@ -38,7 +38,7 @@ export function CvBuilderHeader() {
 
     toast({
       title: t("builder.rendering"),
-      description: "Preparing your CV for download...",
+      description: t("builder.toastRenderingDesc"),
     });
 
     renderPdfMutation.mutate(draftId, {
@@ -54,8 +54,8 @@ export function CvBuilderHeader() {
       },
       onError: (err: any) => {
         toast({
-          title: "Download failed",
-          description: err?.message || "Failed to render PDF on the server.",
+          title: t("builder.toastDownloadFailedTitle"),
+          description: err?.message || t("builder.toastDownloadFailedDesc"),
           variant: "destructive",
         });
       },
@@ -88,7 +88,7 @@ export function CvBuilderHeader() {
         </div>
         <div>
           <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
-          <p className="text-[11px] text-slate-500 font-medium">Build a professional, ATS-friendly CV from your profile.</p>
+          <p className="text-[11px] text-slate-500 font-medium">{t("builder.headerSubtitle")}</p>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export function CvBuilderHeader() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Save Draft</span>
+                  <span>{t("builder.saveDraft")}</span>
                 </>
               )}
             </Button>
@@ -139,7 +139,7 @@ export function CvBuilderHeader() {
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>Download CV</span>
+                  <span>{t("builder.downloadCv")}</span>
                 </>
               )}
             </Button>
@@ -150,7 +150,7 @@ export function CvBuilderHeader() {
               className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md"
             >
               <BrainCircuit className="w-4 h-4" />
-              <span>Analyze CV</span>
+              <span>{t("builder.analyzeCv")}</span>
             </Button>
           </>
         )}

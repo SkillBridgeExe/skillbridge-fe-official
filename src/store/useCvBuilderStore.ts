@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BuilderSection, EvaluateSectionResponse } from "@shared/api";
+import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -90,7 +90,6 @@ interface CvBuilderState {
   targetPosition: string;
   careerLevel: CareerLevel | "";
   industry: string;
-  preferredLanguage: string;
 
   // Section 3: Professional Summary
   summary: string;
@@ -123,11 +122,15 @@ interface CvBuilderState {
   draftId: string | null;
   sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
 
+  /** True khi store vừa được nạp từ CV đã chẩn đoán (Diagnosis → "Sửa CV"):
+   *  báo cho Diagnosis page đẩy ngay nội dung vào draft mới sau khi tạo. */
+  seededFromDiagnosis: boolean;
+
   // Actions — Basic Info
   setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github">, value: string) => void;
 
   // Actions — Career Target
-  setCareerTarget: (field: keyof Pick<CvBuilderState, "targetPosition" | "careerLevel" | "industry" | "preferredLanguage">, value: string) => void;
+  setCareerTarget: (field: keyof Pick<CvBuilderState, "targetPosition" | "careerLevel" | "industry">, value: string) => void;
 
   // Actions — Summary
   setSummary: (value: string) => void;
@@ -167,6 +170,11 @@ interface CvBuilderState {
   setDraftId: (id: string | null) => void;
   setSectionEvaluation: (section: BuilderSection, result: EvaluateSectionResponse) => void;
 
+  // Actions — seed từ CV đã chẩn đoán
+  /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
+  hydrateFromCanonical: (doc: CanonicalCvDocument) => void;
+  setSeededFromDiagnosis: (val: boolean) => void;
+
   // Computed
   getSectionStatuses: () => SectionMeta[];
   getCompletionPercent: () => number;
@@ -177,7 +185,7 @@ interface CvBuilderState {
 
 const initialState = {
   fullName: "", email: "", phone: "", location: "", linkedin: "", portfolio: "", github: "",
-  targetPosition: "", careerLevel: "" as const, industry: "", preferredLanguage: "",
+  targetPosition: "", careerLevel: "" as const, industry: "",
   summary: "", summaryMode: "manual" as SummaryMode,
   education: [emptyEducation()],
   experience: [emptyExperience()],
@@ -189,7 +197,95 @@ const initialState = {
   cvLanguage: "en" as CvLanguage,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
+  seededFromDiagnosis: false,
 };
+
+/* ── Map ngược CanonicalCvDocument → builder store (inverse của mapStoreToCanonical) ──
+ * Forward map gộp nhiều field FE thành bullets/highlights, nên chiều ngược không tách
+ * lại được — gom hết bullets về 1 ô (description/achievements) để user tự sắp lại. */
+function canonicalToBuilderState(doc: CanonicalCvDocument) {
+  const links = doc.contact?.links ?? [];
+  const findLinkUrl = (...keys: string[]) =>
+    links.find((l) =>
+      keys.some((k) =>
+        (l.label ?? "").toLowerCase().includes(k) || (l.url ?? "").toLowerCase().includes(k)),
+    )?.url ?? "";
+  const linkedin = findLinkUrl("linkedin");
+  const github = findLinkUrl("github");
+  const portfolio =
+    links.find((l) => {
+      const v = `${l.label ?? ""} ${l.url ?? ""}`.toLowerCase();
+      return !v.includes("linkedin") && !v.includes("github");
+    })?.url ?? "";
+
+  const education: Education[] = (doc.education ?? []).map((e) => ({
+    id: uid(),
+    school: e.school ?? "",
+    major: e.field ?? "",
+    degree: e.degree ?? "",
+    startYear: e.start ?? "",
+    endYear: e.end ?? "",
+    gpa: e.gpa ?? "",
+    coursework: "",
+    achievements: (e.highlights ?? []).join("\n"),
+  }));
+
+  const experience: WorkExperience[] = (doc.experience ?? []).map((x) => ({
+    id: uid(),
+    company: x.org ?? "",
+    position: x.role ?? "",
+    startDate: x.start ?? "",
+    endDate: x.end ?? "",
+    description: (x.bullets ?? []).join("\n"),
+    responsibilities: "",
+    achievements: "",
+    aiRewrite: "",
+  }));
+
+  const projects: Project[] = (doc.projects ?? []).map((p) => ({
+    id: uid(),
+    name: p.name ?? "",
+    role: p.role ?? "",
+    description: (p.bullets ?? []).join("\n"),
+    tools: (p.tech ?? []).join(", "),
+    contribution: "",
+    result: "",
+  }));
+
+  const certifications: Certification[] = (doc.certifications ?? []).map((c) => ({
+    id: uid(),
+    name: c.name ?? "",
+    organization: c.issuer ?? "",
+    issueDate: c.date ?? "",
+    credentialUrl: "",
+  }));
+
+  return {
+    fullName: doc.contact?.name ?? "",
+    email: doc.contact?.email ?? "",
+    phone: doc.contact?.phone ?? "",
+    location: doc.contact?.location ?? "",
+    linkedin,
+    github,
+    portfolio,
+    summary: doc.summary ?? "",
+    summaryMode: "manual" as SummaryMode,
+    education: education.length ? education : [emptyEducation()],
+    experience: experience.length ? experience : [emptyExperience()],
+    projects: projects.length ? projects : [emptyProject()],
+    technicalSkills: doc.skills?.technical ?? [],
+    softSkills: doc.skills?.soft ?? [],
+    tools: doc.skills?.tools ?? [],
+    languages: doc.skills?.languages ?? [],
+    certifications,
+    cvLanguage: (doc.language === "vi" ? "vi" : "en") as CvLanguage,
+    // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
+    draftId: null,
+    sectionEvaluations: {},
+    activeSection: 0,
+    seededFromDiagnosis: true,
+  };
+}
 
 export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   ...initialState,
@@ -256,6 +352,10 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
     set((s) => ({ sectionEvaluations: { ...s.sectionEvaluations, [section]: result } })),
+
+  // Seed từ CV đã chẩn đoán
+  hydrateFromCanonical: (doc) => set(canonicalToBuilderState(doc)),
+  setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setTemplate: (template) => set({ template }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
 

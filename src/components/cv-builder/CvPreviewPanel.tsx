@@ -2,11 +2,13 @@ import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, LayoutTemplate } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { CV_CONTENT_LABELS } from "@/constants/cv-content-labels";
 
 export function CvPreviewPanel() {
   const store = useCvBuilderStore();
-  const { t, i18n } = useTranslation("diagnosis");
-  const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
+  const { t } = useTranslation("diagnosis");
+  // Nhãn trên BẢN CV theo ngôn ngữ NỘI DUNG CV (không phải ngôn ngữ giao diện app).
+  const L = CV_CONTENT_LABELS[store.cvLanguage];
 
   const isEmpty = !store.fullName.trim() && 
     !store.targetPosition.trim() && 
@@ -79,7 +81,7 @@ export function CvPreviewPanel() {
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-4 text-center">
                   <div className="bg-white/95 border border-[#EAEAEA] rounded-xl p-5 max-w-[320px] shadow-lg pointer-events-auto">
                     <p className="text-[11px] font-bold text-[#2F3437] uppercase tracking-wider mb-1">
-                      {currentLang === "vi" ? "BẢN XEM TRƯỚC CV" : "CV PREVIEW"}
+                      {L.previewTitle}
                     </p>
                     <p className="text-[13px] text-[#787774] leading-normal font-medium">
                       {t("builder.previewEmpty")}
@@ -131,10 +133,10 @@ export function CvPreviewPanel() {
               {/* Header */}
               <div className="text-center border-b-2 border-slate-800 pb-4 mb-4">
             <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
-              {store.fullName || "YOUR NAME"}
+              {store.fullName || L.namePlaceholder}
             </h1>
             <p className="text-lg font-medium text-slate-700 mt-1">
-              {store.targetPosition || "Target Position"}
+              {store.targetPosition || L.positionPlaceholder}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-3 text-xs text-slate-600">
               {store.email && <span>{store.email}</span>}
@@ -149,7 +151,7 @@ export function CvPreviewPanel() {
           {/* Summary */}
           {store.summary && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Professional Summary</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.summary}</h2>
               <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{store.summary}</p>
             </div>
           )}
@@ -157,7 +159,7 @@ export function CvPreviewPanel() {
           {/* Experience */}
           {store.experience.some(e => e.company || e.position) && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Work Experience</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.experience}</h2>
               <div className="space-y-3">
                 {store.experience.map(exp => (
                   (exp.company || exp.position) && (
@@ -183,7 +185,7 @@ export function CvPreviewPanel() {
           {/* Education */}
           {store.education.some(e => e.school || e.major) && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Education</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.education}</h2>
               <div className="space-y-3">
                 {store.education.map(edu => (
                   (edu.school || edu.major) && (
@@ -193,8 +195,8 @@ export function CvPreviewPanel() {
                         <span className="text-xs font-semibold text-slate-600">{edu.startYear} {edu.endYear ? `- ${edu.endYear}` : ""}</span>
                       </div>
                       <div className="flex justify-between items-baseline text-xs text-slate-700">
-                        <span>{edu.degree ? `${edu.degree} in ` : ""}{edu.major}</span>
-                        {edu.gpa && <span className="font-medium">GPA: {edu.gpa}</span>}
+                        <span>{edu.degree ? `${edu.degree} ${L.degreeIn} ` : ""}{edu.major}</span>
+                        {edu.gpa && <span className="font-medium">{L.gpa}: {edu.gpa}</span>}
                       </div>
                       {edu.achievements && (
                         <p className="text-xs text-slate-600 mt-1 italic">{edu.achievements}</p>
@@ -209,7 +211,7 @@ export function CvPreviewPanel() {
           {/* Projects */}
           {store.projects.some(p => p.name) && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Projects</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.projects}</h2>
               <div className="space-y-3">
                 {store.projects.map(proj => (
                   proj.name && (
@@ -219,7 +221,7 @@ export function CvPreviewPanel() {
                         {proj.role && <span className="text-xs italic text-slate-600">| {proj.role}</span>}
                       </div>
                       {proj.tools && (
-                        <div className="text-xs text-slate-700 mb-1"><span className="font-medium">Technologies:</span> {proj.tools}</div>
+                        <div className="text-xs text-slate-700 mb-1"><span className="font-medium">{L.technologies}:</span> {proj.tools}</div>
                       )}
                       {proj.description && (
                         <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap pl-4 relative">
@@ -237,19 +239,19 @@ export function CvPreviewPanel() {
           {/* Skills */}
           {(store.technicalSkills.length > 0 || store.softSkills.length > 0 || store.tools.length > 0 || store.languages.length > 0) && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Skills</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.skills}</h2>
               <div className="space-y-1.5">
                 {store.technicalSkills.length > 0 && (
-                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">Technical:</span> <span className="text-slate-700">{store.technicalSkills.join(", ")}</span></div>
+                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">{L.technical}:</span> <span className="text-slate-700">{store.technicalSkills.join(", ")}</span></div>
                 )}
                 {store.tools.length > 0 && (
-                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">Tools:</span> <span className="text-slate-700">{store.tools.join(", ")}</span></div>
+                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">{L.tools}:</span> <span className="text-slate-700">{store.tools.join(", ")}</span></div>
                 )}
                 {store.softSkills.length > 0 && (
-                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">Soft Skills:</span> <span className="text-slate-700">{store.softSkills.join(", ")}</span></div>
+                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">{L.softSkills}:</span> <span className="text-slate-700">{store.softSkills.join(", ")}</span></div>
                 )}
                 {store.languages.length > 0 && (
-                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">Languages:</span> <span className="text-slate-700">{store.languages.join(", ")}</span></div>
+                  <div className="text-xs"><span className="font-bold text-slate-800 w-24 inline-block">{L.languages}:</span> <span className="text-slate-700">{store.languages.join(", ")}</span></div>
                 )}
               </div>
             </div>
@@ -258,7 +260,7 @@ export function CvPreviewPanel() {
           {/* Certifications */}
           {store.certifications.some(c => c.name) && (
             <div className="mb-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">Certifications</h2>
+              <h2 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-300 pb-1 mb-2">{L.certifications}</h2>
               <div className="space-y-2">
                 {store.certifications.map(cert => (
                   cert.name && (

@@ -4,10 +4,14 @@ import {
   analyzeCvWithJd,
   compareJdForCv,
   getDiagnosisHistory,
+  getJobRecommendations,
+  getSkillGap,
   loadCvFromHistory,
   reanalyzeCv,
 } from "@/services/diagnosis.service";
 import type { CvListQuery } from "@/api/cv/list";
+import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
+import type { SkillGapQuery } from "@/api/cv/trends";
 
 /** Chấm CV (không JD) — POST /api/cvs thật, trả { cvId, review }. */
 export function useAnalyzeCvMutation() {
@@ -54,5 +58,31 @@ export function useCvHistoryQuery(enabled: boolean, query: CvListQuery = {}) {
 export function useLoadCvFromHistoryMutation() {
   return useMutation({
     mutationFn: loadCvFromHistory,
+  });
+}
+
+/**
+ * Top-5 job thật khớp CV (moat L2). Chạy khi có cvId + đã login.
+ * pool_size=0 → UI hiện empty-state (pool chưa có job cho role).
+ */
+export function useJobRecommendationsQuery(
+  cvId: string | null,
+  query: JobRecommendationsQuery = {},
+) {
+  return useQuery({
+    queryKey: ["job-recommendations", cvId, query.role ?? "all", query.limit ?? 5],
+    queryFn: () => getJobRecommendations(cvId!, query),
+    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Kỹ năng thị trường cần mà CV thiếu (skill-gap trends theo role). */
+export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {}) {
+  return useQuery({
+    queryKey: ["skill-gap", cvId, query.role ?? "all", query.limit ?? 10],
+    queryFn: () => getSkillGap(cvId!, query),
+    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    staleTime: 5 * 60_000,
   });
 }

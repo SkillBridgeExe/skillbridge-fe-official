@@ -172,7 +172,7 @@ export function AIChatbot() {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-sm">SkillBridge AI</p>
-            <p className="text-xs text-slate-500">Learning Assistant</p>
+            <p className="text-xs text-slate-500">Demo · scripted replies</p>
           </div>
         </div>
 

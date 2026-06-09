@@ -14,6 +14,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/query-client";
 import * as Pages from "@/routes/lazy-pages";
+import ComingSoon from "@/components/common/ComingSoon";
+import { FEATURES } from "@/config/features";
 
 function AdminFallback() {
   return (
@@ -49,16 +51,17 @@ const App = () => (
               <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>}/>
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
               <Route path="/learning" element={<Pages.Learning />} />
-              <Route path="/practice" element={<Pages.Practice />} />
+              {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
+              <Route path="/practice" element={<Navigate to="/interview" replace />} />
               <Route path="/learning/session/:id" element={<Pages.LearningSession />} />
-              <Route path="/interview" element={<Pages.Interview />} />
+              <Route path="/interview" element={FEATURES.interview ? <Pages.Interview /> : <ComingSoon feature="interview" />} />
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
               <Route path="/payment" element={<Pages.Payment />} />
               <Route path="/mentor-connect" element={<Pages.MentorConnect />} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
-              <Route path="/roadmap-generator" element={<Pages.RoadmapGenerator />} />
+              <Route path="/roadmap-generator" element={FEATURES.roadmap ? <Pages.RoadmapGenerator /> : <ComingSoon feature="roadmap" />} />
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
 

@@ -11,6 +11,8 @@ import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
+import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
+import { getSkillGapApi, type SkillGapQuery } from "@/api/cv/trends";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type {
   BeIssueSeverity,
@@ -275,4 +277,22 @@ export async function loadCvFromHistory(id: string): Promise<AnalyzeOutcome> {
   requireSession();
   const dto = await getCvDetailApi(id);
   return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
+}
+
+/**
+ * Top job thật khớp 1 CV (GET /api/cvs/:cvId/job-recommendations) — moat L2.
+ * pool_size=0 → pool chưa có job cho role đó → UI hiện empty-state.
+ */
+export async function getJobRecommendations(
+  cvId: string,
+  query: JobRecommendationsQuery = {},
+) {
+  requireSession();
+  return getJobRecommendationsApi(cvId, query);
+}
+
+/** Kỹ năng thị trường cần mà CV thiếu theo role (GET /api/trends/skills/gap/:cvId). */
+export async function getSkillGap(cvId: string, query: SkillGapQuery = {}) {
+  requireSession();
+  return getSkillGapApi(cvId, query);
 }

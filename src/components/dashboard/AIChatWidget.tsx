@@ -121,7 +121,7 @@ export default function AIChatWidget() {
               </div>
               <div>
                 <h3 className="text-[13px] font-bold tracking-wide">SkillBridge AI</h3>
-                <p className="text-[10px] text-white/80 font-medium">Ask me anything</p>
+                <p className="text-[10px] text-white/80 font-medium">Demo · scripted replies</p>
               </div>
             </div>
             <button
