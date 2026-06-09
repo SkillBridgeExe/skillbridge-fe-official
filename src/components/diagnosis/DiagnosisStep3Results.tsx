@@ -11,8 +11,12 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
+import { Link } from "react-router-dom";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/use-toast";
+import { downloadOriginalCvFile } from "@/services/diagnosis.service";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
@@ -91,7 +95,38 @@ function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number;
 /* ── Main Component ── */
 export function DiagnosisStep3Results() {
   const { t } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription } = useDiagnosisStore();
+  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId } = useDiagnosisStore();
+  const { toast } = useToast();
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({ title: t("results.shareCopied") });
+    } catch {
+      toast({ title: t("results.shareCopied"), description: window.location.href });
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!lastCvId) return;
+    try {
+      const blob = await downloadOriginalCvFile(lastCvId);
+      const ext = blob.type.includes("png") ? "png"
+        : blob.type.includes("webp") ? "webp"
+        : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "jpg"
+        : "pdf";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `skillbridge-cv.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({ title: t("results.downloadFailed"), description: getApiErrorMessage(err, ""), variant: "destructive" });
+    }
+  };
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -142,10 +177,10 @@ export function DiagnosisStep3Results() {
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
         </button>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+          <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
             <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
           </Button>
-          <Button variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+          <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
             <Download className="w-3.5 h-3.5" /> {t("results.download")}
           </Button>
         </div>
@@ -342,9 +377,9 @@ export function DiagnosisStep3Results() {
               <RotateCcw className="w-4 h-4" /> {t("results.scanAgain")}
             </Button>
             <Button className="h-12 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-sm text-sm font-bold shrink-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40" asChild>
-              <a href="/roadmap-generator" className="px-6 flex items-center h-full gap-2">
+              <Link to="/roadmap-generator" className="px-6 flex items-center h-full gap-2">
                 {t("results.generatePlan")} <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             </Button>
           </div>
         </div>
@@ -455,9 +490,7 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
     return getHighlightedJd(jobDescription, allSkills);
   }, [jobDescription, allSkills]);
 
-  const toggleText = isOpen 
-    ? ((t("common.collapse" as never) !== "common.collapse" && t("common.collapse" as never)) || "Thu nhỏ")
-    : ((t("common.expand" as never) !== "common.expand" && t("common.expand" as never)) || "Xem thêm");
+  const toggleText = isOpen ? t("results.collapse") : t("results.expand");
 
   return (
     <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden mt-6">

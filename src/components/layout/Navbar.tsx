@@ -86,7 +86,7 @@ export default function Navbar() {
 
   const roleDash = currentUser ? ROLE_DASHBOARD[currentUser.role] : null;
   const profileHref = currentUser ? ROLE_PROFILE[currentUser.role] : "/profile";
-  const currentLang = i18n.language === "vi" ? "VI" : "EN";
+
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100">

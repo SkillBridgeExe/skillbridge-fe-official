@@ -1,4 +1,4 @@
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type Education, type WorkExperience, type Project, type Certification } from "@/store/useCvBuilderStore";
 import { useTranslation } from "react-i18next";
 import { 
   User, Target, FileText, GraduationCap, Briefcase, 
@@ -48,28 +48,28 @@ const sectionUiToBeMap: Record<string, BuilderSection> = {
   "certifications": "certifications",
 };
 
-const isSectionDirty = (sectionId: string, state: any): boolean => {
+const isSectionDirty = (sectionId: string, state: ReturnType<typeof useCvBuilderStore.getState>): boolean => {
   switch (sectionId) {
     case "basic-info":
       return !!(state.fullName.trim() || state.email.trim() || state.phone.trim() || state.location.trim());
     case "summary":
       return !!state.summary.trim();
     case "education":
-      return state.education.some((e: any) => e.school.trim() || e.major.trim());
+      return state.education.some((e: Education) => e.school.trim() || e.major.trim());
     case "experience":
-      return state.experience.some((e: any) => e.company.trim() || e.position.trim());
+      return state.experience.some((e: WorkExperience) => e.company.trim() || e.position.trim());
     case "projects":
-      return state.projects.some((p: any) => p.name.trim());
+      return state.projects.some((p: Project) => p.name.trim());
     case "skills":
       return state.technicalSkills.length > 0 || state.softSkills.length > 0 || state.tools.length > 0 || state.languages.length > 0;
     case "certifications":
-      return state.certifications.some((c: any) => c.name.trim());
+      return state.certifications.some((c: Certification) => c.name.trim());
     default:
       return false;
   }
 };
 
-const getBuilderSnapshot = (state: any): BuilderSnapshot => ({
+const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
   fullName: state.fullName,
   email: state.email,
   phone: state.phone,

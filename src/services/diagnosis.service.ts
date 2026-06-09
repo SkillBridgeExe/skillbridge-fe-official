@@ -13,6 +13,7 @@ import { matchCvWithJdApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { getSkillGapApi, type SkillGapQuery } from "@/api/cv/trends";
+import { downloadCvFileApi } from "@/api/cv/file";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type {
   BeIssueSeverity,
@@ -295,4 +296,10 @@ export async function getJobRecommendations(
 export async function getSkillGap(cvId: string, query: SkillGapQuery = {}) {
   requireSession();
   return getSkillGapApi(cvId, query);
+}
+
+/** Tải file CV gốc đã upload (GET /api/cvs/:id/file) — trả Blob để UI tải xuống. */
+export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
+  requireSession();
+  return downloadCvFileApi(cvId);
 }

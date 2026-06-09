@@ -62,7 +62,7 @@ export function ExperienceSection() {
           });
           setPendingTarget(null);
         },
-        onError: (err: any) => {
+        onError: (err: Error) => {
           setPendingTarget(null);
           toast({
             title: t("builder.toastAiSuggestFailed"),

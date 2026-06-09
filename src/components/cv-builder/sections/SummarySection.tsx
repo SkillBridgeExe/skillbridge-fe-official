@@ -49,7 +49,7 @@ export function SummarySection() {
           setSuggestionText(data.suggestion);
           setIsFallback(!!data.fallback);
         },
-        onError: (err: any) => {
+        onError: (err: Error) => {
           setShowSuggestion(false);
           toast({
             title: t("builder.toastAiSuggestFailed"),
