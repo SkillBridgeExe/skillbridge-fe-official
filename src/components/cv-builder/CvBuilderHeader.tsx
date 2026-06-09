@@ -52,7 +52,7 @@ export function CvBuilderHeader() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         toast({
           title: t("builder.toastDownloadFailedTitle"),
           description: err?.message || t("builder.toastDownloadFailedDesc"),

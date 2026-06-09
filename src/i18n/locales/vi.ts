@@ -1,9 +1,9 @@
 export default {
   common: {
     nav: {
-      dashboard: "Bảng điều khiển",
+      dashboard: "Tổng quan",
       diagnosis: "Chẩn đoán CV",
-      learning: "Học tập",
+      learning: "Lộ trình học",
       interview: "Phỏng vấn",
       mentorship: "Mentor",
       jobs: "Việc làm",

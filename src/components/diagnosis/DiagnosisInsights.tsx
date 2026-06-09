@@ -66,7 +66,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
     if (storageKey) {
       try {
         localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch (e) {
+      } catch {
         // ignore
       }
     }

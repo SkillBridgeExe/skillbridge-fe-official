@@ -93,7 +93,7 @@ export default function Diagnosis() {
   const saveDraftMutation = useSaveBuilderDraftMutation();
   const { toast } = useToast();
 
-  const getBuilderSnapshot = (state: any): BuilderSnapshot => ({
+  const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
     fullName: state.fullName,
     email: state.email,
     phone: state.phone,
@@ -147,7 +147,7 @@ export default function Diagnosis() {
               });
             }
           },
-          onError: (err: any) => {
+          onError: (err: Error) => {
             toast({
               title: t("builder.toastDraftErrorTitle"),
               description: err?.message || t("builder.toastDraftErrorDesc"),
@@ -158,7 +158,7 @@ export default function Diagnosis() {
         }
       );
     }
-  }, [step, ensureDraftMutation, saveDraftMutation, toast]);
+  }, [step, ensureDraftMutation, saveDraftMutation, toast, t]);
 
   useEffect(() => {
     if (step !== "builder") return;

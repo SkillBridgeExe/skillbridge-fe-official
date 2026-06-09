@@ -401,9 +401,9 @@ export function DocumentPreview() {
                                 <div className="text-[13px] font-semibold text-slate-800">
                                   {act.role ? `${act.role} — ` : ""}{act.org}
                                 </div>
-                                {((act as any).start || (act as any).end) && (
+                                {((act as unknown as Record<string, string>).start || (act as unknown as Record<string, string>).end) && (
                                   <div className="text-[11px] font-mono text-[#787774] text-right whitespace-nowrap ml-2">
-                                    {(act as any).start || ""} – {(act as any).end || ""}
+                                    {(act as unknown as Record<string, string>).start || ""} – {(act as unknown as Record<string, string>).end || ""}
                                   </div>
                                 )}
                               </div>
