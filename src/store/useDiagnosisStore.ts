@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { CvReviewData } from "@shared/api";
 
 export type Step = "input" | "cv-review" | "results" | "builder";
@@ -64,7 +65,24 @@ interface DiagnosisState {
   goBack: () => void;
 }
 
-export const useDiagnosisStore = create<DiagnosisState>((set) => ({
+/**
+ * Chỉ persist phần kết quả BỀN (để F5 không mất reviewData/lastCvId), TUYỆT ĐỐI
+ * không persist cờ tạm (isAnalyzing/apiError...) hay File (cvFile/jdFile — không
+ * serialize được). sessionStorage: giữ qua reload, xoá khi đóng tab.
+ */
+export const persistDiagnosisState = (s: DiagnosisState) => ({
+  step: s.step,
+  reviewData: s.reviewData,
+  lastCvId: s.lastCvId,
+  targetRole: s.targetRole,
+  analysisMode: s.analysisMode,
+  hasActivatedJdMode: s.hasActivatedJdMode,
+  consentAccepted: s.consentAccepted,
+});
+
+export const useDiagnosisStore = create<DiagnosisState>()(
+  persist(
+    (set) => ({
   step: "input",
   isAnalyzing: false,
   cvFile: null,
@@ -163,4 +181,11 @@ export const useDiagnosisStore = create<DiagnosisState>((set) => ({
     if (state.step === "builder") return { step: "input" };
     return state;
   }),
-}));
+    }),
+    {
+      name: "skillbridge-diagnosis",
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: persistDiagnosisState,
+    },
+  ),
+);
