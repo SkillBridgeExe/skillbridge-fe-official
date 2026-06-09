@@ -154,7 +154,7 @@ export default function AdminSettings() {
           onClick={() => {
             toast({ title: "✅ Signed out", description: "Local session cleared (mock)." });
             logout();
-            navigate("/login");
+            navigate("/?auth=login");
           }}
         >
           Sign out

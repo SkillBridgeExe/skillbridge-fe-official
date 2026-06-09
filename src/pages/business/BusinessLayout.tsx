@@ -119,7 +119,7 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-slate-100">
           <Link
-            to="/login"
+            to="/?auth=login"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all"
           >
             <LogOut size={16} />

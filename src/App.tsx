@@ -37,7 +37,6 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Pages.Index />} />
-              <Route path="/login" element={<Pages.Login />} />
               <Route path="/register" element={<Pages.Register />} />
               <Route path="/about" element={<Pages.About />} />
               <Route path="/success" element={<Pages.SuccessStats />} />

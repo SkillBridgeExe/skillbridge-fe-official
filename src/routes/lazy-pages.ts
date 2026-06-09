@@ -9,7 +9,6 @@ export const Contact = lazy(() => import("@/pages/public/Contact"));
 export const Community = lazy(() => import("@/pages/public/Community"));
 export const NotFound = lazy(() => import("@/pages/public/NotFound"));
 
-export const Login = lazy(() => import("@/pages/auth/Login"));
 export const Register = lazy(() => import("@/pages/auth/Register"));
 export const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 

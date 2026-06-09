@@ -26,9 +26,9 @@ export default function VerifyEmail() {
     verifyEmail(token)
       .then(() => {
         setStatus("success");
-        setMessage("Email verified successfully. Redirecting to login...");
+        setMessage("Email verified successfully. Opening sign in...");
         setTimeout(() => {
-          navigate("/login");
+          navigate("/?auth=login");
         }, 2000);
       })
       .catch((err) => {
@@ -110,7 +110,7 @@ export default function VerifyEmail() {
             )}
 
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/?auth=login")}
               className="text-sm font-medium text-blue-600 underline"
             >
               Back to Login

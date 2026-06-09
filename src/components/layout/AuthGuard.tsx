@@ -12,7 +12,7 @@ export default function AuthGuard({ children, requiredRole, requireAuth = true }
   const location = useLocation();
 
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/?auth=login" state={{ from: location }} replace />;
   }
 
   if (requiredRole && currentUser?.role !== requiredRole) {
@@ -23,7 +23,7 @@ export default function AuthGuard({ children, requiredRole, requireAuth = true }
       business: "/business",
       mentor: "/mentor",
     };
-    const redirect = currentUser ? roleRedirects[currentUser.role] : "/login";
+    const redirect = currentUser ? roleRedirects[currentUser.role] : "/?auth=login";
     return <Navigate to={redirect} replace />;
   }
 
