@@ -85,6 +85,7 @@ export const API_ROUTES = {
     PLANS: `${API}/billing/plans`,
     CHECKOUT: `${API}/billing/checkout`,
     ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}`,
+    RECONCILE_ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}/reconcile`,
     MY_SUBSCRIPTION: `${API}/billing/me/subscription`,
     MY_USAGE: `${API}/billing/me/usage`,
   },

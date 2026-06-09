@@ -104,6 +104,14 @@ export async function getOrderStatusApi(orderCode: string | number): Promise<Ord
   return envelope.data;
 }
 
+export async function reconcileOrderApi(orderCode: string | number): Promise<OrderStatusResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<OrderStatusResponseDto>>(
+    httpClient.post(API_ROUTES.BILLING.RECONCILE_ORDER(orderCode)),
+    "Failed to reconcile order status.",
+  );
+  return envelope.data;
+}
+
 export async function getMySubscriptionApi(): Promise<SubscriptionResponseDto | null> {
   const envelope = await unwrapEnvelope<ApiEnvelope<SubscriptionResponseDto | null>>(
     httpClient.get(API_ROUTES.BILLING.MY_SUBSCRIPTION),

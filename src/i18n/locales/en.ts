@@ -214,7 +214,13 @@ export default {
         continuePayment: "Continue payment",
         checkAgain: "Check again",
         viewMyPlan: "View my plan",
+        viewOrder: "View order",
         notFound: "Order not found.",
+        returnTitle: "Finalizing your payment",
+        returnReconciling: "Checking the payment result with the server...",
+        returnErrorTitle: "Could not confirm payment",
+        returnMissingTitle: "Missing payment order",
+        returnMissingDesc: "The payment provider did not return an order code. Please return to pricing and try again.",
       },
       me: {
         eyebrow: "Subscription",

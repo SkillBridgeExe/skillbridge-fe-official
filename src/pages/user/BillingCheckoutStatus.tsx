@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +15,7 @@ const DONE_STATUSES = ["PAID", "CANCELLED", "EXPIRED", "FAILED"];
 export default function BillingCheckoutStatus() {
   const { t } = useTranslation("common");
   const { orderCode = "" } = useParams();
+  const queryClient = useQueryClient();
 
   const orderQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ORDER(orderCode),
@@ -26,6 +28,12 @@ export default function BillingCheckoutStatus() {
   });
 
   const order = orderQuery.data;
+
+  useEffect(() => {
+    if (order?.status !== "PAID") return;
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION });
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_USAGE });
+  }, [order?.status, queryClient]);
 
   return (
     <Layout>

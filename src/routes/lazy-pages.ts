@@ -21,6 +21,7 @@ export const LearningSession = lazy(() => import("@/pages/user/LearningSession")
 export const Interview = lazy(() => import("@/pages/user/Interview"));
 export const Payment = lazy(() => import("@/pages/user/Payment"));
 export const Pricing = lazy(() => import("@/pages/user/Pricing"));
+export const BillingCheckoutReturn = lazy(() => import("@/pages/user/BillingCheckoutReturn"));
 export const BillingCheckoutStatus = lazy(() => import("@/pages/user/BillingCheckoutStatus"));
 export const BillingMe = lazy(() => import("@/pages/user/BillingMe"));
 export const MentorBilling = lazy(() => import("@/pages/user/MentorBilling"));
