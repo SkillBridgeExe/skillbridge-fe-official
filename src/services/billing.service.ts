@@ -4,6 +4,7 @@ import {
   getMySubscriptionApi,
   getMyUsageApi,
   getOrderStatusApi,
+  reconcileOrderApi,
   type CreateCheckoutDto,
 } from "@/api/billing";
 
@@ -27,6 +28,10 @@ export function createCheckout(payload: CreateCheckoutDto) {
 
 export function getOrderStatus(orderCode: string | number) {
   return getOrderStatusApi(orderCode);
+}
+
+export function reconcileOrder(orderCode: string | number) {
+  return reconcileOrderApi(orderCode);
 }
 
 export function getMySubscription() {

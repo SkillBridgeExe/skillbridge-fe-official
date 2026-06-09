@@ -59,6 +59,7 @@ const App = () => (
               <Route path="/payment" element={<Pages.Payment />} />
               <Route path="/pricing" element={<Pages.Pricing />} />
               <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />
+              <Route path="/billing/checkout" element={<AuthGuard requireAuth><Pages.BillingCheckoutReturn /></AuthGuard>} />
               <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
               <Route path="/billing/mentor" element={<AuthGuard requireAuth><Pages.MentorBilling /></AuthGuard>} />
               <Route path="/mentor-connect" element={<Pages.MentorConnect />} />

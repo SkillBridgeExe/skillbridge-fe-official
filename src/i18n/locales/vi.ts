@@ -1,4 +1,4 @@
-export default {
+﻿export default {
   common: {
     nav: {
       dashboard: "Tổng quan",
@@ -214,6 +214,12 @@ export default {
         continuePayment: "Tiếp tục thanh toán",
         checkAgain: "Kiểm tra lại",
         viewMyPlan: "Xem gói của tôi",
+        viewOrder: "Xem đơn",
+        returnTitle: "Đang hoàn tất thanh toán",
+        returnReconciling: "Đang kiểm tra kết quả thanh toán với server...",
+        returnErrorTitle: "Không thể xác nhận thanh toán",
+        returnMissingTitle: "Thiếu mã đơn thanh toán",
+        returnMissingDesc: "Cổng thanh toán không trả về mã đơn. Vui lòng quay lại bảng giá và thử lại.",
         notFound: "Không tìm thấy đơn thanh toán.",
       },
       me: {
