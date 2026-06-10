@@ -1,6 +1,8 @@
+import { isAxiosError } from "axios";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
+import { AiGateError, extractAiGateCode } from "@/lib/ai-input-gate";
 import type {
   CreateBuilderDraftInput,
   CvDto,
@@ -57,10 +59,26 @@ export async function rewriteFieldApi(
   draftId: string,
   input: RewriteRequest,
 ): Promise<RewriteResponse> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<RewriteResponse>>(
-    httpClient.post(API_ROUTES.CV.BUILDER_REWRITE(draftId), input, {
+  // BE input gate (W14): HTTP 400 + machine code (INSUFFICIENT_CONTEXT/OFF_TOPIC).
+  // unwrapEnvelope flattens axios errors into plain Errors, so convert to a typed
+  // AiGateError FIRST — the UI maps it to a friendly i18n hint, not a raw toast.
+  const request = httpClient
+    .post(API_ROUTES.CV.BUILDER_REWRITE(draftId), input, {
       timeout: CV_AI_TIMEOUT_MS,
-    }),
+    })
+    .catch((error: unknown) => {
+      if (isAxiosError(error) && error.response?.status === 400) {
+        const code = extractAiGateCode(error.response.data);
+        if (code) {
+          const message = (error.response.data as { message?: unknown })?.message;
+          throw new AiGateError(code, typeof message === "string" ? message : code);
+        }
+      }
+      throw error;
+    });
+
+  const envelope = await unwrapEnvelope<ApiEnvelope<RewriteResponse>>(
+    request,
     "Failed to generate a suggestion.",
   );
   return envelope.data;

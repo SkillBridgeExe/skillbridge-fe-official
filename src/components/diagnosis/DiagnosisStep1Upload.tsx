@@ -2,6 +2,13 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { FileText, CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -9,12 +16,17 @@ import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { JobDescriptionInput } from "./JobDescriptionInput";
-import { useAnalyzeCvMutation, useAnalyzeCvWithJdMutation } from "@/hooks/use-diagnosis";
+import {
+  useAnalyzeCvMutation,
+  useAnalyzeCvWithJdMutation,
+  useCvHistoryQuery,
+  useLoadCvFromHistoryMutation,
+} from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { IT_ROLES } from "@/constants/it-roles";
+import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 
 export function DiagnosisStep1Upload() {
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
   const {
     cvFile, jobDescription, isFromBuilder, builderCvId, builderCvName, targetRole, consentAccepted,
     setCvFile, setTargetRole, setConsentAccepted,
@@ -31,7 +43,43 @@ export function DiagnosisStep1Upload() {
   const [fileError, setFileError] = React.useState<string | null>(null);
   const [showJd, setShowJd] = React.useState(false);
 
+  // Lịch sử W7: list khi mở Sheet; mở lại 1 CV = đọc review đã lưu (không tốn quota).
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const historyQuery = useCvHistoryQuery(historyOpen && isAuthenticated);
+  const loadFromHistoryMutation = useLoadCvFromHistoryMutation();
+  const loadingHistoryId = loadFromHistoryMutation.isPending
+    ? loadFromHistoryMutation.variables
+    : null;
+
   const hasUsableCv = Boolean(cvFile) || (isFromBuilder && Boolean(builderCvId));
+
+  const formatHistoryDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(i18n.language?.startsWith("vi") ? "vi-VN" : "en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+  const openFromHistory = (id: string) => {
+    loadFromHistoryMutation.mutate(id, {
+      onSuccess: ({ cvId, review }) => {
+        setLastCvId(cvId);
+        setReviewData(review);
+        setApiError(null);
+        setAnalysisMode("cv-only");
+        setHasActivatedJdMode(false);
+        setHistoryOpen(false);
+        setStep("cv-review");
+      },
+      onError: (error) => {
+        toast({
+          title: t("upload.history.loadFailedTitle"),
+          description: getApiErrorMessage(error, t("upload.history.loadFailedDesc")),
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   const validateAndSetFile = (file: File | undefined) => {
     if (!file) return;
@@ -169,7 +217,12 @@ export function DiagnosisStep1Upload() {
               <p className="text-xs text-[#787774]">{t("upload.cardSubtitle")}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-[#787774] hover:text-primary gap-1.5 font-medium text-xs px-2.5 h-8 rounded-lg active:scale-[0.98]">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setHistoryOpen(true)}
+            className="text-[#787774] hover:text-primary gap-1.5 font-medium text-xs px-2.5 h-8 rounded-lg active:scale-[0.98]"
+          >
             <History className="w-3.5 h-3.5" /> <span>{t("upload.historyLink")}</span>
           </Button>
         </div>
@@ -391,6 +444,71 @@ export function DiagnosisStep1Upload() {
           <p className="text-center text-xs text-[#787774] mt-1">{t("upload.helper")}</p>
         )}
       </Card>
+
+      {/* History Sheet — mở lại kết quả đã chấm từ GET /api/cvs (W7), không tốn quota */}
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-[#F1F1EF] text-left">
+            <SheetTitle className="text-sm font-bold text-[#2F3437]">
+              {t("upload.history.title")}
+            </SheetTitle>
+            <SheetDescription className="text-xs text-[#787774]">
+              {t("upload.history.subtitle")}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+            {!isAuthenticated ? (
+              <div className="text-xs text-[#787774] leading-relaxed space-y-2">
+                <p>{t("authBanner.message")}</p>
+                <Link to="/?auth=login" className="text-primary font-bold hover:underline inline-block">
+                  {t("authBanner.cta")}
+                </Link>
+              </div>
+            ) : historyQuery.isLoading ? (
+              <p className="text-xs text-[#787774]">{t("upload.history.loading")}</p>
+            ) : historyQuery.isError ? (
+              <div className="text-xs text-[#9F2F2D] bg-[#FDEBEC] border border-[#F6D4D5] py-1.5 px-2.5 rounded-lg">
+                {getApiErrorMessage(historyQuery.error, t("upload.history.loadFailedDesc"))}
+              </div>
+            ) : !historyQuery.data?.items.length ? (
+              <p className="text-xs text-[#787774]">{t("upload.history.empty")}</p>
+            ) : (
+              historyQuery.data.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openFromHistory(item.id)}
+                  disabled={loadFromHistoryMutation.isPending}
+                  className="w-full text-left p-3 rounded-xl border border-[#EAEAEA] bg-white hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-60 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#2F3437] truncate">
+                        {item.title || item.originalFileName || t("upload.history.untitled")}
+                      </p>
+                      <p className="text-[11px] text-[#787774] mt-0.5">
+                        {[getRoleLabel(item.targetRole), formatHistoryDate(item.createdAt)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    {loadingHistoryId === item.id ? (
+                      <span className="text-[11px] text-[#787774] shrink-0">
+                        {t("upload.history.opening")}
+                      </span>
+                    ) : typeof item.atsReadabilityScore === "number" ? (
+                      <span className="font-mono text-xs font-bold text-primary shrink-0">
+                        {Math.round(item.atsReadabilityScore)}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
