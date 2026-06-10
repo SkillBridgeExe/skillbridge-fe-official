@@ -700,6 +700,10 @@ export default {
       empty: "Your CV already covers the most in-demand skills here.",
       hot: "hot",
     },
+    aiGate: {
+      jdThin: "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",
+      cvUnreadable: "The file doesn't contain readable CV content (may be a scan or empty file) — upload a text-based PDF or document with real text.",
+    },
     jdInput: {
       title: "Job description",
       titleCompact: "Target job description",
