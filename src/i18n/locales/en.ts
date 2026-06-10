@@ -454,6 +454,16 @@ export default {
     },
     upload: {
       historyLink: "View Recent Scans",
+      history: {
+        title: "Analysis history",
+        subtitle: "Reopen a saved result — no analysis credit used.",
+        loading: "Loading history...",
+        empty: "No analyzed CVs yet.",
+        untitled: "Untitled CV",
+        opening: "Opening...",
+        loadFailedTitle: "Couldn't open this CV",
+        loadFailedDesc: "Failed to load the saved result. Please try again.",
+      },
       cardTitle: "Provide your CV",
       cardSubtitle: "Choose how to provide a CV to start the analysis",
       twoDoorLabel: "Pick one of the two options:",

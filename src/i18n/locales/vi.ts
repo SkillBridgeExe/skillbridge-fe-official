@@ -454,6 +454,16 @@
     },
     upload: {
       historyLink: "Xem lần quét gần đây",
+      history: {
+        title: "Lịch sử phân tích",
+        subtitle: "Mở lại kết quả đã chấm — không tốn lượt phân tích.",
+        loading: "Đang tải lịch sử...",
+        empty: "Chưa có CV nào được phân tích.",
+        untitled: "CV chưa đặt tên",
+        opening: "Đang mở...",
+        loadFailedTitle: "Không mở được CV này",
+        loadFailedDesc: "Không tải được kết quả đã lưu. Vui lòng thử lại.",
+      },
       cardTitle: "Cung cấp CV của bạn",
       cardSubtitle: "Chọn cách cung cấp CV để bắt đầu phân tích",
       twoDoorLabel: "Chọn một trong hai cách:",
