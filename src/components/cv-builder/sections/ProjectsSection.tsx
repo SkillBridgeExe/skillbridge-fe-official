@@ -3,18 +3,104 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, RotateCcw } from "lucide-react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAiRewrite } from "@/hooks/use-cv-builder";
+import type { AiGateCode } from "@/lib/ai-input-gate";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 
+/** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
+const BULLETS_INSTRUCTION =
+  "Chuyển nội dung thành 2-4 gạch đầu dòng CV (mỗi dòng bắt đầu bằng '- '), súc tích, giữ nguyên dữ kiện, không bịa thông tin mới.";
+
+type ProjectNotice = AiGateCode | "LOCAL_ONLY" | "FALLBACK";
+
 export function ProjectsSection() {
-  const { projects, addProject, updateProject, removeProject } = useCvBuilderStore();
+  const { projects, addProject, updateProject, removeProject, draftId } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
-  const suggestBullets = (id: string) => {
-    toast({ title: t("builder.toastAiApplied") });
-    updateProject(id, "description", "- Built a fullstack web app using React and Node.js\n- Implemented authentication with JWT\n- Deployed to Vercel and AWS");
+  // Per-entry trạng thái: hint gate/fallback + backup để hoàn tác sau khi áp AI
+  const [notice, setNotice] = useState<{ id: string; kind: ProjectNotice } | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [backupMap, setBackupMap] = useState<Record<string, string>>({});
+
+  const aiRewrite = useAiRewrite();
+  const targetRole = useDiagnosisStore((s) => s.targetRole);
+  const isLoggedIn = !!localStorage.getItem("accessToken");
+
+  const noticeText = (kind: ProjectNotice) => {
+    switch (kind) {
+      case "LOCAL_ONLY":
+        return t("builder.localOnly");
+      case "FALLBACK":
+        return t("builder.aiGate.fallbackNote");
+      case "OFF_TOPIC":
+        return t("builder.aiGate.offTopic");
+      default:
+        return t("builder.aiGate.needContext");
+    }
+  };
+
+  /**
+   * "Chuyển thành gạch đầu dòng" THẬT: gửi chính mô tả user đã viết qua BE
+   * rewrite (mode 'custom'). Không còn template giả ghi đè nội dung.
+   */
+  const suggestBullets = (id: string, currentText: string) => {
+    if (!currentText.trim()) {
+      return toast({ title: t("builder.toastWriteTextFirst"), variant: "destructive" });
+    }
+
+    setNotice(null);
+    if (!isLoggedIn || !draftId) {
+      return setNotice({ id, kind: "LOCAL_ONLY" });
+    }
+
+    setPendingId(id);
+    aiRewrite.rewrite(
+      {
+        draftId,
+        text: currentText,
+        mode: "custom",
+        instruction: BULLETS_INSTRUCTION,
+        role_code: targetRole ?? undefined,
+        section: "projects",
+      },
+      {
+        onSuccess: (data) => {
+          setPendingId(null);
+          setBackupMap((prev) => ({ ...prev, [id]: currentText }));
+          updateProject(id, "description", data.suggestion);
+          if (data.fallback) setNotice({ id, kind: "FALLBACK" });
+        },
+        onGateFail: (reason) => {
+          setPendingId(null);
+          setNotice({ id, kind: reason });
+        },
+        onError: (err: Error) => {
+          setPendingId(null);
+          toast({
+            title: t("builder.toastAiSuggestFailed"),
+            description: err?.message || t("builder.toastSomethingWrong"),
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleUndo = (id: string) => {
+    const backup = backupMap[id];
+    if (backup === undefined) return;
+    updateProject(id, "description", backup);
+    setBackupMap((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+    setNotice(null);
   };
 
   return (
@@ -49,8 +135,17 @@ export function ProjectsSection() {
             <div className="space-y-2 col-span-2">
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.projectDescription")}</Label>
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-primary" onClick={() => suggestBullets(proj.id)}>
-                  <Sparkles className="w-3 h-3 mr-1" /> {t("builder.turnIntoBullets")}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary"
+                  onClick={() => suggestBullets(proj.id, proj.description)}
+                  disabled={aiRewrite.isPending && pendingId === proj.id}
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {aiRewrite.isPending && pendingId === proj.id
+                    ? t("builder.generating")
+                    : t("builder.turnIntoBullets")}
                 </Button>
               </div>
               <Textarea
@@ -59,6 +154,26 @@ export function ProjectsSection() {
                 placeholder={t("builder.ph.projectDescription")}
                 className="text-[13px] resize-none h-20"
               />
+
+              {/* Input-gate hint / fallback note */}
+              {notice?.id === proj.id && (
+                <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
+                  {noticeText(notice.kind)}
+                </div>
+              )}
+
+              {/* Hoàn tác sau khi áp bản viết lại của AI */}
+              {backupMap[proj.id] !== undefined && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleUndo(proj.id)}
+                  className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{t("builder.undo")}</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

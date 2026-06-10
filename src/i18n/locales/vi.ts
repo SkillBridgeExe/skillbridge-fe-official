@@ -704,7 +704,6 @@
       toastAiSuggestFailed: "AI đề xuất thất bại",
       toastSomethingWrong: "Đã có lỗi xảy ra.",
       turnIntoBullets: "Chuyển thành gạch đầu dòng",
-      toastAiApplied: "Đã áp dụng đề xuất AI (mẫu)",
       noCerts: "Chưa thêm chứng chỉ nào.",
       remove: "Xóa",
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",

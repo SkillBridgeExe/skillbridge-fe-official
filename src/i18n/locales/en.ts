@@ -704,7 +704,6 @@ export default {
       toastAiSuggestFailed: "AI suggestion failed",
       toastSomethingWrong: "Something went wrong.",
       turnIntoBullets: "Turn into bullet points",
-      toastAiApplied: "AI suggestion applied (mock)",
       noCerts: "No certifications added yet.",
       remove: "Remove",
       skillInputPlaceholder: "Type a skill and press Enter...",
