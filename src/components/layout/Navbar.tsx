@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
-import { getMyAvatarUrl } from "@/services/user-profile.service";
+import { getMyAvatarUrl, getSafeAvatarUrl } from "@/services/user-profile.service";
 
 const VNFlagCircle = () => (
   <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
@@ -201,7 +201,7 @@ export default function Navbar() {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Avatar className="h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all">
-                <AvatarImage src={avatarQuery.data || currentUser?.avatar || "https://github.com/shadcn.png"} />
+                <AvatarImage src={avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || "https://github.com/shadcn.png"} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-blue-400 text-white text-xs font-bold">
                   {currentUser?.name?.slice(0, 2).toUpperCase() || "SK"}
                 </AvatarFallback>

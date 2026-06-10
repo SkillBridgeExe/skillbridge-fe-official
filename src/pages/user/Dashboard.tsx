@@ -18,7 +18,7 @@ import { MOCK_USER } from "@/lib/mock-data/dashboard";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
-import { getMyAvatarUrl } from "@/services/user-profile.service";
+import { getMyAvatarUrl, getSafeAvatarUrl } from "@/services/user-profile.service";
 
 // ─── Scroll-aware section tracking ───────────────
 function useSectionObserver(sectionIds: string[]) {
@@ -72,7 +72,7 @@ export default function Dashboard() {
   const dashboardUser = {
     ...MOCK_USER,
     name: currentUser?.name || MOCK_USER.name,
-    avatar: avatarQuery.data || currentUser?.avatar || "https://github.com/shadcn.png",
+    avatar: avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || "https://github.com/shadcn.png",
   };
 
   return (

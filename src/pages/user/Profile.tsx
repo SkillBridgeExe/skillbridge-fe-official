@@ -39,12 +39,14 @@ import { QUERY_KEYS } from "@/constants/app";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
   deleteMyAvatar,
+  getSafeAvatarUrl,
   getMyAvatarUrl,
   getMyProfile,
   getMySkills,
   replaceMySkills,
   updateMyProfile,
   uploadMyAvatar,
+  validateAvatarFile,
 } from "@/services/user-profile.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { UserSkillDto } from "@/api/user/skills";
@@ -198,7 +200,10 @@ export default function Profile() {
 
   const displayName = form.displayName || currentUser?.name || "";
   const email = profileQuery.data?.email || currentUser?.email || "";
-  const avatarSrc = avatarQuery.data || profileQuery.data?.avatarUrl || currentUser?.avatar;
+  const avatarSrc =
+    avatarQuery.data ||
+    getSafeAvatarUrl(profileQuery.data?.avatarUrl) ||
+    getSafeAvatarUrl(currentUser?.avatar);
 
   const completeness = useMemo(() => {
     let score = 0;
@@ -336,11 +341,11 @@ export default function Profile() {
 
   const handleAvatarChange = (file: File | undefined) => {
     if (!file) return;
-    const isSupported = ["image/png", "image/jpeg", "image/webp"].includes(file.type);
-    if (!isSupported || file.size > 2 * 1024 * 1024) {
+    const validationError = validateAvatarFile(file);
+    if (validationError) {
       toast({
         title: t("profile.toastAvatarInvalidTitle"),
-        description: t("profile.toastAvatarInvalidDesc"),
+        description: validationError || t("profile.toastAvatarInvalidDesc"),
         variant: "destructive",
       });
       return;

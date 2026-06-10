@@ -9,6 +9,7 @@ import {
   downloadCurrentUserAvatarApi,
   uploadCurrentUserAvatarApi,
 } from "@/api/user/avatar";
+import { API_ROUTES } from "@/constants/api-routes";
 import {
   getCurrentUserSkillsApi,
   replaceCurrentUserSkillsApi,
@@ -21,7 +22,24 @@ function hasApiSession() {
   // Only a real bearer token counts as an API session. A lingering "user" key
   // (mock login / stale state) must NOT trigger authed calls — those 401 and
   // used to bounce the user to the homepage.
-  return Boolean(localStorage.getItem("accessToken"));
+  const token = localStorage.getItem("accessToken");
+  if (!token) return false;
+
+  const [, payload] = token.split(".");
+  if (!payload) return true;
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(atob(normalized)) as { exp?: number };
+    if (decoded.exp && decoded.exp * 1000 <= Date.now()) {
+      localStorage.removeItem("accessToken");
+      return false;
+    }
+  } catch {
+    return true;
+  }
+
+  return true;
 }
 
 function getLocalProfile(): UserProfileDto {
@@ -51,12 +69,12 @@ function syncAuthUser(profile: UserProfileDto | null | undefined) {
   if (!profile) return;
   const displayName = profile.displayName;
   const email = profile.email;
-  const avatarUrl = profile.avatarUrl;
+  const avatarUrl = getSafeAvatarUrl(profile.avatarUrl);
 
   useAuthStore.getState().updateAuthUser({
     ...(displayName ? { name: displayName } : {}),
     ...(email ? { email: email } : {}),
-    ...(avatarUrl !== undefined ? { avatar: avatarUrl || undefined } : {}),
+    ...(profile.avatarUrl !== undefined ? { avatar: avatarUrl } : {}),
   });
 }
 
@@ -105,11 +123,51 @@ export async function updateMyProfile(
 
 let activeAvatarBlobUrl: string | null = null;
 
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+export const AVATAR_ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
+export function validateAvatarFile(file: File | undefined): string | null {
+  if (!file) return "No file selected.";
+  if (file.size > AVATAR_MAX_BYTES) return "Avatar must be 2MB or smaller.";
+  if (!AVATAR_ALLOWED_TYPES.includes(file.type)) return "Unsupported avatar file type.";
+  return null;
+}
+
+export function isProtectedAvatarUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed === API_ROUTES.USER.AVATAR || trimmed.endsWith(API_ROUTES.USER.AVATAR);
+}
+
+export function getSafeAvatarUrl(value: string | null | undefined): string | undefined {
+  if (!value || isProtectedAvatarUrl(value)) return undefined;
+  const trimmed = value.trim();
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("/")
+  ) {
+    return trimmed;
+  }
+  return undefined;
+}
+
+function setAuthAvatar(value: string | null | undefined) {
+  useAuthStore.getState().updateAuthUser({ avatar: value || undefined });
+}
+
 export async function getMyAvatarUrl(): Promise<string | null> {
-  const localAvatar = useAuthStore.getState().currentUser?.avatar;
+  const localAvatar = getSafeAvatarUrl(useAuthStore.getState().currentUser?.avatar);
   if (!hasApiSession()) return localAvatar ?? null;
 
-  const blob = await downloadCurrentUserAvatarApi();
+  let blob: Blob;
+  try {
+    blob = await downloadCurrentUserAvatarApi();
+  } catch {
+    return localAvatar ?? null;
+  }
   if (!blob.size) return localAvatar ?? null;
 
   if (activeAvatarBlobUrl) {
@@ -121,6 +179,7 @@ export async function getMyAvatarUrl(): Promise<string | null> {
   }
 
   activeAvatarBlobUrl = URL.createObjectURL(blob);
+  setAuthAvatar(activeAvatarBlobUrl);
   return activeAvatarBlobUrl;
 }
 
@@ -131,17 +190,30 @@ export async function uploadMyAvatar(file: File): Promise<string | null> {
     return previewUrl;
   }
 
-  const result = await uploadCurrentUserAvatarApi(file);
-  if (result?.avatarUrl) {
-    useAuthStore.getState().updateAuthUser({ avatar: result.avatarUrl });
-    return result.avatarUrl;
+  const previewUrl = URL.createObjectURL(file);
+  setAuthAvatar(previewUrl);
+
+  try {
+    const result = await uploadCurrentUserAvatarApi(file);
+    if (isProtectedAvatarUrl(result?.avatarUrl)) {
+      return getMyAvatarUrl();
+    }
+    const safeAvatarUrl = getSafeAvatarUrl(result?.avatarUrl);
+    if (safeAvatarUrl) {
+      setAuthAvatar(safeAvatarUrl);
+      return safeAvatarUrl;
+    }
+    setAuthAvatar(undefined);
+    return null;
+  } catch (error) {
+    setAuthAvatar(undefined);
+    throw error;
   }
-  return getMyAvatarUrl();
 }
 
 export async function deleteMyAvatar(): Promise<void> {
   if (hasApiSession()) await deleteCurrentUserAvatarApi();
-  useAuthStore.getState().updateAuthUser({ avatar: undefined });
+  setAuthAvatar(undefined);
 }
 
 export async function getMySkills(): Promise<UserSkillDto[]> {

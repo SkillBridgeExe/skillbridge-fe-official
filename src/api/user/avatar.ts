@@ -1,9 +1,17 @@
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
-import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 
 export interface UserAvatarResponse {
   avatarUrl?: string | null;
+}
+
+type MaybeEnvelope<T> = T | { success: boolean; data: T };
+
+function unwrapAvatarResponse<T>(payload: MaybeEnvelope<T>): T {
+  if (payload && typeof payload === "object" && "success" in payload && "data" in payload) {
+    return payload.data;
+  }
+  return payload as T;
 }
 
 export async function uploadCurrentUserAvatarApi(
@@ -12,13 +20,14 @@ export async function uploadCurrentUserAvatarApi(
   const formData = new FormData();
   formData.append("file", file);
 
-  const envelope = await unwrapEnvelope<ApiEnvelope<UserAvatarResponse | null>>(
-    httpClient.post(API_ROUTES.USER.AVATAR, formData, {
+  const response = await httpClient.post<MaybeEnvelope<UserAvatarResponse | null>>(
+    API_ROUTES.USER.AVATAR,
+    formData,
+    {
       headers: { "Content-Type": "multipart/form-data" },
-    }),
-    "Failed to upload avatar.",
+    },
   );
-  return envelope.data;
+  return unwrapAvatarResponse(response.data);
 }
 
 export async function downloadCurrentUserAvatarApi(): Promise<Blob> {
@@ -28,9 +37,9 @@ export async function downloadCurrentUserAvatarApi(): Promise<Blob> {
   return response.data;
 }
 
-export async function deleteCurrentUserAvatarApi(): Promise<void> {
-  await unwrapEnvelope<ApiEnvelope<null>>(
-    httpClient.delete(API_ROUTES.USER.AVATAR),
-    "Failed to delete avatar.",
+export async function deleteCurrentUserAvatarApi(): Promise<UserAvatarResponse | null> {
+  const response = await httpClient.delete<MaybeEnvelope<UserAvatarResponse | null>>(
+    API_ROUTES.USER.AVATAR,
   );
+  return unwrapAvatarResponse(response.data);
 }
