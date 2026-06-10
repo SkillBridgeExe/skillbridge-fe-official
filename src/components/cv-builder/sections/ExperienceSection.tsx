@@ -6,7 +6,8 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Plus, Trash2, Sparkles, X, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useRewriteFieldMutation } from "@/hooks/use-cv-builder";
+import { useAiRewrite } from "@/hooks/use-cv-builder";
+import type { AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 
@@ -31,7 +32,14 @@ export function ExperienceSection() {
 
   const [originalTextMap, setOriginalTextMap] = useState<Record<string, string>>({});
 
-  const rewriteMutation = useRewriteFieldMutation();
+  // Input-gate hint per field — nút luôn bấm được, hint giải thích vì sao chưa chạy
+  const [gateHint, setGateHint] = useState<{
+    entryId: string;
+    field: "description" | "achievements";
+    reason: AiGateCode;
+  } | null>(null);
+
+  const aiRewrite = useAiRewrite();
   const targetRole = useDiagnosisStore((s) => s.targetRole);
   const isLoggedIn = !!localStorage.getItem("accessToken");
 
@@ -41,10 +49,11 @@ export function ExperienceSection() {
       return toast({ title: t("builder.toastWriteTextFirst"), variant: "destructive" });
     }
 
+    setGateHint(null);
     setPendingTarget({ id: entryId, field });
     setActiveSuggestion(null);
 
-    rewriteMutation.mutate(
+    aiRewrite.rewrite(
       {
         draftId,
         text: currentText,
@@ -61,6 +70,10 @@ export function ExperienceSection() {
             isFallback: !!data.fallback,
           });
           setPendingTarget(null);
+        },
+        onGateFail: (reason) => {
+          setPendingTarget(null);
+          setGateHint({ entryId, field, reason });
         },
         onError: (err: Error) => {
           setPendingTarget(null);
@@ -103,8 +116,19 @@ export function ExperienceSection() {
     setPendingTarget(null);
   };
 
+  const renderGateHint = (entryId: string, field: "description" | "achievements") => {
+    if (gateHint?.entryId !== entryId || gateHint?.field !== field) return null;
+    return (
+      <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed mt-1.5">
+        {gateHint.reason === "OFF_TOPIC"
+          ? t("builder.aiGate.offTopic")
+          : t("builder.aiGate.needContext")}
+      </div>
+    );
+  };
+
   const renderSuggestionBox = (entryId: string, field: "description" | "achievements") => {
-    const isPending = rewriteMutation.isPending && pendingTarget?.id === entryId && pendingTarget?.field === field;
+    const isPending = aiRewrite.isPending && pendingTarget?.id === entryId && pendingTarget?.field === field;
     const entry = experience.find((e) => e.id === entryId);
     const hasUndo = entry && entry.aiRewrite && originalTextMap[`${entryId}_${field}`] === entry.aiRewrite;
 
@@ -124,7 +148,7 @@ export function ExperienceSection() {
         </div>
 
         {isPending ? (
-          <div className="space-y-2 py-1 animate-pulse">
+          <div className="space-y-2 py-1">
             <div className="h-3.5 bg-slate-200 rounded w-full" />
             <div className="h-3.5 bg-slate-200 rounded w-5/6" />
           </div>
@@ -218,7 +242,7 @@ export function ExperienceSection() {
                     variant="ghost" size="sm" 
                     className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
                     onClick={() => handleAiSuggest(exp.id, "description", exp.description)}
-                    disabled={rewriteMutation.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
+                    disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>{t("builder.aiSuggest")}</span>
@@ -232,9 +256,12 @@ export function ExperienceSection() {
                 className="text-[13px] resize-none h-24 font-sans"
               />
 
+              {/* Input-gate hint for Description */}
+              {renderGateHint(exp.id, "description")}
+
               {/* Suggestion Box for Description */}
-              {((pendingTarget?.id === exp.id && pendingTarget?.field === "description") || 
-                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) && 
+              {((pendingTarget?.id === exp.id && pendingTarget?.field === "description") ||
+                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) &&
                 renderSuggestionBox(exp.id, "description")
               }
             </div>
@@ -248,7 +275,7 @@ export function ExperienceSection() {
                     variant="ghost" size="sm" 
                     className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
                     onClick={() => handleAiSuggest(exp.id, "achievements", exp.achievements)}
-                    disabled={rewriteMutation.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
+                    disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>{t("builder.aiSuggest")}</span>
@@ -262,9 +289,12 @@ export function ExperienceSection() {
                 className="text-[13px] resize-none h-20 font-sans"
               />
 
+              {/* Input-gate hint for Achievements */}
+              {renderGateHint(exp.id, "achievements")}
+
               {/* Suggestion Box for Achievements */}
-              {((pendingTarget?.id === exp.id && pendingTarget?.field === "achievements") || 
-                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) && 
+              {((pendingTarget?.id === exp.id && pendingTarget?.field === "achievements") ||
+                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) &&
                 renderSuggestionBox(exp.id, "achievements")
               }
             </div>

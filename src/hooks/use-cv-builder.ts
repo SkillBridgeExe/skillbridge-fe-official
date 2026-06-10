@@ -8,7 +8,8 @@ import {
   type BuilderSnapshot,
   type EvaluateSectionInput,
 } from "@/services/cv-builder.service";
-import type { RewriteRequest } from "@shared/api";
+import { assessAiInput, getAiGateCode, type AiGateCode } from "@/lib/ai-input-gate";
+import type { RewriteRequest, RewriteResponse } from "@shared/api";
 
 /** Tạo draft builder trên BE — gọi 1 lần khi vào builder (lưu id vào store.draftId). */
 export function useEnsureBuilderDraftMutation() {
@@ -45,6 +46,44 @@ export function useRewriteFieldMutation() {
     mutationFn: ({ draftId, ...input }: { draftId: string } & RewriteRequest) =>
       rewriteField(draftId, input),
   });
+}
+
+export interface AiRewriteHandlers {
+  onSuccess: (data: RewriteResponse) => void;
+  /** Input bị chặn (FE pre-gate hoặc BE 400 code) — hiện hint i18n thân thiện. */
+  onGateFail: (reason: AiGateCode) => void;
+  /** Mọi lỗi còn lại (mạng/5xx) — giữ error pattern hiện có của UI. */
+  onError: (error: Error) => void;
+}
+
+/**
+ * Đường rewrite dùng chung cho "AI đề xuất" + "Tạo tóm tắt": chạy FE gate trước
+ * (instant, không tốn request), rồi mới gọi BE; map mã 400 của BE gate
+ * (INSUFFICIENT_CONTEXT/OFF_TOPIC) về onGateFail thay vì toast lỗi thô.
+ */
+export function useAiRewrite() {
+  const mutation = useRewriteFieldMutation();
+
+  const rewrite = (
+    input: { draftId: string } & RewriteRequest,
+    handlers: AiRewriteHandlers,
+  ) => {
+    const verdict = assessAiInput(input.text);
+    if (!verdict.ok) {
+      handlers.onGateFail(verdict.reason ?? "INSUFFICIENT_CONTEXT");
+      return;
+    }
+    mutation.mutate(input, {
+      onSuccess: handlers.onSuccess,
+      onError: (error: Error) => {
+        const code = getAiGateCode(error);
+        if (code) handlers.onGateFail(code);
+        else handlers.onError(error);
+      },
+    });
+  };
+
+  return { rewrite, isPending: mutation.isPending };
 }
 
 /** Render + tải PDF của draft. */

@@ -661,6 +661,11 @@ export default {
       retry: "Rewrite",
       undo: "Undo",
       fallbackNote: "AI kept your original wording to avoid inventing numbers.",
+      aiGate: {
+        needContext: "Add your experience, skills, or goal first — AI only writes from your real information.",
+        offTopic: "This doesn't look like CV content yet — describe the work you actually did.",
+        fallbackNote: "AI kept your original content to avoid inventing details.",
+      },
       rendering: "Preparing PDF...",
       headerSubtitle: "Build a professional, ATS-friendly CV from your profile.",
       saveDraft: "Save Draft",

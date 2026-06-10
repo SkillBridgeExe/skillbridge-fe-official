@@ -661,6 +661,11 @@
       retry: "Viết lại",
       undo: "Hoàn tác",
       fallbackNote: "AI giữ nguyên câu gốc để tránh bịa số liệu.",
+      aiGate: {
+        needContext: "Điền kinh nghiệm/kỹ năng/mục tiêu trước — AI chỉ viết từ thông tin thật của bạn.",
+        offTopic: "Nội dung chưa phải nội dung CV — hãy mô tả việc bạn đã làm.",
+        fallbackNote: "AI giữ nguyên nội dung bạn cung cấp để tránh bịa thông tin.",
+      },
       rendering: "Đang tạo PDF...",
       headerSubtitle: "Tạo CV chuyên nghiệp, thân thiện với ATS từ hồ sơ của bạn.",
       saveDraft: "Lưu nháp",

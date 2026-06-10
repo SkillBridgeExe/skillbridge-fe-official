@@ -6,15 +6,66 @@ import { Sparkles, Edit3, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useRewriteFieldMutation } from "@/hooks/use-cv-builder";
+import { useAiRewrite } from "@/hooks/use-cv-builder";
+import { assessAiInput, type AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
+
+/** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
+const GENERATE_SUMMARY_INSTRUCTION =
+  "Viết đoạn tóm tắt (summary) CV 2-3 câu, súc tích, không đại từ nhân xưng, dựa HOÀN TOÀN trên thông tin đã cho.";
+
+/**
+ * Gom dữ kiện THẬT user đã điền trong builder thành 2-4 dòng nguồn cho AI —
+ * không bịa: chỉ join các mảnh không rỗng (mục tiêu/học vấn/kinh nghiệm/kỹ năng).
+ */
+function composeSummarySource(): string {
+  const s = useCvBuilderStore.getState();
+  const lines: string[] = [];
+
+  if (s.summary.trim()) lines.push(s.summary.trim());
+
+  const target = [s.targetPosition.trim(), s.careerLevel].filter(Boolean).join(" — ");
+  const education = s.education
+    .filter((e) => e.school.trim() || e.major.trim())
+    .map((e) => [e.major.trim(), e.school.trim()].filter(Boolean).join(", "))
+    .join("; ");
+  const profileLine = [
+    target && `Target role: ${target}`,
+    education && `Education: ${education}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (profileLine) lines.push(profileLine);
+
+  const experience = s.experience
+    .filter((e) => e.company.trim() || e.position.trim())
+    .map((e) => [e.position.trim(), e.company.trim()].filter(Boolean).join(" at "))
+    .join("; ");
+  const projects = s.projects
+    .filter((p) => p.name.trim())
+    .map((p) => p.name.trim())
+    .join("; ");
+  const workLine = [
+    experience && `Experience: ${experience}`,
+    projects && `Projects: ${projects}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (workLine) lines.push(workLine);
+
+  const skills = [...s.technicalSkills, ...s.tools, ...s.softSkills].join(", ");
+  if (skills) lines.push(`Skills: ${skills}`);
+
+  return lines.join("\n");
+}
+
+type SummaryHint = AiGateCode | "LOCAL_ONLY";
 
 export function SummarySection() {
   const { summary, summaryMode, setSummary, setSummaryMode, draftId } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // AI Suggest states
   const [suggestionText, setSuggestionText] = useState<string | null>(null);
@@ -22,9 +73,22 @@ export function SummarySection() {
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(false);
 
-  const rewriteMutation = useRewriteFieldMutation();
+  // Input-gate hint (inline — nút luôn bấm được, hint giải thích vì sao chưa chạy)
+  const [gateHint, setGateHint] = useState<SummaryHint | null>(null);
+  // BE guardrail giữ nguyên input khi Generate (fallback=true) → note nhỏ
+  const [generateFallback, setGenerateFallback] = useState(false);
+
+  const suggestRewrite = useAiRewrite();
+  const generateRewrite = useAiRewrite();
   const targetRole = useDiagnosisStore((s) => s.targetRole);
   const isLoggedIn = !!localStorage.getItem("accessToken");
+
+  const hintText = (hint: SummaryHint) =>
+    hint === "LOCAL_ONLY"
+      ? t("builder.localOnly")
+      : hint === "OFF_TOPIC"
+        ? t("builder.aiGate.offTopic")
+        : t("builder.aiGate.needContext");
 
   const handleAiSuggest = () => {
     if (!draftId) return;
@@ -32,11 +96,12 @@ export function SummarySection() {
       return toast({ title: t("builder.toastWriteSummaryFirst"), variant: "destructive" });
     }
 
+    setGateHint(null);
     setShowSuggestion(true);
     setSuggestionText(null);
     setIsFallback(false);
 
-    rewriteMutation.mutate(
+    suggestRewrite.rewrite(
       {
         draftId,
         text: summary,
@@ -48,6 +113,10 @@ export function SummarySection() {
         onSuccess: (data) => {
           setSuggestionText(data.suggestion);
           setIsFallback(!!data.fallback);
+        },
+        onGateFail: (reason) => {
+          setShowSuggestion(false);
+          setGateHint(reason);
         },
         onError: (err: Error) => {
           setShowSuggestion(false);
@@ -79,20 +148,49 @@ export function SummarySection() {
     setIsFallback(false);
   };
 
+  /**
+   * "Tạo tóm tắt" THẬT: gom dữ kiện đã điền → FE gate (instant) → BE rewrite
+   * mode 'custom'. Không còn template giả — AI chỉ viết từ thông tin thật.
+   */
   const handleGenerate = () => {
-    if (!summary.trim()) {
-      return toast({ title: t("builder.toastTellAboutFirst"), variant: "destructive" });
+    setGateHint(null);
+    setGenerateFallback(false);
+
+    const sourceText = composeSummarySource();
+    const verdict = assessAiInput(sourceText);
+    if (!verdict.ok) {
+      return setGateHint(verdict.reason ?? "INSUFFICIENT_CONTEXT");
     }
-    setIsGenerating(true);
-    setTimeout(() => {
-      setSummary(
-        `Results-driven ${summary.includes("student") ? "student" : "professional"} with a passion for innovation. ` +
-        `Eager to apply theoretical knowledge and practical experience in a dynamic work environment.`
-      );
-      setIsGenerating(false);
-      setSummaryMode("manual");
-      toast({ title: t("builder.toastSummaryGenerated") });
-    }, 1500);
+    if (!isLoggedIn || !draftId) {
+      return setGateHint("LOCAL_ONLY");
+    }
+
+    generateRewrite.rewrite(
+      {
+        draftId,
+        text: sourceText,
+        mode: "custom",
+        instruction: GENERATE_SUMMARY_INSTRUCTION,
+        role_code: targetRole ?? undefined,
+        section: "summary",
+      },
+      {
+        onSuccess: (data) => {
+          setSummary(data.suggestion);
+          setSummaryMode("manual");
+          setGenerateFallback(!!data.fallback);
+          toast({ title: t("builder.toastSummaryGenerated") });
+        },
+        onGateFail: (reason) => setGateHint(reason),
+        onError: (err: Error) => {
+          toast({
+            title: t("builder.toastAiSuggestFailed"),
+            description: err?.message || t("builder.toastSomethingWrong"),
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
   return (
@@ -125,7 +223,7 @@ export function SummarySection() {
               size="sm"
               onClick={handleAiSuggest}
               className="h-7 text-xs text-primary hover:bg-primary/5 hover:text-primary/90 flex items-center gap-1 px-2 py-1 shrink-0"
-              disabled={rewriteMutation.isPending}
+              disabled={suggestRewrite.isPending}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{t("builder.aiSuggest")}</span>
@@ -144,6 +242,20 @@ export function SummarySection() {
         />
       </div>
 
+      {/* Input-gate hint — giải thích vì sao AI chưa chạy (thay vì nút chết) */}
+      {gateHint && (
+        <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
+          {hintText(gateHint)}
+        </div>
+      )}
+
+      {/* BE guardrail giữ nguyên nội dung khi Generate */}
+      {generateFallback && (
+        <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
+          {t("builder.aiGate.fallbackNote")}
+        </div>
+      )}
+
       {/* Suggestion Box */}
       {showSuggestion && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -156,8 +268,8 @@ export function SummarySection() {
             </button>
           </div>
 
-          {rewriteMutation.isPending ? (
-            <div className="space-y-2 py-1 animate-pulse">
+          {suggestRewrite.isPending ? (
+            <div className="space-y-2 py-1">
               <div className="h-3.5 bg-slate-200 rounded w-full" />
               <div className="h-3.5 bg-slate-200 rounded w-5/6" />
             </div>
@@ -209,9 +321,9 @@ export function SummarySection() {
 
       {summaryMode === "ai" && (
         <div className="flex justify-end gap-2">
-          <Button onClick={handleGenerate} disabled={isGenerating} size="sm" className="bg-primary hover:bg-primary/90 text-white">
+          <Button onClick={handleGenerate} disabled={generateRewrite.isPending} size="sm" className="bg-primary hover:bg-primary/90 text-white">
             <Sparkles className="w-4 h-4 mr-2" />
-            {isGenerating ? t("builder.generating") : t("builder.generateSummary")}
+            {generateRewrite.isPending ? t("builder.generating") : t("builder.generateSummary")}
           </Button>
         </div>
       )}
