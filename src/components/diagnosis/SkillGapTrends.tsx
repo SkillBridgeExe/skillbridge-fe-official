@@ -24,7 +24,7 @@ export function SkillGapTrends({ cvId }: { cvId: string | null }) {
 
       {isLoading ? (
         <div className="space-y-2">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 bg-[#F1F1EF] rounded-lg animate-pulse" />)}
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 bg-[#F1F1EF] rounded-lg" />)}
         </div>
       ) : gap.length === 0 ? (
         <div className={cn(CARD, "p-5 flex items-center gap-3")}>
