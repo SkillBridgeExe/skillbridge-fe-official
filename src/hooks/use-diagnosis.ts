@@ -6,6 +6,7 @@ import {
   getDiagnosisHistory,
   getJobRecommendations,
   getSkillGap,
+  getTrendsInsight,
   loadCvFromHistory,
   reanalyzeCv,
 } from "@/services/diagnosis.service";
@@ -84,5 +85,15 @@ export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {})
     queryFn: () => getSkillGap(cvId!, query),
     enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** AI insight tá»« trends endpoint cho CV hiá»‡n táº¡i. */
+export function useTrendsInsightQuery(cvId: string | null, role?: string | null) {
+  return useQuery({
+    queryKey: ["trends-insight", cvId, role ?? "all"],
+    queryFn: () => getTrendsInsight({ cvId: cvId!, role, limit: 5 }),
+    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    staleTime: 10 * 60_000,
   });
 }

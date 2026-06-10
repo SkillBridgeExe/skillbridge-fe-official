@@ -44,9 +44,11 @@ export interface ParsedCvSummary {
 
 export interface SkillMatchItem {
   name: string;
+  canonical_name?: string | null;
   cvScore: number;
   jdRequired: number;
   status: SkillStatus;
+  gap_levels?: number | null;
 }
 
 export interface RadarMetric {
@@ -62,6 +64,44 @@ export interface CvJdMatch {
   softSkills: SkillMatchItem[];
   radar: RadarMetric[];
   criticalGaps: string[];
+  required_coverage?: number | null;
+  scoring_breakdown?: ScoringBreakdown | null;
+  experience_fit?: ExperienceFit | null;
+  inferred_skills?: InferredSkill[];
+}
+
+export interface ScoringBreakdown {
+  total_requirements: number;
+  matched_count: number;
+  partial_count: number;
+  missing_count: number;
+  weight_sum: number;
+  achieved_weight: number;
+  required_total: number;
+  required_met: number;
+  raw_weighted_score: number;
+  cap_applied: boolean;
+}
+
+export interface MatchPartialSkill {
+  display_name: string;
+  canonical_name: string;
+  gap_levels: number;
+}
+
+export interface ExperienceFit {
+  status: "fits" | "stretch" | "overqualified" | "unknown";
+  required_years_min: number | null;
+  required_years_max: number | null;
+  cv_years: number | null;
+  confidence?: "high" | "estimated" | "low" | null;
+}
+
+export interface InferredSkill {
+  canonical_name: string;
+  display_name: string;
+  tag: "ecosystem" | "adjacent" | "tooling";
+  reason?: string | null;
 }
 
 /** ① Skill trích xuất kèm trình độ + dẫn chứng (BE field: skills_extracted; skills_raw là alias cũ). */
@@ -128,6 +168,29 @@ export interface CvReviewData {
   skills_extracted?: ExtractedSkill[];
   skills_relevance_breakdown?: SkillsRelevanceBreakdown | null;
   top_summary?: TopSummary;
+  evidence_ledger?: EvidenceLedger | null;
+}
+
+export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "summary" | "other";
+export type EvidenceStrength = "demonstrated" | "mentioned" | "listed_only";
+
+export interface EvidenceSource {
+  kind: EvidenceKind;
+  label: string;
+  excerpt?: string | null;
+}
+
+export interface EvidenceItem {
+  skill_canonical: string;
+  display_name: string;
+  strength: EvidenceStrength;
+  sources: EvidenceSource[];
+  most_recent_year: number | null;
+  evidence_gap?: string | null;
+}
+
+export interface EvidenceLedger {
+  items: EvidenceItem[];
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -242,6 +305,7 @@ export interface CvReviewParsedResponse {
   scoring_weights_version?: string;
   skills_relevance_breakdown?: SkillsRelevanceBreakdown | null;
   top_summary?: TopSummary;
+  evidence_ledger?: EvidenceLedger | null;
 }
 
 export interface CvSkillDto {
@@ -331,20 +395,11 @@ export interface CvJdMatchParsedResponse {
   required_coverage: number;
   unnormalized_cv_skills: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   unnormalized_jd_requirements: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
-  scoring_breakdown: {
-    total_requirements: number;
-    matched_count: number;
-    partial_count: number;
-    missing_count: number;
-    weight_sum: number;
-    achieved_weight: number;
-    required_total: number;
-    required_met: number;
-    raw_weighted_score: number;
-    cap_applied: boolean;
-  };
+  scoring_breakdown: ScoringBreakdown;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
   target_role: string | null;
+  experience_fit?: ExperienceFit | null;
+  inferred_skills?: InferredSkill[];
 }
 
 export interface CvMatchDto {
@@ -385,7 +440,10 @@ export interface JobRecommendationDto {
   /** RRF-fused rank, 1 = tốt nhất. */
   rank: number;
   matched_skills: string[];
+  partial_skills?: MatchPartialSkill[];
   missing_skills: Array<{ display_name: string; importance: string }>;
+  scoring_breakdown?: ScoringBreakdown | null;
+  experience_fit?: ExperienceFit | null;
 }
 
 export interface JobRecommendationsResponse {
@@ -555,4 +613,27 @@ export interface SkillGapResponse {
   skills: SkillGapRow[];
   /** Subset missing, đã sort theo demand — danh sách ưu tiên upskill. */
   gap: SkillGapRow[];
+}
+
+export interface TrendsRecommendedSkill {
+  canonical_name: string;
+  display_name: string;
+  posting_count?: number;
+  pct_of_postings?: number;
+  trend_delta?: number | null;
+}
+
+export interface TrendsInsightItem {
+  title: string;
+  detail: string;
+  trend_delta?: number | null;
+}
+
+export interface TrendsInsightResponse {
+  cv_id: string;
+  role_code: string;
+  period?: string;
+  summary: string;
+  insights: TrendsInsightItem[];
+  recommended_skills: TrendsRecommendedSkill[];
 }
