@@ -23,6 +23,7 @@ import {
   useLoadCvFromHistoryMutation,
 } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 
 export function DiagnosisStep1Upload() {
@@ -140,7 +141,11 @@ export function DiagnosisStep1Upload() {
       setReviewData(review);
       setStep("cv-review");
     } catch (error) {
-      const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
+      const gateCode = extractAiGateCode(error);
+      const message =
+        gateCode === "CV_CONTENT_INSUFFICIENT"
+          ? t("aiGate.cvUnreadable")
+          : getApiErrorMessage(error, t("upload.errorAnalyze"));
       setApiError(message);
       toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });
     } finally {
@@ -178,7 +183,13 @@ export function DiagnosisStep1Upload() {
       setHasActivatedJdMode(true);
       setStep("results");
     } catch (error) {
-      const message = getApiErrorMessage(error, t("upload.errorCompare"));
+      const gateCode = extractAiGateCode(error);
+      const message =
+        gateCode === "CV_CONTENT_INSUFFICIENT"
+          ? t("aiGate.cvUnreadable")
+          : gateCode === "JD_CONTENT_INSUFFICIENT"
+            ? t("aiGate.jdThin")
+            : getApiErrorMessage(error, t("upload.errorCompare"));
       setHasActivatedJdMode(false);
       setApiError(message);
       toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });
