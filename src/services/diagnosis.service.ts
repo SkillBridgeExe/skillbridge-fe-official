@@ -12,7 +12,7 @@ import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
-import { getSkillGapApi, type SkillGapQuery } from "@/api/cv/trends";
+import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type {
@@ -141,6 +141,7 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
     skills_extracted: review.ats_extracted?.skills_extracted,
     skills_relevance_breakdown: review.skills_relevance_breakdown,
     top_summary: review.top_summary,
+    evidence_ledger: review.evidence_ledger,
   });
 }
 
@@ -151,9 +152,11 @@ function toSkillMatchItem(
   const cvLevel = "cv_level" in skill ? skill.cv_level : 0;
   return {
     name: skill.display_name || skill.canonical_name,
+    canonical_name: skill.canonical_name,
     cvScore: levelToPct(cvLevel),
     jdRequired: levelToPct(skill.required_level),
     status,
+    ...("gap_levels" in skill ? { gap_levels: skill.gap_levels } : {}),
   };
 }
 
@@ -192,6 +195,10 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     criticalGaps: missing
       .filter((skill) => skill.importance === "REQUIRED")
       .map((skill) => skill.display_name || skill.canonical_name),
+    required_coverage: parsed?.required_coverage ?? null,
+    scoring_breakdown: parsed?.scoring_breakdown ?? null,
+    experience_fit: parsed?.experience_fit ?? null,
+    inferred_skills: parsed?.inferred_skills ?? [],
   };
 }
 
@@ -296,6 +303,12 @@ export async function getJobRecommendations(
 export async function getSkillGap(cvId: string, query: SkillGapQuery = {}) {
   requireSession();
   return getSkillGapApi(cvId, query);
+}
+
+/** AI insight tá»« market trends cho CV hiá»‡n táº¡i (GET /api/trends/insight). */
+export async function getTrendsInsight(query: TrendsInsightQuery) {
+  requireSession();
+  return getTrendsInsightApi(query);
 }
 
 /** Tải file CV gốc đã upload (GET /api/cvs/:id/file) — trả Blob để UI tải xuống. */

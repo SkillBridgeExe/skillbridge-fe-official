@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ListChecks, Quote, Eye } from "lucide-react";
+import { FileText, ListChecks, Quote, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type {
   ExtractedSkill,
+  EvidenceLedger,
+  EvidenceStrength,
   RelevanceSkillItem,
   SkillImportance,
   SkillProficiencyHint,
@@ -311,6 +313,77 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
             </div>
           </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function evidenceStrengthClass(strength: EvidenceStrength): string {
+  if (strength === "demonstrated") return PASTEL.green;
+  if (strength === "listed_only") return PASTEL.yellow;
+  return PASTEL.gray;
+}
+
+export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
+  const { t } = useTranslation("diagnosis");
+  const items = ledger.items ?? [];
+  if (items.length === 0) return null;
+
+  return (
+    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-bold text-[#2F3437]">
+            <FileText className="w-4 h-4 text-primary" />
+            {t("evidence.title")}
+          </h3>
+          <p className="text-xs text-[#787774] mt-0.5">{t("evidence.gapHint")}</p>
+        </div>
+
+        <div className="space-y-3">
+          {items.slice(0, 6).map((item) => {
+            const sources = item.sources ?? [];
+            const visibleSources = sources.slice(0, 3);
+            const extra = Math.max(0, sources.length - visibleSources.length);
+            return (
+              <div key={item.skill_canonical} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] font-bold text-[#2F3437]">{item.display_name}</span>
+                  <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-bold", evidenceStrengthClass(item.strength))}>
+                    {t(`evidence.strength.${item.strength}`)}
+                  </span>
+                  {item.most_recent_year != null && (
+                    <span className="font-mono text-[10px] text-[#787774]">{item.most_recent_year}</span>
+                  )}
+                </div>
+
+                {visibleSources.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-[#787774]">{t("evidence.foundIn")}</span>
+                    {visibleSources.map((source, idx) => (
+                      <span
+                        key={`${source.kind}-${source.label}-${idx}`}
+                        className="rounded-lg border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-medium text-[#2F3437]"
+                        title={source.excerpt ?? undefined}
+                      >
+                        {t(`evidence.sourceKind.${source.kind}`)}
+                        {source.label?.trim() ? `: ${source.label}` : ""}
+                      </span>
+                    ))}
+                    {extra > 0 && <span className="text-[11px] text-[#787774]">+{extra}</span>}
+                  </div>
+                )}
+
+                {item.evidence_gap && (
+                  <div className="mt-2 rounded-lg border border-[#F1E5C0] bg-[#FBF3DB] px-3 py-2">
+                    <p className="text-[11px] font-bold text-[#956400]">{t("evidence.gapTitle")}</p>
+                    <p className="text-xs leading-relaxed text-[#956400]">{item.evidence_gap}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
-import { SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
+import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
 import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
+import { AiTrendsInsight } from "./AiTrendsInsight";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { getRoleLabel } from "@/constants/it-roles";
@@ -370,6 +371,10 @@ export function DiagnosisStep2Review() {
             <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
           )}
 
+          {reviewData?.evidence_ledger?.items?.length ? (
+            <EvidenceLedgerCard ledger={reviewData.evidence_ledger} />
+          ) : null}
+
           {/* Raw parsed accordion */}
           <div className={cn(CARD, "overflow-hidden")}>
             <button
@@ -399,6 +404,7 @@ export function DiagnosisStep2Review() {
 
       {/* Moat L2 — top job thật + skill-gap thị trường (W8) */}
       <JobRecommendations cvId={lastCvId} />
+      <AiTrendsInsight cvId={lastCvId} role={targetRole} />
       <SkillGapTrends cvId={lastCvId} />
 
       {/* CTA Row */}

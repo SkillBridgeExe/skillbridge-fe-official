@@ -49,7 +49,7 @@ const App = () => (
               <Route path="/dashboard" element={<Pages.Dashboard />} />
               <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
-              <Route path="/learning" element={<Pages.Learning />} />
+              <Route path="/learning" element={<Pages.LearningComingSoon />} />
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
               <Route path="/practice" element={<Navigate to="/interview" replace />} />
               <Route path="/learning/session/:id" element={<Pages.LearningSession />} />
@@ -69,26 +69,11 @@ const App = () => (
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
 
-              <Route
-                path="/business"
-                element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}
-              />
-              <Route
-                path="/business/profile"
-                element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}
-              />
-              <Route
-                path="/business/jobs"
-                element={<AuthGuard requiredRole="business"><Pages.BusinessJobs /></AuthGuard>}
-              />
-              <Route
-                path="/business/top-candidates"
-                element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}
-              />
-              <Route
-                path="/business/applicants"
-                element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}
-              />
+              <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
+              <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
+              <Route path="/business/jobs" element={<AuthGuard requiredRole="business"><Pages.BusinessJobs /></AuthGuard>}/>
+              <Route path="/business/top-candidates" element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}/>
+              <Route path="/business/applicants" element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}/>
 
               <Route path="/mentor-room/:roomId" element={<Pages.MentorRoom />} />
               <Route path="/mentor-dashboard" element={<Pages.MentorDashboardShell />}>
@@ -102,15 +87,9 @@ const App = () => (
                 <Route path="reviews" element={<Pages.MentorReviews />} />
                 <Route path="wallet" element={<Pages.MentorWallet />} />
               </Route>
-              <Route
-                path="/mentor"
-                element={<AuthGuard requiredRole="mentor"><Pages.MentorLanding /></AuthGuard>}
-              />
+              <Route path="/mentor" element={<AuthGuard requiredRole="mentor"><Pages.MentorLanding /></AuthGuard>}/>
 
-              <Route
-                path="/admin"
-                element={<AuthGuard requiredRole="admin"><Pages.AdminDashboard /></AuthGuard>}
-              >
+              <Route path="/admin" element={<AuthGuard requiredRole="admin"><Pages.AdminDashboard /></AuthGuard>}>
                 <Route index element={<Pages.AdminOverview />} />
                 <Route path="insights" element={<Pages.AdminInsights />} />
                 <Route path="users" element={<Pages.AdminUserManagement />} />

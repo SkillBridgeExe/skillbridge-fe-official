@@ -17,11 +17,22 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
-import type { SkillMatchItem } from "@shared/api";
+import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 const MAX_INSIGHT_ITEMS = 3;
+
+function evidenceStrengthClass(strength: EvidenceStrength): string {
+  if (strength === "demonstrated") return "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]";
+  if (strength === "listed_only") return "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]";
+  return "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
+}
+
+function findEvidenceStrength(skill: SkillMatchItem, ledger?: EvidenceLedger | null): EvidenceStrength | null {
+  if (skill.status === "missing" || !skill.canonical_name || !ledger?.items?.length) return null;
+  return ledger.items.find((item) => item.skill_canonical === skill.canonical_name)?.strength ?? null;
+}
 
 function truncateText(value: string, maxLength = 140): string {
   const normalized = value.replace(/\s+/g, " ").trim();
@@ -59,7 +70,17 @@ const FlatScore = memo(function FlatScore({ target, label }: { target: number; l
 });
 
 /* ── KeywordRow ── */
-function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number; t: (key: string) => string }) {
+function KeywordRow({
+  skill,
+  index,
+  t,
+  evidenceStrength,
+}: {
+  skill: SkillMatchItem;
+  index: number;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  evidenceStrength?: EvidenceStrength | null;
+}) {
   const statusConfig = {
     present: { icon: <CheckCircle2 className="w-4 h-4 text-[#346538]" />, badge: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", label: t("results.found") },
     partial:  { icon: <AlertCircle  className="w-4 h-4 text-[#956400]" />, badge: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", label: t("results.partial") },
@@ -72,7 +93,24 @@ function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number;
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
     >
       <div className="w-6 flex justify-center shrink-0">{statusConfig.icon}</div>
-      <span className="flex-1 text-sm font-medium text-[#2F3437] truncate pr-4">{skill.name}</span>
+      <div className="flex-1 min-w-0 pr-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-medium text-[#2F3437] truncate">{skill.name}</span>
+          {evidenceStrength && (
+            <span
+              className={cn("hidden sm:inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
+              title={t(`evidence.strength.${evidenceStrength}`)}
+            >
+              {t(`evidence.strength.${evidenceStrength}`)}
+            </span>
+          )}
+        </div>
+        {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
+          <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
+            {t("matchDepth.gapLevels", { count: skill.gap_levels })}
+          </p>
+        )}
+      </div>
       <div className="flex items-center gap-3 w-40 shrink-0">
         <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
           <div
@@ -93,6 +131,81 @@ function KeywordRow({ skill, index, t }: { skill: SkillMatchItem; index: number;
 }
 
 /* ── Main Component ── */
+function MatchDepthSummary({
+  jdMatch,
+  t,
+}: {
+  jdMatch: CvJdMatch | null | undefined;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  if (!jdMatch?.scoring_breakdown) return null;
+  const breakdown = jdMatch.scoring_breakdown;
+  const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
+
+  return (
+    <div className={cn(CARD, "p-5")}>
+      <h3 className="text-sm font-bold text-[#2F3437] mb-3">{t("matchDepth.whyScore")}</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-[#DCE9D7] bg-[#EDF3EC] p-3">
+          <p className="text-[10px] font-bold uppercase text-[#346538]">{t("results.matched")}</p>
+          <p className="font-mono text-xl font-bold text-[#346538]">{breakdown.matched_count}</p>
+        </div>
+        <div className="rounded-xl border border-[#F1E5C0] bg-[#FBF3DB] p-3">
+          <p className="text-[10px] font-bold uppercase text-[#956400]">{t("results.partial")}</p>
+          <p className="font-mono text-xl font-bold text-[#956400]">{breakdown.partial_count}</p>
+        </div>
+        <div className="rounded-xl border border-[#F6D4D5] bg-[#FDEBEC] p-3">
+          <p className="text-[10px] font-bold uppercase text-[#9F2F2D]">{t("results.missing")}</p>
+          <p className="font-mono text-xl font-bold text-[#9F2F2D]">{breakdown.missing_count}</p>
+        </div>
+        <div className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
+          <p className="text-[10px] font-bold uppercase text-[#787774]">{t("matchDepth.coverage")}</p>
+          <p className="font-mono text-xl font-bold text-[#2F3437]">{coverage}%</p>
+        </div>
+      </div>
+      {jdMatch.experience_fit?.status && jdMatch.experience_fit.status !== "unknown" && (
+        <p className="mt-3 text-xs font-medium text-[#787774]">
+          {t(`matchDepth.fit.${jdMatch.experience_fit.status}`)}
+          {jdMatch.experience_fit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
+        </p>
+      )}
+      {breakdown.cap_applied && (
+        <p className="mt-2 text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
+      )}
+    </div>
+  );
+}
+
+function InferredSkillsBlock({
+  skills,
+  t,
+}: {
+  skills?: InferredSkill[];
+  t: (key: string) => string;
+}) {
+  if (!skills?.length) return null;
+  return (
+    <div className={cn(CARD, "p-5")}>
+      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.inferredTitle")}</h3>
+      <p className="mt-1 text-xs leading-relaxed text-[#787774]">{t("matchDepth.inferredHint")}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {skills.map((skill) => (
+          <span
+            key={skill.canonical_name}
+            className="inline-flex items-center gap-1 rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] px-2.5 py-1 text-xs font-semibold text-[#2F3437]"
+            title={skill.reason ?? undefined}
+          >
+            {skill.display_name}
+            <span className="text-[10px] font-bold text-[#787774]">
+              {t(`matchDepth.inferred.${skill.tag}`)}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DiagnosisStep3Results() {
   const { t } = useTranslation("diagnosis");
   const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId } = useDiagnosisStore();
@@ -266,6 +379,8 @@ export function DiagnosisStep3Results() {
         </div>
       </div>
 
+      {isJdMode && <MatchDepthSummary jdMatch={jdMatch} t={t} />}
+
       {/* Row 2: Keyword Table */}
       <div className={CARD}>
         <div className="border-b border-[#EAEAEA] p-5">
@@ -311,13 +426,21 @@ export function DiagnosisStep3Results() {
           )}
           <div>
             {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
-              <KeywordRow key={`${skill.name}-${i}`} skill={skill} index={i} t={t} />
+              <KeywordRow
+                key={`${skill.name}-${i}`}
+                skill={skill}
+                index={i}
+                t={t}
+                evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
+              />
             )) : (
               <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
             )}
           </div>
         </div>
       </div>
+
+      {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
 
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>

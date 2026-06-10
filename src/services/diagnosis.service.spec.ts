@@ -48,6 +48,18 @@ const review: CvReviewParsedResponse = {
     missing: [],
   },
   top_summary: { headline: "Solid base", prioritized_actions: ["Quantify results"] },
+  evidence_ledger: {
+    items: [
+      {
+        skill_canonical: "react",
+        display_name: "React",
+        strength: "demonstrated",
+        sources: [{ kind: "project", label: "Portfolio SPA", excerpt: "Built 2 SPAs" }],
+        most_recent_year: 2025,
+        evidence_gap: null,
+      },
+    ],
+  },
 };
 
 const cvDto: CvDto = {
@@ -133,6 +145,21 @@ const matchDto: CvMatchDto = {
     },
     source_of_requirements: "role_rubric",
     target_role: "frontend_developer",
+    experience_fit: {
+      status: "stretch",
+      required_years_min: 2,
+      required_years_max: 4,
+      cv_years: 1,
+      confidence: "estimated",
+    },
+    inferred_skills: [
+      {
+        canonical_name: "javascript",
+        display_name: "JavaScript",
+        tag: "ecosystem",
+        reason: "React work usually implies JavaScript fundamentals.",
+      },
+    ],
   },
   jobDescription: null,
   createdAt: "2026-06-07T00:00:00Z",
@@ -204,6 +231,21 @@ describe("mapCvDtoToReviewData", () => {
     expect(ui.actionPlan).toEqual(["Quantify results"]);
   });
 
+  it("pass-through evidence_ledger without transforming evidence data", () => {
+    const ui = mapCvDtoToReviewData(cvDto);
+    expect(ui.evidence_ledger?.items[0]).toMatchObject({
+      skill_canonical: "react",
+      display_name: "React",
+      strength: "demonstrated",
+      most_recent_year: 2025,
+    });
+    expect(ui.evidence_ledger?.items[0].sources[0]).toEqual({
+      kind: "project",
+      label: "Portfolio SPA",
+      excerpt: "Built 2 SPAs",
+    });
+  });
+
   it("throw rõ ràng khi review null (upload xong nhưng thiếu kết quả chấm)", () => {
     expect(() => mapCvDtoToReviewData({ ...cvDto, review: null })).toThrow(/re-running/);
   });
@@ -216,6 +258,7 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.hardSkills).toHaveLength(3);
     expect(jd.hardSkills[0]).toEqual({
       name: "React",
+      canonical_name: "react",
       cvScore: 60,
       jdRequired: 60,
       status: "present",
@@ -229,6 +272,10 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.criticalGaps).toEqual(["Next.js"]);
     expect(jd.summary).toContain("Matched 1/3");
     expect(jd.summary).toContain("50%");
+    expect(jd.scoring_breakdown?.cap_applied).toBe(true);
+    expect(jd.required_coverage).toBe(0.5);
+    expect(jd.experience_fit?.status).toBe("stretch");
+    expect(jd.inferred_skills?.[0].canonical_name).toBe("javascript");
   });
 
   it("không vỡ khi parsedResponse null — fallback matchRatio/0", () => {

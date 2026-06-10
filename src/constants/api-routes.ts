@@ -52,10 +52,11 @@ export const API_ROUTES = {
     HISTORY: `${API}/diagnosis/history`,
   },
 
-  // §1.7 Skill trends (trends.controller.ts) — SKILLS là public, GAP cần JWT
+  // Skill trends (trends.controller.ts) — endpoints require JWT.
   TRENDS: {
     SKILLS: `${API}/trends/skills`,
     SKILL_GAP: (cvId: string) => `${API}/trends/skills/gap/${cvId}`,
+    INSIGHT: `${API}/trends/insight`,
   },
 
   // §1.5 Interview
