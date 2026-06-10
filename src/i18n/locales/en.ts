@@ -633,6 +633,7 @@ export default {
         education: "Education",
         certification: "Certification",
         skill_list: "Skill list",
+        skills_list: "Skill list",
         summary: "Summary",
         other: "Other",
       },

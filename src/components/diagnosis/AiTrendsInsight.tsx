@@ -2,6 +2,7 @@ import { Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useTrendsInsightQuery } from "@/hooks/use-diagnosis";
+import type { TrendsInsightItem } from "@shared/api";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -31,7 +32,9 @@ export function AiTrendsInsight({
 
   if (!cvId || isError) return null;
 
-  const insights = data?.insights ?? [];
+  const insights = ((data?.insights ?? []) as Array<TrendsInsightItem | string>)
+    .map((item) => (typeof item === "string" ? { title: item, detail: "" } : item))
+    .filter((item) => item.title?.trim() || item.detail?.trim());
   const recommendedSkills = data?.recommended_skills ?? [];
 
   return (
@@ -58,9 +61,13 @@ export function AiTrendsInsight({
                 <div key={`${item.title}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="text-[13px] font-bold text-[#2F3437]">{item.title}</h4>
-                      <p className="text-xs text-[#787774] leading-relaxed mt-1">{item.detail}</p>
+                  <div>
+                      {item.title?.trim() && (
+                        <h4 className="text-[13px] font-bold text-[#2F3437]">{item.title}</h4>
+                      )}
+                      {item.detail?.trim() && (
+                        <p className="text-xs text-[#787774] leading-relaxed mt-1">{item.detail}</p>
+                      )}
                       {typeof item.trend_delta === "number" && item.trend_delta > 0 && (
                         <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-[#346538]">
                           <TrendingUp className="w-3 h-3" />

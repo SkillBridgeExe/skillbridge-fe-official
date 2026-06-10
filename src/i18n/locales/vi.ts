@@ -633,6 +633,7 @@ export default {
         education: "Học vấn",
         certification: "Chứng chỉ",
         skill_list: "Danh sách kỹ năng",
+        skills_list: "Danh sách kỹ năng",
         summary: "Tóm tắt",
         other: "Khác",
       },

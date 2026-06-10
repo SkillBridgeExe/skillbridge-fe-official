@@ -171,7 +171,7 @@ export interface CvReviewData {
   evidence_ledger?: EvidenceLedger | null;
 }
 
-export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "summary" | "other";
+export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "skills_list" | "summary" | "other";
 export type EvidenceStrength = "demonstrated" | "mentioned" | "listed_only";
 
 export interface EvidenceSource {

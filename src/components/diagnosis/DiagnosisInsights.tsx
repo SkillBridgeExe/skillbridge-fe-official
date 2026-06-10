@@ -366,7 +366,8 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
                         className="rounded-lg border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-medium text-[#2F3437]"
                         title={source.excerpt ?? undefined}
                       >
-                        {t(`evidence.sourceKind.${source.kind}`)}: {source.label}
+                        {t(`evidence.sourceKind.${source.kind}`)}
+                        {source.label?.trim() ? `: ${source.label}` : ""}
                       </span>
                     ))}
                     {extra > 0 && <span className="text-[11px] text-[#787774]">+{extra}</span>}
