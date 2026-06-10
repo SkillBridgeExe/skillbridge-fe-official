@@ -2,7 +2,7 @@ import { Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useTrendsInsightQuery } from "@/hooks/use-diagnosis";
-import type { TrendsInsightItem } from "@shared/api";
+import type { TrendsInsightItem, TrendsRecommendedSkill } from "@shared/api";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -35,7 +35,13 @@ export function AiTrendsInsight({
   const insights = ((data?.insights ?? []) as Array<TrendsInsightItem | string>)
     .map((item) => (typeof item === "string" ? { title: item, detail: "" } : item))
     .filter((item) => item.title?.trim() || item.detail?.trim());
-  const recommendedSkills = data?.recommended_skills ?? [];
+  const recommendedSkills = ((data?.recommended_skills ?? []) as Array<TrendsRecommendedSkill | string>)
+    .map((skill) =>
+      typeof skill === "string"
+        ? { canonical_name: skill, display_name: skill }
+        : skill,
+    )
+    .filter((skill) => (skill.display_name || skill.canonical_name)?.trim());
 
   return (
     <section className="mt-6 animate-in fade-in duration-500">
@@ -61,7 +67,7 @@ export function AiTrendsInsight({
                 <div key={`${item.title}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                  <div>
+                    <div>
                       {item.title?.trim() && (
                         <h4 className="text-[13px] font-bold text-[#2F3437]">{item.title}</h4>
                       )}
@@ -87,17 +93,21 @@ export function AiTrendsInsight({
                 {t("aiInsight.recommendedTitle")}
               </p>
               <div className="flex flex-wrap gap-2">
-                {recommendedSkills.slice(0, 8).map((skill) => (
-                  <span
-                    key={skill.canonical_name}
-                    className="inline-flex items-center gap-1 rounded-lg border border-[#DCE9D7] bg-[#EDF3EC] px-2.5 py-1 text-xs font-semibold text-[#346538]"
-                  >
-                    {skill.display_name}
-                    {typeof skill.trend_delta === "number" && skill.trend_delta > 0 && (
-                      <TrendingUp className="w-3 h-3" />
-                    )}
-                  </span>
-                ))}
+                {recommendedSkills.slice(0, 8).map((skill, index) => {
+                  const label = skill.display_name || skill.canonical_name;
+
+                  return (
+                    <span
+                      key={`${skill.canonical_name || skill.display_name || "skill"}-${index}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#DCE9D7] bg-[#EDF3EC] px-2.5 py-1 text-xs font-semibold text-[#346538]"
+                    >
+                      {label}
+                      {typeof skill.trend_delta === "number" && skill.trend_delta > 0 && (
+                        <TrendingUp className="w-3 h-3" />
+                      )}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
