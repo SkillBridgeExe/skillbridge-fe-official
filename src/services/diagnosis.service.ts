@@ -14,6 +14,13 @@ import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
+import {
+  getGapReportApi,
+  getGithubEvidenceApi,
+  getInterviewPlanApi,
+  type DiagnosisLang,
+} from "@/api/cv/diagnosis-addons";
+import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import type {
   BeIssueSeverity,
@@ -25,8 +32,13 @@ import type {
   CvListItemDto,
   CvMatchDto,
   CvReviewData,
+  GapReportResponse,
+  GithubEvidenceResponse,
+  InterviewPlanResponse,
   Paginated,
+  RewriteResponse,
   SkillMatchItem,
+  TailorAction,
 } from "@shared/api";
 
 // ── Input/Output của service ────────────────────────────────────────
@@ -180,6 +192,7 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   );
 
   return {
+    matchId: match.id,
     matchScore,
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
@@ -312,6 +325,65 @@ export async function getTrendsInsight(query: TrendsInsightQuery) {
 }
 
 /** Tải file CV gốc đã upload (GET /api/cvs/:id/file) — trả Blob để UI tải xuống. */
+export async function getInterviewPlan({
+  cvId,
+  role,
+  lang,
+}: {
+  cvId: string;
+  role: string;
+  lang?: DiagnosisLang;
+}): Promise<InterviewPlanResponse> {
+  requireSession();
+  return getInterviewPlanApi(cvId, role, lang);
+}
+
+export async function getGapReport({
+  matchId,
+  lang,
+}: {
+  matchId: string;
+  lang?: DiagnosisLang;
+}): Promise<GapReportResponse> {
+  requireSession();
+  return getGapReportApi(matchId, lang);
+}
+
+export async function getGithubEvidence({
+  cvId,
+  username,
+  lang,
+}: {
+  cvId: string;
+  username: string;
+  lang?: DiagnosisLang;
+}): Promise<GithubEvidenceResponse> {
+  requireSession();
+  return getGithubEvidenceApi(cvId, username, lang);
+}
+
+export async function rewriteTailorBullet({
+  cvId,
+  text,
+  action,
+}: {
+  cvId: string;
+  text: string;
+  action: TailorAction;
+}): Promise<RewriteResponse> {
+  requireSession();
+  return rewriteFieldApi(cvId, {
+    text,
+    mode: "tailor",
+    tailor_action: {
+      action_type: action.action_type === "deepen_wording" ? "deepen_wording" : "emphasize",
+      skill_display: action.display_name,
+      cv_level: action.cv_level,
+      required_level: action.required_level,
+    },
+  });
+}
+
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);

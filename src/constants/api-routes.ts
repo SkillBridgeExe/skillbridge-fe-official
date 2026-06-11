@@ -34,6 +34,8 @@ export const API_ROUTES = {
     MATCH_FILE: (cvId: string) => `${API}/cvs/${cvId}/match/file`,
     MATCHES: (cvId: string) => `${API}/cvs/${cvId}/matches`,
     MATCH_DETAIL: (cvId: string, matchId: string) => `${API}/cvs/${cvId}/matches/${matchId}`,
+    INTERVIEW_PLAN: (cvId: string) => `${API}/cvs/${cvId}/interview-plan`,
+    GITHUB_EVIDENCE: (cvId: string) => `${API}/cvs/${cvId}/github-evidence`,
     // Top-N job thật cho CV (jobs.controller.ts) — ?limit&role
     JOB_RECOMMENDATIONS: (cvId: string) => `${API}/cvs/${cvId}/job-recommendations`,
     // CV Builder (W5 sẽ dùng — endpoints đã LIVE trên BE)
@@ -50,6 +52,10 @@ export const API_ROUTES = {
     CV_REVIEW: `${API}/diagnosis/cv-review`,
     /** Alias của GET /api/cvs (paginated list). */
     HISTORY: `${API}/diagnosis/history`,
+  },
+
+  CV_MATCHES: {
+    GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
   },
 
   // Skill trends (trends.controller.ts) — endpoints require JWT.
