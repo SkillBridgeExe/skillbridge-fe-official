@@ -13,6 +13,7 @@ import {
 import type { CvListQuery } from "@/api/cv/list";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
+import { useAuthStore } from "@/store/useAuthStore";
 
 /** Chấm CV (không JD) — POST /api/cvs thật, trả { cvId, review }. */
 export function useAnalyzeCvMutation() {
@@ -70,30 +71,42 @@ export function useJobRecommendationsQuery(
   cvId: string | null,
   query: JobRecommendationsQuery = {},
 ) {
+  const canUseApi = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
+
   return useQuery({
     queryKey: ["job-recommendations", cvId, query.role ?? "all", query.limit ?? 5],
     queryFn: () => getJobRecommendations(cvId!, query),
-    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    enabled: Boolean(cvId) && canUseApi,
     staleTime: 5 * 60_000,
   });
 }
 
 /** Kỹ năng thị trường cần mà CV thiếu (skill-gap trends theo role). */
 export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {}) {
+  const canUseApi = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
+
   return useQuery({
     queryKey: ["skill-gap", cvId, query.role ?? "all", query.limit ?? 10],
     queryFn: () => getSkillGap(cvId!, query),
-    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    enabled: Boolean(cvId) && canUseApi,
     staleTime: 5 * 60_000,
   });
 }
 
 /** AI insight tá»« trends endpoint cho CV hiá»‡n táº¡i. */
 export function useTrendsInsightQuery(cvId: string | null, role?: string | null) {
+  const canUseApi = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
+
   return useQuery({
     queryKey: ["trends-insight", cvId, role ?? "all"],
     queryFn: () => getTrendsInsight({ cvId: cvId!, role, limit: 5 }),
-    enabled: Boolean(cvId) && Boolean(localStorage.getItem("accessToken")),
+    enabled: Boolean(cvId) && canUseApi,
     staleTime: 10 * 60_000,
   });
 }

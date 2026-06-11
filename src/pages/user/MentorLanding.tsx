@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/useAuthStore";
+import { logout } from "@/services/auth.service";
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1772821810184-bb29e83d-3596-498a-93f2-a1fbdc88b8cc.png";
 
@@ -49,7 +49,6 @@ const REQUIREMENTS = [
 
 export default function MentorLanding() {
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,7 +74,7 @@ export default function MentorLanding() {
           <Link to="/dashboard" className="text-sm text-slate-500 hover:text-slate-800 font-medium">← Back to User Portal</Link>
           <Link to="/mentor-dashboard" className="text-sm bg-emerald-500 text-white font-semibold px-4 py-1.5 rounded-full hover:bg-emerald-600 transition-colors">Mentor Dashboard →</Link>
           <button
-            onClick={() => { logout(); navigate("/?auth=login"); }}
+            onClick={() => { void logout(); navigate("/?auth=login"); }}
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-red-500 transition-colors font-medium"
           >
             <LogOut className="w-3.5 h-3.5" /> Logout

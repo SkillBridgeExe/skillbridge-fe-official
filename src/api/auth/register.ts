@@ -16,7 +16,7 @@ export interface RegisterRequest {
 
 export type RegisterResponse = ApiEnvelope<{
   accessToken: string | null;
-  accessTokenExpiresAt: string | null;
+  expiresIn?: number | null;
   user: AuthUserDto;
 }>;
 

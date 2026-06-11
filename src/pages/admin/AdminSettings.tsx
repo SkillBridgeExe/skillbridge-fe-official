@@ -6,11 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useAuthStore } from "@/store/useAuthStore";
+import { logout } from "@/services/auth.service";
 
 export default function AdminSettings() {
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
 
   const [systemName, setSystemName] = useState("SkillBridge Admin");
   const [timezone, setTimezone] = useState("Asia/Ho_Chi_Minh");
@@ -153,7 +152,7 @@ export default function AdminSettings() {
           className="rounded-xl"
           onClick={() => {
             toast({ title: "✅ Signed out", description: "Local session cleared (mock)." });
-            logout();
+            void logout();
             navigate("/?auth=login");
           }}
         >

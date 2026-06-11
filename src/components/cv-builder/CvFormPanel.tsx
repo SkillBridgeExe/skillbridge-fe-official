@@ -8,6 +8,7 @@ import * as Sections from "./sections";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,14 +96,15 @@ export function CvFormPanel() {
   const statuses = getSectionStatuses();
   const { t, i18n } = useTranslation("diagnosis");
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const isLoggedIn = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
 
   const handleEvaluateSection = useCallback((beSection: BuilderSection, _sectionId: string) => {
-    const token = localStorage.getItem("accessToken");
-    if (!token || !draftId) return;
+    if (!isLoggedIn || !draftId) return;
 
     const state = useCvBuilderStore.getState();
     const snapshot = getBuilderSnapshot(state);
@@ -127,7 +129,7 @@ export function CvFormPanel() {
         },
       }
     );
-  }, [draftId, evaluateMutation, setSectionEvaluation]);
+  }, [draftId, evaluateMutation, isLoggedIn, setSectionEvaluation]);
 
   const prevActiveSectionRef = useRef(activeSection);
 
@@ -137,8 +139,7 @@ export function CvFormPanel() {
 
     if (prevIdx === activeSection) return;
 
-    const token = localStorage.getItem("accessToken");
-    if (!token || !draftId) return;
+    if (!isLoggedIn || !draftId) return;
 
     const prevSection = SECTIONS[prevIdx];
     if (!prevSection) return;
@@ -154,7 +155,7 @@ export function CvFormPanel() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [activeSection, draftId, handleEvaluateSection]);
+  }, [activeSection, draftId, handleEvaluateSection, isLoggedIn]);
 
   const renderEvaluateChip = (beSection: BuilderSection, sectionId: string) => {
     const evaluation = sectionEvaluations[beSection];

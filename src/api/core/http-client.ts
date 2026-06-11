@@ -1,6 +1,31 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import { AUTH_REQUEST_TIMEOUT_MS, type ApiEnvelope } from "@/api/auth/envelope";
 import { API_URL } from "@/lib/runtime-config";
 import { useAuthStore } from "@/store/useAuthStore";
+import { API_ROUTES } from "@/constants/api-routes";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "@/services/auth-token.service";
+
+interface AuthAxiosRequestConfig extends AxiosRequestConfig {
+  _retry?: boolean;
+  skipAuth?: boolean;
+  skipAuthRefresh?: boolean;
+}
+
+interface AuthInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+  skipAuth?: boolean;
+  skipAuthRefresh?: boolean;
+}
+
+type RefreshPayload = {
+  accessToken: string;
+  expiresIn: number;
+};
 
 function normalizeApiBaseUrl(value: string | undefined): string {
   const normalized = value?.trim().replace(/\/+$/, "") ?? "";
@@ -31,9 +56,66 @@ export const httpClient = axios.create({
   },
 });
 
+const AUTH_REFRESH_EXCLUDED_URLS = new Set<string>([
+  API_ROUTES.AUTH.LOGIN,
+  API_ROUTES.AUTH.GOOGLE,
+  API_ROUTES.AUTH.REFRESH,
+  API_ROUTES.AUTH.LOGOUT,
+]);
+
+let refreshPromise: Promise<string> | null = null;
+
+function requestPath(config: AxiosRequestConfig): string {
+  const url = config.url ?? "";
+  if (!url) return "";
+
+  try {
+    const baseURL =
+      config.baseURL || (typeof window !== "undefined" ? window.location.origin : "http://localhost");
+    const parsed = new URL(url, baseURL);
+    return parsed.pathname;
+  } catch {
+    return url.split("?")[0] ?? url;
+  }
+}
+
+function isAuthRefreshExcluded(config: AxiosRequestConfig): boolean {
+  return Boolean((config as AuthAxiosRequestConfig).skipAuthRefresh) ||
+    AUTH_REFRESH_EXCLUDED_URLS.has(requestPath(config));
+}
+
+async function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = httpClient
+      .post<ApiEnvelope<RefreshPayload>>(
+        API_ROUTES.AUTH.REFRESH,
+        undefined,
+        {
+          timeout: AUTH_REQUEST_TIMEOUT_MS,
+          skipAuth: true,
+          skipAuthRefresh: true,
+        } as AuthAxiosRequestConfig,
+      )
+      .then((response: AxiosResponse<ApiEnvelope<RefreshPayload>>) => {
+        if (!response.data.success || !response.data.data?.accessToken) {
+          throw new Error(response.data.message || "Refresh token failed");
+        }
+
+        const { accessToken, expiresIn } = response.data.data;
+        setAccessToken(accessToken, expiresIn);
+        return accessToken;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
 httpClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("accessToken");
+  (config: AuthInternalAxiosRequestConfig) => {
+    const token = config.skipAuth ? null : getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -44,20 +126,34 @@ httpClient.interceptors.request.use(
 
 httpClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const status = error.response?.status;
+    const originalRequest = error.config as AuthInternalAxiosRequestConfig | undefined;
 
-    if (status === 401) {
-      // Refresh-token handling lives in the auth service so it can call
-      // /api/auth/refresh before falling through. Here we only clear local
-      // state when the server confirms the session is unrecoverable.
-      // TODO: wire auth service to call refresh before clearing the session.
-      //
-      // Clear the session client-side (token + user + auth store) so authed
-      // background queries (e.g. the navbar avatar) stop firing and re-tripping
-      // this 401. No hard redirect: public pages (e.g. /diagnosis) stay put as
-      // guest, while AuthGuard sends protected pages to login on its own.
-      useAuthStore.getState().logout();
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthRefreshExcluded(originalRequest)
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        const token = await refreshAccessToken();
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+        }
+        return httpClient(originalRequest);
+      } catch (refreshError) {
+        clearAccessToken();
+        useAuthStore.getState().setAnonymous();
+        return Promise.reject(refreshError);
+      }
+    }
+
+    if (status === 401 && originalRequest && !isAuthRefreshExcluded(originalRequest)) {
+      clearAccessToken();
+      useAuthStore.getState().setAnonymous();
     }
 
     if (status === 403) {

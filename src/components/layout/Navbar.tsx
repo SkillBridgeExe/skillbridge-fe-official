@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCircle } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { logout as logoutSession } from "@/services/auth.service";
 import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
 import { useQuery } from "@tanstack/react-query";
@@ -71,7 +72,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [loginOpen, setLoginOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const { isAuthenticated, currentUser, logout } = useAuthStore();
+  const { isAuthenticated, currentUser } = useAuthStore();
   const { t, i18n } = useTranslation("common");
 
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function Navbar() {
   });
 
   const handleLogout = () => {
-    logout();
+    void logoutSession();
     navigate("/");
   };
 

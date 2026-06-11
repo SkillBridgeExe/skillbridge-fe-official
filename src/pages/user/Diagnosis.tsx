@@ -12,6 +12,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
 import type { BuilderSnapshot } from "@/services/cv-builder.service";
 
@@ -50,6 +51,9 @@ export default function Diagnosis() {
   } = useDiagnosisStore();
 
   const location = useLocation();
+  const canUseApi = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
 
   // Handle initialization from builder and mode parameter
   useEffect(() => {
@@ -117,8 +121,7 @@ export default function Diagnosis() {
   useEffect(() => {
     if (step !== "builder") return;
 
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
+    if (!canUseApi) {
       useAutosaveStore.getState().setSaveStatus("local");
       return;
     }
@@ -158,13 +161,12 @@ export default function Diagnosis() {
         }
       );
     }
-  }, [step, ensureDraftMutation, saveDraftMutation, toast, t]);
+  }, [step, canUseApi, ensureDraftMutation, saveDraftMutation, toast, t]);
 
   useEffect(() => {
     if (step !== "builder") return;
 
-    const token = localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!canUseApi) return;
 
     let lastSnapshotJson = JSON.stringify(getBuilderSnapshot(useCvBuilderStore.getState()));
     let timeoutId: NodeJS.Timeout | null = null;
@@ -232,7 +234,7 @@ export default function Diagnosis() {
       if (timeoutId) clearTimeout(timeoutId);
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
-  }, [step, saveDraftMutation, toast]);
+  }, [step, canUseApi, saveDraftMutation, toast]);
 
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
