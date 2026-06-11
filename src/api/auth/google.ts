@@ -13,8 +13,8 @@ export interface GoogleLoginRequest {
 
 export type AuthResponse = ApiEnvelope<{
   accessToken: string | null;
-  accessTokenExpiresAt: string | null;
-  user: AuthUserDto;
+  expiresIn?: number | null;
+  user?: AuthUserDto;
 }>;
 
 // The google login endpoint also sets the refresh-token cookie

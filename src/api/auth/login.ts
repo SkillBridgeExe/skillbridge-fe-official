@@ -14,7 +14,7 @@ export interface LoginRequest {
 
 export type LoginResponse = ApiEnvelope<{
   accessToken: string;
-  accessTokenExpiresAt: string;
+  expiresIn: number;
   user: AuthUserDto;
 }>;
 
