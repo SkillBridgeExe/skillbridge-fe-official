@@ -1,0 +1,255 @@
+import { useMemo, useState } from "react";
+import { Clipboard, Copy, FilePenLine, Lightbulb, LocateFixed } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { useGapReportQuery, useTailorRewriteMutation } from "@/hooks/use-diagnosis";
+import type { CanonicalCvDocument, TailorAction, TailorActionType } from "@shared/api";
+import { JdMarketPosition } from "./JdMarketPosition";
+
+const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
+
+const ACTION_CLASS: Record<TailorActionType, string> = {
+  missing_required: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  add_evidence: "bg-[#E1F3FE] text-[#1F6C9F] border-[#BEE3F8]",
+  emphasize: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+  deepen_wording: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+};
+
+export function TailorChecklist({
+  matchId,
+  cvId,
+  document,
+}: {
+  matchId?: string | null;
+  cvId: string | null;
+  document?: CanonicalCvDocument;
+}) {
+  const { t, i18n } = useTranslation("diagnosis");
+  const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
+  const { data, isLoading, isError } = useGapReportQuery(matchId, lang);
+  const [activeAction, setActiveAction] = useState<TailorAction | null>(null);
+
+  if (!matchId || isError) return null;
+
+  const actions = data?.recommended_actions ?? [];
+  if (!isLoading && actions.length === 0) return null;
+
+  return (
+    <div className="space-y-6">
+      <section className={cn(CARD, "overflow-hidden")}>
+        <div className="border-b border-[#EAEAEA] p-5">
+          <h3 className="flex items-center gap-2 text-base font-bold text-[#2F3437]">
+            <FilePenLine className="h-5 w-5 text-primary" />
+            {t("tailor.title")}
+          </h3>
+          <p className="mt-1 text-xs text-[#787774]">{t("tailor.subtitle")}</p>
+          {data?.generated_with_ledger === false && (
+            <p className="mt-3 rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] px-3 py-2 text-xs text-[#787774]">
+              {t("tailor.noLedger")}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3 p-5">
+          {isLoading ? (
+            <TailorSkeleton />
+          ) : (
+            actions.slice(0, 8).map((action, index) => {
+              const canRewrite =
+                action.rewrite_eligible &&
+                (action.action_type === "emphasize" || action.action_type === "deepen_wording") &&
+                Boolean(cvId);
+
+              return (
+              <div key={`${action.skill_canonical}-${action.action_type}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", ACTION_CLASS[action.action_type])}>
+                        {t(`tailor.action.${action.action_type}`)}
+                      </span>
+                      {action.jd_importance && (
+                        <span className="rounded-full border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-bold text-[#787774]">
+                          {action.jd_importance}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="mt-2 text-sm font-bold text-[#2F3437]">{action.display_name}</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-[#787774]">{action.why}</p>
+                    {action.anchor?.ref && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#787774]">
+                        <LocateFixed className="h-3.5 w-3.5 text-primary" />
+                        {t("tailor.anchor", { ref: action.anchor.ref })}
+                      </p>
+                    )}
+                  </div>
+                  {canRewrite && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveAction(action)}
+                      className="shrink-0 rounded-lg border-[#BEE3F8] text-xs font-bold text-[#1F6C9F] hover:bg-[#E1F3FE]"
+                    >
+                      <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+                      {t("tailor.rewriteBtn")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      <JdMarketPosition market={data?.jd_market_position} />
+
+      {activeAction && cvId && (
+        <TailorRewriteDialog
+          action={activeAction}
+          cvId={cvId}
+          document={document}
+          open={Boolean(activeAction)}
+          onOpenChange={(open) => {
+            if (!open) setActiveAction(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TailorRewriteDialog({
+  action,
+  cvId,
+  document,
+  open,
+  onOpenChange,
+}: {
+  action: TailorAction;
+  cvId: string;
+  document?: CanonicalCvDocument;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation("diagnosis");
+  const { toast } = useToast();
+  const rewriteMutation = useTailorRewriteMutation();
+  const candidates = useMemo(() => findAnchorBullets(document, action.anchor?.ref), [document, action.anchor?.ref]);
+  const [text, setText] = useState(candidates[0] ?? "");
+
+  const suggestion = rewriteMutation.data?.suggestion ?? "";
+
+  const copySuggestion = async () => {
+    if (!suggestion) return;
+    await navigator.clipboard.writeText(suggestion);
+    toast({ title: t("tailor.copied") });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>{t("tailor.dialogTitle", { skill: action.display_name })}</DialogTitle>
+          <DialogDescription>{t("tailor.dialogDesc")}</DialogDescription>
+        </DialogHeader>
+
+        {candidates.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.detectedBullets")}</p>
+            <div className="space-y-2">
+              {candidates.slice(0, 4).map((candidate, index) => (
+                <button
+                  key={`${candidate}-${index}`}
+                  type="button"
+                  onClick={() => setText(candidate)}
+                  className="w-full rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] p-2 text-left text-xs leading-relaxed text-[#2F3437] hover:border-primary/40"
+                >
+                  {candidate}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.pasteBullet")}</p>
+          <Textarea value={text} onChange={(event) => setText(event.target.value)} className="min-h-28" />
+        </div>
+
+        {suggestion && (
+          <div className="rounded-xl border border-[#DCE9D7] bg-[#EDF3EC] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold text-[#346538]">{t("tailor.suggestion")}</p>
+              <Button type="button" size="sm" variant="outline" onClick={copySuggestion} className="h-8 gap-1.5 rounded-lg text-xs">
+                <Copy className="h-3.5 w-3.5" />
+                {t("tailor.copy")}
+              </Button>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#2F3437]">{suggestion}</p>
+            {rewriteMutation.data?.fallback && (
+              <p className="mt-2 text-xs font-medium text-[#787774]">{t("tailor.fallbackNote")}</p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("tailor.close")}</Button>
+          <Button
+            type="button"
+            disabled={!text.trim() || rewriteMutation.isPending}
+            onClick={() => rewriteMutation.mutate({ cvId, text, action })}
+            className="bg-primary text-white hover:bg-primary/90"
+          >
+            <Clipboard className="mr-2 h-4 w-4" />
+            {rewriteMutation.isPending ? t("tailor.rewriting") : t("tailor.rewriteBtn")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function findAnchorBullets(document?: CanonicalCvDocument, ref?: string | null): string[] {
+  if (!document || !ref) return [];
+  const needle = normalize(ref);
+  const experience = document.experience.find((entry) =>
+    needle.includes(normalize(entry.org)) || (entry.role ? needle.includes(normalize(entry.role)) : false),
+  );
+  if (experience?.bullets?.length) return experience.bullets;
+
+  const project = document.projects.find((entry) => needle.includes(normalize(entry.name)));
+  if (project?.bullets?.length) return project.bullets;
+
+  return [];
+}
+
+function normalize(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function TailorSkeleton() {
+  return (
+    <>
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
+          <div className="h-5 w-32 rounded-full bg-[#F1F1EF]" />
+          <div className="mt-3 h-4 w-44 rounded bg-[#F1F1EF]" />
+          <div className="mt-3 h-3 w-full rounded bg-[#F1F1EF]" />
+        </div>
+      ))}
+    </>
+  );
+}
