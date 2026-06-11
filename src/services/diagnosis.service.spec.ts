@@ -284,4 +284,30 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.hardSkills).toEqual([]);
     expect(jd.criticalGaps).toEqual([]);
   });
+
+  it("giữ match_id từ BE — chìa khóa gọi GET /api/cv-matches/:matchId/gap-report", () => {
+    const jd = mapMatchDtoToJdMatch(matchDto);
+    expect(jd.match_id).toBe("m-1");
+  });
+
+  it("satisfied_by đi xuyên mapper (SQL được tính từ SQL Server — hiển thị trung thực)", () => {
+    const withSat: CvMatchDto = {
+      ...matchDto,
+      parsedResponse: {
+        ...matchDto.parsedResponse!,
+        matched_skills: [
+          {
+            ...matchDto.parsedResponse!.matched_skills[0],
+            canonical_name: "sql",
+            display_name: "SQL",
+            satisfied_by: "sql_server",
+          },
+        ],
+      },
+    };
+    const jd = mapMatchDtoToJdMatch(withSat);
+    expect(jd.hardSkills[0].satisfied_by).toBe("sql_server");
+    // skill không có satisfied_by thì KHÔNG mang key (giữ toEqual của test cũ)
+    expect("satisfied_by" in mapMatchDtoToJdMatch(matchDto).hardSkills[0]).toBe(false);
+  });
 });

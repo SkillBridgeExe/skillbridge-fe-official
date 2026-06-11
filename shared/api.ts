@@ -49,6 +49,8 @@ export interface SkillMatchItem {
   jdRequired: number;
   status: SkillStatus;
   gap_levels?: number | null;
+  /** Skill con đã thỏa requirement (hiển thị "tính từ X" — trung thực, BE #51). */
+  satisfied_by?: string | null;
 }
 
 export interface RadarMetric {
@@ -58,6 +60,8 @@ export interface RadarMetric {
 }
 
 export interface CvJdMatch {
+  /** Id match đã persist trên BE — chìa khóa GET /api/cv-matches/:matchId/gap-report. */
+  match_id?: string | null;
   matchScore: number;
   summary: string;
   hardSkills: SkillMatchItem[];
@@ -368,6 +372,8 @@ export interface BeMatchedSkill {
   required_level: number;
   importance: SkillImportance;
   weight: number;
+  /** Canonical của skill CON đã thỏa requirement này (sql_server cho sql) — BE #51. Vắng = match trực tiếp. */
+  satisfied_by?: string;
 }
 
 export interface BePartialSkill extends BeMatchedSkill {
@@ -636,4 +642,115 @@ export interface TrendsInsightResponse {
   summary: string;
   insights: TrendsInsightItem[];
   recommended_skills: TrendsRecommendedSkill[];
+}
+
+// ── Gap Report (GET /api/cv-matches/:matchId/gap-report — BE #43/#49) ───────
+// Mirror 1-1 của SkillBridgeGapReport (skillbridge-ai/src/modules/gap-report).
+
+export interface GapEvidenceItem {
+  skill_canonical: string;
+  display_name: string;
+  importance: string;
+  cv_level: number | null;
+  required_level: number | null;
+}
+
+export interface GapEmphasisItem {
+  skill_canonical: string;
+  display_name: string;
+  jd_count: number;
+  cv_count: number;
+  importance: string;
+}
+
+export interface GapSeniorityBlock {
+  cv: {
+    bucket: string;
+    est_years: number | null;
+    confidence: string;
+    signals: string[];
+  } | null;
+  jd_level: null;
+  verdict: "unknown";
+  note: string;
+}
+
+export interface TailorActionDto {
+  action_type: string;
+  skill_canonical: string;
+  display_name: string;
+  /** Deterministic, localized, mang số liệu THẬT (jd_count/cv_count/levels). */
+  why: string;
+  /** true → FE được mời "Viết lại với AI" (rewrite mode `tailor`). */
+  rewrite_eligible: boolean;
+  anchor: { kind: string; ref: string } | null;
+  jd_importance: string | null;
+  jd_count: number | null;
+  cv_count: number | null;
+}
+
+export interface JdMarketSkillDto {
+  skill_canonical: string;
+  display_name: string;
+  jd_importance: string;
+  pct_of_postings: number;
+  posting_count: number;
+  trend_delta: number | null;
+  position: "niche" | "common" | "standard";
+  why: string;
+}
+
+export interface ImpliedSkillDto {
+  skill_canonical: string;
+  display_name: string;
+  pct_of_postings: number;
+  posting_count: number;
+  trend_delta: number | null;
+  /** true = CV đã có (matched ∪ partial ∪ bonus). */
+  covered: boolean;
+  why: string;
+}
+
+export type JdMarketPositionDto =
+  | {
+      available: true;
+      role_code: string;
+      period: string;
+      total_active_jobs: number;
+      jd_skills: JdMarketSkillDto[];
+      implied: ImpliedSkillDto[];
+    }
+  | { available: false; reason: "NO_ROLE" | "NO_SNAPSHOT" };
+
+export interface GapReportDto {
+  target_role: string | null;
+  overall_score: number;
+  source_of_requirements: "role_rubric" | "jd_extraction" | "none";
+  explicit_gaps: BeMissingSkill[];
+  proficiency_gaps: BePartialSkill[];
+  evidence_gaps: GapEvidenceItem[];
+  seniority: GapSeniorityBlock;
+  jd_emphasis_gaps: GapEmphasisItem[];
+  strengths: {
+    matched: BeMatchedSkill[];
+    demonstrated: string[];
+    bonus: Array<{ canonical_name: string; display_name: string; cv_level: number }>;
+  };
+  language: "vi" | "en";
+  recommended_actions: TailorActionDto[];
+  market_trend_gaps: ImpliedSkillDto[] | null;
+  jd_market_position: JdMarketPositionDto;
+}
+
+// ── Entitlements (GET /api/me/entitlements — BE #49) ────────────────────────
+
+export interface MeEntitlementDto {
+  feature: string;
+  used: number;
+  limit: number;
+  period: "DAILY" | "MONTHLY";
+  remaining: number | null;
+  unlimited: boolean;
+  allowed: boolean;
+  resets_at: string;
 }
