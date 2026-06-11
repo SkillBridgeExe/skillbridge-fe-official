@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { TailorChecklist } from "./TailorChecklist";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
@@ -441,6 +442,14 @@ export function DiagnosisStep3Results() {
       </div>
 
       {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
+
+      {isJdMode && (
+        <TailorChecklist
+          matchId={jdMatch?.matchId}
+          cvId={lastCvId}
+          document={reviewData?.document}
+        />
+      )}
 
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>

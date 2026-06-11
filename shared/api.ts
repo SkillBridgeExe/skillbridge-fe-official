@@ -58,6 +58,7 @@ export interface RadarMetric {
 }
 
 export interface CvJdMatch {
+  matchId?: string;
   matchScore: number;
   summary: string;
   hardSkills: SkillMatchItem[];
@@ -554,7 +555,14 @@ export interface EvaluateSectionResponse {
   missing: string[];
 }
 
-export type RewriteMode = "harvard" | "translate" | "custom";
+export type RewriteMode = "harvard" | "translate" | "custom" | "tailor";
+
+export interface TailorRewriteAction {
+  action_type: "emphasize" | "deepen_wording";
+  skill_display: string;
+  cv_level?: number | null;
+  required_level?: number | null;
+}
 
 export interface RewriteRequest {
   /** 1 field text duy nhất (1 bullet / 1 đoạn summary). */
@@ -566,6 +574,7 @@ export interface RewriteRequest {
   instruction?: string;
   role_code?: string;
   section?: BuilderSection;
+  tailor_action?: TailorRewriteAction;
 }
 
 export interface RewriteResponse {
@@ -637,3 +646,113 @@ export interface TrendsInsightResponse {
   insights: TrendsInsightItem[];
   recommended_skills: TrendsRecommendedSkill[];
 }
+
+// Diagnosis add-ons (W11/W12/W13)
+export type InterviewFocusType = "gap_probe" | "depth_probe" | "evidence_probe" | "strength_showcase";
+
+export interface InterviewPlanItem {
+  skill_canonical: string;
+  display_name: string;
+  focus_type: InterviewFocusType;
+  reason: string;
+  difficulty: "foundation" | "applied";
+  template_question: string;
+  question: string;
+  good_answer_hints: string[];
+}
+
+export interface InterviewPlanResponse {
+  ai_request_id: string;
+  target_role: string;
+  language: "vi" | "en";
+  items: InterviewPlanItem[];
+  llm_enhanced: boolean;
+  token_usage: number;
+}
+
+export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";
+
+export interface TailorAction {
+  action_type: TailorActionType;
+  skill_canonical: string;
+  display_name: string;
+  why: string;
+  rewrite_eligible: boolean;
+  anchor: { kind: string; ref: string } | null;
+  jd_importance: string | null;
+  jd_count: number | null;
+  cv_count: number | null;
+  cv_level: number | null;
+  required_level: number | null;
+}
+
+export type MarketPosition = "niche" | "common" | "standard";
+
+export interface JdMarketSkill {
+  skill_canonical: string;
+  display_name: string;
+  jd_importance: string;
+  pct_of_postings: number;
+  posting_count: number;
+  trend_delta: number | null;
+  position: MarketPosition;
+  why: string;
+}
+
+export interface ImpliedSkill {
+  skill_canonical: string;
+  display_name: string;
+  pct_of_postings: number;
+  posting_count: number;
+  trend_delta: number | null;
+  covered: boolean;
+  why: string;
+}
+
+export type JdMarketPosition =
+  | {
+      available: true;
+      role_code: string;
+      period: string;
+      total_active_jobs: number;
+      jd_skills: JdMarketSkill[];
+      implied: ImpliedSkill[];
+    }
+  | { available: false; reason: "NO_ROLE" | "NO_SNAPSHOT" };
+
+export interface GapReportResponse {
+  recommended_actions: TailorAction[];
+  generated_with_ledger: boolean;
+  source_of_requirements: "jd_extraction" | "role_rubric" | "none";
+  overall_score: number;
+  jd_market_position?: JdMarketPosition | null;
+}
+
+export interface GithubRepoRef {
+  name: string;
+  url: string;
+  pushed_year: number | null;
+}
+
+export interface GithubSkillEvidence {
+  skill_canonical: string;
+  display_name: string;
+  repos: GithubRepoRef[];
+  repo_count: number;
+  most_recent_year: number | null;
+  why: string;
+}
+
+export type GithubEvidenceResponse =
+  | {
+      available: true;
+      username: string;
+      analyzed_repo_count: number;
+      cv_skill_join: boolean;
+      corroborated: GithubSkillEvidence[];
+      github_only: GithubSkillEvidence[];
+    }
+  | {
+      available: false;
+      reason: "CONSENT_REQUIRED" | "INVALID_USERNAME" | "USER_NOT_FOUND" | "RATE_LIMITED" | "FETCH_FAILED";
+    };
