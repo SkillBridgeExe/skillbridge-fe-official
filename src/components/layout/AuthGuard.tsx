@@ -8,8 +8,16 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children, requiredRole, requireAuth = true }: AuthGuardProps) {
-  const { isAuthenticated, currentUser } = useAuthStore();
+  const { authStatus, isAuthenticated, currentUser } = useAuthStore();
   const location = useLocation();
+
+  if (requireAuth && authStatus === "checking") {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Checking session...
+      </div>
+    );
+  }
 
   if (requireAuth && !isAuthenticated) {
     return <Navigate to="/?auth=login" state={{ from: location }} replace />;

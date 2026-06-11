@@ -18,7 +18,7 @@ import {
   LogOut
 } from "lucide-react";
 import { useMentorStore } from "@/store/useMentorStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { logout } from "@/services/auth.service";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
@@ -60,7 +60,6 @@ export default function MentorDashboardShell() {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
   const { myProfile, profileSetupCompleted, pricingSetupCompleted } = useMentorStore();
 
   const handleViewMentorPage = (e: React.MouseEvent) => {
@@ -137,7 +136,7 @@ export default function MentorDashboardShell() {
           <span>View Mentor Page</span>
         </a>
         <button
-          onClick={() => { logout(); navigate("/?auth=login"); setMobileOpen(false); }}
+          onClick={() => { void logout(); navigate("/?auth=login"); setMobileOpen(false); }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 transition-all"
         >
           <LogOut className="w-5 h-5" />
