@@ -49,6 +49,8 @@ export interface SkillMatchItem {
   jdRequired: number;
   status: SkillStatus;
   gap_levels?: number | null;
+  /** Skill con đã thỏa requirement (hiển thị "tính từ X" — trung thực, BE #51). */
+  satisfied_by?: string | null;
 }
 
 export interface RadarMetric {
@@ -59,6 +61,7 @@ export interface RadarMetric {
 
 export interface CvJdMatch {
   matchId?: string;
+  match_id?: string | null;
   matchScore: number;
   summary: string;
   hardSkills: SkillMatchItem[];
@@ -369,6 +372,8 @@ export interface BeMatchedSkill {
   required_level: number;
   importance: SkillImportance;
   weight: number;
+  /** Canonical của skill CON đã thỏa requirement này (sql_server cho sql) — BE #51. Vắng = match trực tiếp. */
+  satisfied_by?: string;
 }
 
 export interface BePartialSkill extends BeMatchedSkill {
@@ -672,7 +677,35 @@ export interface InterviewPlanResponse {
 
 export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";
 
-export interface TailorAction {
+export interface GapEvidenceItem {
+  skill_canonical: string;
+  display_name: string;
+  importance: string;
+  cv_level: number | null;
+  required_level: number | null;
+}
+
+export interface GapEmphasisItem {
+  skill_canonical: string;
+  display_name: string;
+  jd_count: number;
+  cv_count: number;
+  importance: string;
+}
+
+export interface GapSeniorityBlock {
+  cv: {
+    bucket: string;
+    est_years: number | null;
+    confidence: string;
+    signals: string[];
+  } | null;
+  jd_level: null;
+  verdict: "unknown";
+  note: string;
+}
+
+export interface TailorActionDto {
   action_type: TailorActionType;
   skill_canonical: string;
   display_name: string;
@@ -682,13 +715,14 @@ export interface TailorAction {
   jd_importance: string | null;
   jd_count: number | null;
   cv_count: number | null;
-  cv_level: number | null;
-  required_level: number | null;
+  cv_level?: number | null;
+  required_level?: number | null;
 }
 
+export type TailorAction = TailorActionDto;
 export type MarketPosition = "niche" | "common" | "standard";
 
-export interface JdMarketSkill {
+export interface JdMarketSkillDto {
   skill_canonical: string;
   display_name: string;
   jd_importance: string;
@@ -699,7 +733,9 @@ export interface JdMarketSkill {
   why: string;
 }
 
-export interface ImpliedSkill {
+export type JdMarketSkill = JdMarketSkillDto;
+
+export interface ImpliedSkillDto {
   skill_canonical: string;
   display_name: string;
   pct_of_postings: number;
@@ -709,24 +745,43 @@ export interface ImpliedSkill {
   why: string;
 }
 
-export type JdMarketPosition =
+export type ImpliedSkill = ImpliedSkillDto;
+
+export type JdMarketPositionDto =
   | {
       available: true;
       role_code: string;
       period: string;
       total_active_jobs: number;
-      jd_skills: JdMarketSkill[];
-      implied: ImpliedSkill[];
+      jd_skills: JdMarketSkillDto[];
+      implied: ImpliedSkillDto[];
     }
   | { available: false; reason: "NO_ROLE" | "NO_SNAPSHOT" };
 
-export interface GapReportResponse {
-  recommended_actions: TailorAction[];
-  generated_with_ledger: boolean;
-  source_of_requirements: "jd_extraction" | "role_rubric" | "none";
+export type JdMarketPosition = JdMarketPositionDto;
+
+export interface GapReportDto {
+  target_role: string | null;
   overall_score: number;
-  jd_market_position?: JdMarketPosition | null;
+  source_of_requirements: "role_rubric" | "jd_extraction" | "none";
+  explicit_gaps: BeMissingSkill[];
+  proficiency_gaps: BePartialSkill[];
+  evidence_gaps: GapEvidenceItem[];
+  seniority: GapSeniorityBlock;
+  jd_emphasis_gaps: GapEmphasisItem[];
+  strengths: {
+    matched: BeMatchedSkill[];
+    demonstrated: string[];
+    bonus: Array<{ canonical_name: string; display_name: string; cv_level: number }>;
+  };
+  language: "vi" | "en";
+  recommended_actions: TailorActionDto[];
+  market_trend_gaps: ImpliedSkillDto[] | null;
+  jd_market_position: JdMarketPositionDto;
+  generated_with_ledger?: boolean;
 }
+
+export type GapReportResponse = GapReportDto;
 
 export interface GithubRepoRef {
   name: string;
@@ -756,3 +811,14 @@ export type GithubEvidenceResponse =
       available: false;
       reason: "CONSENT_REQUIRED" | "INVALID_USERNAME" | "USER_NOT_FOUND" | "RATE_LIMITED" | "FETCH_FAILED";
     };
+
+export interface MeEntitlementDto {
+  feature: string;
+  used: number;
+  limit: number;
+  period: "DAILY" | "MONTHLY";
+  remaining: number | null;
+  unlimited: boolean;
+  allowed: boolean;
+  resets_at: string;
+}

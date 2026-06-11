@@ -169,6 +169,8 @@ function toSkillMatchItem(
     jdRequired: levelToPct(skill.required_level),
     status,
     ...("gap_levels" in skill ? { gap_levels: skill.gap_levels } : {}),
+    // BE #51: requirement được thỏa bởi skill CON (sql ← sql_server) — UI nói thật "tính từ X".
+    ...("satisfied_by" in skill && skill.satisfied_by ? { satisfied_by: skill.satisfied_by } : {}),
   };
 }
 
@@ -193,6 +195,7 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
 
   return {
     matchId: match.id,
+    match_id: match.id,
     matchScore,
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
@@ -338,14 +341,13 @@ export async function getInterviewPlan({
   return getInterviewPlanApi(cvId, role, lang);
 }
 
-export async function getGapReport({
-  matchId,
-  lang,
-}: {
-  matchId: string;
-  lang?: DiagnosisLang;
-}): Promise<GapReportResponse> {
+export async function getGapReport(
+  input: { matchId: string; lang?: DiagnosisLang } | string,
+  fallbackLang: DiagnosisLang = "vi",
+): Promise<GapReportResponse> {
   requireSession();
+  const matchId = typeof input === "string" ? input : input.matchId;
+  const lang = typeof input === "string" ? fallbackLang : input.lang;
   return getGapReportApi(matchId, lang);
 }
 

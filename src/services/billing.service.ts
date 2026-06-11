@@ -1,6 +1,7 @@
 import {
   createCheckoutApi,
   getBillingPlansApi,
+  getMyEntitlementsApi,
   getMySubscriptionApi,
   getMyUsageApi,
   getOrderStatusApi,
@@ -14,6 +15,7 @@ export type {
   BillingPurpose,
   CheckoutResponseDto,
   CreateCheckoutDto,
+  MeEntitlementDto,
   OrderStatusResponseDto,
   SubscriptionResponseDto,
 } from "@/api/billing";
@@ -40,4 +42,9 @@ export function getMySubscription() {
 
 export function getMyUsage() {
   return getMyUsageApi();
+}
+
+/** Quota hợp nhất theo plan (BE #49) — nguồn cho "Còn x/y lượt" trên trang diagnosis. */
+export function getMyEntitlements() {
+  return getMyEntitlementsApi();
 }

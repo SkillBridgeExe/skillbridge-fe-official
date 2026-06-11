@@ -54,8 +54,14 @@ export const API_ROUTES = {
     HISTORY: `${API}/diagnosis/history`,
   },
 
+  // Gap Report on a persisted CV/JD match.
   CV_MATCHES: {
     GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
+  },
+
+  // Unified plan entitlements and quotas.
+  ME: {
+    ENTITLEMENTS: `${API}/me/entitlements`,
   },
 
   // Skill trends (trends.controller.ts) — endpoints require JWT.

@@ -759,11 +759,32 @@ export default {
         overqualified: "Above requirement",
         estimate: "estimated",
       },
+      satisfiedBy: "Counted from {{from}} on your CV",
       inferred: {
         ecosystem: "ecosystem",
         adjacent: "adjacent",
         tooling: "tooling",
       },
+    },
+    gapReport: {
+      title: "Gap Report",
+      loading: "Loading the gap report…",
+      error: "Could not load the gap report — try again later.",
+      sourceJd: "vs your pasted JD",
+      sourceRubric: "vs the role standard",
+      actions: "Do these first",
+      gapsExplicit: "Missing entirely",
+      gapsProficiency: "Level gap",
+      strengths: "Matched strengths",
+      marketTitle: "Implied market expectations (from postings we track)",
+      footnote:
+        "Every number in this report comes from the real CV/JD analysis and our job-posting pool — no invented judgments.",
+    },
+    quota: {
+      remainingDaily: "{{remaining}}/{{limit}} CV reviews left today",
+      remainingMonthly: "{{remaining}}/{{limit}} CV reviews left this month",
+      exhausted: "You have used all CV reviews on your current plan.",
+      upgradeCta: "Upgrade",
     },
     evidence: {
       title: "Evidence ledger",
@@ -797,6 +818,10 @@ export default {
       subtitle: "In-demand skills your CV doesn't show yet.",
       empty: "Your CV already covers the most in-demand skills here.",
       hot: "hot",
+    },
+    aiGate: {
+      jdThin: "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",
+      cvUnreadable: "The file doesn't contain readable CV content (may be a scan or empty file) — upload a text-based PDF or document with real text.",
     },
     jdInput: {
       title: "Job description",

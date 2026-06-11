@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   AiGateError,
   assessAiInput,
+  assessAiInputWith,
+  assessJdInput,
   extractAiGateCode,
   getAiGateCode,
 } from "./ai-input-gate";
@@ -59,6 +61,41 @@ describe("assessAiInput — FE mirror of the BE text-quality gate", () => {
   });
 });
 
+describe("assessAiInputWith — parameterised thresholds", () => {
+  it("uses the supplied minTokens/minChars instead of the defaults", () => {
+    // With defaults (4 tokens, 25 chars) 'React dev' would fail; with 1/5 it passes.
+    expect(assessAiInputWith("React dev", { minTokens: 1, minChars: 5 })).toEqual({ ok: true });
+  });
+
+  it("assessAiInput is unchanged (delegates to assessAiInputWith 4/25)", () => {
+    expect(assessAiInput("React dev")).toEqual({ ok: false, reason: "INSUFFICIENT_CONTEXT" });
+  });
+});
+
+describe("assessJdInput — JD gate thresholds {6, 40}", () => {
+  it("fails 'aa test test' (too few meaningful tokens)", () => {
+    expect(assessJdInput("aa test test")).toEqual({
+      ok: false,
+      reason: "INSUFFICIENT_CONTEXT",
+    });
+  });
+
+  it("fails thin 'React dev' snippet", () => {
+    expect(assessJdInput("React dev")).toEqual({
+      ok: false,
+      reason: "INSUFFICIENT_CONTEXT",
+    });
+  });
+
+  it("passes a realistic 3-line JD", () => {
+    expect(
+      assessJdInput(
+        "We are looking for a Frontend Engineer with 2+ years of experience in React and TypeScript to build scalable web applications.",
+      ).ok,
+    ).toBe(true);
+  });
+});
+
 describe("extractAiGateCode — defensive BE payload scan", () => {
   it("reads a top-level code field", () => {
     expect(extractAiGateCode({ code: "INSUFFICIENT_CONTEXT" })).toBe(
@@ -90,6 +127,16 @@ describe("extractAiGateCode — defensive BE payload scan", () => {
   it("returns null for unrelated payloads", () => {
     expect(extractAiGateCode({ message: "Internal server error" })).toBeNull();
     expect(extractAiGateCode(null)).toBeNull();
+  });
+
+  it("reads CV_CONTENT_INSUFFICIENT from a code field", () => {
+    expect(extractAiGateCode({ code: "CV_CONTENT_INSUFFICIENT" })).toBe("CV_CONTENT_INSUFFICIENT");
+  });
+
+  it("reads JD_CONTENT_INSUFFICIENT from a message string", () => {
+    expect(
+      extractAiGateCode({ message: "JD_CONTENT_INSUFFICIENT: paste the full JD" }),
+    ).toBe("JD_CONTENT_INSUFFICIENT");
   });
 });
 

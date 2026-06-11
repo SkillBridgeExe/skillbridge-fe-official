@@ -18,11 +18,20 @@ import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { TailorChecklist } from "./TailorChecklist";
+import { GapReportCard } from "./GapReportCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 const MAX_INSIGHT_ITEMS = 3;
+
+/** "sql_server" → "SQL Server" (từ ≤3 ký tự viết hoa cả từ — đủ cho các canonical satisfies hiện có). */
+function prettyCanonical(canonical: string): string {
+  return canonical
+    .split("_")
+    .map((w) => (w.length <= 3 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
 
 function evidenceStrengthClass(strength: EvidenceStrength): string {
   if (strength === "demonstrated") return "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]";
@@ -109,6 +118,12 @@ function KeywordRow({
         {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
           <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
             {t("matchDepth.gapLevels", { count: skill.gap_levels })}
+          </p>
+        )}
+        {skill.satisfied_by && (
+          // BE #51: requirement được thỏa bởi skill CON trên CV (sql ← SQL Server) — nói thật nguồn điểm.
+          <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
+            {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
           </p>
         )}
       </div>
@@ -450,6 +465,8 @@ export function DiagnosisStep3Results() {
           document={reviewData?.document}
         />
       )}
+
+      {isJdMode && jdMatch?.matchId && <GapReportCard matchId={jdMatch.matchId} />}
 
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>

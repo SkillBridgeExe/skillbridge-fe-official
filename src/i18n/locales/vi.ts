@@ -759,11 +759,32 @@
         overqualified: "Vượt yêu cầu",
         estimate: "ước lượng",
       },
+      satisfiedBy: "Tính từ {{from}} trong CV của bạn",
       inferred: {
         ecosystem: "hệ sinh thái",
         adjacent: "liên quan",
         tooling: "công cụ",
       },
+    },
+    gapReport: {
+      title: "Báo cáo khoảng cách (Gap Report)",
+      loading: "Đang tải báo cáo gap…",
+      error: "Chưa tải được báo cáo gap — thử lại sau.",
+      sourceJd: "theo JD bạn dán",
+      sourceRubric: "theo chuẩn role",
+      actions: "Việc đáng làm trước",
+      gapsExplicit: "Thiếu hẳn",
+      gapsProficiency: "Thiếu cấp độ",
+      strengths: "Điểm mạnh đã khớp",
+      marketTitle: "Thị trường kỳ vọng ngầm (từ tin tuyển dụng hệ thống theo dõi)",
+      footnote:
+        "Mọi số liệu trong báo cáo là số thật từ phân tích CV/JD và pool tin tuyển dụng — không phải nhận định bịa.",
+    },
+    quota: {
+      remainingDaily: "Còn {{remaining}}/{{limit}} lượt chấm CV hôm nay",
+      remainingMonthly: "Còn {{remaining}}/{{limit}} lượt chấm CV tháng này",
+      exhausted: "Bạn đã dùng hết lượt chấm CV của gói hiện tại.",
+      upgradeCta: "Nâng cấp",
     },
     evidence: {
       title: "Sổ bằng chứng",
@@ -797,6 +818,10 @@
       subtitle: "Kỹ năng đang được tuyển nhiều mà CV bạn chưa có.",
       empty: "CV của bạn đã phủ những kỹ năng được tuyển nhiều nhất ở đây.",
       hot: "đang hot",
+    },
+    aiGate: {
+      jdThin: "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",
+      cvUnreadable: "File chưa có nội dung CV đọc được (có thể là bản scan hoặc file trống) — hãy upload CV dạng text/PDF có chữ thật.",
     },
     jdInput: {
       title: "Mô tả công việc",
