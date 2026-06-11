@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
+import { logout as logoutSession } from "@/services/auth.service";
 import { Link, useNavigate } from "react-router-dom";
 
 type AdminTheme = "light" | "dark";
@@ -64,13 +65,13 @@ export default function AdminNavbar({
   adminTheme: AdminTheme;
   onThemeChange: (theme: AdminTheme) => void;
 }) {
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser } = useAuthStore();
   const navigate = useNavigate();
   const unreadCount = NOTIFICATIONS.filter((n) => n.status === "unread").length;
   const isDark = adminTheme === "dark";
 
   const handleLogout = () => {
-    logout();
+    void logoutSession();
     navigate("/?auth=login");
   };
 

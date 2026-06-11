@@ -1,7 +1,10 @@
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { createJSONStorage, devtools, persist, type StateStorage } from "zustand/middleware";
+import { clearAccessToken } from "@/services/auth-token.service";
 
 export type UserRole = "user" | "admin" | "business" | "mentor";
+export type AuthStatus = "checking" | "authenticated" | "anonymous";
+export type AuthSource = "api" | "mock" | null;
 
 export interface AuthUser {
   id: string;
@@ -48,6 +51,28 @@ const MOCK_USERS: Record<UserRole, AuthUser> = {
   },
 };
 
+const fallbackStorage = new Map<string, string>();
+const safeLocalStorage: StateStorage = {
+  getItem: (name) =>
+    typeof localStorage === "undefined"
+      ? fallbackStorage.get(name) ?? null
+      : localStorage.getItem(name),
+  setItem: (name, value) => {
+    if (typeof localStorage === "undefined") {
+      fallbackStorage.set(name, value);
+      return;
+    }
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name) => {
+    if (typeof localStorage === "undefined") {
+      fallbackStorage.delete(name);
+      return;
+    }
+    localStorage.removeItem(name);
+  },
+};
+
 export const MOCK_LOGIN_ACCOUNTS: MockLoginAccount[] = [
   {
     role: "user",
@@ -80,10 +105,15 @@ type LoginResult =
   | { success: false; message: string };
 
 interface AuthState {
+  authStatus: AuthStatus;
+  authSource: AuthSource;
   isAuthenticated: boolean;
   currentUser: AuthUser | null;
   login: (role: UserRole) => void;
   loginWithMockAccount: (email: string, password: string) => LoginResult;
+  setChecking: () => void;
+  setAuthenticated: (user: AuthUser, source?: Exclude<AuthSource, null>) => void;
+  setAnonymous: () => void;
   setAuthUser: (user: AuthUser) => void;
   updateAuthUser: (patch: Partial<AuthUser>) => void;
   logout: () => void;
@@ -93,10 +123,14 @@ export const useAuthStore = create<AuthState>()(
   devtools(
     persist(
       (set) => ({
+        authStatus: "checking",
+        authSource: null,
         isAuthenticated: false,
         currentUser: null,
         login: (role) =>
           set({
+            authStatus: "authenticated",
+            authSource: "mock",
             isAuthenticated: true,
             currentUser: MOCK_USERS[role],
           }),
@@ -112,14 +146,40 @@ export const useAuthStore = create<AuthState>()(
           }
 
           set({
+            authStatus: "authenticated",
+            authSource: "mock",
             isAuthenticated: true,
             currentUser: MOCK_USERS[account.role],
           });
 
           return { success: true, role: account.role };
         },
+        setChecking: () =>
+          set({
+            authStatus: "checking",
+          }),
+        setAuthenticated: (user, source = "api") =>
+          set({
+            authStatus: "authenticated",
+            authSource: source,
+            isAuthenticated: true,
+            currentUser: user,
+          }),
+        setAnonymous: () => {
+          clearAccessToken();
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          set({
+            authStatus: "anonymous",
+            authSource: null,
+            isAuthenticated: false,
+            currentUser: null,
+          });
+        },
         setAuthUser: (user) => 
           set({
+            authStatus: "authenticated",
+            authSource: "api",
             isAuthenticated: true,
             currentUser: user,
           }),
@@ -128,15 +188,31 @@ export const useAuthStore = create<AuthState>()(
             currentUser: state.currentUser ? { ...state.currentUser, ...patch } : state.currentUser,
           })),
         logout: () => {
+          clearAccessToken();
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
           set({
+            authStatus: "anonymous",
+            authSource: null,
             isAuthenticated: false,
             currentUser: null,
           });
         },
       }),
-      { name: "skillbridge-auth" }
+      {
+        name: "skillbridge-auth",
+        storage: createJSONStorage(() => safeLocalStorage),
+        partialize: (state) => ({
+          authSource: state.authSource,
+          isAuthenticated: state.isAuthenticated,
+          currentUser: state.currentUser,
+        }),
+        merge: (persisted, current) => ({
+          ...current,
+          ...(persisted as Partial<AuthState>),
+          authStatus: "checking",
+        }),
+      }
     )
   )
 );

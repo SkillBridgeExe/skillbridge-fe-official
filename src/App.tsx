@@ -7,6 +7,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGuard from "@/components/layout/AuthGuard";
+import AuthBootstrap from "@/components/auth/AuthBootstrap";
 import PageLoader from "@/components/common/PageLoader";
 import { MascotOverlay } from "@/components/mascot/MascotOverlay";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -33,6 +34,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <MascotOverlay />
+        <AuthBootstrap />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>

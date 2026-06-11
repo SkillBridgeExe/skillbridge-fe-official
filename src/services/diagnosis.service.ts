@@ -22,6 +22,7 @@ import {
 } from "@/api/cv/diagnosis-addons";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
+import { hasApiAuthSession } from "@/services/auth-session.service";
 import type {
   BeIssueSeverity,
   BeMatchedSkill,
@@ -76,7 +77,7 @@ export interface AnalyzeOutcome {
  * giữa chừng (P0.3 — auth gate, UI đẹp hơn ở W3).
  */
 export function requireSession(): void {
-  if (!localStorage.getItem("accessToken")) {
+  if (!hasApiAuthSession()) {
     throw new Error(
       "Please sign in with a real account to run the AI analysis. Demo accounts can't reach the AI service yet.",
     );

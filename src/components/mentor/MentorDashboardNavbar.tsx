@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/useAuthStore";
+import { logout as logoutSession } from "@/services/auth.service";
 import { useMentorStore } from "@/store/useMentorStore";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -97,14 +97,13 @@ export default function MentorDashboardNavbar({
   mentorTheme: MentorTheme;
   onThemeChange: (theme: MentorTheme) => void;
 }) {
-  const { logout } = useAuthStore();
   const { myProfile } = useMentorStore();
   const navigate = useNavigate();
   const unreadCount = NOTIFICATIONS.filter((n) => n.status === "unread").length;
   const isDark = mentorTheme === "dark";
 
   const handleLogout = () => {
-    logout();
+    void logoutSession();
     navigate("/?auth=login");
   };
 

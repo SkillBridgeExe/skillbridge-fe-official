@@ -18,18 +18,13 @@ import {
 import { logoutApi } from "@/api/auth/logout";
 import type { AuthUserDto } from "@/api/auth/envelope";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
+import { setAccessToken } from "@/services/auth-token.service";
+import { toAuthUser, toUserRole } from "@/services/auth-session.service";
 
 export interface LoginOutcome {
   role: UserRole;
   /** "api" = NestJS backend; "mock" = demo account (fallback khi BE không nhận). */
   source: "api" | "mock";
-}
-
-const KNOWN_ROLES = ["admin", "business", "mentor"] as const;
-
-function toUserRole(roles: string[] | undefined): UserRole {
-  const role = roles?.[0]?.toLowerCase() ?? "user";
-  return (KNOWN_ROLES as readonly string[]).includes(role) ? (role as UserRole) : "user";
 }
 
 /** Trang đích theo role — dùng chung cho mọi redirect sau khi auth thành công. */
@@ -46,15 +41,16 @@ export function dashboardPathFor(role: UserRole): string {
   }
 }
 
-function persistSession(accessToken: string | null, user: AuthUserDto, role: UserRole) {
-  if (accessToken) localStorage.setItem("accessToken", accessToken);
-  localStorage.setItem("user", JSON.stringify(user));
-  useAuthStore.getState().setAuthUser({
-    id: user.id,
-    name: user.displayName || user.email,
-    email: user.email,
-    role,
-  });
+function persistSession(
+  accessToken: string | null,
+  expiresIn: number | null | undefined,
+  user: AuthUserDto,
+  role: UserRole,
+) {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("user");
+  if (accessToken) setAccessToken(accessToken, expiresIn);
+  useAuthStore.getState().setAuthenticated({ ...toAuthUser(user), role }, "api");
 }
 
 /**
@@ -66,7 +62,7 @@ export async function login(email: string, password: string): Promise<LoginOutco
   try {
     const result = await loginApi({ email, password });
     const role = toUserRole(result.data.user.roles);
-    persistSession(result.data.accessToken, result.data.user, role);
+    persistSession(result.data.accessToken, result.data.expiresIn, result.data.user, role);
     return { role, source: "api" };
   } catch (apiError) {
     const mock = useAuthStore.getState().loginWithMockAccount(email, password);
@@ -77,8 +73,9 @@ export async function login(email: string, password: string): Promise<LoginOutco
 
 export async function loginWithGoogle(idToken: string): Promise<LoginOutcome> {
   const result = await googleLoginApi({ idToken });
+  if (!result.data.user) throw new Error("Google login did not return a user");
   const role = toUserRole(result.data.user.roles);
-  persistSession(result.data.accessToken, result.data.user, role);
+  persistSession(result.data.accessToken, result.data.expiresIn, result.data.user, role);
   return { role, source: "api" };
 }
 
