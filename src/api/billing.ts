@@ -1,6 +1,9 @@
 import { httpClient } from "@/api/core/http-client";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { API_ROUTES } from "@/constants/api-routes";
+import type { MeEntitlementDto } from "@shared/api";
+
+export type { MeEntitlementDto } from "@shared/api";
 
 export type BillingPurpose = "SUBSCRIPTION" | "MENTOR_DEPOSIT" | "MENTOR_REMAINING";
 export type BillingOrderStatus = "PENDING" | "PAID" | "CANCELLED" | "EXPIRED" | "FAILED";
@@ -124,6 +127,19 @@ export async function getMyUsageApi(): Promise<SubscriptionResponseDto | null> {
   const envelope = await unwrapEnvelope<ApiEnvelope<SubscriptionResponseDto | null>>(
     httpClient.get(API_ROUTES.BILLING.MY_USAGE),
     "Failed to load usage.",
+  );
+  return envelope.data;
+}
+
+/**
+ * GET /api/me/entitlements (BE #49) — quota hợp nhất theo plan: mỗi feature
+ * {used, limit, period DAILY|MONTHLY, remaining, allowed, resets_at}. FE dùng
+ * cho "Còn x/y lượt" + disable nút khi allowed=false.
+ */
+export async function getMyEntitlementsApi(): Promise<MeEntitlementDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MeEntitlementDto[]>>(
+    httpClient.get(API_ROUTES.ME.ENTITLEMENTS),
+    "Failed to load entitlements.",
   );
   return envelope.data;
 }

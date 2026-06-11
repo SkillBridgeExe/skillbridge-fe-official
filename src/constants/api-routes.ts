@@ -52,6 +52,17 @@ export const API_ROUTES = {
     HISTORY: `${API}/diagnosis/history`,
   },
 
+  // Gap Report trên match đã persist (CvMatchReportsController — BE #49).
+  CV_MATCHES: {
+    GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
+  },
+
+  // Entitlements hợp nhất theo plan (billing.controller — BE #49): quota từng
+  // feature {used, limit, period, remaining, allowed, resets_at}.
+  ME: {
+    ENTITLEMENTS: `${API}/me/entitlements`,
+  },
+
   // Skill trends (trends.controller.ts) — endpoints require JWT.
   TRENDS: {
     SKILLS: `${API}/trends/skills`,
