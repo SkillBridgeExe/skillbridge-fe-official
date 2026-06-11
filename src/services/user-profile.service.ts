@@ -17,29 +17,14 @@ import {
   type UserSkillDto,
 } from "@/api/user/skills";
 import { useAuthStore } from "@/store/useAuthStore";
+import { hasApiAuthSession } from "@/services/auth-session.service";
 
 function hasApiSession() {
+  return hasApiAuthSession();
+
   // Only a real bearer token counts as an API session. A lingering "user" key
   // (mock login / stale state) must NOT trigger authed calls — those 401 and
   // used to bounce the user to the homepage.
-  const token = localStorage.getItem("accessToken");
-  if (!token) return false;
-
-  const [, payload] = token.split(".");
-  if (!payload) return true;
-
-  try {
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = JSON.parse(atob(normalized)) as { exp?: number };
-    if (decoded.exp && decoded.exp * 1000 <= Date.now()) {
-      localStorage.removeItem("accessToken");
-      return false;
-    }
-  } catch {
-    return true;
-  }
-
-  return true;
 }
 
 function getLocalProfile(): UserProfileDto {

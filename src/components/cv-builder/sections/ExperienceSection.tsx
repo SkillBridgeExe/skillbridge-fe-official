@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import type { AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 
 
@@ -41,7 +42,9 @@ export function ExperienceSection() {
 
   const aiRewrite = useAiRewrite();
   const targetRole = useDiagnosisStore((s) => s.targetRole);
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const isLoggedIn = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
 
   const handleAiSuggest = (entryId: string, field: "description" | "achievements", currentText: string) => {
     if (!draftId) return;

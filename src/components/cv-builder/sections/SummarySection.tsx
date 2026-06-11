@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import { assessAiInput, type AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
@@ -81,7 +82,9 @@ export function SummarySection() {
   const suggestRewrite = useAiRewrite();
   const generateRewrite = useAiRewrite();
   const targetRole = useDiagnosisStore((s) => s.targetRole);
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const isLoggedIn = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
 
   const hintText = (hint: SummaryHint) =>
     hint === "LOCAL_ONLY"

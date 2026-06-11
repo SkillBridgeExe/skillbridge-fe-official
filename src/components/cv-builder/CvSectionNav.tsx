@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { 
   User, Target, FileText, GraduationCap, Briefcase, 
@@ -47,7 +48,9 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations } = useCvBuilderStore();
   const statuses = getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const isLoggedIn = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
 
   // Calculate completion
   const doneCount = statuses.filter(s => s.status === "completed").length;
