@@ -5,9 +5,18 @@
 // obvious failures and maps the BE 400 codes to friendly i18n copy.
 
 /** Machine codes the BE rewrite gate returns on HTTP 400. */
-export type AiGateCode = "INSUFFICIENT_CONTEXT" | "OFF_TOPIC";
+export type AiGateCode =
+  | "INSUFFICIENT_CONTEXT"
+  | "OFF_TOPIC"
+  | "CV_CONTENT_INSUFFICIENT"
+  | "JD_CONTENT_INSUFFICIENT";
 
-const AI_GATE_CODES: readonly AiGateCode[] = ["INSUFFICIENT_CONTEXT", "OFF_TOPIC"];
+const AI_GATE_CODES: readonly AiGateCode[] = [
+  "INSUFFICIENT_CONTEXT",
+  "OFF_TOPIC",
+  "CV_CONTENT_INSUFFICIENT",
+  "JD_CONTENT_INSUFFICIENT",
+];
 
 export interface AiInputVerdict {
   ok: boolean;
@@ -35,11 +44,13 @@ function isMeaningfulToken(token: string): boolean {
 }
 
 /**
- * Mirror of the BE input gate: FAIL when there are <4 meaningful tokens AND
- * <25 letter/digit chars across them; ALSO FAIL short repetitive input
- * (3-12 tokens with ≤34% unique). Unicode-aware so Vietnamese text passes.
+ * Parameterised core of the input gate — delegates the fixed thresholds.
+ * Pass custom { minTokens, minChars } to mirror a different BE threshold set.
  */
-export function assessAiInput(text: string): AiInputVerdict {
+export function assessAiInputWith(
+  text: string,
+  { minTokens, minChars }: { minTokens: number; minChars: number },
+): AiInputVerdict {
   const trimmed = text.trim();
   const tokens = trimmed ? trimmed.split(/\s+/) : [];
 
@@ -47,7 +58,7 @@ export function assessAiInput(text: string): AiInputVerdict {
   const meaningfulLetterDigitChars =
     meaningfulTokens.join("").match(LETTER_OR_DIGIT)?.length ?? 0;
 
-  if (meaningfulTokens.length < 4 && meaningfulLetterDigitChars < 25) {
+  if (meaningfulTokens.length < minTokens && meaningfulLetterDigitChars < minChars) {
     return { ok: false, reason: "INSUFFICIENT_CONTEXT" };
   }
 
@@ -59,6 +70,24 @@ export function assessAiInput(text: string): AiInputVerdict {
   }
 
   return { ok: true };
+}
+
+/**
+ * Mirror of the BE input gate: FAIL when there are <4 meaningful tokens AND
+ * <25 letter/digit chars across them; ALSO FAIL short repetitive input
+ * (3-12 tokens with ≤34% unique). Unicode-aware so Vietnamese text passes.
+ */
+export function assessAiInput(text: string): AiInputVerdict {
+  return assessAiInputWith(text, { minTokens: 4, minChars: 25 });
+}
+
+/**
+ * JD-specific gate (mirrors the BE JD quality check): thresholds {6, 40}.
+ * A realistic job description must have ≥6 meaningful tokens and ≥40
+ * letter/digit chars — a bare "React dev" snippet will fail.
+ */
+export function assessJdInput(text: string): AiInputVerdict {
+  return assessAiInputWith(text, { minTokens: 6, minChars: 40 });
 }
 
 // ─── BE gate error mapping ──────────────────────────────────────────

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import { assessJdInput } from "@/lib/ai-input-gate";
 
 interface JobDescriptionInputProps {
   // If true, shows "Cancel" and "Analyze Skill Gap" buttons at the bottom.
@@ -22,9 +24,23 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
     jdFile, jdInputMode, jobDescription,
     setJdFile, setJdInputMode, setJobDescription,
   } = useDiagnosisStore();
-  
+
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
+  const [jdHint, setJdHint] = useState<string | null>(null);
+
+  /** Guard: non-empty JD that fails assessJdInput → show inline hint, block API call. */
+  const handleAnalyze = () => {
+    if (jobDescription.trim()) {
+      const verdict = assessJdInput(jobDescription);
+      if (!verdict.ok) {
+        setJdHint(t("aiGate.jdThin"));
+        return;
+      }
+    }
+    setJdHint(null);
+    onAnalyze?.();
+  };
 
   const handleJDUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -162,9 +178,14 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                 className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-[13px] resize-none font-sans"
                 placeholder={t("jdInput.placeholderCompact")}
                 value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
+                onChange={(e) => { setJobDescription(e.target.value); setJdHint(null); }}
                 autoFocus
               />
+              {jdHint && (
+                <div className="mt-2 text-xs text-[#9F2F2D] bg-[#FDEBEC] border border-[#F6D4D5] py-1.5 px-2.5 rounded-lg">
+                  {jdHint}
+                </div>
+              )}
             </motion.div>
           ) : jdFile ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
@@ -200,8 +221,13 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
                 className="w-full h-[180px] p-4 rounded-xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none transition-all text-sm resize-none placeholder:text-slate-400 font-sans leading-relaxed"
                 placeholder={t("jdInput.placeholder")}
                 value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
+                onChange={(e) => { setJobDescription(e.target.value); setJdHint(null); }}
               />
+              {jdHint && (
+                <div className="mt-2 text-xs text-[#9F2F2D] bg-[#FDEBEC] border border-[#F6D4D5] py-1.5 px-2.5 rounded-lg">
+                  {jdHint}
+                </div>
+              )}
             </motion.div>
           ) : jdFile ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
@@ -236,7 +262,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
             {t("jdInput.cancel")}
           </Button>
           <Button
-            onClick={onAnalyze}
+            onClick={handleAnalyze}
             disabled={!jobDescription.trim()}
             className="rounded-full px-8 bg-primary hover:bg-primary/90 text-white font-bold gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all"
           >

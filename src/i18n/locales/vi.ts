@@ -700,6 +700,10 @@
       empty: "CV của bạn đã phủ những kỹ năng được tuyển nhiều nhất ở đây.",
       hot: "đang hot",
     },
+    aiGate: {
+      jdThin: "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",
+      cvUnreadable: "File chưa có nội dung CV đọc được (có thể là bản scan hoặc file trống) — hãy upload CV dạng text/PDF có chữ thật.",
+    },
     jdInput: {
       title: "Mô tả công việc",
       titleCompact: "JD mục tiêu",

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
@@ -167,7 +168,13 @@ export function DiagnosisStep2Review() {
       setApiError(null);
       setStep("results");
     } catch (error) {
-      const message = getApiErrorMessage(error, "Failed to compare CV with job description.");
+      const gateCode = extractAiGateCode(error);
+      const message =
+        gateCode === "JD_CONTENT_INSUFFICIENT"
+          ? t("aiGate.jdThin")
+          : gateCode === "CV_CONTENT_INSUFFICIENT"
+            ? t("aiGate.cvUnreadable")
+            : getApiErrorMessage(error, "Failed to compare CV with job description.");
       setHasActivatedJdMode(false);
       setReviewData(previousReviewData ?? null);
       setApiError(message);
