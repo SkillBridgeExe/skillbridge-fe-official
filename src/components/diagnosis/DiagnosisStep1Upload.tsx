@@ -25,6 +25,50 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
+import { useQuery } from "@tanstack/react-query";
+import { getMyEntitlements } from "@/services/billing.service";
+
+/**
+ * "Còn x/y lượt chấm" từ GET /api/me/entitlements (BE #49) — số thật theo plan,
+ * reset theo period (DAILY cho cv_review). Hết lượt → cảnh báo + gợi ý nâng cấp;
+ * nút Analyze không bị khoá cứng ở FE (BE vẫn là người gác 402).
+ */
+function QuotaLine({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
+  const { data } = useQuery({
+    queryKey: ["me-entitlements"],
+    queryFn: getMyEntitlements,
+    staleTime: 60 * 1000,
+    retry: 1,
+  });
+  const review = data?.find((f) => f.feature === "cv_review");
+  if (!review || review.unlimited) return null;
+
+  const exhausted = !review.allowed;
+  return (
+    <div
+      className={
+        exhausted
+          ? "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium bg-[#FDEBEC] border-[#F6D4D5] text-[#9F2F2D]"
+          : "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium bg-[#F7F6F3] border-[#EAEAEA] text-[#787774]"
+      }
+    >
+      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+      <span>
+        {exhausted
+          ? t("quota.exhausted")
+          : t(review.period === "DAILY" ? "quota.remainingDaily" : "quota.remainingMonthly", {
+              remaining: review.remaining ?? 0,
+              limit: review.limit,
+            })}
+      </span>
+      {exhausted && (
+        <Link to="/pricing" className="ml-auto font-bold text-primary hover:underline shrink-0">
+          {t("quota.upgradeCta")}
+        </Link>
+      )}
+    </div>
+  );
+}
 
 export function DiagnosisStep1Upload() {
   const { t, i18n } = useTranslation("diagnosis");
@@ -237,6 +281,9 @@ export function DiagnosisStep1Upload() {
             <History className="w-3.5 h-3.5" /> <span>{t("upload.historyLink")}</span>
           </Button>
         </div>
+
+        {/* Quota thật theo plan (ẩn với mock account — không có session BE) */}
+        {isAuthenticated && <QuotaLine t={t} />}
 
         {/* 2-Door CV Section */}
         <div>

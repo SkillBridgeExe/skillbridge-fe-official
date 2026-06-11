@@ -661,11 +661,32 @@ export default {
         overqualified: "Above requirement",
         estimate: "estimated",
       },
+      satisfiedBy: "Counted from {{from}} on your CV",
       inferred: {
         ecosystem: "ecosystem",
         adjacent: "adjacent",
         tooling: "tooling",
       },
+    },
+    gapReport: {
+      title: "Gap Report",
+      loading: "Loading the gap report…",
+      error: "Could not load the gap report — try again later.",
+      sourceJd: "vs your pasted JD",
+      sourceRubric: "vs the role standard",
+      actions: "Do these first",
+      gapsExplicit: "Missing entirely",
+      gapsProficiency: "Level gap",
+      strengths: "Matched strengths",
+      marketTitle: "Implied market expectations (from postings we track)",
+      footnote:
+        "Every number in this report comes from the real CV/JD analysis and our job-posting pool — no invented judgments.",
+    },
+    quota: {
+      remainingDaily: "{{remaining}}/{{limit}} CV reviews left today",
+      remainingMonthly: "{{remaining}}/{{limit}} CV reviews left this month",
+      exhausted: "You have used all CV reviews on your current plan.",
+      upgradeCta: "Upgrade",
     },
     evidence: {
       title: "Evidence ledger",

@@ -11,6 +11,7 @@ import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
+import { getGapReportApi } from "@/api/cv/gap-report";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
@@ -157,6 +158,8 @@ function toSkillMatchItem(
     jdRequired: levelToPct(skill.required_level),
     status,
     ...("gap_levels" in skill ? { gap_levels: skill.gap_levels } : {}),
+    // BE #51: requirement được thỏa bởi skill CON (sql ← sql_server) — UI nói thật "tính từ X".
+    ...("satisfied_by" in skill && skill.satisfied_by ? { satisfied_by: skill.satisfied_by } : {}),
   };
 }
 
@@ -180,6 +183,8 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   );
 
   return {
+    // Giữ id match đã persist — Gap Report (BE #49) cần nó; trước đây mapper vứt mất.
+    match_id: match.id,
     matchScore,
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
@@ -315,4 +320,13 @@ export async function getTrendsInsight(query: TrendsInsightQuery) {
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);
+}
+
+/**
+ * Báo cáo gap hợp nhất trên match đã persist (GET /api/cv-matches/:matchId/gap-report).
+ * KHÔNG tốn quota (đọc kết quả đã lưu); matchId lấy từ jdMatch.match_id của lần match.
+ */
+export async function getGapReport(matchId: string, lang: "vi" | "en" = "vi") {
+  requireSession();
+  return getGapReportApi(matchId, lang);
 }
