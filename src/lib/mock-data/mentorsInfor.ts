@@ -99,7 +99,7 @@ export const MENTORS = [
     ]
   },
   {
-    name: "John Doe",
+    name: "Đỗ Minh Quân",
     role: "Backend Engineer @ Stripe",
     expertise: ["Golang", "System Design", "Backend"],
     rating: 4.8,

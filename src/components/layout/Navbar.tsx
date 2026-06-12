@@ -124,6 +124,7 @@ export default function Navbar() {
             <Link
               key={item.href}
               to={item.href}
+              aria-current={location.pathname === item.href ? "page" : undefined}
               className={cn(
                 "text-sm font-medium transition-colors hover:text-primary relative py-1",
                 location.pathname === item.href

@@ -343,7 +343,7 @@ export default function Register() {
                       <User className="w-3.5 h-3.5 inline mr-1.5" />Full name *
                     </Label>
                     <Input
-                      placeholder="John Doe"
+                      placeholder="Nguyễn Văn An"
                       value={form.fullName}
                       onChange={(e) => update("fullName", e.target.value)}
                       className="h-11 rounded-xl border-slate-200"

@@ -137,12 +137,12 @@ export default function MentorDashboardSidebar({
 
       {/* Bottom Fixed Area */}
       <div className={cn("p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 transition-all", expanded ? "" : "px-2 py-4")}>
-        <a
-          href="#"
+        <button
+          type="button"
           onClick={handleViewMentorPage}
           title={!expanded ? "View Mentor Page" : undefined}
           className={cn(
-            "flex items-center gap-3 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-primary/50 transition-all group overflow-hidden pointer",
+            "w-full flex items-center gap-3 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-primary/50 transition-all group overflow-hidden pointer",
             expanded ? "px-3" : "px-0 justify-center group"
           )}
         >
@@ -156,7 +156,7 @@ export default function MentorDashboardSidebar({
             )}>
             View Page
           </span>
-        </a>
+        </button>
       </div>
     </aside>
   );
