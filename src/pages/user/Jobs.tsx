@@ -7,7 +7,6 @@ import {
   Briefcase,
   Clock,
   DollarSign,
-  Building2,
   Users,
   Star,
   ChevronDown,
@@ -15,9 +14,7 @@ import {
   X,
   Bookmark,
   BookmarkCheck,
-  TrendingUp,
   Zap,
-  Globe,
   CheckCircle,
   Filter,
   ArrowUpRight,
@@ -660,27 +657,16 @@ export default function Jobs() {
             style={{ background: "linear-gradient(to bottom, transparent, rgba(248,250,252,0.08))" }} />
         </div>
 
-        {/* ── Stats Bar ── */}
-        <div className="bg-white border-b border-slate-100 shadow-[0_1px_12px_rgba(0,0,0,0.06)]">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-6 flex-wrap">
-            <div className="flex items-center gap-6 flex-wrap">
-              {[
-                { icon: Building2, label: "Companies hiring", val: "47" },
-                { icon: Briefcase, label: "Open positions", val: "312" },
-                { icon: TrendingUp, label: "New this week", val: "28" },
-                { icon: Globe, label: "Remote jobs", val: "94" },
-              ].map(({ icon: Icon, label, val }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <Icon size={14} className="text-sky-500" />
-                  <span className="text-sm font-bold text-slate-800">{val}</span>
-                  <span className="text-xs text-slate-500">{label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-              <CheckCircle size={13} />
-              All jobs verified by SkillBridge
-            </div>
+        {/* ── Demo notice (honest): this listing is sample data; the real, CV-matched job
+              recommendations live in the Diagnosis tab. No fabricated stats / "verified" claims. ── */}
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2 text-xs font-medium text-amber-800">
+            <CheckCircle size={13} className="shrink-0" />
+            <span>
+              Trang việc làm đang ở chế độ xem thử với dữ liệu mẫu. Đề xuất việc làm thật khớp CV của
+              bạn nằm trong tab <strong>Chẩn đoán</strong>. · This jobs page shows sample data — your
+              real CV-matched jobs are in the <strong>Diagnosis</strong> tab.
+            </span>
           </div>
         </div>
 
