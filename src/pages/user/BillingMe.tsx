@@ -7,22 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QUERY_KEYS } from "@/constants/app";
 import { EmptyState, formatDate, StatusBadge } from "@/lib/billing-ui";
-import { getMySubscription, getMyUsage } from "@/services/billing.service";
+import {
+  getMyEntitlements,
+  getMySubscription,
+  type MeEntitlementDto,
+} from "@/services/billing.service";
 
 export default function BillingMe() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const subscriptionQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION,
     queryFn: getMySubscription,
   });
-  const usageQuery = useQuery({
-    queryKey: QUERY_KEYS.BILLING_USAGE,
-    queryFn: getMyUsage,
+  // W16: nguồn quota hợp nhất /api/me/entitlements (BE #49) — có period + resets_at,
+  // thay /billing/me/usage (shape cũ không phân biệt DAILY/MONTHLY → cv_review hiển thị sai chu kỳ).
+  const entitlementsQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
+    queryFn: getMyEntitlements,
   });
 
   const subscription = subscriptionQuery.data;
-  const usage = usageQuery.data;
-  const features = usage?.features ?? subscription?.features ?? [];
+  const features = entitlementsQuery.data ?? [];
 
   return (
     <Layout hideFooter>
@@ -87,35 +92,26 @@ export default function BillingMe() {
                 </div>
               </CardHeader>
               <CardContent className="p-5 pt-0">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {features.map((feature) => (
-                    <div key={feature.featureKey} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-bold text-slate-900" title={feature.featureKey}>
-                          {formatFeatureName(feature.featureKey)}
-                        </p>
-                        <StatusDot active={feature.allowed} />
-                      </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                        <div
-                          className="h-full rounded-full bg-[#00AEEF]"
-                          style={{ width: `${getUsagePercent(feature)}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                        <span>
-                          {t("billing.me.used")} <b className="text-slate-900">{feature.used}</b>
-                        </span>
-                        <span className="font-semibold text-slate-700">
-                          {feature.unlimited ? t("billing.common.unlimited") : `${feature.used}/${feature.limit}`}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {t("billing.me.remaining")}: {feature.remaining === null ? t("billing.common.unlimited") : feature.remaining}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {entitlementsQuery.isLoading ? (
+                  <div className="flex h-32 items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#00AEEF]" />
+                  </div>
+                ) : entitlementsQuery.isError ? (
+                  <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+                    {t("billing.me.usageError")}
+                  </p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {features.map((feature) => (
+                      <EntitlementCell
+                        key={feature.feature}
+                        feature={feature}
+                        t={t}
+                        locale={i18n.language}
+                      />
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -133,11 +129,100 @@ function getUsagePercent(feature: { limit: number; used: number; unlimited: bool
   return Math.min(100, Math.round((feature.used / feature.limit) * 100));
 }
 
+/** Fallback cho key chưa có trong map i18n — tên thật lấy từ billing.entitlements.names. */
 function formatFeatureName(value: string) {
   return value
     .replace(/^cv_/, "CV ")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatResetsAt(iso: string, locale: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale.startsWith("vi") ? "vi-VN" : "en-US", {
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+/**
+ * 1 ô hạn mức — 3 trạng thái (W16):
+ *   limit=0  → "Không có trong gói" + CTA nâng cấp (KHÔNG hiện "0/0" như lỗi)
+ *   unlimited→ "Không giới hạn", ẩn progress
+ *   thường   → progress used/limit + còn lại + chu kỳ reset (số là số thật BE đếm)
+ */
+function EntitlementCell({
+  feature,
+  t,
+  locale,
+}: {
+  feature: MeEntitlementDto;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  locale: string;
+}) {
+  const name = t(`billing.entitlements.names.${feature.feature}`, {
+    defaultValue: formatFeatureName(feature.feature),
+  });
+  const notInPlan = !feature.unlimited && feature.limit === 0;
+  const resetsAt = formatResetsAt(feature.resets_at, locale);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-sm font-bold text-slate-900" title={feature.feature}>
+          {name}
+        </p>
+        <StatusDot active={feature.allowed} />
+      </div>
+
+      {notInPlan ? (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-slate-500">{t("billing.entitlements.notInPlan")}</p>
+          <Link to="/pricing" className="text-xs font-bold text-[#00AEEF] hover:underline">
+            {t("billing.entitlements.upgrade")}
+          </Link>
+        </div>
+      ) : feature.unlimited ? (
+        <p className="mt-3 text-xs font-semibold text-emerald-600">
+          {t("billing.entitlements.unlimited")}
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-[#00AEEF]"
+              style={{ width: `${getUsagePercent(feature)}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+            <span>
+              {t("billing.me.used")} <b className="text-slate-900">{feature.used}</b>
+            </span>
+            <span className="font-semibold text-slate-700">
+              {feature.used}/{feature.limit}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            {t("billing.me.remaining")}: {feature.remaining ?? feature.limit - feature.used}
+          </p>
+        </>
+      )}
+
+      <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+        {t(
+          feature.period === "DAILY"
+            ? "billing.entitlements.periodDaily"
+            : "billing.entitlements.periodMonthly",
+        )}
+        {resetsAt && !feature.unlimited && !notInPlan && (
+          <> · {t("billing.entitlements.resetsAt", { date: resetsAt })}</>
+        )}
+      </p>
+    </div>
+  );
 }
 
 function StatusDot({ active }: { active: boolean }) {

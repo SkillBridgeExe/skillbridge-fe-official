@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, X, ArrowLeft, ArrowRight, Share2, Download,
   Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Ruler
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -327,6 +327,20 @@ export function DiagnosisStep3Results() {
           <p className="text-xs text-[#787774] font-medium mt-4 text-center px-6 max-w-xs">
             {scoreMessage}
           </p>
+
+          {/* W17 — thước chấm: điểm chỉ có nghĩa khi biết nó đo bằng thước nào.
+              rubric_band null = chấm theo JD dán (mọi match JD-path hiện tại). */}
+          {isJdMode && jdMatch && (
+            <span
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-2.5 py-1 text-[10px] font-bold text-[#787774]"
+              title={jdMatch.rubric_band ? t("band.tooltip") : t("band.jdTooltip")}
+            >
+              <Ruler className="h-3 w-3" />
+              {jdMatch.rubric_band
+                ? t("band.label", { band: t(`band.${jdMatch.rubric_band}`) })
+                : t("band.jdYardstick")}
+            </span>
+          )}
 
           {isJdMode ? (
             <div className="grid grid-cols-3 gap-3 w-full mt-6 px-6">

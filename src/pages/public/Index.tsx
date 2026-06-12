@@ -842,7 +842,9 @@ export default function Index() {
             CUSTOM LIGHT FOOTER
             ══════════════════════════════════════ */}
         <footer className="relative bg-white border-t border-slate-100 py-12 px-6 z-10">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Tasteskill T3: footer chỉ giữ link có đích thật — không href="#" giả vờ.
+              Privacy/Terms quay lại khi có trang pháp lý (backlog legal). */}
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -854,41 +856,29 @@ export default function Index() {
                 {t("footer.tagline")}
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.product")}</h4>
               <ul className="space-y-2 text-xs text-slate-500 font-semibold">
                 <li><Link to="/diagnosis" className="hover:text-blue-600 transition-colors">{t("footer.linkDiagnosis")}</Link></li>
                 <li><Link to="/learning" className="hover:text-blue-600 transition-colors">{t("footer.linkRoadmap")}</Link></li>
                 <li><Link to="/interview" className="hover:text-blue-600 transition-colors">{t("footer.linkInterview")}</Link></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkMentor")}</a></li>
+                <li><Link to="/mentor-connect" className="hover:text-blue-600 transition-colors">{t("footer.linkMentor")}</Link></li>
+                <li><Link to="/pricing" className="hover:text-blue-600 transition-colors">{t("footer.linkPricing")}</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.company")}</h4>
               <ul className="space-y-2 text-xs text-slate-500 font-semibold">
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkAbout")}</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkStats")}</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkTestimonials")}</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-xs text-slate-700 uppercase tracking-wider mb-4">{t("footer.support")}</h4>
-              <ul className="space-y-2 text-xs text-slate-500 font-semibold">
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkHelp")}</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-blue-600 transition-colors">{t("footer.linkCommunity")}</a></li>
+                <li><Link to="/about" className="hover:text-blue-600 transition-colors">{t("footer.linkAbout")}</Link></li>
+                <li><Link to="/ecosystem" className="hover:text-blue-600 transition-colors">{t("footer.linkEcosystem")}</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto border-t border-slate-100 mt-12 pt-8 flex items-center justify-between text-xs text-slate-400 font-semibold">
+          <div className="max-w-7xl mx-auto border-t border-slate-100 mt-12 pt-8 text-xs text-slate-400 font-semibold">
             <p>{t("footer.rights")}</p>
-            <div className="flex gap-4">
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">{t("footer.privacy")}</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-slate-500 transition-colors">{t("footer.terms")}</a>
-            </div>
           </div>
         </footer>
 

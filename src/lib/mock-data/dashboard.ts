@@ -64,8 +64,8 @@ export interface ModuleProgress {
 
 // ─── User ────────────────────────────────
 export const MOCK_USER: DashboardUser = {
-  name: "John Doe",
-  avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=JohnDoe&backgroundColor=b6e3f4",
+  name: "Hoàng Long Anh",
+  avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=HoangLongAnh&backgroundColor=b6e3f4",
   careerGoal: "Senior Frontend Engineer",
   cvMatchScore: 65,
   skillMatchScore: 72,

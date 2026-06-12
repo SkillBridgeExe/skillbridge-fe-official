@@ -290,6 +290,16 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.match_id).toBe("m-1");
   });
 
+  it("W17: lift rubric_band — non-null khi rubric path, null khi JD path/vắng field", () => {
+    const banded = mapMatchDtoToJdMatch({
+      ...matchDto,
+      parsedResponse: { ...matchDto.parsedResponse!, rubric_band: "fresher" },
+    });
+    expect(banded.rubric_band).toBe("fresher");
+    // Match JD-path hiện tại (BE không trả field) → null — FE KHÔNG tự bịa "Fresher".
+    expect(mapMatchDtoToJdMatch(matchDto).rubric_band).toBeNull();
+  });
+
   it("satisfied_by đi xuyên mapper (SQL được tính từ SQL Server — hiển thị trung thực)", () => {
     const withSat: CvMatchDto = {
       ...matchDto,

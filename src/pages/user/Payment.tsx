@@ -104,7 +104,7 @@ export default function Payment() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="card-name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cardholder Name</Label>
-                    <Input id="card-name" placeholder="John Doe" className="h-12 rounded-xl border-slate-200 focus:ring-primary/20" />
+                    <Input id="card-name" placeholder="NGUYEN VAN AN" className="h-12 rounded-xl border-slate-200 focus:ring-primary/20" />
                   </div>
                   
                   <div className="space-y-2">

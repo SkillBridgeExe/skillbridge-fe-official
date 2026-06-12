@@ -72,7 +72,11 @@ export interface CvJdMatch {
   scoring_breakdown?: ScoringBreakdown | null;
   experience_fit?: ExperienceFit | null;
   inferred_skills?: InferredSkill[];
+  /** Thước seniority khi chấm theo rubric; null = chấm theo JD dán (thước của JD). */
+  rubric_band?: RubricBand | null;
 }
+
+export type RubricBand = "intern" | "fresher" | "mid";
 
 export interface ScoringBreakdown {
   total_requirements: number;
@@ -406,6 +410,8 @@ export interface CvJdMatchParsedResponse {
   target_role: string | null;
   experience_fit?: ExperienceFit | null;
   inferred_skills?: InferredSkill[];
+  /** BE #54/#56: non-null CHỈ khi requirements_source = role_rubric (JD path không band). */
+  rubric_band?: RubricBand | null;
 }
 
 export interface CvMatchDto {
