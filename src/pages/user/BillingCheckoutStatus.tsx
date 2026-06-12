@@ -55,6 +55,20 @@ export default function BillingCheckoutStatus() {
               <div className="flex h-44 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#00AEEF]" />
               </div>
+            ) : orderQuery.isError ? (
+              // Lỗi mạng/BE ≠ "không tìm thấy đơn" — trang thanh toán không được nói dối trạng thái.
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">{t("billing.checkout.statusError")}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" className="rounded-full" onClick={() => orderQuery.refetch()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {t("billing.checkout.checkAgain")}
+                  </Button>
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link to="/billing/me">{t("billing.checkout.viewMyPlan")}</Link>
+                  </Button>
+                </div>
+              </div>
             ) : order ? (
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">

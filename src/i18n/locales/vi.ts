@@ -263,6 +263,7 @@
         target: "Đối tượng",
         continuePayment: "Tiếp tục thanh toán",
         checkAgain: "Kiểm tra lại",
+        statusError: "Không kiểm tra được trạng thái đơn — mạng hoặc máy chủ đang trục trặc. Đơn của bạn không bị mất.",
         viewMyPlan: "Xem gói của tôi",
         viewOrder: "Xem đơn",
         returnTitle: "Đang hoàn tất thanh toán",
