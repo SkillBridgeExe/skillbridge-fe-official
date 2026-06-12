@@ -33,6 +33,9 @@ export default function BillingCheckoutStatus() {
     if (order?.status !== "PAID") return;
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_USAGE });
+    // W16: BillingMe + the diagnosis quota line now read /api/me/entitlements — without this the
+    // user keeps seeing FREE limits right after upgrading until staleTime expires.
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
   }, [order?.status, queryClient]);
 
   return (

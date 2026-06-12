@@ -1,4 +1,4 @@
-import { Lightbulb, Sparkles, TrendingUp } from "lucide-react";
+import { Lightbulb, Sparkles, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useTrendsInsightQuery } from "@/hooks/use-diagnosis";
@@ -28,9 +28,9 @@ export function AiTrendsInsight({
   role?: string | null;
 }) {
   const { t } = useTranslation("diagnosis");
-  const { data, isLoading, isError } = useTrendsInsightQuery(cvId, role);
+  const { data, isLoading, isError, refetch, isRefetching } = useTrendsInsightQuery(cvId, role);
 
-  if (!cvId || isError) return null;
+  if (!cvId) return null;
 
   const insights = ((data?.insights ?? []) as Array<TrendsInsightItem | string>)
     .map((item) => (typeof item === "string" ? { title: item, detail: "" } : item))
@@ -53,6 +53,20 @@ export function AiTrendsInsight({
 
       {isLoading ? (
         <InsightSkeleton />
+      ) : isError ? (
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#9F2F2D]" />
+          <p className="min-w-0 flex-1 text-[13px] text-[#787774]">{t("aiInsight.error")}</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
+            {t("aiInsight.retry")}
+          </button>
+        </div>
       ) : !data ? (
         <div className={cn(CARD, "p-5 text-[13px] text-[#787774]")}>{t("aiInsight.missing")}</div>
       ) : (
