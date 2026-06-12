@@ -30,6 +30,12 @@
       login: "Đăng nhập",
       startFree: "Dùng thử miễn phí",
     },
+    quota402: {
+      title: "Đã đến giới hạn của gói",
+      limitReached: "Bạn đã dùng hết lượt cho tính năng này trong kỳ hiện tại.",
+      notInPlan: "Tính năng này chưa có trong gói của bạn.",
+      upgrade: "Nâng cấp",
+    },
     account: {
       myProfile: "Hồ sơ của tôi",
       userDashboard: "Bảng điều khiển",

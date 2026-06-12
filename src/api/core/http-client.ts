@@ -160,6 +160,19 @@ httpClient.interceptors.response.use(
       console.error("[HTTP] Forbidden.");
     }
 
+    // 402 = quota used up / feature not in plan. Broadcast a single event so a global
+    // listener shows one honest "upgrade" prompt, instead of each call surfacing a raw red
+    // error (the FREE cv_builder_rewrite=0 case looked like a bug). Per-component onError
+    // handlers still run; this just guarantees a consistent, on-brand quota message.
+    if (status === 402 && typeof window !== "undefined") {
+      const data = error.response?.data as { errorCode?: string; message?: string } | undefined;
+      window.dispatchEvent(
+        new CustomEvent("skillbridge:quota-exceeded", {
+          detail: { code: data?.errorCode ?? null },
+        }),
+      );
+    }
+
     if (status && status >= 500) {
       console.error("[HTTP] Server Error:", error.message);
     }
