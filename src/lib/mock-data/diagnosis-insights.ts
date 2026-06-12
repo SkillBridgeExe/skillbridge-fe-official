@@ -80,8 +80,16 @@ export const MOCK_TOP_SUMMARY: TopSummary = {
   ],
 };
 
-/** Đắp mock CHỈ cho field còn vắng trên response thật (backward-compat 2 chiều). */
+/**
+ * DEV-ONLY scaffold. In production we must NEVER inject fabricated insights into a real
+ * diagnosis: ~1 in 6 prod cv_review results lack one of these fields (older rows, degraded
+ * LLM responses, non-IT CVs that extract nothing), and the `??` fallback would then show
+ * hardcoded "React / TypeScript / 40k-LOC migration" skills and a fake "fix this first"
+ * checklist AS THE USER'S OWN analysis. The result cards already gate on field presence, so
+ * in prod a missing field simply renders nothing (honest). Mock fills only under `import.meta.env.DEV`.
+ */
 export function withMockInsights(data: CvReviewData): CvReviewData {
+  if (!import.meta.env.DEV) return data;
   return {
     ...data,
     skills_extracted: data.skills_extracted ?? MOCK_SKILLS_EXTRACTED,

@@ -691,6 +691,8 @@
       missing: "Chưa có nhận định thị trường.",
       recommendedTitle: "Kỹ năng nên bổ sung",
       trendUp: "nhu cầu tăng",
+      error: "Không tải được nhận định thị trường.",
+      retry: "Thử lại",
     },
     interviewPrep: {
       title: "Luyện phỏng vấn theo gap của bạn",
@@ -749,6 +751,8 @@
     github: {
       title: "Bằng chứng GitHub",
       subtitle: "Tuỳ chọn đối chiếu repo công khai của handle bạn cung cấp.",
+      errorTitle: "Không đối chiếu được GitHub",
+      errorDesc: "Không kết nối được GitHub lúc này — thử lại sau.",
       username: "Username GitHub",
       usernamePlaceholder: "github-handle",
       consent: "Tôi đồng ý cho SkillBridge đọc repo công khai của handle này để đối chiếu với CV.",
@@ -853,6 +857,8 @@
       subtitle: "Kỹ năng đang được tuyển nhiều mà CV bạn chưa có.",
       empty: "CV của bạn đã phủ những kỹ năng được tuyển nhiều nhất ở đây.",
       hot: "đang hot",
+      error: "Không tải được dữ liệu kỹ năng thị trường.",
+      retry: "Thử lại",
     },
     aiGate: {
       jdThin: "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",
@@ -959,7 +965,7 @@
       noCerts: "Chưa thêm chứng chỉ nào.",
       remove: "Xóa",
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
-      aiSkillSuggest: "AI gợi ý cho {{role}}",
+      commonSkillsSuggest: "Kỹ năng thường gặp cho {{role}}",
       skills: {
         technicalSkills: "Kỹ năng kỹ thuật",
         softSkills: "Kỹ năng mềm",
