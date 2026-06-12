@@ -658,6 +658,9 @@ export default {
       missing: "Missing:",
       apply: "View & apply",
       disclaimer: "Match score reflects CV–JD skill fit, not a guarantee of selection.",
+      quotaBlocked: "You have used all job-recommendation views in your current plan.",
+      error: "Could not load job recommendations.",
+      retry: "Retry",
     },
     aiInsight: {
       title: "AI market insight",

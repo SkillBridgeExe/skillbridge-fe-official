@@ -658,6 +658,9 @@
       missing: "Còn thiếu:",
       apply: "Xem & ứng tuyển",
       disclaimer: "Điểm khớp phản ánh độ phù hợp kỹ năng CV–JD, không đảm bảo trúng tuyển.",
+      quotaBlocked: "Bạn đã hết lượt xem đề xuất việc làm của gói hiện tại.",
+      error: "Không tải được đề xuất việc làm.",
+      retry: "Thử lại",
     },
     aiInsight: {
       title: "AI nhận định thị trường",

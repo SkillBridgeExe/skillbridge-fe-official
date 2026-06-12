@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { isAxiosError } from "axios";
+import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import type { JobRecommendationDto } from "@shared/api";
@@ -134,13 +136,20 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
   );
 }
 
-/** Render khi có cvId + đã login (hook tự gate). pool rỗng → empty-state; lỗi → ẩn. */
+/** Render khi có cvId + đã login (hook tự gate). pool rỗng → empty-state.
+    Lỗi KHÔNG được nuốt (`return null` cũ làm user FREE hết quota thấy trống
+    không lời giải thích): 402 → card hết lượt + CTA nâng cấp; lỗi khác → retry. */
 export function JobRecommendations({ cvId }: { cvId: string | null }) {
   const { t } = useTranslation("diagnosis");
-  const { data, isLoading, isError } = useJobRecommendationsQuery(cvId, { limit: 5 });
+  const { data, isLoading, isError, error, refetch, isRefetching } = useJobRecommendationsQuery(
+    cvId,
+    { limit: 5 },
+  );
   const recs = data?.recommendations ?? [];
 
-  if (!cvId || isError) return null;
+  if (!cvId) return null;
+
+  const quotaBlocked = isAxiosError(error) && error.response?.status === 402;
 
   return (
     <section className="mt-6 animate-in fade-in duration-500">
@@ -152,6 +161,31 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#F1F1EF] rounded-xl" />)}
+        </div>
+      ) : quotaBlocked ? (
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#956400]" />
+          <p className="min-w-0 flex-1 text-[13px] text-[#2F3437]">{t("jobs.quotaBlocked")}</p>
+          <Link
+            to="/pricing"
+            className="shrink-0 text-[13px] font-bold text-primary hover:underline"
+          >
+            {t("quota.upgradeCta")}
+          </Link>
+        </div>
+      ) : isError ? (
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#9F2F2D]" />
+          <p className="min-w-0 flex-1 text-[13px] text-[#787774]">{t("jobs.error")}</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
+            {t("jobs.retry")}
+          </button>
         </div>
       ) : recs.length === 0 ? (
         <div className={cn(CARD, "p-6 text-center")}>
