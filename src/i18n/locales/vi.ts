@@ -809,6 +809,15 @@
       exhausted: "Bạn đã dùng hết lượt chấm CV của gói hiện tại.",
       upgradeCta: "Nâng cấp",
     },
+    band: {
+      label: "Thước: {{band}}",
+      intern: "Intern",
+      fresher: "Fresher",
+      mid: "Mid-level",
+      tooltip: "Yêu cầu kỹ năng được điều chỉnh theo cấp độ này — điểm cao/thấp phải đọc cùng thước đo.",
+      jdYardstick: "Chấm theo JD bạn dán",
+      jdTooltip: "Yêu cầu lấy trực tiếp từ JD bạn cung cấp — không áp thước seniority.",
+    },
     evidence: {
       title: "Sổ bằng chứng",
       foundIn: "Tìm thấy ở",

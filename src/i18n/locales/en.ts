@@ -809,6 +809,15 @@ export default {
       exhausted: "You have used all CV reviews on your current plan.",
       upgradeCta: "Upgrade",
     },
+    band: {
+      label: "Yardstick: {{band}}",
+      intern: "Intern",
+      fresher: "Fresher",
+      mid: "Mid-level",
+      tooltip: "Skill requirements are adjusted to this seniority level — read the score against its yardstick.",
+      jdYardstick: "Scored against your pasted JD",
+      jdTooltip: "Requirements come directly from the JD you provided — no seniority yardstick applied.",
+    },
     evidence: {
       title: "Evidence ledger",
       foundIn: "Found in",

@@ -216,6 +216,8 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     scoring_breakdown: parsed?.scoring_breakdown ?? null,
     experience_fit: parsed?.experience_fit ?? null,
     inferred_skills: parsed?.inferred_skills ?? [],
+    // W17: thước chấm — null = JD path (thước của JD dán), non-null = rubric band.
+    rubric_band: parsed?.rubric_band ?? null,
   };
 }
 
