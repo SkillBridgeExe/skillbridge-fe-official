@@ -19,7 +19,7 @@ export default function AdminDashboard() {
 
   return (
     <div className={adminTheme === "dark" ? "dark" : "light"}>
-      <div className="h-screen w-full flex flex-col bg-slate-50 dark:bg-[#0b1120] overflow-hidden transition-colors text-slate-900 dark:text-slate-100">
+      <div className="h-dvh w-full flex flex-col bg-slate-50 dark:bg-[#0b1120] overflow-hidden transition-colors text-slate-900 dark:text-slate-100">
         <AdminNavbar
           toggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
           adminTheme={adminTheme}

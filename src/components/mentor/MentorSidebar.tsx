@@ -1,4 +1,4 @@
-﻿import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, CheckCircle2, Trash2, Calendar, FileText, Video, Bell, Clock, Map, BookOpen, Link, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ export default function MentorSidebar({
   onShowRecordings: _onShowRecordings
 }: MentorSidebarProps) {
   return (
-    <ScrollArea className="h-[calc(100vh-80px)] pr-4">
+    <ScrollArea className="h-[calc(100dvh-80px)] pr-4">
       <div className="space-y-6 pb-10">
         <Card className="glass border-white/50 shadow-xl rounded-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-primary to-primary/80 p-4 text-white flex items-center justify-between">

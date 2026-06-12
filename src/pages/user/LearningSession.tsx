@@ -22,7 +22,7 @@ export default function LearningSession() {
 
   return (
     <Layout hideFooter>
-      <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+      <div className="flex flex-col overflow-hidden" style={{ height: "calc(100dvh - 64px)" }}>
         {/* SessionDetail accepts the same LearningSession shape */}
         <SessionDetail session={session as LearningSessionType} />
       </div>

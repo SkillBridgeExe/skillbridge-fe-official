@@ -510,7 +510,7 @@ export default function Jobs() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-dvh bg-slate-50">
         {/* ── Hero Banner ── */}
         <div
           ref={heroRef}

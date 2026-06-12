@@ -38,7 +38,7 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
   const CurrentPageIcon = currentPage?.icon;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-dvh bg-slate-50 flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -50,7 +50,7 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
       {/* Sidebar */}
       <aside
         className={`
-            fixed top-0 left-0 h-screen w-64 
+            fixed top-0 left-0 h-dvh w-64 
             bg-white border-r border-slate-200 z-30 flex flex-col
             overflow-y-auto
             transform transition-transform duration-200

@@ -135,7 +135,7 @@ export function DocumentPreview() {
             {isReal ? t("preview.parsed") : t("preview.waiting")}
           </span>
         </CardHeader>
-        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100vh - 10rem)" }}>
+        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100dvh - 10rem)" }}>
           <div className="p-4 sm:p-6 pb-12" ref={containerRef}>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-sm">
               {!isReal || !doc ? (

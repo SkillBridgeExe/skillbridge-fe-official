@@ -372,7 +372,7 @@ export default function Interview() {
 
   return (
     <Layout>
-      <div className="flex h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex h-[calc(100dvh-80px)] overflow-hidden">
         {/* ═══════════════════════════════════════════════ */}
         {/* LEFT SIDEBAR (~20%) */}
         {/* ═══════════════════════════════════════════════ */}
