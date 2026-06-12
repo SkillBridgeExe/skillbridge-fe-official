@@ -23,6 +23,7 @@ export const QUERY_KEYS = {
   BILLING_ORDER: (orderCode: string | number) => ['billing', 'order', String(orderCode)] as const,
   BILLING_SUBSCRIPTION: ['billing', 'subscription'] as const,
   BILLING_USAGE: ['billing', 'usage'] as const,
+  BILLING_ENTITLEMENTS: ['billing', 'entitlements'] as const,
   ADMIN_BILLING_PLANS: (includeInactive: boolean) => ['admin', 'billing', 'plans', includeInactive] as const,
   ADMIN_BILLING_ORDERS: (query: object) => ['admin', 'billing', 'orders', query] as const,
   ADMIN_BILLING_SUBSCRIPTIONS: (query: object) => ['admin', 'billing', 'subscriptions', query] as const,
