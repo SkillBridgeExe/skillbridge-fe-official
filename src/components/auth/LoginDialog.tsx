@@ -264,7 +264,7 @@ export function LoginDialog({
             ease: "easeOut",
             layout: { type: "spring", stiffness: 95, damping: 18, mass: 0.85 },
           }}
-          className="relative z-10 grid h-[44rem] max-h-[calc(100vh-1rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white p-4 shadow-[0_26px_90px_rgba(14,5,37,0.42)] lg:grid-cols-2"
+          className="relative z-10 grid h-[44rem] max-h-[calc(100dvh-1rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white p-4 shadow-[0_26px_90px_rgba(14,5,37,0.42)] lg:grid-cols-2"
         >
           <button
             type="button"

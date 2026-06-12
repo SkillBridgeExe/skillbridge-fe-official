@@ -189,7 +189,7 @@ export default function Index() {
 
       <div
         ref={containerRef}
-        className="relative min-h-screen overflow-x-hidden bg-slate-50/50 text-slate-800 font-sans selection:bg-blue-500/20 selection:text-blue-900"
+        className="relative min-h-dvh overflow-x-hidden bg-slate-50/50 text-slate-800 font-sans selection:bg-blue-500/20 selection:text-blue-900"
       >
         {/* Subtle background blur meshes */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -217,7 +217,7 @@ export default function Index() {
           />
         </div>
 
-        <section className="relative min-h-[calc(100vh-76px)] flex items-center pt-24 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 lg:px-16 max-w-[1600px] mx-auto z-10">
+        <section className="relative min-h-[calc(100dvh-76px)] flex items-center pt-24 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 lg:px-16 max-w-[1600px] mx-auto z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 xl:gap-16 items-center w-full">
             
             {/* Left Column: Hero Content */}
@@ -314,7 +314,7 @@ export default function Index() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="inline-flex p-1 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm relative z-30 overflow-hidden"
+                className="inline-flex max-w-full overflow-x-auto p-1 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm relative z-30"
               >
                 {[
                   { id: "cv", label: t("hero.tabs.cv"), icon: FileText },
@@ -331,7 +331,7 @@ export default function Index() {
                         setIsAutoPlaying(false); // Stop autoplay on user click
                       }}
                       className={cn(
-                        "relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 select-none",
+                        "relative flex shrink-0 items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 select-none",
                         isActive ? "text-blue-600" : "text-slate-500 hover:text-slate-800"
                       )}
                     >
@@ -342,8 +342,8 @@ export default function Index() {
                           transition={{ type: "spring", stiffness: 380, damping: 30 }}
                         />
                       )}
-                      <Icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
-                      <span>{tab.label}</span>
+                      <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-blue-600" : "text-slate-400")} />
+                      <span className="whitespace-nowrap">{tab.label}</span>
                     </button>
                   );
                 })}

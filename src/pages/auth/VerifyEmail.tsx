@@ -64,7 +64,7 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-white to-blue-50 px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-cyan-50 via-white to-blue-50 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white/80 p-8 text-center shadow-xl border border-blue-100">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
           <span className="text-3xl">

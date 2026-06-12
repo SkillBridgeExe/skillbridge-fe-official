@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function BusinessLanding() {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+    <div className="min-h-dvh bg-slate-50 flex items-center justify-center px-6">
       <div className="max-w-xl text-center bg-white border border-slate-200 rounded-2xl p-10 shadow-sm">
         <div className="w-14 h-14 mx-auto rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-5">
           <Building2 className="w-7 h-7" />

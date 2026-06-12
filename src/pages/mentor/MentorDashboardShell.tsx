@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import MentorDashboardNavbar from "@/components/mentor/MentorDashboardNavbar";
 import MentorDashboardSidebar from "@/components/mentor/MentorDashboardSidebar";
@@ -148,7 +148,7 @@ export default function MentorDashboardShell() {
 
   return (
     <div className={mentorTheme === "dark" ? "dark" : ""}>
-      <div className="h-screen w-full flex flex-col bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 overflow-hidden transition-colors">
+      <div className="h-dvh w-full flex flex-col bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 overflow-hidden transition-colors">
         {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {mobileOpen && (
@@ -161,7 +161,7 @@ export default function MentorDashboardShell() {
               <motion.aside
                 initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed top-0 left-0 h-screen w-64 bg-white dark:bg-slate-900 z-50 lg:hidden flex flex-col"
+                className="fixed top-0 left-0 h-dvh w-64 bg-white dark:bg-slate-900 z-50 lg:hidden flex flex-col"
               >
                 <MobileSidebarContent />
               </motion.aside>

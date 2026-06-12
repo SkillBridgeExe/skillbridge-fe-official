@@ -37,7 +37,7 @@ export default function MascotShowcase() {
   const { showTip } = useMascotTip();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white p-6 md:p-10">
+    <div className="min-h-dvh bg-gradient-to-b from-sky-50 via-white to-white p-6 md:p-10">
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 text-center">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800">

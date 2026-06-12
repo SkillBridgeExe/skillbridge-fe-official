@@ -163,7 +163,7 @@ export default function Register() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
+      <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -205,7 +205,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
+    <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex items-center justify-center p-6">
       <div className="register-panel w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

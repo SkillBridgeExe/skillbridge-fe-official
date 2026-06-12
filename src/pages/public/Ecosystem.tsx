@@ -75,7 +75,7 @@ export default function Ecosystem() {
              {/* Layout: Sidebar Filter & Main Content */}
              <div className="flex flex-col lg:flex-row gap-10 items-start mt-8">
                 {/* Left Sidebar (MentorCruise style) */}
-                <div className="w-full lg:w-[280px] xl:w-[320px] flex-shrink-0 lg:sticky top-24 space-y-8 lg:max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar pr-2 pb-10 hidden md:block">
+                <div className="w-full lg:w-[280px] xl:w-[320px] flex-shrink-0 lg:sticky top-24 space-y-8 lg:max-h-[calc(100dvh-8rem)] overflow-y-auto custom-scrollbar pr-2 pb-10 hidden md:block">
                    
                    {/* Filter 1: Skills */}
                    <div className="space-y-4">

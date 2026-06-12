@@ -314,7 +314,7 @@ export default function MentorProfile() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {/* ── Search Bar Area ─────────────────────────────────────────────── */}
         <div className="bg-white border-b border-slate-100 py-6 shadow-sm">
           <div className="max-w-none w-full px-4 lg:px-10 mx-auto">

@@ -263,6 +263,7 @@ export default {
         target: "Target",
         continuePayment: "Continue payment",
         checkAgain: "Check again",
+        statusError: "Could not check the order status — network or server hiccup. Your order is not lost.",
         viewMyPlan: "View my plan",
         viewOrder: "View order",
         notFound: "Order not found.",

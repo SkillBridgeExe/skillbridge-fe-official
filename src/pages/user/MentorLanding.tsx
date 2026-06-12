@@ -60,7 +60,7 @@ export default function MentorLanding() {
   }, []);
 
   return (
-    <div ref={heroRef} className="min-h-screen bg-white font-sans">
+    <div ref={heroRef} className="min-h-dvh bg-white font-sans">
       {/* ── Navbar ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 h-16 flex items-center px-6 justify-between">
         <Link to="/" className="flex items-center gap-2">

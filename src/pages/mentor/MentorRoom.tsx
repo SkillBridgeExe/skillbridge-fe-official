@@ -25,7 +25,7 @@ export default function MentorRoom() {
   };
 
   return (
-    <div className="w-full h-screen bg-slate-950 flex flex-col p-4 relative">
+    <div className="w-full h-dvh bg-slate-950 flex flex-col p-4 relative">
       <div className="flex items-center justify-between mb-4 px-2 relative z-50">
         <Button 
           variant="ghost" 

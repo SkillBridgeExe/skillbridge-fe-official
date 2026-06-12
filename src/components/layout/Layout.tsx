@@ -17,7 +17,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
   const shouldHideFooter = hideFooter || isAppPage;
 
   return (
-    <div className="min-h-screen w-full flex flex-col font-sans bg-slate-50/30 overflow-x-hidden relative">
+    <div className="min-h-dvh w-full flex flex-col font-sans bg-slate-50/30 overflow-x-hidden relative">
       <Navbar />
       <main className={`flex-grow ${!isLanding ? 'pt-20' : ''}`}>
         {children}

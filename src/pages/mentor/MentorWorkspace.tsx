@@ -369,7 +369,7 @@ export default function MentorWorkspace() {
   );
 
   return (
-    <div className="h-[calc(100vh-130px)] lg:h-[calc(100vh-90px)]">
+    <div className="h-[calc(100dvh-130px)] lg:h-[calc(100dvh-90px)]">
       <div className="h-full flex gap-0 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         {/* Sidebar - Mentee list */}
         <div className={cn(
