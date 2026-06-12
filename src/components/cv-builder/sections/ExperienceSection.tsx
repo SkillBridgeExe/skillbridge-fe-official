@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Plus, Trash2, Sparkles, X, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import type { AiGateCode } from "@/lib/ai-input-gate";
@@ -45,8 +45,15 @@ export function ExperienceSection() {
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
+  // Số lần "Viết lại" theo từng (entry, field) → token variant để BE bỏ cache.
+  const attempts = useRef<Record<string, number>>({});
 
-  const handleAiSuggest = (entryId: string, field: "description" | "achievements", currentText: string) => {
+  const handleAiSuggest = (
+    entryId: string,
+    field: "description" | "achievements",
+    currentText: string,
+    regenerate = false,
+  ) => {
     if (!draftId) return;
     if (!currentText.trim()) {
       return toast({ title: t("builder.toastWriteTextFirst"), variant: "destructive" });
@@ -56,6 +63,9 @@ export function ExperienceSection() {
     setPendingTarget({ id: entryId, field });
     setActiveSuggestion(null);
 
+    const key = `${entryId}:${field}`;
+    const attempt = regenerate ? (attempts.current[key] = (attempts.current[key] ?? 0) + 1) : 0;
+
     aiRewrite.rewrite(
       {
         draftId,
@@ -63,6 +73,7 @@ export function ExperienceSection() {
         mode: "harvard",
         role_code: targetRole ?? undefined,
         section: "experience",
+        ...(attempt > 0 ? { variant: String(attempt) } : {}),
       },
       {
         onSuccess: (data) => {
@@ -189,7 +200,7 @@ export function ExperienceSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleAiSuggest(entryId, field, entry ? entry[field] : "")}
+                  onClick={() => handleAiSuggest(entryId, field, entry ? entry[field] : "", true)}
                   className="h-7 text-xs text-slate-500 hover:text-slate-750 hover:bg-slate-200/50"
                 >
                   {t("builder.retry")}

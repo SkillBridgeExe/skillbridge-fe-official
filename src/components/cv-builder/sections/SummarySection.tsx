@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Sparkles, Edit3, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import { assessAiInput, type AiGateCode } from "@/lib/ai-input-gate";
@@ -81,6 +81,12 @@ export function SummarySection() {
 
   const suggestRewrite = useAiRewrite();
   const generateRewrite = useAiRewrite();
+  // Đếm số lần bấm "Viết lại"/"Tạo lại" → token variant gửi cho BE để thoát cache
+  // (lần đầu = 0 → không gửi → BE cache; mỗi lần regenerate tăng → gợi ý mới).
+  const suggestAttempt = useRef(0);
+  const generateAttempt = useRef(0);
+  // Đã từng tạo tóm tắt chưa — để click kế tiếp chuyển sang "Tạo lại" (variant mới).
+  const generatedOnce = useRef(false);
   const targetRole = useDiagnosisStore((s) => s.targetRole);
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
@@ -93,7 +99,7 @@ export function SummarySection() {
         ? t("builder.aiGate.offTopic")
         : t("builder.aiGate.needContext");
 
-  const handleAiSuggest = () => {
+  const handleAiSuggest = (regenerate = false) => {
     if (!draftId) return;
     if (!summary.trim()) {
       return toast({ title: t("builder.toastWriteSummaryFirst"), variant: "destructive" });
@@ -104,6 +110,9 @@ export function SummarySection() {
     setSuggestionText(null);
     setIsFallback(false);
 
+    // "Viết lại" → tăng attempt để gửi variant mới (BE bỏ cache, sinh gợi ý khác).
+    const attempt = regenerate ? (suggestAttempt.current += 1) : suggestAttempt.current;
+
     suggestRewrite.rewrite(
       {
         draftId,
@@ -111,6 +120,7 @@ export function SummarySection() {
         mode: "harvard",
         role_code: targetRole ?? undefined,
         section: "summary",
+        ...(attempt > 0 ? { variant: String(attempt) } : {}),
       },
       {
         onSuccess: (data) => {
@@ -155,7 +165,7 @@ export function SummarySection() {
    * "Tạo tóm tắt" THẬT: gom dữ kiện đã điền → FE gate (instant) → BE rewrite
    * mode 'custom'. Không còn template giả — AI chỉ viết từ thông tin thật.
    */
-  const handleGenerate = () => {
+  const handleGenerate = (regenerate = false) => {
     setGateHint(null);
     setGenerateFallback(false);
 
@@ -168,6 +178,8 @@ export function SummarySection() {
       return setGateHint("LOCAL_ONLY");
     }
 
+    const attempt = regenerate ? (generateAttempt.current += 1) : generateAttempt.current;
+
     generateRewrite.rewrite(
       {
         draftId,
@@ -176,6 +188,7 @@ export function SummarySection() {
         instruction: GENERATE_SUMMARY_INSTRUCTION,
         role_code: targetRole ?? undefined,
         section: "summary",
+        ...(attempt > 0 ? { variant: String(attempt) } : {}),
       },
       {
         onSuccess: (data) => {
@@ -224,7 +237,7 @@ export function SummarySection() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleAiSuggest}
+              onClick={() => handleAiSuggest()}
               className="h-7 text-xs text-primary hover:bg-primary/5 hover:text-primary/90 flex items-center gap-1 px-2 py-1 shrink-0"
               disabled={suggestRewrite.isPending}
             >
@@ -310,7 +323,7 @@ export function SummarySection() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={handleAiSuggest}
+                    onClick={() => handleAiSuggest(true)}
                     className="h-7 text-xs text-slate-500 hover:text-slate-750 hover:bg-slate-200/50"
                   >
                     {t("builder.retry")}
@@ -324,7 +337,16 @@ export function SummarySection() {
 
       {summaryMode === "ai" && (
         <div className="flex justify-end gap-2">
-          <Button onClick={handleGenerate} disabled={generateRewrite.isPending} size="sm" className="bg-primary hover:bg-primary/90 text-white">
+          {/* Lần đầu = tạo (BE cache); bấm lại = tạo lại → gửi variant để ra bản khác. */}
+          <Button
+            onClick={() => {
+              handleGenerate(generatedOnce.current);
+              generatedOnce.current = true;
+            }}
+            disabled={generateRewrite.isPending}
+            size="sm"
+            className="bg-primary hover:bg-primary/90 text-white"
+          >
             <Sparkles className="w-4 h-4 mr-2" />
             {generateRewrite.isPending ? t("builder.generating") : t("builder.generateSummary")}
           </Button>

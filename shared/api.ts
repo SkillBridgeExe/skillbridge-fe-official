@@ -586,6 +586,12 @@ export interface RewriteRequest {
   role_code?: string;
   section?: BuilderSection;
   tailor_action?: TailorRewriteAction;
+  /**
+   * Token tạo-lại: lần gợi ý ĐẦU bỏ trống (BE cache — mở lại field không tốn);
+   * khi user bấm "Viết lại / Tạo lại" thì gửi giá trị thay đổi để BE bỏ cache và
+   * sinh gợi ý MỚI (temperature cao hơn) thay vì trả câu cũ. ≤16 ký tự.
+   */
+  variant?: string;
 }
 
 export interface RewriteResponse {

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Plus, Trash2, Sparkles, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import type { AiGateCode } from "@/lib/ai-input-gate";
@@ -29,6 +29,8 @@ export function ProjectsSection() {
   const [backupMap, setBackupMap] = useState<Record<string, string>>({});
 
   const aiRewrite = useAiRewrite();
+  // Số lần "Chuyển thành gạch đầu dòng" theo project id → token variant để BE bỏ cache.
+  const attempts = useRef<Record<string, number>>({});
   const targetRole = useDiagnosisStore((s) => s.targetRole);
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
@@ -62,6 +64,10 @@ export function ProjectsSection() {
     }
 
     setPendingId(id);
+    // Lần đầu cho 1 project = cache; bấm lại (kể cả sau Undo, cùng input) = variant mới.
+    const n = attempts.current[id] ?? 0;
+    attempts.current[id] = n + 1;
+
     aiRewrite.rewrite(
       {
         draftId,
@@ -70,6 +76,7 @@ export function ProjectsSection() {
         instruction: BULLETS_INSTRUCTION,
         role_code: targetRole ?? undefined,
         section: "projects",
+        ...(n > 0 ? { variant: String(n) } : {}),
       },
       {
         onSuccess: (data) => {
