@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { BarChart3, TrendingUp, CheckCircle2 } from "lucide-react";
+import { BarChart3, TrendingUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSkillGapQuery } from "@/hooks/use-diagnosis";
 
@@ -9,9 +9,9 @@ const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba
 
 export function SkillGapTrends({ cvId }: { cvId: string | null }) {
   const { t } = useTranslation("diagnosis");
-  const { data, isLoading, isError } = useSkillGapQuery(cvId, { limit: 8 });
+  const { data, isLoading, isError, refetch, isRefetching } = useSkillGapQuery(cvId, { limit: 8 });
 
-  if (!cvId || isError) return null;
+  if (!cvId) return null;
   const gap = data?.gap ?? [];
 
   return (
@@ -25,6 +25,20 @@ export function SkillGapTrends({ cvId }: { cvId: string | null }) {
       {isLoading ? (
         <div className="space-y-2">
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 bg-[#F1F1EF] rounded-lg" />)}
+        </div>
+      ) : isError ? (
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#9F2F2D]" />
+          <p className="min-w-0 flex-1 text-[13px] text-[#787774]">{t("trends.error")}</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
+            {t("trends.retry")}
+          </button>
         </div>
       ) : gap.length === 0 ? (
         <div className={cn(CARD, "p-5 flex items-center gap-3")}>

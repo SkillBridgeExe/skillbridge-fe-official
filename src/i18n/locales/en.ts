@@ -691,6 +691,8 @@ export default {
       missing: "No market insight is available yet.",
       recommendedTitle: "Recommended skills",
       trendUp: "rising demand",
+      error: "Could not load market insight.",
+      retry: "Retry",
     },
     interviewPrep: {
       title: "Practice interview for your gaps",
@@ -749,6 +751,8 @@ export default {
     github: {
       title: "GitHub evidence",
       subtitle: "Optional check against public repositories for the handle you provide.",
+      errorTitle: "Could not check GitHub",
+      errorDesc: "Couldn't reach GitHub right now — try again later.",
       username: "GitHub username",
       usernamePlaceholder: "github-handle",
       consent: "I agree to let SkillBridge read public repositories for this handle to compare them with my CV.",
@@ -853,6 +857,8 @@ export default {
       subtitle: "In-demand skills your CV doesn't show yet.",
       empty: "Your CV already covers the most in-demand skills here.",
       hot: "hot",
+      error: "Could not load market skill data.",
+      retry: "Retry",
     },
     aiGate: {
       jdThin: "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",
@@ -959,7 +965,7 @@ export default {
       noCerts: "No certifications added yet.",
       remove: "Remove",
       skillInputPlaceholder: "Type a skill and press Enter...",
-      aiSkillSuggest: "AI suggestions for {{role}}",
+      commonSkillsSuggest: "Common skills for {{role}}",
       skills: {
         technicalSkills: "Technical Skills",
         softSkills: "Soft Skills",

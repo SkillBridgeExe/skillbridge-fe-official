@@ -1,11 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { X, Sparkles, Plus, Check } from "lucide-react";
+import { X, Lightbulb, Plus, Check } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
 
+// Curated reference lists per role (NOT AI — a static, honest "common skills" helper).
 const SUGGESTIONS = {
   "Business Analyst": ["Requirement Gathering", "User Story", "Wireframing", "SRS Documentation", "UAT", "Data Analysis", "SQL", "Figma", "Jira"],
   "Frontend Developer": ["React", "TypeScript", "Tailwind CSS", "Next.js", "Redux", "HTML/CSS", "Figma to HTML", "Git"],
@@ -42,7 +43,7 @@ export function SkillsSection() {
       {suggestions.length > 0 && (
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Sparkles className="w-3.5 h-3.5" /> {t("builder.aiSkillSuggest", { role: targetPosition })}
+            <Lightbulb className="w-3.5 h-3.5" /> {t("builder.commonSkillsSuggest", { role: targetPosition })}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {suggestions.map((s) => {

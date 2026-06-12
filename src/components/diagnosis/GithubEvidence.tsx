@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { useGithubEvidenceMutation } from "@/hooks/use-diagnosis";
 import { ENABLE_GITHUB_EVIDENCE } from "@/lib/runtime-config";
 import type { CanonicalCvDocument, GithubEvidenceResponse, GithubSkillEvidence } from "@shared/api";
@@ -20,6 +21,7 @@ export function GithubEvidence({
   document?: CanonicalCvDocument;
 }) {
   const { t, i18n } = useTranslation("diagnosis");
+  const { toast } = useToast();
   const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
   const prefill = useMemo(() => extractGithubUsername(document), [document]);
   const [username, setUsername] = useState(prefill);
@@ -37,7 +39,15 @@ export function GithubEvidence({
     if (!canSubmit) return;
     mutation.mutate(
       { cvId, username: normalizedUsername, lang },
-      { onSuccess: (result) => setShowForm(result.available !== true) },
+      {
+        onSuccess: (result) => setShowForm(result.available !== true),
+        onError: (err: Error) =>
+          toast({
+            title: t("github.errorTitle"),
+            description: err?.message || t("github.errorDesc"),
+            variant: "destructive",
+          }),
+      },
     );
   };
 
