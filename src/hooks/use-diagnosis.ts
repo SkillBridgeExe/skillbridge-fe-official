@@ -4,16 +4,22 @@ import {
   analyzeCvWithJd,
   compareJdForCv,
   getDiagnosisHistory,
+  getGapReport,
+  getGithubEvidence,
+  getInterviewPlan,
   getJobRecommendations,
   getSkillGap,
   getTrendsInsight,
   loadCvFromHistory,
   reanalyzeCv,
+  rewriteTailorBullet,
 } from "@/services/diagnosis.service";
 import type { CvListQuery } from "@/api/cv/list";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
+import { ENABLE_DIAGNOSIS_ADDONS, ENABLE_GITHUB_EVIDENCE } from "@/lib/runtime-config";
 import { useAuthStore } from "@/store/useAuthStore";
+import type { TailorAction } from "@shared/api";
 
 /** Chấm CV (không JD) — POST /api/cvs thật, trả { cvId, review }. */
 export function useAnalyzeCvMutation() {
@@ -72,7 +78,7 @@ export function useJobRecommendationsQuery(
   query: JobRecommendationsQuery = {},
 ) {
   const canUseApi = useAuthStore(
-    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+    (state) => state.isAuthenticated && Boolean(localStorage.getItem("accessToken")),
   );
 
   return useQuery({
@@ -86,7 +92,7 @@ export function useJobRecommendationsQuery(
 /** Kỹ năng thị trường cần mà CV thiếu (skill-gap trends theo role). */
 export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {}) {
   const canUseApi = useAuthStore(
-    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+    (state) => state.isAuthenticated && Boolean(localStorage.getItem("accessToken")),
   );
 
   return useQuery({
@@ -100,7 +106,7 @@ export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {})
 /** AI insight tá»« trends endpoint cho CV hiá»‡n táº¡i. */
 export function useTrendsInsightQuery(cvId: string | null, role?: string | null) {
   const canUseApi = useAuthStore(
-    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+    (state) => state.isAuthenticated && Boolean(localStorage.getItem("accessToken")),
   );
 
   return useQuery({
@@ -108,5 +114,59 @@ export function useTrendsInsightQuery(cvId: string | null, role?: string | null)
     queryFn: () => getTrendsInsight({ cvId: cvId!, role, limit: 5 }),
     enabled: Boolean(cvId) && canUseApi,
     staleTime: 10 * 60_000,
+  });
+}
+
+export function useInterviewPlanQuery(
+  cvId: string | null,
+  role?: string | null,
+  lang?: "vi" | "en",
+) {
+  const canUseApi = useAuthStore(
+    (state) => state.isAuthenticated && Boolean(localStorage.getItem("accessToken")),
+  );
+
+  return useQuery({
+    queryKey: ["interview-plan", cvId, role ?? "none", lang ?? "auto"],
+    queryFn: () => getInterviewPlan({ cvId: cvId!, role: role!, lang }),
+    enabled: ENABLE_DIAGNOSIS_ADDONS && Boolean(cvId) && Boolean(role) && canUseApi,
+    staleTime: 10 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useGapReportQuery(matchId?: string | null, lang?: "vi" | "en") {
+  const canUseApi = useAuthStore(
+    (state) => state.isAuthenticated && Boolean(localStorage.getItem("accessToken")),
+  );
+
+  return useQuery({
+    queryKey: ["gap-report", matchId ?? "none", lang ?? "auto"],
+    queryFn: () => getGapReport({ matchId: matchId!, lang }),
+    enabled: ENABLE_DIAGNOSIS_ADDONS && Boolean(matchId) && canUseApi,
+    staleTime: 10 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useGithubEvidenceMutation() {
+  return useMutation({
+    mutationFn: (params: Parameters<typeof getGithubEvidence>[0]) => {
+      if (!ENABLE_GITHUB_EVIDENCE) {
+        throw new Error("GitHub evidence API is disabled.");
+      }
+      return getGithubEvidence(params);
+    },
+    retry: false,
+  });
+}
+
+export function useTailorRewriteMutation() {
+  return useMutation({
+    mutationFn: ({ cvId, text, action }: { cvId: string; text: string; action: TailorAction }) =>
+      rewriteTailorBullet({ cvId, text, action }),
+    retry: false,
   });
 }

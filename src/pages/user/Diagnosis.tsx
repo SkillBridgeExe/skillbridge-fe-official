@@ -44,7 +44,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
   const {
-    step, isAnalyzing, hasActivatedJdMode, reviewData,
+    step, isAnalyzing, hasActivatedJdMode,
     targetStep,
     setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
     setStep
@@ -58,9 +58,10 @@ export default function Diagnosis() {
   // Handle initialization from builder and mode parameter
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const navState = location.state as { source?: string; cvId?: string } | null;
+    const navState = location.state as { source?: string; cvId?: string; cvName?: string } | null;
     const source = params.get("source") || navState?.source;
     const cvId = params.get("cvId") || navState?.cvId;
+    const cvName = params.get("cvName") || navState?.cvName;
     const mode = params.get("mode");
     
     if (mode === "builder") {
@@ -69,16 +70,16 @@ export default function Diagnosis() {
       setIsFromBuilder(true);
       if (cvId) setBuilderCvId(cvId);
       // Mocking the builder CV name since we don't have a real backend to fetch it from yet
-      setBuilderCvName("Generated_CV.pdf");
+      setBuilderCvName(cvName || "CV Builder draft");
       setStep("input");
     } else {
       // User came here without source=builder, e.g. from homepage "Scan my CV"
       // Clear builder state so we don't persist it inappropriately
       clearBuilderState();
       // Reset to input step when navigating fresh (e.g. clicking nav link)
-      if (!reviewData) setStep("input");
+      if (!useDiagnosisStore.getState().reviewData) setStep("input");
     }
-  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState, setStep, reviewData]);
+  }, [location, setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState, setStep]);
 
   /* ── Honest elapsed timer ── */
   const [elapsed, setElapsed] = useState(0);
@@ -141,7 +142,6 @@ export default function Diagnosis() {
             // Seeded từ CV đã chẩn đoán → đẩy ngay nội dung parse vào draft vừa tạo
             // để "Download CV" (render-pdf) có dữ liệu mà không phải chờ user chỉnh.
             if (builder.seededFromDiagnosis) {
-              builder.setSeededFromDiagnosis(false);
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(useCvBuilderStore.getState()),

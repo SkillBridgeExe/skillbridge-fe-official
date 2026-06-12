@@ -60,7 +60,7 @@ export interface RadarMetric {
 }
 
 export interface CvJdMatch {
-  /** Id match đã persist trên BE — chìa khóa GET /api/cv-matches/:matchId/gap-report. */
+  matchId?: string;
   match_id?: string | null;
   matchScore: number;
   summary: string;
@@ -560,7 +560,14 @@ export interface EvaluateSectionResponse {
   missing: string[];
 }
 
-export type RewriteMode = "harvard" | "translate" | "custom";
+export type RewriteMode = "harvard" | "translate" | "custom" | "tailor";
+
+export interface TailorRewriteAction {
+  action_type: "emphasize" | "deepen_wording";
+  skill_display: string;
+  cv_level?: number | null;
+  required_level?: number | null;
+}
 
 export interface RewriteRequest {
   /** 1 field text duy nhất (1 bullet / 1 đoạn summary). */
@@ -572,6 +579,7 @@ export interface RewriteRequest {
   instruction?: string;
   role_code?: string;
   section?: BuilderSection;
+  tailor_action?: TailorRewriteAction;
 }
 
 export interface RewriteResponse {
@@ -644,8 +652,30 @@ export interface TrendsInsightResponse {
   recommended_skills: TrendsRecommendedSkill[];
 }
 
-// ── Gap Report (GET /api/cv-matches/:matchId/gap-report — BE #43/#49) ───────
-// Mirror 1-1 của SkillBridgeGapReport (skillbridge-ai/src/modules/gap-report).
+// Diagnosis add-ons (W11/W12/W13)
+export type InterviewFocusType = "gap_probe" | "depth_probe" | "evidence_probe" | "strength_showcase";
+
+export interface InterviewPlanItem {
+  skill_canonical: string;
+  display_name: string;
+  focus_type: InterviewFocusType;
+  reason: string;
+  difficulty: "foundation" | "applied";
+  template_question: string;
+  question: string;
+  good_answer_hints: string[];
+}
+
+export interface InterviewPlanResponse {
+  ai_request_id: string;
+  target_role: string;
+  language: "vi" | "en";
+  items: InterviewPlanItem[];
+  llm_enhanced: boolean;
+  token_usage: number;
+}
+
+export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";
 
 export interface GapEvidenceItem {
   skill_canonical: string;
@@ -676,18 +706,21 @@ export interface GapSeniorityBlock {
 }
 
 export interface TailorActionDto {
-  action_type: string;
+  action_type: TailorActionType;
   skill_canonical: string;
   display_name: string;
-  /** Deterministic, localized, mang số liệu THẬT (jd_count/cv_count/levels). */
   why: string;
-  /** true → FE được mời "Viết lại với AI" (rewrite mode `tailor`). */
   rewrite_eligible: boolean;
   anchor: { kind: string; ref: string } | null;
   jd_importance: string | null;
   jd_count: number | null;
   cv_count: number | null;
+  cv_level?: number | null;
+  required_level?: number | null;
 }
+
+export type TailorAction = TailorActionDto;
+export type MarketPosition = "niche" | "common" | "standard";
 
 export interface JdMarketSkillDto {
   skill_canonical: string;
@@ -696,9 +729,11 @@ export interface JdMarketSkillDto {
   pct_of_postings: number;
   posting_count: number;
   trend_delta: number | null;
-  position: "niche" | "common" | "standard";
+  position: MarketPosition;
   why: string;
 }
+
+export type JdMarketSkill = JdMarketSkillDto;
 
 export interface ImpliedSkillDto {
   skill_canonical: string;
@@ -706,10 +741,11 @@ export interface ImpliedSkillDto {
   pct_of_postings: number;
   posting_count: number;
   trend_delta: number | null;
-  /** true = CV đã có (matched ∪ partial ∪ bonus). */
   covered: boolean;
   why: string;
 }
+
+export type ImpliedSkill = ImpliedSkillDto;
 
 export type JdMarketPositionDto =
   | {
@@ -721,6 +757,8 @@ export type JdMarketPositionDto =
       implied: ImpliedSkillDto[];
     }
   | { available: false; reason: "NO_ROLE" | "NO_SNAPSHOT" };
+
+export type JdMarketPosition = JdMarketPositionDto;
 
 export interface GapReportDto {
   target_role: string | null;
@@ -740,9 +778,39 @@ export interface GapReportDto {
   recommended_actions: TailorActionDto[];
   market_trend_gaps: ImpliedSkillDto[] | null;
   jd_market_position: JdMarketPositionDto;
+  generated_with_ledger?: boolean;
 }
 
-// ── Entitlements (GET /api/me/entitlements — BE #49) ────────────────────────
+export type GapReportResponse = GapReportDto;
+
+export interface GithubRepoRef {
+  name: string;
+  url: string;
+  pushed_year: number | null;
+}
+
+export interface GithubSkillEvidence {
+  skill_canonical: string;
+  display_name: string;
+  repos: GithubRepoRef[];
+  repo_count: number;
+  most_recent_year: number | null;
+  why: string;
+}
+
+export type GithubEvidenceResponse =
+  | {
+      available: true;
+      username: string;
+      analyzed_repo_count: number;
+      cv_skill_join: boolean;
+      corroborated: GithubSkillEvidence[];
+      github_only: GithubSkillEvidence[];
+    }
+  | {
+      available: false;
+      reason: "CONSENT_REQUIRED" | "INVALID_USERNAME" | "USER_NOT_FOUND" | "RATE_LIMITED" | "FETCH_FAILED";
+    };
 
 export interface MeEntitlementDto {
   feature: string;

@@ -577,7 +577,6 @@ export function LoginDialog({
                                 variant: "destructive",
                               });
                             }}
-                            useOneTap
                             theme="outline"
                             size="large"
                             shape="rectangular"

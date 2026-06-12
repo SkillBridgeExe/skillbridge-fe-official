@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
@@ -457,8 +458,15 @@ export function DiagnosisStep3Results() {
 
       {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
 
-      {/* Gap Report hợp nhất (BE #43/#49) — chỉ khi match đã persist trên BE */}
-      {isJdMode && jdMatch?.match_id && <GapReportCard matchId={jdMatch.match_id} />}
+      {isJdMode && (
+        <TailorChecklist
+          matchId={jdMatch?.matchId}
+          cvId={lastCvId}
+          document={reviewData?.document}
+        />
+      )}
+
+      {isJdMode && jdMatch?.matchId && <GapReportCard matchId={jdMatch.matchId} />}
 
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>

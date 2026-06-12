@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
+import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export function CvBuilderHeader() {
   const { t } = useTranslation("diagnosis");
@@ -14,8 +16,10 @@ export function CvBuilderHeader() {
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
   const draftId = useCvBuilderStore((s) => s.draftId);
+  const seededFromDiagnosis = useCvBuilderStore((s) => s.seededFromDiagnosis);
   const title = useCvBuilderStore((s) => s.fullName); // sử dụng fullName làm title CV hoặc mặc định
   const renderPdfMutation = useRenderBuilderPdfMutation();
+  const analyzeCvMutation = useAnalyzeCvMutation();
 
   const handleSaveDraft = () => {
     if (triggerSaveRef.current) {
@@ -62,12 +66,69 @@ export function CvBuilderHeader() {
     });
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!draftId) return;
 
     // 1. Flush changes trước
     if (triggerSaveRef.current) {
       triggerSaveRef.current();
+    }
+
+    {
+      const diagnosisStore = useDiagnosisStore.getState();
+
+      if (seededFromDiagnosis && diagnosisStore.reviewData) {
+        diagnosisStore.setStep("cv-review");
+        return;
+      }
+
+      diagnosisStore.setIsFromBuilder(true);
+      diagnosisStore.setBuilderCvId(draftId);
+      diagnosisStore.setBuilderCvName(title || "CV Builder draft");
+
+      if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
+        diagnosisStore.setStep("input");
+        navigate(`/diagnosis?source=builder&cvId=${encodeURIComponent(draftId)}`, {
+          state: {
+            source: "builder",
+            cvId: draftId,
+            cvName: title || "CV Builder draft",
+          },
+        });
+        return;
+      }
+
+      diagnosisStore.setHasActivatedJdMode(false);
+      diagnosisStore.setAnalysisMode("cv-only");
+      diagnosisStore.setApiError(null);
+      diagnosisStore.setReviewData(null);
+      diagnosisStore.setTargetStep("cv-review");
+      diagnosisStore.setLoadingProgress(0);
+      diagnosisStore.setLoadingMsgIdx(0);
+      diagnosisStore.setIsAnalyzing(true);
+
+      try {
+        const { cvId, review } = await analyzeCvMutation.mutateAsync({
+          builderCvId: draftId,
+          targetRole: diagnosisStore.targetRole,
+          consentAccepted: diagnosisStore.consentAccepted,
+        });
+        diagnosisStore.setLastCvId(cvId);
+        diagnosisStore.setReviewData(review);
+        diagnosisStore.setStep("cv-review");
+      } catch (error) {
+        const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
+        diagnosisStore.setApiError(message);
+        toast({
+          title: t("upload.toastAnalysisFailedTitle"),
+          description: message,
+          variant: "destructive",
+        });
+      } finally {
+        diagnosisStore.setIsAnalyzing(false);
+        diagnosisStore.setLoadingProgress(0);
+      }
+      return;
     }
 
     // 2. Set diagnosis store values
@@ -148,9 +209,14 @@ export function CvBuilderHeader() {
               onClick={handleAnalyze}
               size="sm"
               className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md"
+              disabled={analyzeCvMutation.isPending}
             >
-              <BrainCircuit className="w-4 h-4" />
-              <span>{t("builder.analyzeCv")}</span>
+              {analyzeCvMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <BrainCircuit className="w-4 h-4" />
+              )}
+              <span>{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
             </Button>
           </>
         )}

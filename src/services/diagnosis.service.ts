@@ -11,10 +11,16 @@ import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
-import { getGapReportApi } from "@/api/cv/gap-report";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
+import {
+  getGapReportApi,
+  getGithubEvidenceApi,
+  getInterviewPlanApi,
+  type DiagnosisLang,
+} from "@/api/cv/diagnosis-addons";
+import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
 import type {
@@ -27,8 +33,13 @@ import type {
   CvListItemDto,
   CvMatchDto,
   CvReviewData,
+  GapReportResponse,
+  GithubEvidenceResponse,
+  InterviewPlanResponse,
   Paginated,
+  RewriteResponse,
   SkillMatchItem,
+  TailorAction,
 } from "@shared/api";
 
 // ── Input/Output của service ────────────────────────────────────────
@@ -184,7 +195,7 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   );
 
   return {
-    // Giữ id match đã persist — Gap Report (BE #49) cần nó; trước đây mapper vứt mất.
+    matchId: match.id,
     match_id: match.id,
     matchScore,
     // Summary thuần số liệu BE — không bịa nhận định.
@@ -318,16 +329,65 @@ export async function getTrendsInsight(query: TrendsInsightQuery) {
 }
 
 /** Tải file CV gốc đã upload (GET /api/cvs/:id/file) — trả Blob để UI tải xuống. */
+export async function getInterviewPlan({
+  cvId,
+  role,
+  lang,
+}: {
+  cvId: string;
+  role: string;
+  lang?: DiagnosisLang;
+}): Promise<InterviewPlanResponse> {
+  requireSession();
+  return getInterviewPlanApi(cvId, role, lang);
+}
+
+export async function getGapReport(
+  input: { matchId: string; lang?: DiagnosisLang } | string,
+  fallbackLang: DiagnosisLang = "vi",
+): Promise<GapReportResponse> {
+  requireSession();
+  const matchId = typeof input === "string" ? input : input.matchId;
+  const lang = typeof input === "string" ? fallbackLang : input.lang;
+  return getGapReportApi(matchId, lang);
+}
+
+export async function getGithubEvidence({
+  cvId,
+  username,
+  lang,
+}: {
+  cvId: string;
+  username: string;
+  lang?: DiagnosisLang;
+}): Promise<GithubEvidenceResponse> {
+  requireSession();
+  return getGithubEvidenceApi(cvId, username, lang);
+}
+
+export async function rewriteTailorBullet({
+  cvId,
+  text,
+  action,
+}: {
+  cvId: string;
+  text: string;
+  action: TailorAction;
+}): Promise<RewriteResponse> {
+  requireSession();
+  return rewriteFieldApi(cvId, {
+    text,
+    mode: "tailor",
+    tailor_action: {
+      action_type: action.action_type === "deepen_wording" ? "deepen_wording" : "emphasize",
+      skill_display: action.display_name,
+      cv_level: action.cv_level,
+      required_level: action.required_level,
+    },
+  });
+}
+
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);
-}
-
-/**
- * Báo cáo gap hợp nhất trên match đã persist (GET /api/cv-matches/:matchId/gap-report).
- * KHÔNG tốn quota (đọc kết quả đã lưu); matchId lấy từ jdMatch.match_id của lần match.
- */
-export async function getGapReport(matchId: string, lang: "vi" | "en" = "vi") {
-  requireSession();
-  return getGapReportApi(matchId, lang);
 }

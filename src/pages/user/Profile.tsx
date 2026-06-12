@@ -13,6 +13,8 @@ import {
   BookOpen,
   Briefcase,
   Calendar,
+  CreditCard,
+  Gauge,
   Linkedin,
   Github,
   Globe,
@@ -37,6 +39,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { QUERY_KEYS } from "@/constants/app";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { formatDate, StatusBadge } from "@/lib/billing-ui";
+import { getMySubscription, getMyUsage } from "@/services/billing.service";
 import {
   deleteMyAvatar,
   getSafeAvatarUrl,
@@ -49,6 +53,7 @@ import {
   validateAvatarFile,
 } from "@/services/user-profile.service";
 import { useAuthStore } from "@/store/useAuthStore";
+import type { EntitlementFeatureDto } from "@/api/billing";
 import type { UserSkillDto } from "@/api/user/skills";
 
 interface ProfileFormState {
@@ -62,6 +67,18 @@ interface ProfileFormState {
   linkedinUrl: string;
   portfolioUrl: string;
 }
+
+type CompletenessTipField =
+  | "avatar"
+  | "displayName"
+  | "targetJob"
+  | "university"
+  | "major"
+  | "experienceYears"
+  | "careerGoal"
+  | "githubUrl"
+  | "linkedinUrl"
+  | "portfolioUrl";
 
 const EMPTY_PROFILE_FORM: ProfileFormState = {
   displayName: "",
@@ -142,6 +159,146 @@ const LevelSelector = ({ value, onChange }: { value: number; onChange: (val: num
   );
 };
 
+function getUsagePercent(feature: Pick<EntitlementFeatureDto, "limit" | "used" | "unlimited">) {
+  if (feature.unlimited) return 100;
+  if (feature.limit <= 0) return 0;
+  return Math.min(100, Math.round((feature.used / feature.limit) * 100));
+}
+
+function formatFeatureName(value: string) {
+  return value
+    .replace(/^cv_/, "CV ")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function pickProfileBillingFeatures(features: EntitlementFeatureDto[]) {
+  const priority = ["cv_review", "cv_upload", "cv_jd_match", "roadmap_generate", "interview_session"];
+  return [...features]
+    .sort((a, b) => {
+      const aIndex = priority.indexOf(a.featureKey);
+      const bIndex = priority.indexOf(b.featureKey);
+      return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+    })
+    .slice(0, 4);
+}
+
+function BillingProfilePanel({
+  subscription,
+  features,
+  isLoading,
+  t,
+}: {
+  subscription: { planCode: string; status: string; currentPeriodStart: string; currentPeriodEnd: string } | null | undefined;
+  features: EntitlementFeatureDto[];
+  isLoading: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const visibleFeatures = useMemo(() => pickProfileBillingFeatures(features), [features]);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/40">
+      <div className="border-b border-slate-100 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-poppins text-lg font-black text-slate-900">
+              {t("profile.billingTitle")}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">{t("profile.billingDesc")}</p>
+          </div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-[#00AEEF]">
+            <CreditCard className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4 p-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            <div className="h-16 rounded-2xl bg-slate-100" />
+            <div className="grid grid-cols-2 gap-2">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="h-16 rounded-2xl bg-slate-100" />
+              ))}
+            </div>
+          </div>
+        ) : subscription ? (
+          <>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {t("profile.currentPlan")}
+                  </p>
+                  <p className="mt-1 truncate font-poppins text-2xl font-black leading-none text-slate-950">
+                    {subscription.planCode}
+                  </p>
+                </div>
+                <StatusBadge status={subscription.status} />
+              </div>
+              <p className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold leading-5 text-slate-500">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-[#00AEEF]" />
+                <span className="truncate">
+                  {formatDate(subscription.currentPeriodStart)} - {formatDate(subscription.currentPeriodEnd)}
+                </span>
+              </p>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  {t("profile.usageOverview")}
+                </p>
+                <Gauge className="h-4 w-4 text-[#00AEEF]" />
+              </div>
+              {visibleFeatures.length ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {visibleFeatures.map((feature) => (
+                    <div key={feature.featureKey} className="rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm">
+                      <p className="truncate text-[11px] font-black text-slate-800" title={feature.featureKey}>
+                        {t(`billing.pricing.features.${feature.featureKey}`, {
+                          defaultValue: formatFeatureName(feature.featureKey),
+                        })}
+                      </p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-[#00AEEF]" style={{ width: `${getUsagePercent(feature)}%` }} />
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[10px] font-bold text-slate-500">
+                        <span>{feature.used}</span>
+                        <span>{feature.unlimited ? t("billing.common.unlimited") : feature.limit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs font-semibold text-slate-500">
+                  {t("billing.me.emptyDesc")}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
+            <p className="font-bold text-slate-900">{t("profile.noBillingPlan")}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{t("profile.noBillingDesc")}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" className="h-10 rounded-xl border-slate-200 text-xs font-bold">
+            <Link to="/billing/me">{t("profile.viewBilling")}</Link>
+          </Button>
+          <Button asChild className="h-10 rounded-xl bg-[#00AEEF] text-xs font-bold text-white hover:bg-[#049bd7]">
+            <Link to="/pricing">
+              {t("profile.upgradePlan")}
+              <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
@@ -150,6 +307,7 @@ export default function Profile() {
   const [form, setForm] = useState<ProfileFormState>(EMPTY_PROFILE_FORM);
   const [skillsDraft, setSkillsDraft] = useState<UserSkillDto[]>([]);
   const [isEditingSkills, setIsEditingSkills] = useState(false);
+  const [activeAccountTab, setActiveAccountTab] = useState("personal");
 
   const profileQuery = useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
@@ -164,6 +322,16 @@ export default function Profile() {
   const skillsQuery = useQuery({
     queryKey: QUERY_KEYS.USER_SKILLS,
     queryFn: getMySkills,
+  });
+
+  const billingSubscriptionQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION,
+    queryFn: getMySubscription,
+  });
+
+  const billingUsageQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_USAGE,
+    queryFn: getMyUsage,
   });
 
   useEffect(() => {
@@ -204,6 +372,12 @@ export default function Profile() {
     avatarQuery.data ||
     getSafeAvatarUrl(profileQuery.data?.avatarUrl) ||
     getSafeAvatarUrl(currentUser?.avatar);
+  const billingSubscription = billingSubscriptionQuery.data;
+  const billingUsage = billingUsageQuery.data;
+  const billingFeatures = billingUsage?.features ?? billingSubscription?.features ?? [];
+  const currentPlanLabel = billingSubscriptionQuery.isLoading
+    ? t("profile.planLoading")
+    : billingSubscription?.planCode || t("profile.noPlanShort");
 
   const completeness = useMemo(() => {
     let score = 0;
@@ -221,7 +395,7 @@ export default function Profile() {
   }, [form, avatarSrc]);
 
   const completenessTips = useMemo(() => {
-    const tips: { value: number; field: string }[] = [];
+    const tips: { value: number; field: CompletenessTipField }[] = [];
     if (!avatarSrc) tips.push({ value: 5, field: "avatar" });
     if (!form.displayName?.trim()) tips.push({ value: 15, field: "displayName" });
     if (!form.targetJob?.trim()) tips.push({ value: 15, field: "targetJob" });
@@ -422,6 +596,10 @@ export default function Profile() {
                   <Badge className="bg-sky-50 text-[#00AEEF] hover:bg-sky-55 border border-sky-100 px-2.5 py-0.5 font-bold text-[10px] uppercase rounded-full tracking-wider">
                     {currentUser?.role?.toUpperCase()}
                   </Badge>
+                  <Badge className="gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#00AEEF] hover:bg-cyan-50">
+                    <CreditCard className="h-3 w-3" />
+                    {currentPlanLabel}
+                  </Badge>
                 </div>
                 <p className="text-slate-500 text-sm flex items-center justify-center sm:justify-start gap-1.5 font-semibold">
                   <Mail className="h-3.5 w-3.5 text-slate-400" />
@@ -475,7 +653,7 @@ export default function Profile() {
                       {completenessTips.map((tip) => (
                         <div key={tip.field} className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
                           <span className="text-slate-650 font-medium">
-                            {t(`profile.completenessTips.${tip.field}` as any)}
+                            {t(`profile.completenessTips.${tip.field}`)}
                           </span>
                           <span className="text-[#00AEEF] font-bold">+{tip.value}%</span>
                         </div>
@@ -668,8 +846,8 @@ export default function Profile() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <Tabs defaultValue="personal" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 bg-slate-50 p-1 rounded-2xl h-12 mb-6 border border-slate-100">
+                <Tabs value={activeAccountTab} onValueChange={setActiveAccountTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 bg-slate-50 p-1 rounded-2xl h-auto mb-6 border border-slate-100 md:grid-cols-4">
                     <TabsTrigger 
                       value="personal" 
                       className="rounded-xl font-bold py-2 transition-all text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs md:text-sm"
@@ -687,6 +865,12 @@ export default function Profile() {
                       className="rounded-xl font-bold py-2 transition-all text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs md:text-sm"
                     >
                       {t("profile.tabSocials")}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="billing"
+                      className="rounded-xl font-bold py-2 transition-all text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-xs md:text-sm"
+                    >
+                      {t("profile.tabBilling")}
                     </TabsTrigger>
                   </TabsList>
 
@@ -893,18 +1077,29 @@ export default function Profile() {
                       </div>
                     </div>
                   </TabsContent>
+
+                  <TabsContent value="billing" className="outline-none mt-0">
+                    <BillingProfilePanel
+                      subscription={billingSubscription}
+                      features={billingFeatures}
+                      isLoading={billingSubscriptionQuery.isLoading || billingUsageQuery.isLoading}
+                      t={t}
+                    />
+                  </TabsContent>
                 </Tabs>
 
                 <div className="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-slate-100">
-                  <Button
-                    type="button"
-                    onClick={() => saveProfileMutation.mutate()}
-                    disabled={saveProfileMutation.isPending}
-                    className="h-11 rounded-xl bg-[#00AEEF] px-6 font-bold text-white hover:bg-[#049bd7] transition-all text-xs"
-                  >
-                    <Save className="mr-1.5 h-4 w-4" />
-                    {saveProfileMutation.isPending ? t("profile.saving") : t("profile.saveProfile")}
-                  </Button>
+                  {activeAccountTab !== "billing" && (
+                    <Button
+                      type="button"
+                      onClick={() => saveProfileMutation.mutate()}
+                      disabled={saveProfileMutation.isPending}
+                      className="h-11 rounded-xl bg-[#00AEEF] px-6 font-bold text-white hover:bg-[#049bd7] transition-all text-xs"
+                    >
+                      <Save className="mr-1.5 h-4 w-4" />
+                      {saveProfileMutation.isPending ? t("profile.saving") : t("profile.saveProfile")}
+                    </Button>
+                  )}
                   <Button asChild variant="outline" className="h-11 rounded-xl px-6 border-slate-200 hover:bg-slate-55 transition-all text-xs">
                     <Link to="/dashboard">
                       <ShieldCheck className="mr-1.5 h-4 w-4 text-[#00AEEF]" />

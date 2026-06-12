@@ -12,6 +12,8 @@
 interface AppConfig {
   API_URL?: string;
   GOOGLE_CLIENT_ID?: string;
+  ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
+  ENABLE_GITHUB_EVIDENCE?: string | boolean;
 }
 
 const runtime: AppConfig =
@@ -28,3 +30,19 @@ export const GOOGLE_CLIENT_ID: string =
 /** API base URL. Empty string = same-origin `/api` (nginx prod / Vite dev proxy). */
 export const API_URL: string =
   runtime.API_URL || import.meta.env.VITE_API_URL || "";
+
+function isEnabled(value: string | boolean | undefined): boolean {
+  return value === true || value === "true" || value === "1";
+}
+
+/**
+ * Optional W11/W12/W13 diagnosis APIs are behind flags because older BE builds
+ * return 404 for these routes. Enable when the matching backend endpoints are live.
+ */
+export const ENABLE_DIAGNOSIS_ADDONS = isEnabled(
+  runtime.ENABLE_DIAGNOSIS_ADDONS || import.meta.env.VITE_ENABLE_DIAGNOSIS_ADDONS,
+);
+
+export const ENABLE_GITHUB_EVIDENCE = isEnabled(
+  runtime.ENABLE_GITHUB_EVIDENCE || import.meta.env.VITE_ENABLE_GITHUB_EVIDENCE,
+);
