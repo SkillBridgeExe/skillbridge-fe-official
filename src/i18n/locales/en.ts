@@ -30,6 +30,12 @@ export default {
       login: "Login",
       startFree: "Start Free",
     },
+    quota402: {
+      title: "You've hit your plan limit",
+      limitReached: "You've used all of this feature's quota for the current period.",
+      notInPlan: "This feature isn't included in your plan.",
+      upgrade: "Upgrade",
+    },
     account: {
       myProfile: "My Profile",
       userDashboard: "User Dashboard",

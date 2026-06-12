@@ -12,6 +12,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { MascotOverlay } from "@/components/mascot/MascotOverlay";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import { QuotaUpgradeListener } from "@/components/billing/QuotaUpgradeListener";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/query-client";
 import * as Pages from "@/routes/lazy-pages";
@@ -33,6 +34,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <QuotaUpgradeListener />
         <MascotOverlay />
         <AuthBootstrap />
         <BrowserRouter>
