@@ -233,7 +233,7 @@ export async function analyzeCv({
   requireSession();
 
   const dto = builderCvId
-    ? await reRunCvReviewApi(builderCvId)
+    ? await reRunCvReviewApi(builderCvId, targetRole)
     : await uploadCvApi({ file: file!, targetRole, consentAccepted });
 
   return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
