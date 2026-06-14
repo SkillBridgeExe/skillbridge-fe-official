@@ -628,6 +628,12 @@ export default {
       toastMissingJdDesc: "Paste the job description first.",
       toastFailedTitle: "Analysis failed",
       praiseHigh: "Strong work — this CV already beats most of the screening bar.",
+      extractionQuality: {
+        medium:
+          "AI may have missed part of your CV — double-check against the original to be sure the result is complete.",
+        low: "Your CV may have font issues or be a scanned image — the analysis may be incomplete; please re-check the parsed text.",
+        flagsLabel: "Signals",
+      },
     },
     results: {
       backToReview: "Back to CV review",
