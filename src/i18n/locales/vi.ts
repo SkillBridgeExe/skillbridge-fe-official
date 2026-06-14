@@ -101,7 +101,8 @@
         registerFailedTitle: "Đăng ký thất bại",
         registerFailedDesc: "Đăng ký thất bại. Vui lòng thử lại.",
         emailResentTitle: "Đã gửi lại email",
-        emailResentDesc: "Email xác thực mới đã được gửi. Vui lòng kiểm tra hộp thư.",
+        emailResentDesc:
+          "Email xác thực mới đã được gửi. Vui lòng kiểm tra hộp thư.",
         resendFailedTitle: "Gửi lại thất bại",
         resendFailedDesc: "Không thể gửi lại email.",
         googleSuccess: "Đăng nhập Google thành công - {{role}}",
@@ -112,10 +113,12 @@
     profile: {
       eyebrow: "Tài khoản",
       title: "Hồ sơ của tôi",
-      subtitle: "Xem thông tin tài khoản và vai trò SkillBridge của bạn tại một nơi.",
+      subtitle:
+        "Xem thông tin tài khoản và vai trò SkillBridge của bạn tại một nơi.",
       loading: "Đang tải hồ sơ...",
       accountInfo: "Thông tin tài khoản",
-      accountInfoDesc: "Các thông tin này được lấy từ phiên đăng nhập hiện tại.",
+      accountInfoDesc:
+        "Các thông tin này được lấy từ phiên đăng nhập hiện tại.",
       displayName: "Tên hiển thị",
       email: "Email",
       role: "Vai trò",
@@ -132,18 +135,18 @@
       uploading: "Đang tải...",
       deleteAvatar: "Xóa ảnh",
       saveProfile: "Lưu hồ sơ",
-        saving: "Đang lưu...",
-        billingTitle: "Gói & hạn mức",
-        billingDesc: "Theo dõi nhanh gói hiện tại và các lượt sử dụng chính.",
-        currentPlan: "Gói hiện tại",
-        planLoading: "Đang tải gói",
-        noPlanShort: "Chưa có gói",
-        usageOverview: "Hạn mức nhanh",
-        viewBilling: "Xem chi tiết",
-        upgradePlan: "Nâng cấp",
-        noBillingPlan: "Chưa có gói active",
-        noBillingDesc: "Chọn một gói phù hợp để mở hạn mức sử dụng SkillBridge.",
-        skillsTitle: "Kỹ năng của tôi",
+      saving: "Đang lưu...",
+      billingTitle: "Gói & hạn mức",
+      billingDesc: "Theo dõi nhanh gói hiện tại và các lượt sử dụng chính.",
+      currentPlan: "Gói hiện tại",
+      planLoading: "Đang tải gói",
+      noPlanShort: "Chưa có gói",
+      usageOverview: "Hạn mức nhanh",
+      viewBilling: "Xem chi tiết",
+      upgradePlan: "Nâng cấp",
+      noBillingPlan: "Chưa có gói active",
+      noBillingDesc: "Chọn một gói phù hợp để mở hạn mức sử dụng SkillBridge.",
+      skillsTitle: "Kỹ năng của tôi",
       skillsDesc: "Quản lý skill ID và cấp độ từ API hồ sơ.",
       skillIdPlaceholder: "Skill ID",
       addSkill: "Thêm kỹ năng",
@@ -166,7 +169,8 @@
       // New fields for redesigned profile
       aiConnected: "Hồ sơ đã kết nối AI",
       completeness: "Độ hoàn thiện hồ sơ",
-      completenessDesc: "Hồ sơ đầy đủ giúp kết quả chẩn đoán và matching AI chính xác hơn.",
+      completenessDesc:
+        "Hồ sơ đầy đủ giúp kết quả chẩn đoán và matching AI chính xác hơn.",
       completenessTipsTitle: "Gợi ý hoàn thành:",
       completenessTips: {
         avatar: "Ảnh đại diện",
@@ -181,22 +185,24 @@
         portfolioUrl: "Trang cá nhân Portfolio",
       },
       completenessPerfectTitle: "Tuyệt vời!",
-      completenessPerfectDesc: "Hồ sơ của bạn đã hoàn thành 100%. Sẵn sàng chinh phục mọi nhà tuyển dụng!",
+      completenessPerfectDesc:
+        "Hồ sơ của bạn đã hoàn thành 100%. Sẵn sàng chinh phục mọi nhà tuyển dụng!",
       noSkills: "Chưa có kỹ năng nào được thêm.",
       addSkillNow: "Thêm kỹ năng ngay",
       updateSkillsList: "Cập nhật danh sách kỹ năng",
       cancel: "Hủy",
-        tabBasic: "Thông tin cơ bản",
-        tabCareer: "Sự nghiệp & Mục tiêu",
-        tabSocials: "Mạng xã hội",
-        tabBilling: "Gói sử dụng",
-        placeholderDisplayName: "Nhập tên hiển thị của bạn",
+      tabBasic: "Thông tin cơ bản",
+      tabCareer: "Sự nghiệp & Mục tiêu",
+      tabSocials: "Mạng xã hội",
+      tabBilling: "Gói sử dụng",
+      placeholderDisplayName: "Nhập tên hiển thị của bạn",
       placeholderUniversity: "Ví dụ: Đại học FPT",
       placeholderMajor: "Ví dụ: Kỹ thuật phần mềm",
       placeholderExpYears: "Số năm kinh nghiệm làm việc",
       placeholderTargetJob: "Ví dụ: Frontend Engineer",
       aiDirection: "Định hướng AI",
-      placeholderCareerGoal: "Mô tả ngắn gọn định hướng phát triển nghề nghiệp hoặc kế hoạch 2-3 năm tới của bạn để AI chẩn đoán lộ trình...",
+      placeholderCareerGoal:
+        "Mô tả ngắn gọn định hướng phát triển nghề nghiệp hoặc kế hoạch 2-3 năm tới của bạn để AI chẩn đoán lộ trình...",
       descGithub: "Mã nguồn dự án & đóng góp kỹ thuật",
       descLinkedin: "Mạng lưới nghề nghiệp của bạn",
       descPortfolio: "Website cá nhân giới thiệu sản phẩm",
@@ -218,12 +224,22 @@
       pricing: {
         step: "Bước 1/3",
         title: "Chọn gói phù hợp",
-        subtitle: "So sánh hạn mức CV, phỏng vấn và roadmap giữa các gói trong một giao diện gọn gàng.",
+        subtitle:
+          "So sánh hạn mức CV, phỏng vấn và roadmap giữa các gói trong một giao diện gọn gàng.",
+        heroBadge: "Gói nghề nghiệp AI",
+        heroTrust: "Thanh toán bảo mật, nâng cấp bất cứ lúc nào",
+        heroPlansLabel: "Gói đang mở",
+        heroPlansValue: "{{count}} gói",
+        heroCurrentLabel: "Gói hiện tại",
+        heroNoCurrentPlan: "Chưa đăng nhập",
+        heroCadenceLabel: "Chu kỳ",
+        heroCadenceFallback: "Đang cập nhật",
         currentPlan: "Gói hiện tại",
         defaultPlanDescription: "Gói SkillBridge",
         buyPlan: "Mua gói",
         useNow: "Dùng ngay",
         inUse: "Đang sử dụng",
+        priceLabel: "Giá gói",
         monthlyPrice: "Giá hàng tháng",
         descriptionLabel: "Tóm tắt gói",
         included: "Bao gồm:",
@@ -256,6 +272,15 @@
           interview_session: "Phiên phỏng vấn",
           roadmap_generate: "Tạo lộ trình",
         },
+        noFeatures: "Gói này chưa công bố hạn mức chi tiết.",
+        moreFeatures: "+{{count}} quyền lợi khác",
+        emptyTitle: "Chưa có gói khả dụng",
+        emptyDesc:
+          "Các gói thanh toán đang được cập nhật. Vui lòng thử lại sau.",
+        errorTitle: "Không tải được bảng giá",
+        errorDesc:
+          "Mạng hoặc máy chủ đang gặp sự cố. Bạn có thể thử tải lại danh sách gói.",
+        retry: "Tải lại",
         checkoutFailedTitle: "Không tạo được thanh toán",
       },
       checkout: {
@@ -269,14 +294,16 @@
         target: "Đối tượng",
         continuePayment: "Tiếp tục thanh toán",
         checkAgain: "Kiểm tra lại",
-        statusError: "Không kiểm tra được trạng thái đơn — mạng hoặc máy chủ đang trục trặc. Đơn của bạn không bị mất.",
+        statusError:
+          "Không kiểm tra được trạng thái đơn — mạng hoặc máy chủ đang trục trặc. Đơn của bạn không bị mất.",
         viewMyPlan: "Xem gói của tôi",
         viewOrder: "Xem đơn",
         returnTitle: "Đang hoàn tất thanh toán",
         returnReconciling: "Đang kiểm tra kết quả thanh toán với server...",
         returnErrorTitle: "Không thể xác nhận thanh toán",
         returnMissingTitle: "Thiếu mã đơn thanh toán",
-        returnMissingDesc: "Cổng thanh toán không trả về mã đơn. Vui lòng quay lại bảng giá và thử lại.",
+        returnMissingDesc:
+          "Cổng thanh toán không trả về mã đơn. Vui lòng quay lại bảng giá và thử lại.",
         notFound: "Không tìm thấy đơn thanh toán.",
       },
       me: {
@@ -284,7 +311,8 @@
         title: "Gói và hạn mức của tôi",
         subtitle: "Theo dõi gói hiện tại và hạn mức còn lại.",
         upgrade: "Nâng cấp gói",
-        periodNote: "Các hạn mức được cập nhật theo chu kỳ hiện tại. Hạn mức -1 được xem là không giới hạn.",
+        periodNote:
+          "Các hạn mức được cập nhật theo chu kỳ hiện tại. Hạn mức -1 được xem là không giới hạn.",
         usageTitle: "Hạn mức sử dụng",
         featuresCount: "{{count}} tính năng",
         used: "Đã dùng",
@@ -315,7 +343,8 @@
       mentor: {
         eyebrow: "Thanh toán mentor",
         title: "Thanh toán mentor",
-        subtitle: "Màn hình test nhanh cho đặt cọc và thanh toán phần còn lại của mentor booking.",
+        subtitle:
+          "Màn hình test nhanh cho đặt cọc và thanh toán phần còn lại của mentor booking.",
         checkoutFailedTitle: "Không tạo được thanh toán mentor",
         bookingId: "Mã lịch",
         planCode: "Mã gói",
@@ -402,7 +431,8 @@
         },
         mentorBookings: {
           title: "Lịch mentor",
-          subtitle: "Theo dõi trạng thái đặt cọc và thanh toán còn lại của lịch mentor.",
+          subtitle:
+            "Theo dõi trạng thái đặt cọc và thanh toán còn lại của lịch mentor.",
           empty: "Không tìm thấy lịch mentor.",
         },
       },
@@ -415,27 +445,36 @@
       titleSkills: "kỹ năng,",
       titleMid: " dẫn bước ",
       titleDream: "sự nghiệp",
-      subtitle: "Chấm điểm CV, tạo CV chuẩn tuyển dụng từ con số 0 và nhận lộ trình học cá nhân hoá — sẵn sàng cho công việc bạn nhắm tới.",
+      subtitle:
+        "Chấm điểm CV, tạo CV chuẩn tuyển dụng từ con số 0 và nhận lộ trình học cá nhân hoá — sẵn sàng cho công việc bạn nhắm tới.",
       ctaScan: "Chấm điểm CV miễn phí",
       ctaBuild: "Tạo CV bằng AI",
       helper: "Đã có CV? Chấm ngay. Chưa có? Để AI giúp bạn tạo.",
-      tabs: { cv: "Chẩn đoán CV", roadmap: "Lộ trình học", interview: "Phỏng vấn AI" },
+      tabs: {
+        cv: "Chẩn đoán CV",
+        roadmap: "Lộ trình học",
+        interview: "Phỏng vấn AI",
+      },
     },
     journey: {
       badge: "Hành trình của bạn",
       title: "Ba bước từ giảng đường đến công việc đầu tiên",
-      subtitle: "Một vòng khép kín: biết mình ở đâu, lấp đúng khoảng trống, chứng minh trong phỏng vấn.",
+      subtitle:
+        "Một vòng khép kín: biết mình ở đâu, lấp đúng khoảng trống, chứng minh trong phỏng vấn.",
       s1Eyebrow: "Bước 01 · CV",
       s1Title: "Biết chính xác CV mình đang ở đâu",
-      s1Desc: "Tải CV lên — AI chấm theo 4 tiêu chí và chỉ đúng kỹ năng còn thiếu so với vị trí bạn nhắm. Chưa có CV? Builder tạo bản chuẩn ATS từ con số 0.",
+      s1Desc:
+        "Tải CV lên — AI chấm theo 4 tiêu chí và chỉ đúng kỹ năng còn thiếu so với vị trí bạn nhắm. Chưa có CV? Builder tạo bản chuẩn ATS từ con số 0.",
       s1Cta: "Chấm điểm CV miễn phí",
       s2Eyebrow: "Bước 02 · Lộ trình",
       s2Title: "Học đúng thứ còn thiếu",
-      s2Desc: "Khoảng trống kỹ năng của bạn trở thành lộ trình học cá nhân hoá — ưu tiên 20% kiến thức tạo ra 80% kết quả.",
+      s2Desc:
+        "Khoảng trống kỹ năng của bạn trở thành lộ trình học cá nhân hoá — ưu tiên 20% kiến thức tạo ra 80% kết quả.",
       s2Cta: "Xem lộ trình mẫu",
       s3Eyebrow: "Bước 03 · Phỏng vấn",
       s3Title: "Luyện đến khi sẵn sàng",
-      s3Desc: "Phỏng vấn giọng nói với AI — từng câu trả lời được chấm điểm, từng điểm yếu được chỉ ra trước buổi thật.",
+      s3Desc:
+        "Phỏng vấn giọng nói với AI — từng câu trả lời được chấm điểm, từng điểm yếu được chỉ ra trước buổi thật.",
       s3Cta: "Thử phỏng vấn AI",
       atsPill: "Chuẩn ATS",
     },
@@ -443,17 +482,21 @@
       title: "Bạn không đi một mình",
       subtitle: "Khép xong vòng lặp, hệ sinh thái đưa bạn đi xa hơn.",
       mentorTitle: "Mentor đi trước dẫn đường",
-      mentorDesc: "Đặt lịch với kỹ sư và cựu sinh viên — review CV, phỏng vấn thử và gỡ vướng cho lộ trình của bạn.",
+      mentorDesc:
+        "Đặt lịch với kỹ sư và cựu sinh viên — review CV, phỏng vấn thử và gỡ vướng cho lộ trình của bạn.",
       mentorCta: "Gặp các mentor",
       jobsTitle: "Việc làm thật, khớp với bạn",
-      jobsDesc: "CV đã chấm của bạn được so khớp với JD IT thật tại Việt Nam — ứng tuyển đúng nơi bạn thực sự phù hợp.",
+      jobsDesc:
+        "CV đã chấm của bạn được so khớp với JD IT thật tại Việt Nam — ứng tuyển đúng nơi bạn thực sự phù hợp.",
       jobsCta: "Xem việc làm phù hợp",
     },
-    marquee: "Đồng hành cùng ứng viên chinh phục các nhà tuyển dụng công nghệ hàng đầu Việt Nam",
+    marquee:
+      "Đồng hành cùng ứng viên chinh phục các nhà tuyển dụng công nghệ hàng đầu Việt Nam",
     assess: {
       badge: "Thư viện năng lực",
       title: "Kiểm chứng kỹ năng cốt lõi",
-      subtitle: "Làm thử các bài test kỹ năng chuẩn hoá theo yêu cầu của doanh nghiệp hàng đầu để biết bạn đang ở đâu.",
+      subtitle:
+        "Làm thử các bài test kỹ năng chuẩn hoá theo yêu cầu của doanh nghiệp hàng đầu để biết bạn đang ở đâu.",
       tabFe: "Lập trình Frontend",
       tabBe: "Hệ thống Backend",
       tabAi: "AI & Khoa học dữ liệu",
@@ -470,11 +513,13 @@
       body2: " khi chấm lặp lại",
       body3: ", đối chiếu trên ",
       jds: "3.101 mô tả công việc IT thật tại Việt Nam",
-      body4: ". Mọi điểm số đều giải thích được — AI không \"sáng nắng chiều mưa\".",
+      body4:
+        '. Mọi điểm số đều giải thích được — AI không "sáng nắng chiều mưa".',
       note: "Miễn phí cho sinh viên · mọi điểm số đều giải thích được",
     },
     footer: {
-      tagline: "Nối liền khoảng cách giữa học và làm bằng AI — phát triển sự nghiệp và khớp kỹ năng.",
+      tagline:
+        "Nối liền khoảng cách giữa học và làm bằng AI — phát triển sự nghiệp và khớp kỹ năng.",
       product: "Sản phẩm",
       linkDiagnosis: "Chẩn đoán CV",
       linkRoadmap: "Lộ trình học",
@@ -524,11 +569,13 @@
       uploading: "Đang tải CV lên...",
       parsing: "Đang phân tích cấu trúc tài liệu...",
       scoring: "Đang chấm điểm theo rubric AI...",
-      coldStart: "Yêu cầu đầu tiên có thể chậm thêm ~15 giây do máy chủ đang khởi động.",
+      coldStart:
+        "Yêu cầu đầu tiên có thể chậm thêm ~15 giây do máy chủ đang khởi động.",
       elapsed: "Đã chạy {{seconds}} giây",
     },
     authBanner: {
-      message: "Đăng nhập để lưu lại lịch sử phân tích CV và so khớp JD của bạn.",
+      message:
+        "Đăng nhập để lưu lại lịch sử phân tích CV và so khớp JD của bạn.",
       cta: "Đăng nhập ngay",
     },
     upload: {
@@ -552,7 +599,8 @@
       doorBuilderTitle: "Tạo CV mới bằng AI",
       doorBuilderDesc: "Chưa có CV? Tạo một bản CV chuyên nghiệp, chuẩn ATS.",
       doorBuilderCta: "Bắt đầu tạo",
-      builderReady: "CV đã được tạo từ AI CV Builder. Bạn có thể chỉnh sửa lại hoặc tiếp tục phân tích.",
+      builderReady:
+        "CV đã được tạo từ AI CV Builder. Bạn có thể chỉnh sửa lại hoặc tiếp tục phân tích.",
       builderSource: "Tạo từ AI CV Builder",
       fileReady: "File CV đã sẵn sàng để phân tích chất lượng.",
       editInBuilder: "Sửa trong Builder",
@@ -575,7 +623,8 @@
       toastAnalysisFailedTitle: "Phân tích thất bại",
       errorAnalyze: "Không thể phân tích CV.",
       errorCompare: "Không thể so khớp CV với JD.",
-      consentLabel: "Tôi đồng ý cho phép xử lý dữ liệu cá nhân trong CV này để phục vụ việc phân tích.",
+      consentLabel:
+        "Tôi đồng ý cho phép xử lý dữ liệu cá nhân trong CV này để phục vụ việc phân tích.",
       errorFileTooLarge: "Tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.",
       changeFile: "Đổi tệp",
       addJd: "Thêm mô tả công việc (không bắt buộc)",
@@ -590,9 +639,11 @@
       editCta: "Sửa CV & tải PDF",
       editNoDataTitle: "Chưa mở được trình sửa",
       editNoDataDesc: "Chưa có dữ liệu CV đã phân tích để chỉnh sửa.",
-      "scoreMsg.excellent": "Xuất sắc — CV của bạn rất mạnh. Cứ tự tin ứng tuyển.",
+      "scoreMsg.excellent":
+        "Xuất sắc — CV của bạn rất mạnh. Cứ tự tin ứng tuyển.",
       "scoreMsg.good": "Khá tốt — CV đủ cạnh tranh nhưng vẫn còn chỗ nâng cấp.",
-      "scoreMsg.fair": "CV đạt chuẩn cơ bản. Hãy tập trung lượng hoá thành tích.",
+      "scoreMsg.fair":
+        "CV đạt chuẩn cơ bản. Hãy tập trung lượng hoá thành tích.",
       "scoreMsg.poor": "CV cần cải thiện đáng kể. Làm theo gợi ý bên dưới nhé.",
       "dims.action_verbs": "Động từ hành động & tác động",
       "dims.skills_relevance": "Độ liên quan kỹ năng",
@@ -615,11 +666,14 @@
       "severity.low": "Nhẹ",
       noIssues: "Không phát hiện vấn đề đáng kể ở mục này.",
       atsTitle: "Độ đọc được bởi ATS",
-      atsNote: "Kiểm tra rule-based về cấu trúc và khả năng parse (40% tổng điểm).",
+      atsNote:
+        "Kiểm tra rule-based về cấu trúc và khả năng parse (40% tổng điểm).",
       rawParsedTitle: "Dữ liệu AI parse thô",
-      rawParsedDesc: "Đây là những gì hệ thống ATS \"nhìn thấy\" từ bố cục CV của bạn.",
+      rawParsedDesc:
+        'Đây là những gì hệ thống ATS "nhìn thấy" từ bố cục CV của bạn.',
       deeperTitle: "Muốn phân tích sâu hơn nữa?",
-      deeperDesc: "Thêm một bản mô tả công việc cụ thể để xem chính xác khoảng trống kỹ năng và điểm khớp.",
+      deeperDesc:
+        "Thêm một bản mô tả công việc cụ thể để xem chính xác khoảng trống kỹ năng và điểm khớp.",
       startOver: "Làm lại từ đầu",
       compareJd: "So khớp với JD",
       toastMissingCvTitle: "Thiếu CV",
@@ -642,10 +696,14 @@
       scoreLabelMatch: "Khớp",
       scoreLabelCv: "Điểm CV",
       badgeTop: "Hồ sơ nhóm đầu",
-      "scoreMsg.excellent": "Hồ sơ xuất sắc. CV của bạn rất cạnh tranh, sẵn sàng cho các vị trí top.",
-      "scoreMsg.strong": "Hồ sơ tốt. Vài cải thiện nhỏ sẽ giúp CV sắc nét hơn nữa.",
-      "scoreMsg.decent": "Nền tảng ổn. Hãy tăng tính định lượng và độ rõ ràng để nổi bật.",
-      "scoreMsg.weak": "CV cần cải thiện nhiều. Ưu tiên làm theo kế hoạch hành động trước khi rải đơn.",
+      "scoreMsg.excellent":
+        "Hồ sơ xuất sắc. CV của bạn rất cạnh tranh, sẵn sàng cho các vị trí top.",
+      "scoreMsg.strong":
+        "Hồ sơ tốt. Vài cải thiện nhỏ sẽ giúp CV sắc nét hơn nữa.",
+      "scoreMsg.decent":
+        "Nền tảng ổn. Hãy tăng tính định lượng và độ rõ ràng để nổi bật.",
+      "scoreMsg.weak":
+        "CV cần cải thiện nhiều. Ưu tiên làm theo kế hoạch hành động trước khi rải đơn.",
       matched: "Khớp",
       partial: "Một phần",
       missing: "Thiếu",
@@ -656,7 +714,8 @@
       radarDescNoJd: "Radar hiển thị khi bạn cung cấp JD để so sánh.",
       radarYou: "Hồ sơ của bạn",
       radarRequired: "JD yêu cầu",
-      radarEmpty: "Cung cấp JD để mở khoá radar so sánh và biểu đồ khoảng trống kỹ năng.",
+      radarEmpty:
+        "Cung cấp JD để mở khoá radar so sánh và biểu đồ khoảng trống kỹ năng.",
       gapTitle: "Phân tích khoảng trống từ khoá",
       gapTitleNoJd: "Phân tích khoảng trống từ khoá (cần JD)",
       gapDescJd: "Kỹ năng trích từ JD đối chiếu với kỹ năng trong CV của bạn",
@@ -667,16 +726,19 @@
       thSkill: "Từ khoá kỹ năng",
       thScore: "Mức trong CV",
       thStatus: "Trạng thái",
-      gapEmpty: "Chưa có dữ liệu so khớp JD. Tải lên hoặc dán JD để xem chi tiết khoảng trống.",
+      gapEmpty:
+        "Chưa có dữ liệu so khớp JD. Tải lên hoặc dán JD để xem chi tiết khoảng trống.",
       insightsTitle: "Phân tích chiến lược từ AI",
       strengths: "Điểm mạnh chính",
       strengthsEmpty: "Chưa xác định được điểm mạnh nổi bật.",
       gaps: "Khoảng trống quan trọng",
       gapsEmpty: "Không phát hiện khoảng trống nghiêm trọng cho hồ sơ này.",
       actionPlan: "Kế hoạch hành động",
-      actionPlanEmpty: "Chưa có kế hoạch hành động. Hãy chạy lại phân tích với JD chi tiết.",
+      actionPlanEmpty:
+        "Chưa có kế hoạch hành động. Hãy chạy lại phân tích với JD chi tiết.",
       roadmapTitle: "Sẵn sàng lấp những khoảng trống này?",
-      roadmapDesc: "Để AI tạo lộ trình học cá nhân hoá dựa trên chính báo cáo khoảng trống này.",
+      roadmapDesc:
+        "Để AI tạo lộ trình học cá nhân hoá dựa trên chính báo cáo khoảng trống này.",
       scanAgain: "Chấm lại",
       generatePlan: "Tạo lộ trình học",
       jdHighlightTitle: "Xem từ khoá trong JD của bạn",
@@ -686,14 +748,16 @@
       empty: "Chưa có việc khớp cho vai trò này — quay lại sau nhé.",
       missing: "Còn thiếu:",
       apply: "Xem & ứng tuyển",
-      disclaimer: "Điểm khớp phản ánh độ phù hợp kỹ năng CV–JD, không đảm bảo trúng tuyển.",
+      disclaimer:
+        "Điểm khớp phản ánh độ phù hợp kỹ năng CV–JD, không đảm bảo trúng tuyển.",
       quotaBlocked: "Bạn đã hết lượt xem đề xuất việc làm của gói hiện tại.",
       error: "Không tải được đề xuất việc làm.",
       retry: "Thử lại",
     },
     aiInsight: {
       title: "AI nhận định thị trường",
-      disclaimer: "Dựa trên tín hiệu tuyển dụng hiện tại cho CV và vai trò này.",
+      disclaimer:
+        "Dựa trên tín hiệu tuyển dụng hiện tại cho CV và vai trò này.",
       missing: "Chưa có nhận định thị trường.",
       recommendedTitle: "Kỹ năng nên bổ sung",
       trendUp: "nhu cầu tăng",
@@ -702,11 +766,13 @@
     },
     interviewPrep: {
       title: "Luyện phỏng vấn theo gap của bạn",
-      subtitle: "Câu hỏi luyện tập được chọn từ khoảng trống thật trong CV này.",
+      subtitle:
+        "Câu hỏi luyện tập được chọn từ khoảng trống thật trong CV này.",
       practiceOnly: "Luyện tập",
       whyAsk: "Vì sao hỏi:",
       goodAnswer: "Câu trả lời tốt nên có:",
-      templateNote: "Đang hiển thị câu hỏi dạng mẫu khi AI diễn đạt chưa khả dụng.",
+      templateNote:
+        "Đang hiển thị câu hỏi dạng mẫu khi AI diễn đạt chưa khả dụng.",
       focus: {
         gap_probe: "Nền tảng cần bù",
         depth_probe: "Đo độ sâu",
@@ -734,7 +800,8 @@
       surfaceAt: "(đang ở: {{ref}})",
       rewriteBtn: "Viết lại với AI",
       dialogTitle: "Viết lại cho {{skill}}",
-      dialogDesc: "Dán một bullet thật. SkillBridge chỉ gợi ý cách viết, không tự sửa CV.",
+      dialogDesc:
+        "Dán một bullet thật. SkillBridge chỉ gợi ý cách viết, không tự sửa CV.",
       detectedBullets: "Bullet tìm thấy",
       pasteBullet: "Dán bullet bạn muốn viết lại",
       suggestion: "Gợi ý",
@@ -763,7 +830,8 @@
       errorDesc: "Không kết nối được GitHub lúc này — thử lại sau.",
       username: "Username GitHub",
       usernamePlaceholder: "github-handle",
-      consent: "Tôi đồng ý cho SkillBridge đọc repo công khai của handle này để đối chiếu với CV.",
+      consent:
+        "Tôi đồng ý cho SkillBridge đọc repo công khai của handle này để đối chiếu với CV.",
       connect: "Đối chiếu",
       loading: "Đang kiểm tra...",
       analyzed: "Đã đối chiếu {{n}} repo public của handle {{u}}.",
@@ -772,7 +840,8 @@
       handleSignal: "Tín hiệu từ handle",
       repoCount: "{{n}} repo",
       notOnCv: "Code có nhưng CV chưa nhắc",
-      noJoin: "Chạy chẩn đoán để đối chiếu với kỹ năng trong CV. Hiện chỉ liệt kê tín hiệu từ GitHub.",
+      noJoin:
+        "Chạy chẩn đoán để đối chiếu với kỹ năng trong CV. Hiện chỉ liệt kê tín hiệu từ GitHub.",
       change: "Đổi handle",
       reason: {
         CONSENT_REQUIRED: "Cần đồng ý trước khi đọc GitHub.",
@@ -790,7 +859,8 @@
       capped: "Điểm bị giới hạn vì độ phủ kỹ năng bắt buộc còn thấp.",
       coverage: "Độ phủ bắt buộc",
       inferredTitle: "Kỹ năng suy luận",
-      inferredHint: "Đây là tín hiệu mềm suy ra từ công cụ hoặc hệ sinh thái liên quan. Chỉ dùng để giải thích, không đổi điểm.",
+      inferredHint:
+        "Đây là tín hiệu mềm suy ra từ công cụ hoặc hệ sinh thái liên quan. Chỉ dùng để giải thích, không đổi điểm.",
       fit: {
         fits: "Kinh nghiệm phù hợp",
         stretch: "Vai trò hơi thử thách",
@@ -814,7 +884,8 @@
       gapsExplicit: "Thiếu hẳn",
       gapsProficiency: "Thiếu cấp độ",
       strengths: "Điểm mạnh đã khớp",
-      marketTitle: "Thị trường kỳ vọng ngầm (từ tin tuyển dụng hệ thống theo dõi)",
+      marketTitle:
+        "Thị trường kỳ vọng ngầm (từ tin tuyển dụng hệ thống theo dõi)",
       footnote:
         "Mọi số liệu trong báo cáo là số thật từ phân tích CV/JD và pool tin tuyển dụng — không phải nhận định bịa.",
     },
@@ -829,15 +900,18 @@
       intern: "Intern",
       fresher: "Fresher",
       mid: "Mid-level",
-      tooltip: "Yêu cầu kỹ năng được điều chỉnh theo cấp độ này — điểm cao/thấp phải đọc cùng thước đo.",
+      tooltip:
+        "Yêu cầu kỹ năng được điều chỉnh theo cấp độ này — điểm cao/thấp phải đọc cùng thước đo.",
       jdYardstick: "Chấm theo JD bạn dán",
-      jdTooltip: "Yêu cầu lấy trực tiếp từ JD bạn cung cấp — không áp thước seniority.",
+      jdTooltip:
+        "Yêu cầu lấy trực tiếp từ JD bạn cung cấp — không áp thước seniority.",
     },
     evidence: {
       title: "Sổ bằng chứng",
       foundIn: "Tìm thấy ở",
       gapTitle: "Tăng sức nặng bằng chứng",
-      gapHint: "Bằng chứng cho biết kỹ năng xuất hiện ở đâu trong CV. Phần này không đổi điểm.",
+      gapHint:
+        "Bằng chứng cho biết kỹ năng xuất hiện ở đâu trong CV. Phần này không đổi điểm.",
       empty: "Chưa có sổ bằng chứng.",
       strength: {
         demonstrated: "Có minh chứng",
@@ -869,8 +943,10 @@
       retry: "Thử lại",
     },
     aiGate: {
-      jdThin: "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",
-      cvUnreadable: "File chưa có nội dung CV đọc được (có thể là bản scan hoặc file trống) — hãy upload CV dạng text/PDF có chữ thật.",
+      jdThin:
+        "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",
+      cvUnreadable:
+        "File chưa có nội dung CV đọc được (có thể là bản scan hoặc file trống) — hãy upload CV dạng text/PDF có chữ thật.",
     },
     jdInput: {
       title: "Mô tả công việc",
@@ -879,7 +955,8 @@
       subtitle: "Bật phân tích khoảng trống kỹ năng",
       tabPaste: "Dán",
       tabUpload: "Tải tệp",
-      placeholder: "Dán nội dung JD vào đây...\n\nVí dụ: Chúng tôi tìm Frontend Engineer có 2+ năm kinh nghiệm React, TypeScript...",
+      placeholder:
+        "Dán nội dung JD vào đây...\n\nVí dụ: Chúng tôi tìm Frontend Engineer có 2+ năm kinh nghiệm React, TypeScript...",
       placeholderCompact: "Dán nội dung thô của JD vào đây...",
       dropHint: "Bấm chọn tệp hoặc kéo thả vào đây",
       dropTypes: "PDF, DOCX hoặc TXT (tối đa 5MB)",
@@ -891,7 +968,8 @@
       toastEmptyDesc: "Tệp TXT không có nội dung đọc được.",
       toastUploadedTitle: "Đã tải JD",
       toastUploadedDesc: "Đã nạp {{fileName}}.",
-      toastExtractOffDesc: "PDF/DOCX auto-extract chưa bật. Vui lòng dán JD text để phân tích chính xác.",
+      toastExtractOffDesc:
+        "PDF/DOCX auto-extract chưa bật. Vui lòng dán JD text để phân tích chính xác.",
       toastInvalidTitle: "Tệp không hợp lệ",
       toastInvalidDesc: "Vui lòng tải PDF, DOCX hoặc TXT.",
     },
@@ -908,7 +986,8 @@
       "proficiency.advanced": "Thành thạo",
       "proficiency.intermediate": "Khá",
       "proficiency.beginner": "Mới bắt đầu",
-      evidenceHint: "Bấm vào kỹ năng để xem AI tìm thấy nó ở đâu trong CV của bạn.",
+      evidenceHint:
+        "Bấm vào kỹ năng để xem AI tìm thấy nó ở đâu trong CV của bạn.",
       actionsDone: "Xong {{done}}/{{total}}",
     },
     preview: {
@@ -938,12 +1017,15 @@
       undo: "Hoàn tác",
       fallbackNote: "AI giữ nguyên câu gốc để tránh bịa số liệu.",
       aiGate: {
-        needContext: "Điền kinh nghiệm/kỹ năng/mục tiêu trước — AI chỉ viết từ thông tin thật của bạn.",
+        needContext:
+          "Điền kinh nghiệm/kỹ năng/mục tiêu trước — AI chỉ viết từ thông tin thật của bạn.",
         offTopic: "Nội dung chưa phải nội dung CV — hãy mô tả việc bạn đã làm.",
-        fallbackNote: "AI giữ nguyên nội dung bạn cung cấp để tránh bịa thông tin.",
+        fallbackNote:
+          "AI giữ nguyên nội dung bạn cung cấp để tránh bịa thông tin.",
       },
       rendering: "Đang tạo PDF...",
-      headerSubtitle: "Tạo CV chuyên nghiệp, thân thiện với ATS từ hồ sơ của bạn.",
+      headerSubtitle:
+        "Tạo CV chuyên nghiệp, thân thiện với ATS từ hồ sơ của bạn.",
       saveDraft: "Lưu nháp",
       downloadCv: "Tải CV",
       analyzeCv: "Phân tích CV",
@@ -953,13 +1035,16 @@
       toastDownloadFailedTitle: "Tải xuống thất bại",
       toastDownloadFailedDesc: "Không tạo được PDF trên máy chủ.",
       toastDraftErrorTitle: "Lỗi tạo bản nháp",
-      toastDraftErrorDesc: "Không tạo được bản nháp trên máy chủ. Đang làm việc ở chế độ cục bộ.",
+      toastDraftErrorDesc:
+        "Không tạo được bản nháp trên máy chủ. Đang làm việc ở chế độ cục bộ.",
       writeManually: "Tự viết",
       generateWithAi: "Tạo bằng AI",
       tellAiLabel: "Kể cho AI về bạn",
       summaryLabel: "Tóm tắt chuyên môn",
-      summaryAiPlaceholder: "Ví dụ: Tôi là sinh viên năm cuối ngành Kỹ thuật Phần mềm, quan tâm tới Phân tích Nghiệp vụ. Tôi có kinh nghiệm viết user story...",
-      summaryManualPlaceholder: "Viết tóm tắt ngắn về nền tảng, kỹ năng và mục tiêu nghề nghiệp của bạn...",
+      summaryAiPlaceholder:
+        "Ví dụ: Tôi là sinh viên năm cuối ngành Kỹ thuật Phần mềm, quan tâm tới Phân tích Nghiệp vụ. Tôi có kinh nghiệm viết user story...",
+      summaryManualPlaceholder:
+        "Viết tóm tắt ngắn về nền tảng, kỹ năng và mục tiêu nghề nghiệp của bạn...",
       generating: "Đang tạo...",
       generateSummary: "Tạo tóm tắt",
       regenerate: "Tạo lại",
@@ -1055,8 +1140,10 @@
         position: "vd. Frontend Developer",
         startDate: "vd. Th1 2023",
         endDate: "vd. Hiện tại",
-        expDescription: "vd. Viết proposal, lập timeline, làm việc với khách hàng...",
-        keyAchievements: "vd. Tăng hiệu năng web 40%. Dẫn dắt nhóm 3 người hoàn thành sớm 2 tuần.",
+        expDescription:
+          "vd. Viết proposal, lập timeline, làm việc với khách hàng...",
+        keyAchievements:
+          "vd. Tăng hiệu năng web 40%. Dẫn dắt nhóm 3 người hoàn thành sớm 2 tuần.",
         projectName: "vd. Nền tảng Thương mại điện tử",
         role: "vd. Fullstack Developer",
         tools: "vd. React, Node.js, MongoDB",

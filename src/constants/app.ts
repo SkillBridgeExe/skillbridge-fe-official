@@ -31,5 +31,7 @@ export const QUERY_KEYS = {
   DIAGNOSIS_HISTORY: ['diagnosis', 'history'] as const,
   INTERVIEW_HISTORY: ['interviews'] as const,
   INTERVIEW_DETAIL: (id: string) => ['interviews', id] as const,
+  INTERVIEW_CVS: ['interview', 'cvs'] as const,
+  INTERVIEW_CV_MATCHES: (cvId: string) => ['interview', 'cv-matches', cvId] as const,
   ROADMAP_LIST: ['roadmap'] as const,
 } as const;
