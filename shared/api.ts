@@ -729,6 +729,21 @@ export interface TailorActionDto {
   cv_count: number | null;
   cv_level?: number | null;
   required_level?: number | null;
+  // PR4 CV Patch Engine (BE) — all OPTIONAL/additive; absent on the legacy payload.
+  /** Stable key for dedupe / React key: `${action_type}:${skill_canonical}`. */
+  action_id?: string;
+  /** Canonical GapItem this action addresses (cross-flow tracker; may be null). */
+  requirement_id?: string | null;
+  fixability?: "rewrite" | "add_evidence" | "learn" | "not_fixable_now" | null;
+  /** Localized CV-location label, e.g. "Dự án: Booking App" (prefer over `anchor.ref`). */
+  cv_section?: string | null;
+  anchor_confidence?: "high" | "low" | null;
+  /** The exact existing CV bullet to reword — only present for an evidence-backed rewrite. */
+  before?: string | null;
+  /** emphasize only: raw ledger ref of where the skill currently appears. */
+  target_section?: string | null;
+  /** emphasize only: deterministic hint on how to surface the skill (no single-bullet edit). */
+  insertion_hint?: string | null;
 }
 
 export type TailorAction = TailorActionDto;
