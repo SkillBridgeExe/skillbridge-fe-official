@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, Che
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
+import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
 import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
 import { AiTrendsInsight } from "./AiTrendsInsight";
@@ -528,6 +529,9 @@ export function DiagnosisStep2Review() {
           </div>
         </div>
       </div>
+
+      {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
+      <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         {/* LEFT COLUMN: Tabs & Active Panel */}

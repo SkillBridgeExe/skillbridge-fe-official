@@ -14,6 +14,18 @@ describe("diagnosis results i18n keys", () => {
     expect((viLocale.diagnosis.results as Record<string, string>).collapse).toBeTruthy();
     expect((viLocale.diagnosis.results as Record<string, string>).expand).toBeTruthy();
   });
+
+  // extraction_quality disclosure banner — both confidence copies must exist in BOTH locales
+  // (a missing key would render the raw i18n path to the user).
+  it("en + vi define review.extractionQuality.medium / .low / .flagsLabel", () => {
+    for (const loc of [enLocale, viLocale]) {
+      const eq = (loc.diagnosis.review as { extractionQuality?: Record<string, string> })
+        .extractionQuality;
+      expect(eq?.medium).toBeTruthy();
+      expect(eq?.low).toBeTruthy();
+      expect(eq?.flagsLabel).toBeTruthy();
+    }
+  });
 });
 
 // ── Item 3: persist only durable result state; never transient / File objects ──
