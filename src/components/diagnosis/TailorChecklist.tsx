@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clipboard, Copy, FilePenLine, Lightbulb, LocateFixed } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,12 @@ export function TailorChecklist({
   const { data, isLoading, isError } = useGapReportQuery(matchId, lang);
   const [activeAction, setActiveAction] = useState<TailorAction | null>(null);
 
+  // Reset any open rewrite dialog when the match changes — never carry an action from a previous
+  // report onto a new match (it would submit a stale action_id against the wrong match_id).
+  useEffect(() => {
+    setActiveAction(null);
+  }, [matchId]);
+
   if (!matchId || isError) return null;
 
   const actions = data?.recommended_actions ?? [];
@@ -66,10 +72,13 @@ export function TailorChecklist({
             <TailorSkeleton />
           ) : (
             actions.slice(0, 8).map((action, index) => {
+              // deepen_wording needs the located `before` bullet — without it the server rejects
+              // with NO_ANCHOR, so don't even offer the button. emphasize has no such requirement.
               const canRewrite =
+                Boolean(cvId) &&
                 action.rewrite_eligible &&
-                (action.action_type === "emphasize" || action.action_type === "deepen_wording") &&
-                Boolean(cvId);
+                (action.action_type === "emphasize" ||
+                  (action.action_type === "deepen_wording" && Boolean(action.before)));
 
               return (
               <div key={action.action_id ?? `${action.skill_canonical}-${action.action_type}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
@@ -143,6 +152,9 @@ export function TailorChecklist({
 
       {activeAction && cvId && (
         <TailorRewriteDialog
+          // Remount on match/action change → seed the textarea from the NEW action, never reuse
+          // text/action state from a previously-opened dialog.
+          key={`${matchId}:${activeAction.action_id ?? activeAction.skill_canonical}`}
           action={activeAction}
           cvId={cvId}
           matchId={matchId}
@@ -239,7 +251,17 @@ function TailorRewriteDialog({
           <Button
             type="button"
             disabled={!text.trim() || rewriteMutation.isPending}
-            onClick={() => rewriteMutation.mutate({ cvId, matchId, text, action })}
+            onClick={() =>
+              rewriteMutation.mutate(
+                { cvId, matchId, text, action },
+                {
+                  // BE may reject (NO_ANCHOR / TEXT_NOT_IN_CV / ACTION_NOT_FOUND / quota / auth) —
+                  // surface a friendly reason instead of silently doing nothing.
+                  onError: () =>
+                    toast({ title: t("tailor.rewriteError"), variant: "destructive" }),
+                },
+              )
+            }
             className="bg-primary text-white hover:bg-primary/90"
           >
             <Clipboard className="mr-2 h-4 w-4" />

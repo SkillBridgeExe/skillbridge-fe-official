@@ -567,33 +567,12 @@ export interface EvaluateSectionResponse {
 }
 
 export type RewriteMode = "harvard" | "translate" | "custom" | "tailor";
+/** Builder rewrite modes (mọi mode TRỪ tailor). */
+export type BuilderRewriteMode = Exclude<RewriteMode, "tailor">;
 
-export interface TailorRewriteAction {
-  action_type: "emphasize" | "deepen_wording";
-  skill_display: string;
-  cv_level?: number | null;
-  required_level?: number | null;
-}
-
-export interface RewriteRequest {
+interface RewriteRequestBase {
   /** 1 field text duy nhất (1 bullet / 1 đoạn summary). */
   text: string;
-  mode: RewriteMode;
-  /** Bắt buộc khi mode='translate'. */
-  target_lang?: "vi" | "en";
-  /** Bắt buộc khi mode='custom' (≤500 ký tự). */
-  instruction?: string;
-  role_code?: string;
-  section?: BuilderSection;
-  /**
-   * Bắt buộc khi mode='tailor' (PR4.5). FE KHÔNG còn tự gửi skill/level — chỉ gửi match_id +
-   * action_id; BE tự load match, verify quyền sở hữu + dựng lại gap-report, rồi build instruction
-   * từ action ĐÃ verify. `action_id` = `${action_type}:${skill_canonical}` lấy từ gap-report.
-   */
-  match_id?: string;
-  action_id?: string;
-  /** @deprecated PR4.5 — BE bỏ qua field này làm nguồn sự thật; dùng match_id + action_id. */
-  tailor_action?: TailorRewriteAction;
   /**
    * Token tạo-lại: lần gợi ý ĐẦU bỏ trống (BE cache — mở lại field không tốn);
    * khi user bấm "Viết lại / Tạo lại" thì gửi giá trị thay đổi để BE bỏ cache và
@@ -601,6 +580,32 @@ export interface RewriteRequest {
    */
   variant?: string;
 }
+
+/** CV-builder rewrite (harvard/translate/custom). KHÔNG dùng cho tailor (xem TailorRewriteRequest). */
+export interface BuilderRewriteRequest extends RewriteRequestBase {
+  mode: BuilderRewriteMode;
+  /** Bắt buộc khi mode='translate'. */
+  target_lang?: "vi" | "en";
+  /** Bắt buộc khi mode='custom' (≤500 ký tự). */
+  instruction?: string;
+  role_code?: string;
+  section?: BuilderSection;
+}
+
+/**
+ * Tailor rewrite (PR4.5) — server-verified. FE KHÔNG còn tự gửi skill/level facts: CHỈ gửi
+ * `match_id` + `action_id`. BE tự load match, verify quyền sở hữu + dựng lại gap-report, rồi build
+ * instruction từ action ĐÃ verify. `action_id` = `${action_type}:${skill_canonical}` lấy từ
+ * gap-report. Cả hai field BẮT BUỘC ở mức type — không gửi đủ là lỗi biên dịch. Field
+ * `tailor_action` (skill/level facts) cũ đã BỎ khỏi contract: không thể gửi trong luồng này nữa.
+ */
+export interface TailorRewriteRequest extends RewriteRequestBase {
+  mode: "tailor";
+  match_id: string;
+  action_id: string;
+}
+
+export type RewriteRequest = BuilderRewriteRequest | TailorRewriteRequest;
 
 export interface RewriteResponse {
   /** "AI đề xuất" — KHÔNG tự ghi đè input; user bấm [Sử dụng] mới áp. */
