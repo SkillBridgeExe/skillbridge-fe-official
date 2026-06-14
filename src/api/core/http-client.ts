@@ -1,6 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
-import { AUTH_REQUEST_TIMEOUT_MS, type ApiEnvelope } from "@/api/auth/envelope";
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  type ApiEnvelope,
+  type AuthUserDto,
+} from "@/api/auth/envelope";
 import { API_URL } from "@/lib/runtime-config";
 import { useAuthStore } from "@/store/useAuthStore";
 import { API_ROUTES } from "@/constants/api-routes";
@@ -25,6 +29,7 @@ interface AuthInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
 type RefreshPayload = {
   accessToken: string;
   expiresIn: number;
+  user?: AuthUserDto;
 };
 
 function normalizeApiBaseUrl(value: string | undefined): string {
@@ -63,7 +68,7 @@ const AUTH_REFRESH_EXCLUDED_URLS = new Set<string>([
   API_ROUTES.AUTH.LOGOUT,
 ]);
 
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<RefreshPayload> | null = null;
 
 function requestPath(config: AxiosRequestConfig): string {
   const url = config.url ?? "";
@@ -84,7 +89,7 @@ function isAuthRefreshExcluded(config: AxiosRequestConfig): boolean {
     AUTH_REFRESH_EXCLUDED_URLS.has(requestPath(config));
 }
 
-async function refreshAccessToken(): Promise<string> {
+export async function refreshAuthTokens(): Promise<RefreshPayload> {
   if (!refreshPromise) {
     refreshPromise = httpClient
       .post<ApiEnvelope<RefreshPayload>>(
@@ -103,7 +108,7 @@ async function refreshAccessToken(): Promise<string> {
 
         const { accessToken, expiresIn } = response.data.data;
         setAccessToken(accessToken, expiresIn);
-        return accessToken;
+        return response.data.data;
       })
       .finally(() => {
         refreshPromise = null;
@@ -139,9 +144,9 @@ httpClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const token = await refreshAccessToken();
+        const { accessToken } = await refreshAuthTokens();
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         }
         return httpClient(originalRequest);
       } catch (refreshError) {

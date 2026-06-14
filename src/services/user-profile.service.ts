@@ -9,15 +9,19 @@ import {
   downloadCurrentUserAvatarApi,
   uploadCurrentUserAvatarApi,
 } from "@/api/user/avatar";
-import { API_ROUTES } from "@/constants/api-routes";
 import {
   getCurrentUserSkillsApi,
+  normalizeUserSkill,
   replaceCurrentUserSkillsApi,
   type ReplaceUserSkillItemDto,
   type UserSkillDto,
 } from "@/api/user/skills";
+import { getAuthAvatarUrl, getSafeAvatarUrl, isProtectedAvatarUrl } from "@/lib/avatar-url";
 import { useAuthStore } from "@/store/useAuthStore";
 import { hasApiAuthSession } from "@/services/auth-session.service";
+
+export { getSafeAvatarUrl, isProtectedAvatarUrl } from "@/lib/avatar-url";
+export type { UserProfileDto } from "@/api/user/profile";
 
 function hasApiSession() {
   return hasApiAuthSession();
@@ -54,7 +58,7 @@ function syncAuthUser(profile: UserProfileDto | null | undefined) {
   if (!profile) return;
   const displayName = profile.displayName;
   const email = profile.email;
-  const avatarUrl = getSafeAvatarUrl(profile.avatarUrl);
+  const avatarUrl = getAuthAvatarUrl(profile.avatarUrl);
 
   useAuthStore.getState().updateAuthUser({
     ...(displayName ? { name: displayName } : {}),
@@ -118,34 +122,14 @@ export function validateAvatarFile(file: File | undefined): string | null {
   return null;
 }
 
-export function isProtectedAvatarUrl(value: string | null | undefined): boolean {
-  if (!value) return false;
-  const trimmed = value.trim();
-  return trimmed === API_ROUTES.USER.AVATAR || trimmed.endsWith(API_ROUTES.USER.AVATAR);
-}
-
-export function getSafeAvatarUrl(value: string | null | undefined): string | undefined {
-  if (!value || isProtectedAvatarUrl(value)) return undefined;
-  const trimmed = value.trim();
-  if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("blob:") ||
-    trimmed.startsWith("data:image/") ||
-    trimmed.startsWith("/")
-  ) {
-    return trimmed;
-  }
-  return undefined;
-}
-
 function setAuthAvatar(value: string | null | undefined) {
   useAuthStore.getState().updateAuthUser({ avatar: value || undefined });
 }
 
 export async function getMyAvatarUrl(): Promise<string | null> {
-  const localAvatar = getSafeAvatarUrl(useAuthStore.getState().currentUser?.avatar);
-  if (!hasApiSession()) return localAvatar ?? null;
+  const currentAvatar = useAuthStore.getState().currentUser?.avatar;
+  const localAvatar = getSafeAvatarUrl(currentAvatar);
+  if (!hasApiSession() || !isProtectedAvatarUrl(currentAvatar)) return localAvatar ?? null;
 
   let blob: Blob;
   try {
@@ -181,6 +165,7 @@ export async function uploadMyAvatar(file: File): Promise<string | null> {
   try {
     const result = await uploadCurrentUserAvatarApi(file);
     if (isProtectedAvatarUrl(result?.avatarUrl)) {
+      setAuthAvatar(getAuthAvatarUrl(result?.avatarUrl));
       return getMyAvatarUrl();
     }
     const safeAvatarUrl = getSafeAvatarUrl(result?.avatarUrl);
@@ -201,7 +186,9 @@ export async function deleteMyAvatar(): Promise<void> {
   setAuthAvatar(undefined);
 }
 
-export async function getMySkills(): Promise<UserSkillDto[]> {
+export async function getMySkills(profile?: UserProfileDto | null): Promise<UserSkillDto[]> {
+  if (Array.isArray(profile?.skills)) return profile.skills.map(normalizeUserSkill);
+
   if (!hasApiSession()) {
     const user = useAuthStore.getState().currentUser;
     const mockSkillsJson = localStorage.getItem(`mock_skills_${user?.id}`);

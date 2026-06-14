@@ -47,12 +47,14 @@ import {
   getMyAvatarUrl,
   getMyProfile,
   getMySkills,
+  isProtectedAvatarUrl,
   replaceMySkills,
   updateMyProfile,
   uploadMyAvatar,
   validateAvatarFile,
 } from "@/services/user-profile.service";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import type { EntitlementFeatureDto } from "@/api/billing";
 import type { UserSkillDto } from "@/api/user/skills";
 
@@ -303,7 +305,8 @@ export default function Profile() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { currentUser } = useAuthStore();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const hasApiSession = useHasApiSession();
   const [form, setForm] = useState<ProfileFormState>(EMPTY_PROFILE_FORM);
   const [skillsDraft, setSkillsDraft] = useState<UserSkillDto[]>([]);
   const [isEditingSkills, setIsEditingSkills] = useState(false);
@@ -317,21 +320,25 @@ export default function Profile() {
   const avatarQuery = useQuery({
     queryKey: QUERY_KEYS.USER_AVATAR,
     queryFn: getMyAvatarUrl,
+    enabled: hasApiSession && isProtectedAvatarUrl(profileQuery.data?.avatarUrl ?? currentUser?.avatar),
   });
 
   const skillsQuery = useQuery({
     queryKey: QUERY_KEYS.USER_SKILLS,
-    queryFn: getMySkills,
+    queryFn: () => getMySkills(profileQuery.data),
+    enabled: !hasApiSession || profileQuery.isSuccess,
   });
 
   const billingSubscriptionQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION,
     queryFn: getMySubscription,
+    enabled: hasApiSession,
   });
 
   const billingUsageQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_USAGE,
     queryFn: getMyUsage,
+    enabled: hasApiSession,
   });
 
   useEffect(() => {
@@ -498,6 +505,7 @@ export default function Profile() {
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SKILLS });
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
       toast({ title: t("profile.toastSkillsSavedTitle") });
     },
     onError: (error) => {

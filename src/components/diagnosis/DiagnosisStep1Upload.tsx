@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import {
   useAnalyzeCvMutation,
@@ -25,6 +26,7 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
+import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
 
@@ -33,10 +35,17 @@ import { getMyEntitlements } from "@/services/billing.service";
  * reset theo period (DAILY cho cv_review). Hết lượt → cảnh báo + gợi ý nâng cấp;
  * nút Analyze không bị khoá cứng ở FE (BE vẫn là người gác 402).
  */
-function QuotaLine({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
+function QuotaLine({
+  enabled,
+  t,
+}: {
+  enabled: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
   const { data } = useQuery({
-    queryKey: ["me-entitlements"],
+    queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
+    enabled,
     staleTime: 60 * 1000,
     retry: 1,
   });
@@ -79,7 +88,8 @@ export function DiagnosisStep1Upload() {
     setReviewData, setApiError, setAnalysisMode, setStep, setLastCvId, clearBuilderState
   } = useDiagnosisStore();
   
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasApiSession = useHasApiSession();
   const { toast } = useToast();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const analyzeCvWithJdMutation = useAnalyzeCvWithJdMutation();
@@ -90,7 +100,7 @@ export function DiagnosisStep1Upload() {
 
   // Lịch sử W7: list khi mở Sheet; mở lại 1 CV = đọc review đã lưu (không tốn quota).
   const [historyOpen, setHistoryOpen] = React.useState(false);
-  const historyQuery = useCvHistoryQuery(historyOpen && isAuthenticated);
+  const historyQuery = useCvHistoryQuery(historyOpen && hasApiSession);
   const loadFromHistoryMutation = useLoadCvFromHistoryMutation();
   const loadingHistoryId = loadFromHistoryMutation.isPending
     ? loadFromHistoryMutation.variables
@@ -283,7 +293,7 @@ export function DiagnosisStep1Upload() {
         </div>
 
         {/* Quota thật theo plan (ẩn với mock account — không có session BE) */}
-        {isAuthenticated && <QuotaLine t={t} />}
+        {hasApiSession && <QuotaLine enabled={hasApiSession} t={t} />}
 
         {/* 2-Door CV Section */}
         <div>

@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ClipboardList, TrendingUp, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react";
-import { getGapReport } from "@/services/diagnosis.service";
+import { useGapReportQuery } from "@/hooks/use-diagnosis";
 import type { GapReportDto } from "@shared/api";
 
 /**
@@ -15,12 +14,11 @@ export function GapReportCard({ matchId }: { matchId: string }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang: "vi" | "en" = i18n.language?.startsWith("vi") ? "vi" : "en";
 
-  const { data, isLoading, isError } = useQuery<GapReportDto>({
-    queryKey: ["gap-report", matchId, lang],
-    queryFn: () => getGapReport(matchId, lang),
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
+  const { data, isLoading, isError } = useGapReportQuery(matchId, lang) as {
+    data: GapReportDto | undefined;
+    isLoading: boolean;
+    isError: boolean;
+  };
 
   if (isLoading) {
     return (

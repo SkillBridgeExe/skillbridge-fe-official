@@ -14,6 +14,7 @@ const user = {
   id: "user-1",
   email: "user@example.com",
   displayName: "User Example",
+  avatarUrl: "https://cdn.example.com/avatar.png",
   isEmailVerified: true,
   roles: ["USER"],
 };
@@ -54,5 +55,6 @@ describe("auth service session persistence", () => {
     expect(localStorage.getItem("user")).toBeNull();
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().currentUser?.email).toBe("user@example.com");
+    expect(useAuthStore.getState().currentUser?.avatar).toBe("https://cdn.example.com/avatar.png");
   });
 });
