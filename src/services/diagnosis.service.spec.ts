@@ -262,6 +262,36 @@ describe("mapCvDtoToReviewData", () => {
   it("throw rõ ràng khi review null (upload xong nhưng thiếu kết quả chấm)", () => {
     expect(() => mapCvDtoToReviewData({ ...cvDto, review: null })).toThrow(/re-running/);
   });
+
+  it("lift extraction_quality khi BE trả — KHÔNG đụng overallScore (signal độc lập)", () => {
+    const withEq: CvDto = {
+      ...cvDto,
+      review: {
+        ...review,
+        extraction_quality: {
+          char_count: 50,
+          word_count: 8,
+          mojibake_count: 0,
+          mojibake_ratio: 0,
+          wordlike_ratio: 0.9,
+          section_count: 2,
+          skill_count: 2,
+          ocr_used: true,
+          confidence: "low",
+          flags: ["OCR_USED", "THIN_CONTENT"],
+        },
+      },
+    };
+    const ui = mapCvDtoToReviewData(withEq);
+    expect(ui.extraction_quality?.confidence).toBe("low");
+    expect(ui.extraction_quality?.flags).toEqual(["OCR_USED", "THIN_CONTENT"]);
+    expect(ui.overallScore).toBe(67); // score unchanged — extraction_quality never feeds it
+  });
+
+  it("extraction_quality vắng trên payload cũ → null (không bịa banner)", () => {
+    const ui = mapCvDtoToReviewData(cvDto);
+    expect(ui.extraction_quality).toBeNull();
+  });
 });
 
 describe("mapMatchDtoToJdMatch", () => {
