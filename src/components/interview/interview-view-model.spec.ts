@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
-import { secondsRemainingFromExpiry, toInterviewResultViewModel } from "./interview-view-model";
+import {
+  getInterviewModeLabel,
+  getRealtimeTokenFallbackReason,
+  secondsRemainingFromExpiry,
+  toInterviewResultViewModel,
+} from "./interview-view-model";
 
 const detail: InterviewDetailResponseDto = {
   id: "session-1",
@@ -87,5 +92,49 @@ describe("interview view model", () => {
       strengths: ["Clear example"],
       improvements: ["Add metrics"],
     });
+  });
+
+  it("keeps guided mode labeled as voice when realtime transcription is not connected", () => {
+    expect(
+      getInterviewModeLabel({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: null,
+      }),
+    ).toBe("Guided Voice");
+  });
+
+  it("shows text fallback when guided question audio fails", () => {
+    expect(
+      getInterviewModeLabel({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: "Could not play audio.",
+      }),
+    ).toBe("Text fallback");
+  });
+
+  it("does not treat missing realtime token as guided voice fallback", () => {
+    expect(
+      getRealtimeTokenFallbackReason({
+        interviewMode: "guided",
+        realtimeEnabled: false,
+        clientSecret: null,
+        reason: "OPENAI_API_KEY is not set",
+      }),
+    ).toBeNull();
+  });
+
+  it("treats missing realtime token as live realtime fallback", () => {
+    expect(
+      getRealtimeTokenFallbackReason({
+        interviewMode: "realtime",
+        realtimeEnabled: false,
+        clientSecret: null,
+        reason: "OPENAI_API_KEY is not set",
+      }),
+    ).toBe("OPENAI_API_KEY is not set");
   });
 });

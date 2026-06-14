@@ -177,6 +177,51 @@ describe("interview-api", () => {
     expect(result).toBe(blob);
   });
 
+  it("unwraps serialized StreamableFile audio envelopes from the backend", async () => {
+    const blob = new Blob(
+      [
+        JSON.stringify({
+          success: true,
+          message: null,
+          data: {
+            options: {
+              type: "audio/mpeg",
+              length: 5,
+            },
+            stream: {
+              _readableState: {
+                buffer: [
+                  { type: "Buffer", data: [255, 243] },
+                  { type: "Buffer", data: [196, 196, 0] },
+                ],
+              },
+            },
+          },
+          errors: null,
+        }),
+      ],
+      { type: "application/json" },
+    );
+    vi.mocked(httpClient.post).mockReturnValueOnce(Promise.resolve({ data: blob }) as never);
+
+    const result = await getInterviewQuestionAudio("session-1");
+
+    expect(result.type).toBe("audio/mpeg");
+    expect([...new Uint8Array(await result.arrayBuffer())]).toEqual([255, 243, 196, 196, 0]);
+  });
+
+  it("surfaces backend error details when question audio is not playable audio", async () => {
+    const blob = new Blob(
+      [JSON.stringify({ success: false, message: "OPENAI_API_KEY is not set" })],
+      { type: "application/json" },
+    );
+    vi.mocked(httpClient.post).mockReturnValueOnce(Promise.resolve({ data: blob }) as never);
+
+    await expect(getInterviewQuestionAudio("session-1")).rejects.toThrow(
+      "OPENAI_API_KEY is not set",
+    );
+  });
+
   it("does not expose legacy interview endpoints", () => {
     expect("ANSWER" in API_ROUTES.INTERVIEW).toBe(false);
     expect("SUBMIT" in API_ROUTES.INTERVIEW).toBe(false);

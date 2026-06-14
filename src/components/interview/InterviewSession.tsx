@@ -21,6 +21,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { type ChatMessage, type InterviewMode } from "./types";
+import { getInterviewModeLabel } from "./interview-view-model";
 
 interface InterviewSessionProps {
   videoRef: RefObject<HTMLVideoElement>;
@@ -85,12 +86,12 @@ export function InterviewSession({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isVoiceConnected = isLiveConnected && !isVoiceFallback;
   const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
-  const modeLabel =
-    isVoiceFallback || !isVoiceConnected
-      ? "Text fallback"
-      : interviewMode === "realtime"
-        ? "Live Realtime"
-        : "Guided Voice";
+  const modeLabel = getInterviewModeLabel({
+    interviewMode,
+    isLiveConnected: isVoiceConnected,
+    isVoiceFallback,
+    questionAudioError,
+  });
   const progress =
     maxDurationSeconds > 0
       ? Math.max(0, Math.min(100, (secondsRemaining / maxDurationSeconds) * 100))

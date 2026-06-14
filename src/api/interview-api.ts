@@ -181,5 +181,103 @@ export async function getInterviewQuestionAudio(id: string): Promise<Blob> {
     undefined,
     { responseType: "blob" },
   );
-  return response.data;
+  return normalizeQuestionAudioBlob(response.data);
+}
+
+async function normalizeQuestionAudioBlob(blob: Blob): Promise<Blob> {
+  if (blob.size === 0) {
+    throw new Error("Question audio endpoint returned an empty audio file.");
+  }
+
+  const type = blob.type.toLowerCase();
+  if (!isTextLikeBlobType(type)) return blob;
+
+  const text = await blob.text().catch(() => "");
+  if (!text.trim()) {
+    throw new Error(`Question audio endpoint returned ${type} instead of playable audio.`);
+  }
+
+  const parsed = parseJson(text);
+  const serializedAudio = parsed ? readSerializedAudioBlob(parsed) : null;
+  if (serializedAudio) return serializedAudio;
+
+  const backendMessage = parsed ? readMessage(parsed) : text.trim().slice(0, 300);
+  throw new Error(
+    backendMessage
+      ? `Question audio endpoint returned ${type}: ${backendMessage}`
+      : `Question audio endpoint returned ${type} instead of playable audio.`,
+  );
+}
+
+function isTextLikeBlobType(type: string): boolean {
+  return (
+    type.startsWith("text/") ||
+    type.includes("json") ||
+    type.includes("xml") ||
+    type.includes("html")
+  );
+}
+
+function parseJson(text: string): unknown | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function readSerializedAudioBlob(value: unknown): Blob | null {
+  if (!isRecord(value)) return null;
+  const data = value.data;
+  if (!isRecord(data)) return null;
+
+  const options = data.options;
+  const audioType =
+    isRecord(options) && typeof options.type === "string" && options.type.startsWith("audio/")
+      ? options.type
+      : null;
+  if (!audioType) return null;
+
+  const stream = data.stream;
+  const readableState = isRecord(stream) ? stream._readableState : null;
+  const buffer = isRecord(readableState) ? readableState.buffer : null;
+  if (!Array.isArray(buffer) || buffer.length === 0) return null;
+
+  const chunks = buffer
+    .map(readSerializedBufferChunk)
+    .filter((chunk): chunk is ArrayBuffer => chunk !== null);
+  if (chunks.length === 0) return null;
+
+  return new Blob(chunks, { type: audioType });
+}
+
+function readSerializedBufferChunk(value: unknown): ArrayBuffer | null {
+  if (!isRecord(value) || !Array.isArray(value.data)) return null;
+  const bytes = value.data;
+  if (!bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+    return null;
+  }
+  const buffer = new ArrayBuffer(bytes.length);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readMessage(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (!isRecord(value)) return null;
+
+  if (typeof value.message === "string" && value.message.trim()) {
+    return value.message.trim();
+  }
+  if (typeof value.error === "string" && value.error.trim()) {
+    return value.error.trim();
+  }
+  if (isRecord(value.error)) {
+    return readMessage(value.error);
+  }
+  return null;
 }

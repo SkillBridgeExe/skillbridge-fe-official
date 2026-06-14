@@ -1,4 +1,5 @@
 import type { InterviewDetailResponseDto, InterviewFeedback } from "@/api/interview-api";
+import type { InterviewMode } from "./types";
 
 export interface InterviewResultQuestionViewModel {
   question: string;
@@ -38,6 +39,48 @@ export function formatDuration(seconds: number | null | undefined): string {
   const mins = Math.floor(safe / 60);
   const secs = safe % 60;
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+interface InterviewModeLabelOptions {
+  interviewMode: InterviewMode;
+  isLiveConnected: boolean;
+  isVoiceFallback: boolean;
+  questionAudioError: string | null;
+}
+
+export function getInterviewModeLabel({
+  interviewMode,
+  isLiveConnected,
+  isVoiceFallback,
+  questionAudioError,
+}: InterviewModeLabelOptions): string {
+  if (isVoiceFallback || (interviewMode === "guided" && questionAudioError)) {
+    return "Text fallback";
+  }
+
+  if (interviewMode === "realtime") {
+    return isLiveConnected ? "Live Realtime" : "Text fallback";
+  }
+
+  return "Guided Voice";
+}
+
+interface RealtimeTokenFallbackOptions {
+  interviewMode: InterviewMode;
+  realtimeEnabled: boolean;
+  clientSecret: string | null;
+  reason?: string;
+}
+
+export function getRealtimeTokenFallbackReason({
+  interviewMode,
+  realtimeEnabled,
+  clientSecret,
+  reason,
+}: RealtimeTokenFallbackOptions): string | null {
+  if (realtimeEnabled && clientSecret) return null;
+  if (interviewMode === "guided") return null;
+  return reason || "Realtime token is unavailable. Continue in text mode.";
 }
 
 export function coerceStringList(value: unknown): string[] {

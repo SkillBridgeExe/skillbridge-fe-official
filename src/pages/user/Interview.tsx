@@ -43,7 +43,11 @@ import {
   type InterviewPhase,
   type InterviewType,
 } from "@/components/interview/types";
-import { formatDuration, secondsRemainingFromExpiry } from "@/components/interview/interview-view-model";
+import {
+  formatDuration,
+  getRealtimeTokenFallbackReason,
+  secondsRemainingFromExpiry,
+} from "@/components/interview/interview-view-model";
 import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
 
 type EndReason = "manual" | "timer" | "finished";
@@ -387,15 +391,28 @@ export default function Interview() {
       let realtimeConnected = false;
 
       if (!stream || stream.getAudioTracks().length === 0) {
-        setVoiceFallback("Microphone is unavailable. Continue in text mode in this same session.");
-      } else if (!started.realtime.enabled || !started.realtime.clientSecret) {
-        setVoiceFallback(started.realtime.reason || "Realtime token is unavailable. Continue in text mode.");
+        if (interviewMode === "realtime") {
+          setVoiceFallback("Microphone is unavailable. Continue in text mode in this same session.");
+        }
       } else {
-        try {
-          await connectRealtime(started.realtime.clientSecret, stream);
-          realtimeConnected = true;
-        } catch (error) {
-          setVoiceFallback(getApiErrorMessage(error, "Realtime voice failed. Continue in text mode."));
+        const tokenFallbackReason = getRealtimeTokenFallbackReason({
+          interviewMode,
+          realtimeEnabled: started.realtime.enabled,
+          clientSecret: started.realtime.clientSecret,
+          reason: started.realtime.reason,
+        });
+
+        if (tokenFallbackReason) {
+          setVoiceFallback(tokenFallbackReason);
+        } else if (started.realtime.enabled && started.realtime.clientSecret) {
+          try {
+            await connectRealtime(started.realtime.clientSecret, stream);
+            realtimeConnected = true;
+          } catch (error) {
+            if (interviewMode === "realtime") {
+              setVoiceFallback(getApiErrorMessage(error, "Realtime voice failed. Continue in text mode."));
+            }
+          }
         }
       }
 
