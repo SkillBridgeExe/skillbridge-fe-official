@@ -2,6 +2,8 @@ import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 
+const QUESTION_AUDIO_TIMEOUT_MS = 60_000;
+
 export type PlatformInterviewMode = "TEXT" | "VOICE" | "HYBRID";
 export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
@@ -179,7 +181,7 @@ export async function getInterviewQuestionAudio(id: string): Promise<Blob> {
   const response = await httpClient.post<Blob>(
     API_ROUTES.INTERVIEW.QUESTION_AUDIO(id),
     undefined,
-    { responseType: "blob" },
+    { responseType: "blob", timeout: QUESTION_AUDIO_TIMEOUT_MS },
   );
   return normalizeQuestionAudioBlob(response.data);
 }

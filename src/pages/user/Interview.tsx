@@ -45,6 +45,7 @@ import {
 } from "@/components/interview/types";
 import {
   formatDuration,
+  getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
   secondsRemainingFromExpiry,
 } from "@/components/interview/interview-view-model";
@@ -322,8 +323,9 @@ export default function Interview() {
         await audio.play();
       } catch (error) {
         setIsQuestionAudioPlaying(false);
+        const fallback = "Could not play the interviewer voice. Continue with the visible question.";
         setQuestionAudioError(
-          getApiErrorMessage(error, "Could not play the interviewer voice. Continue with the visible question."),
+          getQuestionAudioErrorMessage(error, getApiErrorMessage(error, fallback)),
         );
       }
     },

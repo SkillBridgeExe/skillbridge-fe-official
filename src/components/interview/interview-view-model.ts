@@ -83,6 +83,21 @@ export function getRealtimeTokenFallbackReason({
   return reason || "Realtime token is unavailable. Continue in text mode.";
 }
 
+export function getQuestionAudioErrorMessage(error: unknown, fallback: string): string {
+  if (isTimeoutError(error)) {
+    return "The interviewer voice took too long to load. Continue with the visible question.";
+  }
+
+  return fallback;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const value = error as { code?: unknown; message?: unknown };
+  if (value.code === "ECONNABORTED" || value.code === "ETIMEDOUT") return true;
+  return typeof value.message === "string" && /\btimeout\b/i.test(value.message);
+}
+
 export function coerceStringList(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");

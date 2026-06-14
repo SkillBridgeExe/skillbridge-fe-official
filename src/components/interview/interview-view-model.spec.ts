@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
   getInterviewModeLabel,
+  getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
@@ -136,5 +137,14 @@ describe("interview view model", () => {
         reason: "OPENAI_API_KEY is not set",
       }),
     ).toBe("OPENAI_API_KEY is not set");
+  });
+
+  it("replaces raw audio request timeout errors with a user-facing fallback message", () => {
+    expect(
+      getQuestionAudioErrorMessage(
+        { code: "ECONNABORTED", message: "timeout of 15000ms exceeded" },
+        "Could not play the interviewer voice.",
+      ),
+    ).toBe("The interviewer voice took too long to load. Continue with the visible question.");
   });
 });

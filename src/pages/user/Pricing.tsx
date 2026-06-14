@@ -1,14 +1,35 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { QUERY_KEYS } from "@/constants/app";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { createCheckout, getBillingPlans, getMySubscription } from "@/services/billing.service";
+import { cn } from "@/lib/utils";
+import {
+  createCheckout,
+  getBillingPlans,
+  getMySubscription,
+} from "@/services/billing.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
+import {
+  getPricingFeatureSummary,
+  getPricingPlanPresentation,
+} from "./pricing-view-model";
 
 export default function Pricing() {
   const navigate = useNavigate();
@@ -28,7 +49,8 @@ export default function Pricing() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: (planCode: string) => createCheckout({ purpose: "SUBSCRIPTION", planCode }),
+    mutationFn: (planCode: string) =>
+      createCheckout({ purpose: "SUBSCRIPTION", planCode }),
     onSuccess: (checkout) => {
       if (checkout.checkoutUrl) {
         window.location.assign(checkout.checkoutUrl);
@@ -48,7 +70,11 @@ export default function Pricing() {
   const plans = plansQuery.data ?? [];
   const currentPlanCode = subscriptionQuery.data?.planCode?.toLowerCase();
 
-  const handlePlanAction = (planCode: string, isFreePlan: boolean, isCurrentPlan: boolean) => {
+  const handlePlanAction = (
+    planCode: string,
+    isFreePlan: boolean,
+    isCurrentPlan: boolean,
+  ) => {
     if (isCurrentPlan) {
       navigate("/billing/me");
       return;
@@ -74,120 +100,261 @@ export default function Pricing() {
 
   return (
     <Layout hideFooter>
-      <div className="mx-auto max-w-[1260px] px-4 py-10 lg:py-12">
-        <div className="mb-9">
-          <h1 className="font-poppins text-3xl font-black tracking-normal text-slate-950 sm:text-4xl">
+      <div className="mx-auto max-w-6xl px-4 py-8 lg:py-10">
+        <header className="mb-6 max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">
+            {t("billing.common.billing")}
+          </p>
+          <h1 className="mt-2 font-poppins text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
             {t("billing.pricing.title")}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{t("billing.pricing.subtitle")}</p>
-        </div>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            {t("billing.pricing.subtitle")}
+          </p>
+        </header>
 
         {plansQuery.isLoading ? (
-          <div className="flex h-56 items-center justify-center rounded-2xl border bg-white">
-            <Loader2 className="h-6 w-6 animate-spin text-[#00AEEF]" />
-          </div>
+          <PricingSkeleton />
+        ) : plansQuery.isError ? (
+          <PricingState
+            title={t("billing.pricing.errorTitle")}
+            description={t("billing.pricing.errorDesc")}
+            actionLabel={t("billing.pricing.retry")}
+            onAction={() => void plansQuery.refetch()}
+            destructive
+          />
+        ) : plans.length === 0 ? (
+          <PricingState
+            title={t("billing.pricing.emptyTitle")}
+            description={t("billing.pricing.emptyDesc")}
+            actionLabel={t("billing.pricing.retry")}
+            onAction={() => void plansQuery.refetch()}
+          />
         ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan) => {
-              const isFreePlan = plan.priceVnd === 0 || plan.code.toLowerCase() === "free";
-              const isCurrentPlan = Boolean(currentPlanCode && plan.code.toLowerCase() === currentPlanCode);
-              const isPopular = plan.code.toLowerCase().includes("premium") || plan.name.toLowerCase().includes("premium");
-              const topLabel = isCurrentPlan
-                ? t("billing.pricing.inUse")
-                : isPopular
-                  ? t("billing.pricing.popular")
-                  : "";
-              const isBusy = checkoutMutation.isPending && checkoutMutation.variables === plan.code;
-              const buttonLabel = isCurrentPlan
-                ? t("billing.pricing.inUse")
-                : isFreePlan
-                  ? t("billing.pricing.useNow")
-                  : t("billing.pricing.buyPlan");
+              const presentation = getPricingPlanPresentation(
+                plan,
+                currentPlanCode,
+              );
+              const { visibleFeatures, hiddenFeatureCount } =
+                getPricingFeatureSummary(plan.features);
               const planKey = getPlanTranslationKey(plan.code, plan.name);
+              const isBusy =
+                checkoutMutation.isPending &&
+                checkoutMutation.variables === plan.code;
 
               return (
-                <article
+                <Card
                   key={plan.code}
-                  className={`relative rounded-[28px] bg-[#EAF7FF] p-3 pt-7 transition duration-200 hover:-translate-y-0.5 ${
-                    isCurrentPlan
-                      ? "shadow-[0_18px_46px_rgba(0,174,239,0.22)] ring-2 ring-[#00AEEF]"
-                      : "shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
-                  }`}
-                >
-                  {topLabel && (
-                    <div
-                      className={`absolute left-5 right-5 top-2 text-center text-[10px] font-black ${
-                        isCurrentPlan ? "text-[#0077A8]" : "text-slate-500"
-                      }`}
-                    >
-                      {topLabel}
-                    </div>
+                  className={cn(
+                    "flex h-full flex-col border-slate-200 bg-white shadow-sm",
+                    presentation.isPopular &&
+                      "border-primary/50 ring-1 ring-primary/20",
+                    presentation.isCurrentPlan &&
+                      "border-emerald-200 ring-1 ring-emerald-200",
                   )}
+                >
+                  <CardHeader className="space-y-3 p-5 pb-4">
+                    <div className="flex min-h-6 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <CardTitle className="font-poppins text-xl font-black leading-tight text-slate-950">
+                          {t(`billing.pricing.planNames.${planKey}`, {
+                            defaultValue: plan.name,
+                          })}
+                        </CardTitle>
+                      </div>
+                      {presentation.badgeKey ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "shrink-0 border-primary/25 bg-primary/5 text-[11px] text-primary",
+                            presentation.isCurrentPlan &&
+                              "border-emerald-200 bg-emerald-50 text-emerald-700",
+                          )}
+                        >
+                          {t(presentation.badgeKey)}
+                        </Badge>
+                      ) : null}
+                    </div>
 
-                  <div className="flex min-h-[500px] flex-col rounded-2xl bg-white px-5 py-5 shadow-[0_10px_24px_rgba(15,23,42,0.12)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-poppins text-xl font-black leading-tight text-slate-950">
-                          {t(`billing.pricing.planNames.${planKey}`, { defaultValue: plan.name })}
-                        </h2>
-                        <p className="mt-2 min-h-[38px] text-xs font-medium leading-5 text-slate-500">
-                          {t(`billing.pricing.planDescriptions.${planKey}`, {
-                            defaultValue: plan.description || t("billing.pricing.defaultPlanDescription"),
+                    <CardDescription className="min-h-[40px] text-sm leading-5 text-slate-500">
+                      {t(`billing.pricing.planDescriptions.${planKey}`, {
+                        defaultValue:
+                          plan.description ||
+                          t("billing.pricing.defaultPlanDescription"),
+                      })}
+                    </CardDescription>
+
+                    <div className="pt-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        {t("billing.pricing.priceLabel")}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-1">
+                        <span className="font-poppins text-3xl font-black leading-none text-slate-950">
+                          {formatPriceAmount(plan.priceVnd)}
+                        </span>
+                        <span className="font-poppins text-lg font-black leading-none text-slate-950">
+                          {t("billing.pricing.currencyVnd")}
+                        </span>
+                        <span className="text-xs font-bold lowercase text-slate-500">
+                          /{t(`billing.pricing.intervals.${plan.interval}`)}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="flex flex-1 flex-col p-5 pt-0">
+                    <Separator className="mb-4" />
+                    <div className="flex-1">
+                      <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-900">
+                        {t("billing.pricing.included")}
+                      </p>
+
+                      {visibleFeatures.length > 0 ? (
+                        <ul className="space-y-2.5">
+                          {visibleFeatures.map((feature) => (
+                            <li
+                              key={feature.featureKey}
+                              className="flex items-start gap-2 text-sm leading-5 text-slate-600"
+                            >
+                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                              <span>
+                                {t(
+                                  `billing.pricing.features.${feature.featureKey}`,
+                                  {
+                                    defaultValue: formatFeatureName(
+                                      feature.featureKey,
+                                    ),
+                                  },
+                                )}
+                                <span className="font-bold text-slate-800">
+                                  {" "}
+                                  -{" "}
+                                  {feature.limit === -1
+                                    ? t("billing.common.unlimited")
+                                    : feature.limit}
+                                </span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                          {t("billing.pricing.noFeatures")}
+                        </p>
+                      )}
+
+                      {hiddenFeatureCount > 0 ? (
+                        <p className="mt-3 text-xs font-bold text-primary">
+                          {t("billing.pricing.moreFeatures", {
+                            count: hiddenFeatureCount,
                           })}
                         </p>
-                      </div>
-                      {isCurrentPlan && (
-                        <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 rounded-full fill-[#00AEEF] text-white" />
-                      )}
+                      ) : null}
                     </div>
+                  </CardContent>
 
-                    <div className="mt-5 flex flex-nowrap items-baseline gap-1 whitespace-nowrap">
-                      <span className="font-poppins text-[28px] font-black leading-none text-slate-950 xl:text-[26px] 2xl:text-[28px]">
-                        {formatPriceAmount(plan.priceVnd)}
-                      </span>
-                      <span className="font-poppins text-[22px] font-black leading-none text-slate-950 xl:text-xl 2xl:text-[22px]">
-                        {t("billing.pricing.currencyVnd")}
-                      </span>
-                      <span className="text-xs font-bold lowercase text-slate-500 xl:text-[11px] 2xl:text-xs">
-                        /{t(`billing.pricing.intervals.${plan.interval}`)}
-                      </span>
-                    </div>
-
-                    <div className="mt-6 flex-1">
-                      <p className="mb-3 text-xs font-black text-slate-950">{t("billing.pricing.included")}</p>
-                      <ul className="space-y-2.5">
-                        {plan.features?.slice(0, 6).map((feature) => (
-                          <li key={feature.featureKey} className="flex items-start gap-2 text-xs font-medium leading-5 text-slate-600">
-                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#00AEEF]" />
-                            <span>
-                              {t(`billing.pricing.features.${feature.featureKey}`, {
-                                defaultValue: formatFeatureName(feature.featureKey),
-                              })}:{" "}
-                              <b className="font-black text-slate-800">
-                                {feature.limit === -1 ? t("billing.common.unlimited") : feature.limit}
-                              </b>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
+                  <CardFooter className="p-5 pt-0">
                     <Button
-                      className="mt-6 h-11 w-full rounded-full bg-[#00AEEF] font-bold text-white shadow-[0_8px_18px_rgba(0,174,239,0.24)] hover:bg-[#049bd7] disabled:opacity-80"
+                      variant={
+                        presentation.isCurrentPlan ? "outline" : "default"
+                      }
+                      className={cn(
+                        "h-10 w-full rounded-full font-bold",
+                        presentation.isCurrentPlan &&
+                          "border-primary/30 bg-white text-primary hover:bg-primary/5 hover:text-primary",
+                        !presentation.isCurrentPlan &&
+                          "bg-primary text-primary-foreground hover:bg-primary/90",
+                      )}
                       disabled={isBusy}
-                      onClick={() => handlePlanAction(plan.code, isFreePlan, isCurrentPlan)}
+                      onClick={() =>
+                        handlePlanAction(
+                          plan.code,
+                          presentation.isFreePlan,
+                          presentation.isCurrentPlan,
+                        )
+                      }
                     >
-                      {isBusy ? t("billing.common.creating") : buttonLabel}
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      {isBusy ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {isBusy
+                        ? t("billing.common.creating")
+                        : t(presentation.buttonKey)}
+                      {!isBusy && !presentation.isCurrentPlan ? (
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      ) : null}
                     </Button>
-                  </div>
-                </article>
+                  </CardFooter>
+                </Card>
               );
             })}
           </div>
         )}
       </div>
     </Layout>
+  );
+}
+
+function PricingState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  destructive = false,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <Alert
+      variant={destructive ? "destructive" : "default"}
+      className="border-slate-200 bg-white shadow-sm"
+    >
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle className="font-poppins font-black">{title}</AlertTitle>
+      <AlertDescription className="flex flex-col gap-3 text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+        <span>{description}</span>
+        <Button
+          variant="outline"
+          className="h-9 rounded-full font-bold"
+          onClick={onAction}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          {actionLabel}
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function PricingSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index} className="border-slate-200 bg-white shadow-sm">
+          <CardHeader className="space-y-3 p-5 pb-4">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-12 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-3 p-5 pt-0">
+            <Skeleton className="h-px w-full" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/5" />
+          </CardContent>
+          <CardFooter className="p-5 pt-0">
+            <Skeleton className="h-10 w-full rounded-full" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
   );
 }
 

@@ -172,7 +172,7 @@ describe("interview-api", () => {
     expect(httpClient.post).toHaveBeenCalledWith(
       API_ROUTES.INTERVIEW.QUESTION_AUDIO("session-1"),
       undefined,
-      { responseType: "blob" },
+      { responseType: "blob", timeout: 60_000 },
     );
     expect(result).toBe(blob);
   });

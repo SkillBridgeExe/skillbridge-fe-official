@@ -134,7 +134,7 @@ export class OpenAIRealtimeSession {
     this.send({
       type: "response.create",
       response: {
-        modalities: ["audio", "text"],
+        output_modalities: ["audio"],
       },
     });
   }
@@ -171,11 +171,17 @@ export class OpenAIRealtimeSession {
     this.send({
       type: "session.update",
       session: {
-        turn_detection: { type: "server_vad" },
+        type: "realtime",
+        output_modalities: ["audio"],
         audio: {
           input: {
             transcription: {
               model: "gpt-4o-mini-transcribe",
+            },
+            turn_detection: {
+              type: "server_vad",
+              create_response: false,
+              interrupt_response: true,
             },
           },
         },
@@ -203,17 +209,20 @@ export class OpenAIRealtimeSession {
       return;
     }
 
-    if (event.type === "response.audio_transcript.delta") {
+    if (
+      event.type === "response.output_audio_transcript.delta" ||
+      event.type === "response.audio_transcript.delta"
+    ) {
       this.emit({ type: "ai_transcript", data: event.delta });
       return;
     }
 
-    if (event.type === "response.audio.delta") {
+    if (event.type === "response.output_audio.delta" || event.type === "response.audio.delta") {
       this.emit({ type: "ai_speaking" });
       return;
     }
 
-    if (event.type === "response.audio.done") {
+    if (event.type === "response.output_audio.done" || event.type === "response.audio.done") {
       this.emit({ type: "ai_stopped" });
     }
   }
