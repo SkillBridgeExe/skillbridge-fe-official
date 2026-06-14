@@ -4,9 +4,9 @@ const API = "/api";
  * API endpoint constants — mirror of the NestJS backend (skillbridge-ai).
  *
  * Canonical source: BE controllers (trích 2026-06-07 — docs/FE-diagnosis-rewire-plan.md §5).
- * FE only ever calls NestJS (`/api/*`) qua same-origin proxy; the one exception is
- * the Gemini Live WebSocket, which uses an ephemeral token brokered by the BE
- * (see INTERVIEW.LIVE_TOKEN).
+ * FE only ever calls NestJS (`/api/*`) qua same-origin proxy. OpenAI Realtime
+ * uses a short-lived client secret brokered by the BE; FE never stores provider
+ * API keys.
  */
 export const API_ROUTES = {
   // §1.1 Auth (auth.controller.ts)
@@ -74,16 +74,12 @@ export const API_ROUTES = {
   // §1.5 Interview
   INTERVIEW: {
     START: `${API}/interview/start`,
-    ANSWER: `${API}/interview/answer`,
-    SUBMIT: `${API}/interview/answer`,
+    TURN: `${API}/interview/turn`,
     END: `${API}/interview/end`,
     HISTORY: `${API}/interview/history`,
     DETAIL: (id: string) => `${API}/interview/sessions/${id}`,
-    LIVE_TOKEN: `${API}/interview/live-token`,
-
-    // FE-internal helpers (not part of the .NET contract)
-    SAVE_HISTORY: `${API}/interview/save-history`,
-    TTS: `${API}/interview/tts`,
+    REALTIME_TOKEN: (id: string) => `${API}/interview/sessions/${id}/realtime-token`,
+    QUESTION_AUDIO: (id: string) => `${API}/interview/sessions/${id}/question-audio`,
   },
 
   // §1.6 Roadmap

@@ -1,42 +1,52 @@
-// ─── Shared types and constants for Interview feature ─────
-import { FileText, Briefcase, Video, History, Clock, HelpCircle, RefreshCw, Shield, type LucideIcon } from "lucide-react";
+import {
+  Briefcase,
+  Clock,
+  FileText,
+  HelpCircle,
+  History,
+  RefreshCw,
+  Shield,
+  Video,
+  type LucideIcon,
+} from "lucide-react";
 
 export type InterviewPhase = "setup" | "interviewing" | "results";
-export type InterviewMode = "text" | "live";
-export type InterviewType = "domain" | "screening";
+export type InterviewMode = "guided" | "realtime";
+export type InterviewType = "technical" | "hr" | "mixed";
 
 export interface ChatMessage {
+  id?: string;
   role: "ai" | "user";
   content: string;
   timestamp: Date;
 }
 
-export const AVAILABLE_TOPICS = [
-  // IT & Tech
-  { value: "react", label: "React & Frontend" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "nodejs", label: "Node.js & Backend" },
-  { value: "database", label: "Database & SQL" },
-  { value: "devops", label: "DevOps & CI/CD" },
-  { value: "linux", label: "Linux & System Admin" },
-  // Marketing & Business
-  { value: "digital-marketing", label: "Digital Marketing" },
-  { value: "content-seo", label: "Content & SEO" },
-  { value: "social-media", label: "Social Media Marketing" },
-  { value: "business-strategy", label: "Business Strategy" },
-  { value: "ux-ui", label: "UX/UI Design" },
-  { value: "data-analytics", label: "Data Analytics" },
+export const AVAILABLE_TARGET_ROLES = [
+  { value: "frontend_developer", label: "Frontend Developer" },
+  { value: "backend_developer", label: "Backend Developer" },
+  { value: "fullstack_developer", label: "Fullstack Developer" },
+  { value: "mobile_developer", label: "Mobile Developer" },
+  { value: "devops_engineer", label: "DevOps Engineer" },
+  { value: "qa_tester", label: "QA Tester" },
+  { value: "data_analyst", label: "Data Analyst" },
+  { value: "ai_ml_engineer", label: "AI / ML Engineer" },
 ];
 
 export const AVAILABLE_LANGUAGES = [
-  { value: "en", label: "EN" },
   { value: "vi", label: "VI" },
-];
+  { value: "en", label: "EN" },
+] as const;
 
 export const STEP_ICONS: Record<string, LucideIcon> = {
-  FileText, Briefcase, Video, History,
+  FileText,
+  Briefcase,
+  Video,
+  History,
 };
 
 export const TIP_ICONS: Record<string, LucideIcon> = {
-  Clock, HelpCircle, RefreshCw, Shield,
+  Clock,
+  HelpCircle,
+  RefreshCw,
+  Shield,
 };

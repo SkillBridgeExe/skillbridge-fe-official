@@ -1,75 +1,79 @@
-// ─── TanStack Query Hooks for Interview ─────────────────────────────
-// Pattern: Page → useQuery hook → API function → httpClient
-// Zustand chỉ dùng cho client state (UI toggles, auth).
-// Server state (data từ API) dùng TanStack Query.
-
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCvListApi } from "@/api/cv/list";
+import { getCvMatchesApi } from "@/api/cv/match";
 import { QUERY_KEYS } from "@/constants/app";
 import {
   endInterview,
+  getInterviewDetail,
   getInterviewHistory,
-  saveInterviewHistory,
+  refreshRealtimeToken,
   startInterview,
-  submitAnswer,
+  submitInterviewTurn,
+  type InterviewHistoryQuery,
 } from "@/api/interview-api";
 
-/**
- * Hook lấy lịch sử phỏng vấn.
- * Tự động cache 5 phút, tự refetch khi data stale.
- *
- * Usage trong page:
- * ```tsx
- * const { data, isLoading, error } = useInterviewHistory();
- * ```
- */
-export function useInterviewHistory() {
+export function useInterviewHistory(enabled: boolean, query: InterviewHistoryQuery = {}) {
   return useQuery({
     queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
-    queryFn: async () => {
-      const result = await getInterviewHistory();
-      return result.history;
-    },
+    queryFn: () => getInterviewHistory(query),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useInterviewDetail(id: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: id ? QUERY_KEYS.INTERVIEW_DETAIL(id) : QUERY_KEYS.INTERVIEW_DETAIL("none"),
+    queryFn: () => getInterviewDetail(id!),
+    enabled: Boolean(id) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useCvListForInterview(enabled: boolean) {
+  return useQuery({
+    queryKey: QUERY_KEYS.INTERVIEW_CVS,
+    queryFn: () => getCvListApi({ page: 1, limit: 20 }),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCvMatchesForInterview(cvId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: QUERY_KEYS.INTERVIEW_CV_MATCHES(cvId ?? "none"),
+    queryFn: () => getCvMatchesApi(cvId!, { page: 1, limit: 20 }),
+    enabled: Boolean(cvId) && enabled,
+    staleTime: 5 * 60_000,
   });
 }
 
 export function useStartInterview() {
   return useMutation({
-    mutationFn: ({ topic, language = "en" }: { topic: string; language?: string }) =>
-      startInterview(topic, language),
+    mutationFn: startInterview,
   });
 }
 
-export function useSubmitInterviewAnswer() {
+export function useSubmitInterviewTurn() {
   return useMutation({
-    mutationFn: ({ sessionId, userAnswer }: { sessionId: string; userAnswer: string }) =>
-      submitAnswer(sessionId, userAnswer),
+    mutationFn: submitInterviewTurn,
   });
 }
 
 export function useEndInterview() {
-  return useMutation({
-    mutationFn: endInterview,
-  });
-}
-
-/**
- * Hook lưu kết quả phỏng vấn.
- * Sau khi lưu xong, tự động invalidate cache để refresh danh sách.
- *
- * Usage trong page:
- * ```tsx
- * const saveHistory = useSaveInterviewHistory();
- * saveHistory.mutate({ topic, score, duration, summary });
- * ```
- */
-export function useSaveInterviewHistory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: saveInterviewHistory,
-    onSuccess: () => {
-      // Invalidate interview history cache → tự refetch danh sách mới
+    mutationFn: endInterview,
+    onSuccess: (session) => {
+      queryClient.setQueryData(QUERY_KEYS.INTERVIEW_DETAIL(session.id), session);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.INTERVIEW_HISTORY });
     },
+  });
+}
+
+export function useRefreshRealtimeToken() {
+  return useMutation({
+    mutationFn: refreshRealtimeToken,
   });
 }
