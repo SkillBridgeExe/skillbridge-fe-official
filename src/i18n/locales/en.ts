@@ -743,6 +743,8 @@ export default {
       fallbackNote: "AI kept the original wording to avoid inventing details.",
       close: "Close",
       rewriting: "Rewriting...",
+      rewriteError:
+        "Couldn't rewrite this suggestion. Try re-running the analysis or pick another bullet.",
     },
     market: {
       title: "This JD vs the market",

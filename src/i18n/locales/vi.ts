@@ -743,6 +743,8 @@
       fallbackNote: "AI giữ nguyên bản gốc để tránh bịa số liệu.",
       close: "Đóng",
       rewriting: "Đang viết lại...",
+      rewriteError:
+        "Không thể viết lại gợi ý này. Hãy chạy lại phân tích hoặc chọn bullet khác.",
     },
     market: {
       title: "JD này so với thị trường",
