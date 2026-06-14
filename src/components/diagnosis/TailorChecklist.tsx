@@ -145,6 +145,7 @@ export function TailorChecklist({
         <TailorRewriteDialog
           action={activeAction}
           cvId={cvId}
+          matchId={matchId}
           document={document}
           open={Boolean(activeAction)}
           onOpenChange={(open) => {
@@ -159,12 +160,14 @@ export function TailorChecklist({
 function TailorRewriteDialog({
   action,
   cvId,
+  matchId,
   document,
   open,
   onOpenChange,
 }: {
   action: TailorAction;
   cvId: string;
+  matchId: string;
   document?: CanonicalCvDocument;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -236,7 +239,7 @@ function TailorRewriteDialog({
           <Button
             type="button"
             disabled={!text.trim() || rewriteMutation.isPending}
-            onClick={() => rewriteMutation.mutate({ cvId, text, action })}
+            onClick={() => rewriteMutation.mutate({ cvId, matchId, text, action })}
             className="bg-primary text-white hover:bg-primary/90"
           >
             <Clipboard className="mr-2 h-4 w-4" />

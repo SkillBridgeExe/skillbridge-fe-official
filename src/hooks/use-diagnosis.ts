@@ -165,8 +165,17 @@ export function useGithubEvidenceMutation() {
 
 export function useTailorRewriteMutation() {
   return useMutation({
-    mutationFn: ({ cvId, text, action }: { cvId: string; text: string; action: TailorAction }) =>
-      rewriteTailorBullet({ cvId, text, action }),
+    mutationFn: ({
+      cvId,
+      matchId,
+      text,
+      action,
+    }: {
+      cvId: string;
+      matchId: string;
+      text: string;
+      action: TailorAction;
+    }) => rewriteTailorBullet({ cvId, matchId, text, action }),
     retry: false,
   });
 }
