@@ -730,6 +730,8 @@
         deepen_wording: "Viết sâu hơn",
       },
       anchor: "Vị trí: {{ref}}",
+      before: "Bản gốc",
+      surfaceAt: "(đang ở: {{ref}})",
       rewriteBtn: "Viết lại với AI",
       dialogTitle: "Viết lại cho {{skill}}",
       dialogDesc: "Dán một bullet thật. SkillBridge chỉ gợi ý cách viết, không tự sửa CV.",

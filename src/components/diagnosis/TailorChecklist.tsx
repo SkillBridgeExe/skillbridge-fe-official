@@ -72,7 +72,7 @@ export function TailorChecklist({
                 Boolean(cvId);
 
               return (
-              <div key={`${action.skill_canonical}-${action.action_type}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
+              <div key={action.action_id ?? `${action.skill_canonical}-${action.action_type}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -87,11 +87,36 @@ export function TailorChecklist({
                     </div>
                     <h4 className="mt-2 text-sm font-bold text-[#2F3437]">{action.display_name}</h4>
                     <p className="mt-1 text-xs leading-relaxed text-[#787774]">{action.why}</p>
-                    {action.anchor?.ref && (
+                    {(action.cv_section || action.anchor?.ref) && (
                       <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#787774]">
                         <LocateFixed className="h-3.5 w-3.5 text-primary" />
-                        {t("tailor.anchor", { ref: action.anchor.ref })}
+                        {action.cv_section ||
+                          (action.anchor?.ref ? t("tailor.anchor", { ref: action.anchor.ref }) : "")}
                       </p>
+                    )}
+                    {/* emphasize: surface-the-skill hint (BE-provided, deterministic) — never a bullet rewrite */}
+                    {action.insertion_hint && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-[#1F6C9F]">
+                        <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          {action.insertion_hint}
+                          {action.target_section && (
+                            <span className="text-[#787774]">
+                              {" "}
+                              {t("tailor.surfaceAt", { ref: action.target_section })}
+                            </span>
+                          )}
+                        </span>
+                      </p>
+                    )}
+                    {/* deepen_wording: the exact CV bullet to reword (only when BE located it with evidence) */}
+                    {action.before && (
+                      <div className="mt-3 rounded-lg border border-[#EAEAEA] bg-white px-3 py-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#9B9A97]">
+                          {t("tailor.before")}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-[#2F3437]">{action.before}</p>
+                      </div>
                     )}
                   </div>
                   {canRewrite && (
@@ -148,7 +173,8 @@ function TailorRewriteDialog({
   const { toast } = useToast();
   const rewriteMutation = useTailorRewriteMutation();
   const candidates = useMemo(() => findAnchorBullets(document, action.anchor?.ref), [document, action.anchor?.ref]);
-  const [text, setText] = useState(candidates[0] ?? "");
+  // PR4: BE-resolved exact bullet wins over the FE's anchor guess; fall back to the guess when absent.
+  const [text, setText] = useState(action.before ?? candidates[0] ?? "");
 
   const suggestion = rewriteMutation.data?.suggestion ?? "";
 
