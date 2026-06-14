@@ -275,21 +275,21 @@ export const MOCK_TROPHY_STATS: TrophyStats = {
 };
 
 // ─── Mock Interview Data ─────────────────────────
-export const MOCK_INTERVIEW_STATS = {
+export const DASHBOARD_INTERVIEW_STATS = {
   totalInterviews: 12,
   averageScore: 78,
   topSkill: "Problem Solving",
   areaToImprove: "Communication",
 };
 
-export const MOCK_INTERVIEW_HISTORY = [
+export const DASHBOARD_INTERVIEW_HISTORY = [
   { id: "iv1", date: "2026-03-01", role: "Frontend Engineer", score: 82, status: "completed" },
   { id: "iv2", date: "2026-02-15", role: "React Developer", score: 75, status: "completed" },
   { id: "iv3", date: "2026-01-20", role: "UI/UX Engineer", score: 68, status: "completed" },
   { id: "iv4", date: "2026-03-10", role: "Senior Frontend Engineer", score: null, status: "upcoming" },
 ];
 
-export const MOCK_INTERVIEW_CRITERIA = [
+export const DASHBOARD_INTERVIEW_CRITERIA = [
   { subject: "Communication", A: 70, fullMark: 100 },
   { subject: "Problem Solving", A: 85, fullMark: 100 },
   { subject: "Technical Skills", A: 80, fullMark: 100 },
@@ -313,7 +313,7 @@ export const MOCK_PERSONALITY_TRAITS = [
   { trait: "Adaptable", score: 80 },
 ];
 
-export const MOCK_SCREENING_QUESTIONS = [
+export const DASHBOARD_SCREENING_REVIEW_SAMPLES = [
   {
     id: "q1",
     question: "Tell me about a time you had to learn a new technology quickly.",
