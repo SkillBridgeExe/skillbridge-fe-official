@@ -9,6 +9,16 @@ export interface UserSkillDto {
   skillName?: string | null;
 }
 
+export interface BackendUserSkillDto {
+  id?: string;
+  skillId?: string;
+  canonicalName?: string | null;
+  displayName?: string | null;
+  name?: string | null;
+  skillName?: string | null;
+  level: number;
+}
+
 export interface ReplaceUserSkillItemDto {
   skillId: string;
   level: number;
@@ -18,20 +28,31 @@ export interface ReplaceUserSkillsRequest {
   skills: ReplaceUserSkillItemDto[];
 }
 
+export function normalizeUserSkill(skill: BackendUserSkillDto): UserSkillDto {
+  const skillId = skill.skillId ?? skill.id ?? "";
+  const label = skill.name ?? skill.skillName ?? skill.displayName ?? skill.canonicalName ?? skillId;
+  return {
+    skillId,
+    level: Number(skill.level) || 1,
+    name: label,
+    skillName: label,
+  };
+}
+
 export async function getCurrentUserSkillsApi(): Promise<UserSkillDto[]> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<UserSkillDto[]>>(
+  const envelope = await unwrapEnvelope<ApiEnvelope<BackendUserSkillDto[]>>(
     httpClient.get(API_ROUTES.USER.SKILLS),
     "Failed to load user skills.",
   );
-  return envelope.data;
+  return envelope.data.map(normalizeUserSkill);
 }
 
 export async function replaceCurrentUserSkillsApi(
   payload: ReplaceUserSkillsRequest,
 ): Promise<UserSkillDto[] | null> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<UserSkillDto[] | null>>(
+  const envelope = await unwrapEnvelope<ApiEnvelope<BackendUserSkillDto[] | null>>(
     httpClient.put(API_ROUTES.USER.SKILLS, payload),
     "Failed to update user skills.",
   );
-  return envelope.data;
+  return envelope.data?.map(normalizeUserSkill) ?? null;
 }
