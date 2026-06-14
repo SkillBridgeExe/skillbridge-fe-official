@@ -13,7 +13,10 @@ import type { ExtractionQuality } from "@shared/api";
 export function extractionBannerView(
   quality?: ExtractionQuality | null,
 ): { tone: "medium" | "low"; messageKey: string; flags: string[] } | null {
-  if (!quality || quality.confidence === "high") return null;
+  // Explicit allow-list (not just "!== high"): `quality` is raw BE-JSON passthrough with no runtime
+  // narrowing, so any unexpected confidence value is treated like 'high' (render nothing) rather than
+  // surfacing a missing i18n key — never show the user a raw `review.extractionQuality.<x>` path.
+  if (!quality || (quality.confidence !== "medium" && quality.confidence !== "low")) return null;
   return {
     tone: quality.confidence,
     messageKey: `review.extractionQuality.${quality.confidence}`,
