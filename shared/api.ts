@@ -585,6 +585,14 @@ export interface RewriteRequest {
   instruction?: string;
   role_code?: string;
   section?: BuilderSection;
+  /**
+   * Bắt buộc khi mode='tailor' (PR4.5). FE KHÔNG còn tự gửi skill/level — chỉ gửi match_id +
+   * action_id; BE tự load match, verify quyền sở hữu + dựng lại gap-report, rồi build instruction
+   * từ action ĐÃ verify. `action_id` = `${action_type}:${skill_canonical}` lấy từ gap-report.
+   */
+  match_id?: string;
+  action_id?: string;
+  /** @deprecated PR4.5 — BE bỏ qua field này làm nguồn sự thật; dùng match_id + action_id. */
   tailor_action?: TailorRewriteAction;
   /**
    * Token tạo-lại: lần gợi ý ĐẦU bỏ trống (BE cache — mở lại field không tốn);
