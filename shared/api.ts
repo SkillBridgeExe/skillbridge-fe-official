@@ -177,6 +177,8 @@ export interface CvReviewData {
   skills_relevance_breakdown?: SkillsRelevanceBreakdown | null;
   top_summary?: TopSummary;
   evidence_ledger?: EvidenceLedger | null;
+  /** Input-quality disclosure (mojibake/OCR/thin/sparse). Absent/null → no banner. */
+  extraction_quality?: ExtractionQuality | null;
 }
 
 export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "skills_list" | "summary" | "other";
@@ -199,6 +201,25 @@ export interface EvidenceItem {
 
 export interface EvidenceLedger {
   items: EvidenceItem[];
+}
+
+export type ExtractionConfidence = "high" | "medium" | "low";
+
+/** Deterministic read on how trustworthy the EXTRACTED CV text was (BE `extraction_quality`).
+ *  Reportable signal ONLY — never affects the score. Absent on older payloads → FE renders nothing.
+ *  snake_case mirrors the BE JSON contract for direct passthrough. */
+export interface ExtractionQuality {
+  char_count: number;
+  word_count: number;
+  mojibake_count: number;
+  mojibake_ratio: number;
+  wordlike_ratio: number;
+  section_count: number;
+  skill_count: number;
+  ocr_used: boolean;
+  confidence: ExtractionConfidence;
+  /** Machine flags that fired, e.g. MOJIBAKE_HIGH / OCR_USED / THIN_CONTENT / SPARSE_SECTIONS. */
+  flags: string[];
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -314,6 +335,8 @@ export interface CvReviewParsedResponse {
   skills_relevance_breakdown?: SkillsRelevanceBreakdown | null;
   top_summary?: TopSummary;
   evidence_ledger?: EvidenceLedger | null;
+  /** Deterministic input-quality signal (BE). Optional — absent on older cached reviews. */
+  extraction_quality?: ExtractionQuality | null;
 }
 
 export interface CvSkillDto {
