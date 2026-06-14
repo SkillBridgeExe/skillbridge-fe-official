@@ -730,6 +730,8 @@ export default {
         deepen_wording: "Deepen wording",
       },
       anchor: "Location: {{ref}}",
+      before: "Original",
+      surfaceAt: "(currently in: {{ref}})",
       rewriteBtn: "Rewrite with AI",
       dialogTitle: "Rewrite for {{skill}}",
       dialogDesc: "Paste one real bullet. SkillBridge suggests wording only; it will not edit your CV automatically.",
