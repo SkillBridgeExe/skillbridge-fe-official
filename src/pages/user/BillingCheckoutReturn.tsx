@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { reconcileOrder } from "@/services/billing.service";
+import { useHasApiSession } from "@/hooks/use-api-session";
 
 export default function BillingCheckoutReturn() {
   const { t } = useTranslation("common");
@@ -16,6 +17,7 @@ export default function BillingCheckoutReturn() {
   const orderCode = searchParams.get("orderCode");
   const providerStatus = searchParams.get("status");
   const cancelled = searchParams.get("cancel") === "true";
+  const hasApiSession = useHasApiSession();
 
   const statusText = useMemo(() => {
     if (cancelled) return "CANCELLED";
@@ -24,6 +26,10 @@ export default function BillingCheckoutReturn() {
 
   useEffect(() => {
     if (!orderCode) return;
+    if (!hasApiSession) {
+      setError("Please sign in with a real account to check this payment.");
+      return;
+    }
     let active = true;
     reconcileOrder(orderCode)
       .then(() => {
@@ -35,7 +41,7 @@ export default function BillingCheckoutReturn() {
     return () => {
       active = false;
     };
-  }, [navigate, orderCode]);
+  }, [hasApiSession, navigate, orderCode]);
 
   if (!orderCode) {
     return (

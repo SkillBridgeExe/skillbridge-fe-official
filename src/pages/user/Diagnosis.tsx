@@ -12,7 +12,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
 import type { BuilderSnapshot } from "@/services/cv-builder.service";
 
@@ -51,9 +51,7 @@ export default function Diagnosis() {
   } = useDiagnosisStore();
 
   const location = useLocation();
-  const canUseApi = useAuthStore(
-    (state) => state.authStatus === "authenticated" && state.authSource === "api",
-  );
+  const canUseApi = useHasApiSession();
 
   // Handle initialization from builder and mode parameter
   useEffect(() => {

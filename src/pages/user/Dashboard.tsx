@@ -18,7 +18,8 @@ import { MOCK_USER } from "@/lib/mock-data/dashboard";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
-import { getMyAvatarUrl, getSafeAvatarUrl } from "@/services/user-profile.service";
+import { useHasApiSession } from "@/hooks/use-api-session";
+import { getMyAvatarUrl, getSafeAvatarUrl, isProtectedAvatarUrl } from "@/services/user-profile.service";
 
 // ─── Scroll-aware section tracking ───────────────
 function useSectionObserver(sectionIds: string[]) {
@@ -62,11 +63,12 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTabValue>("overview");
   const { activeSection, setRef } = useSectionObserver(["hero", "stats", "tabs"]);
   const { currentUser } = useAuthStore();
+  const hasApiSession = useHasApiSession();
 
   const avatarQuery = useQuery({
     queryKey: QUERY_KEYS.USER_AVATAR,
     queryFn: getMyAvatarUrl,
-    enabled: !!currentUser,
+    enabled: hasApiSession && isProtectedAvatarUrl(currentUser?.avatar),
   });
   
   const dashboardUser = {

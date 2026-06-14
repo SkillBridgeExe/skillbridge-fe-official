@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import {
   endInterview,
   getInterviewHistory,
@@ -22,13 +23,15 @@ import {
  * const { data, isLoading, error } = useInterviewHistory();
  * ```
  */
-export function useInterviewHistory() {
+export function useInterviewHistory(enabled = true) {
+  const hasApiSession = useHasApiSession();
   return useQuery({
     queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
     queryFn: async () => {
       const result = await getInterviewHistory();
       return result.history;
     },
+    enabled: enabled && hasApiSession,
   });
 }
 

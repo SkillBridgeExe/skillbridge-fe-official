@@ -12,18 +12,22 @@ import {
   getMySubscription,
   type MeEntitlementDto,
 } from "@/services/billing.service";
+import { useHasApiSession } from "@/hooks/use-api-session";
 
 export default function BillingMe() {
   const { t, i18n } = useTranslation("common");
+  const hasApiSession = useHasApiSession();
   const subscriptionQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION,
     queryFn: getMySubscription,
+    enabled: hasApiSession,
   });
   // W16: nguồn quota hợp nhất /api/me/entitlements (BE #49) — có period + resets_at,
   // thay /billing/me/usage (shape cũ không phân biệt DAILY/MONTHLY → cv_review hiển thị sai chu kỳ).
   const entitlementsQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
+    enabled: hasApiSession,
   });
 
   const subscription = subscriptionQuery.data;

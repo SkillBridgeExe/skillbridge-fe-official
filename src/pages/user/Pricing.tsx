@@ -9,12 +9,14 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { createCheckout, getBillingPlans, getMySubscription } from "@/services/billing.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
+import { useHasApiSession } from "@/hooks/use-api-session";
 
 export default function Pricing() {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasApiSession = useHasApiSession();
 
   const plansQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_PLANS,
@@ -24,7 +26,7 @@ export default function Pricing() {
   const subscriptionQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION,
     queryFn: getMySubscription,
-    enabled: isAuthenticated,
+    enabled: hasApiSession,
   });
 
   const checkoutMutation = useMutation({
@@ -64,7 +66,7 @@ export default function Pricing() {
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!hasApiSession) {
       navigate("/?auth=login");
       return;
     }
