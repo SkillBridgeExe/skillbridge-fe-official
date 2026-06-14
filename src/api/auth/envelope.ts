@@ -16,6 +16,7 @@ export interface AuthUserDto {
   id: string;
   email: string;
   displayName: string;
+  avatarUrl?: string | null;
   isEmailVerified: boolean;
   roles: string[];
 }
