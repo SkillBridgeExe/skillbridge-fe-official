@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -9,25 +9,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QUERY_KEYS } from "@/constants/app";
 import { formatDate, formatVnd, StatusBadge } from "@/lib/billing-ui";
 import { getOrderStatus } from "@/services/billing.service";
+import { useHasApiSession } from "@/hooks/use-api-session";
 
 const DONE_STATUSES = ["PAID", "CANCELLED", "EXPIRED", "FAILED"];
+const ORDER_POLL_INTERVAL_MS = 2500;
+const ORDER_POLL_TIMEOUT_MS = 120_000;
 
 export default function BillingCheckoutStatus() {
   const { t } = useTranslation("common");
   const { orderCode = "" } = useParams();
   const queryClient = useQueryClient();
+  const pollingStartedAtRef = useRef<number | null>(null);
+  const hasApiSession = useHasApiSession();
 
   const orderQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ORDER(orderCode),
     queryFn: () => getOrderStatus(orderCode),
-    enabled: Boolean(orderCode),
+    enabled: Boolean(orderCode) && hasApiSession,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status && DONE_STATUSES.includes(status) ? false : 2500;
+      if (status && DONE_STATUSES.includes(status)) return false;
+      pollingStartedAtRef.current ??= Date.now();
+      return Date.now() - pollingStartedAtRef.current < ORDER_POLL_TIMEOUT_MS
+        ? ORDER_POLL_INTERVAL_MS
+        : false;
     },
   });
 
   const order = orderQuery.data;
+
+  useEffect(() => {
+    pollingStartedAtRef.current = null;
+  }, [orderCode]);
 
   useEffect(() => {
     if (order?.status !== "PAID") return;
