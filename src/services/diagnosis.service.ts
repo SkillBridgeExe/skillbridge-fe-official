@@ -369,23 +369,26 @@ export async function getGithubEvidence({
 
 export async function rewriteTailorBullet({
   cvId,
+  matchId,
   text,
   action,
 }: {
   cvId: string;
+  matchId: string;
   text: string;
   action: TailorAction;
 }): Promise<RewriteResponse> {
   requireSession();
+  // PR4.5: send only match_id + action_id. The server reloads the match, verifies ownership +
+  // the action against the rebuilt gap-report, and builds the instruction from the VERIFIED action
+  // — the FE no longer sends skill/level facts. action_id is BE-generated; fall back to the stable
+  // composite if an older payload lacked it.
+  const actionId = action.action_id ?? `${action.action_type}:${action.skill_canonical}`;
   return rewriteFieldApi(cvId, {
     text,
     mode: "tailor",
-    tailor_action: {
-      action_type: action.action_type === "deepen_wording" ? "deepen_wording" : "emphasize",
-      skill_display: action.display_name,
-      cv_level: action.cv_level,
-      required_level: action.required_level,
-    },
+    match_id: matchId,
+    action_id: actionId,
   });
 }
 
