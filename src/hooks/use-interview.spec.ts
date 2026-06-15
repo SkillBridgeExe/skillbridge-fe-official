@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import {
   useCvListForInterview,
   useCvMatchesForInterview,
@@ -30,12 +31,19 @@ vi.mock("@/api/cv/match", () => ({
   getCvMatchesApi: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-api-session", () => ({
+  useHasApiSession: vi.fn(),
+}));
+
+const mockUseHasApiSession = vi.mocked(useHasApiSession);
+
 describe("use-interview query gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseHasApiSession.mockReturnValue(true);
   });
 
-  it("keeps interview history disabled until the caller confirms API auth", () => {
+  it("keeps interview history disabled until the caller enables it", () => {
     useInterviewHistory(false);
 
     expect(useQuery).toHaveBeenCalledWith(
@@ -46,7 +54,20 @@ describe("use-interview query gating", () => {
     );
   });
 
-  it("enables interview history only when requested by an authenticated screen", () => {
+  it("keeps interview history disabled until the API session is ready", () => {
+    mockUseHasApiSession.mockReturnValue(false);
+
+    useInterviewHistory(true);
+
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
+        enabled: false,
+      }),
+    );
+  });
+
+  it("enables interview history only when requested by an API-authenticated screen", () => {
     useInterviewHistory(true);
 
     expect(useQuery).toHaveBeenCalledWith(
