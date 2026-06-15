@@ -14,13 +14,13 @@ import {
   Video, Target, TrendingUp, AlertTriangle, ArrowRight, CheckCircle2, Clock, 
   Mic, Activity, MessageSquareQuote, BrainCircuit, Sparkles 
 } from "lucide-react";
-import { 
-  MOCK_INTERVIEW_STATS, 
-  MOCK_INTERVIEW_HISTORY, 
-  MOCK_INTERVIEW_CRITERIA,
+import {
+  DASHBOARD_INTERVIEW_STATS,
+  DASHBOARD_INTERVIEW_HISTORY,
+  DASHBOARD_INTERVIEW_CRITERIA,
   MOCK_VOCAL_ANALYTICS,
   MOCK_PERSONALITY_TRAITS,
-  MOCK_SCREENING_QUESTIONS
+  DASHBOARD_SCREENING_REVIEW_SAMPLES
 } from "@/lib/mock-data/dashboard";
 
 export default function InterviewTab() {
@@ -41,10 +41,10 @@ export default function InterviewTab() {
       {/* ═══ Top Stats ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Sessions", value: MOCK_INTERVIEW_STATS.totalInterviews, icon: Video, color: "text-blue-500", bg: "bg-blue-50", borderColor: "border-blue-100" },
-          { label: "Average Score", value: `${MOCK_INTERVIEW_STATS.averageScore}/100`, icon: Target, color: "text-primary", bg: "bg-primary/10", borderColor: "border-primary/20" },
-          { label: "Top Strength", value: MOCK_INTERVIEW_STATS.topSkill, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50", borderColor: "border-emerald-100" },
-          { label: "Area to Improve", value: MOCK_INTERVIEW_STATS.areaToImprove, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", borderColor: "border-amber-100" },
+          { label: "Total Sessions", value: DASHBOARD_INTERVIEW_STATS.totalInterviews, icon: Video, color: "text-blue-500", bg: "bg-blue-50", borderColor: "border-blue-100" },
+          { label: "Average Score", value: `${DASHBOARD_INTERVIEW_STATS.averageScore}/100`, icon: Target, color: "text-primary", bg: "bg-primary/10", borderColor: "border-primary/20" },
+          { label: "Top Strength", value: DASHBOARD_INTERVIEW_STATS.topSkill, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50", borderColor: "border-emerald-100" },
+          { label: "Area to Improve", value: DASHBOARD_INTERVIEW_STATS.areaToImprove, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", borderColor: "border-amber-100" },
         ].map((stat, idx) => (
           <Card key={idx} className={cn("glass shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden border", stat.borderColor)}>
             <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity bg-gradient-to-br from-transparent to-current", stat.color)} />
@@ -79,7 +79,7 @@ export default function InterviewTab() {
             {/* Radar Chart */}
             <div className="flex-1 min-h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" margin={{ top: 5, right: 10, bottom: 5, left: 10 }} data={MOCK_INTERVIEW_CRITERIA}>
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" margin={{ top: 5, right: 10, bottom: 5, left: 10 }} data={DASHBOARD_INTERVIEW_CRITERIA}>
                   <defs>
                     <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
@@ -109,7 +109,7 @@ export default function InterviewTab() {
 
             {/* Score Legend — fills empty space */}
             <div className="border-t border-slate-100 pt-3 mt-2 space-y-2">
-              {MOCK_INTERVIEW_CRITERIA.map((c) => {
+              {DASHBOARD_INTERVIEW_CRITERIA.map((c) => {
                 const isTop = c.A >= 80;
                 return (
                   <div key={c.subject} className="flex items-center justify-between group">
@@ -138,7 +138,7 @@ export default function InterviewTab() {
           </CardHeader>
           <CardContent className="pt-4 flex-1">
             <div className="space-y-3">
-              {MOCK_INTERVIEW_HISTORY.map((session) => (
+              {DASHBOARD_INTERVIEW_HISTORY.map((session) => (
                 <div 
                   key={session.id} 
                   className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-white hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer"
@@ -324,7 +324,7 @@ export default function InterviewTab() {
         </CardHeader>
         <CardContent className="pt-6 p-0 md:p-6 bg-slate-50/30">
           <div className="space-y-5 px-4 md:px-0 pb-4 md:pb-0">
-            {MOCK_SCREENING_QUESTIONS.map(q => (
+            {DASHBOARD_SCREENING_REVIEW_SAMPLES.map(q => (
               <div key={q.id} className="p-5 rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow flex flex-col gap-4">
                 
                 {/* Question Header */}

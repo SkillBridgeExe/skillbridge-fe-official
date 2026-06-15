@@ -1,184 +1,285 @@
-// ─── AI Mock Interview API Client ────────────────────
-// All calls go through httpClient (Axios) for unified JWT + error handling.
-
+import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 
-export interface StartInterviewResponse {
-  session_id: string;
-  message: string;
-  questions_left: number;
+const QUESTION_AUDIO_TIMEOUT_MS = 60_000;
+
+export type PlatformInterviewMode = "TEXT" | "VOICE" | "HYBRID";
+export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
+export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type PlatformInterviewLanguage = "vi" | "en";
+export type PlatformInterviewModality = "TEXT" | "AUDIO";
+
+export interface RealtimeClientSecretDto {
+  enabled: boolean;
+  provider: "openai";
+  model: string | null;
+  clientSecret: string | null;
+  expiresAt: string | null;
+  reason?: string;
 }
 
-export interface AnswerResponse {
-  message: string;
-  questions_left: number;
+export interface InterviewSessionDto {
+  id: string;
+  cvId: string | null;
+  cvMatchId: string | null;
+  jobDescriptionId: string | null;
+  targetRole: string;
+  language: PlatformInterviewLanguage | string;
+  mode: PlatformInterviewMode;
+  interviewType: PlatformInterviewType;
+  status: PlatformInterviewStatus | string;
+  totalQuestionsPlanned: number | null;
+  maxDurationSeconds: number;
+  expiresAt: string | null;
+  overallScore: number | null;
+  semanticScore: number | null;
+  llmScore: number | null;
+  communicationScore: number | null;
+  aiFeedback: InterviewFeedback | null;
+  durationSeconds: number | null;
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface InterviewTurnDto {
+  id: string;
+  sessionId: string;
+  turnOrder: number;
+  phase: string | null;
+  modality: PlatformInterviewModality;
+  aiRequestId: string | null;
+  interviewerMessage: string | null;
+  interviewerQuestion: string;
+  userAnswerText: string | null;
+  userAnswerTranscript: string | null;
+  perQuestionScore: number | null;
+  strengths: string[] | unknown;
+  improvements: string[] | unknown;
+  askedAt: string;
+  answeredAt: string | null;
+  durationSeconds: number | null;
+}
+
+export interface InterviewFeedback {
+  summary?: string;
+  technical_delivery?: Record<string, number>;
+  communication_flow?: Record<string, number>;
+  body_language?: Record<string, number> | null;
+  recommendations?: string | string[];
+  suggested_modules?: string[];
+  [key: string]: unknown;
+}
+
+export interface StartInterviewRequest {
+  cvId?: string;
+  cvMatchId?: string;
+  jobDescriptionId?: string;
+  targetRole: string;
+  language?: PlatformInterviewLanguage;
+  mode?: PlatformInterviewMode;
+  interviewType?: PlatformInterviewType;
+}
+
+export interface StartInterviewResponseDto extends InterviewSessionDto {
+  firstMessage: string;
+  firstQuestion: string;
+  phase: string | null;
+  realtime: RealtimeClientSecretDto;
+}
+
+export interface SubmitInterviewTurnRequest {
+  sessionId: string;
+  userAnswer: string;
+  userTranscript?: string;
+  modality?: PlatformInterviewModality;
+  durationSeconds?: number;
+}
+
+export interface AnswerInterviewResponseDto {
+  session: InterviewSessionDto;
+  answeredTurn: InterviewTurnDto;
+  nextTurn: InterviewTurnDto | null;
+  aiMessage: string;
+  nextQuestion: string | null;
   finished: boolean;
+}
+
+export interface InterviewDetailResponseDto extends InterviewSessionDto {
+  turns: InterviewTurnDto[];
+}
+
+export interface InterviewHistoryQuery {
+  page?: number;
+  limit?: number;
+}
+
+export interface InterviewHistoryResponse {
+  items: InterviewSessionDto[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export async function startInterview(
-  topic: string,
-  language: string = "en",
-): Promise<StartInterviewResponse> {
-  const { data } = await httpClient.post<StartInterviewResponse>(API_ROUTES.INTERVIEW.START, {
-    topic,
-    language,
-  });
-  return data;
+  payload: StartInterviewRequest,
+): Promise<StartInterviewResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<StartInterviewResponseDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.START, payload),
+    "Failed to start interview.",
+  );
+  return envelope.data;
 }
 
-export async function submitAnswer(
-  sessionId: string,
-  userAnswer: string,
-): Promise<AnswerResponse> {
-  const { data } = await httpClient.post<AnswerResponse>(API_ROUTES.INTERVIEW.ANSWER, {
-    session_id: sessionId,
-    user_answer: userAnswer,
-  });
-  return data;
+export async function submitInterviewTurn(
+  payload: SubmitInterviewTurnRequest,
+): Promise<AnswerInterviewResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AnswerInterviewResponseDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.TURN, payload),
+    "Failed to submit interview answer.",
+  );
+  return envelope.data;
 }
 
-// ─── End Interview (AI Summary) ─────────────────────────
-export interface EndInterviewResponse {
-  summary: string;
-  score: number;
-  finished: boolean;
+export async function endInterview(sessionId: string): Promise<InterviewDetailResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }),
+    "Failed to end interview.",
+  );
+  return envelope.data;
 }
 
-export async function endInterview(
-  sessionId: string,
-): Promise<EndInterviewResponse> {
-  const { data } = await httpClient.post<EndInterviewResponse>(API_ROUTES.INTERVIEW.END, {
-    session_id: sessionId,
-  });
-  return data;
+export async function getInterviewHistory(
+  query: InterviewHistoryQuery = {},
+): Promise<InterviewHistoryResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewHistoryResponse>>(
+    httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params: query }),
+    "Failed to load interview history.",
+  );
+  return envelope.data;
 }
 
-// ─── Interview History ──────────────────────────────────
-export interface HistoryEntry {
-  id: number;
-  topic: string;
-  score: number;
-  duration: number;
-  summary: string;
-  date: string;
-  status: string;
+export async function getInterviewDetail(id: string): Promise<InterviewDetailResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
+    httpClient.get(API_ROUTES.INTERVIEW.DETAIL(id)),
+    "Failed to load interview detail.",
+  );
+  return envelope.data;
 }
 
-export async function saveInterviewHistory(payload: {
-  topic: string;
-  score: number;
-  duration: number;
-  summary: string;
-}): Promise<{ success: boolean; entry: HistoryEntry }> {
-  const { data } = await httpClient.post(API_ROUTES.INTERVIEW.SAVE_HISTORY, payload);
-  return data;
+export async function refreshRealtimeToken(id: string): Promise<RealtimeClientSecretDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeClientSecretDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.REALTIME_TOKEN(id)),
+    "Failed to refresh realtime token.",
+  );
+  return envelope.data;
 }
 
-export async function getInterviewHistory(): Promise<{ history: HistoryEntry[] }> {
-  const { data } = await httpClient.get(API_ROUTES.INTERVIEW.HISTORY);
-  return data;
+export async function getInterviewQuestionAudio(id: string): Promise<Blob> {
+  const response = await httpClient.post<Blob>(
+    API_ROUTES.INTERVIEW.QUESTION_AUDIO(id),
+    undefined,
+    { responseType: "blob", timeout: QUESTION_AUDIO_TIMEOUT_MS },
+  );
+  return normalizeQuestionAudioBlob(response.data);
 }
 
-// ─── Gemini TTS ─────────────────────────────────────────
-// Uses gemini-2.5-flash-preview-tts via backend endpoint
-
-let currentAudioSource: AudioBufferSourceNode | null = null;
-let audioContext: AudioContext | null = null;
-
-function getAudioContext(): AudioContext {
-  if (!audioContext || audioContext.state === "closed") {
-    audioContext = new AudioContext();
+async function normalizeQuestionAudioBlob(blob: Blob): Promise<Blob> {
+  if (blob.size === 0) {
+    throw new Error("Question audio endpoint returned an empty audio file.");
   }
-  return audioContext;
+
+  const type = blob.type.toLowerCase();
+  if (!isTextLikeBlobType(type)) return blob;
+
+  const text = await blob.text().catch(() => "");
+  if (!text.trim()) {
+    throw new Error(`Question audio endpoint returned ${type} instead of playable audio.`);
+  }
+
+  const parsed = parseJson(text);
+  const serializedAudio = parsed ? readSerializedAudioBlob(parsed) : null;
+  if (serializedAudio) return serializedAudio;
+
+  const backendMessage = parsed ? readMessage(parsed) : text.trim().slice(0, 300);
+  throw new Error(
+    backendMessage
+      ? `Question audio endpoint returned ${type}: ${backendMessage}`
+      : `Question audio endpoint returned ${type} instead of playable audio.`,
+  );
 }
 
-/**
- * Speak text using Gemini TTS (natural voice).
- * Falls back to browser TTS if Gemini fails.
- */
-export async function speakWithGeminiTTS(
-  text: string,
-  language: string = "en",
-  onStart?: () => void,
-  onEnd?: () => void,
-): Promise<void> {
-  // Stop any current audio
-  stopSpeaking();
+function isTextLikeBlobType(type: string): boolean {
+  return (
+    type.startsWith("text/") ||
+    type.includes("json") ||
+    type.includes("xml") ||
+    type.includes("html")
+  );
+}
 
+function parseJson(text: string): unknown | null {
   try {
-    const { data: ttsData } = await httpClient.post<{ audio: string; mimeType: string }>(
-      API_ROUTES.INTERVIEW.TTS,
-      { text, language },
-    );
-
-    // Decode base64 audio
-    const binaryString = atob(ttsData.audio);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") await ctx.resume();
-
-    const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
-    const source = ctx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(ctx.destination);
-
-    currentAudioSource = source;
-
-    source.onended = () => {
-      currentAudioSource = null;
-      onEnd?.();
-    };
-
-    onStart?.();
-    source.start(0);
-  } catch (err) {
-    console.warn("[TTS] Gemini TTS failed, falling back to browser TTS:", err);
-    // Fallback to browser speechSynthesis
-    speakWithBrowserFallback(text, language, onStart, onEnd);
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
 
-/** Browser TTS fallback */
-function speakWithBrowserFallback(
-  text: string,
-  language: string,
-  onStart?: () => void,
-  onEnd?: () => void,
-): void {
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = language === "vi" ? "vi-VN" : "en-US";
-  utterance.rate = 1.0;
-  utterance.pitch = 1.0;
+function readSerializedAudioBlob(value: unknown): Blob | null {
+  if (!isRecord(value)) return null;
+  const data = value.data;
+  if (!isRecord(data)) return null;
 
-  const voices = window.speechSynthesis.getVoices();
-  const langCode = utterance.lang;
-  const preferred = voices.find(
-    (v) => v.lang === langCode && (v.name.includes("Google") || v.name.includes("Microsoft") || v.name.includes("Natural")),
-  ) || voices.find((v) => v.lang.startsWith(langCode.split("-")[0]));
-  if (preferred) utterance.voice = preferred;
+  const options = data.options;
+  const audioType =
+    isRecord(options) && typeof options.type === "string" && options.type.startsWith("audio/")
+      ? options.type
+      : null;
+  if (!audioType) return null;
 
-  utterance.onstart = () => onStart?.();
-  utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
+  const stream = data.stream;
+  const readableState = isRecord(stream) ? stream._readableState : null;
+  const buffer = isRecord(readableState) ? readableState.buffer : null;
+  if (!Array.isArray(buffer) || buffer.length === 0) return null;
 
-  window.speechSynthesis.speak(utterance);
+  const chunks = buffer
+    .map(readSerializedBufferChunk)
+    .filter((chunk): chunk is ArrayBuffer => chunk !== null);
+  if (chunks.length === 0) return null;
+
+  return new Blob(chunks, { type: audioType });
 }
 
-/** Stop any ongoing TTS (Gemini or browser fallback) */
-export function stopSpeaking(): void {
-  // Stop Gemini TTS audio
-  if (currentAudioSource) {
-    try {
-      currentAudioSource.stop();
-    } catch { /* already stopped */ }
-    currentAudioSource = null;
+function readSerializedBufferChunk(value: unknown): ArrayBuffer | null {
+  if (!isRecord(value) || !Array.isArray(value.data)) return null;
+  const bytes = value.data;
+  if (!bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+    return null;
   }
-  // Also stop browser TTS fallback
-  window.speechSynthesis.cancel();
+  const buffer = new ArrayBuffer(bytes.length);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readMessage(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (!isRecord(value)) return null;
+
+  if (typeof value.message === "string" && value.message.trim()) {
+    return value.message.trim();
+  }
+  if (typeof value.error === "string" && value.error.trim()) {
+    return value.error.trim();
+  }
+  if (isRecord(value.error)) {
+    return readMessage(value.error);
+  }
+  return null;
 }

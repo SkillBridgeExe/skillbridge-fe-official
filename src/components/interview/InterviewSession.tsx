@@ -1,584 +1,408 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  Clock,
-  RefreshCw,
-  StopCircle,
+  AlertCircle,
   Bot,
-  Send,
-  Volume2,
+  Clock,
+  Maximize2,
   Mic,
   MicOff,
-  ArrowRight,
-  Video,
   Minimize2,
-  Maximize2,
-  MessageSquare,
+  RefreshCw,
+  Send,
+  StopCircle,
+  Video,
+  Volume2,
 } from "lucide-react";
-import { type ChatMessage, type InterviewMode, type InterviewPhase } from "./types";
+import { type ChatMessage, type InterviewMode } from "./types";
+import { getInterviewModeLabel } from "./interview-view-model";
 
 interface InterviewSessionProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: RefObject<HTMLVideoElement>;
   webcamError: string | null;
-  timer: number;
-  currentQuestion: number;
-  questionsLeft: number;
+  timeRemainingLabel: string;
+  secondsRemaining: number;
+  maxDurationSeconds: number;
+  currentQuestionNumber: number;
+  totalQuestionsPlanned: number | null;
+  answeredCount: number;
   isEnding: boolean;
   interviewMode: InterviewMode;
   isLiveConnected: boolean;
+  isVoiceFallback: boolean;
+  voiceFallbackReason: string | null;
+  isMicActive: boolean;
   isAiSpeaking: boolean;
+  isQuestionAudioPlaying: boolean;
+  questionAudioError: string | null;
+  currentQuestion: string;
   chatHistory: ChatMessage[];
-  liveTranscripts: ChatMessage[];
   isLoading: boolean;
   userAnswer: string;
-  setUserAnswer: (v: string) => void;
+  setUserAnswer: (value: string) => void;
   handleSubmitAnswer: () => void;
   toggleLiveMic: () => void;
-  isMicActive: boolean;
   interviewFinished: boolean;
   onStop: () => void;
   apiError: string | null;
-  phase: InterviewPhase;
 }
 
 export function InterviewSession({
   videoRef,
   webcamError,
-  timer,
-  currentQuestion,
-  questionsLeft,
+  timeRemainingLabel,
+  secondsRemaining,
+  maxDurationSeconds,
+  currentQuestionNumber,
+  totalQuestionsPlanned,
+  answeredCount,
   isEnding,
   interviewMode,
   isLiveConnected,
+  isVoiceFallback,
+  voiceFallbackReason,
+  isMicActive,
   isAiSpeaking,
+  isQuestionAudioPlaying,
+  questionAudioError,
+  currentQuestion,
   chatHistory,
-  liveTranscripts,
   isLoading,
   userAnswer,
   setUserAnswer,
   handleSubmitAnswer,
   toggleLiveMic,
-  isMicActive,
   interviewFinished,
   onStop,
   apiError,
-  phase,
 }: InterviewSessionProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const isVoiceConnected = isLiveConnected && !isVoiceFallback;
+  const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
+  const modeLabel = getInterviewModeLabel({
+    interviewMode,
+    isLiveConnected: isVoiceConnected,
+    isVoiceFallback,
+    questionAudioError,
+  });
+  const progress =
+    maxDurationSeconds > 0
+      ? Math.max(0, Math.min(100, (secondsRemaining / maxDurationSeconds) * 100))
+      : 0;
+  const remainingQuestions =
+    totalQuestionsPlanned == null
+      ? null
+      : Math.max(totalQuestionsPlanned - answeredCount, 0);
 
-  // Auto-scroll chat
-  const currentTranscripts = interviewMode === "live" ? liveTranscripts : chatHistory;
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentTranscripts]);
-
-  const lastAiMsg = chatHistory.filter((m) => m.role === "ai").pop();
+  }, [chatHistory, isLoading]);
 
   return (
     <>
-      {/* CENTER CONTENT */}
       <main className="flex-1 overflow-y-auto relative custom-scrollbar bg-slate-50/30">
         <div className="px-6 md:px-10 py-6 md:py-8">
-          <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="space-y-6 animate-in fade-in duration-500">
             {apiError && (
-              <Card className="border-red-200 bg-red-50/80">
-                <CardContent className="py-4 text-sm text-red-700 font-medium">
-                  {apiError}
-                </CardContent>
-              </Card>
+              <Alert variant="destructive" className="bg-red-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{apiError}</AlertDescription>
+              </Alert>
             )}
 
-            {/* Timer Status Bar */}
-            {phase === "interviewing" && (
-              <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-5 py-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-slate-900 tabular-nums">
-                      {String(Math.floor(timer / 60)).padStart(2, "0")}:
-                      {String(timer % 60).padStart(2, "0")}
-                    </p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                      Duration
-                    </p>
-                  </div>
+            {isVoiceFallback && voiceFallbackReason && (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{voiceFallbackReason}</AlertDescription>
+              </Alert>
+            )}
+
+            {questionAudioError && (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{questionAudioError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-sm font-black text-slate-900">
-                      {currentQuestion}
-                    </p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                      Answered
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-black text-primary">
-                      {questionsLeft}
-                    </p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                      Remaining
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="rounded-xl px-4 font-bold h-9"
-                    onClick={onStop}
-                    disabled={isEnding}
-                  >
-                    {isEnding ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />{" "}
-                        Ending...
-                      </>
-                    ) : (
-                      <>
-                        <StopCircle className="w-3.5 h-3.5 mr-1.5" /> End Interview
-                      </>
-                    )}
-                  </Button>
+                <div>
+                  <p className="text-2xl font-black tabular-nums text-slate-900">
+                    {timeRemainingLabel}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Time remaining
+                  </p>
                 </div>
               </div>
-            )}
 
-            {/* Video View */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="secondary" className="rounded-full">
+                  Q{currentQuestionNumber}
+                  {totalQuestionsPlanned ? `/${totalQuestionsPlanned}` : ""}
+                </Badge>
+                <Badge variant="outline" className="rounded-full">
+                  {remainingQuestions == null ? `${answeredCount} answered` : `${remainingQuestions} left`}
+                </Badge>
+                <Badge
+                  variant={isVoiceConnected ? "default" : "outline"}
+                  className="rounded-full"
+                >
+                  {modeLabel}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="rounded-xl font-bold"
+                  onClick={onStop}
+                  disabled={isEnding}
+                >
+                  {isEnding ? (
+                    <>
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Ending
+                    </>
+                  ) : (
+                    <>
+                      <StopCircle className="mr-1.5 h-3.5 w-3.5" />
+                      End
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {maxDurationSeconds > 0 && <Progress value={progress} className="h-1.5" />}
+
             <div
               className={cn(
-                "space-y-6 animate-in fade-in duration-500",
+                "space-y-4",
                 isFullscreen &&
-                  "fixed inset-0 z-50 bg-black/95 p-4 md:p-8 flex flex-col justify-center"
+                  "fixed inset-0 z-50 flex flex-col justify-center bg-black/95 p-4 md:p-8",
               )}
             >
-              {/* Video container */}
               <div
                 className={cn(
-                  "relative rounded-2xl overflow-hidden bg-slate-900 shadow-2xl transition-all duration-300",
-                  isFullscreen
-                    ? "w-full max-w-6xl mx-auto aspect-video"
-                    : "w-full aspect-video"
+                  "relative overflow-hidden rounded-2xl bg-slate-900 shadow-xl",
+                  isFullscreen ? "mx-auto aspect-video w-full max-w-6xl" : "aspect-video w-full",
                 )}
               >
-                {/* Fullscreen Toggle */}
                 <button
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="absolute top-5 right-5 p-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-xl text-white transition-colors z-30"
-                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  onClick={() => setIsFullscreen((value) => !value)}
+                  className="absolute right-5 top-5 z-30 rounded-xl bg-black/50 p-2.5 text-white backdrop-blur-md transition-colors hover:bg-black/70"
+                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  type="button"
                 >
                   {isFullscreen ? (
-                    <Minimize2 className="w-5 h-5" />
+                    <Minimize2 className="h-5 w-5" />
                   ) : (
-                    <Maximize2 className="w-5 h-5" />
+                    <Maximize2 className="h-5 w-5" />
                   )}
                 </button>
 
-                {/* AI PIP (Picture in Picture) — 3-State Indicator */}
                 <div
                   className={cn(
-                    "absolute bottom-5 right-5 w-32 md:w-48 aspect-[3/4] rounded-xl border-2 shadow-2xl overflow-hidden z-20 flex flex-col transition-all duration-500",
-                    isAiSpeaking
-                      ? "border-amber-400/60 bg-slate-800 shadow-[0_0_30px_rgba(251,191,36,0.3)]"
+                    "absolute bottom-5 right-5 z-20 flex aspect-[3/4] w-32 flex-col overflow-hidden rounded-xl border-2 bg-slate-800 shadow-2xl transition-all md:w-44",
+                    isInterviewerSpeaking
+                      ? "border-amber-400/60"
                       : isLoading
-                      ? "border-blue-400/60 bg-slate-800 shadow-[0_0_20px_rgba(96,165,250,0.2)]"
-                      : "border-emerald-400/40 bg-slate-800 shadow-[0_0_20px_rgba(52,211,153,0.15)]"
+                        ? "border-blue-400/60"
+                        : "border-emerald-400/40",
                   )}
                 >
-                  <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-slate-800 to-slate-900 relative overflow-hidden">
-                    {/* AI Bot Icon */}
-                    <div className="absolute inset-0 flex items-center justify-center z-0 bg-slate-900">
-                      <div
-                        className={cn(
-                          "w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-slate-800 border-2 flex items-center justify-center transition-all duration-500 shadow-xl relative overflow-hidden",
-                          isAiSpeaking
-                            ? "border-amber-400 text-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]"
-                            : isLoading
-                            ? "border-blue-400 text-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.2)]"
-                            : "border-emerald-400/50 text-emerald-400"
-                        )}
-                      >
-                        {/* Subtle gradient inside the bot container */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent pointer-events-none" />
-
-                        <Bot
-                          className={cn(
-                            "w-8 h-8 md:w-10 md:h-10 transition-all duration-500 relative z-10",
-                            isAiSpeaking ? "animate-bounce" : ""
-                          )}
-                        />
-                      </div>
+                  <div className="relative flex flex-1 items-center justify-center bg-slate-900">
+                    <div
+                      className={cn(
+                        "flex h-16 w-16 items-center justify-center rounded-3xl border-2 bg-slate-800 text-slate-300 transition-all md:h-20 md:w-20",
+                        isInterviewerSpeaking
+                          ? "border-amber-400 text-amber-400"
+                          : isLoading
+                            ? "border-blue-400 text-blue-400"
+                            : "border-emerald-400/50 text-emerald-400",
+                      )}
+                    >
+                      <Bot className={cn("h-8 w-8 md:h-10 md:w-10", isInterviewerSpeaking && "animate-bounce")} />
                     </div>
-
-                    {/* Speaking Pulse Overlay */}
-                    {isAiSpeaking && (
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.15),transparent)] animate-pulse pointer-events-none z-10" />
-                    )}
-
-                    {/* Bottom Gradient for Text / Waveform contrast */}
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-900/95 to-transparent pointer-events-none z-10" />
-
-                    {/* Pulse ring when speaking */}
-                    {isAiSpeaking && (
-                      <>
-                        <div
-                          className="absolute inset-0 m-auto w-20 h-20 md:w-28 md:h-28 rounded-full border-2 border-amber-400/20 animate-ping z-10"
-                          style={{ animationDuration: "2s" }}
-                        />
-                        <div
-                          className="absolute inset-0 m-auto w-24 h-24 md:w-32 md:h-32 rounded-full border border-amber-400/10 animate-ping z-10"
-                          style={{ animationDuration: "2s", animationDelay: "0.5s" }}
-                        />
-                      </>
-                    )}
-
-                    {/* Speaking — animated waveform */}
-                    {isAiSpeaking && (
-                      <div className="absolute bottom-4 inset-x-0 flex gap-1 items-end justify-center h-8 z-20">
-                        {[12, 24, 16, 8, 20, 14, 18].map((h, i) => (
-                          <div
-                            key={i}
-                            className="w-1 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-                            style={{
-                              height: `${h}px`,
-                              animation: `pulse 0.5s ease-in-out ${
-                                i * 0.08
-                              }s infinite alternate`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Thinking — spinner dots */}
-                    {!isAiSpeaking && isLoading && (
-                      <div className="absolute bottom-6 inset-x-0 flex gap-2 items-center justify-center z-20">
-                        <div
-                          className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(96,165,250,0.6)]"
-                          style={{ animationDelay: "0s" }}
-                        />
-                        <div
-                          className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(96,165,250,0.6)]"
-                          style={{ animationDelay: "0.15s" }}
-                        />
-                        <div
-                          className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(96,165,250,0.6)]"
-                          style={{ animationDelay: "0.3s" }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Listening — mic icon with pulse */}
-                    {!isAiSpeaking && !isLoading && phase === "interviewing" && (
-                      <div className="absolute bottom-5 inset-x-0 flex flex-col items-center justify-center gap-1.5 z-20">
-                        <div className="p-2 rounded-full bg-slate-900/80 border border-slate-700 backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.2)]">
-                          <Mic className="w-4 h-4 text-emerald-400 animate-pulse" />
-                        </div>
-                      </div>
-                    )}
                   </div>
                   <div
                     className={cn(
-                      "h-7 backdrop-blur-sm flex items-center justify-center px-2 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-t transition-all",
-                      isAiSpeaking
-                        ? "bg-amber-400/20 text-amber-400 border-amber-400/30"
+                      "flex h-8 items-center justify-center border-t px-2 text-[10px] font-bold uppercase tracking-widest",
+                        isInterviewerSpeaking
+                          ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
                         : isLoading
-                        ? "bg-blue-400/20 text-blue-400 border-blue-400/30"
-                        : "bg-emerald-400/20 text-emerald-400 border-emerald-400/30"
+                          ? "border-blue-400/30 bg-blue-400/20 text-blue-400"
+                          : "border-emerald-400/30 bg-emerald-400/20 text-emerald-400",
                     )}
                   >
-                    {isAiSpeaking ? (
+                    {isInterviewerSpeaking ? (
                       <>
-                        <Volume2 className="w-3 h-3 mr-1.5 animate-pulse" /> Speaking
+                        <Volume2 className="mr-1.5 h-3 w-3" /> Speaking
                       </>
                     ) : isLoading ? (
                       <>
-                        <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" /> Thinking...
+                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" /> Thinking
                       </>
                     ) : (
-                      <>
-                        <Mic className="w-3 h-3 mr-1.5" /> Listening
-                      </>
+                      "Ready"
                     )}
                   </div>
                 </div>
 
                 {webcamError ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-400 space-y-5">
-                    <div className="relative w-20 h-20 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.15)]">
-                      <Video className="w-8 h-8 text-slate-500" />
-                      <div
-                        className="absolute inset-0 rounded-full border border-red-500/20 animate-ping opacity-50"
-                        style={{ animationDuration: "3s" }}
-                      />
+                  <div className="flex h-full w-full flex-col items-center justify-center space-y-4 bg-slate-950 text-center text-slate-300">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-700 bg-slate-800/80">
+                      <Video className="h-8 w-8 text-slate-500" />
                     </div>
-                    <p className="text-sm font-medium text-slate-300">
-                      {webcamError}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold bg-primary/10 px-3 py-1 rounded-full border border-primary/20 animate-pulse">
-                      Demo Simulation Active
-                    </p>
+                    <div>
+                      <p className="text-sm font-semibold">{webcamError}</p>
+                      <p className="mt-1 text-xs text-slate-500">The interview can continue without video.</p>
+                    </div>
                   </div>
                 ) : (
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover scale-x-[-1]"
-                    autoPlay
-                    muted
-                  />
+                  <video ref={videoRef} className="h-full w-full scale-x-[-1] object-cover" autoPlay muted />
                 )}
 
-                {/* REC badge + Phase Indicator */}
-                {phase === "interviewing" ? (
-                  <div className="absolute top-5 left-5 flex items-center gap-2 z-30">
-                    <div className="px-3 py-1.5 bg-red-500/80 backdrop-blur-md rounded-full text-white text-[11px] font-bold flex items-center gap-2 tracking-widest">
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                      REC {Math.floor(timer / 60)}:
-                      {(timer % 60).toString().padStart(2, "0")}
-                    </div>
-                    {/* Phase indicator */}
-                    {(() => {
-                      const phases = [
-                        { name: "Introduction", range: [0, 2], color: "bg-cyan-400/80" },
-                        { name: "Technical", range: [3, 5], color: "bg-violet-400/80" },
-                        { name: "Scenario", range: [6, 6], color: "bg-amber-400/80" },
-                        { name: "Behavioral", range: [7, 99], color: "bg-emerald-400/80" },
-                      ];
-                      const currentPhaseIdx = phases.findIndex(
-                        (p) => currentQuestion >= p.range[0] && currentQuestion <= p.range[1]
-                      );
-                      const cp = phases[Math.max(0, currentPhaseIdx)];
-                      return (
-                        <div className="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full text-white text-[10px] font-bold flex items-center gap-2">
-                          <div className="flex gap-1">
-                            {phases.map((p, i) => (
-                              <div
-                                key={i}
-                                className={cn(
-                                  "w-4 h-1 rounded-full transition-all",
-                                  i <= currentPhaseIdx ? p.color : "bg-white/20"
-                                )}
-                              />
-                            ))}
-                          </div>
-                          <span className="tracking-wider uppercase">{cp.name}</span>
-                          <span className="text-white/50">Q{currentQuestion}/7</span>
-                        </div>
-                      );
-                    })()}
+                <div className="absolute left-5 top-5 z-30 flex items-center gap-2">
+                  <div className="rounded-full bg-red-500/80 px-3 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur-md">
+                    LIVE
                   </div>
-                ) : (
-                  <div className="absolute top-5 left-5 flex items-center gap-3 z-30">
-                    <div className="px-4 py-2 bg-slate-800/80 backdrop-blur-md rounded-full text-white text-[11px] font-bold flex items-center gap-2 tracking-widest">
-                      SESSION COMPLETED • {Math.floor(timer / 60)}:
-                      {(timer % 60).toString().padStart(2, "0")}
-                    </div>
+                  <div className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                    {modeLabel}
                   </div>
-                )}
+                </div>
 
-                {/* Subtitle overlay — AI speech as caption on video */}
-                {lastAiMsg && (
-                  <div className="absolute bottom-0 inset-x-0 z-20 flex justify-center pb-5 px-5 pointer-events-none">
-                    <div className="max-w-[70%] bg-black/70 backdrop-blur-sm rounded-lg px-5 py-3 text-white text-center">
-                      <p className="text-sm md:text-base font-medium leading-relaxed">
-                        {lastAiMsg.content.slice(0, 250)}
-                        {lastAiMsg.content.length > 250 ? "..." : ""}
+                {currentQuestion && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-5">
+                    <div className="max-w-[76%] rounded-lg bg-black/70 px-5 py-3 text-center text-white backdrop-blur-sm">
+                      <p className="text-sm font-medium leading-relaxed md:text-base">
+                        {currentQuestion.slice(0, 260)}
+                        {currentQuestion.length > 260 ? "..." : ""}
                       </p>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* End Button */}
-              {phase === "interviewing" && (
-                <div className={cn("flex justify-center", isFullscreen && "mt-6")}>
-                  <Button
-                    size="lg"
-                    variant="destructive"
-                    className="rounded-xl px-12 shadow-lg font-bold"
-                    onClick={onStop}
-                  >
-                    End Session <StopCircle className="ml-2 w-4 h-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* RIGHT CHAT PANEL */}
-      {!interviewFinished && (
-        <aside className="w-[340px] shrink-0 border-l border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col h-full animate-in slide-in-from-right duration-300">
-          {/* Chat Header */}
-          <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-primary" />
-            </div>
+      <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-slate-100 bg-white/90 backdrop-blur-sm">
+        <div className="border-b border-slate-100 p-4">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Interview Chat</h3>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">
-                {interviewMode === "live"
-                  ? isLiveConnected
-                    ? "Live Voice Active"
-                    : "Connecting..."
-                  : questionsLeft > 0
-                  ? `${questionsLeft} questions left`
-                  : "Session complete"}
+              <h3 className="text-sm font-bold text-slate-900">Interview Transcript</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Submit one answer at a time
               </p>
             </div>
-            {isAiSpeaking && (
-              <div className="ml-auto flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10">
-                <Volume2 className="w-3 h-3 text-primary animate-pulse" />
-                <span className="text-[9px] font-bold text-primary uppercase">Speaking</span>
-              </div>
-            )}
-          </div>
-
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-            {currentTranscripts.map((msg, i) => (
-              <div
-                key={i}
-                className={cn("flex gap-2", msg.role === "user" ? "justify-end" : "justify-start")}
+            {(interviewMode === "guided" || interviewMode === "realtime") && (
+              <Button
+                size="icon"
+                variant={isMicActive ? "default" : "outline"}
+                className="h-9 w-9 rounded-full"
+                onClick={toggleLiveMic}
+                disabled={isLoading}
+                title={isLiveConnected ? "Toggle microphone" : "Reconnect voice"}
               >
-                {msg.role === "ai" && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                    msg.role === "ai"
-                      ? "bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-md"
-                      : "bg-primary text-white rounded-tr-md"
-                  )}
-                >
-                  {msg.content}
-                  <p
-                    className={cn(
-                      "text-[9px] mt-1.5 font-medium",
-                      msg.role === "ai" ? "text-slate-400" : "text-white/60"
-                    )}
-                  >
-                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-2">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-primary animate-spin" />
-                </div>
-                <div className="bg-slate-50 rounded-2xl rounded-tl-md px-4 py-3 border border-slate-100">
-                  <div className="flex gap-1.5">
-                    <div
-                      className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            {interviewMode === "live" &&
-              liveTranscripts.length === 0 &&
-              isLiveConnected && (
-                <p className="text-center text-slate-400 text-sm py-6">
-                  AI will start speaking shortly...
-                </p>
-              )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Answer Input */}
-          <div className="border-t border-slate-100 p-3">
-            {interviewMode === "live" ? (
-              /* Live Voice Controls */
-              <div className="flex items-center gap-3">
-                <Button
-                  size="icon"
-                  variant={isMicActive ? "default" : "outline"}
-                  className={cn(
-                    "rounded-full h-10 w-10 shrink-0 transition-all",
-                    isMicActive && "bg-primary ring-2 ring-primary/30"
-                  )}
-                  onClick={toggleLiveMic}
-                  disabled={!isLiveConnected}
-                >
-                  {isMicActive ? (
-                    <Mic className="w-4 h-4 text-white" />
-                  ) : (
-                    <MicOff className="w-4 h-4" />
-                  )}
-                </Button>
-                <div className="flex-1 text-xs text-slate-500">
-                  {!isLiveConnected
-                    ? "Connecting..."
-                    : isMicActive
-                    ? "Listening... speak your answer"
-                    : "Mic muted — click to unmute"}
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="rounded-xl text-xs h-8 px-3"
-                  onClick={onStop}
-                >
-                  <StopCircle className="w-3 h-3 mr-1" /> End
-                </Button>
-              </div>
-            ) : interviewFinished ? (
-              <Button className="w-full rounded-xl font-bold" onClick={onStop}>
-                View Results <ArrowRight className="w-4 h-4 ml-2" />
+                {isMicActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </Button>
-            ) : (
-              <div className="flex gap-2">
-                <textarea
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmitAnswer();
-                    }
-                  }}
-                  placeholder={
-                    isAiSpeaking
-                      ? "AI is speaking..."
-                      : isLoading
-                      ? "Waiting for AI..."
-                      : "Type your answer..."
-                  }
-                  disabled={isLoading || isAiSpeaking}
-                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:opacity-50 min-h-[42px] max-h-[100px]"
-                  rows={1}
-                />
-                <Button
-                  size="icon"
-                  className="rounded-xl h-[42px] w-[42px] shrink-0"
-                  onClick={handleSubmitAnswer}
-                  disabled={!userAnswer.trim() || isLoading || isAiSpeaking}
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
             )}
           </div>
-        </aside>
-      )}
+        </div>
+
+        <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+          {chatHistory.map((message, index) => (
+            <div
+              key={`${message.timestamp.getTime()}-${index}`}
+              className={cn("flex gap-2", message.role === "user" ? "justify-end" : "justify-start")}
+            >
+              {message.role === "ai" && (
+                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+              )}
+              <div
+                className={cn(
+                  "max-w-[86%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                  message.role === "ai"
+                    ? "rounded-tl-md border border-slate-100 bg-slate-50 text-slate-800"
+                    : "rounded-tr-md bg-primary text-white",
+                )}
+              >
+                {message.content}
+                <p
+                  className={cn(
+                    "mt-1.5 text-[9px] font-medium",
+                    message.role === "ai" ? "text-slate-400" : "text-white/70",
+                  )}
+                >
+                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex gap-2">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Bot className="h-3.5 w-3.5 animate-spin text-primary" />
+              </div>
+              <Card className="border-slate-100 bg-slate-50 shadow-none">
+                <CardContent className="px-4 py-3 text-xs text-slate-500">Generating next question...</CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        <div className="border-t border-slate-100 p-3">
+          {interviewFinished ? (
+            <Button className="w-full rounded-xl font-bold" onClick={onStop} disabled={isEnding}>
+              View Results
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                value={userAnswer}
+                onChange={(event) => setUserAnswer(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSubmitAnswer();
+                  }
+                }}
+                placeholder={
+                  isVoiceConnected
+                    ? "Your spoken transcript appears here. Edit only if the transcript is wrong."
+                    : "Text fallback: type your answer here."
+                }
+                disabled={isLoading || isEnding}
+                className="min-h-[110px] resize-none rounded-xl bg-slate-50"
+              />
+              <Button
+                className="w-full rounded-xl font-bold"
+                onClick={handleSubmitAnswer}
+                disabled={!userAnswer.trim() || isLoading || isEnding}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Submit Answer
+              </Button>
+            </div>
+          )}
+        </div>
+      </aside>
     </>
   );
 }

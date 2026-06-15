@@ -32,7 +32,8 @@ export default {
     },
     quota402: {
       title: "You've hit your plan limit",
-      limitReached: "You've used all of this feature's quota for the current period.",
+      limitReached:
+        "You've used all of this feature's quota for the current period.",
       notInPlan: "This feature isn't included in your plan.",
       upgrade: "Upgrade",
     },
@@ -96,12 +97,15 @@ export default {
         passwordMismatchTitle: "Password mismatch",
         passwordMismatchDesc: "Confirm password must match your password.",
         weakPasswordTitle: "Weak password",
-        weakPasswordDesc: "Password needs at least 8 characters, 1 uppercase letter, and 1 number.",
-        registerSuccess: "Registration successful - check your email to verify.",
+        weakPasswordDesc:
+          "Password needs at least 8 characters, 1 uppercase letter, and 1 number.",
+        registerSuccess:
+          "Registration successful - check your email to verify.",
         registerFailedTitle: "Registration failed",
         registerFailedDesc: "Registration failed. Please try again.",
         emailResentTitle: "Email resent",
-        emailResentDesc: "A new verification email has been sent. Please check your inbox.",
+        emailResentDesc:
+          "A new verification email has been sent. Please check your inbox.",
         resendFailedTitle: "Resend failed",
         resendFailedDesc: "Could not resend email.",
         googleSuccess: "Google sign-in successful - {{role}}",
@@ -112,10 +116,12 @@ export default {
     profile: {
       eyebrow: "Account",
       title: "My Profile",
-      subtitle: "Review your account information and SkillBridge role in one place.",
+      subtitle:
+        "Review your account information and SkillBridge role in one place.",
       loading: "Loading your profile...",
       accountInfo: "Account information",
-      accountInfoDesc: "These details come from your current signed-in session.",
+      accountInfoDesc:
+        "These details come from your current signed-in session.",
       displayName: "Display name",
       email: "Email",
       role: "Role",
@@ -132,18 +138,18 @@ export default {
       uploading: "Uploading...",
       deleteAvatar: "Delete avatar",
       saveProfile: "Save profile",
-        saving: "Saving...",
-        billingTitle: "Plan & quota",
-        billingDesc: "Quickly track your current plan and key usage limits.",
-        currentPlan: "Current plan",
-        planLoading: "Loading plan",
-        noPlanShort: "No plan",
-        usageOverview: "Usage snapshot",
-        viewBilling: "View details",
-        upgradePlan: "Upgrade",
-        noBillingPlan: "No active plan yet",
-        noBillingDesc: "Choose a plan to unlock your SkillBridge usage limits.",
-        skillsTitle: "My skills",
+      saving: "Saving...",
+      billingTitle: "Plan & quota",
+      billingDesc: "Quickly track your current plan and key usage limits.",
+      currentPlan: "Current plan",
+      planLoading: "Loading plan",
+      noPlanShort: "No plan",
+      usageOverview: "Usage snapshot",
+      viewBilling: "View details",
+      upgradePlan: "Upgrade",
+      noBillingPlan: "No active plan yet",
+      noBillingDesc: "Choose a plan to unlock your SkillBridge usage limits.",
+      skillsTitle: "My skills",
       skillsDesc: "Manage your skill IDs and levels from the profile API.",
       skillIdPlaceholder: "Skill ID",
       addSkill: "Add skill",
@@ -159,14 +165,16 @@ export default {
       toastAvatarFailedTitle: "Avatar update failed",
       toastAvatarFailedDesc: "Could not update your avatar.",
       toastAvatarInvalidTitle: "Invalid avatar",
-      toastAvatarInvalidDesc: "Please upload a PNG, JPG, or WEBP image under 2MB.",
+      toastAvatarInvalidDesc:
+        "Please upload a PNG, JPG, or WEBP image under 2MB.",
       toastSkillsSavedTitle: "Skills saved",
       toastSkillsFailedTitle: "Could not save skills",
       toastSkillsFailedDesc: "Please check the skill IDs and try again.",
       // New fields for redesigned profile
       aiConnected: "AI Connected Profile",
       completeness: "Profile Completeness",
-      completenessDesc: "A complete profile ensures more accurate AI diagnosis and job matching results.",
+      completenessDesc:
+        "A complete profile ensures more accurate AI diagnosis and job matching results.",
       completenessTipsTitle: "Tips to complete:",
       completenessTips: {
         avatar: "Avatar",
@@ -181,22 +189,24 @@ export default {
         portfolioUrl: "Personal Portfolio URL",
       },
       completenessPerfectTitle: "Outstanding!",
-      completenessPerfectDesc: "Your profile is 100% complete. Ready to impress top employers!",
+      completenessPerfectDesc:
+        "Your profile is 100% complete. Ready to impress top employers!",
       noSkills: "No skills have been added yet.",
       addSkillNow: "Add skills now",
       updateSkillsList: "Update skills list",
       cancel: "Cancel",
-        tabBasic: "Basic Info",
-        tabCareer: "Career & Goals",
-        tabSocials: "Social Networks",
-        tabBilling: "Plan",
-        placeholderDisplayName: "Enter your display name",
+      tabBasic: "Basic Info",
+      tabCareer: "Career & Goals",
+      tabSocials: "Social Networks",
+      tabBilling: "Plan",
+      placeholderDisplayName: "Enter your display name",
       placeholderUniversity: "e.g., FPT University",
       placeholderMajor: "e.g., Software Engineering",
       placeholderExpYears: "Number of years of experience",
       placeholderTargetJob: "e.g., Frontend Engineer",
       aiDirection: "AI Direction",
-      placeholderCareerGoal: "Briefly describe your career growth direction or 2-3 year goals for AI diagnosis roadmaps...",
+      placeholderCareerGoal:
+        "Briefly describe your career growth direction or 2-3 year goals for AI diagnosis roadmaps...",
       descGithub: "Project repositories & technical contributions",
       descLinkedin: "Your professional networking profile",
       descPortfolio: "Personal showcase website",
@@ -218,12 +228,14 @@ export default {
       pricing: {
         step: "Step 1/3",
         title: "Choose the right plan",
-        subtitle: "Compare CV, interview, and roadmap limits across plans in a clean, simple view.",
+        subtitle:
+          "Compare CV, interview, and roadmap limits across plans in a clean, simple view.",
         currentPlan: "Current plan",
         defaultPlanDescription: "SkillBridge plan",
         buyPlan: "Buy plan",
         useNow: "Use now",
         inUse: "In use",
+        priceLabel: "Plan price",
         monthlyPrice: "Monthly price",
         descriptionLabel: "Package summary",
         included: "What's included:",
@@ -256,6 +268,14 @@ export default {
           interview_session: "Interview Session",
           roadmap_generate: "Roadmap Generate",
         },
+        noFeatures: "This plan has not published detailed limits yet.",
+        moreFeatures: "+{{count}} more benefits",
+        emptyTitle: "No plans available yet",
+        emptyDesc: "Pricing plans are being updated. Please try again later.",
+        errorTitle: "Could not load pricing",
+        errorDesc:
+          "The network or server is having trouble. You can retry loading the plan list.",
+        retry: "Retry",
         checkoutFailedTitle: "Could not create payment",
       },
       checkout: {
@@ -269,7 +289,8 @@ export default {
         target: "Target",
         continuePayment: "Continue payment",
         checkAgain: "Check again",
-        statusError: "Could not check the order status — network or server hiccup. Your order is not lost.",
+        statusError:
+          "Could not check the order status — network or server hiccup. Your order is not lost.",
         viewMyPlan: "View my plan",
         viewOrder: "View order",
         notFound: "Order not found.",
@@ -277,14 +298,16 @@ export default {
         returnReconciling: "Checking the payment result with the server...",
         returnErrorTitle: "Could not confirm payment",
         returnMissingTitle: "Missing payment order",
-        returnMissingDesc: "The payment provider did not return an order code. Please return to pricing and try again.",
+        returnMissingDesc:
+          "The payment provider did not return an order code. Please return to pricing and try again.",
       },
       me: {
         eyebrow: "Subscription",
         title: "My plan and quota",
         subtitle: "Track your current plan and remaining usage.",
         upgrade: "Upgrade plan",
-        periodNote: "Limits are updated for the current billing period. A limit of -1 means unlimited.",
+        periodNote:
+          "Limits are updated for the current billing period. A limit of -1 means unlimited.",
         usageTitle: "Usage",
         featuresCount: "{{count}} features",
         used: "Used",
@@ -315,7 +338,8 @@ export default {
       mentor: {
         eyebrow: "Mentor billing",
         title: "Mentor payment",
-        subtitle: "Quick test screen for mentor deposits and remaining payments.",
+        subtitle:
+          "Quick test screen for mentor deposits and remaining payments.",
         checkoutFailedTitle: "Could not create mentor payment",
         bookingId: "Booking ID",
         planCode: "Plan code",
@@ -397,12 +421,14 @@ export default {
         },
         subscriptions: {
           title: "Subscriptions",
-          subtitle: "Track active, past due, cancelled, and expired subscriptions.",
+          subtitle:
+            "Track active, past due, cancelled, and expired subscriptions.",
           empty: "No subscriptions found.",
         },
         mentorBookings: {
           title: "Mentor Bookings",
-          subtitle: "Track mentor booking deposits and remaining payment states.",
+          subtitle:
+            "Track mentor booking deposits and remaining payment states.",
           empty: "No mentor bookings found.",
         },
       },
@@ -415,27 +441,36 @@ export default {
       titleSkills: "Skills",
       titleMid: " to Your ",
       titleDream: "Dream Job",
-      subtitle: "Analyze your CV, build a professional resume from scratch, and get a personalized roadmap to reach your dream job.",
+      subtitle:
+        "Analyze your CV, build a professional resume from scratch, and get a personalized roadmap to reach your dream job.",
       ctaScan: "Scan My CV Free",
       ctaBuild: "Create CV with AI",
       helper: "Already have a CV? Scan it. No CV yet? Build one with AI.",
-      tabs: { cv: "CV Diagnosis", roadmap: "Learning Roadmap", interview: "AI Interview" },
+      tabs: {
+        cv: "CV Diagnosis",
+        roadmap: "Learning Roadmap",
+        interview: "AI Interview",
+      },
     },
     journey: {
       badge: "Your journey",
       title: "Three steps from student to hired",
-      subtitle: "One loop: know where you stand, close the gap, prove it in the interview.",
+      subtitle:
+        "One loop: know where you stand, close the gap, prove it in the interview.",
       s1Eyebrow: "Step 01 · CV",
       s1Title: "Know exactly where your CV stands",
-      s1Desc: "Upload your CV — AI scores it on four criteria and pinpoints the skills you're missing for your target role. No CV yet? The builder creates an ATS-ready one from scratch.",
+      s1Desc:
+        "Upload your CV — AI scores it on four criteria and pinpoints the skills you're missing for your target role. No CV yet? The builder creates an ATS-ready one from scratch.",
       s1Cta: "Score my CV free",
       s2Eyebrow: "Step 02 · Roadmap",
       s2Title: "Learn only what's missing",
-      s2Desc: "Your skill gaps become a personalized learning path — prioritizing the 20% of knowledge that drives 80% of the result.",
+      s2Desc:
+        "Your skill gaps become a personalized learning path — prioritizing the 20% of knowledge that drives 80% of the result.",
       s2Cta: "See a sample roadmap",
       s3Eyebrow: "Step 03 · Interview",
       s3Title: "Practice until you're ready",
-      s3Desc: "Voice interviews with an AI examiner — every answer scored, every weak spot called out before the real thing.",
+      s3Desc:
+        "Voice interviews with an AI examiner — every answer scored, every weak spot called out before the real thing.",
       s3Cta: "Try the AI interviewer",
       atsPill: "ATS-ready",
     },
@@ -443,17 +478,20 @@ export default {
       title: "You're not doing this alone",
       subtitle: "When the loop is done, the ecosystem takes you further.",
       mentorTitle: "Mentors who've been there",
-      mentorDesc: "Book sessions with engineers and alumni who review your CV, mock-interview you, and unblock your path.",
+      mentorDesc:
+        "Book sessions with engineers and alumni who review your CV, mock-interview you, and unblock your path.",
       mentorCta: "Meet the mentors",
       jobsTitle: "Real jobs, matched to you",
-      jobsDesc: "Your scored CV matches against real Vietnamese IT job descriptions — apply where you actually fit.",
+      jobsDesc:
+        "Your scored CV matches against real Vietnamese IT job descriptions — apply where you actually fit.",
       jobsCta: "Browse matched jobs",
     },
     marquee: "Preparing candidates for top-tier tech employers in Vietnam",
     assess: {
       badge: "Capability Library",
       title: "Verify your core skills",
-      subtitle: "Try our standardized skill tests matching leading enterprise requirements to verify your current standing.",
+      subtitle:
+        "Try our standardized skill tests matching leading enterprise requirements to verify your current standing.",
       tabFe: "Frontend Development",
       tabBe: "Backend Systems",
       tabAi: "AI & Data Science",
@@ -474,7 +512,8 @@ export default {
       note: "Free for students · every score explainable",
     },
     footer: {
-      tagline: "Bridging the gap between learning and earning with AI-powered career growth and skill matching.",
+      tagline:
+        "Bridging the gap between learning and earning with AI-powered career growth and skill matching.",
       product: "Product",
       linkDiagnosis: "CV Diagnosis",
       linkRoadmap: "Adaptive Roadmap",
@@ -524,7 +563,8 @@ export default {
       uploading: "Uploading your CV...",
       parsing: "Parsing the document structure...",
       scoring: "Scoring with the AI rubric...",
-      coldStart: "First request can take ~15 extra seconds while the server wakes up.",
+      coldStart:
+        "First request can take ~15 extra seconds while the server wakes up.",
       elapsed: "{{seconds}}s elapsed",
     },
     authBanner: {
@@ -552,7 +592,8 @@ export default {
       doorBuilderTitle: "Create a new CV with AI",
       doorBuilderDesc: "No CV yet? Build a professional, ATS-ready CV.",
       doorBuilderCta: "Start building",
-      builderReady: "CV generated from the AI CV Builder. You can edit it again or continue with the analysis.",
+      builderReady:
+        "CV generated from the AI CV Builder. You can edit it again or continue with the analysis.",
       builderSource: "Created with AI CV Builder",
       fileReady: "Your CV file is ready for the quality analysis.",
       editInBuilder: "Edit in Builder",
@@ -575,7 +616,8 @@ export default {
       toastAnalysisFailedTitle: "Analysis failed",
       errorAnalyze: "Failed to analyze CV.",
       errorCompare: "Failed to compare CV with JD.",
-      consentLabel: "I agree to the processing of the personal data in this CV for analysis purposes.",
+      consentLabel:
+        "I agree to the processing of the personal data in this CV for analysis purposes.",
       errorFileTooLarge: "The file exceeds 5MB. Please upload a smaller file.",
       changeFile: "Change file",
       addJd: "Add a job description (optional)",
@@ -590,16 +632,21 @@ export default {
       editCta: "Edit CV & download PDF",
       editNoDataTitle: "Can't open the editor",
       editNoDataDesc: "No parsed CV data is available to edit yet.",
-      "scoreMsg.excellent": "Outstanding — your CV is exceptionally strong. Apply with confidence.",
-      "scoreMsg.good": "Good job — your CV is competitive but still has room to improve.",
-      "scoreMsg.fair": "Your CV meets basic standards. Focus on quantifying achievements.",
-      "scoreMsg.poor": "Your CV needs significant improvement. Follow the suggestions below.",
+      "scoreMsg.excellent":
+        "Outstanding — your CV is exceptionally strong. Apply with confidence.",
+      "scoreMsg.good":
+        "Good job — your CV is competitive but still has room to improve.",
+      "scoreMsg.fair":
+        "Your CV meets basic standards. Focus on quantifying achievements.",
+      "scoreMsg.poor":
+        "Your CV needs significant improvement. Follow the suggestions below.",
       "dims.action_verbs": "Action verbs & impact",
       "dims.skills_relevance": "Skills relevance",
       "dims.experience": "Experience clarity",
       "dims.education": "Education & learning",
       breakdownTitle: "Score breakdown",
-      breakdownDesc: "See which areas are strong and which fixes should come first.",
+      breakdownDesc:
+        "See which areas are strong and which fixes should come first.",
       priorityCount: "{{count}} improvement tips",
       moreIssues: "Show {{count}} more tips",
       scoreLabel: "Score",
@@ -615,11 +662,13 @@ export default {
       "severity.low": "Low",
       noIssues: "No critical issues detected in this section.",
       atsTitle: "ATS readability",
-      atsNote: "Rule-based check on structure and parseability (40% of the score).",
+      atsNote:
+        "Rule-based check on structure and parseability (40% of the score).",
       rawParsedTitle: "Raw AI parsed data",
-      rawParsedDesc: "This is what robot ATS systems \"see\" from your layout.",
+      rawParsedDesc: 'This is what robot ATS systems "see" from your layout.',
       deeperTitle: "Want even deeper analysis?",
-      deeperDesc: "Add a specific job description to see your precise skill gap and match score.",
+      deeperDesc:
+        "Add a specific job description to see your precise skill gap and match score.",
       startOver: "Start over",
       compareJd: "Compare with JD",
       toastMissingCvTitle: "Missing CV",
@@ -648,10 +697,14 @@ export default {
       scoreLabelMatch: "Match",
       scoreLabelCv: "CV score",
       badgeTop: "Top-tier CV profile",
-      "scoreMsg.excellent": "Outstanding profile. Your CV is highly competitive and ready for top-tier applications.",
-      "scoreMsg.strong": "Strong profile. Minor improvements can make your CV even sharper.",
-      "scoreMsg.decent": "Decent baseline. Improve quantified impact and clarity to stand out.",
-      "scoreMsg.weak": "Your CV needs major improvements. Prioritize the action plan before applying broadly.",
+      "scoreMsg.excellent":
+        "Outstanding profile. Your CV is highly competitive and ready for top-tier applications.",
+      "scoreMsg.strong":
+        "Strong profile. Minor improvements can make your CV even sharper.",
+      "scoreMsg.decent":
+        "Decent baseline. Improve quantified impact and clarity to stand out.",
+      "scoreMsg.weak":
+        "Your CV needs major improvements. Prioritize the action plan before applying broadly.",
       matched: "Matched",
       partial: "Partial",
       missing: "Missing",
@@ -662,10 +715,12 @@ export default {
       radarDescNoJd: "Radar appears when a JD is provided for comparison.",
       radarYou: "Your profile",
       radarRequired: "Required by JD",
-      radarEmpty: "Provide a job description to unlock radar comparison and skill-gap visualization.",
+      radarEmpty:
+        "Provide a job description to unlock radar comparison and skill-gap visualization.",
       gapTitle: "Keyword gap analysis",
       gapTitleNoJd: "Keyword gap analysis (JD required)",
-      gapDescJd: "Exact skills extracted from the JD vs detected in your resume",
+      gapDescJd:
+        "Exact skills extracted from the JD vs detected in your resume",
       gapDescNoJd: "Upload a JD to compare keyword match and missing skills.",
       found: "Found",
       hardSkills: "Hard skills",
@@ -673,16 +728,19 @@ export default {
       thSkill: "Skill keyword",
       thScore: "Score in CV",
       thStatus: "Status",
-      gapEmpty: "No JD skill mapping found. Upload or paste a job description to see detailed gaps.",
+      gapEmpty:
+        "No JD skill mapping found. Upload or paste a job description to see detailed gaps.",
       insightsTitle: "Strategic AI insights",
       strengths: "Key strengths",
       strengthsEmpty: "No major strengths identified yet.",
       gaps: "Critical gaps",
       gapsEmpty: "No critical gaps detected for this profile.",
       actionPlan: "Action plan",
-      actionPlanEmpty: "No action plan generated yet. Re-run the analysis with a detailed JD.",
+      actionPlanEmpty:
+        "No action plan generated yet. Re-run the analysis with a detailed JD.",
       roadmapTitle: "Ready to bridge these gaps?",
-      roadmapDesc: "Let our AI generate a personalized learning roadmap based on this gap report.",
+      roadmapDesc:
+        "Let our AI generate a personalized learning roadmap based on this gap report.",
       scanAgain: "Scan again",
       generatePlan: "Generate study plan",
       jdHighlightTitle: "See the keywords in your JD",
@@ -692,8 +750,10 @@ export default {
       empty: "No matching jobs for this role yet — check back soon.",
       missing: "Missing:",
       apply: "View & apply",
-      disclaimer: "Match score reflects CV–JD skill fit, not a guarantee of selection.",
-      quotaBlocked: "You have used all job-recommendation views in your current plan.",
+      disclaimer:
+        "Match score reflects CV–JD skill fit, not a guarantee of selection.",
+      quotaBlocked:
+        "You have used all job-recommendation views in your current plan.",
       error: "Could not load job recommendations.",
       retry: "Retry",
     },
@@ -708,11 +768,13 @@ export default {
     },
     interviewPrep: {
       title: "Practice interview for your gaps",
-      subtitle: "Practice-only questions selected from the real gaps in this CV.",
+      subtitle:
+        "Practice-only questions selected from the real gaps in this CV.",
       practiceOnly: "Practice",
       whyAsk: "Why ask:",
       goodAnswer: "A strong answer should include:",
-      templateNote: "Template questions are shown while AI phrasing is unavailable.",
+      templateNote:
+        "Template questions are shown while AI phrasing is unavailable.",
       focus: {
         gap_probe: "Foundation to build",
         depth_probe: "Depth check",
@@ -727,7 +789,8 @@ export default {
     },
     tailor: {
       title: "Tailor this CV to this JD",
-      subtitle: "Concrete edits grounded in the JD and the evidence already present in your CV.",
+      subtitle:
+        "Concrete edits grounded in the JD and the evidence already present in your CV.",
       noLedger: "Run a fresh diagnosis to unlock evidence-led recommendations.",
       action: {
         missing_required: "Conditionally add if true",
@@ -740,7 +803,8 @@ export default {
       surfaceAt: "(currently in: {{ref}})",
       rewriteBtn: "Rewrite with AI",
       dialogTitle: "Rewrite for {{skill}}",
-      dialogDesc: "Paste one real bullet. SkillBridge suggests wording only; it will not edit your CV automatically.",
+      dialogDesc:
+        "Paste one real bullet. SkillBridge suggests wording only; it will not edit your CV automatically.",
       detectedBullets: "Detected bullets",
       pasteBullet: "Paste the bullet you want to rewrite",
       suggestion: "Suggestion",
@@ -766,12 +830,14 @@ export default {
     },
     github: {
       title: "GitHub evidence",
-      subtitle: "Optional check against public repositories for the handle you provide.",
+      subtitle:
+        "Optional check against public repositories for the handle you provide.",
       errorTitle: "Could not check GitHub",
       errorDesc: "Couldn't reach GitHub right now — try again later.",
       username: "GitHub username",
       usernamePlaceholder: "github-handle",
-      consent: "I agree to let SkillBridge read public repositories for this handle to compare them with my CV.",
+      consent:
+        "I agree to let SkillBridge read public repositories for this handle to compare them with my CV.",
       connect: "Compare",
       loading: "Checking...",
       analyzed: "Compared {{n}} public repositories for handle {{u}}.",
@@ -780,13 +846,15 @@ export default {
       handleSignal: "Handle signal",
       repoCount: "{{n}} repos",
       notOnCv: "Code exists but the CV does not mention it",
-      noJoin: "Run diagnosis to compare with CV skills. For now this only lists signals from GitHub.",
+      noJoin:
+        "Run diagnosis to compare with CV skills. For now this only lists signals from GitHub.",
       change: "Change handle",
       reason: {
         CONSENT_REQUIRED: "Consent is required before checking GitHub.",
         INVALID_USERNAME: "The username is not valid.",
         USER_NOT_FOUND: "This GitHub user was not found.",
-        RATE_LIMITED: "GitHub is rate limiting requests. Try again in a few minutes.",
+        RATE_LIMITED:
+          "GitHub is rate limiting requests. Try again in a few minutes.",
         FETCH_FAILED: "Could not read GitHub. Please try again later.",
       },
     },
@@ -798,7 +866,8 @@ export default {
       capped: "Score cap applied because required coverage is still limited.",
       coverage: "Required coverage",
       inferredTitle: "Inferred skills",
-      inferredHint: "These are soft signals inferred from nearby tools or ecosystems. They explain context only and do not change the score.",
+      inferredHint:
+        "These are soft signals inferred from nearby tools or ecosystems. They explain context only and do not change the score.",
       fit: {
         fits: "Experience fits",
         stretch: "Stretch role",
@@ -837,15 +906,18 @@ export default {
       intern: "Intern",
       fresher: "Fresher",
       mid: "Mid-level",
-      tooltip: "Skill requirements are adjusted to this seniority level — read the score against its yardstick.",
+      tooltip:
+        "Skill requirements are adjusted to this seniority level — read the score against its yardstick.",
       jdYardstick: "Scored against your pasted JD",
-      jdTooltip: "Requirements come directly from the JD you provided — no seniority yardstick applied.",
+      jdTooltip:
+        "Requirements come directly from the JD you provided — no seniority yardstick applied.",
     },
     evidence: {
       title: "Evidence ledger",
       foundIn: "Found in",
       gapTitle: "Strengthen evidence",
-      gapHint: "Evidence explains where skills appear in the CV. It does not change the score.",
+      gapHint:
+        "Evidence explains where skills appear in the CV. It does not change the score.",
       empty: "No evidence ledger is available yet.",
       strength: {
         demonstrated: "Demonstrated",
@@ -877,8 +949,10 @@ export default {
       retry: "Retry",
     },
     aiGate: {
-      jdThin: "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",
-      cvUnreadable: "The file doesn't contain readable CV content (may be a scan or empty file) — upload a text-based PDF or document with real text.",
+      jdThin:
+        "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",
+      cvUnreadable:
+        "The file doesn't contain readable CV content (may be a scan or empty file) — upload a text-based PDF or document with real text.",
     },
     jdInput: {
       title: "Job description",
@@ -887,7 +961,8 @@ export default {
       subtitle: "Enable skill gap analysis",
       tabPaste: "Paste",
       tabUpload: "Upload",
-      placeholder: "Paste the job description here...\n\nExample: We are looking for a Frontend Engineer with 2+ years of experience in React, TypeScript...",
+      placeholder:
+        "Paste the job description here...\n\nExample: We are looking for a Frontend Engineer with 2+ years of experience in React, TypeScript...",
       placeholderCompact: "Paste the raw text of the job description here...",
       dropHint: "Click to select a file or drag & drop",
       dropTypes: "PDF, DOCX, or TXT (max 5MB)",
@@ -899,7 +974,8 @@ export default {
       toastEmptyDesc: "The TXT file does not contain readable content.",
       toastUploadedTitle: "JD uploaded",
       toastUploadedDesc: "{{fileName}} loaded successfully.",
-      toastExtractOffDesc: "PDF/DOCX auto-extract is not enabled yet. Please paste the JD text for accurate analysis.",
+      toastExtractOffDesc:
+        "PDF/DOCX auto-extract is not enabled yet. Please paste the JD text for accurate analysis.",
       toastInvalidTitle: "Invalid file",
       toastInvalidDesc: "Please upload PDF, DOCX, or TXT.",
     },
@@ -946,12 +1022,16 @@ export default {
       undo: "Undo",
       fallbackNote: "AI kept your original wording to avoid inventing numbers.",
       aiGate: {
-        needContext: "Add your experience, skills, or goal first — AI only writes from your real information.",
-        offTopic: "This doesn't look like CV content yet — describe the work you actually did.",
-        fallbackNote: "AI kept your original content to avoid inventing details.",
+        needContext:
+          "Add your experience, skills, or goal first — AI only writes from your real information.",
+        offTopic:
+          "This doesn't look like CV content yet — describe the work you actually did.",
+        fallbackNote:
+          "AI kept your original content to avoid inventing details.",
       },
       rendering: "Preparing PDF...",
-      headerSubtitle: "Build a professional, ATS-friendly CV from your profile.",
+      headerSubtitle:
+        "Build a professional, ATS-friendly CV from your profile.",
       saveDraft: "Save Draft",
       downloadCv: "Download CV",
       analyzeCv: "Analyze CV",
@@ -961,13 +1041,16 @@ export default {
       toastDownloadFailedTitle: "Download failed",
       toastDownloadFailedDesc: "Failed to render the PDF on the server.",
       toastDraftErrorTitle: "Error creating draft",
-      toastDraftErrorDesc: "Failed to create a builder draft on the server. Working in local mode.",
+      toastDraftErrorDesc:
+        "Failed to create a builder draft on the server. Working in local mode.",
       writeManually: "Write manually",
       generateWithAi: "Generate with AI",
       tellAiLabel: "Tell AI about yourself",
       summaryLabel: "Professional Summary",
-      summaryAiPlaceholder: "Example: I am a final-year Software Engineering student interested in Business Analysis. I have experience writing user stories...",
-      summaryManualPlaceholder: "Write a brief summary of your background, skills, and career goals...",
+      summaryAiPlaceholder:
+        "Example: I am a final-year Software Engineering student interested in Business Analysis. I have experience writing user stories...",
+      summaryManualPlaceholder:
+        "Write a brief summary of your background, skills, and career goals...",
       generating: "Generating...",
       generateSummary: "Generate summary",
       regenerate: "Regenerate",
@@ -1063,8 +1146,10 @@ export default {
         position: "e.g. Frontend Developer",
         startDate: "e.g. Jan 2023",
         endDate: "e.g. Present",
-        expDescription: "e.g. Wrote proposals, built timelines, worked with clients...",
-        keyAchievements: "e.g. Increased website performance by 40%. Led a team of 3 to deliver 2 weeks ahead of schedule.",
+        expDescription:
+          "e.g. Wrote proposals, built timelines, worked with clients...",
+        keyAchievements:
+          "e.g. Increased website performance by 40%. Led a team of 3 to deliver 2 weeks ahead of schedule.",
         projectName: "e.g. E-Commerce Platform",
         role: "e.g. Fullstack Developer",
         tools: "e.g. React, Node.js, MongoDB",

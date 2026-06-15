@@ -57,7 +57,14 @@ const App = () => (
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
               <Route path="/practice" element={<Navigate to="/interview" replace />} />
               <Route path="/learning/session/:id" element={<Pages.LearningSession />} />
-              <Route path="/interview" element={FEATURES.interview ? <Pages.Interview /> : <ComingSoon feature="interview" />} />
+              <Route
+                path="/interview"
+                element={
+                  <AuthGuard requireAuth>
+                    {FEATURES.interview ? <Pages.Interview /> : <ComingSoon feature="interview" />}
+                  </AuthGuard>
+                }
+              />
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
               <Route path="/payment" element={<Pages.Payment />} />
