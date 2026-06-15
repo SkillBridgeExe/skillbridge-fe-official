@@ -19,7 +19,8 @@ import { useTranslation } from "react-i18next";
 import logoGif from "@/assets/logo/logo.gif";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
-import { getMyAvatarUrl, getSafeAvatarUrl } from "@/services/user-profile.service";
+import { useHasApiSession } from "@/hooks/use-api-session";
+import { getMyAvatarUrl, getSafeAvatarUrl, isProtectedAvatarUrl } from "@/services/user-profile.service";
 
 const VNFlagCircle = () => (
   <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
@@ -73,6 +74,7 @@ export default function Navbar() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const { isAuthenticated, currentUser } = useAuthStore();
+  const hasApiSession = useHasApiSession();
   const { t, i18n } = useTranslation("common");
 
   useEffect(() => {
@@ -96,7 +98,7 @@ export default function Navbar() {
   const avatarQuery = useQuery({
     queryKey: QUERY_KEYS.USER_AVATAR,
     queryFn: getMyAvatarUrl,
-    enabled: isAuthenticated,
+    enabled: hasApiSession && isProtectedAvatarUrl(currentUser?.avatar),
   });
 
   const handleLogout = () => {

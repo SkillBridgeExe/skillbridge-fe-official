@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AxiosError, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import { httpClient } from "./http-client";
+import { bootstrapAuthSession } from "@/services/auth-session.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 function response<T>(
@@ -115,5 +116,88 @@ describe("httpClient refresh handling", () => {
     expect(first.data.authorization).toBe("Bearer fresh-token");
     expect(second.data.authorization).toBe("Bearer fresh-token");
     expect(refreshCalls).toBe(1);
+  });
+
+  it("shares one refresh request between auth bootstrap and a 401 retry", async () => {
+    let refreshCalls = 0;
+    let protectedAttempts = 0;
+
+    httpClient.defaults.adapter = vi.fn(async (config) => {
+      const url = config.url ?? "";
+
+      if (url === "/api/protected") {
+        protectedAttempts += 1;
+        if (protectedAttempts === 1) throw unauthorized(config);
+        return response(config, 200, { authorization: config.headers.Authorization });
+      }
+
+      if (url === "/api/auth/refresh") {
+        refreshCalls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return response(config, 200, {
+          success: true,
+          message: "refreshed",
+          data: {
+            accessToken: "fresh-token",
+            expiresIn: 3600,
+            user: {
+              id: "user-1",
+              email: "user@example.com",
+              displayName: "User Example",
+              avatarUrl: "https://cdn.example.com/avatar.png",
+              isEmailVerified: true,
+              roles: ["USER"],
+            },
+          },
+          errors: null,
+        });
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    }) as AxiosAdapter;
+
+    const bootstrapPromise = bootstrapAuthSession();
+    const protectedPromise = httpClient.get("/api/protected");
+    const [, protectedResult] = await Promise.all([bootstrapPromise, protectedPromise]);
+
+    expect(protectedResult.data.authorization).toBe("Bearer fresh-token");
+    expect(refreshCalls).toBe(1);
+    expect(useAuthStore.getState().authStatus).toBe("authenticated");
+    expect(useAuthStore.getState().authSource).toBe("api");
+    expect(useAuthStore.getState().currentUser?.avatar).toBe("https://cdn.example.com/avatar.png");
+  });
+
+  it("clears the API session when refresh fails after a protected 401", async () => {
+    let refreshCalls = 0;
+    useAuthStore.getState().setAuthenticated(
+      {
+        id: "user-1",
+        email: "user@example.com",
+        name: "User Example",
+        role: "user",
+      },
+      "api",
+    );
+
+    httpClient.defaults.adapter = vi.fn(async (config) => {
+      const url = config.url ?? "";
+
+      if (url === "/api/protected") {
+        throw unauthorized(config);
+      }
+
+      if (url === "/api/auth/refresh") {
+        refreshCalls += 1;
+        throw unauthorized(config);
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    }) as AxiosAdapter;
+
+    await expect(httpClient.get("/api/protected")).rejects.toThrow("Unauthorized");
+
+    expect(refreshCalls).toBe(1);
+    expect(useAuthStore.getState().authStatus).toBe("anonymous");
+    expect(useAuthStore.getState().authSource).toBeNull();
   });
 });

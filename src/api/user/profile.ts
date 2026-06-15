@@ -1,6 +1,7 @@
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
+import type { BackendUserSkillDto, UserSkillDto } from "@/api/user/skills";
 
 export interface UserProfileDetails {
   university?: string | null;
@@ -21,7 +22,7 @@ export interface UserProfileDto {
   roles?: string[];
   isEmailVerified?: boolean;
   profile?: UserProfileDetails | null;
-  skills?: any[];
+  skills?: Array<UserSkillDto | BackendUserSkillDto>;
 }
 
 export type UpdateUserProfileRequest = Partial<{

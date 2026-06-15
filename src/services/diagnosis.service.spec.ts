@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { mapCvDtoToReviewData, mapMatchDtoToJdMatch } from "./diagnosis.service";
-import type { CvDto, CvMatchDto, CvReviewParsedResponse } from "@shared/api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// rewriteTailorBullet must reach the BE only through rewriteFieldApi — mock it to capture the
+// exact request body. requireSession() gates on hasApiAuthSession(), so stub a live session.
+vi.mock("@/services/auth-session.service", () => ({ hasApiAuthSession: () => true }));
+vi.mock("@/api/cv/builder", () => ({
+  rewriteFieldApi: vi.fn().mockResolvedValue({ suggestion: "rewritten" }),
+}));
+
+import {
+  mapCvDtoToReviewData,
+  mapMatchDtoToJdMatch,
+  rewriteTailorBullet,
+} from "./diagnosis.service";
+import { rewriteFieldApi } from "@/api/cv/builder";
+import type { CvDto, CvMatchDto, CvReviewParsedResponse, TailorAction } from "@shared/api";
 
 // ── Fixtures tối thiểu theo contract BE (docs/FE-diagnosis-rewire-plan.md §5) ──
 
@@ -249,6 +262,36 @@ describe("mapCvDtoToReviewData", () => {
   it("throw rõ ràng khi review null (upload xong nhưng thiếu kết quả chấm)", () => {
     expect(() => mapCvDtoToReviewData({ ...cvDto, review: null })).toThrow(/re-running/);
   });
+
+  it("lift extraction_quality khi BE trả — KHÔNG đụng overallScore (signal độc lập)", () => {
+    const withEq: CvDto = {
+      ...cvDto,
+      review: {
+        ...review,
+        extraction_quality: {
+          char_count: 50,
+          word_count: 8,
+          mojibake_count: 0,
+          mojibake_ratio: 0,
+          wordlike_ratio: 0.9,
+          section_count: 2,
+          skill_count: 2,
+          ocr_used: true,
+          confidence: "low",
+          flags: ["OCR_USED", "THIN_CONTENT"],
+        },
+      },
+    };
+    const ui = mapCvDtoToReviewData(withEq);
+    expect(ui.extraction_quality?.confidence).toBe("low");
+    expect(ui.extraction_quality?.flags).toEqual(["OCR_USED", "THIN_CONTENT"]);
+    expect(ui.overallScore).toBe(67); // score unchanged — extraction_quality never feeds it
+  });
+
+  it("extraction_quality vắng trên payload cũ → null (không bịa banner)", () => {
+    const ui = mapCvDtoToReviewData(cvDto);
+    expect(ui.extraction_quality).toBeNull();
+  });
 });
 
 describe("mapMatchDtoToJdMatch", () => {
@@ -319,5 +362,64 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.hardSkills[0].satisfied_by).toBe("sql_server");
     // skill không có satisfied_by thì KHÔNG mang key (giữ toEqual của test cũ)
     expect("satisfied_by" in mapMatchDtoToJdMatch(matchDto).hardSkills[0]).toBe(false);
+  });
+});
+
+describe("rewriteTailorBullet (PR4.5 wire contract)", () => {
+  const tailorAction: TailorAction = {
+    action_type: "deepen_wording",
+    skill_canonical: "react",
+    display_name: "React",
+    why: "Deepen the React bullet",
+    rewrite_eligible: true,
+    anchor: { kind: "project", ref: "Booking App" },
+    jd_importance: "REQUIRED",
+    jd_count: 3,
+    cv_count: 1,
+    action_id: "deepen_wording:react",
+    before: "Built a React SPA",
+  };
+
+  beforeEach(() => {
+    vi.mocked(rewriteFieldApi).mockClear();
+  });
+
+  it("gửi CHỈ text + mode + match_id + action_id (không gửi tailor_action skill/level facts)", async () => {
+    await rewriteTailorBullet({
+      cvId: "cv-1",
+      matchId: "m-1",
+      text: "Built a React SPA",
+      action: tailorAction,
+    });
+
+    expect(rewriteFieldApi).toHaveBeenCalledTimes(1);
+    const [cvIdArg, body] = vi.mocked(rewriteFieldApi).mock.calls[0];
+    expect(cvIdArg).toBe("cv-1");
+    expect(body).toEqual({
+      text: "Built a React SPA",
+      mode: "tailor",
+      match_id: "m-1",
+      action_id: "deepen_wording:react",
+    });
+    // The old skill/level trust boundary must be gone from the wire entirely.
+    expect(body).not.toHaveProperty("tailor_action");
+  });
+
+  it("fallback action_id = `${action_type}:${skill_canonical}` khi BE payload cũ thiếu action_id", async () => {
+    const { action_id: _omit, ...legacyAction } = tailorAction;
+    await rewriteTailorBullet({
+      cvId: "cv-1",
+      matchId: "m-1",
+      text: "Built a React SPA",
+      action: legacyAction as TailorAction,
+    });
+
+    const [, body] = vi.mocked(rewriteFieldApi).mock.calls[0];
+    expect(body).toEqual({
+      text: "Built a React SPA",
+      mode: "tailor",
+      match_id: "m-1",
+      action_id: "deepen_wording:react",
+    });
   });
 });

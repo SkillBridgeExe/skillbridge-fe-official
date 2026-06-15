@@ -676,8 +676,13 @@ export default {
       toastMissingJdTitle: "Missing job description",
       toastMissingJdDesc: "Paste the job description first.",
       toastFailedTitle: "Analysis failed",
-      praiseHigh:
-        "Strong work — this CV already beats most of the screening bar.",
+      praiseHigh: "Strong work — this CV already beats most of the screening bar.",
+      extractionQuality: {
+        medium:
+          "AI may have missed part of your CV — double-check against the original to be sure the result is complete.",
+        low: "Your CV may have font issues or be a scanned image — the analysis may be incomplete; please re-check the parsed text.",
+        flagsLabel: "Signals",
+      },
     },
     results: {
       backToReview: "Back to CV review",
@@ -808,6 +813,8 @@ export default {
       fallbackNote: "AI kept the original wording to avoid inventing details.",
       close: "Close",
       rewriting: "Rewriting...",
+      rewriteError:
+        "Couldn't rewrite this suggestion. Try re-running the analysis or pick another bullet.",
     },
     market: {
       title: "This JD vs the market",

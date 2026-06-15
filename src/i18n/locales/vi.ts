@@ -674,6 +674,12 @@
       toastMissingJdDesc: "Hãy dán nội dung JD trước.",
       toastFailedTitle: "Phân tích thất bại",
       praiseHigh: "Làm tốt lắm — CV này đã vượt phần lớn vòng lọc hồ sơ.",
+      extractionQuality: {
+        medium:
+          "AI có thể đọc thiếu một phần CV — hãy đối chiếu lại với bản gốc để chắc kết quả đầy đủ.",
+        low: "CV có thể bị lỗi font hoặc là bản scan/ảnh — kết quả có thể chưa đầy đủ, hãy kiểm tra lại bản đọc.",
+        flagsLabel: "Tín hiệu",
+      },
     },
     results: {
       backToReview: "Về màn chấm CV",
@@ -802,6 +808,8 @@
       fallbackNote: "AI giữ nguyên bản gốc để tránh bịa số liệu.",
       close: "Đóng",
       rewriting: "Đang viết lại...",
+      rewriteError:
+        "Không thể viết lại gợi ý này. Hãy chạy lại phân tích hoặc chọn bullet khác.",
     },
     market: {
       title: "JD này so với thị trường",

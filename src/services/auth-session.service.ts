@@ -1,7 +1,8 @@
-import { refreshApi } from "@/api/auth/refresh";
 import { getMeApi } from "@/api/auth/me";
 import type { AuthUserDto } from "@/api/auth/envelope";
-import { clearAccessToken, setAccessToken } from "@/services/auth-token.service";
+import { refreshAuthTokens } from "@/api/core/http-client";
+import { getAuthAvatarUrl } from "@/lib/avatar-url";
+import { clearAccessToken } from "@/services/auth-token.service";
 import { useAuthStore, type AuthUser, type UserRole } from "@/store/useAuthStore";
 
 const KNOWN_ROLES = ["admin", "business", "mentor"] as const;
@@ -12,11 +13,13 @@ export function toUserRole(roles: string[] | undefined): UserRole {
 }
 
 export function toAuthUser(user: AuthUserDto): AuthUser {
+  const avatar = getAuthAvatarUrl(user.avatarUrl);
   return {
     id: user.id,
     name: user.displayName || user.email,
     email: user.email,
     role: toUserRole(user.roles),
+    ...(avatar ? { avatar } : {}),
   };
 }
 
@@ -26,14 +29,12 @@ export function hasApiAuthSession(): boolean {
 }
 
 export async function refreshAuthSession(): Promise<AuthUser> {
-  const refreshResult = await refreshApi();
-  const { accessToken, expiresIn, user } = refreshResult.data;
+  const { accessToken, user } = await refreshAuthTokens();
 
   if (!accessToken) {
     throw new Error("Refresh did not return an access token");
   }
 
-  setAccessToken(accessToken, expiresIn);
   const authUser = user ? toAuthUser(user) : toAuthUser((await getMeApi(accessToken)).data);
   useAuthStore.getState().setAuthenticated(authUser, "api");
   return authUser;
