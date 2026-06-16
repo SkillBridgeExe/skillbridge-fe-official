@@ -6,6 +6,37 @@ import { clearAccessToken } from "@/services/auth-token.service";
 import { useAuthStore, type AuthUser, type UserRole } from "@/store/useAuthStore";
 
 const KNOWN_ROLES = ["admin", "business", "mentor"] as const;
+const AUTH_STORAGE_KEY = "skillbridge-auth";
+const USER_ROLES: UserRole[] = ["user", "admin", "business", "mentor"];
+
+function isAuthUser(value: unknown): value is AuthUser {
+  if (!value || typeof value !== "object") return false;
+  const user = value as Partial<AuthUser>;
+  return (
+    typeof user.id === "string" &&
+    typeof user.name === "string" &&
+    typeof user.email === "string" &&
+    USER_ROLES.includes(user.role as UserRole)
+  );
+}
+
+export function getPersistedMockUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      state?: { authSource?: unknown; currentUser?: unknown };
+    };
+    const user = parsed.state?.currentUser;
+
+    return parsed.state?.authSource === "mock" && isAuthUser(user) ? user : null;
+  } catch {
+    return null;
+  }
+}
 
 export function toUserRole(roles: string[] | undefined): UserRole {
   const role = roles?.[0]?.toLowerCase() ?? "user";
@@ -42,6 +73,12 @@ export async function refreshAuthSession(): Promise<AuthUser> {
 
 export async function bootstrapAuthSession(): Promise<void> {
   const state = useAuthStore.getState();
+  const persistedMockUser = getPersistedMockUser();
+
+  if (persistedMockUser) {
+    state.setAuthenticated(persistedMockUser, "mock");
+    return;
+  }
 
   if (state.authSource === "mock" && state.currentUser) {
     state.setAuthenticated(state.currentUser, "mock");
@@ -53,6 +90,12 @@ export async function bootstrapAuthSession(): Promise<void> {
   try {
     await refreshAuthSession();
   } catch {
+    const fallbackMockUser = getPersistedMockUser();
+    if (fallbackMockUser) {
+      useAuthStore.getState().setAuthenticated(fallbackMockUser, "mock");
+      return;
+    }
+
     clearAccessToken();
     useAuthStore.getState().setAnonymous();
   }
