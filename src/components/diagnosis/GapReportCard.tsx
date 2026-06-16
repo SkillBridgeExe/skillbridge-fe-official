@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ClipboardList, TrendingUp, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react";
 import { useGapReportQuery } from "@/hooks/use-diagnosis";
 import type { GapReportDto } from "@shared/api";
+import { JdIntelligenceCard } from "./JdIntelligenceCard";
 
 /**
  * Báo cáo gap hợp nhất (GET /api/cv-matches/:matchId/gap-report — BE #43/#49).
@@ -149,6 +150,11 @@ export function GapReportCard({ matchId }: { matchId: string }) {
               ))}
             </ul>
           </div>
+        )}
+
+        {/* W19: JD Intelligence — yêu cầu ngoài kỹ năng (render-when-present) */}
+        {data.jd_intelligence && (
+          <JdIntelligenceCard data={data.jd_intelligence} />
         )}
 
         <p className={cn("text-[11px] text-slate-400 border-t border-[#F1F1EF] pt-3")}>

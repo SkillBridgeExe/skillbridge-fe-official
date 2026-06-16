@@ -1,4 +1,4 @@
-﻿export default {
+export default {
   common: {
     nav: {
       dashboard: "Tổng quan",
@@ -888,6 +888,30 @@
         "Thị trường kỳ vọng ngầm (từ tin tuyển dụng hệ thống theo dõi)",
       footnote:
         "Mọi số liệu trong báo cáo là số thật từ phân tích CV/JD và pool tin tuyển dụng — không phải nhận định bịa.",
+    },
+    jdIntel: {
+      title: "JD yêu cầu (ngoài kỹ năng)",
+      dimension: {
+        seniority: "Cấp độ",
+        language: "Ngôn ngữ",
+        education: "Học vấn",
+        domain: "Lĩnh vực",
+        work_mode: "Hình thức làm việc",
+      },
+      importance: {
+        REQUIRED: "Bắt buộc",
+        PREFERRED: "Ưu tiên",
+        NICE_TO_HAVE: "Có thì tốt",
+      },
+      dealBreaker: "Bắt buộc",
+      notGraded: "Đã đọc từ JD — chưa chấm gap",
+      cvSignal: "CV của bạn",
+      verdict: {
+        fits: "Phù hợp",
+        stretch: "Hơi khó",
+        over_qualified: "Quá cao",
+        unknown: "Chưa rõ",
+      },
     },
     quota: {
       remainingDaily: "Còn {{remaining}}/{{limit}} lượt chấm CV hôm nay",
