@@ -12,14 +12,15 @@ export type DiagnosisLang = "vi" | "en";
 
 /**
  * Generate a learning roadmap from a persisted CV/JD match — gaps are derived server-side from the
- * match's GapReport (learn-only). POST /api/cv-matches/:matchId/roadmap. FE sends only the language.
+ * match's GapReport (learn-only). POST /api/cv-matches/:matchId/roadmap with an EMPTY body: the BE
+ * RoadmapFromMatchDto accepts no `lang` and the global ValidationPipe runs forbidNonWhitelisted, so
+ * any unknown key (e.g. `lang`) would 400. The roadmap language follows the gap report's server default.
  */
 export async function generateRoadmapFromMatchApi(
   matchId: string,
-  lang?: DiagnosisLang,
 ): Promise<RoadmapFromMatchResponse> {
   const envelope = await unwrapEnvelope<ApiEnvelope<RoadmapFromMatchResponse>>(
-    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), lang ? { lang } : {}),
+    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), {}),
     "Failed to generate the learning roadmap.",
   );
   return envelope.data;

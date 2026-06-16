@@ -156,11 +156,11 @@ export function useGithubEvidenceMutation() {
   });
 }
 
-/** Generate a learning roadmap from a match's GapReport (button-triggered; learn-only, server-derived). */
+/** Generate a learning roadmap from a match's GapReport (button-triggered; learn-only, server-derived).
+ *  No `lang` arg — the BE route takes no body params; roadmap language is server-defaulted. */
 export function useGenerateRoadmapFromMatchMutation() {
   return useMutation({
-    mutationFn: ({ matchId, lang }: { matchId: string; lang?: "vi" | "en" }) =>
-      generateRoadmapFromMatch({ matchId, lang }),
+    mutationFn: ({ matchId }: { matchId: string }) => generateRoadmapFromMatch({ matchId }),
     retry: false,
   });
 }

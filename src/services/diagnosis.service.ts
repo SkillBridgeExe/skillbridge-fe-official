@@ -359,16 +359,17 @@ export async function getGapReport(
   return getGapReportApi(matchId, lang);
 }
 
-/** Generate the learning roadmap from a match's server-side GapReport (learn-only). */
+/**
+ * Generate the learning roadmap from a match's server-side GapReport (learn-only). No `lang`: the BE
+ * route accepts no body params (forbidNonWhitelisted) — the roadmap language is server-defaulted.
+ */
 export async function generateRoadmapFromMatch({
   matchId,
-  lang,
 }: {
   matchId: string;
-  lang?: DiagnosisLang;
 }): Promise<RoadmapFromMatchResponse> {
   requireSession();
-  return generateRoadmapFromMatchApi(matchId, lang);
+  return generateRoadmapFromMatchApi(matchId);
 }
 
 /** Generate the gap-targeted interview practice plan from a match's GapReport (skill-only). */

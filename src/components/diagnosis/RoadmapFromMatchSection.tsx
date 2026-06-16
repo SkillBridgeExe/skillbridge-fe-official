@@ -18,8 +18,7 @@ export function RoadmapFromMatchSection({
   matchId?: string | null;
   onScanAgain: () => void;
 }) {
-  const { t, i18n } = useTranslation("diagnosis");
-  const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
+  const { t } = useTranslation("diagnosis");
   const { mutate, data, isPending, isError } = useGenerateRoadmapFromMatchMutation();
 
   const plan = data?.parsed_response;
@@ -44,7 +43,7 @@ export function RoadmapFromMatchSection({
           </Button>
           {matchId ? (
             <Button
-              onClick={() => mutate({ matchId, lang })}
+              onClick={() => mutate({ matchId })}
               disabled={isPending}
               className="h-12 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-sm text-sm font-bold shrink-0 px-6 gap-2 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-70"
             >
@@ -80,7 +79,7 @@ export function RoadmapFromMatchSection({
               <p className="text-sm font-medium text-[#9F2F2D]">{t("roadmap.error")}</p>
               <Button
                 variant="ghost"
-                onClick={() => mutate({ matchId, lang })}
+                onClick={() => mutate({ matchId })}
                 className="h-10 gap-2 rounded-lg text-sm font-semibold text-[#787774] hover:bg-[#F1F1EF]"
               >
                 <RotateCcw className="h-4 w-4" /> {t("roadmap.retry")}
