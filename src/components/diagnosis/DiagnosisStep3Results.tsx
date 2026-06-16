@@ -3,15 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle2, AlertCircle, X, ArrowLeft, ArrowRight, Share2, Download,
-  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users, RotateCcw,
+  CheckCircle2, AlertCircle, X, ArrowLeft, Share2, Download,
+  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users,
   ChevronDown, ChevronUp, Ruler
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
-import { Link } from "react-router-dom";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +18,8 @@ import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
+import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
+import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
@@ -482,6 +483,8 @@ export function DiagnosisStep3Results() {
 
       {isJdMode && jdMatch?.matchId && <GapReportCard matchId={jdMatch.matchId} />}
 
+      {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>
         <div className="border-b border-[#EAEAEA] p-5">
@@ -525,27 +528,8 @@ export function DiagnosisStep3Results() {
           </div>
         </div>
 
-        {/* CTA footer — de-glassed from dark gradient to simple bordered card */}
-        <div className="m-4 p-6 bg-[#FBFBFA] border border-[#EAEAEA] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <p className="font-bold text-[#2F3437] text-base">{t("results.roadmapTitle")}</p>
-            <p className="text-sm text-[#787774] mt-1">{t("results.roadmapDesc")}</p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
-            <Button
-              variant="ghost"
-              onClick={scanAgain}
-              className="h-12 rounded-lg gap-2 text-sm font-semibold text-[#787774] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40"
-            >
-              <RotateCcw className="w-4 h-4" /> {t("results.scanAgain")}
-            </Button>
-            <Button className="h-12 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-sm text-sm font-bold shrink-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40" asChild>
-              <Link to="/roadmap-generator" className="px-6 flex items-center h-full gap-2">
-                {t("results.generatePlan")} <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
+        {/* CTA + inline learning roadmap derived from this match's GapReport */}
+        <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
       </div>
 
       {isJdMode && jobDescription && (

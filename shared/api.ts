@@ -723,6 +723,59 @@ export interface InterviewPlanResponse {
   items: InterviewPlanItem[];
   llm_enhanced: boolean;
   token_usage: number;
+  /** True when there were no skill-type gaps to probe (honest empty-state, no LLM call). */
+  no_focus_areas?: boolean;
+}
+
+// Learning roadmap derived from a CV/JD match's GapReport (POST /api/cv-matches/:matchId/roadmap).
+export interface RoadmapCourse {
+  id: string;
+  title: string;
+  url: string;
+  provider: string;
+  language: string;
+  duration_minutes: number;
+  rating: number;
+  is_free: boolean;
+}
+
+export interface RoadmapPhase {
+  phase_name: string;
+  order: number;
+  weeks: number;
+  rationale: string;
+}
+
+export interface RoadmapStep {
+  title: string;
+  description: string;
+  step_order: number;
+  phase_order: number;
+  estimated_days: number;
+  skill_canonical_names: string[];
+  learning_objectives: string[];
+  recommended_courses: RoadmapCourse[];
+}
+
+export interface RoadmapParsedResponse {
+  title: string;
+  total_weeks: number;
+  phases: RoadmapPhase[];
+  steps: RoadmapStep[];
+  ai_summary: string;
+  ai_advice: string;
+  uncovered_skills: string[];
+  skills_without_courses: string[];
+  /** True when there were no LEARNING gaps to build a roadmap from (honest empty-state, no LLM call). */
+  no_learning_gaps?: boolean;
+}
+
+export interface RoadmapFromMatchResponse {
+  ai_request_id: string;
+  parsed_response: RoadmapParsedResponse;
+  retrieval_log_id: string | null;
+  retrieved_chunks_count: number;
+  token_usage: number;
 }
 
 export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";

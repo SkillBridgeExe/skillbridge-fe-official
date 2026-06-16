@@ -3,6 +3,8 @@ import {
   analyzeCv,
   analyzeCvWithJd,
   compareJdForCv,
+  generateInterviewPlanFromMatch,
+  generateRoadmapFromMatch,
   getDiagnosisHistory,
   getGapReport,
   getGithubEvidence,
@@ -150,6 +152,24 @@ export function useGithubEvidenceMutation() {
       }
       return getGithubEvidence(params);
     },
+    retry: false,
+  });
+}
+
+/** Generate a learning roadmap from a match's GapReport (button-triggered; learn-only, server-derived).
+ *  No `lang` arg — the BE route takes no body params; roadmap language is server-defaulted. */
+export function useGenerateRoadmapFromMatchMutation() {
+  return useMutation({
+    mutationFn: ({ matchId }: { matchId: string }) => generateRoadmapFromMatch({ matchId }),
+    retry: false,
+  });
+}
+
+/** Generate a gap-targeted interview plan from a match's GapReport (button-triggered; skill-only). */
+export function useGenerateInterviewPlanFromMatchMutation() {
+  return useMutation({
+    mutationFn: ({ matchId, lang }: { matchId: string; lang?: "vi" | "en" }) =>
+      generateInterviewPlanFromMatch({ matchId, lang }),
     retry: false,
   });
 }
