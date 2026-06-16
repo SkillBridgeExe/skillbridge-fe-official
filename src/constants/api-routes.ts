@@ -54,9 +54,11 @@ export const API_ROUTES = {
     HISTORY: `${API}/diagnosis/history`,
   },
 
-  // Gap Report on a persisted CV/JD match.
+  // Gap-report-derived artifacts on a persisted CV/JD match.
   CV_MATCHES: {
     GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
+    ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
+    INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
   },
 
   // Unified plan entitlements and quotas.

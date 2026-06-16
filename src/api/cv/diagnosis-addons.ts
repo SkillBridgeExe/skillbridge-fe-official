@@ -5,9 +5,40 @@ import type {
   GapReportResponse,
   GithubEvidenceResponse,
   InterviewPlanResponse,
+  RoadmapFromMatchResponse,
 } from "@shared/api";
 
 export type DiagnosisLang = "vi" | "en";
+
+/**
+ * Generate a learning roadmap from a persisted CV/JD match — gaps are derived server-side from the
+ * match's GapReport (learn-only). POST /api/cv-matches/:matchId/roadmap. FE sends only the language.
+ */
+export async function generateRoadmapFromMatchApi(
+  matchId: string,
+  lang?: DiagnosisLang,
+): Promise<RoadmapFromMatchResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<RoadmapFromMatchResponse>>(
+    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), lang ? { lang } : {}),
+    "Failed to generate the learning roadmap.",
+  );
+  return envelope.data;
+}
+
+/**
+ * Generate a gap-targeted interview practice plan from a persisted CV/JD match — focus areas derived
+ * server-side from the GapReport (skill-only). POST /api/cv-matches/:matchId/interview-plan.
+ */
+export async function generateInterviewPlanFromMatchApi(
+  matchId: string,
+  lang?: DiagnosisLang,
+): Promise<InterviewPlanResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewPlanResponse>>(
+    httpClient.post(API_ROUTES.CV_MATCHES.INTERVIEW_PLAN(matchId), lang ? { lang } : {}),
+    "Failed to generate the interview plan.",
+  );
+  return envelope.data;
+}
 
 export async function getInterviewPlanApi(
   cvId: string,

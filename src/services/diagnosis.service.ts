@@ -15,6 +15,8 @@ import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv
 import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
 import {
+  generateInterviewPlanFromMatchApi,
+  generateRoadmapFromMatchApi,
   getGapReportApi,
   getGithubEvidenceApi,
   getInterviewPlanApi,
@@ -38,6 +40,7 @@ import type {
   InterviewPlanResponse,
   Paginated,
   RewriteResponse,
+  RoadmapFromMatchResponse,
   SkillMatchItem,
   TailorAction,
 } from "@shared/api";
@@ -354,6 +357,30 @@ export async function getGapReport(
   const matchId = typeof input === "string" ? input : input.matchId;
   const lang = typeof input === "string" ? fallbackLang : input.lang;
   return getGapReportApi(matchId, lang);
+}
+
+/** Generate the learning roadmap from a match's server-side GapReport (learn-only). */
+export async function generateRoadmapFromMatch({
+  matchId,
+  lang,
+}: {
+  matchId: string;
+  lang?: DiagnosisLang;
+}): Promise<RoadmapFromMatchResponse> {
+  requireSession();
+  return generateRoadmapFromMatchApi(matchId, lang);
+}
+
+/** Generate the gap-targeted interview practice plan from a match's GapReport (skill-only). */
+export async function generateInterviewPlanFromMatch({
+  matchId,
+  lang,
+}: {
+  matchId: string;
+  lang?: DiagnosisLang;
+}): Promise<InterviewPlanResponse> {
+  requireSession();
+  return generateInterviewPlanFromMatchApi(matchId, lang);
 }
 
 export async function getGithubEvidence({
