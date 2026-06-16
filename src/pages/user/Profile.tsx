@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AvatarCropDialog } from "@/components/ui/avatar-crop-dialog";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -311,6 +312,8 @@ export default function Profile() {
   const [skillsDraft, setSkillsDraft] = useState<UserSkillDto[]>([]);
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [activeAccountTab, setActiveAccountTab] = useState("personal");
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
@@ -532,8 +535,23 @@ export default function Profile() {
       });
       return;
     }
-    uploadAvatarMutation.mutate(file);
+    // Open crop dialog instead of uploading immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
+
+  const handleCropComplete = useCallback(
+    (croppedFile: File) => {
+      setCropDialogOpen(false);
+      setCropImageSrc(null);
+      uploadAvatarMutation.mutate(croppedFile);
+    },
+    [uploadAvatarMutation],
+  );
 
   const addSkill = () => {
     setSkillsDraft((current) => [...current, { skillId: "", level: 1 }]);
@@ -552,6 +570,7 @@ export default function Profile() {
   };
 
   return (
+    <>
     <Layout hideFooter>
       <div className="mx-auto max-w-6xl px-4 py-8 md:py-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <div className="mb-6">
@@ -1121,5 +1140,17 @@ export default function Profile() {
         </div>
       </div>
     </Layout>
+
+      <AvatarCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => {
+          setCropDialogOpen(false);
+          setCropImageSrc(null);
+        }}
+        onCropComplete={handleCropComplete}
+        isPending={uploadAvatarMutation.isPending}
+      />
+    </>
   );
 }
