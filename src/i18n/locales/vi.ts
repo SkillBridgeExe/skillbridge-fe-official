@@ -782,6 +782,14 @@ export default {
         applied: "Vận dụng",
       },
       runDiagnosisFirst: "Hãy chạy chẩn đoán trước.",
+      ctaHint:
+        "Tạo câu hỏi luyện tập nhắm đúng các khoảng trống thật trong lần so khớp này — kèm gợi ý câu trả lời tốt cần nói gì.",
+      generate: "Luyện câu hỏi phỏng vấn",
+      error: "Không tạo được bộ câu hỏi phỏng vấn. Vui lòng thử lại.",
+      retry: "Thử lại",
+      noFocusTitle: "Không có khoảng trống kỹ năng cần luyện",
+      noFocusDesc:
+        "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV.",
     },
     tailor: {
       title: "Tối ưu CV theo JD này",

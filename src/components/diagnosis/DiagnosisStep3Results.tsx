@@ -19,6 +19,7 @@ import { downloadOriginalCvFile } from "@/services/diagnosis.service";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
+import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b) ── */
@@ -481,6 +482,8 @@ export function DiagnosisStep3Results() {
       )}
 
       {isJdMode && jdMatch?.matchId && <GapReportCard matchId={jdMatch.matchId} />}
+
+      {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
 
       {/* Row 3: AI Insights */}
       <div className={cn(CARD, "overflow-hidden")}>
