@@ -1,11 +1,24 @@
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { DashboardUser } from "@/lib/mock-data/dashboard";
 
 interface DashboardHeroProps {
   user: DashboardUser;
+  isAvatarLoading?: boolean;
 }
 
-export default function DashboardHero({ user }: DashboardHeroProps) {
+export default function DashboardHero({ user, isAvatarLoading }: DashboardHeroProps) {
+  const initials = user.name
+    ?.split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "SK";
+
+  const [imgError, setImgError] = useState(false);
+  const showImg = user.avatar && !imgError && !isAvatarLoading;
+
   return (
     <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 p-8 md:p-10 text-white shadow-sm">
       {/* Decorative circles */}
@@ -15,17 +28,27 @@ export default function DashboardHero({ user }: DashboardHeroProps) {
       <div className="relative flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
         {/* Left: Avatar + greeting */}
         <div className="flex items-center gap-4 md:gap-6 min-w-0">
-            <img
-              src={user.avatar || "https://github.com/shadcn.png"}
-              alt={user.name}
-              className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-[3px] border-white/40 shadow-lg bg-white/20"
-            />
+            {showImg ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                onError={() => setImgError(true)}
+                className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-[3px] border-white/40 shadow-lg bg-white/20"
+              />
+            ) : (
+              <div className={cn(
+                "w-20 h-20 rounded-full flex-shrink-0 border-[3px] border-white/40 shadow-lg flex items-center justify-center text-2xl font-bold select-none",
+                isAvatarLoading ? "bg-white/20" : "bg-white/25"
+              )}>
+                {isAvatarLoading ? <Loader2 className="h-8 w-8 text-white/80 animate-spin" /> : initials}
+              </div>
+            )}
 
-          <div className="space-y-1.5">
-            <h1 className="text-2xl md:text-[48px] font-poppins font-bold tracking-tight whitespace-nowrap">
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <h1 className="text-2xl md:text-[48px] font-poppins font-bold tracking-normal leading-normal py-1 truncate">
               Hi {user.name}
             </h1>
-            <p className="text-white/80 text-base font-medium opacity-90">
+            <p className="text-white/80 text-base font-medium opacity-90 truncate">
               Keep pushing forward — hard work pays off!
             </p>
           </div>

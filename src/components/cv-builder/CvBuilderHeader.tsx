@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Download, BrainCircuit, Save, Loader2 } from "lucide-react";
+import { Download, FilePenLine, Save, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
@@ -145,7 +145,7 @@ export function CvBuilderHeader() {
     <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <BrainCircuit className="w-4 h-4 text-primary" />
+          <FilePenLine className="w-4 h-4 text-primary" />
         </div>
         <div>
           <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
@@ -214,7 +214,7 @@ export function CvBuilderHeader() {
               {analyzeCvMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <BrainCircuit className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" />
               )}
               <span>{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
             </Button>

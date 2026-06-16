@@ -41,6 +41,9 @@ coverage/
 .agent/
 .agents/
 .builder/
+.understand-anything/
+install_temp*
+CUsers*
 
 # Database & Notion Sprint board files
 *.dbml

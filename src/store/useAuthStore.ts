@@ -205,7 +205,15 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           authSource: state.authSource,
           isAuthenticated: state.isAuthenticated,
-          currentUser: state.currentUser,
+          // Strip blob: URLs before persisting — they die on page reload
+          currentUser: state.currentUser
+            ? {
+                ...state.currentUser,
+                avatar: state.currentUser.avatar?.startsWith("blob:")
+                  ? undefined
+                  : state.currentUser.avatar,
+              }
+            : null,
         }),
         merge: (persisted, current) => ({
           ...current,

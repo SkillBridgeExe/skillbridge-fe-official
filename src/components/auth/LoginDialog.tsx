@@ -130,12 +130,14 @@ export function LoginDialog({
 
     try {
       setLoading(true);
-      const { role: userRole, source } = await login(email, password);
+      const { role: userRole, source, displayName } = await login(email, password);
+
+      const nameToDisplay = displayName || userRole;
 
       celebrate(
         source === "mock"
-          ? t("auth.toast.loginDemoSuccess", { role: userRole })
-          : t("auth.toast.loginSuccess", { role: userRole }),
+          ? t("auth.toast.loginDemoSuccess", { role: nameToDisplay })
+          : t("auth.toast.loginSuccess", { role: nameToDisplay }),
       );
       onOpenChange(false);
       navigate(dashboardPathFor(userRole));
@@ -224,9 +226,10 @@ export function LoginDialog({
       }
 
       setLoading(true);
-      const { role: userRole } = await loginWithGoogle(credentialResponse.credential);
+      const { role: userRole, displayName } = await loginWithGoogle(credentialResponse.credential);
+      const nameToDisplay = displayName || userRole;
 
-      celebrate(t("auth.toast.googleSuccess", { role: userRole }));
+      celebrate(t("auth.toast.googleSuccess", { role: nameToDisplay }));
       onOpenChange(false);
       navigate(dashboardPathFor(userRole));
     } catch (err) {

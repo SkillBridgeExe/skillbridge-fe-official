@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AvatarCropDialog } from "@/components/ui/avatar-crop-dialog";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,6 +24,7 @@ import {
   Edit3,
   Sparkles,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
@@ -311,6 +313,8 @@ export default function Profile() {
   const [skillsDraft, setSkillsDraft] = useState<UserSkillDto[]>([]);
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [activeAccountTab, setActiveAccountTab] = useState("personal");
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
   const profileQuery = useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
@@ -532,8 +536,23 @@ export default function Profile() {
       });
       return;
     }
-    uploadAvatarMutation.mutate(file);
+    // Open crop dialog instead of uploading immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
+
+  const handleCropComplete = useCallback(
+    (croppedFile: File) => {
+      setCropDialogOpen(false);
+      setCropImageSrc(null);
+      uploadAvatarMutation.mutate(croppedFile);
+    },
+    [uploadAvatarMutation],
+  );
 
   const addSkill = () => {
     setSkillsDraft((current) => [...current, { skillId: "", level: 1 }]);
@@ -552,6 +571,7 @@ export default function Profile() {
   };
 
   return (
+    <>
     <Layout hideFooter>
       <div className="mx-auto max-w-6xl px-4 py-8 md:py-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <div className="mb-6">
@@ -576,10 +596,19 @@ export default function Profile() {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                
-                <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full border-2 border-white bg-green-500 z-20 shadow-md flex items-center justify-center">
-                  <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                </span>
+
+                {/* Spinner overlay while uploading */}
+                {uploadAvatarMutation.isPending && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-[2px]">
+                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                  </div>
+                )}
+
+                {!uploadAvatarMutation.isPending && (
+                  <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full border-2 border-white bg-green-500 z-20 shadow-md flex items-center justify-center">
+                    <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                  </span>
+                )}
                 
                 <Label className="absolute inset-0 bg-black/45 text-white rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer z-30 border-2 border-transparent">
                   <Camera className="h-5 w-5 mb-0.5" />
@@ -1121,5 +1150,17 @@ export default function Profile() {
         </div>
       </div>
     </Layout>
+
+      <AvatarCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => {
+          setCropDialogOpen(false);
+          setCropImageSrc(null);
+        }}
+        onCropComplete={handleCropComplete}
+        isPending={uploadAvatarMutation.isPending}
+      />
+    </>
   );
 }

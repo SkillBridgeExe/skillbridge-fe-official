@@ -31,6 +31,16 @@ function hasApiSession() {
   // used to bounce the user to the homepage.
 }
 
+/** Convert a File to a data URL (base64) that survives page reload + localStorage. */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function getLocalProfile(): UserProfileDto {
   const user = useAuthStore.getState().currentUser;
   const mockProfileJson = localStorage.getItem(`mock_profile_${user?.id}`);
@@ -154,9 +164,11 @@ export async function getMyAvatarUrl(): Promise<string | null> {
 
 export async function uploadMyAvatar(file: File): Promise<string | null> {
   if (!hasApiSession()) {
-    const previewUrl = URL.createObjectURL(file);
-    useAuthStore.getState().updateAuthUser({ avatar: previewUrl });
-    return previewUrl;
+    // Use data URL instead of blob URL so the avatar survives page reload.
+    // Blob URLs are session-scoped and die on refresh; data URLs persist in localStorage.
+    const dataUrl = await fileToDataUrl(file);
+    useAuthStore.getState().updateAuthUser({ avatar: dataUrl });
+    return dataUrl;
   }
 
   const previewUrl = URL.createObjectURL(file);
