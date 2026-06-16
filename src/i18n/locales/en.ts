@@ -795,6 +795,18 @@ export default {
       noFocusDesc:
         "Your skills already meet this role's requirements. Any remaining gaps are about evidence/wording in your CV — see the tailoring section.",
     },
+    roadmap: {
+      generating: "Generating...",
+      error: "Couldn't generate the roadmap. Please try again.",
+      retry: "Retry",
+      totalWeeks: "{{count}} weeks total",
+      courses: "Suggested courses",
+      free: "Free",
+      advice: "Advice:",
+      noGapsTitle: "No skills to learn for this role",
+      noGapsDesc:
+        "Your skills already meet this role's requirements. Any remaining gap is about evidence/wording in your CV — see the tailoring section, not a new skill to learn.",
+    },
     tailor: {
       title: "Tailor this CV to this JD",
       subtitle:

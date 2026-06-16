@@ -791,6 +791,18 @@ export default {
       noFocusDesc:
         "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV.",
     },
+    roadmap: {
+      generating: "Đang tạo...",
+      error: "Không tạo được lộ trình. Vui lòng thử lại.",
+      retry: "Thử lại",
+      totalWeeks: "Tổng {{count}} tuần",
+      courses: "Khóa học gợi ý",
+      free: "Miễn phí",
+      advice: "Lời khuyên:",
+      noGapsTitle: "Không có kỹ năng cần học cho vai trò này",
+      noGapsDesc:
+        "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV, không phải học kỹ năng mới.",
+    },
     tailor: {
       title: "Tối ưu CV theo JD này",
       subtitle: "Gợi ý sửa cụ thể, bám vào JD và bằng chứng đã có trong CV.",
