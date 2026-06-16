@@ -471,8 +471,14 @@ export interface JobRecommendationDto {
   currency: string;
   source_url: string | null;
   posted_at: string | null;
-  /** 0-100, deterministic — cùng engine với CV/JD match. */
+  /** 0-100, deterministic — cùng engine với CV/JD match. CHỈ skill match (để giải thích minh bạch);
+   *  KHÔNG bị seniority guard tác động. */
   match_score: number;
+  /** 0-100 — điểm seniority-adjusted mà ranking sort theo = match_score × seniority factor. Bằng
+   *  match_score khi fit; thấp hơn khi 'stretch' (CV dưới level job). Có thể vắng ở response cũ. */
+  recommendation_score?: number;
+  /** true khi job cao hơn CV ≥3 bậc seniority (vd fresher→LEAD) — UI badge/lọc. */
+  severe_stretch?: boolean;
   semantic_similarity: number | null;
   /** RRF-fused rank, 1 = tốt nhất. */
   rank: number;
