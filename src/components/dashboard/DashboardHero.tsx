@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { DashboardUser } from "@/lib/mock-data/dashboard";
 
 interface DashboardHeroProps {
@@ -37,9 +38,9 @@ export default function DashboardHero({ user, isAvatarLoading }: DashboardHeroPr
             ) : (
               <div className={cn(
                 "w-20 h-20 rounded-full flex-shrink-0 border-[3px] border-white/40 shadow-lg flex items-center justify-center text-2xl font-bold select-none",
-                isAvatarLoading ? "bg-white/20 animate-pulse" : "bg-white/25"
+                isAvatarLoading ? "bg-white/20" : "bg-white/25"
               )}>
-                {!isAvatarLoading && initials}
+                {isAvatarLoading ? <Loader2 className="h-8 w-8 text-white/80 animate-spin" /> : initials}
               </div>
             )}
 

@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { FileText, CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
+import { FileUser, CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
@@ -275,7 +275,7 @@ export function DiagnosisStep1Upload() {
         <div className="flex items-center justify-between border-b border-[#F1F1EF] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <FileText className="w-5 h-5" />
+              <FileUser className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#2F3437]">{t("upload.cardTitle")}</h2>
