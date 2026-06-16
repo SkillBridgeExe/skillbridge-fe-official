@@ -1,5 +1,5 @@
 /**
- * 8 vai trò IT của SkillBridge — `code` là enum chuẩn BE (khớp
+ * 9 vai trò IT của SkillBridge — `code` là enum chuẩn BE (khớp
  * jobs.role_code / skill_demand_snapshots.role_code trong DB), `label` để hiển thị.
  *
  * ⚠️ FE phải gửi `code` (vd "frontend_developer") cho mọi endpoint nhận role
@@ -19,6 +19,7 @@ export const IT_ROLES: ItRole[] = [
   { code: "devops_engineer", label: "DevOps" },
   { code: "qa_tester", label: "QA/Tester" },
   { code: "ai_ml_engineer", label: "AI/ML Engineer" },
+  { code: "ai_app_engineer", label: "AI Application Engineer" },
 ];
 
 /** Đổi role code → label hiển thị; trả lại chính code nếu không khớp (an toàn). */
