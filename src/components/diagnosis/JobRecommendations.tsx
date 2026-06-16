@@ -64,7 +64,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           <span className="text-[10px] font-mono tabular-nums text-[#787774]">{t("jobs.skillMatch", { score: job.match_score })}</span>
         </div>
       )}
-      {experienceFit && (
+      {experienceFit && !demoted && (
         <span className={cn("inline-flex mt-2 rounded border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
           {t(`matchDepth.fit.${experienceFit.status}`)}
           {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}

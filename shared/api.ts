@@ -474,8 +474,10 @@ export interface JobRecommendationDto {
   /** 0-100, deterministic — cùng engine với CV/JD match. CHỈ skill match (để giải thích minh bạch);
    *  KHÔNG bị seniority guard tác động. */
   match_score: number;
-  /** 0-100 — điểm seniority-adjusted mà ranking sort theo = match_score × seniority factor. Bằng
-   *  match_score khi fit; thấp hơn khi 'stretch' (CV dưới level job). Có thể vắng ở response cũ. */
+  /** 0-100 — điểm HIỂN THỊ đã điều chỉnh seniority = match_score × seniority factor. Bằng match_score
+   *  khi fit; thấp hơn khi 'stretch' (CV dưới level job), cùng chiều với thứ tự rank của BE. Đây là số
+   *  minh bạch cho UI, KHÔNG phải khoá sort: BE rank nội bộ bằng fused(skill+semantic) × factor + nudge.
+   *  Có thể vắng ở response cũ. */
   recommendation_score?: number;
   /** true khi job cao hơn CV ≥3 bậc seniority (vd fresher→LEAD) — UI badge/lọc. */
   severe_stretch?: boolean;
