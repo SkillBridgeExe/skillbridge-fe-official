@@ -70,6 +70,10 @@ const AUTH_REFRESH_EXCLUDED_URLS = new Set<string>([
 
 let refreshPromise: Promise<RefreshPayload> | null = null;
 
+function isUsingMockAuth(): boolean {
+  return useAuthStore.getState().authSource === "mock";
+}
+
 function requestPath(config: AxiosRequestConfig): string {
   const url = config.url ?? "";
   if (!url) return "";
@@ -150,15 +154,19 @@ httpClient.interceptors.response.use(
         }
         return httpClient(originalRequest);
       } catch (refreshError) {
-        clearAccessToken();
-        useAuthStore.getState().setAnonymous();
+        if (!isUsingMockAuth()) {
+          clearAccessToken();
+          useAuthStore.getState().setAnonymous();
+        }
         return Promise.reject(refreshError);
       }
     }
 
     if (status === 401 && originalRequest && !isAuthRefreshExcluded(originalRequest)) {
-      clearAccessToken();
-      useAuthStore.getState().setAnonymous();
+      if (!isUsingMockAuth()) {
+        clearAccessToken();
+        useAuthStore.getState().setAnonymous();
+      }
     }
 
     if (status === 403) {

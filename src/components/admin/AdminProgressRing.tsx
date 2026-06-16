@@ -15,7 +15,7 @@ export default function AdminProgressRing({
   size = 64,
   strokeWidth = 8,
   colorClass = "text-primary",
-  labelClassName = "text-[12px] font-bold text-slate-700 dark:text-slate-200",
+  labelClassName = "text-[12px] font-bold text-foreground",
   labelSuffix = "%",
 }: AdminProgressRingProps) {
   const circleRef = useRef<SVGCircleElement | null>(null);
@@ -55,7 +55,7 @@ export default function AdminProgressRing({
           stroke="currentColor"
           strokeOpacity={0.12}
           strokeWidth={strokeWidth}
-          className="text-slate-900 dark:text-slate-200"
+          className="text-muted-foreground"
         />
         <circle
           ref={circleRef}

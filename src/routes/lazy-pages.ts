@@ -56,15 +56,10 @@ export const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview"));
 export const AdminInsights = lazy(() => import("@/pages/admin/AdminInsights"));
 export const AdminUserManagement = lazy(() => import("@/pages/admin/AdminUserManagement"));
 export const AdminUserProfile = lazy(() => import("@/pages/admin/AdminUserProfile"));
-export const AdminCoreOperations = lazy(() => import("@/pages/admin/AdminCoreOperations"));
-export const AdminCommerceFinance = lazy(() => import("@/pages/admin/AdminCommerceFinance"));
 export const AdminBillingPlans = lazy(() => import("@/pages/admin/AdminBillingPlans"));
 export const AdminBillingOrders = lazy(() => import("@/pages/admin/AdminBillingOrders"));
 export const AdminBillingSubscriptions = lazy(() => import("@/pages/admin/AdminBillingSubscriptions"));
 export const AdminBillingMentorBookings = lazy(() => import("@/pages/admin/AdminBillingMentorBookings"));
-export const AdminCommunityManagement = lazy(() => import("@/pages/admin/AdminCommunityManagement"));
-export const AdminSystemAdministration = lazy(() => import("@/pages/admin/AdminSystemAdministration"));
-export const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 
 // Dev-only mascot animation showcase (visit /mascot). Safe to remove later.
 export const MascotShowcase = lazy(() => import("@/pages/dev/MascotShowcase"));

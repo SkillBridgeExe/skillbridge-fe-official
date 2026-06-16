@@ -1,370 +1,203 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMemo, useState, type ElementType } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Activity, CreditCard, FileText, SearchCheck, Users } from "lucide-react";
+import {
+  AdminDonutChartCard,
+  AdminFunnelChartCard,
+  AdminLineChartCard,
+} from "@/components/admin/AdminCharts";
 import AdminKpiCard from "@/components/admin/AdminKpiCard";
-import AdminProgressRing from "@/components/admin/AdminProgressRing";
-import AdminDataTable from "@/components/admin/AdminDataTable";
-import AdminFilterBar from "@/components/admin/AdminFilterBar";
-import { AdminFunnelChartCard, AdminLineChartCard } from "@/components/admin/AdminCharts";
-import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
-import { REVENUE_DATA, TOP_COURSES } from "@/lib/mock-data/admin";
-import { gsap } from "gsap";
-import { Award, Clock, GraduationCap } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QUERY_KEYS } from "@/constants/app";
+import { getAdminUserSummary } from "@/services/admin-users.service";
 
-const OVERVIEW_SKILL_PROGRESS = [
-//   { label: "React JS", percent: 33, colorClass: "text-primary", thumb: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=240&q=60" },
-//   { label: "Node JS", percent: 27, colorClass: "text-cyan-500", thumb: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=240&q=60" },
-//   { label: "Angular JS", percent: 45, colorClass: "text-violet-500", thumb: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=240&q=60" },
-// ];
-
-  { label: "React JS", percent: 33, colorClass: "text-primary", thumb: "" },
-  { label: "Node JS", percent: 27, colorClass: "text-cyan-500", thumb: "" },
-  { label: "Angular JS", percent: 45, colorClass: "text-violet-500", thumb: "" },
+const ROLE_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
 ];
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE: "hsl(var(--chart-2))",
+  UNVERIFIED: "hsl(var(--chart-3))",
+  SUSPENDED: "hsl(var(--muted-foreground))",
+};
 
-type CourseRow = (typeof TOP_COURSES)[number];
+function formatVnd(value: number) {
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
+}
+
+function formatCompactVnd(value: number) {
+  if (Math.abs(value) >= 1_000_000) {
+    return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(value / 1_000_000)}M ₫`;
+  }
+  if (Math.abs(value) >= 1_000) {
+    return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(value / 1_000)}K ₫`;
+  }
+  return `${value} ₫`;
+}
+
+function rangeLabel(rangeDays: number) {
+  return `${rangeDays} days`;
+}
 
 export default function AdminOverview() {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("all");
-  const [loading, setLoading] = useState(true);
+  const [rangeDays, setRangeDays] = useState(30);
+  const summaryQuery = useQuery({
+    queryKey: QUERY_KEYS.ADMIN_USER_SUMMARY({ rangeDays }),
+    queryFn: () => getAdminUserSummary({ rangeDays }),
+  });
 
-  const [localCourses, setLocalCourses] = useState<CourseRow[]>(() => TOP_COURSES);
+  const summary = summaryQuery.data;
+  const totals = summary?.totals;
+  const activeRate = totals?.totalUsers ? (totals.activeUsers / totals.totalUsers) * 100 : 0;
+  const conversionRate = totals?.cvCount ? (totals.interviewCount / totals.cvCount) * 100 : 0;
 
-  useEffect(() => {
-    const t = window.setTimeout(() => setLoading(false), 500);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    setLocalCourses(TOP_COURSES);
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return localCourses.filter((c) => {
-      const matchesQ = q.length === 0 ? true : `${c.title} ${c.category}`.toLowerCase().includes(q);
-      const matchesStatus = status === "all" ? true : c.status === status;
-      return matchesQ && matchesStatus;
-    });
-  }, [localCourses, search, status]);
-
-  const funnelItems = useMemo(
-    () => [
-      { label: "CV", value: 124800 },
-      { label: "Analysis", value: 18720 },
-      { label: "Roadmap", value: 12480 },
-      { label: "Mentor", value: 6240 },
-      { label: "Interview", value: 3744 },
-      { label: "Job", value: 1650 },
-    ],
-    []
+  const roleDonut = useMemo(
+    () =>
+      (summary?.roleDistribution ?? []).map((item, index) => ({
+        name: item.role,
+        value: item.count,
+        color: ROLE_COLORS[index % ROLE_COLORS.length],
+      })),
+    [summary?.roleDistribution],
   );
 
-  const lineData = useMemo(() => {
-    // Use revenue months as a proxy for "user growth trend" to keep mock data consistent.
-    const months = REVENUE_DATA.map((m) => m.month);
-    return months.map((m, idx) => ({
-      month: m,
-      users: Math.round(REVENUE_DATA[idx].revenue / 35 + 1200),
-    }));
-  }, []);
-
-  const welcomeRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = welcomeRef.current;
-    if (!el) return;
-    gsap.fromTo(
-      el,
-      { y: 14, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }
-    );
-  }, []);
-
-  const kpiAccents = useMemo(
-    () => ({
-      enrolled: {
-        ringColorClass: "text-fuchsia-500",
-        cardClassName: "bg-fuchsia-500/10",
-      },
-      completed: {
-        ringColorClass: "text-violet-500",
-        cardClassName: "bg-violet-500/10",
-      },
-      certs: {
-        ringColorClass: "text-blue-500",
-        cardClassName: "bg-blue-500/10",
-      },
-      hours: {
-        ringColorClass: "text-emerald-500",
-        cardClassName: "bg-emerald-500/10",
-      },
-    }),
-    []
-  );
-
-  const coursesColumns = useMemo(
-    () => [
-      {
-        key: "title",
-        header: "Course",
-        cell: (row: CourseRow) => (
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{row.title}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.category}</div>
-          </div>
-        ),
-      },
-      {
-        key: "enrollments",
-        header: "Enrolled",
-        widthClassName: "w-24",
-        cell: (row: CourseRow) => <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{row.enrollments.toLocaleString()}</div>,
-      },
-      {
-        key: "completionRate",
-        header: "Completion",
-        widthClassName: "w-28",
-        cell: (row: CourseRow) => <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{row.completionRate}%</div>,
-      },
-      {
-        key: "revenue",
-        header: "Revenue",
-        widthClassName: "w-28",
-        cell: (row: CourseRow) => <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">₫{Math.round(row.revenue / 1000000)}M</div>,
-      },
-      {
-        key: "status",
-        header: "Status",
-        widthClassName: "w-32",
-        cell: (row: CourseRow) => <AdminStatusBadge status={row.status} />,
-      },
-      {
-        key: "actions",
-        header: "Actions",
-        widthClassName: "w-28",
-        cell: (row: CourseRow) => (
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl px-3"
-            onClick={() => toast({ title: "✅ Open course", description: `${row.title} (mock)` })}
-          >
-            View
-          </Button>
-        ),
-      },
-    ],
-    []
+  const statusDonut = useMemo(
+    () =>
+      (summary?.statusDistribution ?? []).map((item) => ({
+        name: item.status,
+        value: item.count,
+        color: STATUS_COLORS[item.status] ?? "#6366F1",
+      })),
+    [summary?.statusDistribution],
   );
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* Banner */}
-      <div className="bg-slate-900 text-white rounded-2xl px-6 py-3 shadow-sm border border-white/5">
-        <span className="text-sm font-semibold">Campus activities and academic results are on track. Let’s aim even higher!</span>
-      </div>
-
-      {/* Welcome card */}
-      <Card
-        ref={welcomeRef}
-        className="rounded-3xl border-0 overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, rgba(99,102,241,1) 0%, rgba(124,58,237,1) 40%, rgba(59,130,246,1) 100%)",
-        }}
-      >
-        <CardContent className="p-7">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            {/* <div className="flex items-center gap-4 min-w-0">
-              <div className="w-14 h-14 rounded-full bg-white/15 ring-1 ring-white/20 flex items-center justify-center overflow-hidden">
-                {currentUser?.avatar ? (
-                  <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-white/30" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="text-white text-xl font-black leading-tight">Welcome back, {currentUser?.name?.split(" ")[0] ?? "Alex"}</div>
-                <div className="text-white/80 text-sm font-semibold mt-0.5">Here’s your progress for this week!</div>
-              </div>
-            </div> */}
-
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex gap-4">
-  {OVERVIEW_SKILL_PROGRESS.map((p) => (
-    <div
-      key={p.label}
-      className="w-36 md:w-40 bg-white/10 border border-white/15 rounded-2xl px-4 py-4"
-    >
-      <div className="flex items-center gap-3">
-        {/* <div className="w-11 h-11 rounded-xl overflow-hidden ring-1 ring-white/15 bg-white/10 flex-shrink-0">
-          <img src={p.thumb} alt={p.label} className="w-full h-full object-cover" />
-        </div> */}
-
-        <div className="min-w-0">
-          <div className="text-white text-base font-bold truncate">
-            {p.label}
-          </div>
-          <div className="text-white/90 text-sm font-semibold">
-            {p.percent}%
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 h-2 bg-white/15 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-white/90 rounded-full"
-          style={{ width: `${p.percent}%` }}
-        />
-      </div>
-    </div>
-  ))}
-</div>
-
-              <div className="flex gap-5 md:gap-6 items-center">
-  {[
-    { title: "Training Hours", value: 98, ring: 65, icon: <Clock className="w-5 h-5 text-white" /> },
-    { title: "Courses", value: 7, ring: 75, icon: <GraduationCap className="w-5 h-5 text-white" /> },
-    { title: "Certifications", value: 3, ring: 92, icon: <Award className="w-5 h-5 text-white" /> },
-  ].map((s) => (
-    <div
-      key={s.title}
-      className="bg-white/10 border border-white/15 rounded-2xl px-5 py-4 w-51 md:w-55"
-    >
-      <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col gap-6 pb-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-white/85 text-sm font-semibold">
-            {s.title}
-          </div>
-          <div className="text-white text-2xl font-black leading-tight">
-            {s.value}
-          </div>
+          <p className="text-sm font-semibold uppercase tracking-normal text-primary">Admin overview</p>
+          <h1 className="text-3xl font-bold tracking-normal text-foreground">User Growth & Activity</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Live admin statistics from the user-management API for the last {rangeLabel(rangeDays)}.
+          </p>
         </div>
+        <div className="w-44">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">Range</div>
+          <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+                <SelectItem value="90">90 days</SelectItem>
+                <SelectItem value="365">365 days</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-        <div className="flex items-center justify-center">
-          <AdminProgressRing
-            value={s.ring}
-            size={72}
-            strokeWidth={9}
-            colorClass="text-white"
-            labelSuffix="%"
-            labelClassName="text-[13px] font-black text-white"
+      {summaryQuery.isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-36 rounded-2xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <AdminKpiCard
+            title="Total users"
+            value={(totals?.totalUsers ?? 0).toLocaleString()}
+            valueNumber={totals?.totalUsers ?? 0}
+            progress={activeRate}
+            icon={Users}
+            accent={{ ringColorClass: "text-primary", cardClassName: "bg-card" }}
+          />
+          <AdminKpiCard
+            title="New users"
+            value={(totals?.newUsers ?? 0).toLocaleString()}
+            valueNumber={totals?.newUsers ?? 0}
+            progress={100}
+            icon={Activity}
+            accent={{ ringColorClass: "text-[hsl(var(--chart-2))]", cardClassName: "bg-card" }}
+          />
+          <AdminKpiCard
+            title="CV uploads"
+            value={(totals?.cvCount ?? 0).toLocaleString()}
+            valueNumber={totals?.cvCount ?? 0}
+            progress={conversionRate}
+            icon={FileText}
+            accent={{ ringColorClass: "text-[hsl(var(--chart-5))]", cardClassName: "bg-card" }}
+          />
+          <AdminKpiCard
+            title="Paid revenue"
+            value={formatVnd(totals?.paidRevenueVnd ?? 0)}
+            progress={0}
+            icon={CreditCard}
+            accent={{ ringColorClass: "text-[hsl(var(--chart-3))]", cardClassName: "bg-card" }}
           />
         </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminLineChartCard
+          title="Registrations trend"
+          description="New accounts created inside the selected range."
+          xKey="date"
+          dataKey="count"
+          data={(summary?.registrationTrend ?? []) as unknown as Record<string, unknown>[]}
+        />
+        <AdminLineChartCard
+          title="Paid revenue trend"
+          description="Paid amount captured through admin billing data."
+          xKey="date"
+          dataKey="amountVnd"
+          axisValueFormatter={formatCompactVnd}
+          valueFormatter={formatVnd}
+          data={(summary?.revenueTrend ?? []) as unknown as Record<string, unknown>[]}
+        />
       </div>
-    </div>
-  ))}
-</div>
-            </div>
-          </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <AdminDonutChartCard title="Role distribution" description="Accounts grouped by active roles." data={roleDonut} />
+        <AdminDonutChartCard title="Status distribution" description="Operational account states." data={statusDonut} />
+        <AdminFunnelChartCard title="Activity funnel" description="CV, match, and interview progression." items={summary?.activityFunnel ?? []} />
+      </div>
+
+      <Card className="border-border/80 shadow-sm">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-4">
+          <SmallMetric label="Active users" value={totals?.activeUsers ?? 0} />
+          <SmallMetric label="Unverified users" value={totals?.unverifiedUsers ?? 0} />
+          <SmallMetric label="Suspended users" value={totals?.suspendedUsers ?? 0} />
+          <SmallMetric label="Interviews" value={totals?.interviewCount ?? 0} icon={SearchCheck} />
         </CardContent>
       </Card>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <AdminKpiCard
-          title="Enrolled Courses"
-          value="23"
-          valueNumber={23}
-          accent={{
-            ringColorClass: kpiAccents.enrolled.ringColorClass,
-            cardClassName: "bg-fuchsia-500/10",
-          }}
-          progress={75}
-          valueSuffix=""
-        />
-        <AdminKpiCard
-          title="Completed Courses"
-          value="34"
-          valueNumber={34}
-          accent={{
-            ringColorClass: kpiAccents.completed.ringColorClass,
-            cardClassName: "bg-violet-500/10",
-          }}
-          progress={60}
-        />
-        <AdminKpiCard
-          title="Certificates Earned"
-          value="7"
-          valueNumber={7}
-          accent={{
-            ringColorClass: kpiAccents.certs.ringColorClass,
-            cardClassName: "bg-blue-500/10",
-          }}
-          progress={92}
-        />
-        <AdminKpiCard
-          title="Learning Hours"
-          value="89h"
-          valueNumber={89}
-          valueSuffix="h"
-          accent={{
-            ringColorClass: kpiAccents.hours.ringColorClass,
-            cardClassName: "bg-emerald-500/10",
-          }}
-          progress={65}
-        />
-      </div>
-
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="min-w-0">
-          <AdminFunnelChartCard title="CV → Job Conversion" items={funnelItems} />
-        </div>
-        <div className="min-w-0">
-          <AdminLineChartCard title="User growth trend" xKey="month" dataKey="users" data={lineData} />
-        </div>
-      </div>
-
-      {/* Table + filter */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-sm font-black text-slate-900 dark:text-slate-100">Course Enrollment</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Filter & drill into completion performance (mock).</div>
-          </div>
-        </div>
-        <AdminFilterBar
-          placeholder="Search course..."
-          searchValue={search}
-          onSearchChange={(v) => {
-            setLoading(true);
-            setSearch(v);
-            window.setTimeout(() => setLoading(false), 250);
-          }}
-          statusValue={status}
-          onStatusChange={(v) => {
-            setLoading(true);
-            setStatus(v);
-            window.setTimeout(() => setLoading(false), 250);
-          }}
-          statusOptions={[
-            { value: "all", label: "All" },
-            { value: "active", label: "Active" },
-            { value: "draft", label: "Draft" },
-            { value: "archived", label: "Archived" },
-          ]}
-          onReset={() => {
-            setSearch("");
-            setStatus("all");
-            toast({ title: "✅ Reset filters", description: "Dashboard state updated (mock)." });
-          }}
-          rightSlot={
-            <Button type="button" className="rounded-xl" onClick={() => toast({ title: "✅ Export", description: "Export CSV (mock)" })}>
-              Export CSV
-            </Button>
-          }
-        />
-
-        <AdminDataTable<CourseRow>
-          columns={coursesColumns}
-          rows={filtered}
-          loading={loading}
-          rowKey={(r) => r.id}
-        />
-      </div>
     </div>
   );
 }
 
+function SmallMetric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon?: ElementType;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+        {Icon ? <Icon className="size-4" /> : null}
+        {label}
+      </div>
+      <div className="mt-2 font-mono text-2xl font-bold tracking-normal text-foreground tabular-nums">{value.toLocaleString()}</div>
+    </div>
+  );
+}
