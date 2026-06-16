@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
 import { CheckCircle2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -117,8 +117,15 @@ export default function Diagnosis() {
     cvLanguage: state.cvLanguage,
   });
 
+  // W22-A fix: gate draft creation with a ref so it only attempts ONCE per builder entry.
+  // A permanent 402 (quota exhausted) must NOT retry — fall back to local mode instead of looping.
+  const draftAttemptRef = useRef(false);
+
   useEffect(() => {
-    if (step !== "builder") return;
+    if (step !== "builder") {
+      draftAttemptRef.current = false; // allow a fresh attempt next time the builder opens
+      return;
+    }
 
     if (!canUseApi) {
       useAutosaveStore.getState().setSaveStatus("local");
@@ -126,7 +133,10 @@ export default function Diagnosis() {
     }
 
     const currentDraftId = useCvBuilderStore.getState().draftId;
-    if (currentDraftId === null && !ensureDraftMutation.isPending) {
+    // Attempt server-draft creation AT MOST ONCE per builder entry. A permanent 402
+    // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
+    if (currentDraftId === null && !draftAttemptRef.current) {
+      draftAttemptRef.current = true;
       ensureDraftMutation.mutate(
         { language: useCvBuilderStore.getState().cvLanguage },
         {
@@ -149,17 +159,21 @@ export default function Diagnosis() {
             }
           },
           onError: (err: Error) => {
+            // Graceful degradation: keep editing locally, surface the reason ONCE.
+            useAutosaveStore.getState().setSaveStatus("local");
             toast({
               title: t("builder.toastDraftErrorTitle"),
               description: err?.message || t("builder.toastDraftErrorDesc"),
               variant: "destructive",
             });
-            useAutosaveStore.getState().setSaveStatus("error");
           },
         }
       );
     }
-  }, [step, canUseApi, ensureDraftMutation, saveDraftMutation, toast, t]);
+    // mutate() fns are stable in React Query; we intentionally exclude the mutation
+    // objects so their state transitions don't re-run this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, canUseApi]);
 
   useEffect(() => {
     if (step !== "builder") return;
