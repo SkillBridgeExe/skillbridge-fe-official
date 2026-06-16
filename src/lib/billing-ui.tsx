@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { BILLING_ORDER_STATUSES, getBillingOrderStatusMeta } from "@/lib/billing-checkout";
+import type { BillingOrderStatus } from "@/api/billing";
 
 export function formatVnd(value: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN", {
@@ -20,20 +22,28 @@ export function formatDate(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
-export function StatusBadge({ status }: { status?: string | null }) {
+export function StatusBadge({ status, label }: { status?: string | null; label?: ReactNode }) {
   const value = status ?? "UNKNOWN";
+  const normalized = value.toUpperCase();
+  const isBillingOrderStatus = BILLING_ORDER_STATUSES.includes(normalized as BillingOrderStatus);
+  const billingStatus = isBillingOrderStatus
+    ? getBillingOrderStatusMeta(normalized)
+    : null;
+  const tone = billingStatus?.tone;
   const className =
-    value === "PAID" || value === "ACTIVE"
+    tone === "success" || value === "ACTIVE"
       ? "border-[hsl(var(--status-success-border))] bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-fg))]"
-      : value === "PENDING" || value === "AWAITING_REMAINING" || value === "AWAITING_MENTOR_ACCEPT"
+      : tone === "warning" || value === "AWAITING_REMAINING" || value === "AWAITING_MENTOR_ACCEPT"
         ? "border-[hsl(var(--status-warning-border))] bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-fg))]"
-        : value === "CANCELLED" || value === "FAILED" || value === "EXPIRED" || value === "PAST_DUE"
+        : tone === "danger" || value === "PAST_DUE"
           ? "border-destructive/20 bg-destructive/10 text-destructive"
+          : tone === "info"
+            ? "border-sky-200 bg-sky-50 text-sky-700"
           : "border-[hsl(var(--status-muted-border))] bg-[hsl(var(--status-muted-bg))] text-[hsl(var(--status-muted-fg))]";
 
   return (
     <Badge variant="outline" className={`whitespace-nowrap ${className}`}>
-      {value.replace(/_/g, " ")}
+      {label ?? billingStatus?.label ?? value.replace(/_/g, " ")}
     </Badge>
   );
 }

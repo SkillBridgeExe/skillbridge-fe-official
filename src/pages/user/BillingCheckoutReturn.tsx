@@ -1,110 +1,46 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { reconcileOrder } from "@/services/billing.service";
-import { useHasApiSession } from "@/hooks/use-api-session";
+import { parsePayOSReturnParams } from "@/lib/billing-checkout";
 
 export default function BillingCheckoutReturn() {
   const { t } = useTranslation("common");
+  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
-  const orderCode = searchParams.get("orderCode");
-  const providerStatus = searchParams.get("status");
-  const cancelled = searchParams.get("cancel") === "true";
-  const hasApiSession = useHasApiSession();
-
-  const statusText = useMemo(() => {
-    if (cancelled) return "CANCELLED";
-    return providerStatus || "PENDING";
-  }, [cancelled, providerStatus]);
+  const payOSReturn = useMemo(
+    () => parsePayOSReturnParams(new URLSearchParams(location.search)),
+    [location.search],
+  );
 
   useEffect(() => {
-    if (!orderCode) return;
-    if (!hasApiSession) {
-      setError("Please sign in with a real account to check this payment.");
-      return;
-    }
-    let active = true;
-    reconcileOrder(orderCode)
-      .then(() => {
-        if (active) navigate(`/billing/checkout/${orderCode}`, { replace: true });
-      })
-      .catch((err) => {
-        if (active) setError(getApiErrorMessage(err));
-      });
-    return () => {
-      active = false;
-    };
-  }, [hasApiSession, navigate, orderCode]);
-
-  if (!orderCode) {
-    return (
-      <Layout>
-        <div className="mx-auto max-w-xl px-4 py-10">
-          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="font-poppins text-2xl font-black">
-                {t("billing.checkout.returnMissingTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-slate-500">{t("billing.checkout.returnMissingDesc")}</p>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link to="/pricing">{t("billing.pricing.title")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
+    if (!payOSReturn.orderCode) return;
+    navigate(`/billing/checkout/${payOSReturn.orderCode}${location.search}`, { replace: true });
+  }, [location.search, navigate, payOSReturn.orderCode]);
 
   return (
     <Layout>
       <div className="mx-auto max-w-xl px-4 py-10">
         <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
           <CardHeader>
-            <p className="text-sm font-bold uppercase tracking-wider text-[#00AEEF]">
-              {t("billing.checkout.eyebrow")}
-            </p>
-            <CardTitle className="mt-2 font-poppins text-2xl font-black">
-              {t("billing.checkout.returnTitle")}
+            <CardTitle className="font-poppins text-2xl font-black">
+              {payOSReturn.orderCode
+                ? t("billing.checkout.returnTitle")
+                : t("billing.checkout.returnMissingTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {error ? (
-              <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
-                <div className="mb-2 flex items-center gap-2 font-bold">
-                  <AlertCircle className="h-4 w-4" />
-                  {t("billing.checkout.returnErrorTitle")}
-                </div>
-                <p>{error}</p>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
-                <Loader2 className="h-5 w-5 animate-spin text-[#00AEEF]" />
-                <span>{t("billing.checkout.returnReconciling")}</span>
-              </div>
-            )}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-sm">
-              <p className="font-semibold text-slate-900">{t("billing.checkout.orderCode")}: {orderCode}</p>
-              <p className="mt-1 text-slate-500">payOS: {statusText}</p>
-            </div>
-            {error ? (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" className="rounded-full" onClick={() => window.location.reload()}>
-                  {t("billing.checkout.checkAgain")}
-                </Button>
-                <Button asChild variant="outline" className="rounded-full">
-                  <Link to={`/billing/checkout/${orderCode}`}>{t("billing.checkout.viewOrder")}</Link>
-                </Button>
-              </div>
+            <p className="text-sm text-slate-500">
+              {payOSReturn.orderCode
+                ? t("billing.checkout.returnRedirecting")
+                : t("billing.checkout.returnMissingDesc")}
+            </p>
+            {!payOSReturn.orderCode ? (
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to="/pricing">{t("billing.pricing.title")}</Link>
+              </Button>
             ) : null}
           </CardContent>
         </Card>

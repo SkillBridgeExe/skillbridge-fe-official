@@ -67,7 +67,7 @@ const App = () => (
               />
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
-              <Route path="/payment" element={<Pages.Payment />} />
+              <Route path="/payment" element={<Navigate to="/pricing" replace />} />
               <Route path="/pricing" element={<Pages.Pricing />} />
               <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />
               <Route path="/billing/checkout" element={<AuthGuard requireAuth><Pages.BillingCheckoutReturn /></AuthGuard>} />
