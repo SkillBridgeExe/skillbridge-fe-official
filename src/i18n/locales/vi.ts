@@ -751,6 +751,9 @@ export default {
       quotaBlocked: "Bạn đã hết lượt xem đề xuất việc làm của gói hiện tại.",
       error: "Không tải được đề xuất việc làm.",
       retry: "Thử lại",
+      skillMatch: "Kỹ năng {{score}}%",
+      stretch: "Vượt cấp seniority",
+      severeStretch: "Vượt cấp khá xa",
     },
     aiInsight: {
       title: "AI nhận định thị trường",

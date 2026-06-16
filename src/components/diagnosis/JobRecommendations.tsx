@@ -30,6 +30,11 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, options?: Record<string, unknown>) => string }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = formatSalary(job.salary_min, job.salary_max, job.currency);
+  // recommendation_score (seniority-adjusted) is what BE ranks by; fall back to match_score for
+  // older responses. When it's lower, the job is a seniority stretch — show why, keep the skill score.
+  const recScore = job.recommendation_score ?? job.match_score;
+  const demoted = recScore < job.match_score;
+  const severe = job.severe_stretch === true;
   // BE trả envelope.data thô (không chuẩn hoá) — guard kẻo 1 job thiếu missing_skills làm trắng cả lưới.
   const missing = job.missing_skills ?? [];
   const partial = job.partial_skills ?? [];
@@ -44,11 +49,22 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     <>
       <div className="flex items-start justify-between gap-3">
         <h4 className="text-[13px] font-semibold text-[#2F3437] leading-snug line-clamp-2">{job.title}</h4>
-        <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(job.match_score))}>
-          {job.match_score}%
+        <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
+          {recScore}%
         </span>
       </div>
-      {experienceFit && (
+      {demoted && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className={cn(
+            "inline-flex rounded border px-2 py-0.5 text-[10px] font-bold",
+            severe ? "bg-[#FDEBEC] text-[#9F2F2D] border-[#F5C9C7]" : "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+          )}>
+            {t(severe ? "jobs.severeStretch" : "jobs.stretch")}
+          </span>
+          <span className="text-[10px] font-mono tabular-nums text-[#787774]">{t("jobs.skillMatch", { score: job.match_score })}</span>
+        </div>
+      )}
+      {experienceFit && !demoted && (
         <span className={cn("inline-flex mt-2 rounded border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
           {t(`matchDepth.fit.${experienceFit.status}`)}
           {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
