@@ -245,7 +245,7 @@ export default function Index() {
                   {t("hero.titleSkills")}
                 </span>
                 <br className="hidden lg:inline" />
-                <span className="lg:whitespace-nowrap">
+                <span>
                   {t("hero.titleMid")}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
                     {t("hero.titleDream")}

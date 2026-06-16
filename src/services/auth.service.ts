@@ -23,6 +23,7 @@ import { toAuthUser, toUserRole } from "@/services/auth-session.service";
 
 export interface LoginOutcome {
   role: UserRole;
+  displayName?: string;
   /** "api" = NestJS backend; "mock" = demo account (fallback khi BE không nhận). */
   source: "api" | "mock";
 }
@@ -63,10 +64,13 @@ export async function login(email: string, password: string): Promise<LoginOutco
     const result = await loginApi({ email, password });
     const role = toUserRole(result.data.user.roles);
     persistSession(result.data.accessToken, result.data.expiresIn, result.data.user, role);
-    return { role, source: "api" };
+    return { role, source: "api", displayName: result.data.user.displayName };
   } catch (apiError) {
     const mock = useAuthStore.getState().loginWithMockAccount(email, password);
-    if (mock.success) return { role: mock.role, source: "mock" };
+    if (mock.success) {
+      const currentUser = useAuthStore.getState().currentUser;
+      return { role: mock.role, source: "mock", displayName: currentUser?.name };
+    }
     throw apiError;
   }
 }
@@ -76,7 +80,7 @@ export async function loginWithGoogle(idToken: string): Promise<LoginOutcome> {
   if (!result.data.user) throw new Error("Google login did not return a user");
   const role = toUserRole(result.data.user.roles);
   persistSession(result.data.accessToken, result.data.expiresIn, result.data.user, role);
-  return { role, source: "api" };
+  return { role, source: "api", displayName: result.data.user.displayName };
 }
 
 export function register(payload: RegisterRequest): Promise<RegisterResponse> {

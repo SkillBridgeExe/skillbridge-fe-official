@@ -74,7 +74,7 @@ export default function Dashboard() {
   const dashboardUser = {
     ...MOCK_USER,
     name: currentUser?.name || MOCK_USER.name,
-    avatar: avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || "https://github.com/shadcn.png",
+    avatar: avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || undefined,
   };
 
   return (
@@ -92,7 +92,7 @@ export default function Dashboard() {
         <div className="flex-1 min-w-0 px-4 md:px-6 py-6 space-y-8">
           {/* Banner */}
           <div ref={setRef("hero")} data-section="hero">
-            <DashboardHero user={dashboardUser} />
+            <DashboardHero user={dashboardUser} isAvatarLoading={avatarQuery.isLoading} />
           </div>
 
           {/* Ecosystem Notification Widget */}

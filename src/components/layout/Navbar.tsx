@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCircle } from "lucide-react";
+import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCircle, Sparkles } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { logout as logoutSession } from "@/services/auth.service";
 import { useTranslation } from "react-i18next";
@@ -51,7 +51,6 @@ const NAV_ITEMS = [
   { labelKey: "nav.interview", href: "/interview" },
   { labelKey: "nav.mentorship", href: "/ecosystem" },
   { labelKey: "nav.jobs", href: "/jobs", highlight: true },
-  { labelKey: "nav.pricing", href: "/pricing" },
 ];
 
 const ROLE_DASHBOARD: Record<string, { href: string; labelKey: string; icon: React.ElementType }> = {
@@ -204,8 +203,11 @@ export default function Navbar() {
         ) : (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Avatar className="h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all">
-                <AvatarImage src={avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || "https://github.com/shadcn.png"} />
+              <Avatar className={cn(
+                "h-9 w-9 border-2 border-primary/20 hover:border-primary/50 cursor-pointer transition-all",
+                avatarQuery.isLoading && "animate-pulse"
+              )}>
+                <AvatarImage src={avatarQuery.data || getSafeAvatarUrl(currentUser?.avatar) || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-blue-400 text-white text-xs font-bold">
                   {currentUser?.name?.slice(0, 2).toUpperCase() || "SK"}
                 </AvatarFallback>
@@ -234,6 +236,12 @@ export default function Navbar() {
                 <Link to={profileHref} className="flex items-center gap-2 cursor-pointer">
                   <UserCircle className="w-4 h-4 text-slate-500" />
                   {t("account.myProfile")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/pricing" className="flex items-center gap-2 cursor-pointer text-blue-600 font-medium">
+                  <Sparkles className="w-4 h-4 fill-blue-100" />
+                  Upgrade Plan
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
