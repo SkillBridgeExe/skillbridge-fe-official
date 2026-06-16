@@ -435,6 +435,8 @@ export interface CvJdMatchParsedResponse {
   inferred_skills?: InferredSkill[];
   /** BE #54/#56: non-null CHỈ khi requirements_source = role_rubric (JD path không band). */
   rubric_band?: RubricBand | null;
+  /** cv_jd_match_v2: non-skill dimensions extracted from JD (seniority/language/education/domain/work_mode). */
+  jd_dimensions?: JdDimension[];
 }
 
 export interface CvMatchDto {
@@ -842,6 +844,10 @@ export interface GapReportDto {
   market_trend_gaps: ImpliedSkillDto[] | null;
   jd_market_position: JdMarketPositionDto;
   generated_with_ledger?: boolean;
+  /** cv_jd_match_v2: JD non-skill disclosure (seniority/language/education/domain/work_mode). */
+  jd_intelligence?: JdIntelligenceBlock | null;
+  /** cv_jd_match_v2: canonical gap objects from Gap Engine v2. */
+  gap_items?: GapItem[];
 }
 
 export type GapReportResponse = GapReportDto;
@@ -884,4 +890,70 @@ export interface MeEntitlementDto {
   unlimited: boolean;
   allowed: boolean;
   resets_at: string;
+}
+
+// ── JD-Intelligence (cv_jd_match_v2) ───────────────────────────────────────────
+export type JdDimensionType = 'seniority' | 'language' | 'education' | 'domain' | 'work_mode';
+export type ExperienceVerdict = 'fits' | 'stretch' | 'over_qualified' | 'unknown';
+
+/** Non-skill requirement normalised from JD (lives on match parsed-response). */
+export interface JdDimension {
+  dimension: JdDimensionType;
+  value_text: string;
+  level_hint: string | null;
+  min_years: number | null;
+  importance: 'REQUIRED' | 'PREFERRED' | 'NICE_TO_HAVE';
+  deal_breaker: boolean;
+  evidence_text: string;
+}
+
+/** A row in the jd_intelligence disclosure block on the gap report. */
+export interface JdIntelligenceItem {
+  dimension: JdDimensionType;
+  value_text: string;
+  level_hint: string | null;
+  min_years: number | null;
+  importance: string;
+  deal_breaker: boolean;
+  evidence_text: string;
+  /** true = already graded into a gap_item (seniority + language/education/domain). */
+  graded: boolean;
+  /** CV signal e.g. "B2 (ielts) · high"; null if CV has none. */
+  cv_signal: string | null;
+  /** Only for seniority; null for language/education/domain/work_mode. */
+  verdict: ExperienceVerdict | null;
+}
+
+export interface JdIntelligenceBlock {
+  dimensions: JdIntelligenceItem[];
+  note: string;
+}
+
+// ── Canonical gap object (Gap Engine v2) ───────────────────────────────────────
+export type GapSource = 'jd' | 'role_rubric' | 'market_implied';
+export type GapType =
+  | 'hard_skill' | 'soft_skill' | 'seniority' | 'language' | 'domain' | 'education' | 'work_mode';
+export type GapCvStatus = 'matched' | 'partial' | 'missing' | 'unproven' | 'overclaimed';
+export type GapEvidenceRisk = 'none' | 'listed_only' | 'unproven';
+export type GapFixability = 'rewrite' | 'add_evidence' | 'learn' | 'not_fixable_now';
+
+export interface GapItem {
+  requirement_id: string;
+  source: GapSource;
+  type: GapType;
+  canonical_name: string;
+  display_name: string;
+  importance: 'REQUIRED' | 'PREFERRED' | 'NICE_TO_HAVE';
+  cv_status: GapCvStatus;
+  cv_level: number | null;
+  required_level: number | null;
+  gap_levels: number;
+  satisfied_by: string | null;
+  evidence_refs: string[];
+  evidence_risk: GapEvidenceRisk;
+  fixability: GapFixability;
+  market_demand: number | null;
+  severity: number;
+  confidence: number;
+  recommended_next_action: string;
 }
