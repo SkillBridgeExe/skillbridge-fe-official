@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -37,17 +37,17 @@ export default function AdminFilterBar({
   searchLabel,
 }: AdminFilterBarProps) {
   return (
-    <div className={cn("flex flex-col md:flex-row gap-3 md:items-end md:justify-between", "p-2")}>
+    <div className={cn("flex flex-col gap-3 p-2 md:flex-row md:items-end md:justify-between")}>
       <div className="flex flex-1 flex-col sm:flex-row gap-3 md:items-end w-full">
         <div className="flex-1">
           {searchLabel ? (
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
               {searchLabel}
             </div>
           ) : null}
           <div className="relative">
             {Icon ? (
-              <Icon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Icon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             ) : null}
             <Input
               value={searchValue}
@@ -60,17 +60,19 @@ export default function AdminFilterBar({
 
         {statusValue !== undefined && onStatusChange ? (
           <div className="w-full sm:w-44">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Status</div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">Status</div>
             <Select value={statusValue} onValueChange={onStatusChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -78,7 +80,7 @@ export default function AdminFilterBar({
 
         {dateValue !== undefined && onDateChange ? (
           <div className="w-full sm:w-44">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Date</div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">Date</div>
             <Input 
               type="date" 
               value={dateValue} 
