@@ -105,15 +105,10 @@ const App = () => (
                 <Route path="insights" element={<Pages.AdminInsights />} />
                 <Route path="users" element={<Pages.AdminUserManagement />} />
                 <Route path="users/:id" element={<Pages.AdminUserProfile />} />
-                <Route path="operations" element={<Pages.AdminCoreOperations />} />
-                <Route path="commerce" element={<Pages.AdminCommerceFinance />} />
                 <Route path="billing/plans" element={<Pages.AdminBillingPlans />} />
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
                 <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
-                <Route path="community" element={<Pages.AdminCommunityManagement />} />
-                <Route path="system" element={<Pages.AdminSystemAdministration />} />
-                <Route path="settings" element={<Pages.AdminSettings />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 

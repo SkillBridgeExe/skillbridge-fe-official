@@ -1,46 +1,41 @@
-import { useLocation, Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState, type ElementType } from "react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  BadgeDollarSign,
+  ChevronDown,
+  ChevronRight,
   LayoutDashboard,
   Sparkles,
   Users,
-  MessagesSquare,
-  Shield,
-  Settings2,
-  Briefcase,
-  BadgeDollarSign,
-  ChevronDown,
-  ChevronRight
 } from "lucide-react";
+import { AdminAssistantMark } from "@/components/admin/AdminBrand";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type AdminNavItem = {
   key: string;
   label: string;
   href: string;
-  icon: React.ElementType;
+  icon: ElementType;
   children?: { key: string; label: string; href: string }[];
 };
 
 const NAV_ITEMS: AdminNavItem[] = [
   { key: "overview", label: "Overview", href: "/admin", icon: LayoutDashboard },
   { key: "insights", label: "Insights", href: "/admin/insights", icon: Sparkles },
-  { 
-    key: "users", 
-    label: "User Management", 
-    href: "/admin/users", 
+  {
+    key: "users",
+    label: "User Management",
+    href: "/admin/users",
     icon: Users,
     children: [
-      { key: "users-user", label: "User", href: "/admin/users?role=user" },
-      { key: "users-mentor", label: "Mentor", href: "/admin/users?role=mentor" },
-      { key: "users-business", label: "Business", href: "/admin/users?role=business" },
-      { key: "users-admin", label: "Admin", href: "/admin/users?role=admin" },
-    ]
+      { key: "users-user", label: "Users", href: "/admin/users?role=USER" },
+      { key: "users-mentor", label: "Mentors", href: "/admin/users?role=MENTOR" },
+      { key: "users-business", label: "Business", href: "/admin/users?role=BUSINESS" },
+      { key: "users-admin", label: "Admins", href: "/admin/users?role=ADMIN" },
+    ],
   },
-  { key: "operations", label: "Core Operations", href: "/admin/operations", icon: Briefcase },
-  { key: "commerce", label: "Commerce & Finance", href: "/admin/commerce", icon: BadgeDollarSign },
   {
     key: "billing",
     label: "Billing",
@@ -53,26 +48,17 @@ const NAV_ITEMS: AdminNavItem[] = [
       { key: "billing-mentor-bookings", label: "Mentor Bookings", href: "/admin/billing/mentor-bookings" },
     ],
   },
-  {
-    key: "community",
-    label: "Community Management",
-    href: "/admin/community",
-    icon: MessagesSquare,
-  },
-  {
-    key: "system",
-    label: "System Administration",
-    href: "/admin/system",
-    icon: Shield,
-  },
-  { key: "settings", label: "Settings", href: "/admin/settings", icon: Settings2 },
 ];
 
-export default function AdminSidebar({ 
+export default function AdminSidebar({
   forceExpanded = true,
-  onHoverChange 
-}: { 
+  mobileOpen = false,
+  onNavigate,
+  onHoverChange,
+}: {
   forceExpanded?: boolean;
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
   onHoverChange?: (hovering: boolean) => void;
 }) {
   const { t } = useTranslation("common");
@@ -82,10 +68,6 @@ export default function AdminSidebar({
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ users: true, billing: true });
 
   const expanded = forceExpanded || isHovering;
-
-  const toggleSubmenu = (key: string) => {
-    setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const billingLabel = (key: string, fallback: string) => {
     const labels: Record<string, string> = {
@@ -100,10 +82,10 @@ export default function AdminSidebar({
 
   const activeKey = useMemo(() => {
     const path = location.pathname;
-    const found = NAV_ITEMS.find((it) => {
-      if (it.href === "/admin") return path === "/admin";
-      if (it.children?.some((child) => path.startsWith(child.href.split("?")[0]))) return true;
-      return path.startsWith(it.href);
+    const found = NAV_ITEMS.find((item) => {
+      if (item.href === "/admin") return path === "/admin";
+      if (item.children?.some((child) => path.startsWith(child.href.split("?")[0]))) return true;
+      return path.startsWith(item.href);
     });
     return found?.key ?? "overview";
   }, [location.pathname]);
@@ -111,8 +93,11 @@ export default function AdminSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 z-40 h-full transition-[width] duration-300 ease-out flex-shrink-0",
-        expanded ? "w-64" : "w-16"
+        "shrink-0 transition-[width,transform] duration-300 ease-out",
+        "hidden lg:sticky lg:top-0 lg:block lg:h-full",
+        expanded ? "lg:w-56" : "lg:w-16",
+        mobileOpen &&
+          "fixed bottom-0 left-0 top-16 z-40 block h-[calc(100dvh-4rem)] w-64 shadow-2xl lg:static lg:h-full lg:shadow-none",
       )}
       onMouseEnter={() => {
         setIsHovering(true);
@@ -125,126 +110,106 @@ export default function AdminSidebar({
     >
       <div
         className={cn(
-          "h-full bg-white dark:bg-slate-900 border-r border-slate-200/70 dark:border-slate-800 overflow-hidden transition-colors",
-          expanded ? "px-3 py-4" : "px-2 py-4"
+          "flex h-full flex-col overflow-hidden border-r border-border bg-card transition-colors",
+          expanded ? "px-3 py-4" : "px-2 py-4",
         )}
       >
-        <nav className={cn("space-y-1 overflow-x-hidden", expanded ? "px-1" : "px-0")}>
+        <nav className="flex flex-1 flex-col gap-1 overflow-x-hidden">
           {NAV_ITEMS.map((item) => {
             const active = item.key === activeKey;
             const Icon = item.icon;
-            const hasChildren = item.children && item.children.length > 0;
+            const hasChildren = Boolean(item.children?.length);
             const menuOpen = openMenus[item.key];
             const itemLabel = billingLabel(item.key, item.label);
-
-            const itemBtn = (
-              <div
-                onClick={(e) => {
-                  if (hasChildren && expanded) {
-                    e.preventDefault();
-                    toggleSubmenu(item.key);
-                  } else if (!hasChildren) {
-                    navigate(item.href);
-                  } else if (hasChildren && !expanded) {
-                    navigate(item.href);
-                  }
-                }}
-                className={cn(
-                  "group flex items-center gap-3 rounded-xl transition-all duration-200 cursor-pointer",
-                  active && !hasChildren
-                    ? "bg-primary/10 border border-primary/20"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent",
-                  expanded ? "px-3 py-2.5" : "px-0 py-2.5 justify-center",
-                  active && hasChildren ? "bg-slate-50 dark:bg-slate-800/70" : ""
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "w-5 h-5 transition-colors flex-shrink-0",
-                    active ? "text-primary" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-100"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all duration-200 whitespace-nowrap flex-1 text-left",
-                    expanded ? "opacity-100" : "opacity-0 w-0 hidden"
-                  )}
-                >
-                  {itemLabel}
-                </span>
-                
-                {hasChildren && expanded && (
-                  <div className="flex-shrink-0 text-slate-400 dark:text-slate-500">
-                    {menuOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  </div>
-                )}
-              </div>
+            const itemClassName = cn(
+              "group flex h-10 items-center gap-3 rounded-lg border border-transparent px-3 text-sm font-semibold transition-colors",
+              expanded ? "justify-start" : "justify-center px-0",
+              active
+                ? "border-primary/20 bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             );
 
-            if (!expanded) {
-              return (
-                <Tooltip key={item.key} delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Link to={item.href}>{itemBtn}</Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{itemLabel}</TooltipContent>
-                </Tooltip>
+            const content = (
+              <>
+                <Icon className="size-4 shrink-0" />
+                {expanded ? <span className="min-w-0 flex-1 truncate text-left">{itemLabel}</span> : null}
+                {hasChildren && expanded ? (
+                  <span className="shrink-0 text-muted-foreground">
+                    {menuOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                  </span>
+                ) : null}
+              </>
+            );
+
+            const node =
+              hasChildren && expanded ? (
+                <button
+                  type="button"
+                  className={itemClassName}
+                  onClick={() => setOpenMenus((current) => ({ ...current, [item.key]: !current[item.key] }))}
+                >
+                  {content}
+                </button>
+              ) : (
+                <Link to={item.href} className={itemClassName} onClick={onNavigate}>
+                  {content}
+                </Link>
               );
-            }
 
             return (
-              <div key={item.key} className="flex flex-col">
-                {itemBtn}
-                {hasChildren && expanded && menuOpen && (
-                  <div className="ml-9 mt-1 flex flex-col space-y-1 animate-in slide-in-from-top-2 duration-200 mb-2">
-                    {item.children?.map(child => {
+              <div key={item.key} className="flex flex-col gap-1">
+                {!expanded ? (
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>{node}</TooltipTrigger>
+                    <TooltipContent side="right">{itemLabel}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  node
+                )}
+
+                {hasChildren && expanded && menuOpen ? (
+                  <div className="ms-5 flex flex-col gap-1 border-l border-border ps-3">
+                    {item.children?.map((child) => {
                       const [childPath, childSearch = ""] = child.href.split("?");
                       const roleParam = new URLSearchParams(childSearch).get("role");
                       const isChildActive = roleParam
-                        ? location.pathname.startsWith(childPath) && location.search.includes("role=" + roleParam)
+                        ? location.pathname.startsWith(childPath) && location.search.includes(`role=${roleParam}`)
                         : location.pathname === childPath;
                       const childLabel = billingLabel(child.key, child.label);
+
                       return (
-                        <Link 
-                          key={child.key} 
+                        <Link
+                          key={child.key}
                           to={child.href}
                           className={cn(
-                            "text-sm px-3 py-2 rounded-lg transition-colors whitespace-nowrap",
-                            isChildActive 
-                              ? "bg-primary/10 text-primary font-semibold" 
-                              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
+                            "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                            isChildActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                           )}
+                          onClick={(event) => {
+                            if (child.href === item.href) {
+                              event.preventDefault();
+                              navigate(child.href);
+                            }
+                            onNavigate?.();
+                          }}
                         >
-                          {childLabel}
+                          <span className="block truncate">{childLabel}</span>
                         </Link>
                       );
                     })}
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })}
         </nav>
 
-        <div className={cn("mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800", expanded ? "" : "px-1")}>
-          <div className={cn("flex items-center gap-3", expanded ? "" : "justify-center")}>
-            <div className="w-9 h-9 rounded-xl bg-slate-900/5 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 flex items-center justify-center">
-              <div className="w-4 h-4 rounded-sm bg-slate-900/50 dark:bg-slate-400/70" />
-            </div>
-            <div
-              className={cn(
-                "min-w-0 transition-all duration-300",
-                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-              )}
-            >
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Admin Studio</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Mock data · Demo</div>
-            </div>
-          </div>
+        <div className="border-t border-border pt-3">
+          <AdminAssistantMark compact={!expanded} />
         </div>
       </div>
     </aside>
   );
 }
-
-

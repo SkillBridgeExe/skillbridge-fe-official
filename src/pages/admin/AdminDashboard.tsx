@@ -6,7 +6,11 @@ import AdminNavbar from "@/components/admin/AdminNavbar";
 type AdminTheme = "light" | "dark";
 
 export default function AdminDashboard() {
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 1024px)").matches;
+  });
+  const [sidebarExpanded, setSidebarExpanded] = useState(isDesktop);
   const [adminTheme, setAdminTheme] = useState<AdminTheme>(() => {
     if (typeof window === "undefined") return "light";
     const saved = window.localStorage.getItem("skillbridge-admin-theme");
@@ -14,26 +18,51 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const syncSidebarMode = (event: MediaQueryListEvent | MediaQueryList) => {
+      const desktop = event.matches;
+      setIsDesktop(desktop);
+      setSidebarExpanded(desktop);
+    };
+
+    syncSidebarMode(mediaQuery);
+    mediaQuery.addEventListener("change", syncSidebarMode);
+    return () => mediaQuery.removeEventListener("change", syncSidebarMode);
+  }, []);
+
+  useEffect(() => {
     window.localStorage.setItem("skillbridge-admin-theme", adminTheme);
   }, [adminTheme]);
 
   return (
     <div className={adminTheme === "dark" ? "dark" : "light"}>
-      <div className="h-dvh w-full flex flex-col bg-slate-50 dark:bg-[#0b1120] overflow-hidden transition-colors text-slate-900 dark:text-slate-100">
+      <div className="flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground transition-colors">
         <AdminNavbar
           toggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
           adminTheme={adminTheme}
           onThemeChange={setAdminTheme}
         />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="relative flex flex-1 overflow-hidden">
+          {!isDesktop && sidebarExpanded ? (
+            <button
+              type="button"
+              aria-label="Close admin sidebar"
+              className="fixed inset-x-0 bottom-0 top-16 z-30 bg-background/70 backdrop-blur-sm lg:hidden"
+              onClick={() => setSidebarExpanded(false)}
+            />
+          ) : null}
           <AdminSidebar
             forceExpanded={sidebarExpanded}
+            mobileOpen={!isDesktop && sidebarExpanded}
+            onNavigate={() => {
+              if (!isDesktop) setSidebarExpanded(false);
+            }}
             onHoverChange={(_isHovering) => {
               // Option to handle hover if needed
             }}
           />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto w-full bg-transparent">
-            <div className="max-w-none w-full px-6 py-6 border-transparent">
+          <main className="w-full flex-1 overflow-x-hidden overflow-y-auto bg-muted/25">
+            <div className="w-full px-4 py-5 sm:px-6 lg:px-8">
               <Outlet />
             </div>
           </main>

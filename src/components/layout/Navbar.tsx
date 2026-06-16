@@ -62,7 +62,7 @@ const ROLE_DASHBOARD: Record<string, { href: string; labelKey: string; icon: Rea
 
 const ROLE_PROFILE: Record<string, string> = {
   user: "/profile",
-  admin: "/admin/settings",
+  admin: "/admin",
   business: "/business/profile",
   mentor: "/mentor-dashboard/profile",
 };

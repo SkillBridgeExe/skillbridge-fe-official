@@ -1,379 +1,430 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { gsap } from 'gsap';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, MapPin, Phone, Star, ShieldCheck, ArrowLeft, MoreHorizontal, Calendar, Briefcase, Award, TrendingUp, Users, Activity } from 'lucide-react';
-import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MascotLoader } from '@/components/mascot/MascotLoader';
+import { useMemo, type ElementType, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Calendar, CreditCard, FileText, Mail, ShieldCheck, Video } from "lucide-react";
+import { AdminLineChartCard } from "@/components/admin/AdminCharts";
+import AdminStatusBadge from "@/components/admin/AdminStatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QUERY_KEYS } from "@/constants/app";
+import { getAdminUser, type AdminUserDetail } from "@/services/admin-users.service";
 
-const mockRevenueData = [
-  { month: 'Jan', revenue: 4000, bookings: 24 },
-  { month: 'Feb', revenue: 3000, bookings: 18 },
-  { month: 'Mar', revenue: 5000, bookings: 30 },
-  { month: 'Apr', revenue: 4500, bookings: 27 },
-  { month: 'May', revenue: 6000, bookings: 36 },
-  { month: 'Jun', revenue: 5500, bookings: 33 },
-];
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Never";
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+}
+
+function formatVnd(value: number) {
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
+}
+
+function initials(user?: AdminUserDetail) {
+  const source = user?.displayName || user?.email || "U";
+  return source.slice(0, 2).toUpperCase();
+}
 
 export default function AdminUserProfile() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
-  const role = searchParams.get('role') || 'user';
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const userQuery = useQuery({
+    queryKey: QUERY_KEYS.ADMIN_USER(id ?? ""),
+    queryFn: () => getAdminUser(id ?? ""),
+    enabled: Boolean(id),
+  });
 
-  const profileRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const user = userQuery.data;
+  const monthlyCvData = useMemo(
+    () =>
+      (user?.monthlyActivitySeries ?? []).map((item) => ({
+        month: item.month,
+        cvCount: item.cvCount,
+      })),
+    [user?.monthlyActivitySeries],
+  );
+  const monthlyRevenueData = useMemo(
+    () =>
+      (user?.monthlyActivitySeries ?? []).map((item) => ({
+        month: item.month,
+        paidAmountVnd: item.paidAmountVnd,
+      })),
+    [user?.monthlyActivitySeries],
+  );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      if (profileRef.current) {
-        gsap.fromTo(
-          profileRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }
-        );
-      }
-      if (statsRef.current) {
-        gsap.fromTo(
-          statsRef.current.children,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: 'power3.out', delay: 0.2 }
-        );
-      }
-      if (contentRef.current) {
-        gsap.fromTo(
-          contentRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', delay: 0.4 }
-        );
-      }
-    }
-  }, [loading]);
-
-  if (loading) {
+  if (userQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center p-20">
-        <MascotLoader message="Đang tải hồ sơ..." />
+      <div className="flex flex-col gap-5 pb-10">
+        <Skeleton className="h-44 rounded-lg" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-28 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
-  const formatRole = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);
-
-  const getTabsByRole = (role: string) => {
-    switch (role) {
-      case 'mentor': 
-        return [
-          { id: 'profile', label: 'Profile' },
-          { id: 'verification', label: 'Verification' },
-          { id: 'booking', label: 'Booking' },
-          { id: 'reviews', label: 'Reviews' },
-          { id: 'revenue', label: 'Revenue' }
-        ];
-      case 'business':
-        return [
-          { id: 'profile', label: 'Profile' },
-          { id: 'company_sub', label: 'Company & Subscriptions' },
-          { id: 'candidates', label: 'Candidates List' },
-          { id: 'hiring', label: 'Hiring Status' }
-        ];
-      case 'admin':
-        return [
-          { id: 'profile', label: 'Profile' },
-          { id: 'permissions', label: 'Permissions' },
-          { id: 'activity', label: 'Activity Log' }
-        ];
-      case 'user':
-      default:
-        return [
-          { id: 'profile', label: 'Profile' },
-          { id: 'cv', label: 'CV' },
-          { id: 'roadmap', label: 'Roadmap' },
-          { id: 'mentors', label: 'Mentors' },
-          { id: 'interview', label: 'Interview' }
-        ];
-    }
-  };
-
-  const tabs = getTabsByRole(role);
+  if (!user) {
+    return (
+      <div className="flex flex-col gap-4 pb-10">
+        <Button variant="ghost" className="w-fit" onClick={() => navigate("/admin/users")}>
+          <ArrowLeft data-icon="inline-start" />
+          Back to users
+        </Button>
+        <Card>
+          <CardContent className="p-10 text-center">
+            <div className="text-lg font-semibold text-foreground">User not available</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {userQuery.error instanceof Error ? userQuery.error.message : "The user profile could not be loaded."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 pb-20 font-sans">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/admin/users?role=' + role)} className="gap-2 rounded-xl">
-          <ArrowLeft className="w-4 h-4" />
-          Back to User Management
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6 pb-10">
+      <Button variant="ghost" className="w-fit" onClick={() => navigate("/admin/users")}>
+        <ArrowLeft data-icon="inline-start" />
+        Back to users
+      </Button>
 
-      <Card ref={profileRef} className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="h-40 bg-gradient-to-r from-blue-600 to-indigo-700 w-full relative">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center"></div>
-        </div>
-        <CardContent className="px-6 pb-6 relative">
-          <div className="flex flex-col md:flex-row gap-6 items-start md:items-end -mt-16 mb-4">
-            <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-              <AvatarImage src={`https://i.pravatar.cc/300?u=${id}`} />
-              <AvatarFallback>U</AvatarFallback>
+      <Card className="overflow-hidden border-border/80 shadow-sm">
+        <div className="h-24 bg-primary/10" />
+        <CardContent className="p-6">
+          <div className="-mt-16 flex flex-col gap-5 md:flex-row md:items-end">
+            <Avatar className="size-28 border-4 border-card shadow-lg">
+              <AvatarImage src={user.avatarUrl ?? undefined} />
+              <AvatarFallback className="text-2xl font-bold">{initials(user)}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 space-y-1 mt-16 md:mt-0">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">Alex {formatRole(role)}</h1>
-                {role === 'mentor' && (
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center gap-1 rounded-full px-2.5">
-                    <ShieldCheck className="w-3 h-3" />
+            <div className="min-w-0 flex-1 pt-8 md:pt-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-3xl font-bold tracking-normal text-foreground">
+                  {user.displayName || "No display name"}
+                </h1>
+                <AdminStatusBadge status={user.status} />
+                {user.isEmailVerified ? (
+                  <Badge
+                    variant="outline"
+                    className="gap-1.5 border-[hsl(var(--status-success-border))] bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-fg))] [&_svg]:size-3.5"
+                  >
+                    <ShieldCheck />
                     Verified
                   </Badge>
-                )}
+                ) : null}
               </div>
-              <div className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                {formatRole(role)} at SkillBridge &bull; Joined August 2023
+              <div className="mt-2 flex flex-wrap gap-4 text-sm font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <Mail className="size-4" />
+                  {user.email}
+                </span>
+                <span>Joined {formatDate(user.createdAt)}</span>
+                <span>Last login {formatDate(user.lastLoginAt)}</span>
               </div>
-              <div className="flex flex-wrap gap-4 text-sm mt-3 text-slate-600 dark:text-slate-300">
-                <div className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Ho Chi Minh City, VN</div>
-                <div className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {role}.demo@skillbridge.vn</div>
-                <div className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> +84 90 123 4567</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {user.roles.map((role) => (
+                  <Badge key={role} variant="outline" className="rounded-full">
+                    {role}
+                  </Badge>
+                ))}
+                {user.authProviders.map((provider) => (
+                  <Badge key={provider} variant="secondary" className="rounded-full">
+                    {provider}
+                  </Badge>
+                ))}
               </div>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <Button variant="outline" className="rounded-xl flex-1 md:flex-none">Send Message</Button>
-              <Button className="rounded-xl flex-1 md:flex-none">Edit Profile</Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-xl">
-                    <MoreHorizontal className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl">
-                  <DropdownMenuItem>Suspend User</DropdownMenuItem>
-                  <DropdownMenuItem>Reset Password</DropdownMenuItem>
-                  <DropdownMenuItem className="text-red-600">Delete Account</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {role === 'mentor' ? (
-          <>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-yellow-50 text-yellow-600 rounded-full">
-                  <Star className="w-6 h-6 fill-current" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">4.9</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Average Rating</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-full">
-                  <Briefcase className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">142</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Sessions Completed</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-green-50 text-green-600 rounded-full">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">89</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Active Students</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">$24.5k</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Revenue</div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
-                  <Award className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">4</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Courses Enrolled</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-purple-50 text-purple-600 rounded-full">
-                  <Calendar className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">12</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Mentor Sessions</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-orange-50 text-orange-600 rounded-full">
-                  <Star className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">Lv. 5</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Skill Level</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="p-3 bg-rose-50 text-rose-600 rounded-full">
-                  <Activity className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100">85%</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">Completion Rate</div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Metric title="CVs" value={user.activityCounts.cvCount} icon={FileText} />
+        <Metric title="Matches" value={user.activityCounts.matchCount} icon={ShieldCheck} />
+        <Metric title="Interviews" value={user.activityCounts.interviewCount} icon={Video} />
+        <Metric title="Paid" value={formatVnd(user.activityCounts.paidAmountVnd)} icon={CreditCard} />
       </div>
 
-      <div ref={contentRef}>
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full justify-start bg-transparent border-b border-slate-200 dark:border-slate-700 rounded-none h-auto p-0 mb-6 overflow-x-auto flex-nowrap hide-scrollbar">
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-semibold">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+      <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Account profile fields from the users API.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <Detail label="University" value={user.profile?.university} />
+            <Detail label="Major" value={user.profile?.major} />
+            <Detail label="Experience" value={user.profile?.experienceYears != null ? `${user.profile.experienceYears} years` : null} />
+            <Detail label="Target job" value={user.profile?.targetJob} />
+            <Detail label="GitHub" value={user.profile?.githubUrl} />
+            <Detail label="LinkedIn" value={user.profile?.linkedinUrl} />
+            <Detail label="Portfolio" value={user.profile?.portfolioUrl} />
+            <Detail label="Career goal" value={user.profile?.careerGoal} className="sm:col-span-2" />
+          </CardContent>
+        </Card>
 
-          <TabsContent value="profile" className="mt-0 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-                  <CardHeader>
-                    <CardTitle>About</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {role === 'mentor'
-                        ? 'An experienced professional in Product Management/Software Engineering. Worked at large tech corporations with over 10 years of practical experience. Joined SkillBridge to guide and provide career orientation for students and young professionals.'
-                        : role === 'business'
-                        ? 'Representative of SkillBridge\'s partner business. Specializes in finding and recruiting high-quality technology talents to participate in the company\'s strategic projects.'
-                        : role === 'admin'
-                        ? 'SkillBridge System Administrator. Operates and monitors all activities on the platform, ensures service quality and supports users when needed.'
-                        : 'Technology enthusiast, currently a 3rd-year student majoring in Computer Science. Looking for internship opportunities and practical experience from Mentors to improve skills and build a solid career path.'
-                      }
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Performance Overview</CardTitle>
-                    <CardDescription>Metrics spanning the last 6 months</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={mockRevenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                         <defs>
-                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} />
-                        <RechartsTooltip 
-                          contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                          labelStyle={{fontWeight: 'bold', color: '#0f172a'}}
-                        />
-                        <Area type="monotone" dataKey={role === 'mentor' ? 'revenue' : 'bookings'} stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader>
+            <CardTitle>Skills</CardTitle>
+            <CardDescription>Skills mapped from user skill records.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {user.skills.length ? (
+              <div className="flex flex-wrap gap-2">
+                {user.skills.map((skill) => (
+                  <Badge key={skill.id} variant="outline" className="px-3 py-1.5">
+                    {skill.displayName} L{skill.level}
+                  </Badge>
+                ))}
               </div>
+            ) : (
+              <EmptyState title="No skills yet" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-              <div className="space-y-6">
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Skills & Expertise</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {['React', 'TypeScript', 'System Design', 'Agile', 'Product Strategy', 'Node.js', 'Mentorship'].map(skill => (
-                         <Badge key={skill} variant="outline" className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
-                           {skill}
-                         </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminLineChartCard
+          title="Monthly CV activity"
+          xKey="month"
+          dataKey="cvCount"
+          data={monthlyCvData as unknown as Record<string, unknown>[]}
+        />
+        <AdminLineChartCard
+          title="Monthly paid revenue"
+          xKey="month"
+          dataKey="paidAmountVnd"
+          valueFormatter={formatVnd}
+          data={monthlyRevenueData as unknown as Record<string, unknown>[]}
+        />
+      </div>
 
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="flex gap-4 items-start">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
-                          <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{role === 'mentor' ? 'Hosted 1:1 Session' : 'Completed Module 4'}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{i * 2} days ago &bull; View details</div>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <RecentCvs user={user} />
+        <RecentInterviews user={user} />
+        <RecentPayments user={user} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader>
+            <CardTitle>Subscription</CardTitle>
+            <CardDescription>Active plans and recent subscription records.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">Active plans</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {user.subscription.activePlanCodes.length ? (
+                  user.subscription.activePlanCodes.map((plan) => (
+                    <Badge key={plan} className="rounded-full">
+                      {plan}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">No active plan</span>
+                )}
               </div>
             </div>
-          </TabsContent>
-          
-          {tabs.filter(t => t.id !== 'profile').map(t => (
-            <TabsContent key={t.id} value={t.id} className="mt-0">
-              <Card className="rounded-2xl border-slate-200 dark:border-slate-700 shadow-sm">
-                <CardContent className="p-20 text-center text-slate-500 dark:text-slate-400">
-                  {t.label} data mapping goes here. (Mockup placeholder)
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+            <div className="flex flex-col gap-2">
+              {user.subscription.recent.length ? (
+                user.subscription.recent.map((subscription) => (
+                  <div key={subscription.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="font-semibold text-foreground">{subscription.planCode}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {subscription.status} / {formatDate(subscription.currentPeriodStart)} - {formatDate(subscription.currentPeriodEnd)}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState title="No subscription records" />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader>
+            <CardTitle>Recent usage events</CardTitle>
+            <CardDescription>Latest product usage events recorded for this user.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {user.usageEvents.length ? (
+              <div className="flex flex-col gap-2">
+                {user.usageEvents.slice(0, 8).map((event, index) => (
+                  <div key={`${event.featureKey}-${event.usedAt}-${index}`} className="flex items-center justify-between gap-4 rounded-lg border border-border p-3 text-sm">
+                    <div>
+                      <div className="font-semibold text-foreground">{event.featureKey}</div>
+                      <div className="text-xs text-muted-foreground">{event.sourceType ?? "Usage event"}</div>
+                    </div>
+                    <div className="text-xs font-semibold text-muted-foreground">{formatDate(event.usedAt)}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No usage events" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: number | string;
+  icon: ElementType;
+}) {
+  return (
+    <Card className="border-border/80 shadow-sm">
+      <CardContent className="flex items-center justify-between gap-4 p-5">
+        <div>
+          <div className="text-sm font-semibold text-muted-foreground">{title}</div>
+          <div className="mt-1 font-mono text-2xl font-bold tracking-normal text-foreground tabular-nums">
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </div>
+        </div>
+        <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:size-5">
+          <Icon />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value?: string | number | null;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-foreground">
+        {value || "Not provided"}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ title }: { title: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-5 text-center text-sm font-semibold text-muted-foreground">
+      {title}
+    </div>
+  );
+}
+
+function RecentCvs({ user }: { user: AdminUserDetail }) {
+  return (
+    <RecentCard title="Recent CVs" description="Latest uploaded or built CV records.">
+      {user.recentCvs.length ? (
+        user.recentCvs.map((cv) => (
+          <ListRow
+            key={cv.id}
+            title={cv.title || cv.originalFileName || "Untitled CV"}
+            detail={cv.targetRole || "No target role"}
+            date={formatDate(cv.createdAt)}
+          />
+        ))
+      ) : (
+        <EmptyState title="No CV activity" />
+      )}
+    </RecentCard>
+  );
+}
+
+function RecentInterviews({ user }: { user: AdminUserDetail }) {
+  return (
+    <RecentCard title="Recent interviews" description="Latest interview sessions.">
+      {user.recentInterviews.length ? (
+        user.recentInterviews.map((interview) => (
+          <ListRow
+            key={interview.id}
+            title={interview.targetRole}
+            detail={`${interview.status}${interview.overallScore ? ` / ${interview.overallScore}` : ""}`}
+            date={formatDate(interview.startedAt)}
+          />
+        ))
+      ) : (
+        <EmptyState title="No interview activity" />
+      )}
+    </RecentCard>
+  );
+}
+
+function RecentPayments({ user }: { user: AdminUserDetail }) {
+  return (
+    <RecentCard title="Recent payments" description="Latest payment orders.">
+      {user.recentPayments.length ? (
+        user.recentPayments.map((payment) => (
+          <ListRow
+            key={payment.id}
+            title={formatVnd(payment.amountVnd)}
+            detail={`${payment.status}${payment.planCode ? ` / ${payment.planCode}` : ""}`}
+            date={formatDate(payment.paidAt ?? payment.createdAt)}
+          />
+        ))
+      ) : (
+        <EmptyState title="No payment activity" />
+      )}
+    </RecentCard>
+  );
+}
+
+function RecentCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">{children}</CardContent>
+    </Card>
+  );
+}
+
+function ListRow({
+  title,
+  detail,
+  date,
+}: {
+  title: string;
+  detail: string;
+  date: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border p-3 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-semibold text-foreground">{title}</div>
+          <div className="mt-1 truncate text-xs text-muted-foreground">{detail}</div>
+        </div>
+        <div className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground">
+          <Calendar className="size-3.5" />
+          {date}
+        </div>
       </div>
     </div>
   );

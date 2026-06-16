@@ -36,6 +36,22 @@
 
     --radius: 0.75rem;
 
+    --chart-1: 221 83% 53%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 83% 60%;
+    --chart-5: 199 89% 48%;
+
+    --status-success-bg: 151 81% 96%;
+    --status-success-fg: 156 72% 28%;
+    --status-success-border: 149 80% 90%;
+    --status-warning-bg: 45 96% 95%;
+    --status-warning-fg: 31 92% 35%;
+    --status-warning-border: 45 93% 84%;
+    --status-muted-bg: 210 40% 96%;
+    --status-muted-fg: 215 16% 38%;
+    --status-muted-border: 214 32% 88%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 199 100% 50%;
@@ -74,6 +90,22 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 199 100% 50%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 160 84% 45%;
+    --chart-3: 38 92% 54%;
+    --chart-4: 280 83% 68%;
+    --chart-5: 188 86% 53%;
+
+    --status-success-bg: 151 55% 13%;
+    --status-success-fg: 150 80% 78%;
+    --status-success-border: 151 48% 24%;
+    --status-warning-bg: 35 72% 14%;
+    --status-warning-fg: 43 92% 76%;
+    --status-warning-border: 35 64% 26%;
+    --status-muted-bg: 217 33% 18%;
+    --status-muted-fg: 215 20% 72%;
+    --status-muted-border: 217 33% 25%;
     
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -98,9 +130,14 @@
     background-attachment: fixed;
   }
 
-  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
-    overflow-wrap: anywhere;
-    word-break: break-word;
+  :where(p, li, h1, h2, h3, h4, h5, h6, a) {
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  :where(button, label, td, th, input, select, textarea) {
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   pre,
