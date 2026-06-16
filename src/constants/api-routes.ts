@@ -108,6 +108,14 @@ export const API_ROUTES = {
     MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,
   },
 
+  ADMIN_USERS: {
+    LIST: `${API}/admin/users`,
+    SUMMARY: `${API}/admin/users/summary`,
+    DETAIL: (id: string) => `${API}/admin/users/${id}`,
+    STATUS: (id: string) => `${API}/admin/users/${id}/status`,
+    ROLES: (id: string) => `${API}/admin/users/${id}/roles`,
+  },
+
   USER: {
     PROFILE: `${API}/users/me/profile`,
     AVATAR: `${API}/users/me/avatar`,
