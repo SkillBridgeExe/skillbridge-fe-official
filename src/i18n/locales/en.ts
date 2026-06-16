@@ -895,6 +895,30 @@ export default {
       footnote:
         "Every number in this report comes from the real CV/JD analysis and our job-posting pool — no invented judgments.",
     },
+    jdIntel: {
+      title: "JD Requirements (beyond skills)",
+      dimension: {
+        seniority: "Seniority",
+        language: "Language",
+        education: "Education",
+        domain: "Domain",
+        work_mode: "Work mode",
+      },
+      importance: {
+        REQUIRED: "Required",
+        PREFERRED: "Preferred",
+        NICE_TO_HAVE: "Nice to have",
+      },
+      dealBreaker: "Must have",
+      notGraded: "Read from JD — not graded yet",
+      cvSignal: "Your CV",
+      verdict: {
+        fits: "Fits",
+        stretch: "Stretch",
+        over_qualified: "Over-qualified",
+        unknown: "Unknown",
+      },
+    },
     quota: {
       remainingDaily: "{{remaining}}/{{limit}} CV reviews left today",
       remainingMonthly: "{{remaining}}/{{limit}} CV reviews left this month",
