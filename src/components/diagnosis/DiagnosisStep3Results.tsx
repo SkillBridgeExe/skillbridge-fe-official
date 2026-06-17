@@ -1,11 +1,10 @@
-import React, { memo, useState, useEffect, useRef } from "react";
+import React, { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, X, ArrowLeft, Share2, Download,
   Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users,
-  ChevronDown, ChevronUp, Ruler
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -20,9 +19,10 @@ import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
 import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
+import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
-/* ── Design tokens (§0b) ── */
+/* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 const MAX_INSIGHT_ITEMS = 3;
 
@@ -49,36 +49,6 @@ function truncateText(value: string, maxLength = 140): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length <= maxLength ? normalized : `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
-
-/* ── Flat Mono Score Display ── */
-const FlatScore = memo(function FlatScore({ target, label }: { target: number; label: string }) {
-  const [displayed, setDisplayed] = useState(0);
-  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    if (prefersReducedMotion) { setDisplayed(target); return; }
-    let start = 0;
-    const step = target / 60;
-    const timer = setInterval(() => {
-      start = Math.min(start + step, target);
-      setDisplayed(Math.round(start));
-      if (start >= target) clearInterval(timer);
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target, prefersReducedMotion]);
-
-  return (
-    <div className="flex flex-col items-center" role="img" aria-label={`${label}: ${target}%`}>
-      <div className="flex items-baseline gap-1">
-        <span className="text-[64px] font-mono tabular-nums font-black text-[#2F3437] leading-none tracking-[-0.02em]">
-          {displayed}
-        </span>
-        <span className="text-sm text-[#787774] font-medium">%</span>
-      </div>
-      <span className="text-[11px] font-bold text-[#787774] uppercase tracking-widest mt-1">{label}</span>
-    </div>
-  );
-});
 
 /* ── KeywordRow ── */
 function KeywordRow({
@@ -147,8 +117,8 @@ function KeywordRow({
   );
 }
 
-/* ── Main Component ── */
-function MatchDepthSummary({
+/* ── MatchDepthSummary (narrative panel for Chương 1) ── */
+function MatchNarrative({
   jdMatch,
   t,
 }: {
@@ -160,34 +130,27 @@ function MatchDepthSummary({
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
 
   return (
-    <div className={cn(CARD, "p-5")}>
-      <h3 className="text-sm font-bold text-[#2F3437] mb-3">{t("matchDepth.whyScore")}</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-[#DCE9D7] bg-[#EDF3EC] p-3">
-          <p className="text-[10px] font-bold uppercase text-[#346538]">{t("results.matched")}</p>
-          <p className="font-mono text-xl font-bold text-[#346538]">{breakdown.matched_count}</p>
-        </div>
-        <div className="rounded-xl border border-[#F1E5C0] bg-[#FBF3DB] p-3">
-          <p className="text-[10px] font-bold uppercase text-[#956400]">{t("results.partial")}</p>
-          <p className="font-mono text-xl font-bold text-[#956400]">{breakdown.partial_count}</p>
-        </div>
-        <div className="rounded-xl border border-[#F6D4D5] bg-[#FDEBEC] p-3">
-          <p className="text-[10px] font-bold uppercase text-[#9F2F2D]">{t("results.missing")}</p>
-          <p className="font-mono text-xl font-bold text-[#9F2F2D]">{breakdown.missing_count}</p>
-        </div>
-        <div className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
-          <p className="text-[10px] font-bold uppercase text-[#787774]">{t("matchDepth.coverage")}</p>
-          <p className="font-mono text-xl font-bold text-[#2F3437]">{coverage}%</p>
-        </div>
+    <div className="space-y-3">
+      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.whyScore")}</h3>
+      <div className="space-y-2 text-[13px] text-[#2F3437] leading-relaxed">
+        <p>
+          <span className="font-mono tabular-nums font-bold text-[#346538]">{breakdown.matched_count}</span> {t("results.matched")}
+          {" · "}
+          <span className="font-mono tabular-nums font-bold text-[#956400]">{breakdown.partial_count}</span> {t("results.partial")}
+          {" · "}
+          <span className="font-mono tabular-nums font-bold text-[#9F2F2D]">{breakdown.missing_count}</span> {t("results.missing")}
+          {" · "}
+          <span className="font-mono tabular-nums font-bold text-[#787774]">{coverage}%</span> {t("matchDepth.coverage")}
+        </p>
       </div>
       {jdMatch.experience_fit?.status && jdMatch.experience_fit.status !== "unknown" && (
-        <p className="mt-3 text-xs font-medium text-[#787774]">
+        <p className="text-xs font-medium text-[#787774]">
           {t(`matchDepth.fit.${jdMatch.experience_fit.status}`)}
           {jdMatch.experience_fit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
         </p>
       )}
       {breakdown.cap_applied && (
-        <p className="mt-2 text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
+        <p className="text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
       )}
     </div>
   );
@@ -202,10 +165,10 @@ function InferredSkillsBlock({
 }) {
   if (!skills?.length) return null;
   return (
-    <div className={cn(CARD, "p-5")}>
+    <div className="space-y-3">
       <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.inferredTitle")}</h3>
-      <p className="mt-1 text-xs leading-relaxed text-[#787774]">{t("matchDepth.inferredHint")}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <p className="text-xs leading-relaxed text-[#787774]">{t("matchDepth.inferredHint")}</p>
+      <div className="flex flex-wrap gap-2">
         {skills.map((skill) => (
           <span
             key={skill.canonical_name}
@@ -223,9 +186,13 @@ function InferredSkillsBlock({
   );
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+ *  MAIN COMPONENT — Editorial layout (W24)
+ * ════════════════════════════════════════════════════════════════════════ */
+
 export function DiagnosisStep3Results() {
   const { t } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId } = useDiagnosisStore();
+  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
   const { toast } = useToast();
 
   const handleShare = async () => {
@@ -277,20 +244,7 @@ export function DiagnosisStep3Results() {
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
   const partialCount = hardSkills.filter((s) => s.status === "partial").length;
 
-  /* ── Confetti for high scores ── */
-  const confettiFired = useRef(false);
-  useEffect(() => {
-    if (matchScore >= 85 && !confettiFired.current) {
-      confettiFired.current = true;
-      import("canvas-confetti").then((mod) => {
-        const fire = mod.default;
-        fire({ particleCount: 120, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
-        setTimeout(() => fire({ particleCount: 60, spread: 100, origin: { y: 0.5 }, zIndex: 9999 }), 300);
-      }).catch(() => { /* silent */ });
-    }
-  }, [matchScore]);
-
-  /* ── Dynamic UX copy ── */
+  /* ── Dynamic UX copy (HONESTY: only existing band copy, no AI text) ── */
   const scoreMessage = matchScore >= 85
     ? t("results.scoreMsg.excellent")
     : matchScore >= 80
@@ -299,239 +253,314 @@ export function DiagnosisStep3Results() {
         ? t("results.scoreMsg.decent")
         : t("results.scoreMsg.weak");
 
+  /* ── Skill Details collapse ── */
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  /* ── Ribbon data ── */
+  const coverage = jdMatch?.required_coverage != null
+    ? Math.round(jdMatch.required_coverage * 100)
+    : undefined;
+  const expFitLabel = jdMatch?.experience_fit?.status && jdMatch.experience_fit.status !== "unknown"
+    ? t(`matchDepth.fit.${jdMatch.experience_fit.status}`)
+    : null;
+  const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
+
+  /* ── Kicker text ── */
+  const kickerText = targetRole
+    ? t("editorial.kicker", { role: targetRole })
+    : t("editorial.kickerGeneric");
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-600">
-      {/* Back + Actions */}
-      <div className="flex items-center justify-between">
-        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
-        </button>
-        <div className="flex items-center gap-3">
-          <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
-            <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
-          </Button>
-          <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
-            <Download className="w-3.5 h-3.5" /> {t("results.download")}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-0 animate-in fade-in duration-600">
 
-      {/* Row 1: Score + Radar */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Score card */}
-        <div className={cn(CARD, "lg:col-span-2 flex flex-col items-center justify-center py-10")}>
-          <div className="text-[11px] uppercase tracking-widest text-[#787774] font-bold mb-4">
-            {isJdMode ? t("results.overallMatch") : t("results.overallScore")}
-          </div>
-          <FlatScore target={matchScore} label={scoreLabel} />
-          {/* Band message */}
-          <p className="text-xs text-[#787774] font-medium mt-4 text-center px-6 max-w-xs">
-            {scoreMessage}
-          </p>
-
-          {/* W17 — thước chấm: điểm chỉ có nghĩa khi biết nó đo bằng thước nào.
-              rubric_band null = chấm theo JD dán (mọi match JD-path hiện tại). */}
-          {isJdMode && jdMatch && (
-            <span
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-2.5 py-1 text-[10px] font-bold text-[#787774]"
-              title={jdMatch.rubric_band ? t("band.tooltip") : t("band.jdTooltip")}
-            >
-              <Ruler className="h-3 w-3" />
-              {jdMatch.rubric_band
-                ? t("band.label", { band: t(`band.${jdMatch.rubric_band}`) })
-                : t("band.jdYardstick")}
-            </span>
-          )}
-
-          {isJdMode ? (
-            <div className="grid grid-cols-3 gap-3 w-full mt-6 px-6">
-              <div className="flex flex-col items-center p-3 bg-[#EDF3EC] rounded-xl border border-[#DCE9D7]">
-                <CheckCircle2 className="w-4 h-4 text-[#346538] mb-1" />
-                <span className="text-xl font-mono tabular-nums font-bold text-[#346538]">{presentCount}</span>
-                <span className="text-[10px] text-[#346538] font-bold uppercase mt-0.5">{t("results.matched")}</span>
-              </div>
-              <div className="flex flex-col items-center p-3 bg-[#FBF3DB] rounded-xl border border-[#F1E5C0]">
-                <AlertCircle className="w-4 h-4 text-[#956400] mb-1" />
-                <span className="text-xl font-mono tabular-nums font-bold text-[#956400]">{partialCount}</span>
-                <span className="text-[10px] text-[#956400] font-bold uppercase mt-0.5">{t("results.partial")}</span>
-              </div>
-              <div className="flex flex-col items-center p-3 bg-[#FDEBEC] rounded-xl border border-[#F6D4D5]">
-                <X className="w-4 h-4 text-[#9F2F2D] mb-1" />
-                <span className="text-xl font-mono tabular-nums font-bold text-[#9F2F2D]">{missingCount}</span>
-                <span className="text-[10px] text-[#9F2F2D] font-bold uppercase mt-0.5">{t("results.missing")}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 w-full mt-6 px-6">
-              <div className="flex flex-col items-center p-3 bg-[#F1F1EF] rounded-xl border border-[#E3E3E0]">
-                <Shield className="w-4 h-4 text-[#787774] mb-1" />
-                <span className="text-xl font-mono tabular-nums font-bold text-[#2F3437]">{reviewData?.breakdown.ats ?? 0}</span>
-                <span className="text-[10px] text-[#787774] font-bold uppercase mt-0.5">{t("results.ats")}</span>
-              </div>
-              <div className="flex flex-col items-center p-3 bg-[#F1F1EF] rounded-xl border border-[#E3E3E0]">
-                <Code className="w-4 h-4 text-[#787774] mb-1" />
-                <span className="text-xl font-mono tabular-nums font-bold text-[#2F3437]">{reviewData?.breakdown.structure ?? 0}</span>
-                <span className="text-[10px] text-[#787774] font-bold uppercase mt-0.5">{t("results.structure")}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Radar Chart */}
-        <div className={cn(CARD, "lg:col-span-3")}>
-          <div className="border-b border-[#EAEAEA] p-5">
-            <h3 className="text-base font-bold text-[#2F3437]">{t("results.radarTitle")}</h3>
-            <p className="text-xs text-[#787774] mt-0.5">
-              {isJdMode ? t("results.radarDescJd") : t("results.radarDescNoJd")}
-            </p>
-          </div>
-          <div className="p-5">
-            {isJdMode && radarData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={260}>
-                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                    <PolarGrid stroke="#E3E3E0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
-                    <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
-                    <Radar name="you" dataKey="you" stroke="#2F3437" fill="#2F3437" fillOpacity={0.1} strokeWidth={2} />
-                  </RadarChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-6 mt-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#2F3437]"><div className="w-3 h-1 rounded-full bg-[#2F3437]" /><span>{t("results.radarYou")}</span></div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
-                </div>
-              </>
-            ) : (
-              <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
-            )}
+      {/* ────────────────────────────────────────────────────────────────────
+       *  MASTHEAD — kicker + actions + VerdictHero + Ribbon
+       * ──────────────────────────────────────────────────────────────────── */}
+      <div className="space-y-2 pb-4">
+        {/* Top bar */}
+        <div className="flex items-center justify-between">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
+          </button>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
+            </Button>
+            <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Download className="w-3.5 h-3.5" /> {t("results.download")}
+            </Button>
           </div>
         </div>
-      </div>
 
-      {isJdMode && <MatchDepthSummary jdMatch={jdMatch} t={t} />}
+        {/* Kicker */}
+        <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774] text-center pt-2">
+          {kickerText}
+        </p>
 
-      {/* Row 2: Keyword Table */}
-      <div className={CARD}>
-        <div className="border-b border-[#EAEAEA] p-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-[#2F3437]">
-                {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
-              </h3>
-              <p className="text-xs text-[#787774] mt-0.5">
-                {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
-              </p>
-            </div>
-            {isJdMode && (
-              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
-                <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
-                <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
-                <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
-              </div>
-            )}
-          </div>
-
-          {isJdMode && (
-            <div className="flex gap-1 mt-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
-              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
-                <Code className="w-4 h-4" /> {t("results.hardSkills")}
-                {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
-              </button>
-              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
-                <Users className="w-4 h-4" /> {t("results.softSkills")}
-                {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="p-5">
-          {isJdMode && (
-            <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774] px-0">
-              <div className="w-6 shrink-0" />
-              <span className="flex-1">{t("results.thSkill")}</span>
-              <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
-              <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
-            </div>
-          )}
-          <div>
-            {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
-              <KeywordRow
-                key={`${skill.name}-${i}`}
-                skill={skill}
-                index={i}
-                t={t}
-                evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
-              />
-            )) : (
-              <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
-
-      {isJdMode && (
-        <TailorChecklist
-          matchId={jdMatch?.matchId}
-          cvId={lastCvId}
-          document={reviewData?.document}
+        {/* Verdict Hero */}
+        <VerdictHero
+          target={matchScore}
+          label={scoreLabel}
+          verdictMessage={scoreMessage}
+          isJdMode={isJdMode}
+          rubricBand={jdMatch?.rubric_band}
         />
+
+        {/* Ribbon — inline stats + deal-breaker chips */}
+        {isJdMode && (
+          <div className="flex justify-center">
+            <Ribbon
+              matched={presentCount}
+              partial={partialCount}
+              missing={missingCount}
+              coverage={coverage}
+              expFitLabel={expFitLabel}
+              capApplied={capApplied}
+            />
+          </div>
+        )}
+
+        {/* CV-only sub-scores */}
+        {!isJdMode && (
+          <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
+            <span className="text-[#787774]">
+              <Shield className="w-3.5 h-3.5 inline mr-1" />
+              ATS <span className="font-mono">{reviewData?.breakdown.ats ?? 0}</span>
+            </span>
+            <span className="text-[#787774]">
+              <Code className="w-3.5 h-3.5 inline mr-1" />
+              {t("results.structure")} <span className="font-mono">{reviewData?.breakdown.structure ?? 0}</span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      <SectionRule />
+
+      {/* ────────────────────────────────────────────────────────────────────
+       *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
+       * ──────────────────────────────────────────────────────────────────── */}
+      <div className="py-12 md:py-16">
+        <Chapter
+          kicker={`01`}
+          title={t("editorial.chap1")}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
+            {/* Radar */}
+            <div className="lg:col-span-3">
+              {isJdMode && radarData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                      <PolarGrid stroke="#E3E3E0" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                      <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
+                      <Radar name="you" dataKey="you" stroke="#0F5C4D" fill="#0F5C4D" fillOpacity={0.08} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                  <div className="flex justify-center gap-6 mt-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
+                  </div>
+                </>
+              ) : (
+                <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
+              )}
+            </div>
+
+            {/* Narrative ("Vì sao điểm này") */}
+            <div className="lg:col-span-2">
+              {isJdMode && <MatchNarrative jdMatch={jdMatch} t={t} />}
+              {!isJdMode && (
+                <div className="space-y-3">
+                  <p className="text-xs leading-relaxed text-[#787774]">
+                    {isJdMode ? t("results.radarDescJd") : t("results.radarDescNoJd")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Chapter>
+      </div>
+
+      <SectionRule />
+
+      {/* ────────────────────────────────────────────────────────────────────
+       *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
+       * ──────────────────────────────────────────────────────────────────── */}
+      {isJdMode && jdMatch?.matchId && (
+        <div className="py-12 md:py-16">
+          <Chapter
+            kicker="02"
+            title={t("editorial.chap2")}
+          >
+            <GapReportCard matchId={jdMatch.matchId} />
+          </Chapter>
+        </div>
       )}
 
-      {isJdMode && jdMatch?.matchId && <GapReportCard matchId={jdMatch.matchId} />}
+      {isJdMode && jdMatch?.matchId && <SectionRule />}
 
-      {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+      {/* ────────────────────────────────────────────────────────────────────
+       *  CHƯƠNG 3 — Chi tiết (collapsible)
+       * ──────────────────────────────────────────────────────────────────── */}
+      <div className="py-12 md:py-16">
+        <Chapter
+          kicker="03"
+          title={t("editorial.chap3")}
+        >
+          {/* Collapse toggle */}
+          <button
+            onClick={() => setDetailsOpen(!detailsOpen)}
+            className="flex items-center gap-2 text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded"
+          >
+            {detailsOpen ? t("editorial.hideDetails") : t("editorial.showDetails")}
+            {detailsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
 
-      {/* Row 3: AI Insights */}
-      <div className={cn(CARD, "overflow-hidden")}>
-        <div className="border-b border-[#EAEAEA] p-5">
-          <h3 className="flex items-center gap-2 text-base font-bold text-[#2F3437]">
-            <Sparkles className="w-5 h-5 text-primary" /> {t("results.insightsTitle")}
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-[#F1F1EF]">
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#EDF3EC] text-[#346538] flex items-center justify-center shrink-0"><Shield className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.strengths")}</h4>
-            </div>
-            <ul className="space-y-3">
-              {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#FDEBEC] text-[#9F2F2D] flex items-center justify-center shrink-0"><Target className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.gaps")}</h4>
-            </div>
-            <ul className="space-y-3">
-              {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#F1F1EF] text-[#787774] flex items-center justify-center shrink-0"><Lightbulb className="w-4 h-4" /></div>
-              <h4 className="text-sm font-bold text-[#2F3437]">{t("results.actionPlan")}</h4>
-            </div>
-            <ul className="space-y-3">
-              {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><Zap className="w-4 h-4 mt-0.5 shrink-0 text-[#787774]" />{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+          {detailsOpen && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              {/* Keyword Table */}
+              <div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#2F3437]">
+                      {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
+                    </h3>
+                    <p className="text-xs text-[#787774] mt-0.5">
+                      {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
+                    </p>
+                  </div>
+                  {isJdMode && (
+                    <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
+                      <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
+                      <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
+                      <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
+                    </div>
+                  )}
+                </div>
 
-        {/* CTA + inline learning roadmap derived from this match's GapReport */}
-        <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+                {isJdMode && (
+                  <div className="flex gap-1 mb-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
+                    <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                      <Code className="w-4 h-4" /> {t("results.hardSkills")}
+                      {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
+                    </button>
+                    <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                      <Users className="w-4 h-4" /> {t("results.softSkills")}
+                      {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
+                    </button>
+                  </div>
+                )}
+
+                {isJdMode && (
+                  <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+                    <div className="w-6 shrink-0" />
+                    <span className="flex-1">{t("results.thSkill")}</span>
+                    <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
+                    <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
+                  </div>
+                )}
+                <div>
+                  {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
+                    <KeywordRow
+                      key={`${skill.name}-${i}`}
+                      skill={skill}
+                      index={i}
+                      t={t}
+                      evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
+                    />
+                  )) : (
+                    <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Inferred Skills */}
+              {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
+            </div>
+          )}
+        </Chapter>
       </div>
 
+      <SectionRule />
+
+      {/* ────────────────────────────────────────────────────────────────────
+       *  CHƯƠNG 4 — Hành động (Tailor + Roadmap + Interview + Insights)
+       * ──────────────────────────────────────────────────────────────────── */}
+      <div className="py-12 md:py-16">
+        <Chapter
+          kicker="04"
+          title={t("editorial.chap4")}
+        >
+          <div className="space-y-6">
+            {/* Tailor */}
+            {isJdMode && (
+              <TailorChecklist
+                matchId={jdMatch?.matchId}
+                cvId={lastCvId}
+                document={reviewData?.document}
+              />
+            )}
+
+            {/* Interview Plan */}
+            {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+
+            {/* AI Insights */}
+            <div className={cn(CARD, "overflow-hidden")}>
+              <div className="border-b border-[#EAEAEA] p-5">
+                <h3 className="flex items-center gap-2 text-base font-bold text-[#2F3437]">
+                  <Sparkles className="w-5 h-5 text-primary" /> {t("results.insightsTitle")}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-[#F1F1EF]">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#EDF3EC] text-[#346538] flex items-center justify-center shrink-0"><Shield className="w-4 h-4" /></div>
+                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.strengths")}</h4>
+                  </div>
+                  <ul className="space-y-3">
+                    {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#FDEBEC] text-[#9F2F2D] flex items-center justify-center shrink-0"><Target className="w-4 h-4" /></div>
+                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.gaps")}</h4>
+                  </div>
+                  <ul className="space-y-3">
+                    {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#F1F1EF] text-[#787774] flex items-center justify-center shrink-0"><Lightbulb className="w-4 h-4" /></div>
+                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.actionPlan")}</h4>
+                  </div>
+                  <ul className="space-y-3">
+                    {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><Zap className="w-4 h-4 mt-0.5 shrink-0 text-[#787774]" />{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* CTA + inline learning roadmap derived from this match's GapReport */}
+              <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+            </div>
+          </div>
+        </Chapter>
+      </div>
+
+      {/* ────────────────────────────────────────────────────────────────────
+       *  JD HIGHLIGHT (collapse, bottom — giữ)
+       * ──────────────────────────────────────────────────────────────────── */}
       {isJdMode && jobDescription && (
         <JdHighlightBlock
           jobDescription={jobDescription}
@@ -640,14 +669,14 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
   const toggleText = isOpen ? t("results.collapse") : t("results.expand");
 
   return (
-    <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden mt-6">
+    <div className="border-t border-[#EAEAEA] mt-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-5 border-b border-[#EAEAEA] hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="w-full flex items-center justify-between py-5 px-1 hover:bg-slate-50/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <div className="flex flex-col items-start gap-1">
-          <h3 className="text-base font-bold text-[#2F3437] flex items-center gap-2">
-            <Target className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-sm font-bold text-[#2F3437] flex items-center gap-2">
+            <Target className="w-4 h-4 text-ink-accent" />
             {t("results.jdHighlightTitle")}
           </h3>
           {isOpen && (
@@ -671,12 +700,12 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
       </button>
 
       {isOpen && (
-        <div className="p-5 bg-slate-50">
-          <div className="bg-white border border-[#EAEAEA] rounded-lg p-4 max-h-80 overflow-y-auto text-[13px] leading-relaxed text-[#2F3437] whitespace-pre-wrap font-normal">
+        <div className="pb-5 px-1">
+          <div className="bg-[#FBFBFA] border border-[#EAEAEA] rounded-lg p-4 max-h-80 overflow-y-auto text-[13px] leading-relaxed text-[#2F3437] whitespace-pre-wrap font-normal">
             {highlightedNodes.length > 0 ? highlightedNodes : jobDescription}
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 });
