@@ -1052,6 +1052,17 @@ export default {
       jdTooltip:
         "Yêu cầu lấy trực tiếp từ JD bạn cung cấp — không áp thước seniority.",
     },
+    editorial: {
+      kicker: "CV × {{role}}",
+      kickerGeneric: "Phân tích CV",
+      chap1: "Đọc vị điểm số",
+      chap2: "Cần cải thiện ưu tiên",
+      chap3: "Chi tiết kỹ năng",
+      chap4: "Kế hoạch hành động",
+      coverage: "{{pct}}% độ phủ",
+      showDetails: "Xem chi tiết",
+      hideDetails: "Thu gọn",
+    },
     evidence: {
       title: "Sổ bằng chứng",
       foundIn: "Tìm thấy ở",

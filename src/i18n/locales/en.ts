@@ -1058,6 +1058,17 @@ export default {
       jdTooltip:
         "Requirements come directly from the JD you provided — no seniority yardstick applied.",
     },
+    editorial: {
+      kicker: "CV × {{role}}",
+      kickerGeneric: "CV Analysis",
+      chap1: "Understanding Your Score",
+      chap2: "Priority Gaps",
+      chap3: "Skill Details",
+      chap4: "Action Plan",
+      coverage: "{{pct}}% coverage",
+      showDetails: "Show details",
+      hideDetails: "Hide details",
+    },
     evidence: {
       title: "Evidence ledger",
       foundIn: "Found in",
