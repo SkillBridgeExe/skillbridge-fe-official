@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   mapStoreToCanonical,
   pickSectionContent,
+  shouldHydrateServerDraft,
+  shouldSaveClientSnapshotAfterDraftCreate,
   type BuilderSnapshot,
 } from "./cv-builder.service";
 
@@ -137,5 +139,46 @@ describe("pickSectionContent", () => {
       fullName: "Nguyen Minh An",
       github: "github.com/anminh-dev",
     });
+  });
+});
+
+describe("draft creation race policy", () => {
+  it("hydrates the server document only when the builder snapshot stayed unchanged", () => {
+    expect(shouldHydrateServerDraft(snapshot, snapshot)).toBe(true);
+
+    const editedSnapshot: BuilderSnapshot = {
+      ...snapshot,
+      fullName: "User Typed Before Draft Returned",
+    };
+
+    expect(shouldHydrateServerDraft(snapshot, editedSnapshot)).toBe(false);
+  });
+
+  it("pushes the client snapshot when the user edited before draft creation finished", () => {
+    expect(
+      shouldSaveClientSnapshotAfterDraftCreate({
+        hasServerDocument: true,
+        seededFromDiagnosis: false,
+        snapshotChangedWhileCreating: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldSaveClientSnapshotAfterDraftCreate({
+        hasServerDocument: true,
+        seededFromDiagnosis: false,
+        snapshotChangedWhileCreating: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("pushes a diagnosis seed when the backend creates a draft without a document", () => {
+    expect(
+      shouldSaveClientSnapshotAfterDraftCreate({
+        hasServerDocument: false,
+        seededFromDiagnosis: true,
+        snapshotChangedWhileCreating: false,
+      }),
+    ).toBe(true);
   });
 });
