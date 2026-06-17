@@ -687,6 +687,9 @@ export default {
       changeFile: "Đổi tệp",
       addJd: "Thêm mô tả công việc (không bắt buộc)",
       hideJd: "Ẩn mô tả công việc",
+      rolePlaceholder: "Chọn vai trò mục tiêu…",
+      jdLabel: "Mô tả công việc",
+      removeJd: "Bỏ",
       dropActive: "Thả CV vào đây",
     },
     review: {

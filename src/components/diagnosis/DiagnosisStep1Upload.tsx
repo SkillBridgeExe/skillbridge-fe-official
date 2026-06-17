@@ -414,7 +414,7 @@ export function DiagnosisStep1Upload() {
               onValueChange={(val) => setTargetRole(val)}
             >
               <SelectTrigger className="h-12 bg-white/50 border-slate-200 rounded-xl focus:ring-ink-accent/30 focus:border-ink-accent shadow-sm transition-all text-sm font-medium hover:bg-white">
-                <SelectValue placeholder="Select a Target Role..." />
+                <SelectValue placeholder={t("upload.rolePlaceholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                 {IT_ROLES.map((role) => (
@@ -434,12 +434,12 @@ export function DiagnosisStep1Upload() {
                 onClick={() => setShowJd(true)}
                 className="text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors flex items-center gap-1.5"
               >
-                + Add a specific Job Description (Optional)
+                + {t("upload.addJd")}
               </button>
             ) : (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-bold text-slate-800">Job Description</label>
+                  <label className="text-sm font-bold text-slate-800">{t("upload.jdLabel")}</label>
                   <button 
                     type="button"
                     onClick={() => {
@@ -448,7 +448,7 @@ export function DiagnosisStep1Upload() {
                     }}
                     className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    Remove
+                    {t("upload.removeJd")}
                   </button>
                 </div>
                 <JobDescriptionInput compact={true} />

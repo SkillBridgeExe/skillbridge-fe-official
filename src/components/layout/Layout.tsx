@@ -29,7 +29,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
       </div>
 
       <Navbar />
-      <main className={`flex-grow z-10 relative animate-in fade-in duration-1000 ${!isLanding ? 'pt-32' : ''}`}>
+      <main className={`flex-grow z-10 relative animate-in fade-in duration-700 ${!isLanding ? 'pt-24' : ''}`}>
         {children}
       </main>
       {!shouldHideFooter && <footer className="bg-white border-t border-slate-100 py-12 px-6">

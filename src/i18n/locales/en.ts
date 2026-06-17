@@ -688,6 +688,9 @@ export default {
       changeFile: "Change file",
       addJd: "Add a job description (optional)",
       hideJd: "Hide job description",
+      rolePlaceholder: "Select a target role…",
+      jdLabel: "Job Description",
+      removeJd: "Remove",
       dropActive: "Drop your CV here",
     },
     review: {
