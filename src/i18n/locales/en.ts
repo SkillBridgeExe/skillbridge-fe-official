@@ -1196,6 +1196,7 @@ export default {
       saving: "Saving...",
       savedAt: "Saved at {{time}}",
       localOnly: "Sign in to save drafts and unlock AI scoring.",
+      localOnlyAuthed: "Saving unavailable right now — changes stay on this device.",
       evaluateNow: "Score this section",
       missingTitle: "Needs adding",
       aiSuggest: "AI suggest",

@@ -1191,6 +1191,7 @@ export default {
       saving: "Đang lưu...",
       savedAt: "Đã lưu lúc {{time}}",
       localOnly: "Đăng nhập để lưu bản nháp và bật chấm điểm AI.",
+      localOnlyAuthed: "Chưa lưu được — thay đổi giữ trên thiết bị này.",
       evaluateNow: "Chấm mục này",
       missingTitle: "Cần bổ sung",
       aiSuggest: "AI đề xuất",

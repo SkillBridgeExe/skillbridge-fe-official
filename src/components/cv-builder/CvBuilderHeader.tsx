@@ -6,12 +6,14 @@ import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 export function CvBuilderHeader() {
   const { t } = useTranslation("diagnosis");
+  const hasApiSession = useHasApiSession();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
@@ -156,7 +158,7 @@ export function CvBuilderHeader() {
       <div className="flex items-center gap-3">
         {saveStatus === "local" ? (
           <span className="text-xs text-[#787774] max-w-[280px] text-right font-medium">
-            {t("builder.localOnly")}
+            {hasApiSession ? t("builder.localOnlyAuthed") : t("builder.localOnly")}
           </span>
         ) : (
           <>
