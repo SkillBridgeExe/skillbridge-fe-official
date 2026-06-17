@@ -822,6 +822,9 @@ export default {
         "You have used all job-recommendation views in your current plan.",
       error: "Could not load job recommendations.",
       retry: "Retry",
+      skillMatch: "Skill {{score}}%",
+      stretch: "Above your level",
+      severeStretch: "Far above your level",
     },
     aiInsight: {
       title: "AI market insight",
