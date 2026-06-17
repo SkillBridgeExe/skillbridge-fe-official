@@ -29,7 +29,7 @@ import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
-import { Chapter, SectionRule, ActionRail } from "./editorial";
+import { SectionRule, ActionRail } from "./editorial";
 
 /**
  * "Còn x/y lượt chấm" từ GET /api/me/entitlements (BE #49) — số thật theo plan,
@@ -272,15 +272,8 @@ export function DiagnosisStep1Upload() {
       {/* Main Form Card */}
       <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] p-6 space-y-0">
         
-        {/* Header — Editorial Chapter */}
-        <div className="flex items-center justify-between pb-4">
-          <Chapter
-            kicker={t("editorial.uploadKicker")}
-            title={t("upload.cardTitle")}
-            className="space-y-1"
-          >
-            <p className="text-xs text-[#787774]">{t("upload.cardSubtitle")}</p>
-          </Chapter>
+        {/* Header — minimal: the page headline already introduces this screen */}
+        <div className="flex items-center justify-end pb-1">
           <Button
             variant="ghost"
             size="sm"
@@ -300,7 +293,6 @@ export function DiagnosisStep1Upload() {
         <div>
           {isFromBuilder ? (
             <div className="space-y-3 w-full">
-              <p className="text-xs text-[#787774]">{t("upload.builderReady")}</p>
               <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl">
                 <div className="flex items-center gap-3 min-w-0">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -329,7 +321,6 @@ export function DiagnosisStep1Upload() {
             </div>
           ) : cvFile ? (
             <div className="space-y-3 w-full">
-              <p className="text-xs text-[#787774]">{t("upload.fileReady")}</p>
               <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl">
                 <div className="flex items-center gap-3 min-w-0">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -488,7 +479,6 @@ export function DiagnosisStep1Upload() {
         {/* CTA — ActionRail */}
         <div className="pt-2">
           <ActionRail
-            kicker={t("editorial.nextStep")}
             secondaryLabel={isFromBuilder ? t("upload.analyzeGeneratedCv") : t("upload.analyzeCv")}
             secondaryIcon={<Upload className="w-4 h-4" />}
             secondaryAction={analyzeCvOnly}

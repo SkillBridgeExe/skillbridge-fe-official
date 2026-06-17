@@ -369,7 +369,7 @@ export function ActionRail({
   secondaryDisabled,
   helperText,
 }: {
-  kicker: string;
+  kicker?: string;
   primaryLabel: string;
   primaryIcon?: React.ReactNode;
   primaryAction: () => void;
@@ -382,9 +382,11 @@ export function ActionRail({
 }) {
   return (
     <div className="space-y-3 pt-1">
-      <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-        {kicker}
-      </p>
+      {kicker && (
+        <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+          {kicker}
+        </p>
+      )}
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={secondaryAction}
