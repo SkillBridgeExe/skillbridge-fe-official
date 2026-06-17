@@ -142,6 +142,15 @@ export function ProjectsSection() {
               <Label>{t("builder.fields.tools")}</Label>
               <Input value={proj.tools} onChange={(e) => updateProject(proj.id, "tools", e.target.value)} placeholder={t("builder.ph.tools")} />
             </div>
+            <div className="space-y-1.5 col-span-2">
+              <Label>{t("builder.fields.projectLink")}</Label>
+              <Input
+                type="url"
+                value={proj.link}
+                onChange={(e) => updateProject(proj.id, "link", e.target.value)}
+                placeholder={t("builder.ph.projectLink")}
+              />
+            </div>
             <div className="space-y-2 col-span-2">
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.projectDescription")}</Label>

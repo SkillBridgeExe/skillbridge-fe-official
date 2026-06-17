@@ -135,7 +135,7 @@ export function mapStoreToCanonical(snapshot: BuilderSnapshot): CanonicalCvDocum
           ...splitLines(entry.contribution),
           ...splitLines(entry.result),
         ],
-        link: null,
+        link: orNull(entry.link),
       })),
     skills: {
       technical: snapshot.technicalSkills,

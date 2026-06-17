@@ -62,6 +62,7 @@ const snapshot: BuilderSnapshot = {
       tools: "React, TypeScript; Zustand",
       contribution: "Led FE architecture.",
       result: "400+ users.",
+      link: "https://github.com/example/studymate",
     },
   ],
   technicalSkills: ["React", "TypeScript"],
@@ -98,6 +99,7 @@ describe("mapStoreToCanonical", () => {
       "Cut load time by 30%.",
     ]);
     expect(doc.projects[0].tech).toEqual(["React", "TypeScript", "Zustand"]);
+    expect(doc.projects[0].link).toBe("https://github.com/example/studymate");
     expect(doc.education[0].field).toBe("Software Engineering");
     expect(doc.education[0].highlights).toEqual(["Web Development", "Database Systems"]);
     expect(doc.certifications[0].issuer).toBe("freeCodeCamp");
