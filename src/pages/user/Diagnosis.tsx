@@ -14,7 +14,11 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
-import type { BuilderSnapshot } from "@/services/cv-builder.service";
+import {
+  shouldHydrateServerDraft,
+  shouldSaveClientSnapshotAfterDraftCreate,
+  type BuilderSnapshot,
+} from "@/services/cv-builder.service";
 
 const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -137,26 +141,69 @@ export default function Diagnosis() {
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
+      const builderSeed = useCvBuilderStore.getState();
+      const snapshotAtDraftRequest = getBuilderSnapshot(builderSeed);
       ensureDraftMutation.mutate(
-        { language: useCvBuilderStore.getState().cvLanguage },
+        {
+          sourceCvId: builderSeed.seedSourceCvId,
+          language: builderSeed.cvLanguage,
+          title: builderSeed.fullName || "CV Builder draft",
+          targetRole: useDiagnosisStore.getState().targetRole,
+        },
         {
           onSuccess: (data) => {
+            const builderBeforeHydrate = useCvBuilderStore.getState();
+            const currentSnapshot = getBuilderSnapshot(builderBeforeHydrate);
+            const hasServerDocument = Boolean(data.parsedJson);
+            const snapshotUnchanged = shouldHydrateServerDraft(
+              snapshotAtDraftRequest,
+              currentSnapshot,
+            );
+            const canHydrateServerDocument =
+              Boolean(data.parsedJson) && snapshotUnchanged;
+            const snapshotChangedWhileCreating = !snapshotUnchanged;
+            const wasSeededFromDiagnosis = builderBeforeHydrate.seededFromDiagnosis;
+
+            if (data.parsedJson && canHydrateServerDocument) {
+              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson);
+            }
+
             const builder = useCvBuilderStore.getState();
             builder.setDraftId(data.id);
-            useAutosaveStore.getState().setSaveStatus("saved");
-            const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-            useAutosaveStore.getState().setLastSavedTime(timeStr);
+            builder.setSeedSourceCvId(null);
+            const markSaved = () => {
+              useAutosaveStore.getState().setSaveStatus("saved");
+              const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+              useAutosaveStore.getState().setLastSavedTime(timeStr);
+            };
 
-            // Seeded từ CV đã chẩn đoán → đẩy ngay nội dung parse vào draft vừa tạo
-            // để "Download CV" (render-pdf) có dữ liệu mà không phải chờ user chỉnh.
-            if (builder.seededFromDiagnosis) {
+            // The backend normally returns a cloned or blank canonical document.
+            // Push the client snapshot only if the backend has no document or
+            // the user edited while the create-draft request was still pending.
+            if (
+              shouldSaveClientSnapshotAfterDraftCreate({
+                hasServerDocument,
+                seededFromDiagnosis: wasSeededFromDiagnosis,
+                snapshotChangedWhileCreating,
+              })
+            ) {
+              useAutosaveStore.getState().setSaveStatus("saving");
+              const latestBuilder = useCvBuilderStore.getState();
               saveDraftMutation.mutate({
                 draftId: data.id,
-                snapshot: getBuilderSnapshot(useCvBuilderStore.getState()),
-                title: useCvBuilderStore.getState().fullName || "CV Builder draft",
+                snapshot: getBuilderSnapshot(latestBuilder),
+                title: latestBuilder.fullName || "CV Builder draft",
                 targetRole: useDiagnosisStore.getState().targetRole,
+              }, {
+                onSuccess: markSaved,
+                onError: () => {
+                  useAutosaveStore.getState().setSaveStatus("error");
+                },
               });
+            } else {
+              markSaved();
             }
+            useCvBuilderStore.getState().setSeededFromDiagnosis(false);
           },
           onError: (err: Error) => {
             // Graceful degradation: keep editing locally, surface the reason ONCE.
@@ -217,11 +264,13 @@ export default function Diagnosis() {
     useAutosaveStore.getState().triggerSaveRef.current = saveDraft;
 
     const unsubscribe = useCvBuilderStore.subscribe((state) => {
-      const draftId = state.draftId;
-      if (!draftId) return;
-
       const currentSnapshot = getBuilderSnapshot(state);
       const currentSnapshotJson = JSON.stringify(currentSnapshot);
+      const draftId = state.draftId;
+      if (!draftId) {
+        lastSnapshotJson = currentSnapshotJson;
+        return;
+      }
 
       if (currentSnapshotJson !== lastSnapshotJson) {
         lastSnapshotJson = currentSnapshotJson;
@@ -242,7 +291,10 @@ export default function Diagnosis() {
       if (timeoutId) clearTimeout(timeoutId);
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
-  }, [step, canUseApi, saveDraftMutation]);
+    // mutateAsync is stable for this usage; excluding the mutation object avoids
+    // resubscribing on React Query state transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, canUseApi]);
 
   // If in builder step, render full-screen builder interface
   if (step === "builder") {

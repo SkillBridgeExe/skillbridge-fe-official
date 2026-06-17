@@ -223,6 +223,9 @@ export function CvPreviewPanel() {
                       {proj.tools && (
                         <div className="text-xs text-slate-700 mb-1"><span className="font-medium">{L.technologies}:</span> {proj.tools}</div>
                       )}
+                      {proj.link && (
+                        <div className="mb-1 break-all text-xs text-slate-600">{proj.link}</div>
+                      )}
                       {proj.description && (
                         <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap pl-4 relative">
                           <span className="absolute left-0 top-1.5 w-1 h-1 bg-slate-400 rounded-full" />
