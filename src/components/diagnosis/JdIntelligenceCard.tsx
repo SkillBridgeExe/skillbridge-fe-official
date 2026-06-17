@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
@@ -12,7 +11,7 @@ import {
   MinusCircle,
   Info,
 } from "lucide-react";
-import type { JdIntelligenceBlock, JdDimensionType, ExperienceVerdict } from "@shared/api";
+import type { JdIntelligenceBlock, JdDimensionType, ExperienceVerdict, GapItem } from "@shared/api";
 
 const DIMENSION_ICON: Record<JdDimensionType, React.ReactNode> = {
   seniority: <Briefcase className="w-3.5 h-3.5" />,
@@ -26,6 +25,21 @@ const IMPORTANCE_STYLE: Record<string, string> = {
   REQUIRED: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
   PREFERRED: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
   NICE_TO_HAVE: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  matched: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  partial: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  unproven: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  missing: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+  overclaimed: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+};
+
+const FIXABILITY_STYLE: Record<string, string> = {
+  rewrite: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  add_evidence: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+  learn: "bg-ink-accent-tint text-ink-accent border-ink-accent/20",
+  not_fixable_now: "bg-slate-100 text-slate-700 border-slate-200",
 };
 
 function VerdictChip({ verdict, t }: { verdict: ExperienceVerdict; t: (key: string) => string }) {
@@ -62,24 +76,48 @@ function VerdictChip({ verdict, t }: { verdict: ExperienceVerdict; t: (key: stri
  * Render-when-present: nếu `data` null/undefined/empty → trả null, không lỗi.
  * Luật trung thực: chỉ hiện dimension BE trả; graded=false → nhãn "chưa chấm";
  * graded=true (seniority) → hiện verdict + cv_signal.
+ *
+ * W23 #2 (gộp W24): nhận thêm `gapItems` → join theo `type` (language/edu/domain/work_mode).
+ * Mỗi dimension khớp gap_items → hiện cv_status + severity + fixability chips.
+ * Honest fallback: không có gap khớp → giữ disclosure cũ (verdict/notGraded), không bịa.
+ *
+ * W24: restyle editorial — bỏ Card wrapper.
  */
-export function JdIntelligenceCard({ data }: { data?: JdIntelligenceBlock | null }) {
+export function JdIntelligenceCard({
+  data,
+  gapItems,
+}: {
+  data?: JdIntelligenceBlock | null;
+  gapItems?: GapItem[];
+}) {
   const { t } = useTranslation("diagnosis");
 
   if (!data?.dimensions?.length) return null;
 
-  return (
-    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-      <CardContent className="p-6 space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          <Globe className="w-3.5 h-3.5" />
-          {t("jdIntel.title")}
-        </div>
+  // Build lookup: dimension type → matching GapItem (first non-matched)
+  const gapByType = new Map<string, GapItem>();
+  if (gapItems?.length) {
+    for (const g of gapItems) {
+      if (g.cv_status !== "matched" && !gapByType.has(g.type)) {
+        gapByType.set(g.type, g);
+      }
+    }
+  }
 
-        {/* Dimension rows */}
-        <div className="space-y-3">
-          {data.dimensions.map((dim, i) => (
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+        <Globe className="w-3.5 h-3.5" />
+        {t("jdIntel.title")}
+      </div>
+
+      {/* Dimension rows */}
+      <div className="space-y-3">
+        {data.dimensions.map((dim, i) => {
+          const gap = gapByType.get(dim.dimension);
+
+          return (
             <div
               key={`${dim.dimension}-${i}`}
               className="flex flex-col gap-1.5 py-2.5 border-b border-[#F1F1EF] last:border-0"
@@ -114,8 +152,26 @@ export function JdIntelligenceCard({ data }: { data?: JdIntelligenceBlock | null
                 {/* Verdict (seniority only, graded=true) */}
                 {dim.graded && dim.verdict && <VerdictChip verdict={dim.verdict} t={t} />}
 
-                {/* Not graded badge */}
-                {!dim.graded && (
+                {/* W23 #2: gap_items join → cv_status + fixability chips */}
+                {gap && (
+                  <>
+                    <span className={cn(
+                      "rounded border px-1.5 py-0.5 text-[10px] font-bold",
+                      STATUS_STYLE[gap.cv_status] ?? "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+                    )}>
+                      {t(`gapReport.status.${gap.cv_status}`, { defaultValue: gap.cv_status })}
+                    </span>
+                    <span className={cn(
+                      "rounded border px-1.5 py-0.5 text-[10px] font-bold",
+                      FIXABILITY_STYLE[gap.fixability] ?? "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+                    )}>
+                      {t(`gapReport.fix.${gap.fixability}`, { defaultValue: gap.fixability })}
+                    </span>
+                  </>
+                )}
+
+                {/* Not graded badge — only show when NO gap_item match AND not graded */}
+                {!dim.graded && !gap && (
                   <span className="rounded border px-1.5 py-0.5 text-[10px] font-bold bg-[#F7F6F3] text-[#787774] border-[#E3E3E0]">
                     {t("jdIntel.notGraded")}
                   </span>
@@ -130,21 +186,29 @@ export function JdIntelligenceCard({ data }: { data?: JdIntelligenceBlock | null
                 </p>
               )}
 
+              {/* Row 2b: gap recommended_next_action (W23 #2) */}
+              {gap?.recommended_next_action && (
+                <p className="text-[11px] text-[#787774] ml-6">
+                  <span className="font-semibold">{t("gapReport.actions")}:</span>{" "}
+                  {gap.recommended_next_action}
+                </p>
+              )}
+
               {/* Row 3: evidence (quoted from JD) */}
               <p className="text-[11px] text-[#9B9B97] ml-6 italic">
                 JD: &ldquo;{dim.evidence_text}&rdquo;
               </p>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
 
-        {/* Footer note */}
-        {data.note && (
-          <p className="text-[11px] text-slate-400 border-t border-[#F1F1EF] pt-3">
-            {data.note}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+      {/* Footer note */}
+      {data.note && (
+        <p className="text-[11px] text-slate-400 border-t border-[#F1F1EF] pt-3">
+          {data.note}
+        </p>
+      )}
+    </div>
   );
 }
