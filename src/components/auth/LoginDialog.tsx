@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMascotSuccess } from "@/hooks/useMascot";
-import { MOCK_LOGIN_ACCOUNTS, type UserRole } from "@/store/useAuthStore";
+import { type UserRole } from "@/store/useAuthStore";
 import {
   dashboardPathFor,
   getLoginErrorDescription,
@@ -248,10 +248,6 @@ export function LoginDialog({
     }
   };
 
-  const handleUseMockAccount = (accountEmail: string, accountPassword: string) => {
-    setEmail(accountEmail);
-    setPassword(accountPassword);
-  };
 
   return createPortal(
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[#2b0b55]/78 backdrop-blur-[2px]">
@@ -592,19 +588,7 @@ export function LoginDialog({
                       )}
                     </Button>
 
-                    <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {MOCK_LOGIN_ACCOUNTS.slice(0, 2).map((account) => (
-                        <button
-                          key={account.role}
-                          type="button"
-                          onClick={() => handleUseMockAccount(account.email, account.password)}
-                          className="rounded-xl border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-left transition-colors hover:border-cyan-300 hover:bg-cyan-50"
-                        >
-                          <p className="truncate text-xs font-bold text-slate-800">{account.label}</p>
-                          <p className="truncate text-[11px] text-slate-500">{account.email}</p>
-                        </button>
-                      ))}
-                    </div>
+
                   </>
                 )}
               </>
