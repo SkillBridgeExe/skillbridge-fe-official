@@ -137,19 +137,32 @@ export default function Diagnosis() {
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
+      const builderSeed = useCvBuilderStore.getState();
       ensureDraftMutation.mutate(
-        { language: useCvBuilderStore.getState().cvLanguage },
+        {
+          sourceCvId: builderSeed.seedSourceCvId,
+          language: builderSeed.cvLanguage,
+          title: builderSeed.fullName || "CV Builder draft",
+          targetRole: useDiagnosisStore.getState().targetRole,
+        },
         {
           onSuccess: (data) => {
+            const builderBeforeHydrate = useCvBuilderStore.getState();
+            const hasServerDocument = Boolean(data.parsedJson);
+            if (data.parsedJson) {
+              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson);
+            }
+
             const builder = useCvBuilderStore.getState();
             builder.setDraftId(data.id);
+            builder.setSeedSourceCvId(null);
             useAutosaveStore.getState().setSaveStatus("saved");
             const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
             useAutosaveStore.getState().setLastSavedTime(timeStr);
 
-            // Seeded từ CV đã chẩn đoán → đẩy ngay nội dung parse vào draft vừa tạo
-            // để "Download CV" (render-pdf) có dữ liệu mà không phải chờ user chỉnh.
-            if (builder.seededFromDiagnosis) {
+            // The backend normally returns a cloned or blank canonical document.
+            // Only push the client fallback if that server document is absent.
+            if (builder.seededFromDiagnosis && !hasServerDocument) {
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(useCvBuilderStore.getState()),
@@ -157,6 +170,7 @@ export default function Diagnosis() {
                 targetRole: useDiagnosisStore.getState().targetRole,
               });
             }
+            builder.setSeededFromDiagnosis(false);
           },
           onError: (err: Error) => {
             // Graceful degradation: keep editing locally, surface the reason ONCE.

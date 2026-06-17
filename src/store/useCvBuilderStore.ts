@@ -34,6 +34,7 @@ export interface Project {
   id: string;
   name: string;
   role: string;
+  link: string;
   description: string;
   tools: string;
   contribution: string;
@@ -68,7 +69,7 @@ const emptyExperience = (): WorkExperience => ({
 });
 
 const emptyProject = (): Project => ({
-  id: uid(), name: "", role: "", description: "", tools: "", contribution: "", result: "",
+  id: uid(), name: "", role: "", link: "", description: "", tools: "", contribution: "", result: "",
 });
 
 const emptyCertification = (): Certification => ({
@@ -125,6 +126,7 @@ interface CvBuilderState {
   /** True khi store vừa được nạp từ CV đã chẩn đoán (Diagnosis → "Sửa CV"):
    *  báo cho Diagnosis page đẩy ngay nội dung vào draft mới sau khi tạo. */
   seededFromDiagnosis: boolean;
+  seedSourceCvId: string | null;
 
   // Actions — Basic Info
   setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github">, value: string) => void;
@@ -174,6 +176,7 @@ interface CvBuilderState {
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
   hydrateFromCanonical: (doc: CanonicalCvDocument) => void;
   setSeededFromDiagnosis: (val: boolean) => void;
+  setSeedSourceCvId: (id: string | null) => void;
 
   // Computed
   getSectionStatuses: () => SectionMeta[];
@@ -198,6 +201,7 @@ const initialState = {
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   seededFromDiagnosis: false,
+  seedSourceCvId: null as string | null,
 };
 
 /* ── Map ngược CanonicalCvDocument → builder store (inverse của mapStoreToCanonical) ──
@@ -246,6 +250,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     id: uid(),
     name: p.name ?? "",
     role: p.role ?? "",
+    link: p.link ?? "",
     description: (p.bullets ?? []).join("\n"),
     tools: (p.tech ?? []).join(", "),
     contribution: "",
@@ -284,6 +289,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     sectionEvaluations: {},
     activeSection: 0,
     seededFromDiagnosis: true,
+    seedSourceCvId: null,
   };
 }
 
@@ -356,6 +362,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   // Seed từ CV đã chẩn đoán
   hydrateFromCanonical: (doc) => set(canonicalToBuilderState(doc)),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
+  setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
   setTemplate: (template) => set({ template }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
 

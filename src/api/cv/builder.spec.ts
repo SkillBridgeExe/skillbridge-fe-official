@@ -19,3 +19,28 @@ describe("renderBuilderPdfApi", () => {
     expect(result).toBe(blob);
   });
 });
+
+describe("createBuilderDraftApi", () => {
+  it("forwards sourceCvId so the backend can clone the parsed CV", async () => {
+    const { httpClient } = await import("@/api/core/http-client");
+    const { createBuilderDraftApi } = await import("./builder");
+    (httpClient.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        success: true,
+        message: "created",
+        data: { id: "draft-1" },
+        errors: null,
+      },
+    });
+
+    await createBuilderDraftApi({
+      sourceCvId: "uploaded-cv-1",
+      language: "en",
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith("/api/cvs/builder", {
+      sourceCvId: "uploaded-cv-1",
+      language: "en",
+    });
+  });
+});
