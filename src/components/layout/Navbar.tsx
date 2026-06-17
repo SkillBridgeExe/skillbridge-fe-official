@@ -110,8 +110,9 @@ export default function Navbar() {
 
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-white/80 backdrop-blur-md border-b border-slate-100">
-      <div className="flex items-center gap-12">
+    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full px-4 pt-4 md:pt-6 pointer-events-none">
+      <nav className="w-full max-w-6xl h-16 md:h-18 flex items-center justify-between px-4 md:px-6 bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-900/5 rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <div className="flex items-center gap-8 md:gap-12">
         <Link to="/" className="flex items-center group">
           <img
             src={logoGif}
@@ -262,6 +263,7 @@ export default function Navbar() {
         onModeChange={setAuthMode}
         onOpenChange={setLoginOpen}
       />
-    </nav>
+      </nav>
+    </div>
   );
 }

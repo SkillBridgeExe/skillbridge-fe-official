@@ -145,25 +145,44 @@ export function CvBuilderHeader() {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleBackToDiagnosis}
-          className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors rounded focus-visible:ring-2 focus-visible:ring-primary/40 mr-1"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">{t("builder.backToDiagnosis")}</span>
-        </button>
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FilePenLine className="w-4 h-4 text-primary" />
+    <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10">
+      <div className="flex h-full items-center flex-1">
+        
+        {/* Left column matching sidebar exactly on xl screens */}
+        <div className="hidden xl:flex w-[220px] h-full border-r border-slate-150 items-center px-4 shrink-0">
+          <button
+            onClick={handleBackToDiagnosis}
+            className="group flex items-center gap-1.5 w-full px-2 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+            <span className="truncate">{t("builder.backToDiagnosis")}</span>
+          </button>
         </div>
-        <div>
-          <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
-          <p className="text-[11px] text-slate-500 font-medium">{t("builder.headerSubtitle")}</p>
+
+        {/* Back button for < xl screens */}
+        <div className="xl:hidden flex items-center px-4 h-full border-r border-slate-150">
+          <button
+            onClick={handleBackToDiagnosis}
+            className="group flex items-center gap-1.5 px-2 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">{t("builder.backToDiagnosis")}</span>
+          </button>
+        </div>
+
+        {/* Branding area */}
+        <div className="flex items-center gap-3 px-4 xl:px-6">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <FilePenLine className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
+            <p className="text-[11px] text-slate-500 font-medium hidden md:block">{t("builder.headerSubtitle")}</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 px-6">
         {saveStatus === "local" ? (
           <span className="text-xs text-[#787774] max-w-[280px] text-right font-medium">
             {hasApiSession ? t("builder.localOnlyAuthed") : t("builder.localOnly")}

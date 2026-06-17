@@ -17,9 +17,19 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
   const shouldHideFooter = hideFooter || isAppPage;
 
   return (
-    <div className="min-h-dvh w-full flex flex-col font-sans bg-slate-50/30 overflow-x-hidden relative">
+    <div className="min-h-dvh w-full flex flex-col font-sans bg-white overflow-x-hidden relative selection:bg-ink-accent/20 selection:text-ink-accent">
+      
+      {/* Premium Background Elements */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-[#FCFCFD]">
+        {/* Dot Grid Pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMTUsIDIzLCA0MiwgMC4wNykiLz48L3N2Zz4=')] [mask-image:radial-gradient(ellipse_at_top,black,transparent_80%)]"></div>
+        
+        {/* Radial Glow */}
+        <div className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[1000px] h-[600px] bg-ink-accent/10 blur-[120px] rounded-[100%] opacity-80 mix-blend-multiply"></div>
+      </div>
+
       <Navbar />
-      <main className={`flex-grow ${!isLanding ? 'pt-20' : ''}`}>
+      <main className={`flex-grow z-10 relative animate-in fade-in duration-1000 ${!isLanding ? 'pt-32' : ''}`}>
         {children}
       </main>
       {!shouldHideFooter && <footer className="bg-white border-t border-slate-100 py-12 px-6">

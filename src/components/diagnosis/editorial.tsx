@@ -374,9 +374,9 @@ export function ActionRail({
   primaryIcon?: React.ReactNode;
   primaryAction: () => void;
   primaryDisabled?: boolean;
-  secondaryLabel: string;
+  secondaryLabel?: string;
   secondaryIcon?: React.ReactNode;
-  secondaryAction: () => void;
+  secondaryAction?: () => void;
   secondaryDisabled?: boolean;
   helperText?: string | null;
 }) {
@@ -388,27 +388,29 @@ export function ActionRail({
         </p>
       )}
       <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={secondaryAction}
-          disabled={secondaryDisabled}
-          className={cn(
-            "flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-6 h-11 text-sm font-semibold border transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ink-accent/40 outline-none",
-            secondaryDisabled
-              ? "border-[#EAEAEA] bg-white text-slate-400 cursor-not-allowed"
-              : "border-slate-300 text-[#2F3437] hover:border-ink-accent hover:text-ink-accent",
-          )}
-        >
-          {secondaryIcon}
-          {secondaryLabel}
-        </button>
+        {secondaryLabel && (
+          <button
+            onClick={secondaryAction}
+            disabled={secondaryDisabled}
+            className={cn(
+              "flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-6 h-12 text-sm font-semibold border transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ink-accent/40 outline-none",
+              secondaryDisabled
+                ? "border-slate-200/70 border-dashed bg-slate-50/50 text-slate-400 cursor-not-allowed"
+                : "border-slate-200 bg-white shadow-sm text-slate-700 hover:border-slate-300 hover:text-ink-accent hover:shadow-md",
+            )}
+          >
+            {secondaryIcon}
+            {secondaryLabel}
+          </button>
+        )}
         <button
           onClick={primaryAction}
           disabled={primaryDisabled}
           className={cn(
-            "flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-6 h-11 text-sm font-semibold transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/40 outline-none",
+            "flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-6 h-12 text-sm font-bold transition-all duration-300 outline-none",
             primaryDisabled
-              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-              : "bg-ink-accent hover:bg-ink-accent/90 text-white",
+              ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+              : "bg-gradient-to-r from-ink-accent to-[#009bda] hover:from-[#009bda] hover:to-ink-accent text-white shadow-lg shadow-ink-accent/20 border border-transparent active:scale-[0.98]",
           )}
         >
           {primaryIcon}

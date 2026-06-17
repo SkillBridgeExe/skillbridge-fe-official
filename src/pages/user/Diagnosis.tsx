@@ -317,13 +317,13 @@ export default function Diagnosis() {
 
         {/* ── Header ── */}
         {step === "input" && (
-          <header className="mb-8 text-center space-y-2.5">
-            <h1 className="text-3xl font-poppins font-black text-[#2F3437] tracking-tight">
-              {t("header.title")}
-            </h1>
-            <span className="inline-block text-[11px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2.5 py-0.5 rounded-full">
+          <header className="mb-14 text-center space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+            <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
+            <h1 className="text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
+              {t("header.title")}
+            </h1>
           </header>
         )}
 

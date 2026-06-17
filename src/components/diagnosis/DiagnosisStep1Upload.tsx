@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Card } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,6 +9,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +31,7 @@ import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
-import { SectionRule, ActionRail } from "./editorial";
+import { ActionRail } from "./editorial";
 
 /**
  * "Còn x/y lượt chấm" từ GET /api/me/entitlements (BE #49) — số thật theo plan,
@@ -58,8 +60,8 @@ function QuotaLine({
     <div
       className={
         exhausted
-          ? "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium bg-[#FDEBEC] border-[#F6D4D5] text-[#9F2F2D]"
-          : "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium bg-[#F7F6F3] border-[#EAEAEA] text-[#787774]"
+          ? "flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold bg-[#FDEBEC] text-[#9F2F2D]"
+          : "flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold bg-[#F4F5F5] text-slate-500"
       }
     >
       <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -72,7 +74,7 @@ function QuotaLine({
             })}
       </span>
       {exhausted && (
-        <Link to="/pricing" className="ml-auto font-bold text-primary hover:underline shrink-0">
+        <Link to="/pricing" className="ml-1 font-bold text-primary hover:underline shrink-0">
           {t("quota.upgradeCta")}
         </Link>
       )}
@@ -84,7 +86,7 @@ export function DiagnosisStep1Upload() {
   const { t, i18n } = useTranslation("diagnosis");
   const {
     cvFile, jobDescription, isFromBuilder, builderCvId, builderCvName, targetRole, consentAccepted,
-    setCvFile, setTargetRole, setConsentAccepted,
+    setCvFile, setJobDescription, setTargetRole, setConsentAccepted,
     setHasActivatedJdMode, setTargetStep, setLoadingProgress, setLoadingMsgIdx, setIsAnalyzing,
     setReviewData, setApiError, setAnalysisMode, setStep, setLastCvId, clearBuilderState
   } = useDiagnosisStore();
@@ -269,25 +271,22 @@ export function DiagnosisStep1Upload() {
         </div>
       )}
 
-      {/* Main Form Card */}
-      <Card className="bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] p-6 space-y-0">
-        
-        {/* Header — minimal: the page headline already introduces this screen */}
-        <div className="flex items-center justify-end pb-1">
+      {/* Main Form Double-Bezel Card */}
+      <div className="bg-slate-50/50 p-2 md:p-3 rounded-[2.5rem] border border-slate-100 shadow-sm animate-in zoom-in-95 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <div className="bg-white rounded-[calc(2.5rem-0.75rem)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-900/5 p-6 md:p-10 lg:p-12 space-y-0">
+          
+        {/* Header */}
+        <div className="flex items-center justify-end gap-3 pb-3">
+          {hasApiSession && <QuotaLine enabled={hasApiSession} t={t} />}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setHistoryOpen(true)}
-            className="text-[#787774] hover:text-primary gap-1.5 font-medium text-xs px-2.5 h-8 rounded-lg active:scale-[0.98] shrink-0"
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-50 gap-1.5 font-bold text-xs uppercase tracking-wider px-3 h-8 rounded-lg active:scale-[0.98] shrink-0"
           >
             <History className="w-3.5 h-3.5" /> <span>{t("upload.historyLink")}</span>
           </Button>
         </div>
-
-        {/* Quota thật theo plan (ẩn với mock account — không có session BE) */}
-        {hasApiSession && <QuotaLine enabled={hasApiSession} t={t} />}
-
-        <SectionRule className="my-5" />
 
         {/* 2-Door CV Section */}
         <div>
@@ -341,9 +340,9 @@ export function DiagnosisStep1Upload() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3 w-full">
-              <label className="text-xs font-semibold text-[#2F3437] block mb-1">{t("upload.twoDoorLabel")}</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4 w-full">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-3">{t("upload.twoDoorLabel")}</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 
                 {/* Door 1: Upload (with drag-and-drop support) */}
                 <div
@@ -351,25 +350,25 @@ export function DiagnosisStep1Upload() {
                   onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
                   onDrop={handleDrop}
                   className={cn(
-                    "border rounded-xl p-4 flex flex-col justify-between min-h-[140px] transition-all cursor-pointer relative",
+                    "rounded-[1.5rem] p-6 md:p-8 flex flex-col justify-between min-h-[160px] md:min-h-[180px] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] cursor-pointer relative border",
                     isDragging 
-                      ? "border-ink-accent bg-ink-accent-tint" 
-                      : "border-[#EAEAEA] bg-white hover:border-slate-300"
+                      ? "bg-ink-accent/5 ring-2 ring-ink-accent/40 border-transparent" 
+                      : "bg-[#F8FAFC] border-slate-200/60 hover:border-ink-accent/30 hover:shadow-md hover:bg-white active:scale-[0.98]"
                   )}
                 >
-                  <label htmlFor="cv-upload-2door" className="w-full h-full flex flex-col justify-between absolute inset-0 p-4 cursor-pointer">
-                    <div className="space-y-1">
+                  <label htmlFor="cv-upload-2door" className="w-full h-full flex flex-col justify-between absolute inset-0 p-6 md:p-8 cursor-pointer">
+                    <div className="space-y-2">
                       {/* Eyebrow */}
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9B9B97]">{t("editorial.whyUpload")}</p>
-                      <h4 className={cn("font-bold text-xs flex items-center gap-1.5 transition-colors", isDragging ? "text-ink-accent" : "text-slate-800")}>
-                        <Upload className={cn("w-4 h-4", isDragging ? "text-ink-accent" : "text-slate-450")} /> 
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t("editorial.whyUpload")}</p>
+                      <h4 className={cn("font-bold text-sm md:text-base flex items-center gap-2 transition-colors", isDragging ? "text-ink-accent" : "text-slate-800")}>
+                        <Upload className={cn("w-4 h-4 md:w-5 md:h-5", isDragging ? "text-ink-accent" : "text-slate-400")} /> 
                         {isDragging ? t("upload.dropActive") : t("upload.doorUploadTitle")}
                       </h4>
-                      <p className="text-[11px] text-[#787774] leading-relaxed">
+                      <p className="text-xs md:text-sm text-slate-500 leading-relaxed pr-2">
                         {t("upload.doorUploadDesc")}
                       </p>
                     </div>
-                    <div className="mt-3 inline-flex items-center justify-center w-full py-1.5 px-3 rounded-lg bg-[#F1F1EF] border border-[#EAEAEA] text-[11px] font-semibold text-[#2F3437] hover:bg-slate-100 transition-colors text-center shrink-0">
+                    <div className="mt-6 inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-sm transition-all text-center shrink-0">
                       {t("upload.doorUploadCta")}
                     </div>
                     <input id="cv-upload-2door" type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" onChange={handleCVUpload} />
@@ -377,19 +376,19 @@ export function DiagnosisStep1Upload() {
                 </div>
 
                 {/* Door 2: AI Builder */}
-                <div className="border border-ink-accent/30 bg-ink-accent-tint rounded-xl p-4 flex flex-col justify-between min-h-[140px] transition-all hover:bg-ink-accent/10">
-                  <div className="space-y-1">
+                <div className="bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-slate-200/50 rounded-[1.5rem] p-6 md:p-8 flex flex-col justify-between min-h-[160px] md:min-h-[180px] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:shadow-md hover:border-ink-accent/30 cursor-pointer active:scale-[0.98]" onClick={() => setStep("builder")}>
+                  <div className="space-y-2">
                     {/* Eyebrow */}
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9B9B97]">{t("editorial.whyBuilder")}</p>
-                    <h4 className="font-bold text-ink-accent text-xs flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-ink-accent" /> {t("upload.doorBuilderTitle")}
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t("editorial.whyBuilder")}</p>
+                    <h4 className="font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-ink-accent" /> {t("upload.doorBuilderTitle")}
                     </h4>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                    <p className="text-xs md:text-sm text-slate-500 leading-relaxed pr-2">
                       {t("upload.doorBuilderDesc")}
                     </p>
                   </div>
-                  <div className="mt-3">
-                    <Button onClick={() => setStep("builder")} className="w-full h-8 text-[11px] font-semibold bg-ink-accent hover:bg-ink-accent/90 text-white rounded-lg active:scale-[0.98]">
+                  <div className="mt-6">
+                    <Button onClick={() => setStep("builder")} className="w-full h-11 text-xs font-bold bg-ink-accent hover:bg-ink-accent/90 text-white rounded-xl shadow-lg shadow-ink-accent/20 transition-all">
                       {t("upload.doorBuilderCta")}
                     </Button>
                   </div>
@@ -404,94 +403,107 @@ export function DiagnosisStep1Upload() {
           )}
         </div>
 
-        <SectionRule className="my-5" />
-
         {/* Target Role Selector */}
-        <div className="space-y-2.5">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-[#787774] block">
-            {t("upload.roleLabel")} <span className="text-red-500">*</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {IT_ROLES.map((role) => {
-              const isSelected = targetRole === role.code;
-              return (
-                <button
-                  key={role.code}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => setTargetRole(isSelected ? null : role.code)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ink-accent/40 outline-none active:scale-[0.98]",
-                    isSelected
-                      ? "bg-ink-accent-tint border-ink-accent text-ink-accent font-semibold"
-                      : "bg-white border-[#EAEAEA] text-[#2F3437] hover:border-slate-350"
-                  )}
-                >
-                  {role.label}
-                </button>
-              );
-            })}
+        <div className="space-y-6 mt-8">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-800">
+              {t("upload.roleLabel")} <span className="text-ink-accent">*</span>
+            </label>
+            <Select 
+              value={targetRole || ""} 
+              onValueChange={(val) => setTargetRole(val)}
+            >
+              <SelectTrigger className="h-12 bg-white/50 border-slate-200 rounded-xl focus:ring-ink-accent/30 focus:border-ink-accent shadow-sm transition-all text-sm font-medium hover:bg-white">
+                <SelectValue placeholder="Select a Target Role..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                {IT_ROLES.map((role) => (
+                  <SelectItem key={role.code} value={role.code} className="cursor-pointer py-3 text-sm font-medium focus:bg-slate-50 focus:text-ink-accent">
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Job Description block */}
+          <div className="space-y-3">
+            {!showJd ? (
+              <button 
+                type="button"
+                onClick={() => setShowJd(true)}
+                className="text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors flex items-center gap-1.5"
+              >
+                + Add a specific Job Description (Optional)
+              </button>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-bold text-slate-800">Job Description</label>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowJd(false);
+                      setJobDescription(""); // clear it out if they hide it
+                    }}
+                    className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <JobDescriptionInput compact={true} />
+              </div>
+            )}
           </div>
         </div>
 
-        <SectionRule className="my-5" />
-
-        {/* Collapsible Job Description block */}
-        <div className="space-y-3">
-          <button 
-            type="button" 
-            onClick={() => setShowJd(!showJd)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-ink-accent hover:underline py-1 outline-none focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded"
-          >
-            {showJd ? `- ${t("upload.hideJd")}` : `+ ${t("upload.addJd")}`}
-          </button>
-          
-          {showJd && (
-            <div className="animate-in fade-in duration-300">
-              <JobDescriptionInput compact={true} />
-            </div>
-          )}
-        </div>
-
-        <SectionRule className="my-5" />
-
-        {/* Consent Checkbox — elevated visual */}
+        {/* Consent Checkbox */}
         {hasUsableCv && (
-          <label className={cn(
-            "flex items-start gap-3 p-4 border rounded-xl cursor-pointer group transition-colors",
-            consentAccepted
-              ? "bg-ink-accent-tint border-ink-accent/20"
-              : "bg-[#FBFBFA] border-[#EAEAEA]"
-          )}>
-            <input
-              type="checkbox"
-              checked={consentAccepted}
-              onChange={(e) => setConsentAccepted(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-[#EAEAEA] text-ink-accent focus:ring-ink-accent/40 accent-ink-accent shrink-0"
-            />
-            <div className="flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
-              <span className="text-xs text-[#787774] leading-relaxed">{t("upload.consentLabel")}</span>
-            </div>
-          </label>
+          <div className="mt-8">
+            <label className={cn(
+              "flex items-start gap-3 p-3.5 border rounded-xl cursor-pointer group transition-colors",
+              consentAccepted
+                ? "bg-ink-accent-tint border-ink-accent/20"
+                : "bg-white border-slate-200 hover:border-slate-300"
+            )}>
+              <input
+                type="checkbox"
+                checked={consentAccepted}
+                onChange={(e) => setConsentAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-ink-accent focus:ring-ink-accent/40 accent-ink-accent shrink-0"
+              />
+              <div className="flex items-start gap-2">
+                <ShieldCheck className={cn("w-4 h-4 mt-0.5 shrink-0", consentAccepted ? "text-ink-accent" : "text-slate-400")} />
+                <span className="text-xs text-slate-600 leading-relaxed">{t("upload.consentLabel")}</span>
+              </div>
+            </label>
+          </div>
         )}
 
         {/* CTA — ActionRail */}
-        <div className="pt-2">
+        <div className="pt-4">
           <ActionRail
-            secondaryLabel={isFromBuilder ? t("upload.analyzeGeneratedCv") : t("upload.analyzeCv")}
-            secondaryIcon={<Upload className="w-4 h-4" />}
-            secondaryAction={analyzeCvOnly}
-            secondaryDisabled={!hasUsableCv || !targetRole || !consentAccepted || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
-            primaryLabel={isFromBuilder ? t("upload.compareGeneratedJd") : t("upload.compareJd")}
-            primaryIcon={<Sparkles className="w-4 h-4" />}
-            primaryAction={analyzeWithJd}
-            primaryDisabled={!hasUsableCv || !targetRole || !jobDescription.trim() || !consentAccepted || analyzeCvMutation.isPending || analyzeCvWithJdMutation.isPending}
+            primaryLabel={
+              isFromBuilder
+                ? (showJd && jobDescription.trim() ? t("upload.compareGeneratedJd") : t("upload.analyzeGeneratedCv"))
+                : (showJd && jobDescription.trim() ? t("upload.compareJd") : t("upload.analyzeCv"))
+            }
+            primaryIcon={showJd && jobDescription.trim() ? <Sparkles className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+            primaryAction={showJd && jobDescription.trim() ? analyzeWithJd : analyzeCvOnly}
+            primaryDisabled={
+              !hasUsableCv || 
+              !targetRole || 
+              !consentAccepted || 
+              analyzeCvMutation.isPending || 
+              analyzeCvWithJdMutation.isPending ||
+              (showJd && !jobDescription.trim())
+            }
             helperText={(!hasUsableCv || !targetRole || !consentAccepted) ? t("upload.helper") : null}
           />
         </div>
-      </Card>
-
+        </div>
+      </div>
+      
       {/* History Sheet — mở lại kết quả đã chấm từ GET /api/cvs (W7), không tốn quota */}
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
