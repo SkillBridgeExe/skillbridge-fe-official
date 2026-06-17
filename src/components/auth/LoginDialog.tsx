@@ -148,7 +148,7 @@ export function LoginDialog({
         description: getLoginErrorDescription(
           err,
           t("auth.toast.loginFailedDesc"),
-          t("auth.toast.loginFailedDesc"),
+          t("auth.toast.loginFailedGenericDesc"),
         ),
         variant: "destructive",
       });

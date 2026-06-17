@@ -92,6 +92,7 @@ export default {
         loginSuccess: "Sign-in successful - {{role}}",
         loginFailedTitle: "Login failed",
         loginFailedDesc: "Incorrect email or password.",
+        loginFailedGenericDesc: "Could not sign in. Please try again.",
         missingInfoTitle: "Missing information",
         missingInfoDesc: "Please fill in all required fields.",
         passwordMismatchTitle: "Password mismatch",
@@ -1156,6 +1157,7 @@ export default {
       toastLocalActionTitle: "Server draft unavailable",
       toastSaveFailedTitle: "Save failed",
       toastSaveFailedDesc: "Could not save the latest changes. Please try again before continuing.",
+      toastSaveUnavailableDesc: "Autosave is still initializing. Please try again in a moment.",
       toastDraftErrorTitle: "Error creating draft",
       toastDraftErrorDesc:
         "Failed to create a builder draft on the server. Working in local mode.",

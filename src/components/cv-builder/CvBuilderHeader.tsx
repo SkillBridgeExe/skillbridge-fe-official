@@ -31,7 +31,14 @@ export function CvBuilderHeader() {
   };
 
   const flushDraftChanges = async (): Promise<boolean> => {
-    if (!triggerSaveRef.current) return true;
+    if (!triggerSaveRef.current) {
+      toast({
+        title: t("builder.toastSaveFailedTitle"),
+        description: t("builder.toastSaveUnavailableDesc"),
+        variant: "destructive",
+      });
+      return false;
+    }
 
     try {
       await triggerSaveRef.current();

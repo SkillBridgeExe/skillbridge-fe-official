@@ -230,7 +230,9 @@ export default function Diagnosis() {
 
         if (timeoutId) clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
-          void saveDraft();
+          void saveDraft().catch(() => {
+            // Background autosave already marks the save state as error.
+          });
         }, 1500);
       }
     });

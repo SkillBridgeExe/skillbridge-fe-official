@@ -68,4 +68,14 @@ describe("auth service session persistence", () => {
 
     expect(message).toBe("Incorrect email or password.");
   });
+
+  it("uses the generic fallback when a login error has no backend message", () => {
+    const message = getLoginErrorDescription(
+      { unexpected: true },
+      "Incorrect email or password.",
+      "Could not sign in. Please try again.",
+    );
+
+    expect(message).toBe("Could not sign in. Please try again.");
+  });
 });
