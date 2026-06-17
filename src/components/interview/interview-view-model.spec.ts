@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
+  getInterviewHistoryState,
   getInterviewModeLabel,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
@@ -71,6 +72,16 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
+  it.each([
+    [{ canUseApi: false, isLoading: false, isError: false, itemCount: 0 }, "signed-out"],
+    [{ canUseApi: true, isLoading: true, isError: false, itemCount: 0 }, "loading"],
+    [{ canUseApi: true, isLoading: false, isError: true, itemCount: 0 }, "error"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 0 }, "empty"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 2 }, "ready"],
+  ] as const)("derives the interview history panel state", (input, expected) => {
+    expect(getInterviewHistoryState(input)).toBe(expected);
+  });
+
   it("calculates countdown from backend expiresAt", () => {
     const now = new Date("2026-06-12T10:09:10.000Z");
 

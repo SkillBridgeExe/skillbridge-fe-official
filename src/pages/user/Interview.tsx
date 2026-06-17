@@ -45,6 +45,7 @@ import {
 } from "@/components/interview/types";
 import {
   formatDuration,
+  getInterviewHistoryState,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
   secondsRemainingFromExpiry,
@@ -96,7 +97,7 @@ export default function Interview() {
     (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
   );
 
-  const interviewHistoryQuery = useInterviewHistory(canUseApi, { page: 1, limit: 20 });
+  const interviewHistoryQuery = useInterviewHistory(canUseApi);
   const cvListQuery = useCvListForInterview(canUseApi);
   const cvMatchesQuery = useCvMatchesForInterview(selectedCvId, canUseApi && Boolean(selectedCvId));
   const startInterviewMutation = useStartInterview();
@@ -107,6 +108,12 @@ export default function Interview() {
   const cvItems = cvListQuery.data?.items ?? [];
   const matchItems = cvMatchesQuery.data?.items ?? [];
   const interviewHistory = interviewHistoryQuery.data?.items ?? [];
+  const interviewHistoryState = getInterviewHistoryState({
+    canUseApi,
+    isLoading: interviewHistoryQuery.isLoading,
+    isError: interviewHistoryQuery.isError,
+    itemCount: interviewHistory.length,
+  });
   const answeredCount = chatHistory.filter((message) => message.role === "user").length;
   const totalQuestionsPlanned = activeSession?.totalQuestionsPlanned ?? null;
   const currentQuestionNumber = totalQuestionsPlanned
@@ -453,7 +460,6 @@ export default function Interview() {
         setInterviewFinished(true);
         setPhase("results");
         setSidebarOpen(true);
-        void interviewHistoryQuery.refetch();
       } catch (error) {
         if (reason === "timer" || reason === "finished") {
           try {
@@ -474,7 +480,7 @@ export default function Interview() {
         endingRef.current = false;
       }
     },
-    [activeSession?.id, disconnectRealtime, endInterviewMutation, interviewHistoryQuery, stopMedia, stopQuestionAudio],
+    [activeSession?.id, disconnectRealtime, endInterviewMutation, stopMedia, stopQuestionAudio],
   );
 
   const handleSubmitAnswer = async () => {
@@ -688,13 +694,25 @@ export default function Interview() {
               Recent Sessions
             </h4>
             <div className="space-y-2">
-              {!canUseApi ? (
+              {interviewHistoryState === "signed-out" ? (
                 <p className="py-3 text-center text-[11px] text-slate-400">
                   Sign in with an API account to load history.
                 </p>
-              ) : interviewHistoryQuery.isLoading ? (
+              ) : interviewHistoryState === "loading" ? (
                 <p className="py-3 text-center text-[11px] text-slate-400">Loading history...</p>
-              ) : interviewHistory.length === 0 ? (
+              ) : interviewHistoryState === "error" ? (
+                <div className="space-y-2 py-3 text-center">
+                  <p className="text-[11px] text-rose-500">Could not load interview history.</p>
+                  <button
+                    type="button"
+                    className="text-[11px] font-bold text-primary hover:underline"
+                    onClick={() => void interviewHistoryQuery.refetch()}
+                    disabled={interviewHistoryQuery.isFetching}
+                  >
+                    {interviewHistoryQuery.isFetching ? "Retrying..." : "Try again"}
+                  </button>
+                </div>
+              ) : interviewHistoryState === "empty" ? (
                 <p className="py-3 text-center text-[11px] text-slate-400">No sessions yet</p>
               ) : (
                 interviewHistory.slice(0, 5).map((session) => (
@@ -804,7 +822,6 @@ export default function Interview() {
                   resetInterviewState();
                   setPhase("setup");
                   setSidebarOpen(true);
-                  void interviewHistoryQuery.refetch();
                 }}
               />
             </div>

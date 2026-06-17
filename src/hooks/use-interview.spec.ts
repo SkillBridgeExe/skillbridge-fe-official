@@ -1,17 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import {
   useCvListForInterview,
   useCvMatchesForInterview,
+  useEndInterview,
   useInterviewHistory,
 } from "./use-interview";
+
+const { mockInvalidateQueries, mockSetQueryData } = vi.hoisted(() => ({
+  mockInvalidateQueries: vi.fn(),
+  mockSetQueryData: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-query", () => ({
   useMutation: vi.fn((config) => config),
   useQuery: vi.fn((config) => config),
-  useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: mockInvalidateQueries,
+    setQueryData: mockSetQueryData,
+  })),
 }));
 
 vi.mock("@/api/interview-api", () => ({
@@ -78,6 +87,30 @@ describe("use-interview query gating", () => {
     );
   });
 
+  it("does not retry interview history validation failures", () => {
+    useInterviewHistory(true);
+
+    const queryCalls = vi.mocked(useQuery).mock.calls;
+    const options = queryCalls[queryCalls.length - 1]?.[0] as {
+      retry?: (failureCount: number, error: unknown) => boolean;
+    };
+    expect(options.retry).toEqual(expect.any(Function));
+    expect(options.retry?.(0, { response: { status: 400 } })).toBe(false);
+  });
+
+  it("retries interview history network and server failures at most once", () => {
+    useInterviewHistory(true);
+
+    const queryCalls = vi.mocked(useQuery).mock.calls;
+    const options = queryCalls[queryCalls.length - 1]?.[0] as {
+      retry?: (failureCount: number, error: unknown) => boolean;
+    };
+    expect(options.retry).toEqual(expect.any(Function));
+    expect(options.retry?.(0, new Error("Network Error"))).toBe(true);
+    expect(options.retry?.(0, { response: { status: 503 } })).toBe(true);
+    expect(options.retry?.(1, { response: { status: 503 } })).toBe(false);
+  });
+
   it("loads CV choices only when the interview setup is allowed to call the API", () => {
     useCvListForInterview(false);
 
@@ -109,5 +142,20 @@ describe("use-interview query gating", () => {
         enabled: true,
       }),
     );
+  });
+
+  it("invalidates interview history once after ending a session", () => {
+    useEndInterview();
+
+    const mutationCalls = vi.mocked(useMutation).mock.calls;
+    const options = mutationCalls[mutationCalls.length - 1]?.[0] as {
+      onSuccess?: (session: { id: string }) => void;
+    };
+    options.onSuccess?.({ id: "session-1" });
+
+    expect(mockInvalidateQueries).toHaveBeenCalledTimes(1);
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
+    });
   });
 });

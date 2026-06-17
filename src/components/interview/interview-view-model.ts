@@ -27,6 +27,27 @@ export interface InterviewResultViewModel {
   questions: InterviewResultQuestionViewModel[];
 }
 
+type InterviewHistoryState = "signed-out" | "loading" | "error" | "empty" | "ready";
+
+interface InterviewHistoryStateOptions {
+  canUseApi: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  itemCount: number;
+}
+
+export function getInterviewHistoryState({
+  canUseApi,
+  isLoading,
+  isError,
+  itemCount,
+}: InterviewHistoryStateOptions): InterviewHistoryState {
+  if (!canUseApi) return "signed-out";
+  if (isLoading) return "loading";
+  if (isError) return "error";
+  return itemCount === 0 ? "empty" : "ready";
+}
+
 export function secondsRemainingFromExpiry(expiresAt: string | null, now = new Date()): number {
   if (!expiresAt) return 0;
   const expiresMs = new Date(expiresAt).getTime();

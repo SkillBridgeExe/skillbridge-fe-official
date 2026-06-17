@@ -154,8 +154,12 @@ export async function endInterview(sessionId: string): Promise<InterviewDetailRe
 export async function getInterviewHistory(
   query: InterviewHistoryQuery = {},
 ): Promise<InterviewHistoryResponse> {
+  const params: InterviewHistoryQuery = {
+    page: query.page ?? 1,
+    limit: query.limit ?? 10,
+  };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewHistoryResponse>>(
-    httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params: query }),
+    httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params }),
     "Failed to load interview history.",
   );
   return envelope.data;
