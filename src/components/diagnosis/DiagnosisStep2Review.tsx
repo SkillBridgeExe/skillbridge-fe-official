@@ -355,7 +355,7 @@ export function DiagnosisStep2Review() {
         <Button
           onClick={handleEditCv}
           size="sm"
-          className="rounded-lg gap-1.5 text-xs font-bold bg-[#2F3437] text-white hover:bg-[#1f2426] active:scale-[0.98] transition-all justify-center shadow-sm"
+          className="rounded-lg gap-1.5 text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all justify-center shadow-sm"
         >
           <Pencil className="w-3.5 h-3.5" /> {t("review.quickPanel.editCta")}
         </Button>

@@ -19,8 +19,8 @@ export default {
         poppins: ["Poppins", "Be Vietnam Pro", "sans-serif"],
       },
       colors: {
-        "ink-accent": "#0F5C4D",
-        "ink-accent-tint": "#ECF3F0",
+        "ink-accent": "hsl(var(--primary))",
+        "ink-accent-tint": "hsl(199 100% 95%)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -225,7 +225,7 @@ export function DocumentPreview() {
                     </div>
                     <button
                       onClick={() => handleEdit(true)}
-                      className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold hover:bg-[#1f2426] transition-colors"
+                      className="px-3 py-1.5 bg-primary text-white rounded-md font-bold hover:bg-primary/90 transition-colors"
                     >
                       {t("preview.editApplied")}
                     </button>
@@ -246,7 +246,7 @@ export function DocumentPreview() {
                 <div className="flex justify-end px-1">
                   <button
                     onClick={() => handleEdit(false)}
-                    className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold text-xs hover:bg-[#1f2426] transition-colors"
+                    className="px-3 py-1.5 bg-primary text-white rounded-md font-bold text-xs hover:bg-primary/90 transition-colors"
                   >
                     {t("preview.editOriginal")}
                   </button>
@@ -258,7 +258,7 @@ export function DocumentPreview() {
               <p>{t("preview.addJdNote")}</p>
               <button
                 onClick={() => handleEdit(false)}
-                className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold hover:bg-[#1f2426] transition-colors"
+                className="px-3 py-1.5 bg-primary text-white rounded-md font-bold hover:bg-primary/90 transition-colors"
               >
                 Sửa CV gốc
               </button>

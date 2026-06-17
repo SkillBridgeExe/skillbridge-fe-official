@@ -141,10 +141,7 @@ export const VerdictHero = memo(function VerdictHero({
     <div className="flex flex-col items-center py-10 space-y-4" role="img" aria-label={`${label}: ${target}%`}>
       {/* Score */}
       <div className="flex items-baseline gap-1">
-        <span className={cn(
-          "text-[64px] font-mono tabular-nums font-black leading-none tracking-[-0.02em]",
-          isExcellent ? "text-ink-accent" : "text-[#2F3437]",
-        )}>
+        <span className="text-[64px] font-mono tabular-nums font-black leading-none tracking-[-0.02em] text-ink-accent">
           {displayed}
         </span>
         <span className="text-sm text-[#787774] font-medium">%</span>
