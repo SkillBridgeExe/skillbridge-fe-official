@@ -1192,6 +1192,7 @@ export default {
       savedAt: "Đã lưu lúc {{time}}",
       localOnly: "Đăng nhập để lưu bản nháp và bật chấm điểm AI.",
       localOnlyAuthed: "Chưa lưu được — thay đổi giữ trên thiết bị này.",
+      backToDiagnosis: "Quay lại Chẩn đoán",
       evaluateNow: "Chấm mục này",
       missingTitle: "Cần bổ sung",
       aiSuggest: "AI đề xuất",

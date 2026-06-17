@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Download, FilePenLine, Save, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, FilePenLine, Save, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
@@ -68,84 +68,92 @@ export function CvBuilderHeader() {
     });
   };
 
-  const handleAnalyze = async () => {
-    if (!draftId) return;
+  const handleBackToDiagnosis = () => {
+    const diagnosisStore = useDiagnosisStore.getState();
+    diagnosisStore.setIsFromBuilder(false);
+    diagnosisStore.setStep("input");
+    navigate("/diagnosis");
+  };
 
-    // 1. Flush changes trước
+  const handleAnalyze = async () => {
+    const diagnosisStore = useDiagnosisStore.getState();
+
+    // Came from a diagnosis review → just return to it (no server draft needed).
+    if (seededFromDiagnosis && diagnosisStore.reviewData) {
+      diagnosisStore.setStep("cv-review");
+      return;
+    }
+
+    // No server draft yet (e.g. quota exhausted / local-only mode): don't trap the
+    // user in the builder — send them back to the diagnosis upload step.
+    if (!draftId) {
+      handleBackToDiagnosis();
+      return;
+    }
+
+    // Flush local edits, then analyze the saved draft through diagnosis.
     if (triggerSaveRef.current) {
       triggerSaveRef.current();
     }
 
-    {
-      const diagnosisStore = useDiagnosisStore.getState();
-
-      if (seededFromDiagnosis && diagnosisStore.reviewData) {
-        diagnosisStore.setStep("cv-review");
-        return;
-      }
-
-      diagnosisStore.setIsFromBuilder(true);
-      diagnosisStore.setBuilderCvId(draftId);
-      diagnosisStore.setBuilderCvName(title || "CV Builder draft");
-
-      if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
-        diagnosisStore.setStep("input");
-        navigate(`/diagnosis?source=builder&cvId=${encodeURIComponent(draftId)}`, {
-          state: {
-            source: "builder",
-            cvId: draftId,
-            cvName: title || "CV Builder draft",
-          },
-        });
-        return;
-      }
-
-      diagnosisStore.setHasActivatedJdMode(false);
-      diagnosisStore.setAnalysisMode("cv-only");
-      diagnosisStore.setApiError(null);
-      diagnosisStore.setReviewData(null);
-      diagnosisStore.setTargetStep("cv-review");
-      diagnosisStore.setLoadingProgress(0);
-      diagnosisStore.setLoadingMsgIdx(0);
-      diagnosisStore.setIsAnalyzing(true);
-
-      try {
-        const { cvId, review } = await analyzeCvMutation.mutateAsync({
-          builderCvId: draftId,
-          targetRole: diagnosisStore.targetRole,
-          consentAccepted: diagnosisStore.consentAccepted,
-        });
-        diagnosisStore.setLastCvId(cvId);
-        diagnosisStore.setReviewData(review);
-        diagnosisStore.setStep("cv-review");
-      } catch (error) {
-        const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
-        diagnosisStore.setApiError(message);
-        toast({
-          title: t("upload.toastAnalysisFailedTitle"),
-          description: message,
-          variant: "destructive",
-        });
-      } finally {
-        diagnosisStore.setIsAnalyzing(false);
-        diagnosisStore.setLoadingProgress(0);
-      }
-      return;
-    }
-
-    // 2. Set diagnosis store values
-    const diagnosisStore = useDiagnosisStore.getState();
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
     diagnosisStore.setBuilderCvName(title || "CV Builder draft");
 
-    // 3. Navigate to /diagnosis
-    navigate("/diagnosis");
+    if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
+      diagnosisStore.setStep("input");
+      navigate(`/diagnosis?source=builder&cvId=${encodeURIComponent(draftId)}`, {
+        state: {
+          source: "builder",
+          cvId: draftId,
+          cvName: title || "CV Builder draft",
+        },
+      });
+      return;
+    }
+
+    diagnosisStore.setHasActivatedJdMode(false);
+    diagnosisStore.setAnalysisMode("cv-only");
+    diagnosisStore.setApiError(null);
+    diagnosisStore.setReviewData(null);
+    diagnosisStore.setTargetStep("cv-review");
+    diagnosisStore.setLoadingProgress(0);
+    diagnosisStore.setLoadingMsgIdx(0);
+    diagnosisStore.setIsAnalyzing(true);
+
+    try {
+      const { cvId, review } = await analyzeCvMutation.mutateAsync({
+        builderCvId: draftId,
+        targetRole: diagnosisStore.targetRole,
+        consentAccepted: diagnosisStore.consentAccepted,
+      });
+      diagnosisStore.setLastCvId(cvId);
+      diagnosisStore.setReviewData(review);
+      diagnosisStore.setStep("cv-review");
+    } catch (error) {
+      const message = getApiErrorMessage(error, t("upload.errorAnalyze"));
+      diagnosisStore.setApiError(message);
+      toast({
+        title: t("upload.toastAnalysisFailedTitle"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      diagnosisStore.setIsAnalyzing(false);
+      diagnosisStore.setLoadingProgress(0);
+    }
   };
 
   return (
     <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-3">
+        <button
+          onClick={handleBackToDiagnosis}
+          className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors rounded focus-visible:ring-2 focus-visible:ring-primary/40 mr-1"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">{t("builder.backToDiagnosis")}</span>
+        </button>
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
           <FilePenLine className="w-4 h-4 text-primary" />
         </div>
