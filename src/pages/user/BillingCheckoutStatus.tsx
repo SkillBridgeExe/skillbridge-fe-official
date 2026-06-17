@@ -19,11 +19,13 @@ import { Button } from "@/components/ui/button";
 import { QUERY_KEYS } from "@/constants/app";
 import {
   buildBillingCheckoutReturnUrl,
+  getBillingCheckoutSurfaceState,
   getBillingOrderStatusMeta,
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
   parsePayOSReturnParams,
 } from "@/lib/billing-checkout";
+import { loadPayOSCheckoutScript, type PayOSController } from "@/lib/payos-checkout-script";
 import { formatVnd, StatusBadge } from "@/lib/billing-ui";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { PAYOS_RETURN_URL } from "@/lib/runtime-config";
@@ -31,45 +33,9 @@ import { cn } from "@/lib/utils";
 import { getOrderStatus, reconcileOrder, type OrderStatusResponseDto } from "@/services/billing.service";
 import { useHasApiSession } from "@/hooks/use-api-session";
 
-const PAYOS_SCRIPT_ID = "payos-checkout-script";
-const PAYOS_SCRIPT_SRC = "https://cdn.payos.vn/payos-checkout/v1/stable/payos-initialize.js";
 const ORDER_POLL_INTERVAL_MS = 2500;
 const ORDER_POLL_TIMEOUT_MS = 120_000;
 const PAYOS_QUERY_KEYS = ["code", "id", "cancel", "status", "orderCode"] as const;
-
-let payOSScriptPromise: Promise<void> | null = null;
-
-interface PayOSEvent {
-  loading?: boolean;
-  code?: string;
-  id?: string;
-  cancel?: boolean | string;
-  orderCode?: string | number;
-  status?: string;
-}
-
-interface PayOSController {
-  open: () => void;
-  exit?: () => void;
-}
-
-interface PayOSConfig {
-  RETURN_URL: string;
-  ELEMENT_ID: string;
-  CHECKOUT_URL: string;
-  embedded: boolean;
-  onSuccess?: (event: PayOSEvent) => void;
-  onCancel?: (event: PayOSEvent) => void;
-  onExit?: (event: PayOSEvent) => void;
-}
-
-declare global {
-  interface Window {
-    PayOSCheckout?: {
-      usePayOS: (config: PayOSConfig) => PayOSController;
-    };
-  }
-}
 
 export default function BillingCheckoutStatus() {
   const { t } = useTranslation("common");
@@ -119,9 +85,8 @@ export default function BillingCheckoutStatus() {
 
   const order = orderQuery.data;
   const checkoutUrl = order?.checkoutUrl ?? null;
-  const canRenderPayOS =
-    Boolean(checkoutUrl) &&
-    (order?.status === "PENDING" || order?.status === "PROCESSING");
+  const checkoutSurfaceState = getBillingCheckoutSurfaceState(order?.status, checkoutUrl);
+  const canRenderPayOS = checkoutSurfaceState === "checkout";
   const publicSummary = useMemo(() => {
     if (!order) return null;
     return Object.fromEntries(
@@ -296,6 +261,7 @@ export default function BillingCheckoutStatus() {
                       embedState={embedState}
                       order={order}
                       canRenderPayOS={canRenderPayOS}
+                      checkoutSurfaceState={checkoutSurfaceState}
                       onCheckAgain={checkAgain}
                       onCancelCheckout={cancelCheckout}
                     />
@@ -397,6 +363,7 @@ function PaymentSurface({
   embedState,
   order,
   canRenderPayOS,
+  checkoutSurfaceState,
   onCheckAgain,
   onCancelCheckout,
 }: {
@@ -405,6 +372,7 @@ function PaymentSurface({
   embedState: "idle" | "loading" | "ready" | "error";
   order: OrderStatusResponseDto;
   canRenderPayOS: boolean;
+  checkoutSurfaceState: ReturnType<typeof getBillingCheckoutSurfaceState>;
   onCheckAgain: () => void;
   onCancelCheckout: () => void;
 }) {
@@ -424,6 +392,28 @@ function PaymentSurface({
             defaultValue: t("billing.checkout.statusBar.UNKNOWN"),
           })}
         </p>
+      </div>
+    );
+  }
+
+  if (checkoutSurfaceState === "processing") {
+    return (
+      <div className="flex h-[480px] w-full max-w-[480px] flex-col items-center justify-center rounded-2xl border border-border bg-muted/40 p-6 text-center shadow-sm">
+        <StatusIcon status={order.status} large />
+        <h3 className="mt-4 font-poppins text-2xl font-black text-foreground">
+          {t(`billing.checkout.statusLabels.${order.status}`, {
+            defaultValue: getBillingOrderStatusMeta(order.status).label,
+          })}
+        </h3>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+          {t(`billing.checkout.statusBar.${order.status}`, {
+            defaultValue: t("billing.checkout.statusBar.UNKNOWN"),
+          })}
+        </p>
+        <Button variant="outline" className="mt-5 rounded-full bg-card font-bold" onClick={onCheckAgain}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          {t("billing.checkout.checkAgain")}
+        </Button>
       </div>
     );
   }
@@ -591,46 +581,4 @@ function getPurposeLabel(purpose: string, t: TFunction<"common">) {
   return t(`billing.checkout.purposeLabels.${purpose}`, {
     defaultValue: purpose.replace(/_/g, " "),
   });
-}
-
-function loadPayOSCheckoutScript() {
-  if (typeof window === "undefined") return Promise.reject(new Error("Browser window is not available."));
-  if (window.PayOSCheckout?.usePayOS) return Promise.resolve();
-  if (payOSScriptPromise) return payOSScriptPromise;
-
-  payOSScriptPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = document.getElementById(PAYOS_SCRIPT_ID) as HTMLScriptElement | null;
-    const script = existingScript ?? document.createElement("script");
-
-    const handleLoad = () => {
-      script.dataset.loaded = "true";
-      if (window.PayOSCheckout?.usePayOS) {
-        resolve();
-      } else {
-        payOSScriptPromise = null;
-        reject(new Error("payOS checkout script loaded without the checkout API."));
-      }
-    };
-    const handleError = () => {
-      payOSScriptPromise = null;
-      reject(new Error("Could not load the payOS checkout script."));
-    };
-
-    script.addEventListener("load", handleLoad, { once: true });
-    script.addEventListener("error", handleError, { once: true });
-
-    if (!existingScript) {
-      script.id = PAYOS_SCRIPT_ID;
-      script.src = PAYOS_SCRIPT_SRC;
-      script.async = true;
-      document.body.appendChild(script);
-      return;
-    }
-
-    if (script.dataset.loaded === "true") {
-      handleLoad();
-    }
-  });
-
-  return payOSScriptPromise;
 }

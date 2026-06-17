@@ -67,6 +67,7 @@ const App = () => (
               />
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
+              {/* TODO(mentor-booking): Replace legacy /payment callers with the real mentor checkout flow; redirecting here drops mentor/package/price query data. */}
               <Route path="/payment" element={<Navigate to="/pricing" replace />} />
               <Route path="/pricing" element={<Pages.Pricing />} />
               <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />

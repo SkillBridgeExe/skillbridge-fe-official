@@ -18,6 +18,7 @@ export interface PayOSReturnParams {
 }
 
 export type PublicCheckoutSummaryKey = "amount" | "purpose" | "status" | "orderCode";
+export type BillingCheckoutSurfaceState = "checkout" | "processing" | "terminal" | "unavailable";
 
 export interface PublicCheckoutSummaryItem {
   key: PublicCheckoutSummaryKey;
@@ -72,6 +73,19 @@ export function getBillingOrderStatusMeta(status: BillingOrderStatus | string | 
 
 export function isTerminalBillingOrderStatus(status: BillingOrderStatus | string | null | undefined) {
   return getBillingOrderStatusMeta(status).terminal;
+}
+
+export function getBillingCheckoutSurfaceState(
+  status: BillingOrderStatus | string | null | undefined,
+  checkoutUrl: string | null | undefined,
+): BillingCheckoutSurfaceState {
+  const normalized = String(status ?? "").toUpperCase();
+
+  if (isTerminalBillingOrderStatus(normalized)) return "terminal";
+  if (normalized === "PENDING" && Boolean(checkoutUrl)) return "checkout";
+  if (normalized === "PROCESSING") return "processing";
+
+  return "unavailable";
 }
 
 export function parsePayOSReturnParams(params: URLSearchParams): PayOSReturnParams {

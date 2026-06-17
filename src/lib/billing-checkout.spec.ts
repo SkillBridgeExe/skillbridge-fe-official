@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { OrderStatusResponseDto } from "@/api/billing";
 import {
   buildBillingCheckoutReturnUrl,
+  getBillingCheckoutSurfaceState,
   getBillingOrderStatusMeta,
   getPublicCheckoutSummaryItems,
   parsePayOSReturnParams,
@@ -52,6 +53,12 @@ describe("billing checkout helpers", () => {
     expect(buildBillingCheckoutReturnUrl("https://app.skillbridge.vn/")).toBe(
       "https://app.skillbridge.vn/billing/checkout",
     );
+  });
+
+  it("renders the embedded payOS checkout only while the order is pending", () => {
+    expect(getBillingCheckoutSurfaceState("PENDING", "https://pay.payos.vn/web/order")).toBe("checkout");
+    expect(getBillingCheckoutSurfaceState("PROCESSING", "https://pay.payos.vn/web/order")).toBe("processing");
+    expect(getBillingCheckoutSurfaceState("PENDING", null)).toBe("unavailable");
   });
 
   it("keeps the checkout summary focused on user-facing fields", () => {
