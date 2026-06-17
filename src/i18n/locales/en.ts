@@ -1179,6 +1179,8 @@ export default {
       certifications: "Certifications",
       activities: "Activities",
       aiApplied: "AI Applied",
+      editOriginal: "Edit original CV",
+      editApplied: "Edit applied version",
       original: "Original",
       tabOriginal: "Original (ATS view)",
       tabAi: "AI Suggestions Applied",

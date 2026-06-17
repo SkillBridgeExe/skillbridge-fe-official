@@ -174,7 +174,9 @@ export function useAiAppliedCv(
     return () => {
       isMounted = false;
     };
-  }, [baseDocument, cvId, matchId, gapReport]); // Re-run when gap report changes
+    // topActions derives from gapReport (already a dep) — re-run is keyed on the source data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseDocument, cvId, matchId, gapReport]);
 
   return {
     isFetching: isFetchingGapReport || isRewriting,

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   CheckCircle2,
   Mail,
@@ -61,11 +61,9 @@ const renderHighlightedText = (text: string, search: string | null) => {
 };
 
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { useNavigate } from "react-router-dom";
 
 export function DocumentPreview() {
   const { t } = useTranslation("diagnosis");
-  const navigate = useNavigate();
   const reviewData = useDiagnosisStore((s) => s.reviewData);
   const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
   const cvId = useDiagnosisStore((s) => s.lastCvId);
@@ -229,7 +227,7 @@ export function DocumentPreview() {
                       onClick={() => handleEdit(true)}
                       className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold hover:bg-[#1f2426] transition-colors"
                     >
-                      Sửa bản đã áp
+                      {t("preview.editApplied")}
                     </button>
                   </div>
                   {aiCv.manualTasks.length > 0 && (
@@ -250,7 +248,7 @@ export function DocumentPreview() {
                     onClick={() => handleEdit(false)}
                     className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold text-xs hover:bg-[#1f2426] transition-colors"
                   >
-                    Sửa CV gốc
+                    {t("preview.editOriginal")}
                   </button>
                 </div>
               )}

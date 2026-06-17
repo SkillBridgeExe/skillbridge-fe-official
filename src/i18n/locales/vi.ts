@@ -1174,6 +1174,8 @@ export default {
       certifications: "Chứng chỉ",
       activities: "Hoạt động",
       aiApplied: "AI Đã Xử Lý",
+      editOriginal: "Sửa CV gốc",
+      editApplied: "Sửa bản đã áp",
       original: "Bản Gốc",
       tabOriginal: "Bản gốc (máy ATS thấy)",
       tabAi: "Đã áp gợi ý AI",
