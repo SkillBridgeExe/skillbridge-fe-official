@@ -91,6 +91,7 @@ export default {
         loginSuccess: "Đăng nhập thành công - {{role}}",
         loginFailedTitle: "Đăng nhập thất bại",
         loginFailedDesc: "Email hoặc mật khẩu không đúng.",
+        loginFailedGenericDesc: "Không thể đăng nhập. Vui lòng thử lại.",
         missingInfoTitle: "Thiếu thông tin",
         missingInfoDesc: "Vui lòng điền đầy đủ các trường bắt buộc.",
         passwordMismatchTitle: "Mật khẩu không khớp",
@@ -1147,6 +1148,10 @@ export default {
       toastRenderingDesc: "Đang chuẩn bị CV để tải xuống...",
       toastDownloadFailedTitle: "Tải xuống thất bại",
       toastDownloadFailedDesc: "Không tạo được PDF trên máy chủ.",
+      toastLocalActionTitle: "Chưa có bản nháp trên máy chủ",
+      toastSaveFailedTitle: "Lưu thất bại",
+      toastSaveFailedDesc: "Không lưu được thay đổi mới nhất. Vui lòng thử lại trước khi tiếp tục.",
+      toastSaveUnavailableDesc: "Tự động lưu đang khởi tạo. Vui lòng thử lại sau giây lát.",
       toastDraftErrorTitle: "Lỗi tạo bản nháp",
       toastDraftErrorDesc:
         "Không tạo được bản nháp trên máy chủ. Đang làm việc ở chế độ cục bộ.",

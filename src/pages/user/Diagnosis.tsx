@@ -183,7 +183,7 @@ export default function Diagnosis() {
     let lastSnapshotJson = JSON.stringify(getBuilderSnapshot(useCvBuilderStore.getState()));
     let timeoutId: NodeJS.Timeout | null = null;
 
-    const saveDraft = () => {
+    const saveDraft = async () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
         timeoutId = null;
@@ -198,29 +198,23 @@ export default function Diagnosis() {
 
       useAutosaveStore.getState().setSaveStatus("saving");
 
-      saveDraftMutation.mutate(
-        {
+      try {
+        await saveDraftMutation.mutateAsync({
           draftId,
           snapshot,
           title: "CV Builder draft",
           targetRole: useDiagnosisStore.getState().targetRole,
-        },
-        {
-          onSuccess: () => {
-            useAutosaveStore.getState().setSaveStatus("saved");
-            const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-            useAutosaveStore.getState().setLastSavedTime(timeStr);
-          },
-          onError: () => {
-            useAutosaveStore.getState().setSaveStatus("error");
-          },
-        }
-      );
+        });
+        useAutosaveStore.getState().setSaveStatus("saved");
+        const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+        useAutosaveStore.getState().setLastSavedTime(timeStr);
+      } catch (error) {
+        useAutosaveStore.getState().setSaveStatus("error");
+        throw error;
+      }
     };
 
-    useAutosaveStore.getState().triggerSaveRef.current = () => {
-      saveDraft();
-    };
+    useAutosaveStore.getState().triggerSaveRef.current = saveDraft;
 
     const unsubscribe = useCvBuilderStore.subscribe((state) => {
       const draftId = state.draftId;
@@ -236,7 +230,9 @@ export default function Diagnosis() {
 
         if (timeoutId) clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
-          saveDraft();
+          void saveDraft().catch(() => {
+            // Background autosave already marks the save state as error.
+          });
         }, 1500);
       }
     });
@@ -246,7 +242,7 @@ export default function Diagnosis() {
       if (timeoutId) clearTimeout(timeoutId);
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
-  }, [step, canUseApi, saveDraftMutation, toast]);
+  }, [step, canUseApi, saveDraftMutation]);
 
   // If in builder step, render full-screen builder interface
   if (step === "builder") {

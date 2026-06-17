@@ -1,5 +1,16 @@
 const DEFAULT_API_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly errorCode: string | null = null,
+    public readonly errors: unknown = null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -44,4 +55,25 @@ export function getApiErrorMessage(
   }
 
   return readMessage(error) ?? fallback;
+}
+
+export function getApiErrorCode(error: unknown): string | null {
+  if (error instanceof ApiError) {
+    return error.errorCode;
+  }
+
+  if (isRecord(error)) {
+    if (typeof error.errorCode === "string" && error.errorCode.trim().length > 0) {
+      return error.errorCode;
+    }
+
+    if (isRecord(error.response) && isRecord(error.response.data)) {
+      const code = error.response.data.errorCode;
+      if (typeof code === "string" && code.trim().length > 0) {
+        return code;
+      }
+    }
+  }
+
+  return null;
 }
