@@ -278,6 +278,7 @@ export function DiagnosisStep2Review() {
 
     const builder = useCvBuilderStore.getState();
     builder.hydrateFromCanonical(seedDoc);
+    builder.setSeedSourceCvId(lastCvId ?? null);
     if (targetRole) builder.setCareerTarget("targetPosition", getRoleLabel(targetRole));
     setStep("builder");
   };

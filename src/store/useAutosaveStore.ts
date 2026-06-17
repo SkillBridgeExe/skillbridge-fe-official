@@ -5,7 +5,7 @@ interface AutosaveState {
   lastSavedTime: string | null;
   setSaveStatus: (status: "idle" | "saving" | "saved" | "error" | "local") => void;
   setLastSavedTime: (time: string | null) => void;
-  triggerSaveRef: { current: (() => void) | null };
+  triggerSaveRef: { current: (() => Promise<void>) | null };
 }
 
 export const useAutosaveStore = create<AutosaveState>((set) => ({

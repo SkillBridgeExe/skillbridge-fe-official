@@ -57,6 +57,25 @@ export interface BuilderSnapshot {
   cvLanguage: CvLanguage;
 }
 
+export function shouldHydrateServerDraft(
+  snapshotAtDraftRequest: BuilderSnapshot,
+  currentSnapshot: BuilderSnapshot,
+): boolean {
+  return JSON.stringify(snapshotAtDraftRequest) === JSON.stringify(currentSnapshot);
+}
+
+export function shouldSaveClientSnapshotAfterDraftCreate({
+  hasServerDocument,
+  seededFromDiagnosis,
+  snapshotChangedWhileCreating,
+}: {
+  hasServerDocument: boolean;
+  seededFromDiagnosis: boolean;
+  snapshotChangedWhileCreating: boolean;
+}): boolean {
+  return snapshotChangedWhileCreating || (!hasServerDocument && seededFromDiagnosis);
+}
+
 // ── Helpers (đổi format thuần, không thêm nội dung) ─────────────────
 
 /** Tách textarea nhiều dòng thành bullets sạch. */
@@ -135,7 +154,7 @@ export function mapStoreToCanonical(snapshot: BuilderSnapshot): CanonicalCvDocum
           ...splitLines(entry.contribution),
           ...splitLines(entry.result),
         ],
-        link: null,
+        link: orNull(entry.link),
       })),
     skills: {
       technical: snapshot.technicalSkills,

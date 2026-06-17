@@ -1,4 +1,5 @@
 import { isAxiosError, type AxiosResponse } from "axios";
+import { ApiError } from "@/lib/api-error";
 
 /**
  * Response envelope every NestJS endpoint returns
@@ -9,6 +10,7 @@ export interface ApiEnvelope<TData> {
   message: string;
   data: TData;
   errors: unknown;
+  errorCode?: string;
 }
 
 /** Shared user shape returned by the auth endpoints. */
@@ -41,10 +43,14 @@ function describeErrors(errors: unknown): string | null {
 
 function envelopeError(payload: unknown, fallback: string): Error {
   if (payload && typeof payload === "object") {
-    const { message, errors } = payload as Partial<ApiEnvelope<unknown>>;
+    const { message, errors, errorCode } = payload as Partial<ApiEnvelope<unknown>>;
     const base = typeof message === "string" && message.trim() ? message : fallback;
     const details = describeErrors(errors);
-    return new Error(details ? `${base}: ${details}` : base);
+    return new ApiError(
+      details ? `${base}: ${details}` : base,
+      typeof errorCode === "string" ? errorCode : null,
+      errors ?? null,
+    );
   }
   return new Error(fallback);
 }

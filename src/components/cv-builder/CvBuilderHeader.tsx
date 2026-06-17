@@ -19,14 +19,49 @@ export function CvBuilderHeader() {
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
   const draftId = useCvBuilderStore((s) => s.draftId);
   const seededFromDiagnosis = useCvBuilderStore((s) => s.seededFromDiagnosis);
-  const title = useCvBuilderStore((s) => s.fullName); // sử dụng fullName làm title CV hoặc mặc định
+  const title = useCvBuilderStore((s) => s.fullName);
   const renderPdfMutation = useRenderBuilderPdfMutation();
   const analyzeCvMutation = useAnalyzeCvMutation();
+  const isLocalMode = saveStatus === "local";
 
-  const handleSaveDraft = () => {
-    if (triggerSaveRef.current) {
-      triggerSaveRef.current();
-    } else {
+  const showLocalActionToast = () => {
+    toast({
+      title: t("builder.toastLocalActionTitle"),
+      description: t("builder.localOnly"),
+      variant: "destructive",
+    });
+  };
+
+  const flushDraftChanges = async (): Promise<boolean> => {
+    if (!triggerSaveRef.current) {
+      toast({
+        title: t("builder.toastSaveFailedTitle"),
+        description: t("builder.toastSaveUnavailableDesc"),
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      await triggerSaveRef.current();
+      return true;
+    } catch (error) {
+      toast({
+        title: t("builder.toastSaveFailedTitle"),
+        description: getApiErrorMessage(error, t("builder.toastSaveFailedDesc")),
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
+
+    if (await flushDraftChanges()) {
       toast({
         title: t("builder.toastSavedTitle"),
         description: t("builder.toastSavedDesc"),
@@ -35,12 +70,12 @@ export function CvBuilderHeader() {
   };
 
   const handleDownload = async () => {
-    if (!draftId) return;
-
-    // 1. Flush draft changes trước khi download
-    if (triggerSaveRef.current) {
-      triggerSaveRef.current();
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
     }
+
+    if (!(await flushDraftChanges())) return;
 
     toast({
       title: t("builder.rendering"),
@@ -84,17 +119,14 @@ export function CvBuilderHeader() {
       return;
     }
 
-    // No server draft yet (e.g. quota exhausted / local-only mode): don't trap the
-    // user in the builder — send them back to the diagnosis upload step.
-    if (!draftId) {
-      handleBackToDiagnosis();
+    // Local / no draft (e.g. quota exhausted): can't analyze server-side. The
+    // "Back to Diagnosis" button is the escape; here just surface why.
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
       return;
     }
 
-    // Flush local edits, then analyze the saved draft through diagnosis.
-    if (triggerSaveRef.current) {
-      triggerSaveRef.current();
-    }
+    if (!(await flushDraftChanges())) return;
 
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
@@ -183,72 +215,70 @@ export function CvBuilderHeader() {
       </div>
 
       <div className="flex items-center gap-3 px-6">
-        {saveStatus === "local" ? (
+        {isLocalMode && (
           <span className="text-xs text-[#787774] max-w-[280px] text-right font-medium">
             {hasApiSession ? t("builder.localOnlyAuthed") : t("builder.localOnly")}
           </span>
-        ) : (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSaveDraft}
-              className="gap-2 min-w-[125px]"
-              disabled={saveStatus === "saving"}
-            >
-              {saveStatus === "saving" ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
-                  <span>{t("builder.saving")}</span>
-                </>
-              ) : saveStatus === "saved" && lastSavedTime ? (
-                <>
-                  <Save className="w-4 h-4 text-emerald-500" />
-                  <span>{t("builder.savedAt", { time: lastSavedTime })}</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>{t("builder.saveDraft")}</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="gap-2"
-              disabled={renderPdfMutation.isPending}
-            >
-              {renderPdfMutation.isPending ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t("builder.rendering")}</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  <span>{t("builder.downloadCv")}</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              onClick={handleAnalyze}
-              size="sm"
-              className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md"
-              disabled={analyzeCvMutation.isPending}
-            >
-              {analyzeCvMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
-              <span>{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
-            </Button>
-          </>
         )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSaveDraft}
+          className="gap-2 min-w-[125px]"
+          disabled={saveStatus === "saving"}
+        >
+          {saveStatus === "saving" ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
+              <span>{t("builder.saving")}</span>
+            </>
+          ) : saveStatus === "saved" && lastSavedTime ? (
+            <>
+              <Save className="w-4 h-4 text-emerald-500" />
+              <span>{t("builder.savedAt", { time: lastSavedTime })}</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              <span>{t("builder.saveDraft")}</span>
+            </>
+          )}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          className="gap-2"
+          disabled={renderPdfMutation.isPending}
+        >
+          {renderPdfMutation.isPending ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>{t("builder.rendering")}</span>
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              <span>{t("builder.downloadCv")}</span>
+            </>
+          )}
+        </Button>
+
+        <Button
+          onClick={handleAnalyze}
+          size="sm"
+          className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-md"
+          disabled={analyzeCvMutation.isPending}
+        >
+          {analyzeCvMutation.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4" />
+          )}
+          <span>{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
+        </Button>
       </div>
     </header>
   );
