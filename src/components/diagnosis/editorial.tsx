@@ -261,3 +261,161 @@ export function Ribbon({
     </div>
   );
 }
+
+/* ── EditorialTabNav (W25) ───────────────────────────────────────────────── */
+
+/**
+ * Underline tab bar — replaces pill-style `rounded-2xl bg-slate-100`.
+ * Active tab: serif font + pine accent underline (animated via SectionRule logic).
+ * Inactive: 11px uppercase tracking, muted color.
+ * Respects prefers-reduced-motion.
+ */
+export function EditorialTabNav({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { key: string; label: string; icon?: React.ReactNode }[];
+  active: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <nav className="flex border-b border-[#EAEAEA]" role="tablist">
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.key)}
+            className={cn(
+              "relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 outline-none",
+              isActive
+                ? "font-serif text-ink-accent"
+                : "text-[#787774] hover:text-[#2F3437]",
+            )}
+          >
+            {tab.icon}
+            {tab.label}
+            {/* Active underline */}
+            <span
+              className={cn(
+                "absolute bottom-0 left-0 right-0 h-[2px] bg-ink-accent transition-all origin-left",
+                prefersReduced() ? "" : "duration-300",
+                isActive ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0",
+              )}
+            />
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ── StatRow (W25) ───────────────────────────────────────────────────────── */
+
+/**
+ * Compact inline stat row: overall score · ATS · role.
+ * Replaces 3 separate dashboard cards in Step2. Numbers are mono/tabular.
+ */
+export function StatRow({
+  score,
+  atsScore,
+  role,
+  scoreMessage,
+  atsNote,
+}: {
+  score: number;
+  atsScore: number;
+  role: string;
+  scoreMessage: string;
+  atsNote?: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-3 px-1">
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-mono text-[15px] font-bold tabular-nums text-[#2F3437]">{score}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">{scoreMessage}</span>
+      </div>
+      <div className="w-px h-4 bg-[#EAEAEA]" />
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">ATS</span>
+        <span className="font-mono text-[15px] font-bold tabular-nums text-[#2F3437]">{atsScore}%</span>
+        {atsNote && <span className="text-[10px] text-[#9B9B97] hidden sm:inline">{atsNote}</span>}
+      </div>
+      <div className="w-px h-4 bg-[#EAEAEA]" />
+      <span className="text-[13px] font-semibold text-[#2F3437] truncate max-w-[200px]">{role}</span>
+    </div>
+  );
+}
+
+/* ── ActionRail (W25) ────────────────────────────────────────────────────── */
+
+/**
+ * Pair CTA (primary + secondary) framed with Chapter kicker.
+ * Used in Step1 upload form as the main action area.
+ */
+export function ActionRail({
+  kicker,
+  primaryLabel,
+  primaryIcon,
+  primaryAction,
+  primaryDisabled,
+  secondaryLabel,
+  secondaryIcon,
+  secondaryAction,
+  secondaryDisabled,
+  helperText,
+}: {
+  kicker: string;
+  primaryLabel: string;
+  primaryIcon?: React.ReactNode;
+  primaryAction: () => void;
+  primaryDisabled?: boolean;
+  secondaryLabel: string;
+  secondaryIcon?: React.ReactNode;
+  secondaryAction: () => void;
+  secondaryDisabled?: boolean;
+  helperText?: string | null;
+}) {
+  return (
+    <div className="space-y-3 pt-1">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+        {kicker}
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={secondaryAction}
+          disabled={secondaryDisabled}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-6 h-11 text-sm font-semibold border transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ink-accent/40 outline-none",
+            secondaryDisabled
+              ? "border-[#EAEAEA] bg-white text-slate-400 cursor-not-allowed"
+              : "border-slate-300 text-[#2F3437] hover:border-ink-accent hover:text-ink-accent",
+          )}
+        >
+          {secondaryIcon}
+          {secondaryLabel}
+        </button>
+        <button
+          onClick={primaryAction}
+          disabled={primaryDisabled}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-6 h-11 text-sm font-semibold transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/40 outline-none",
+            primaryDisabled
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-ink-accent hover:bg-ink-accent/90 text-white",
+          )}
+        >
+          {primaryIcon}
+          {primaryLabel}
+        </button>
+      </div>
+      {helperText && (
+        <p className="text-center text-xs text-[#787774]">{helperText}</p>
+      )}
+    </div>
+  );
+}
+

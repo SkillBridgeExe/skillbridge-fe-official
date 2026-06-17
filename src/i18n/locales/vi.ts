@@ -746,6 +746,18 @@ export default {
         low: "CV có thể bị lỗi font hoặc là bản scan/ảnh — kết quả có thể chưa đầy đủ, hãy kiểm tra lại bản đọc.",
         flagsLabel: "Tín hiệu",
       },
+      quickPanel: {
+        title: "Bảng điều khiển nhanh",
+        desc: "Tối ưu CV của bạn với AI Builder hoặc dán mô tả công việc (JD) để đối chiếu sâu.",
+        editCta: "Sửa & Tải PDF",
+        compareCta: "So sánh JD",
+      },
+      tabs: {
+        audit: "Kiểm tra CV",
+        skills: "Phân tích Kỹ năng",
+        market: "Cơ hội & Thị trường",
+      },
+      footerNote: "Báo cáo Chẩn đoán CV · SkillBridge",
     },
     results: {
       backToReview: "Về màn chấm CV",
@@ -1062,6 +1074,10 @@ export default {
       coverage: "{{pct}}% độ phủ",
       showDetails: "Xem chi tiết",
       hideDetails: "Thu gọn",
+      nextStep: "Bước tiếp theo",
+      uploadKicker: "Chẩn đoán CV",
+      whyUpload: "Đã có sẵn file CV",
+      whyBuilder: "Tạo CV mới với AI",
     },
     evidence: {
       title: "Sổ bằng chứng",

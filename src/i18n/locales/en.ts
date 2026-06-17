@@ -749,6 +749,18 @@ export default {
         low: "Your CV may have font issues or be a scanned image — the analysis may be incomplete; please re-check the parsed text.",
         flagsLabel: "Signals",
       },
+      quickPanel: {
+        title: "Quick actions",
+        desc: "Optimize your CV with AI Builder or paste a job description (JD) for deep comparison.",
+        editCta: "Edit & Download PDF",
+        compareCta: "Compare JD",
+      },
+      tabs: {
+        audit: "CV Audit",
+        skills: "Skills Analysis",
+        market: "Market & Careers",
+      },
+      footerNote: "SkillBridge CV Diagnosis Report",
     },
     results: {
       backToReview: "Back to CV review",
@@ -1068,6 +1080,10 @@ export default {
       coverage: "{{pct}}% coverage",
       showDetails: "Show details",
       hideDetails: "Hide details",
+      nextStep: "Next step",
+      uploadKicker: "CV Diagnosis",
+      whyUpload: "Already have a CV file",
+      whyBuilder: "Build a new CV with AI",
     },
     evidence: {
       title: "Evidence ledger",

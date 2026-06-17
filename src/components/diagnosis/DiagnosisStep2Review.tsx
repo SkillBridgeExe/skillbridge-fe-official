@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
@@ -20,6 +20,7 @@ import { useCompareJdMutation, useInterviewPlanQuery } from "@/hooks/use-diagnos
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
+import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -28,94 +29,6 @@ const SEV = {
   medium: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
   low:    "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
 } as const;
-
-/** Custom Circular Score Gauge for CV rating */
-function CircularScoreGauge({ score, displayedScore }: { score: number; displayedScore: number }) {
-  const radius = 38;
-  const strokeWidth = 6;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (displayedScore / 100) * circumference;
-
-  let glowColor = "rgba(159, 47, 45, 0.1)";
-  if (score >= 70) {
-    glowColor = "rgba(16, 185, 129, 0.1)";
-  } else if (score >= 55) {
-    glowColor = "rgba(245, 158, 11, 0.1)";
-  } else if (score >= 40) {
-    glowColor = "rgba(245, 158, 11, 0.1)";
-  }
-
-  return (
-    <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 shrink-0">
-      <div 
-        className="absolute inset-2 rounded-full blur-md transition-all duration-1000 animate-pulse"
-        style={{ backgroundColor: glowColor }}
-      />
-      <svg className="w-full h-full transform -rotate-90 animate-in fade-in duration-700" viewBox="0 0 96 96">
-        <defs>
-          <linearGradient id="scoreGradExcellent" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10B981" />
-            <stop offset="100%" stopColor="#059669" />
-          </linearGradient>
-          <linearGradient id="scoreGradGood" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F59E0B" />
-            <stop offset="100%" stopColor="#D97706" />
-          </linearGradient>
-          <linearGradient id="scoreGradPoor" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#EF4444" />
-            <stop offset="100%" stopColor="#DC2626" />
-          </linearGradient>
-        </defs>
-        <circle
-          cx="48"
-          cy="48"
-          r={radius}
-          className="stroke-[#F1F1EF]"
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        <circle
-          cx="48"
-          cy="48"
-          r={radius}
-          stroke={
-            score >= 70 ? "url(#scoreGradExcellent)"
-            : score >= 55 ? "url(#scoreGradGood)"
-            : "url(#scoreGradPoor)"
-          }
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className="transition-all duration-700 ease-out"
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center justify-center">
-        <span className="text-2xl sm:text-3xl font-mono font-black text-slate-800 tracking-tight leading-none">
-          {displayedScore}
-        </span>
-        <span className="text-[10px] font-bold text-slate-400 mt-0.5">/100</span>
-      </div>
-    </div>
-  );
-}
-
-
-/** Score band pill */
-function BandPill({ score, t }: { score: number; t: (key: string) => string }) {
-  const band =
-    score >= 70 ? { cls: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", key: "review.scoreMsg.excellent" }
-    : score >= 55 ? { cls: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", key: "review.scoreMsg.good" }
-    : score >= 40 ? { cls: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", key: "review.scoreMsg.fair" }
-    : { cls: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", key: "review.scoreMsg.poor" };
-
-  return (
-    <p className={cn("inline-block text-[13px] font-medium border rounded-lg px-3 py-1 mt-2", band.cls)}>
-      {t(band.key)}
-    </p>
-  );
-}
 
 /** ScoreBar for dimensions (0-20 scale, display as percentage) */
 function DimScoreBar({ score20 }: { score20: number }) {
@@ -238,7 +151,7 @@ function DimensionCard({
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="mt-2 inline-flex items-center gap-1 rounded text-xs font-bold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="mt-2 inline-flex items-center gap-1 rounded text-xs font-bold text-ink-accent hover:underline focus-visible:ring-2 focus-visible:ring-ink-accent/40"
             >
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               {expanded ? t("review.seeLess") : hiddenIssues > 0 ? t("review.moreIssues", { count: hiddenIssues }) : t("review.seeMore")}
@@ -373,45 +286,16 @@ export function DiagnosisStep2Review() {
   const atsScore = reviewData?.breakdown.ats ?? 0;
   const dimensions = reviewData?.dimensions ?? [];
 
-  const [displayedScore, setDisplayedScore] = useState(0);
+  /* ── Dynamic UX copy (HONESTY: band copy from existing keys) ── */
+  const scoreMessage = overallCvScore >= 70
+    ? t("review.scoreMsg.excellent")
+    : overallCvScore >= 55
+      ? t("review.scoreMsg.good")
+      : overallCvScore >= 40
+        ? t("review.scoreMsg.fair")
+        : t("review.scoreMsg.poor");
 
-  useEffect(() => {
-    let startTimestamp: number | null = null;
-    const duration = 800;
-    const startScore = 0;
-    const endScore = overallCvScore;
-
-    let animationFrameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      const currentScore = Math.floor(easeProgress * (endScore - startScore) + startScore);
-
-      setDisplayedScore(currentScore);
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [overallCvScore]);
-
-  /* ── Confetti for high scores ── */
-  const confettiFired = useRef(false);
-  useEffect(() => {
-    if (overallCvScore >= 70 && !confettiFired.current) {
-      confettiFired.current = true;
-      import("canvas-confetti").then((mod) => {
-        const fire = mod.default;
-        fire({ particleCount: 120, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
-        setTimeout(() => fire({ particleCount: 60, spread: 100, origin: { y: 0.5 }, zIndex: 9999 }), 300);
-      }).catch(() => { /* confetti is optional */ });
-    }
-  }, [overallCvScore]);
+  const scoreLabel = t("review.heroTitle");
 
   /* ── Distribute issues across dim cards ── */
   const allIssues = reviewData?.issues ?? [];
@@ -425,26 +309,18 @@ export function DiagnosisStep2Review() {
   const [rawOpen, setRawOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'audit' | 'skills' | 'market'>('audit');
 
-  const currentLang = useTranslation().i18n.language?.startsWith("vi") ? "vi" : "en";
-  const tabLabels = {
-    vi: {
-      audit: "Kiểm tra CV",
-      skills: "Phân tích Kỹ năng",
-      market: "Cơ hội & Thị trường",
-    },
-    en: {
-      audit: "CV Audit",
-      skills: "Skills Analysis",
-      market: "Market & Careers",
-    }
-  }[currentLang];
+  const tabItems = [
+    { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },
+    { key: "skills", label: t("review.tabs.skills"), icon: <Brain className="w-4 h-4" /> },
+    { key: "market", label: t("review.tabs.market"), icon: <TrendingUp className="w-4 h-4" /> },
+  ];
 
   return (
     <div className="animate-in fade-in duration-500" style={{ '--tw-translate-y': '12px' } as React.CSSProperties}>
       {/* Back button */}
       <button
         onClick={goBack}
-        className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary mb-6 transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded w-fit"
+        className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-ink-accent mb-6 transition-colors group focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded w-fit"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("review.backToUpload")}
       </button>
@@ -455,85 +331,50 @@ export function DiagnosisStep2Review() {
         </div>
       )}
 
-      {/* ── Redesigned Premium Header Dashboard ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        {/* Card 1: Circular Score Gauge */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center gap-5 transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-slate-300 group">
-          <div className="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/8 transition-all duration-500" />
-          <CircularScoreGauge score={overallCvScore} displayedScore={displayedScore} />
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774] block mb-1">
-              {t("review.heroTitle")}
-            </span>
-            <div className="leading-tight">
-              <BandPill score={overallCvScore} t={t} />
-            </div>
-            {overallCvScore >= 70 && (
-              <p className="text-[11px] text-[#346538] font-medium mt-2 leading-relaxed">
-                {t("review.praiseHigh")}
-              </p>
-            )}
-          </div>
-        </div>
+      {/* ── VerdictHero (replaces CircularScoreGauge + confetti) ── */}
+      <VerdictHero
+        target={overallCvScore}
+        label={scoreLabel}
+        verdictMessage={scoreMessage}
+        isJdMode={false}
+      />
 
-        {/* Card 2: ATS Match & Target Role */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-slate-300 group">
-          <div className="absolute -right-10 -bottom-10 w-24 h-24 rounded-full bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/8 transition-all duration-500" />
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-              {t("review.atsTitle")}
-            </span>
-            <h3 className="text-sm font-black text-slate-800 mt-1 truncate">
-              {targetRole ? getRoleLabel(targetRole) : "N/A"}
-            </h3>
-          </div>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs font-semibold mb-1">
-              <span className="text-[#787774] font-medium">ATS Match Score</span>
-              <span className="font-mono text-slate-800">{atsScore}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 border border-slate-200/50">
-              <div
-                className={cn("h-full rounded-full transition-all duration-1000", atsScore >= 70 ? "bg-[#346538]" : atsScore >= 50 ? "bg-[#956400]" : "bg-[#9F2F2D]")}
-                style={{ width: `${atsScore}%` }}
-              />
-            </div>
-            <p className="mt-2 text-[10px] text-[#787774] leading-relaxed line-clamp-1">{t("review.atsNote")}</p>
-          </div>
-        </div>
-
-        {/* Card 3: Quick Action Panel */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-slate-300">
-          <div>
-            <h4 className="text-xs font-bold text-slate-800">Bảng điều khiển nhanh</h4>
-            <p className="text-[11px] text-[#787774] mt-0.5 leading-relaxed">
-              Tối ưu CV của bạn với AI Builder hoặc dán mô tả công việc (JD) để đối chiếu sâu.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <Button
-              onClick={handleEditCv}
-              size="sm"
-              className="rounded-lg gap-1.5 text-xs font-bold bg-[#2F3437] text-white hover:bg-[#1f2426] active:scale-[0.98] transition-all justify-center shadow-sm"
-            >
-              <Pencil className="w-3.5 h-3.5" /> Sửa & Tải PDF
-            </Button>
-            <Button
-              onClick={() => setShowJdInput(true)}
-              size="sm"
-              variant="outline"
-              className="rounded-lg gap-1.5 text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 active:scale-[0.98] transition-all justify-center"
-            >
-              <Briefcase className="w-3.5 h-3.5" /> So sánh JD
-            </Button>
-          </div>
-        </div>
+      {/* ── StatRow (replaces 3 dashboard cards) ── */}
+      <div className="flex justify-center">
+        <StatRow
+          score={overallCvScore}
+          atsScore={atsScore}
+          role={targetRole ? getRoleLabel(targetRole) : "N/A"}
+          scoreMessage={scoreLabel}
+          atsNote={t("review.atsNote")}
+        />
       </div>
+
+      {/* Quick Actions — i18n (was hardcoded Vietnamese) */}
+      <div className="flex justify-center gap-3 mt-2 mb-6">
+        <Button
+          onClick={handleEditCv}
+          size="sm"
+          className="rounded-lg gap-1.5 text-xs font-bold bg-[#2F3437] text-white hover:bg-[#1f2426] active:scale-[0.98] transition-all justify-center shadow-sm"
+        >
+          <Pencil className="w-3.5 h-3.5" /> {t("review.quickPanel.editCta")}
+        </Button>
+        <Button
+          onClick={() => setShowJdInput(true)}
+          size="sm"
+          variant="outline"
+          className="rounded-lg gap-1.5 text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 active:scale-[0.98] transition-all justify-center"
+        >
+          <Briefcase className="w-3.5 h-3.5" /> {t("review.quickPanel.compareCta")}
+        </Button>
+      </div>
+
+      <SectionRule />
 
       {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
       <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)] mt-6">
         {/* LEFT COLUMN: Tabs & Active Panel */}
         <div className="min-w-0 space-y-5">
           {showJdInput ? (
@@ -547,61 +388,30 @@ export function DiagnosisStep2Review() {
             </div>
           ) : (
             <>
-              {/* Tab selector */}
-              <div className="flex border border-slate-200/60 bg-slate-100/60 p-1.5 rounded-2xl gap-1 shrink-0 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
-                <button
-                  onClick={() => setActiveTab('audit')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200",
-                    activeTab === 'audit'
-                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-white/40"
-                  )}
-                >
-                  <FileText className="w-4 h-4" />
-                  {tabLabels.audit}
-                </button>
-                <button
-                  onClick={() => setActiveTab('skills')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200",
-                    activeTab === 'skills'
-                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-white/40"
-                  )}
-                >
-                  <Brain className="w-4 h-4" />
-                  {tabLabels.skills}
-                </button>
-                <button
-                  onClick={() => setActiveTab('market')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200",
-                    activeTab === 'market'
-                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-white/40"
-                  )}
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  {tabLabels.market}
-                </button>
-              </div>
+              {/* Tab selector — Editorial underline */}
+              <EditorialTabNav
+                tabs={tabItems}
+                active={activeTab}
+                onChange={(key) => setActiveTab(key as 'audit' | 'skills' | 'market')}
+              />
 
               {/* Tab Panel contents */}
               <div className="space-y-5">
                 {activeTab === 'audit' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
                     {/* Top Summary prioritized checklist */}
-                    {reviewData?.top_summary && <TopSummaryCard summary={reviewData.top_summary} />}
+                    {reviewData?.top_summary && (
+                      <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>
+                        <TopSummaryCard summary={reviewData.top_summary} />
+                      </Chapter>
+                    )}
+
+                    <SectionRule />
 
                     {/* Breakdown Dimension Cards */}
                     {dimensions.length > 0 ? (
-                      <section className="space-y-3">
-                        <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between px-1">
-                          <div>
-                            <h2 className="text-base font-black text-slate-800">{t("review.breakdownTitle")}</h2>
-                            <p className="text-xs text-[#787774]">{t("review.breakdownDesc")}</p>
-                          </div>
+                      <Chapter kicker={t("review.breakdownTitle")} title={t("review.breakdownDesc")}>
+                        <div className="flex items-center gap-2 -mt-2 mb-1">
                           <span className="w-fit rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#787774] shadow-sm">
                             {t("review.priorityCount", { count: allIssues.length })}
                           </span>
@@ -611,7 +421,7 @@ export function DiagnosisStep2Review() {
                             <DimensionCard key={dim.key} dim={dim} issues={issueGroups[i] ?? []} index={i} t={t} />
                           ))}
                         </div>
-                      </section>
+                      </Chapter>
                     ) : (
                       allIssues.length > 0 && (
                         <div className={cn(CARD, "p-5")}>
@@ -633,7 +443,7 @@ export function DiagnosisStep2Review() {
                       <button
                         type="button"
                         onClick={() => setRawOpen(!rawOpen)}
-                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 transition-colors focus-visible:ring-2 focus-visible:ring-primary/40"
+                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40"
                       >
                         <div>
                           <h3 className="text-xs font-bold text-slate-800">{t("review.rawParsedTitle")}</h3>
@@ -656,7 +466,9 @@ export function DiagnosisStep2Review() {
                   <div className="space-y-4 animate-in fade-in duration-300">
                     {/* Skill chips */}
                     {reviewData?.skills_extracted && reviewData.skills_extracted.length > 0 && (
-                      <SkillsExtractedCard skills={reviewData.skills_extracted} />
+                      <Chapter kicker={t("review.tabs.skills")} title="">
+                        <SkillsExtractedCard skills={reviewData.skills_extracted} />
+                      </Chapter>
                     )}
 
                     {/* Skill relevance */}
@@ -675,18 +487,32 @@ export function DiagnosisStep2Review() {
                 )}
 
                 {activeTab === 'market' && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-0 animate-in fade-in duration-300">
                     {/* Job Recommendations */}
-                    <JobRecommendations cvId={lastCvId} />
+                    <Chapter kicker="01" title="">
+                      <JobRecommendations cvId={lastCvId} />
+                    </Chapter>
+
+                    <SectionRule className="my-6" />
 
                     {/* AI trends insight */}
-                    <AiTrendsInsight cvId={lastCvId} role={targetRole} />
+                    <Chapter kicker="02" title="">
+                      <AiTrendsInsight cvId={lastCvId} role={targetRole} />
+                    </Chapter>
+
+                    <SectionRule className="my-6" />
 
                     {/* Skill gaps trends */}
-                    <SkillGapTrends cvId={lastCvId} />
+                    <Chapter kicker="03" title="">
+                      <SkillGapTrends cvId={lastCvId} />
+                    </Chapter>
+
+                    <SectionRule className="my-6" />
 
                     {/* Interview preparation pack */}
-                    <InterviewPrepPack cvId={lastCvId} role={targetRole} />
+                    <Chapter kicker="04" title="">
+                      <InterviewPrepPack cvId={lastCvId} role={targetRole} />
+                    </Chapter>
                   </div>
                 )}
               </div>
@@ -694,16 +520,16 @@ export function DiagnosisStep2Review() {
           )}
         </div>
 
-        {/* RIGHT COLUMN: Document Preview (Sticky) */}
+        {/* RIGHT COLUMN: Document Preview (Sticky) — W25 does NOT touch DocumentPreview internals */}
         <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
           <DocumentPreview />
         </aside>
       </div>
 
-      {/* Small Clean Footer instead of large CTA block */}
+      {/* Small Clean Footer */}
       {!showJdInput && (
-        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-[#787774]">
-          <p>SkillBridge CV Diagnosis Report</p>
+        <div className="mt-8 pt-6 border-t border-[#EAEAEA] flex items-center justify-between text-xs text-[#787774]">
+          <p>{t("review.footerNote")}</p>
           <button
             onClick={reset}
             className="flex items-center gap-1.5 font-semibold text-[#787774] hover:text-slate-800 hover:underline transition-colors"
