@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  LayoutTemplate,
   CheckCircle2,
   Mail,
   Phone,
@@ -14,10 +13,14 @@ import {
   GraduationCap,
   Award,
   Activity,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
 import type { CanonicalCvDocument } from "@shared/api";
+import { useAiAppliedCv } from "@/hooks/use-ai-applied-cv";
+import { Chapter } from "@/components/diagnosis/editorial";
 
 const getSearchMatch = (text: string, search: string | null): string | null => {
   if (!search) return null;
@@ -57,15 +60,22 @@ const renderHighlightedText = (text: string, search: string | null) => {
   );
 };
 
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useNavigate } from "react-router-dom";
+
 export function DocumentPreview() {
   const { t } = useTranslation("diagnosis");
+  const navigate = useNavigate();
   const reviewData = useDiagnosisStore((s) => s.reviewData);
   const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
+  const cvId = useDiagnosisStore((s) => s.lastCvId);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const doc: CanonicalCvDocument | null = React.useMemo(() => {
+  const [viewMode, setViewMode] = useState<"parsed" | "ai">("parsed");
+
+  const baseDoc: CanonicalCvDocument | null = React.useMemo(() => {
     if (reviewData?.document) return reviewData.document;
     if (reviewData?.parsedCv) {
       const cv = reviewData.parsedCv;
@@ -95,7 +105,48 @@ export function DocumentPreview() {
     return null;
   }, [reviewData]);
 
+  const matchId = reviewData?.jdMatch?.matchId || null;
+  const aiCv = useAiAppliedCv(cvId, matchId, baseDoc);
+
+  const doc = viewMode === "ai" && aiCv.appliedDocument ? aiCv.appliedDocument : baseDoc;
   const isReal = !!doc;
+
+  const handleEdit = (useAi: boolean) => {
+    const docToEdit = useAi && aiCv.appliedDocument ? aiCv.appliedDocument : baseDoc;
+    if (!docToEdit) return;
+
+    const seedDoc: CanonicalCvDocument = {
+      ...docToEdit,
+      skills: docToEdit.skills || { technical: [], soft: [], languages: [], tools: [] },
+      education: docToEdit.education || [],
+      experience: docToEdit.experience || [],
+      projects: docToEdit.projects || [],
+      certifications: docToEdit.certifications || [],
+      activities: docToEdit.activities || [],
+    };
+
+    const builder = useCvBuilderStore.getState();
+    builder.hydrateFromCanonical(seedDoc);
+    
+    const diag = useDiagnosisStore.getState();
+    if (diag.targetRole) {
+      builder.setCareerTarget("targetPosition", diag.targetRole);
+    }
+    
+    diag.setStep("builder");
+  };
+
+  const renderBullet = (bullet: string) => {
+    const isChanged = viewMode === "ai" && aiCv.changedBullets.includes(bullet);
+    if (isChanged) {
+      return (
+        <mark className="bg-[#DCE9D7] text-[#346538] rounded px-0.5 font-medium transition-colors">
+          {bullet}
+        </mark>
+      );
+    }
+    return renderHighlightedText(bullet, highlightEvidence);
+  };
 
   React.useEffect(() => {
     if (!highlightEvidence || !containerRef.current || !scrollContainerRef.current) return;
@@ -121,21 +172,110 @@ export function DocumentPreview() {
   }, [highlightEvidence]);
 
   return (
-    <div className="lg:sticky lg:top-6 lg:self-start">
-      <Card className="bg-white border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col">
-        <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-2 font-semibold text-slate-700 text-sm">
-            <LayoutTemplate className="w-4 h-4" />
-            {t("preview.title")}
-          </div>
-          <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
-            isReal ? "text-emerald-600 bg-emerald-100" : "text-amber-600 bg-amber-100"
+    <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
+      {/* Editorial Header */}
+      <div className="flex items-start justify-between">
+        <Chapter title={t("preview.title")} kicker="CV PREVIEW" />
+        {isReal && (
+          <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 mt-1 ${
+            viewMode === "ai" ? "text-ink-accent bg-ink-accent/10" : "text-slate-500 bg-slate-100"
           }`}>
-            {isReal ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-            {isReal ? t("preview.parsed") : t("preview.waiting")}
+            {viewMode === "ai" ? <Wand2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+            {viewMode === "ai" ? t("preview.aiApplied") : t("preview.original")}
           </span>
-        </CardHeader>
-        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100dvh - 10rem)" }}>
+        )}
+      </div>
+
+      {/* View Toggle / Note */}
+      {isReal && (
+        <div className="bg-white border border-[#EAEAEA] rounded-xl shadow-sm p-3 flex flex-col gap-3">
+          {matchId ? (
+            <>
+              <div className="flex rounded-lg bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("parsed")}
+                  className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${
+                    viewMode === "parsed"
+                      ? "bg-white text-slate-800 shadow"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {t("preview.tabOriginal")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("ai")}
+                  disabled={aiCv.isFetching}
+                  className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                    viewMode === "ai"
+                      ? "bg-ink-accent text-white shadow"
+                      : "text-slate-500 hover:text-slate-700"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {aiCv.isFetching && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {t("preview.tabAi")}
+                </button>
+              </div>
+              
+              {viewMode === "ai" && !aiCv.isFetching && (
+                <div className="text-xs text-slate-600 px-1 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 text-ink-accent font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {t("preview.appliedCount", { count: aiCv.appliedCount, total: aiCv.totalEligible })}
+                    </div>
+                    <button
+                      onClick={() => handleEdit(true)}
+                      className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold hover:bg-[#1f2426] transition-colors"
+                    >
+                      Sửa bản đã áp
+                    </button>
+                  </div>
+                  {aiCv.manualTasks.length > 0 && (
+                    <div className="bg-amber-50 text-amber-800 p-2 rounded border border-amber-100/50 mt-1">
+                      <p className="font-semibold mb-1 text-[11px] uppercase tracking-wider">{t("preview.manualTasks")}</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {aiCv.manualTasks.map((task, i) => (
+                          <li key={i}>{task.display_name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              {viewMode === "parsed" && (
+                <div className="flex justify-end px-1">
+                  <button
+                    onClick={() => handleEdit(false)}
+                    className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold text-xs hover:bg-[#1f2426] transition-colors"
+                  >
+                    Sửa CV gốc
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-slate-500 px-1 py-0.5 flex flex-col items-center gap-2">
+              <p>{t("preview.addJdNote")}</p>
+              <button
+                onClick={() => handleEdit(false)}
+                className="px-3 py-1.5 bg-[#2F3437] text-white rounded-md font-bold hover:bg-[#1f2426] transition-colors"
+              >
+                Sửa CV gốc
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Card className="bg-white border border-[#EAEAEA] shadow-sm overflow-hidden flex flex-col relative">
+        {viewMode === "ai" && aiCv.isFetching && (
+          <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] flex items-center justify-center">
+             <Loader2 className="w-6 h-6 animate-spin text-ink-accent" />
+          </div>
+        )}
+        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100dvh - 16rem)" }}>
           <div className="p-4 sm:p-6 pb-12" ref={containerRef}>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-sm">
               {!isReal || !doc ? (
@@ -150,7 +290,9 @@ export function DocumentPreview() {
                   {/* Header — Name + Contact */}
                   <div className="p-5 border-b border-slate-100 bg-slate-50/50">
                     <h2 className="text-xl font-bold text-slate-900 leading-tight">
-                      {doc.contact.name || "Unknown"}
+                      {doc.contact.name || (
+                        <span className="text-slate-400 font-medium italic text-base">{t("preview.unknownName")}</span>
+                      )}
                     </h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 text-slate-500 text-[13px]">
                       {doc.contact.email && (
@@ -190,7 +332,7 @@ export function DocumentPreview() {
                     {/* Summary */}
                     {doc.summary && (
                       <p className="text-slate-600 leading-relaxed" data-bullet={doc.summary}>
-                        {renderHighlightedText(doc.summary, highlightEvidence)}
+                        {renderBullet(doc.summary)}
                       </p>
                     )}
 
@@ -254,7 +396,7 @@ export function DocumentPreview() {
                                   {exp.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
                                       <span data-bullet={bullet}>
-                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                        {renderBullet(bullet)}
                                       </span>
                                     </li>
                                   ))}
@@ -303,7 +445,7 @@ export function DocumentPreview() {
                                   {proj.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
                                       <span data-bullet={bullet}>
-                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                        {renderBullet(bullet)}
                                       </span>
                                     </li>
                                   ))}
@@ -350,7 +492,7 @@ export function DocumentPreview() {
                                   {edu.highlights.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
                                       <span data-bullet={bullet}>
-                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                        {renderBullet(bullet)}
                                       </span>
                                     </li>
                                   ))}
@@ -412,7 +554,7 @@ export function DocumentPreview() {
                                   {act.bullets.map((bullet, bIdx) => (
                                     <li key={bIdx} className="marker:text-[#B9B9B7]">
                                       <span data-bullet={bullet}>
-                                        {renderHighlightedText(bullet, highlightEvidence)}
+                                        {renderBullet(bullet)}
                                       </span>
                                     </li>
                                   ))}

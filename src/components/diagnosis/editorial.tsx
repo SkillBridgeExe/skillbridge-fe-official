@@ -72,16 +72,20 @@ export function Chapter({
 }) {
   return (
     <section id={id} className={cn("space-y-5", className)}>
-      <div className="space-y-1">
-        {kicker && (
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-            {kicker}
-          </p>
-        )}
-        <h2 className="font-serif text-[19px] font-semibold text-[#2F3437] leading-snug">
-          {title}
-        </h2>
-      </div>
+      {(kicker || title) && (
+        <div className="space-y-1">
+          {kicker && (
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+              {kicker}
+            </p>
+          )}
+          {title && (
+            <h2 className="font-serif text-[19px] font-semibold text-[#2F3437] leading-snug">
+              {title}
+            </h2>
+          )}
+        </div>
+      )}
       {children}
     </section>
   );
