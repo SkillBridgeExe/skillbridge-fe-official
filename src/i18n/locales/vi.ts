@@ -1147,6 +1147,9 @@ export default {
       toastRenderingDesc: "Đang chuẩn bị CV để tải xuống...",
       toastDownloadFailedTitle: "Tải xuống thất bại",
       toastDownloadFailedDesc: "Không tạo được PDF trên máy chủ.",
+      toastLocalActionTitle: "Chưa có bản nháp trên máy chủ",
+      toastSaveFailedTitle: "Lưu thất bại",
+      toastSaveFailedDesc: "Không lưu được thay đổi mới nhất. Vui lòng thử lại trước khi tiếp tục.",
       toastDraftErrorTitle: "Lỗi tạo bản nháp",
       toastDraftErrorDesc:
         "Không tạo được bản nháp trên máy chủ. Đang làm việc ở chế độ cục bộ.",

@@ -25,6 +25,7 @@ import { useMascotSuccess } from "@/hooks/useMascot";
 import { MOCK_LOGIN_ACCOUNTS, type UserRole } from "@/store/useAuthStore";
 import {
   dashboardPathFor,
+  getLoginErrorDescription,
   login,
   loginWithGoogle,
   register,
@@ -144,7 +145,11 @@ export function LoginDialog({
     } catch (err) {
       toast({
         title: t("auth.toast.loginFailedTitle"),
-        description: err instanceof Error ? err.message : t("auth.toast.loginFailedDesc"),
+        description: getLoginErrorDescription(
+          err,
+          t("auth.toast.loginFailedDesc"),
+          t("auth.toast.loginFailedDesc"),
+        ),
         variant: "destructive",
       });
     } finally {

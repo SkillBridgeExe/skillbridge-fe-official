@@ -18,6 +18,7 @@ import {
 import { logoutApi } from "@/api/auth/logout";
 import type { AuthUserDto } from "@/api/auth/envelope";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { setAccessToken } from "@/services/auth-token.service";
 import { toAuthUser, toUserRole } from "@/services/auth-session.service";
 
@@ -40,6 +41,17 @@ export function dashboardPathFor(role: UserRole): string {
     default:
       return "/dashboard";
   }
+}
+
+export function getLoginErrorDescription(
+  error: unknown,
+  invalidCredentialsMessage: string,
+  fallback: string,
+): string {
+  if (getApiErrorCode(error) === "INVALID_CREDENTIALS") {
+    return invalidCredentialsMessage;
+  }
+  return getApiErrorMessage(error, fallback);
 }
 
 function persistSession(

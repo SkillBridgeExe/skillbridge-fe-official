@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { login } from "./auth.service";
+import { getLoginErrorDescription, login } from "./auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
+import { ApiError } from "@/lib/api-error";
 
 vi.mock("@/api/auth/login", () => ({
   loginApi: vi.fn(),
@@ -56,5 +57,15 @@ describe("auth service session persistence", () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().currentUser?.email).toBe("user@example.com");
     expect(useAuthStore.getState().currentUser?.avatar).toBe("https://cdn.example.com/avatar.png");
+  });
+
+  it("maps INVALID_CREDENTIALS to the localized login copy", () => {
+    const message = getLoginErrorDescription(
+      new ApiError("Invalid credentials", "INVALID_CREDENTIALS"),
+      "Incorrect email or password.",
+      "Login failed",
+    );
+
+    expect(message).toBe("Incorrect email or password.");
   });
 });

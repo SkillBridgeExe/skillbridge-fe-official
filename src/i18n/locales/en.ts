@@ -91,7 +91,7 @@ export default {
         loginDemoSuccess: "Demo sign-in successful - {{role}}",
         loginSuccess: "Sign-in successful - {{role}}",
         loginFailedTitle: "Login failed",
-        loginFailedDesc: "Invalid email or password.",
+        loginFailedDesc: "Incorrect email or password.",
         missingInfoTitle: "Missing information",
         missingInfoDesc: "Please fill in all required fields.",
         passwordMismatchTitle: "Password mismatch",
@@ -1153,6 +1153,9 @@ export default {
       toastRenderingDesc: "Preparing your CV for download...",
       toastDownloadFailedTitle: "Download failed",
       toastDownloadFailedDesc: "Failed to render the PDF on the server.",
+      toastLocalActionTitle: "Server draft unavailable",
+      toastSaveFailedTitle: "Save failed",
+      toastSaveFailedDesc: "Could not save the latest changes. Please try again before continuing.",
       toastDraftErrorTitle: "Error creating draft",
       toastDraftErrorDesc:
         "Failed to create a builder draft on the server. Working in local mode.",

@@ -60,7 +60,7 @@ export async function rewriteFieldApi(
   input: RewriteRequest,
 ): Promise<RewriteResponse> {
   // BE input gate (W14): HTTP 400 + machine code (INSUFFICIENT_CONTEXT/OFF_TOPIC).
-  // unwrapEnvelope flattens axios errors into plain Errors, so convert to a typed
+  // Preserve BE gate machine codes before unwrapping so UI can render friendly copy.
   // AiGateError FIRST — the UI maps it to a friendly i18n hint, not a raw toast.
   const request = httpClient
     .post(API_ROUTES.CV.BUILDER_REWRITE(draftId), input, {
@@ -86,7 +86,7 @@ export async function rewriteFieldApi(
 
 /** POST /api/cvs/:id/render-pdf — PDF bytes (KHÔNG envelope). */
 export async function renderBuilderPdfApi(draftId: string): Promise<Blob> {
-  const response = await httpClient.post(API_ROUTES.CV.RENDER_PDF(draftId), null, {
+  const response = await httpClient.post(API_ROUTES.CV.RENDER_PDF(draftId), undefined, {
     responseType: "blob",
     timeout: CV_AI_TIMEOUT_MS,
   });
