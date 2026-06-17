@@ -15,9 +15,12 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "sans-serif"],
+        serif: ["Lora", "Georgia", "serif"],
         poppins: ["Poppins", "Be Vietnam Pro", "sans-serif"],
       },
       colors: {
+        "ink-accent": "hsl(var(--primary))",
+        "ink-accent-tint": "hsl(199 100% 95%)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -1,17 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Download, FilePenLine, Save, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, FilePenLine, Save, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 export function CvBuilderHeader() {
   const { t } = useTranslation("diagnosis");
+  const hasApiSession = useHasApiSession();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
@@ -101,20 +103,30 @@ export function CvBuilderHeader() {
     });
   };
 
+  const handleBackToDiagnosis = () => {
+    const diagnosisStore = useDiagnosisStore.getState();
+    diagnosisStore.setIsFromBuilder(false);
+    diagnosisStore.setStep("input");
+    navigate("/diagnosis");
+  };
+
   const handleAnalyze = async () => {
+    const diagnosisStore = useDiagnosisStore.getState();
+
+    // Came from a diagnosis review → just return to it (no server draft needed).
+    if (seededFromDiagnosis && diagnosisStore.reviewData) {
+      diagnosisStore.setStep("cv-review");
+      return;
+    }
+
+    // Local / no draft (e.g. quota exhausted): can't analyze server-side. The
+    // "Back to Diagnosis" button is the escape; here just surface why.
     if (isLocalMode || !draftId) {
       showLocalActionToast();
       return;
     }
 
     if (!(await flushDraftChanges())) return;
-
-    const diagnosisStore = useDiagnosisStore.getState();
-
-    if (seededFromDiagnosis && diagnosisStore.reviewData) {
-      diagnosisStore.setStep("cv-review");
-      return;
-    }
 
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
@@ -165,21 +177,47 @@ export function CvBuilderHeader() {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-10">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FilePenLine className="w-4 h-4 text-primary" />
+    <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10">
+      <div className="flex h-full items-center flex-1">
+        
+        {/* Left column matching sidebar exactly on xl screens */}
+        <div className="hidden xl:flex w-[220px] h-full border-r border-slate-150 items-center px-4 shrink-0">
+          <button
+            onClick={handleBackToDiagnosis}
+            className="group flex items-center gap-1.5 w-full px-2 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+            <span className="truncate">{t("builder.backToDiagnosis")}</span>
+          </button>
         </div>
-        <div>
-          <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
-          <p className="text-[11px] text-slate-500 font-medium">{t("builder.headerSubtitle")}</p>
+
+        {/* Back button for < xl screens */}
+        <div className="xl:hidden flex items-center px-4 h-full border-r border-slate-150">
+          <button
+            onClick={handleBackToDiagnosis}
+            className="group flex items-center gap-1.5 px-2 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">{t("builder.backToDiagnosis")}</span>
+          </button>
+        </div>
+
+        {/* Branding area */}
+        <div className="flex items-center gap-3 px-4 xl:px-6">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <FilePenLine className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-bold text-slate-900 leading-tight">SkillBridge CV Builder</h1>
+            <p className="text-[11px] text-slate-500 font-medium hidden md:block">{t("builder.headerSubtitle")}</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 px-6">
         {isLocalMode && (
           <span className="text-xs text-[#787774] max-w-[280px] text-right font-medium">
-            {t("builder.localOnly")}
+            {hasApiSession ? t("builder.localOnlyAuthed") : t("builder.localOnly")}
           </span>
         )}
 
