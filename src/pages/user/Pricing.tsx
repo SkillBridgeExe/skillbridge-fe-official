@@ -54,10 +54,6 @@ export default function Pricing() {
     mutationFn: (planCode: string) =>
       createCheckout({ purpose: "SUBSCRIPTION", planCode }),
     onSuccess: (checkout) => {
-      if (checkout.checkoutUrl) {
-        window.location.assign(checkout.checkoutUrl);
-        return;
-      }
       navigate(`/billing/checkout/${checkout.orderCode}`);
     },
     onError: (error) => {

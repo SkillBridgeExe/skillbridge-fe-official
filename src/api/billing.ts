@@ -6,7 +6,7 @@ import type { MeEntitlementDto } from "@shared/api";
 export type { MeEntitlementDto } from "@shared/api";
 
 export type BillingPurpose = "SUBSCRIPTION" | "MENTOR_DEPOSIT" | "MENTOR_REMAINING";
-export type BillingOrderStatus = "PENDING" | "PAID" | "CANCELLED" | "EXPIRED" | "FAILED";
+export type BillingOrderStatus = "PENDING" | "PROCESSING" | "PAID" | "CANCELLED" | "EXPIRED" | "FAILED";
 export type BillingPlanCategory = "SUBSCRIPTION" | "MENTOR_PACKAGE";
 export type BillingPlanInterval = "MONTHLY" | "ONE_TIME";
 export type SubscriptionStatus = "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED";
@@ -60,6 +60,7 @@ export interface OrderStatusResponseDto {
   currency: string;
   checkoutUrl: string | null;
   paymentLinkId: string | null;
+  expiresAt?: string | null;
   targetType: "SUBSCRIPTION" | "MENTOR_BOOKING";
   targetId: string | null;
   paidAt: string | null;

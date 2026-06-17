@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import type { BillingPurpose, CreateCheckoutDto } from "@/services/billing.servi
 export default function MentorBilling() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [purpose, setPurpose] = useState<BillingPurpose>("MENTOR_DEPOSIT");
   const [planCode, setPlanCode] = useState("MENTOR_60");
   const [mentorId, setMentorId] = useState("");
@@ -25,11 +27,7 @@ export default function MentorBilling() {
   const checkoutMutation = useMutation({
     mutationFn: (payload: CreateCheckoutDto) => createCheckout(payload),
     onSuccess: (checkout) => {
-      if (checkout.checkoutUrl) {
-        window.location.assign(checkout.checkoutUrl);
-        return;
-      }
-      window.location.assign(`/billing/checkout/${checkout.orderCode}`);
+      navigate(`/billing/checkout/${checkout.orderCode}`);
     },
     onError: (error) => {
       toast({

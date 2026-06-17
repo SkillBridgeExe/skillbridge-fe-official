@@ -12,6 +12,7 @@
 interface AppConfig {
   API_URL?: string;
   GOOGLE_CLIENT_ID?: string;
+  PAYOS_RETURN_URL?: string;
   ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
   ENABLE_GITHUB_EVIDENCE?: string | boolean;
 }
@@ -30,6 +31,10 @@ export const GOOGLE_CLIENT_ID: string =
 /** API base URL. Empty string = same-origin `/api` (nginx prod / Vite dev proxy). */
 export const API_URL: string =
   runtime.API_URL || import.meta.env.VITE_API_URL || "";
+
+/** Exact payOS return URL used by the backend when creating embedded checkout links. */
+export const PAYOS_RETURN_URL: string =
+  runtime.PAYOS_RETURN_URL || import.meta.env.VITE_PAYOS_RETURN_URL || "";
 
 function isEnabled(value: string | boolean | undefined): boolean {
   return value === true || value === "true" || value === "1";
