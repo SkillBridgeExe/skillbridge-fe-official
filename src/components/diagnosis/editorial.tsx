@@ -1,7 +1,7 @@
 import React, { memo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { Ruler } from "lucide-react";
+import { Ruler, Check } from "lucide-react";
 import type { GapItem } from "@shared/api";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -136,48 +136,94 @@ export const VerdictHero = memo(function VerdictHero({
   }, [target, reduced]);
 
   const isExcellent = target >= 85;
+  const radius = 120;
+  const strokeWidth = 14;
+  const normalizedRadius = radius - strokeWidth / 2;
+  const circumference = normalizedRadius * Math.PI; // Half circle
+  const strokeDashoffset = circumference - (displayed / 100) * circumference;
+
+  // SVG Path for half circle
+  const arcPath = `M ${strokeWidth/2} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - strokeWidth/2} ${radius}`;
 
   return (
-    <div className="flex flex-col items-center py-10 space-y-4" role="img" aria-label={`${label}: ${target}%`}>
-      {/* Score */}
-      <div className="flex items-baseline gap-1">
-        <span className="text-[64px] font-mono tabular-nums font-black leading-none tracking-[-0.02em] text-ink-accent">
-          {displayed}
-        </span>
-        <span className="text-sm text-[#787774] font-medium">%</span>
+    <div className="flex flex-col items-center pt-8 pb-4 space-y-6" role="img" aria-label={`${label}: ${target}%`}>
+      {/* Premium SVG Gauge Chart */}
+      <div className="relative flex flex-col items-center justify-end" style={{ width: radius * 2, height: radius + strokeWidth }}>
+        <svg
+          height={radius + strokeWidth}
+          width={radius * 2}
+          className="absolute bottom-0 drop-shadow-sm"
+        >
+          <defs>
+            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              {isExcellent ? (
+                <>
+                  <stop offset="0%" stopColor="#34D399" />
+                  <stop offset="100%" stopColor="#10B981" />
+                </>
+              ) : (
+                <>
+                  <stop offset="0%" stopColor="#60A5FA" />
+                  <stop offset="100%" stopColor="#3B82F6" />
+                </>
+              )}
+            </linearGradient>
+          </defs>
+          {/* Background Track */}
+          <path
+            d={arcPath}
+            stroke="#F1F1EF"
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+          {/* Foreground Progress */}
+          <path
+            d={arcPath}
+            stroke="url(#scoreGradient)"
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            style={{ strokeDashoffset }}
+            strokeLinecap="round"
+            className="transition-[stroke-dashoffset] duration-1000 ease-[cubic-bezier(0.32,0.72,0,1)]"
+          />
+        </svg>
+
+        {/* Center Score */}
+        <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center translate-y-3">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[64px] font-mono tabular-nums font-black leading-none tracking-tight text-[#2F3437]">
+              {displayed}
+            </span>
+            <span className="text-2xl text-[#A1A1A1] font-medium font-mono">/100</span>
+          </div>
+          <span className="text-[10px] font-bold text-[#A1A1A1] uppercase tracking-[0.15em] mt-2">
+            {label}
+          </span>
+        </div>
       </div>
 
-      {/* Score label */}
-      <span className="text-[11px] font-bold text-[#787774] uppercase tracking-widest">
-        {label}
-      </span>
-
-      {/* Pull-quote verdict — serif, with accent underline */}
+      {/* Pull-quote verdict — sleek modern text */}
       <div className={cn(
-        "relative text-center max-w-md px-6 transition-all duration-500",
-        quoteVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+        "relative text-center max-w-lg px-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
+        quoteVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
       )}>
         <p className={cn(
-          "font-serif text-[22px] md:text-[26px] leading-snug font-medium",
-          isExcellent ? "text-ink-accent" : "text-[#2F3437]",
+          "text-[20px] md:text-[24px] leading-snug font-semibold tracking-tight",
+          isExcellent ? "text-[#10B981]" : "text-[#2F3437]"
         )}>
           {verdictMessage}
         </p>
-        {/* Accent underline sweep */}
-        <span className={cn(
-          "block mx-auto mt-3 h-[2px] bg-ink-accent transition-all origin-left",
-          reduced ? "w-16" : "duration-500",
-          quoteVisible && !reduced ? "w-16" : reduced ? "" : "w-0",
-        )} />
       </div>
 
       {/* Band pill */}
       {isJdMode && (
         <span
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-2.5 py-1 text-[10px] font-bold text-[#787774]"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-3 py-1.5 text-[11px] font-bold text-[#787774]"
           title={bandTooltip || undefined}
         >
-          <Ruler className="h-3 w-3" />
+          <Ruler className="h-3.5 w-3.5" />
           {bandLabel || (rubricBand
             ? t("band.label", { band: t(`band.${rubricBand}`) })
             : t("band.jdYardstick"))}
@@ -221,18 +267,15 @@ export function Ribbon({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 py-3 px-1 text-[13px] font-semibold tabular-nums">
-      <span className="text-[#346538]">
-        <span className="font-mono text-[15px] font-bold">{matched}</span>{" "}
-        {t("results.matched")}
+    <div className="flex flex-wrap items-center justify-center gap-3 py-2 px-1 text-[13px] font-semibold tabular-nums">
+      <span className="inline-flex items-center gap-2 rounded-full border border-[#DCE9D7] bg-[#EDF3EC] px-3.5 py-1.5 text-[#346538] shadow-sm">
+        <span className="font-mono text-[15px] font-bold">{matched}</span> {t("results.matched")}
       </span>
-      <span className="text-[#956400]">
-        <span className="font-mono text-[15px] font-bold">{partial}</span>{" "}
-        {t("results.partial")}
+      <span className="inline-flex items-center gap-2 rounded-full border border-[#F1E5C0] bg-[#FBF3DB] px-3.5 py-1.5 text-[#956400] shadow-sm">
+        <span className="font-mono text-[15px] font-bold">{partial}</span> {t("results.partial")}
       </span>
-      <span className="text-[#9F2F2D]">
-        <span className="font-mono text-[15px] font-bold">{missing}</span>{" "}
-        {t("results.missing")}
+      <span className="inline-flex items-center gap-2 rounded-full border border-[#F6D4D5] bg-[#FDEBEC] px-3.5 py-1.5 text-[#9F2F2D] shadow-sm">
+        <span className="font-mono text-[15px] font-bold">{missing}</span> {t("results.missing")}
       </span>
       {coverage != null && (
         <span className="text-[#787774]">
@@ -317,15 +360,15 @@ export function EditorialTabNav({
 /* ── StatRow (W25) ───────────────────────────────────────────────────────── */
 
 /**
- * Compact inline stat row: overall score · ATS · role.
- * Replaces 3 separate dashboard cards in Step2. Numbers are mono/tabular.
+ * Compact pill stats below the Gauge: ATS score + target role.
+ * Does NOT repeat the overall score — the Gauge above handles that.
  */
 export function StatRow({
-  score,
+  score: _score,
   atsScore,
   role,
-  scoreMessage,
-  atsNote,
+  scoreMessage: _scoreMessage,
+  atsNote: _atsNote,
 }: {
   score: number;
   atsScore: number;
@@ -333,20 +376,22 @@ export function StatRow({
   scoreMessage: string;
   atsNote?: string;
 }) {
+  const atsColor = atsScore >= 80 ? "text-[#346538] bg-[#EDF3EC] border-[#DCE9D7]"
+    : atsScore >= 50 ? "text-[#956400] bg-[#FBF3DB] border-[#F1E5C0]"
+    : "text-[#9F2F2D] bg-[#FDEBEC] border-[#F6D4D5]";
+
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-3 px-1">
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-mono text-[15px] font-bold tabular-nums text-[#2F3437]">{score}</span>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">{scoreMessage}</span>
-      </div>
-      <div className="w-px h-4 bg-[#EAEAEA]" />
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">ATS</span>
-        <span className="font-mono text-[15px] font-bold tabular-nums text-[#2F3437]">{atsScore}%</span>
-        {atsNote && <span className="text-[10px] text-[#9B9B97] hidden sm:inline">{atsNote}</span>}
-      </div>
-      <div className="w-px h-4 bg-[#EAEAEA]" />
-      <span className="text-[13px] font-semibold text-[#2F3437] truncate max-w-[200px]">{role}</span>
+    <div className="flex flex-wrap items-center justify-center gap-3 py-3 px-1">
+      <span className={cn("inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-bold", atsColor)}>
+        <Check className="w-3.5 h-3.5" />
+        ATS <span className="font-mono tabular-nums">{atsScore}%</span>
+      </span>
+      {role && role !== "N/A" && (
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#EAEAEA] bg-[#FBFBFA] px-3.5 py-1.5 text-[12px] font-bold text-[#2F3437]">
+          <Ruler className="w-3.5 h-3.5 text-[#787774]" />
+          {role}
+        </span>
+      )}
     </div>
   );
 }
