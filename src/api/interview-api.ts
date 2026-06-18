@@ -9,6 +9,17 @@ export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
 export type PlatformInterviewModality = "TEXT" | "AUDIO";
+export type PlatformInterviewVoice =
+  | "alloy"
+  | "ash"
+  | "ballad"
+  | "coral"
+  | "echo"
+  | "sage"
+  | "shimmer"
+  | "verse"
+  | "marin"
+  | "cedar";
 
 export interface RealtimeClientSecretDto {
   enabled: boolean;
@@ -28,6 +39,8 @@ export interface InterviewSessionDto {
   language: PlatformInterviewLanguage | string;
   mode: PlatformInterviewMode;
   interviewType: PlatformInterviewType;
+  voice: PlatformInterviewVoice | string;
+  speechSpeed: number;
   status: PlatformInterviewStatus | string;
   totalQuestionsPlanned: number | null;
   maxDurationSeconds: number;
@@ -81,6 +94,8 @@ export interface StartInterviewRequest {
   language?: PlatformInterviewLanguage;
   mode?: PlatformInterviewMode;
   interviewType?: PlatformInterviewType;
+  voice?: PlatformInterviewVoice;
+  speechSpeed?: number;
 }
 
 export interface StartInterviewResponseDto extends InterviewSessionDto {
