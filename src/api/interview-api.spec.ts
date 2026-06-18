@@ -127,18 +127,18 @@ describe("interview-api", () => {
   it("ends and reads interviews through canonical platform endpoints", async () => {
     vi.mocked(httpClient.post).mockReturnValueOnce(ok({ id: "session-1", turns: [] }) as never);
     vi.mocked(httpClient.get)
-      .mockReturnValueOnce(ok({ items: [], total: 0, page: 1, limit: 20 }) as never)
+      .mockReturnValueOnce(ok({ items: [], total: 0, page: 1, limit: 10 }) as never)
       .mockReturnValueOnce(ok({ id: "session-1", turns: [] }) as never);
 
     await endInterview("session-1");
-    await getInterviewHistory({ page: 1, limit: 20 });
+    await getInterviewHistory();
     await getInterviewDetail("session-1");
 
     expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.END, {
       sessionId: "session-1",
     });
     expect(httpClient.get).toHaveBeenNthCalledWith(1, API_ROUTES.INTERVIEW.HISTORY, {
-      params: { page: 1, limit: 20 },
+      params: { page: 1, limit: 10 },
     });
     expect(httpClient.get).toHaveBeenNthCalledWith(2, API_ROUTES.INTERVIEW.DETAIL("session-1"));
   });

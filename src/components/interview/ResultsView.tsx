@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ interface ResultsViewProps {
 }
 
 export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
+  const { t } = useTranslation("common");
   const [activeTab, setActiveTab] = useState<"strengths" | "improve">("strengths");
 
   if (!result) {
@@ -36,20 +38,22 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
       <div className="space-y-4 animate-in fade-in duration-500">
         <Alert className="border-slate-200 bg-white">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No result available</AlertTitle>
+          <AlertTitle>{t("interview.results.noResultTitle")}</AlertTitle>
           <AlertDescription>
-            The interview has ended, but final scoring is not available yet.
+            {t("interview.results.noResultDescription")}
           </AlertDescription>
         </Alert>
         <Button onClick={onRetry} className="rounded-xl font-bold">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Start New Interview
+          {t("interview.history.startNew")}
         </Button>
       </div>
     );
   }
 
-  const view = toInterviewResultViewModel(result);
+  const view = toInterviewResultViewModel(result, {
+    summary: t("interview.results.noSummary"),
+  });
   const effectiveDuration = view.durationSeconds ?? duration ?? null;
   const strengths = collectTurnItems(view.questions, "strengths");
   const improvements = collectTurnItems(view.questions, "improvements");
@@ -59,12 +63,12 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardContent className="p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
-            <ScoreDonut score={view.overallScore} />
+            <ScoreDonut score={view.overallScore} label={t("interview.stats.overall")} />
 
             <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
-              <ScoreCard label="Semantic" value={view.semanticScore} icon={BarChart3} />
-              <ScoreCard label="LLM Score" value={view.llmScore} icon={Sparkles} />
-              <ScoreCard label="Communication" value={view.communicationScore} icon={Mic} />
+              <ScoreCard label={t("interview.results.semantic")} value={view.semanticScore} icon={BarChart3} />
+              <ScoreCard label={t("interview.results.llmScore")} value={view.llmScore} icon={Sparkles} />
+              <ScoreCard label={t("interview.results.communication")} value={view.communicationScore} icon={Mic} />
             </div>
           </div>
 
@@ -74,9 +78,9 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             </Badge>
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              Duration: {formatDuration(effectiveDuration)}
+              {t("interview.results.duration", { duration: formatDuration(effectiveDuration) })}
             </span>
-            <span>{view.questions.length} answered question(s)</span>
+            <span>{t("interview.results.answeredQuestions", { count: view.questions.length })}</span>
           </div>
         </CardContent>
       </Card>
@@ -89,8 +93,10 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                 <Bot className="h-4 w-4 text-slate-600" />
               </div>
               <div>
-                <CardTitle className="text-sm">AI Summary</CardTitle>
-                <CardDescription className="text-xs">Final backend feedback</CardDescription>
+                <CardTitle className="text-sm">{t("interview.results.summaryTitle")}</CardTitle>
+                <CardDescription className="text-xs">
+                  {t("interview.results.summaryDescription")}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -107,11 +113,11 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
               <TabsList>
                 <TabsTrigger value="strengths" className="gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Strengths
+                  {t("interview.results.strengths")}
                 </TabsTrigger>
                 <TabsTrigger value="improve" className="gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  Improve
+                  {t("interview.results.improve")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -120,7 +126,9 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             <ul className="space-y-3">
               {(activeTab === "strengths" ? strengths : improvements).length === 0 ? (
                 <li className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
-                  No {activeTab === "strengths" ? "strengths" : "improvement items"} were returned.
+                  {activeTab === "strengths"
+                    ? t("interview.results.emptyStrengths")
+                    : t("interview.results.emptyImprove")}
                 </li>
               ) : (
                 (activeTab === "strengths" ? strengths : improvements).map((item, index) => (
@@ -149,35 +157,37 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <MetricPanel
-          title="Technical Delivery"
-          description="Core technical competencies"
+          title={t("interview.results.technicalDelivery")}
+          description={t("interview.results.technicalDeliveryDescription")}
           icon={Shield}
           metrics={view.technicalDelivery}
+          empty={t("interview.results.noMetrics")}
         />
         <MetricPanel
-          title="Communication Flow"
-          description="Verbal delivery analysis"
+          title={t("interview.results.communicationFlow")}
+          description={t("interview.results.communicationFlowDescription")}
           icon={Mic}
           metrics={view.communicationFlow}
+          empty={t("interview.results.noMetrics")}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <MetricPanel
-          title="Body Language"
-          description="Not scored unless backend captures non-verbal signals"
+          title={t("interview.results.bodyLanguage")}
+          description={t("interview.results.bodyLanguageDescription")}
           icon={UserCheck}
           metrics={view.bodyLanguage}
-          empty="Body language was not captured for this session."
+          empty={t("interview.results.bodyLanguageEmpty")}
         />
         <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[15px]">Recommended Next Steps</CardTitle>
-            <CardDescription>Returned by interview scoring</CardDescription>
+            <CardTitle className="text-[15px]">{t("interview.results.recommendedNextSteps")}</CardTitle>
+            <CardDescription>{t("interview.results.recommendedNextStepsDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <TagList title="Recommendations" items={view.recommendations} />
-            <TagList title="Suggested Modules" items={view.modules} />
+            <TagList title={t("interview.results.recommendations")} items={view.recommendations} empty={t("interview.results.noItems")} />
+            <TagList title={t("interview.results.suggestedModules")} items={view.modules} empty={t("interview.results.noItems")} />
           </CardContent>
         </Card>
       </div>
@@ -188,12 +198,12 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white">
               <History className="h-4 w-4 text-slate-600" />
             </div>
-            <CardTitle className="text-[15px]">Question Analysis</CardTitle>
+            <CardTitle className="text-[15px]">{t("interview.results.questionAnalysis")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 p-0">
           {view.questions.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">No persisted answers were returned.</div>
+            <div className="p-5 text-sm text-slate-500">{t("interview.results.noPersistedAnswers")}</div>
           ) : (
             view.questions.map((question, index) => (
               <div key={`${question.question}-${index}`} className="p-5">
@@ -228,13 +238,13 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
 
       <Button size="lg" className="w-full rounded-xl font-bold md:w-auto" onClick={onRetry}>
         <RefreshCw className="mr-2 h-4 w-4" />
-        Start New Interview
+        {t("interview.history.startNew")}
       </Button>
     </div>
   );
 }
 
-function ScoreDonut({ score }: { score: number | null }) {
+function ScoreDonut({ score, label }: { score: number | null; label: string }) {
   const value = score ?? 0;
   return (
     <div className="relative h-36 w-36 shrink-0">
@@ -257,7 +267,7 @@ function ScoreDonut({ score }: { score: number | null }) {
           {score == null ? "N/A" : `${score}%`}
         </span>
         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-          Overall
+          {label}
         </span>
       </div>
     </div>
@@ -291,7 +301,7 @@ function MetricPanel({
   description,
   icon: Icon,
   metrics,
-  empty = "No metrics were returned.",
+  empty = "No metrics are available yet.",
 }: {
   title: string;
   description: string;
@@ -348,13 +358,13 @@ function MetricBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function TagList({ title, items }: { title: string; items: string[] }) {
+function TagList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   return (
     <div>
       <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</p>
       {items.length === 0 ? (
         <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
-          No items returned.
+          {empty}
         </p>
       ) : (
         <div className="flex flex-wrap gap-2">

@@ -13,6 +13,14 @@ import {
   type InterviewHistoryQuery,
 } from "@/api/interview-api";
 
+function shouldRetryInterviewHistory(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) return false;
+  if (!error || typeof error !== "object") return true;
+
+  const status = (error as { response?: { status?: unknown } }).response?.status;
+  return typeof status !== "number" || status >= 500;
+}
+
 export function useInterviewHistory(enabled = true, query: InterviewHistoryQuery = {}) {
   const hasApiSession = useHasApiSession();
 
@@ -26,6 +34,7 @@ export function useInterviewHistory(enabled = true, query: InterviewHistoryQuery
     queryFn: () => getInterviewHistory(query),
     enabled: enabled && hasApiSession,
     staleTime: 60_000,
+    retry: shouldRetryInterviewHistory,
   });
 }
 

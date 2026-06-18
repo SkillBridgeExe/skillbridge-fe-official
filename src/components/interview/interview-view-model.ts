@@ -1,5 +1,21 @@
-import type { InterviewDetailResponseDto, InterviewFeedback } from "@/api/interview-api";
-import type { InterviewMode } from "./types";
+import type {
+  InterviewDetailResponseDto,
+  InterviewFeedback,
+  PlatformInterviewType,
+  StartInterviewRequest,
+} from "@/api/interview-api";
+import {
+  DEFAULT_INTERVIEW_SPEECH_SPEED,
+  DEFAULT_INTERVIEW_VOICE,
+  INTERVIEW_SPEECH_SPEED_OPTIONS,
+  INTERVIEW_VOICE_OPTIONS,
+  INTERVIEW_VOICE_STORAGE_KEY,
+  type InterviewMode,
+  type InterviewPhase,
+  type InterviewSpeechSpeed,
+  type InterviewType,
+  type InterviewVoice,
+} from "./types";
 
 export interface InterviewResultQuestionViewModel {
   question: string;
@@ -25,6 +41,170 @@ export interface InterviewResultViewModel {
   bodyLanguage: Record<string, number> | null;
   durationSeconds: number | null;
   questions: InterviewResultQuestionViewModel[];
+}
+
+export type InterviewHistoryState = "signed-out" | "loading" | "error" | "empty" | "ready";
+export type InterviewHistoryDetailState = "idle" | "loading" | "error" | "not-scored" | "ready";
+export type InterviewSessionStatusKey = "completed" | "inProgress" | "cancelled" | "unknown";
+export type InterviewModeLabelKey = "textFallback" | "liveRealtime" | "guidedVoice";
+
+export interface InterviewVoicePreference {
+  voice: InterviewVoice;
+  speechSpeed: InterviewSpeechSpeed;
+}
+
+interface BuildInterviewStartRequestInput extends InterviewVoicePreference {
+  selectedCvId: string | null;
+  selectedMatchId: string | null;
+  targetRole: string;
+  selectedLanguage: "vi" | "en";
+  interviewMode: InterviewMode;
+  interviewType: InterviewType;
+}
+
+export function buildInterviewStartRequest({
+  selectedCvId,
+  selectedMatchId,
+  targetRole,
+  selectedLanguage,
+  interviewMode,
+  interviewType,
+  voice,
+  speechSpeed,
+}: BuildInterviewStartRequestInput): StartInterviewRequest {
+  return {
+    cvId: selectedCvId ?? undefined,
+    cvMatchId: selectedMatchId ?? undefined,
+    targetRole,
+    language: selectedLanguage,
+    mode: interviewMode === "realtime" ? "VOICE" : "HYBRID",
+    interviewType: toBackendInterviewType(interviewType),
+    voice,
+    speechSpeed,
+  };
+}
+
+export function readInterviewVoicePreference(
+  storage: Pick<Storage, "getItem"> | null | undefined,
+): InterviewVoicePreference {
+  if (!storage) {
+    return {
+      voice: DEFAULT_INTERVIEW_VOICE,
+      speechSpeed: DEFAULT_INTERVIEW_SPEECH_SPEED,
+    };
+  }
+
+  try {
+    const raw = storage.getItem(INTERVIEW_VOICE_STORAGE_KEY);
+    if (!raw) {
+      return {
+        voice: DEFAULT_INTERVIEW_VOICE,
+        speechSpeed: DEFAULT_INTERVIEW_SPEECH_SPEED,
+      };
+    }
+    const parsed = JSON.parse(raw) as Partial<InterviewVoicePreference>;
+    return {
+      voice: normalizeInterviewVoice(parsed.voice),
+      speechSpeed: normalizeInterviewSpeechSpeed(parsed.speechSpeed),
+    };
+  } catch {
+    return {
+      voice: DEFAULT_INTERVIEW_VOICE,
+      speechSpeed: DEFAULT_INTERVIEW_SPEECH_SPEED,
+    };
+  }
+}
+
+export function writeInterviewVoicePreference(
+  storage: Pick<Storage, "setItem"> | null | undefined,
+  preference: InterviewVoicePreference,
+): void {
+  if (!storage) return;
+  try {
+    storage.setItem(INTERVIEW_VOICE_STORAGE_KEY, JSON.stringify(preference));
+  } catch {
+    // Ignore storage quota/private-mode errors. The selected value still applies to the current session.
+  }
+}
+
+export function normalizeInterviewVoice(value: unknown): InterviewVoice {
+  return INTERVIEW_VOICE_OPTIONS.some((option) => option.value === value)
+    ? (value as InterviewVoice)
+    : DEFAULT_INTERVIEW_VOICE;
+}
+
+export function normalizeInterviewSpeechSpeed(value: unknown): InterviewSpeechSpeed {
+  const numeric = Number(value);
+  const match = INTERVIEW_SPEECH_SPEED_OPTIONS.find((option) => option.value === numeric);
+  return match?.value ?? DEFAULT_INTERVIEW_SPEECH_SPEED;
+}
+
+export function toBackendInterviewType(type: InterviewType): PlatformInterviewType {
+  if (type === "hr") return "HR";
+  if (type === "mixed") return "MIXED";
+  return "TECHNICAL";
+}
+
+interface InterviewHistoryStateOptions {
+  canUseApi: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  itemCount: number;
+}
+
+export function getInterviewHistoryState({
+  canUseApi,
+  isLoading,
+  isError,
+  itemCount,
+}: InterviewHistoryStateOptions): InterviewHistoryState {
+  if (!canUseApi) return "signed-out";
+  if (isLoading) return "loading";
+  if (isError) return "error";
+  return itemCount === 0 ? "empty" : "ready";
+}
+
+export function getInterviewSessionStatusKey(status: string): InterviewSessionStatusKey {
+  if (status === "COMPLETED") return "completed";
+  if (status === "IN_PROGRESS") return "inProgress";
+  if (status === "CANCELLED") return "cancelled";
+  return "unknown";
+}
+
+export function getInterviewSessionStatusLabel(status: string): string {
+  const key = getInterviewSessionStatusKey(status);
+  if (key === "completed") return "Completed";
+  if (key === "inProgress") return "In progress";
+  if (key === "cancelled") return "Cancelled";
+  return "Unknown";
+}
+
+interface InterviewHistoryDetailStateOptions {
+  selectedSessionId: string | null;
+  isLoading: boolean;
+  isError: boolean;
+  result: Pick<InterviewDetailResponseDto, "status" | "overallScore"> | null;
+}
+
+export function canOpenInterviewHistory(phase: InterviewPhase): boolean {
+  return phase !== "interviewing";
+}
+
+export function canSwitchInterviewWorkspace(phase: InterviewPhase): boolean {
+  return phase !== "interviewing";
+}
+
+export function getInterviewHistoryDetailState({
+  selectedSessionId,
+  isLoading,
+  isError,
+  result,
+}: InterviewHistoryDetailStateOptions): InterviewHistoryDetailState {
+  if (!selectedSessionId) return "idle";
+  if (isLoading) return "loading";
+  if (isError) return "error";
+  if (!result || result.status !== "COMPLETED" || result.overallScore == null) return "not-scored";
+  return "ready";
 }
 
 export function secondsRemainingFromExpiry(expiresAt: string | null, now = new Date()): number {
@@ -54,15 +234,33 @@ export function getInterviewModeLabel({
   isVoiceFallback,
   questionAudioError,
 }: InterviewModeLabelOptions): string {
+  const key = getInterviewModeLabelKey({
+    interviewMode,
+    isLiveConnected,
+    isVoiceFallback,
+    questionAudioError,
+  });
+
+  if (key === "textFallback") return "Text fallback";
+  if (key === "liveRealtime") return "Live Realtime";
+  return "Guided Voice";
+}
+
+export function getInterviewModeLabelKey({
+  interviewMode,
+  isLiveConnected,
+  isVoiceFallback,
+  questionAudioError,
+}: InterviewModeLabelOptions): InterviewModeLabelKey {
   if (isVoiceFallback || (interviewMode === "guided" && questionAudioError)) {
-    return "Text fallback";
+    return "textFallback";
   }
 
   if (interviewMode === "realtime") {
-    return isLiveConnected ? "Live Realtime" : "Text fallback";
+    return isLiveConnected ? "liveRealtime" : "textFallback";
   }
 
-  return "Guided Voice";
+  return "guidedVoice";
 }
 
 interface RealtimeTokenFallbackOptions {
@@ -70,6 +268,7 @@ interface RealtimeTokenFallbackOptions {
   realtimeEnabled: boolean;
   clientSecret: string | null;
   reason?: string;
+  fallbackMessage?: string;
 }
 
 export function getRealtimeTokenFallbackReason({
@@ -77,15 +276,20 @@ export function getRealtimeTokenFallbackReason({
   realtimeEnabled,
   clientSecret,
   reason,
+  fallbackMessage,
 }: RealtimeTokenFallbackOptions): string | null {
   if (realtimeEnabled && clientSecret) return null;
   if (interviewMode === "guided") return null;
-  return reason || "Realtime token is unavailable. Continue in text mode.";
+  return reason || fallbackMessage || "Realtime token is unavailable. Continue in text mode.";
 }
 
-export function getQuestionAudioErrorMessage(error: unknown, fallback: string): string {
+export function getQuestionAudioErrorMessage(
+  error: unknown,
+  fallback: string,
+  timeoutFallback = "The interviewer voice took too long to load. Continue with the visible question.",
+): string {
   if (isTimeoutError(error)) {
-    return "The interviewer voice took too long to load. Continue with the visible question.";
+    return timeoutFallback;
   }
 
   return fallback;
@@ -125,6 +329,7 @@ function feedbackRecord(
 
 export function toInterviewResultViewModel(
   detail: InterviewDetailResponseDto,
+  fallbacks: { summary?: string } = {},
 ): InterviewResultViewModel {
   const feedback = detail.aiFeedback;
   return {
@@ -134,7 +339,10 @@ export function toInterviewResultViewModel(
     semanticScore: score(detail.semanticScore),
     llmScore: score(detail.llmScore),
     communicationScore: score(detail.communicationScore),
-    summary: typeof feedback?.summary === "string" ? feedback.summary : "No summary is available yet.",
+    summary:
+      typeof feedback?.summary === "string"
+        ? feedback.summary
+        : fallbacks.summary || "No summary is available yet.",
     recommendations: coerceStringList(feedback?.recommendations),
     modules: coerceStringList(feedback?.suggested_modules),
     technicalDelivery: feedbackRecord(feedback, "technical_delivery") ?? {},

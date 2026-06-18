@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
+  canOpenInterviewHistory,
+  canSwitchInterviewWorkspace,
+  buildInterviewStartRequest,
+  getInterviewHistoryDetailState,
+  getInterviewHistoryState,
   getInterviewModeLabel,
+  getInterviewModeLabelKey,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
+  getInterviewSessionStatusKey,
+  getInterviewSessionStatusLabel,
+  readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
+  writeInterviewVoicePreference,
 } from "./interview-view-model";
 
 const detail: InterviewDetailResponseDto = {
@@ -17,6 +27,8 @@ const detail: InterviewDetailResponseDto = {
   language: "vi",
   mode: "TEXT",
   interviewType: "TECHNICAL",
+  voice: "marin",
+  speechSpeed: 1.15,
   status: "COMPLETED",
   totalQuestionsPlanned: 7,
   maxDurationSeconds: 600,
@@ -71,6 +83,87 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
+  it.each([
+    ["setup", true],
+    ["results", true],
+    ["history-detail", true],
+    ["interviewing", false],
+  ] as const)("allows opening interview history only outside active interviews", (phase, expected) => {
+    expect(canOpenInterviewHistory(phase)).toBe(expected);
+  });
+
+  it.each([
+    ["setup", true],
+    ["results", true],
+    ["history-detail", true],
+    ["interviewing", false],
+  ] as const)("allows switching Practice/History only outside active interviews", (phase, expected) => {
+    expect(canSwitchInterviewWorkspace(phase)).toBe(expected);
+  });
+
+  it.each([
+    [{ canUseApi: false, isLoading: false, isError: false, itemCount: 0 }, "signed-out"],
+    [{ canUseApi: true, isLoading: true, isError: false, itemCount: 0 }, "loading"],
+    [{ canUseApi: true, isLoading: false, isError: true, itemCount: 0 }, "error"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 0 }, "empty"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 2 }, "ready"],
+  ] as const)("derives the interview history panel state", (input, expected) => {
+    expect(getInterviewHistoryState(input)).toBe(expected);
+  });
+
+  it.each([
+    ["COMPLETED", "completed"],
+    ["IN_PROGRESS", "inProgress"],
+    ["CANCELLED", "cancelled"],
+    ["UNKNOWN", "unknown"],
+  ] as const)("normalizes interview session status keys", (status, expected) => {
+    expect(getInterviewSessionStatusKey(status)).toBe(expected);
+  });
+
+  it.each([
+    ["COMPLETED", "Completed"],
+    ["IN_PROGRESS", "In progress"],
+    ["CANCELLED", "Cancelled"],
+    ["UNKNOWN", "Unknown"],
+  ] as const)("formats interview session status labels", (status, expected) => {
+    expect(getInterviewSessionStatusLabel(status)).toBe(expected);
+  });
+
+  it.each([
+    [{ selectedSessionId: null, isLoading: false, isError: false, result: null }, "idle"],
+    [{ selectedSessionId: "session-1", isLoading: true, isError: false, result: null }, "loading"],
+    [{ selectedSessionId: "session-1", isLoading: false, isError: true, result: null }, "error"],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "IN_PROGRESS", overallScore: null },
+      },
+      "not-scored",
+    ],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "COMPLETED", overallScore: null },
+      },
+      "not-scored",
+    ],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "COMPLETED", overallScore: 82 },
+      },
+      "ready",
+    ],
+  ] as const)("derives the selected interview history detail state", (input, expected) => {
+    expect(getInterviewHistoryDetailState(input)).toBe(expected);
+  });
+
   it("calculates countdown from backend expiresAt", () => {
     const now = new Date("2026-06-12T10:09:10.000Z");
 
@@ -97,6 +190,14 @@ describe("interview view model", () => {
 
   it("keeps guided mode labeled as voice when realtime transcription is not connected", () => {
     expect(
+      getInterviewModeLabelKey({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: null,
+      }),
+    ).toBe("guidedVoice");
+    expect(
       getInterviewModeLabel({
         interviewMode: "guided",
         isLiveConnected: false,
@@ -107,6 +208,14 @@ describe("interview view model", () => {
   });
 
   it("shows text fallback when guided question audio fails", () => {
+    expect(
+      getInterviewModeLabelKey({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: "Could not play audio.",
+      }),
+    ).toBe("textFallback");
     expect(
       getInterviewModeLabel({
         interviewMode: "guided",
@@ -147,4 +256,56 @@ describe("interview view model", () => {
       ),
     ).toBe("The interviewer voice took too long to load. Continue with the visible question.");
   });
+
+  it("builds the start interview request with voice and speed settings", () => {
+    expect(
+      buildInterviewStartRequest({
+        selectedCvId: null,
+        selectedMatchId: "match-1",
+        targetRole: "frontend_developer",
+        selectedLanguage: "vi",
+        interviewMode: "realtime",
+        interviewType: "mixed",
+        voice: "coral",
+        speechSpeed: 1.3,
+      }),
+    ).toMatchObject({
+      cvId: undefined,
+      cvMatchId: "match-1",
+      targetRole: "frontend_developer",
+      language: "vi",
+      mode: "VOICE",
+      interviewType: "MIXED",
+      voice: "coral",
+      speechSpeed: 1.3,
+    });
+  });
+
+  it("reads and writes interview voice preferences safely", () => {
+    const storage = new MemoryStorage();
+
+    expect(readInterviewVoicePreference(storage)).toEqual({
+      voice: "marin",
+      speechSpeed: 1.15,
+    });
+
+    writeInterviewVoicePreference(storage, { voice: "sage", speechSpeed: 1.3 });
+
+    expect(readInterviewVoicePreference(storage)).toEqual({
+      voice: "sage",
+      speechSpeed: 1.3,
+    });
+  });
 });
+
+class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}

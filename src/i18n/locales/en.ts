@@ -15,7 +15,7 @@ export default {
       tryDiagnosis: "Try CV Diagnosis",
       interview: {
         title: "AI Mock Interview",
-        body: "Live AI mock interviews are being wired to our new backend — coming very soon. Meanwhile, sharpen your CV with the Diagnosis tool.",
+        body: "Live AI mock interviews are being prepared — coming very soon. Meanwhile, sharpen your CV with the Diagnosis tool.",
       },
       roadmap: {
         title: "Learning Roadmap Generator",
@@ -498,6 +498,267 @@ export default {
             "Track mentor booking deposits and remaining payment states.",
           empty: "No mentor bookings found.",
         },
+      },
+    },
+    interview: {
+      title: "AI Mock Interview",
+      badge: {
+        autoScored: "Auto-scored",
+      },
+      workspace: {
+        practice: "Practice",
+        history: "History",
+      },
+      steps: {
+        "choose-cv": "Choose CV",
+        "choose-context": "Match or Role",
+        interview: "Voice Interview",
+        result: "AI Feedback",
+      },
+      stats: {
+        yourStats: "Your Stats",
+        total: "Total",
+        avgScore: "Avg Score",
+        best: "Best",
+        completed: "Completed",
+        overall: "Overall",
+      },
+      sidebar: {
+        recentSessions: "Recent Sessions",
+        signedOut: "Sign in with an API account to load history.",
+        loadingHistory: "Loading history...",
+        historyError: "Could not load interview history.",
+        retrying: "Retrying...",
+        tryAgain: "Try again",
+        emptyHistory: "No sessions yet",
+        viewResult: "View interview result",
+        historyDisabled: "History is disabled while an interview is running",
+        hide: "Hide sidebar",
+        show: "Show sidebar",
+      },
+      history: {
+        eyebrow: "Interview history",
+        title: "Review interview scores",
+        subtitle:
+          "Open previous interview sessions to review scores, feedback, and question-level analysis.",
+        startNew: "Start New Interview",
+        sessionsTitle: "Interview Sessions",
+        signedOutTitle: "Sign in required",
+        signedOutDescription:
+          "Sign in with a real SkillBridge account to view your interview history.",
+        loadingTitle: "Loading history...",
+        loadingDescription:
+          "SkillBridge is loading your 10 most recent interview sessions.",
+        errorTitle: "Could not load history",
+        errorDescription:
+          "Please try again. This error is shown explicitly instead of pretending the list is empty.",
+        emptyTitle: "No interview sessions yet",
+        emptyDescription:
+          "Start a new interview first, then come back here to review your score.",
+        unknownDate: "Unknown date",
+      },
+      status: {
+        completed: "Completed",
+        inProgress: "In progress",
+        cancelled: "Cancelled",
+        unknown: "Unknown",
+      },
+      detail: {
+        title: "Previous Interview Result",
+        subtitle:
+          "Review scores, feedback, and question-level analysis from a previous session.",
+        backToHistory: "Back to history",
+        loadingTitle: "Loading interview result...",
+        loadingDescription:
+          "SkillBridge is loading the selected session's score and detailed analysis.",
+        errorTitle: "Could not load interview result",
+        errorDescription:
+          "Please try again. If this keeps happening, the session may no longer be available.",
+        notScoredTitle: "This session has no score yet",
+        notScoredDescription:
+          "This interview is not completed yet or does not have an overall score. Choose another session from the list.",
+      },
+      setup: {
+        subtitle:
+          "Choose context, pick a voice mode, and fall back to text only if microphone or realtime fails.",
+        type: {
+          technical: "Technical",
+          hr: "HR",
+          mixed: "Mixed",
+        },
+        contextTitle: "Interview Context",
+        cvLabel: "CV",
+        useTargetRoleOnly: "Use target role only",
+        noCvTargetRoleOnly: "No CV - target role only",
+        uploadedAt: "Uploaded {{date}}",
+        cvJdMatchLabel: "CV/JD Match",
+        optionalMatchContext: "Optional match context",
+        chooseCvFirst: "Choose CV first",
+        noMatchContext: "No match context",
+        savedJd: "Saved JD",
+        noSavedMatch: "No saved JD match yet. The interview can still use CV + role.",
+        targetRole: "Target Role",
+        language: "Language",
+        cameraTitle: "Camera starts only when you begin",
+        cameraDescription:
+          "No microphone or camera permission is requested on setup load.",
+        tipsTitle: "Things to know",
+        tips: {
+          duration: {
+            title: "The interview has a time limit",
+            description:
+              "When time runs out, the interview ends and moves to scoring.",
+          },
+          answer: {
+            title: "Answer one question at a time",
+            description:
+              "Short, structured answers with concrete examples produce better feedback.",
+          },
+          fallback: {
+            title: "Voice has text fallback",
+            description:
+              "If microphone or realtime is unavailable, continue with text in the same session.",
+          },
+          privacy: {
+            title: "Privacy first",
+            description:
+              "Only the transcript is used for scoring; recordings are not stored.",
+          },
+        },
+        modes: {
+          guided: {
+            title: "Guided Voice",
+            description: "AI reads each question aloud; you answer one question at a time.",
+          },
+          realtime: {
+            title: "Live Conversation",
+            description:
+              "AI listens and responds like a live interviewer.",
+          },
+        },
+        voice: {
+          title: "Interviewer voice",
+          description:
+            "Choose the voice and pace before starting. These settings apply to this session.",
+          voiceLabel: "Voice",
+          speedLabel: "Speed",
+          voices: {
+            alloy: "Alloy - balanced",
+            ash: "Ash - smooth",
+            ballad: "Ballad - expressive",
+            marin: "Marin - warm and clear",
+            cedar: "Cedar - grounded",
+            coral: "Coral - bright and friendly",
+            echo: "Echo - clear",
+            sage: "Sage - calm and steady",
+            shimmer: "Shimmer - light",
+            verse: "Verse - crisp and focused",
+          },
+          speeds: {
+            "0_9": "0.9x",
+            "1_0": "1.0x",
+            "1_15": "1.15x",
+            "1_3": "1.3x",
+          },
+        },
+        starting: "Starting...",
+        startLiveRealtime: "Start Live Conversation",
+        startGuidedVoice: "Start Guided Voice",
+        startInterview: "Start Interview",
+      },
+      session: {
+        timeRemaining: "Time remaining",
+        answered: "{{count}} answered",
+        left: "{{count}} left",
+        end: "End",
+        ending: "Ending",
+        fullscreen: "Fullscreen",
+        exitFullscreen: "Exit fullscreen",
+        speaking: "Speaking",
+        thinking: "Thinking",
+        ready: "Ready",
+        videoFallback: "The interview can continue without video.",
+        live: "LIVE",
+        transcriptTitle: "Interview Transcript",
+        transcriptSubtitle: "Submit one answer at a time",
+        toggleMicrophone: "Toggle microphone",
+        reconnectVoice: "Reconnect voice",
+        generatingNextQuestion: "Generating next question...",
+        viewResults: "View Results",
+        spokenPlaceholder:
+          "Your spoken transcript appears here. Edit only if the transcript is wrong.",
+        textPlaceholder: "Text fallback: type your answer here.",
+        submitAnswer: "Submit Answer",
+        mode: {
+          textFallback: "Text fallback",
+          liveRealtime: "Live Conversation",
+          guidedVoice: "Guided Voice",
+        },
+      },
+      results: {
+        noResultTitle: "No result available",
+        noResultDescription:
+          "The interview has ended, but final scoring is not available yet.",
+        semantic: "Semantic",
+        llmScore: "LLM Score",
+        communication: "Communication",
+        duration: "Duration: {{duration}}",
+        answeredQuestions: "{{count}} answered question(s)",
+        summaryTitle: "AI Summary",
+        summaryDescription: "AI feedback summary",
+        strengths: "Strengths",
+        improve: "Improve",
+        emptyStrengths: "No strengths are available yet.",
+        emptyImprove: "No improvement items are available yet.",
+        technicalDelivery: "Technical Delivery",
+        technicalDeliveryDescription: "Core technical competencies",
+        communicationFlow: "Communication Flow",
+        communicationFlowDescription: "Verbal delivery analysis",
+        bodyLanguage: "Body Language",
+        bodyLanguageDescription:
+          "Scored only when the interview captures non-verbal signals",
+        bodyLanguageEmpty: "Body language was not captured for this session.",
+        recommendedNextSteps: "Recommended Next Steps",
+        recommendedNextStepsDescription: "Suggested from your interview score",
+        recommendations: "Recommendations",
+        suggestedModules: "Suggested Modules",
+        noMetrics: "No metrics are available yet.",
+        noItems: "No items are available yet.",
+        questionAnalysis: "Question Analysis",
+        noPersistedAnswers: "No saved answers are available yet.",
+        noSummary: "No summary is available yet.",
+      },
+      errors: {
+        mediaUnsupported: "Media devices are not supported in this browser.",
+        mediaNotFound: "Camera or microphone was not found.",
+        mediaDenied: "Camera or microphone permission was denied.",
+        noMicrophoneTrack: "No microphone track is available.",
+        realtimeVoiceFailed: "Live voice failed. Continue in text mode.",
+        questionAudioPlayFailed:
+          "Could not play the interviewer voice. Continue with the visible question.",
+        questionAudioTimeout:
+          "The interviewer voice took too long to load. Continue with the visible question.",
+        signInRequired:
+          "Please sign in with a real SkillBridge account before starting an interview.",
+        startFailed: "Failed to start interview.",
+        endFailed: "Failed to end interview.",
+        submitFailed: "Failed to submit answer.",
+        microphoneUnavailableSameSession:
+          "Microphone is unavailable. Continue in text mode in this same session.",
+        microphoneUnavailable: "Microphone is unavailable. Continue in text mode.",
+        realtimeTokenUnavailable:
+          "Live voice mode is unavailable. Continue in text mode.",
+        reconnectFailed: "Could not reconnect live voice. Continue in text mode.",
+      },
+      roles: {
+        frontend_developer: "Frontend Developer",
+        backend_developer: "Backend Developer",
+        fullstack_developer: "Fullstack Developer",
+        mobile_developer: "Mobile Developer",
+        devops_engineer: "DevOps Engineer",
+        qa_tester: "QA Tester",
+        data_analyst: "Data Analyst",
+        ai_ml_engineer: "AI / ML Engineer",
       },
     },
   },

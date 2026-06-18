@@ -10,9 +10,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type InterviewPhase = "setup" | "interviewing" | "results";
+export type InterviewPhase = "setup" | "interviewing" | "results" | "history-detail";
+export type InterviewWorkspaceTab = "practice" | "history";
 export type InterviewMode = "guided" | "realtime";
 export type InterviewType = "technical" | "hr" | "mixed";
+export type InterviewVoice =
+  | "alloy"
+  | "ash"
+  | "ballad"
+  | "coral"
+  | "echo"
+  | "sage"
+  | "shimmer"
+  | "verse"
+  | "marin"
+  | "cedar";
+export type InterviewSpeechSpeed = 0.9 | 1 | 1.15 | 1.3;
 
 export interface ChatMessage {
   id?: string;
@@ -36,6 +49,30 @@ export const AVAILABLE_LANGUAGES = [
   { value: "vi", label: "VI" },
   { value: "en", label: "EN" },
 ] as const;
+
+export const DEFAULT_INTERVIEW_VOICE: InterviewVoice = "marin";
+export const DEFAULT_INTERVIEW_SPEECH_SPEED: InterviewSpeechSpeed = 1.15;
+export const INTERVIEW_VOICE_STORAGE_KEY = "skillbridge.interview.voicePreference";
+
+export const INTERVIEW_VOICE_OPTIONS = [
+  { value: "alloy", i18nKey: "alloy" },
+  { value: "ash", i18nKey: "ash" },
+  { value: "ballad", i18nKey: "ballad" },
+  { value: "marin", i18nKey: "marin" },
+  { value: "cedar", i18nKey: "cedar" },
+  { value: "coral", i18nKey: "coral" },
+  { value: "echo", i18nKey: "echo" },
+  { value: "sage", i18nKey: "sage" },
+  { value: "shimmer", i18nKey: "shimmer" },
+  { value: "verse", i18nKey: "verse" },
+] as const satisfies readonly { value: InterviewVoice; i18nKey: string }[];
+
+export const INTERVIEW_SPEECH_SPEED_OPTIONS = [
+  { value: 0.9, i18nKey: "0_9" },
+  { value: 1, i18nKey: "1_0" },
+  { value: 1.15, i18nKey: "1_15" },
+  { value: 1.3, i18nKey: "1_3" },
+] as const satisfies readonly { value: InterviewSpeechSpeed; i18nKey: string }[];
 
 export const STEP_ICONS: Record<string, LucideIcon> = {
   FileText,
