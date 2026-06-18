@@ -47,10 +47,37 @@ export type InterviewHistoryState = "signed-out" | "loading" | "error" | "empty"
 export type InterviewHistoryDetailState = "idle" | "loading" | "error" | "not-scored" | "ready";
 export type InterviewSessionStatusKey = "completed" | "inProgress" | "cancelled" | "unknown";
 export type InterviewModeLabelKey = "textFallback" | "liveRealtime" | "guidedVoice";
+export type InterviewEndIntent = "cancel" | "score";
+export type InterviewEndOutcome = "cancelled" | "scored";
+export type LiveTranscriptWarning = "cjk" | "promptLeak";
 
 export interface InterviewVoicePreference {
   voice: InterviewVoice;
   speechSpeed: InterviewSpeechSpeed;
+}
+
+export function getInterviewEndIntent(answeredCount: number): InterviewEndIntent {
+  return answeredCount > 0 ? "score" : "cancel";
+}
+
+export function getInterviewEndOutcome(status: string): InterviewEndOutcome {
+  return status.toUpperCase() === "CANCELLED" ? "cancelled" : "scored";
+}
+
+export function takeRecentInterviewSessions<T>(sessions: readonly T[], limit = 3): T[] {
+  return sessions.slice(0, limit);
+}
+
+export function buildInterviewInitialMessages(
+  firstMessage: string | null | undefined,
+  firstQuestion: string | null | undefined,
+): string[] {
+  const content = uniqueNonEmptyStrings([firstMessage, firstQuestion]).join("\n\n");
+  return content ? [content] : [];
+}
+
+export function buildInterviewNextMessages(nextQuestion: string | null | undefined): string[] {
+  return uniqueNonEmptyStrings([nextQuestion]);
 }
 
 interface BuildInterviewStartRequestInput extends InterviewVoicePreference {
@@ -295,6 +322,48 @@ export function getQuestionAudioErrorMessage(
   return fallback;
 }
 
+export function shouldRequestQuestionAudio(interviewMode: InterviewMode): boolean {
+  return interviewMode === "guided";
+}
+
+interface LiveClosingSignalOptions {
+  interviewMode: InterviewMode;
+  isVoiceFallback: boolean;
+  isLiveConnected: boolean;
+  secondsRemaining: number;
+  alreadyRequested: boolean;
+}
+
+export function shouldRequestLiveClosingSignal({
+  interviewMode,
+  isVoiceFallback,
+  isLiveConnected,
+  secondsRemaining,
+  alreadyRequested,
+}: LiveClosingSignalOptions): boolean {
+  return (
+    interviewMode === "realtime" &&
+    !isVoiceFallback &&
+    isLiveConnected &&
+    !alreadyRequested &&
+    secondsRemaining > 0 &&
+    secondsRemaining <= 45
+  );
+}
+
+export function getLiveTranscriptWarnings(text: string): LiveTranscriptWarning[] {
+  const warnings: LiveTranscriptWarning[] = [];
+  if (/[\u3400-\u9FFF\uF900-\uFAFF]/u.test(text)) warnings.push("cjk");
+  if (
+    /Cuộc phỏng vấn bằng tiếng Việt/i.test(text) ||
+    /Giữ nguyên dấu tiếng Việt/i.test(text) ||
+    /English interview\. Preserve technical terms/i.test(text)
+  ) {
+    warnings.push("promptLeak");
+  }
+  return warnings;
+}
+
 function isTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const value = error as { code?: unknown; message?: unknown };
@@ -308,6 +377,10 @@ export function coerceStringList(value: unknown): string[] {
   }
   if (typeof value === "string" && value.trim() !== "") return [value.trim()];
   return [];
+}
+
+function uniqueNonEmptyStrings(messages: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(messages.map((message) => message?.trim()).filter(Boolean))) as string[];
 }
 
 function score(value: number | null | undefined): number | null {

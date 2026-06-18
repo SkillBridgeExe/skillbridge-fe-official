@@ -11,7 +11,13 @@ import {
   startInterview,
   submitInterviewTurn,
   type InterviewHistoryQuery,
+  type LiveInterviewTurnInput,
 } from "@/api/interview-api";
+
+interface EndInterviewMutationInput {
+  sessionId: string;
+  liveTurns?: LiveInterviewTurnInput[];
+}
 
 function shouldRetryInterviewHistory(failureCount: number, error: unknown): boolean {
   if (failureCount >= 1) return false;
@@ -87,7 +93,8 @@ export function useEndInterview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: endInterview,
+    mutationFn: ({ sessionId, liveTurns }: EndInterviewMutationInput) =>
+      endInterview(sessionId, liveTurns),
     onSuccess: (session) => {
       queryClient.setQueryData(QUERY_KEYS.INTERVIEW_DETAIL(session.id), session);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.INTERVIEW_HISTORY });

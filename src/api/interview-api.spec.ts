@@ -143,6 +143,33 @@ describe("interview-api", () => {
     expect(httpClient.get).toHaveBeenNthCalledWith(2, API_ROUTES.INTERVIEW.DETAIL("session-1"));
   });
 
+  it("sends reviewed live realtime turns when ending a voice interview", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(ok({ id: "session-1", turns: [] }) as never);
+
+    await endInterview("session-1", [
+      {
+        turnOrder: 1,
+        interviewerQuestion: "Bạn đã thiết kế API đó như thế nào?",
+        userAnswerText: "Em tách controller, service và repository.",
+        userAnswerTranscript: "Em tách controller, service và repository.",
+        durationSeconds: 55,
+      },
+    ]);
+
+    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.END, {
+      sessionId: "session-1",
+      liveTurns: [
+        {
+          turnOrder: 1,
+          interviewerQuestion: "Bạn đã thiết kế API đó như thế nào?",
+          userAnswerText: "Em tách controller, service và repository.",
+          userAnswerTranscript: "Em tách controller, service và repository.",
+          durationSeconds: 55,
+        },
+      ],
+    });
+  });
+
   it("refreshes realtime token only for a concrete session route", async () => {
     vi.mocked(httpClient.post).mockReturnValueOnce(
       ok({

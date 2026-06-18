@@ -17,6 +17,7 @@ export type RealtimeEventCallback = (event: RealtimeEvent) => void;
 interface ConnectRealtimeOptions {
   clientSecret: string;
   stream: MediaStream;
+  initialMicEnabled?: boolean;
 }
 
 export class OpenAIRealtimeSession {
@@ -35,7 +36,7 @@ export class OpenAIRealtimeSession {
     };
   }
 
-  async connect({ clientSecret, stream }: ConnectRealtimeOptions): Promise<void> {
+  async connect({ clientSecret, stream, initialMicEnabled = true }: ConnectRealtimeOptions): Promise<void> {
     this.disconnect();
 
     const pc = new RTCPeerConnection();
@@ -78,6 +79,7 @@ export class OpenAIRealtimeSession {
     };
 
     for (const track of stream.getAudioTracks()) {
+      track.enabled = initialMicEnabled;
       pc.addTrack(track, stream);
     }
 
@@ -107,6 +109,28 @@ export class OpenAIRealtimeSession {
   setMicEnabled(enabled: boolean): void {
     this.localStream?.getAudioTracks().forEach((track) => {
       track.enabled = enabled;
+    });
+  }
+
+  startLiveInterview(): void {
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+      },
+    });
+  }
+
+  requestLiveInterviewClosing(language: "vi" | "en"): void {
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+        instructions:
+          language === "vi"
+            ? "Cảm ơn ứng viên bằng tiếng Việt trong 2-3 câu ngắn, nói buổi phỏng vấn sắp kết thúc, không hỏi thêm câu mới, và không đưa điểm số hoặc đáp án mẫu."
+            : "Thank the candidate in 2-3 short English sentences, say the interview is ending soon, ask no new questions, and do not provide scores or model answers.",
+      },
     });
   }
 

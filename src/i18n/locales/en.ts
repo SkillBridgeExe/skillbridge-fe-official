@@ -525,6 +525,7 @@ export default {
       },
       sidebar: {
         recentSessions: "Recent Sessions",
+        viewAll: "View all",
         signedOut: "Sign in with an API account to load history.",
         loadingHistory: "Loading history...",
         historyError: "Could not load interview history.",
@@ -681,12 +682,15 @@ export default {
         live: "LIVE",
         transcriptTitle: "Interview Transcript",
         transcriptSubtitle: "Submit one answer at a time",
-        toggleMicrophone: "Toggle microphone",
+        liveTranscriptSubtitle: "Captured automatically",
+        toggleMicrophone: "Press mic when you answer",
         reconnectVoice: "Reconnect voice",
         generatingNextQuestion: "Generating next question...",
         viewResults: "View Results",
+        liveMicOn: "Live mic is on",
+        liveMicMuted: "Live mic is muted",
         spokenPlaceholder:
-          "Your spoken transcript appears here. Edit only if the transcript is wrong.",
+          "Press the mic when you speak; your transcript appears here. Edit only if it is wrong.",
         textPlaceholder: "Text fallback: type your answer here.",
         submitAnswer: "Submit Answer",
         mode: {
@@ -694,6 +698,34 @@ export default {
           liveRealtime: "Live Conversation",
           guidedVoice: "Guided Voice",
         },
+      },
+      liveReview: {
+        title: "Review live transcript",
+        description:
+          "Edit the interviewer questions and your answers before generating the final score.",
+        turn: "Turn {{count}}",
+        needsReview: "Needs review",
+        questionLabel: "Interviewer question",
+        answerLabel: "Your answer",
+        warning:
+          "Some transcript text looks like the wrong language or leaked system prompt. Fix it before scoring.",
+        back: "Back",
+        confirmScore: "Submit reviewed transcript",
+      },
+      endConfirmation: {
+        cancelTitle: "Cancel this interview?",
+        cancelDescription:
+          "You have not submitted any answers. Ending now will cancel the session and no score will be generated.",
+        scoreTitle: "End and score this interview?",
+        scoreDescription:
+          "Your submitted answers will be scored and this interview will end.",
+        keepInterviewing: "Keep interviewing",
+        confirmCancel: "Cancel interview",
+        confirmScore: "End and score",
+      },
+      cancelledToast: {
+        title: "Interview cancelled",
+        description: "The session had no submitted answers, so no score was generated.",
       },
       results: {
         noResultTitle: "No result available",
