@@ -6,6 +6,7 @@ import {
   useCvListForInterview,
   useCvMatchesForInterview,
   useEndInterview,
+  useInterviewDetail,
   useInterviewHistory,
 } from "./use-interview";
 
@@ -82,6 +83,28 @@ describe("use-interview query gating", () => {
     expect(useQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
+        enabled: true,
+      }),
+    );
+  });
+
+  it("keeps interview detail disabled until a history session is selected", () => {
+    useInterviewDetail(null, true);
+
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: QUERY_KEYS.INTERVIEW_DETAIL("none"),
+        enabled: false,
+      }),
+    );
+  });
+
+  it("enables interview detail only when the selected session and API session are available", () => {
+    useInterviewDetail("session-1", true);
+
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: QUERY_KEYS.INTERVIEW_DETAIL("session-1"),
         enabled: true,
       }),
     );
