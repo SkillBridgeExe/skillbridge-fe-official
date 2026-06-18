@@ -87,6 +87,7 @@ export function InterviewSession({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isVoiceConnected = isLiveConnected && !isVoiceFallback;
+  const isLiveRealtime = interviewMode === "realtime" && isVoiceConnected;
   const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
   const modeLabelKey = getInterviewModeLabelKey({
     interviewMode,
@@ -316,7 +317,9 @@ export function InterviewSession({
                 {t("interview.session.transcriptTitle")}
               </h3>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {t("interview.session.transcriptSubtitle")}
+                {isLiveRealtime
+                  ? t("interview.session.liveTranscriptSubtitle")
+                  : t("interview.session.transcriptSubtitle")}
               </p>
             </div>
             {(interviewMode === "guided" || interviewMode === "realtime") && (
@@ -325,7 +328,7 @@ export function InterviewSession({
                 variant={isMicActive ? "default" : "outline"}
                 className="h-9 w-9 rounded-full"
                 onClick={toggleLiveMic}
-                disabled={isLoading}
+                disabled={isLoading || (!isLiveRealtime && isInterviewerSpeaking)}
                 title={
                   isLiveConnected
                     ? t("interview.session.toggleMicrophone")
@@ -391,6 +394,21 @@ export function InterviewSession({
             <Button className="w-full rounded-xl font-bold" onClick={onStop} disabled={isEnding}>
               {t("interview.session.viewResults")}
             </Button>
+          ) : isLiveRealtime ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                {isMicActive ? (
+                  <Mic className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <MicOff className="h-4 w-4 text-slate-400" />
+                )}
+                <span>
+                  {isMicActive
+                    ? t("interview.session.liveMicOn")
+                    : t("interview.session.liveMicMuted")}
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="space-y-2">
               <Textarea

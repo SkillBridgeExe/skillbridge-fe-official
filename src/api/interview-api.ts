@@ -113,6 +113,14 @@ export interface SubmitInterviewTurnRequest {
   durationSeconds?: number;
 }
 
+export interface LiveInterviewTurnInput {
+  turnOrder: number;
+  interviewerQuestion: string;
+  userAnswerText: string;
+  userAnswerTranscript?: string;
+  durationSeconds?: number;
+}
+
 export interface AnswerInterviewResponseDto {
   session: InterviewSessionDto;
   answeredTurn: InterviewTurnDto;
@@ -158,9 +166,13 @@ export async function submitInterviewTurn(
   return envelope.data;
 }
 
-export async function endInterview(sessionId: string): Promise<InterviewDetailResponseDto> {
+export async function endInterview(
+  sessionId: string,
+  liveTurns?: LiveInterviewTurnInput[],
+): Promise<InterviewDetailResponseDto> {
+  const payload = liveTurns ? { sessionId, liveTurns } : { sessionId };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
-    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }),
+    httpClient.post(API_ROUTES.INTERVIEW.END, payload),
     "Failed to end interview.",
   );
   return envelope.data;

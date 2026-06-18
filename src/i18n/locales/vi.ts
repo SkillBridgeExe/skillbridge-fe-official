@@ -521,6 +521,7 @@ export default {
       },
       sidebar: {
         recentSessions: "Phiên gần đây",
+        viewAll: "Xem tất cả",
         signedOut: "Đăng nhập bằng tài khoản API để tải lịch sử.",
         loadingHistory: "Đang tải lịch sử...",
         historyError: "Không tải được lịch sử phỏng vấn.",
@@ -677,12 +678,15 @@ export default {
         live: "LIVE",
         transcriptTitle: "Transcript phỏng vấn",
         transcriptSubtitle: "Gửi từng câu trả lời một",
-        toggleMicrophone: "Bật/tắt microphone",
+        liveTranscriptSubtitle: "Transcript tự động",
+        toggleMicrophone: "Bấm mic khi bạn trả lời",
         reconnectVoice: "Kết nối lại giọng nói",
         generatingNextQuestion: "Đang tạo câu hỏi tiếp theo...",
         viewResults: "Xem kết quả",
+        liveMicOn: "Mic live đang bật",
+        liveMicMuted: "Mic live đang tắt",
         spokenPlaceholder:
-          "Transcript từ giọng nói sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
+          "Bấm mic khi bạn nói; transcript sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
         textPlaceholder: "Fallback text: nhập câu trả lời của bạn ở đây.",
         submitAnswer: "Gửi câu trả lời",
         mode: {
@@ -690,6 +694,34 @@ export default {
           liveRealtime: "Hội thoại trực tiếp",
           guidedVoice: "Giọng nói có hướng dẫn",
         },
+      },
+      liveReview: {
+        title: "Review transcript live",
+        description:
+          "Sửa lại câu hỏi của interviewer và câu trả lời của bạn trước khi chấm điểm.",
+        turn: "Lượt {{count}}",
+        needsReview: "Cần review",
+        questionLabel: "Câu hỏi interviewer",
+        answerLabel: "Câu trả lời của bạn",
+        warning:
+          "Transcript có đoạn giống sai ngôn ngữ hoặc dính prompt hệ thống. Hãy sửa trước khi chấm điểm.",
+        back: "Quay lại",
+        confirmScore: "Gửi transcript đã review",
+      },
+      endConfirmation: {
+        cancelTitle: "Hủy phiên phỏng vấn này?",
+        cancelDescription:
+          "Bạn chưa gửi câu trả lời nào. Kết thúc lúc này sẽ hủy phiên và không tạo điểm.",
+        scoreTitle: "Kết thúc và chấm điểm?",
+        scoreDescription:
+          "Các câu trả lời đã gửi sẽ được chấm điểm và phiên phỏng vấn sẽ kết thúc.",
+        keepInterviewing: "Tiếp tục phỏng vấn",
+        confirmCancel: "Hủy phiên",
+        confirmScore: "Kết thúc và chấm điểm",
+      },
+      cancelledToast: {
+        title: "Đã hủy phiên phỏng vấn",
+        description: "Phiên chưa có câu trả lời nào nên không tạo điểm.",
       },
       results: {
         noResultTitle: "Chưa có kết quả",

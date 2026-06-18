@@ -165,4 +165,139 @@ describe("OpenAIRealtimeSession", () => {
 
     expect(sent).toEqual([]);
   });
+
+  it("can start a live interviewer response without injecting a user prompt", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: unknown[] = [];
+    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+
+    session.startLiveInterview();
+
+    expect(sent).toEqual([
+      {
+        type: "response.create",
+        response: {
+          output_modalities: ["audio"],
+        },
+      },
+    ]);
+  });
+
+  it("can ask the live interviewer to close without injecting a user prompt", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: unknown[] = [];
+    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+
+    session.requestLiveInterviewClosing("vi");
+
+    expect(sent).toEqual([
+      {
+        type: "response.create",
+        response: {
+          output_modalities: ["audio"],
+          instructions: expect.stringContaining("Cảm ơn ứng viên"),
+        },
+      },
+    ]);
+  });
+
+  it("can connect with the microphone disabled for push-to-talk sessions", async () => {
+    const dataChannel = {
+      readyState: "open",
+      send: vi.fn(),
+      close: vi.fn(),
+      onopen: null,
+      onmessage: null,
+      onerror: null,
+    };
+    const peerConnection = {
+      connectionState: "new",
+      createDataChannel: vi.fn(() => dataChannel),
+      addTrack: vi.fn(),
+      createOffer: vi.fn(async () => ({ type: "offer", sdp: "offer-sdp" })),
+      setLocalDescription: vi.fn(async () => undefined),
+      setRemoteDescription: vi.fn(async () => undefined),
+      close: vi.fn(),
+      ontrack: null,
+      onconnectionstatechange: null,
+    };
+    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({
+        autoplay: false,
+        pause: vi.fn(),
+        srcObject: null,
+      })),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        text: async () => "answer-sdp",
+      })),
+    );
+    const audioTrack = { enabled: true } as MediaStreamTrack;
+    const stream = {
+      getAudioTracks: () => [audioTrack],
+    } as unknown as MediaStream;
+
+    await new OpenAIRealtimeSession().connect({
+      clientSecret: "client-secret",
+      stream,
+      initialMicEnabled: false,
+    });
+
+    expect(audioTrack.enabled).toBe(false);
+    expect(peerConnection.addTrack).toHaveBeenCalledWith(audioTrack, stream);
+  });
+
+  it("surfaces the WebRTC handshake error returned by OpenAI", async () => {
+    const dataChannel = {
+      readyState: "connecting",
+      send: vi.fn(),
+      close: vi.fn(),
+      onopen: null,
+      onmessage: null,
+      onerror: null,
+    };
+    const peerConnection = {
+      connectionState: "new",
+      createDataChannel: vi.fn(() => dataChannel),
+      addTrack: vi.fn(),
+      createOffer: vi.fn(async () => ({ type: "offer", sdp: "offer-sdp" })),
+      setLocalDescription: vi.fn(async () => undefined),
+      setRemoteDescription: vi.fn(async () => undefined),
+      close: vi.fn(),
+      ontrack: null,
+      onconnectionstatechange: null,
+    };
+    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({
+        autoplay: false,
+        pause: vi.fn(),
+        srcObject: null,
+      })),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        text: async () => "Invalid or expired realtime client secret.",
+      })),
+    );
+    const stream = {
+      getAudioTracks: () => [{ enabled: true }],
+    } as unknown as MediaStream;
+
+    await expect(
+      new OpenAIRealtimeSession().connect({ clientSecret: "expired-secret", stream }),
+    ).rejects.toThrow("Invalid or expired realtime client secret.");
+  });
 });

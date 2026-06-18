@@ -1,18 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
+  buildInterviewInitialMessages,
+  buildInterviewNextMessages,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
+  getLiveTranscriptWarnings,
+  getInterviewEndIntent,
+  getInterviewEndOutcome,
   getInterviewHistoryDetailState,
   getInterviewHistoryState,
   getInterviewModeLabel,
   getInterviewModeLabelKey,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
+  shouldRequestLiveClosingSignal,
+  shouldRequestQuestionAudio,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
   readInterviewVoicePreference,
+  takeRecentInterviewSessions,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
   writeInterviewVoicePreference,
@@ -207,6 +215,48 @@ describe("interview view model", () => {
     ).toBe("Guided Voice");
   });
 
+  it.each([
+    [0, "cancel"],
+    [1, "score"],
+    [3, "score"],
+  ] as const)("uses %i answered turns to choose the %s end flow", (answeredCount, expected) => {
+    expect(getInterviewEndIntent(answeredCount)).toBe(expected);
+  });
+
+  it("combines the opening message and first question into one interviewer bubble", () => {
+    expect(buildInterviewInitialMessages("Welcome.", "Tell me about your project.")).toEqual([
+      "Welcome.\n\nTell me about your project.",
+    ]);
+  });
+
+  it("shows only the official next question after an answered turn", () => {
+    expect(buildInterviewNextMessages("What trade-off did you make?")).toEqual([
+      "What trade-off did you make?",
+    ]);
+    expect(buildInterviewNextMessages(null)).toEqual([]);
+  });
+
+  it.each([
+    ["CANCELLED", "cancelled"],
+    ["COMPLETED", "scored"],
+  ] as const)("maps a %s end response to the %s UI outcome", (status, expected) => {
+    expect(getInterviewEndOutcome(status)).toBe(expected);
+  });
+
+  it.each([
+    [[], []],
+    [["session-3", "session-2", "session-1"], ["session-3", "session-2", "session-1"]],
+    [
+      ["session-4", "session-3", "session-2", "session-1"],
+      ["session-4", "session-3", "session-2"],
+    ],
+  ] as const)("keeps at most three recent sessions without mutating the source", (ids, expected) => {
+    const sessions = ids.map((id) => ({ id }));
+
+    expect(takeRecentInterviewSessions(sessions).map((session) => session.id)).toEqual(expected);
+    expect(sessions.map((session) => session.id)).toEqual(ids);
+  });
+
   it("shows text fallback when guided question audio fails", () => {
     expect(
       getInterviewModeLabelKey({
@@ -255,6 +305,53 @@ describe("interview view model", () => {
         "Could not play the interviewer voice.",
       ),
     ).toBe("The interviewer voice took too long to load. Continue with the visible question.");
+  });
+
+  it("does not request guided question audio for live realtime mode", () => {
+    expect(shouldRequestQuestionAudio("realtime")).toBe(false);
+    expect(shouldRequestQuestionAudio("guided")).toBe(true);
+  });
+
+  it("requests live closing once when realtime is near the time limit", () => {
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "realtime",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 45,
+        alreadyRequested: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "realtime",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 44,
+        alreadyRequested: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "guided",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 45,
+        alreadyRequested: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("flags CJK and leaked transcription prompt fragments in live transcripts", () => {
+    expect(
+      getLiveTranscriptWarnings("第一张原有很不流动来的求接下午. Em có làm API backend."),
+    ).toContain("cjk");
+    expect(
+      getLiveTranscriptWarnings(
+        "Cuộc phỏng vấn bằng tiếng Việt. Giữ nguyên dấu tiếng Việt và các thuật ngữ kỹ thuật tiếng Anh như React, TypeScript và API.",
+      ),
+    ).toContain("promptLeak");
+    expect(getLiveTranscriptWarnings("Em dùng React, TypeScript và API Gateway.")).toEqual([]);
   });
 
   it("builds the start interview request with voice and speed settings", () => {
