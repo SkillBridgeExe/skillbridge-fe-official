@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 
 
 export function ExperienceSection() {
-  const { experience, addExperience, updateExperience, removeExperience, draftId } = useCvBuilderStore();
+  const { experience, addExperience, updateExperience, removeExperience, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -110,6 +110,7 @@ export function ExperienceSection() {
     updateExperience(entryId, field, activeSuggestion.suggestion);
     updateExperience(entryId, "aiRewrite", oldValue); // Sử dụng aiRewrite để lưu backup
     setOriginalTextMap((prev) => ({ ...prev, [`${entryId}_${field}`]: oldValue }));
+    clearSectionEvaluation("experience");
   };
 
   const handleUndo = (entryId: string, field: "description" | "achievements") => {

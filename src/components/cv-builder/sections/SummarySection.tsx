@@ -64,7 +64,7 @@ function composeSummarySource(): string {
 type SummaryHint = AiGateCode | "LOCAL_ONLY";
 
 export function SummarySection() {
-  const { summary, summaryMode, setSummary, setSummaryMode, draftId } = useCvBuilderStore();
+  const { summary, summaryMode, setSummary, setSummaryMode, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -113,11 +113,28 @@ export function SummarySection() {
     // "Viết lại" → tăng attempt để gửi variant mới (BE bỏ cache, sinh gợi ý khác).
     const attempt = regenerate ? (suggestAttempt.current += 1) : suggestAttempt.current;
 
+    // P2: If we have BE evaluation data for summary, build a custom instruction
+    // from failed checklist items and missing suggestions so AI fixes the actual issues.
+    const summaryEval = useCvBuilderStore.getState().sectionEvaluations.summary;
+    const failedItems = summaryEval?.checklist?.filter(c => !c.pass).map(c => c.criterion) ?? [];
+    const missingItems = summaryEval?.missing ?? [];
+    const hasEvalHints = failedItems.length > 0 || missingItems.length > 0;
+
+    const evalInstruction = hasEvalHints
+      ? [
+          "Rewrite this CV summary to fix these specific issues:",
+          ...failedItems.map(c => `- Fix: ${c}`),
+          ...missingItems.map(m => `- Add: ${m}`),
+          "Keep the same meaning and facts. Use active voice, no first-person pronouns.",
+        ].join("\n").slice(0, 500)
+      : undefined;
+
     suggestRewrite.rewrite(
       {
         draftId,
         text: summary,
-        mode: "harvard",
+        mode: hasEvalHints ? "custom" : "harvard",
+        ...(hasEvalHints ? { instruction: evalInstruction } : {}),
         role_code: targetRole ?? undefined,
         section: "summary",
         ...(attempt > 0 ? { variant: String(attempt) } : {}),
@@ -147,6 +164,7 @@ export function SummarySection() {
     if (!suggestionText) return;
     setOriginalText(summary);
     setSummary(suggestionText);
+    clearSectionEvaluation("summary");
   };
 
   const handleUndo = () => {
@@ -195,6 +213,7 @@ export function SummarySection() {
           setSummary(data.suggestion);
           setSummaryMode("manual");
           setGenerateFallback(!!data.fallback);
+          clearSectionEvaluation("summary");
           toast({ title: t("builder.toastSummaryGenerated") });
         },
         onGateFail: (reason) => setGateHint(reason),

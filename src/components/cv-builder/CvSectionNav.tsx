@@ -52,8 +52,13 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
 
-  // Calculate completion
-  const doneCount = statuses.filter(s => s.status === "completed").length;
+  // Calculate completion — prefer BE evaluation over local heuristic
+  const doneCount = statuses.filter((s, i) => {
+    const beSection = sectionUiToBeMap[SECTIONS[i]?.id];
+    const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
+    if (evaluation) return evaluation.score >= 80;
+    return s.status === "completed";
+  }).length;
   const totalCount = 8; // There are 8 metadata statuses (0-7)
 
   // IntersectionObserver to sync scroll active section

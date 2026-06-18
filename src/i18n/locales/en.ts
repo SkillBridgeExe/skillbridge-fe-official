@@ -1546,9 +1546,16 @@ export default {
       toastWriteTextFirst: "Please write some text first",
       toastAiSuggestFailed: "AI suggestion failed",
       toastSomethingWrong: "Something went wrong.",
-      turnIntoBullets: "Turn into bullet points",
+      turnIntoBullets: "Rewrite as CV bullets",
       noCerts: "No certifications added yet.",
       remove: "Remove",
+      review: {
+        completionScore: "CV Completion Score",
+        fix: "Fix",
+        completed: "Completed",
+        needsImprovement: "Needs improvement",
+        missing: "Not started",
+      },
       skillInputPlaceholder: "Type a skill and press Enter...",
       commonSkillsSuggest: "Common skills for {{role}}",
       skills: {

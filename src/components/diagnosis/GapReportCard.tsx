@@ -117,11 +117,17 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                 return (
                   <div
                     key={`${gap.requirement_id || gap.canonical_name}-${i}`}
-                    className={cn(
-                      "p-3 pl-3.5 rounded-lg border border-[#EAEAEA] border-l-4 bg-[#FDFDFD] space-y-2.5 animate-in fade-in duration-300 transition-all hover:border-slate-300",
-                      severityBorderColor
-                    )}
+                    className="p-1.5 rounded-2xl bg-slate-50 border border-slate-200/50 shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.01] hover:shadow-md group"
+                    style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
                   >
+                    {/* Inner Core */}
+                    <div
+                      className={cn(
+                        "p-4 rounded-[calc(1rem-0.375rem)] bg-white border border-slate-100 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)] space-y-3 transition-colors duration-500",
+                        severityBorderColor,
+                        "border-l-[3px]"
+                      )}
+                    >
                     {/* Top row: Name, Type, Importance, Status, Fixability */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[13px] font-bold text-[#2F3437] mr-1">
@@ -176,6 +182,7 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         )}
                       </div>
                     )}
+                    </div>
                   </div>
                 );
               })}

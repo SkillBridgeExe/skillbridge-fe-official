@@ -171,6 +171,7 @@ interface CvBuilderState {
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
   setSectionEvaluation: (section: BuilderSection, result: EvaluateSectionResponse) => void;
+  clearSectionEvaluation: (section: BuilderSection) => void;
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
@@ -358,6 +359,12 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
     set((s) => ({ sectionEvaluations: { ...s.sectionEvaluations, [section]: result } })),
+  clearSectionEvaluation: (section) =>
+    set((s) => {
+      const next = { ...s.sectionEvaluations };
+      delete next[section];
+      return { sectionEvaluations: next };
+    }),
 
   // Seed từ CV đã chẩn đoán
   hydrateFromCanonical: (doc) => set(canonicalToBuilderState(doc)),
