@@ -15,7 +15,7 @@ export default {
       tryDiagnosis: "Thử Chẩn đoán CV",
       interview: {
         title: "Phỏng vấn thử với AI",
-        body: "Phỏng vấn thử với AI đang được nối với backend mới — sắp ra mắt. Trong lúc chờ, hãy tối ưu CV bằng công cụ Chẩn đoán.",
+        body: "Phỏng vấn thử với AI đang được chuẩn bị — sắp ra mắt. Trong lúc chờ, hãy tối ưu CV bằng công cụ Chẩn đoán.",
       },
       roadmap: {
         title: "Tạo lộ trình học",
@@ -494,6 +494,267 @@ export default {
             "Theo dõi trạng thái đặt cọc và thanh toán còn lại của lịch mentor.",
           empty: "Không tìm thấy lịch mentor.",
         },
+      },
+    },
+    interview: {
+      title: "Phỏng vấn thử với AI",
+      badge: {
+        autoScored: "Chấm điểm tự động",
+      },
+      workspace: {
+        practice: "Luyện tập",
+        history: "Lịch sử",
+      },
+      steps: {
+        "choose-cv": "Chọn CV",
+        "choose-context": "Match hoặc vai trò",
+        interview: "Phỏng vấn giọng nói",
+        result: "Feedback AI",
+      },
+      stats: {
+        yourStats: "Thống kê của bạn",
+        total: "Tổng",
+        avgScore: "Điểm TB",
+        best: "Cao nhất",
+        completed: "Đã hoàn tất",
+        overall: "Tổng điểm",
+      },
+      sidebar: {
+        recentSessions: "Phiên gần đây",
+        signedOut: "Đăng nhập bằng tài khoản API để tải lịch sử.",
+        loadingHistory: "Đang tải lịch sử...",
+        historyError: "Không tải được lịch sử phỏng vấn.",
+        retrying: "Đang thử lại...",
+        tryAgain: "Thử lại",
+        emptyHistory: "Chưa có phiên nào",
+        viewResult: "Xem kết quả phỏng vấn",
+        historyDisabled: "Không thể xem lịch sử khi đang phỏng vấn",
+        hide: "Ẩn sidebar",
+        show: "Hiện sidebar",
+      },
+      history: {
+        eyebrow: "Lịch sử phỏng vấn",
+        title: "Xem lại điểm phỏng vấn",
+        subtitle:
+          "Mở lại các interview sessions cũ để xem điểm, feedback và phân tích từng câu.",
+        startNew: "Bắt đầu phỏng vấn mới",
+        sessionsTitle: "Các phiên phỏng vấn",
+        signedOutTitle: "Bạn cần đăng nhập",
+        signedOutDescription:
+          "Hãy đăng nhập bằng tài khoản SkillBridge thật để xem lịch sử phỏng vấn.",
+        loadingTitle: "Đang tải lịch sử...",
+        loadingDescription:
+          "SkillBridge đang lấy 10 interview sessions gần nhất.",
+        errorTitle: "Không tải được lịch sử",
+        errorDescription:
+          "Vui lòng thử lại. Lỗi này được hiển thị rõ thay vì coi danh sách là rỗng.",
+        emptyTitle: "Chưa có interview session",
+        emptyDescription:
+          "Bạn có thể bắt đầu một buổi phỏng vấn mới, sau đó quay lại đây để xem điểm.",
+        unknownDate: "Không rõ ngày",
+      },
+      status: {
+        completed: "Đã hoàn tất",
+        inProgress: "Đang diễn ra",
+        cancelled: "Đã hủy",
+        unknown: "Không rõ",
+      },
+      detail: {
+        title: "Kết quả phỏng vấn cũ",
+        subtitle:
+          "Xem lại điểm, feedback và phân tích từng câu từ một phiên trước đó.",
+        backToHistory: "Quay lại lịch sử",
+        loadingTitle: "Đang tải kết quả phỏng vấn...",
+        loadingDescription:
+          "SkillBridge đang lấy điểm và phân tích chi tiết của session đã chọn.",
+        errorTitle: "Không tải được kết quả phỏng vấn",
+        errorDescription:
+          "Vui lòng thử lại. Nếu lỗi vẫn tiếp diễn, session này có thể không còn khả dụng.",
+        notScoredTitle: "Phiên này chưa có điểm",
+        notScoredDescription:
+          "Phiên này chưa hoàn tất hoặc chưa có điểm tổng. Hãy quay lại danh sách để chọn phiên khác.",
+      },
+      setup: {
+        subtitle:
+          "Chọn ngữ cảnh, chọn chế độ giọng nói và chỉ chuyển sang text khi microphone hoặc realtime gặp lỗi.",
+        type: {
+          technical: "Kỹ thuật",
+          hr: "HR",
+          mixed: "Kết hợp",
+        },
+        contextTitle: "Ngữ cảnh phỏng vấn",
+        cvLabel: "CV",
+        useTargetRoleOnly: "Chỉ dùng vai trò mục tiêu",
+        noCvTargetRoleOnly: "Không dùng CV - chỉ dùng vai trò mục tiêu",
+        uploadedAt: "Đã tải lên {{date}}",
+        cvJdMatchLabel: "CV/JD Match",
+        optionalMatchContext: "Ngữ cảnh match không bắt buộc",
+        chooseCvFirst: "Chọn CV trước",
+        noMatchContext: "Không dùng ngữ cảnh match",
+        savedJd: "JD đã lưu",
+        noSavedMatch: "Chưa có JD match đã lưu. Phỏng vấn vẫn có thể dùng CV + vai trò.",
+        targetRole: "Vai trò mục tiêu",
+        language: "Ngôn ngữ",
+        cameraTitle: "Camera chỉ bật khi bạn bắt đầu",
+        cameraDescription:
+          "Màn setup chưa yêu cầu quyền microphone hoặc camera.",
+        tipsTitle: "Cần biết trước",
+        tips: {
+          duration: {
+            title: "Buổi phỏng vấn có giới hạn thời gian",
+            description:
+              "Hết thời gian, hệ thống sẽ tự kết thúc và chuyển sang chấm điểm.",
+          },
+          answer: {
+            title: "Trả lời từng câu một",
+            description:
+              "Câu trả lời ngắn, có cấu trúc và ví dụ cụ thể sẽ cho feedback tốt hơn.",
+          },
+          fallback: {
+            title: "Giọng nói có fallback sang text",
+            description:
+              "Nếu microphone hoặc realtime không khả dụng, hãy tiếp tục bằng text trong cùng session.",
+          },
+          privacy: {
+            title: "Ưu tiên quyền riêng tư",
+            description:
+              "Chỉ dùng transcript để chấm điểm; không lưu file ghi âm.",
+          },
+        },
+        modes: {
+          guided: {
+            title: "Giọng nói có hướng dẫn",
+            description: "AI đọc từng câu hỏi; bạn trả lời và gửi từng câu.",
+          },
+          realtime: {
+            title: "Hội thoại trực tiếp",
+            description:
+              "AI nghe và phản hồi như một interviewer trực tiếp.",
+          },
+        },
+        voice: {
+          title: "Giọng phỏng vấn",
+          description:
+            "Chọn giọng và tốc độ trước khi bắt đầu. Cấu hình này áp dụng cho phiên hiện tại.",
+          voiceLabel: "Giọng",
+          speedLabel: "Tốc độ",
+          voices: {
+            alloy: "Alloy - cân bằng",
+            ash: "Ash - mượt",
+            ballad: "Ballad - diễn cảm",
+            marin: "Marin - ấm và rõ",
+            cedar: "Cedar - trầm ổn",
+            coral: "Coral - sáng và thân thiện",
+            echo: "Echo - rõ ràng",
+            sage: "Sage - bình tĩnh, ổn định",
+            shimmer: "Shimmer - nhẹ",
+            verse: "Verse - gọn và tập trung",
+          },
+          speeds: {
+            "0_9": "0.9x",
+            "1_0": "1.0x",
+            "1_15": "1.15x",
+            "1_3": "1.3x",
+          },
+        },
+        starting: "Đang bắt đầu...",
+        startLiveRealtime: "Bắt đầu hội thoại trực tiếp",
+        startGuidedVoice: "Bắt đầu giọng nói",
+        startInterview: "Bắt đầu phỏng vấn",
+      },
+      session: {
+        timeRemaining: "Thời gian còn lại",
+        answered: "Đã trả lời {{count}}",
+        left: "Còn {{count}} câu",
+        end: "Kết thúc",
+        ending: "Đang kết thúc",
+        fullscreen: "Toàn màn hình",
+        exitFullscreen: "Thoát toàn màn hình",
+        speaking: "Đang nói",
+        thinking: "Đang suy nghĩ",
+        ready: "Sẵn sàng",
+        videoFallback: "Phỏng vấn vẫn có thể tiếp tục mà không cần video.",
+        live: "LIVE",
+        transcriptTitle: "Transcript phỏng vấn",
+        transcriptSubtitle: "Gửi từng câu trả lời một",
+        toggleMicrophone: "Bật/tắt microphone",
+        reconnectVoice: "Kết nối lại giọng nói",
+        generatingNextQuestion: "Đang tạo câu hỏi tiếp theo...",
+        viewResults: "Xem kết quả",
+        spokenPlaceholder:
+          "Transcript từ giọng nói sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
+        textPlaceholder: "Fallback text: nhập câu trả lời của bạn ở đây.",
+        submitAnswer: "Gửi câu trả lời",
+        mode: {
+          textFallback: "Fallback text",
+          liveRealtime: "Hội thoại trực tiếp",
+          guidedVoice: "Giọng nói có hướng dẫn",
+        },
+      },
+      results: {
+        noResultTitle: "Chưa có kết quả",
+        noResultDescription:
+          "Buổi phỏng vấn đã kết thúc nhưng điểm cuối chưa sẵn sàng.",
+        semantic: "Ngữ nghĩa",
+        llmScore: "Điểm LLM",
+        communication: "Giao tiếp",
+        duration: "Thời lượng: {{duration}}",
+        answeredQuestions: "{{count}} câu đã trả lời",
+        summaryTitle: "Tóm tắt từ AI",
+        summaryDescription: "Tóm tắt feedback từ AI",
+        strengths: "Điểm mạnh",
+        improve: "Cần cải thiện",
+        emptyStrengths: "Chưa có điểm mạnh để hiển thị.",
+        emptyImprove: "Chưa có mục cần cải thiện để hiển thị.",
+        technicalDelivery: "Trình bày kỹ thuật",
+        technicalDeliveryDescription: "Năng lực kỹ thuật cốt lõi",
+        communicationFlow: "Luồng giao tiếp",
+        communicationFlowDescription: "Phân tích cách diễn đạt bằng lời",
+        bodyLanguage: "Ngôn ngữ cơ thể",
+        bodyLanguageDescription:
+          "Chỉ được chấm khi buổi phỏng vấn ghi nhận tín hiệu phi ngôn ngữ",
+        bodyLanguageEmpty: "Phiên này không ghi nhận ngôn ngữ cơ thể.",
+        recommendedNextSteps: "Bước tiếp theo được gợi ý",
+        recommendedNextStepsDescription: "Gợi ý từ kết quả chấm phỏng vấn",
+        recommendations: "Khuyến nghị",
+        suggestedModules: "Module gợi ý",
+        noMetrics: "Chưa có metric để hiển thị.",
+        noItems: "Chưa có mục nào.",
+        questionAnalysis: "Phân tích từng câu hỏi",
+        noPersistedAnswers: "Chưa có câu trả lời đã lưu để hiển thị.",
+        noSummary: "Chưa có tóm tắt.",
+      },
+      errors: {
+        mediaUnsupported: "Trình duyệt này không hỗ trợ thiết bị media.",
+        mediaNotFound: "Không tìm thấy camera hoặc microphone.",
+        mediaDenied: "Quyền camera hoặc microphone đã bị từ chối.",
+        noMicrophoneTrack: "Không có track microphone khả dụng.",
+        realtimeVoiceFailed: "Giọng nói trực tiếp bị lỗi. Tiếp tục bằng text.",
+        questionAudioPlayFailed:
+          "Không phát được giọng interviewer. Hãy tiếp tục với câu hỏi đang hiển thị.",
+        questionAudioTimeout:
+          "Giọng interviewer tải quá lâu. Hãy tiếp tục với câu hỏi đang hiển thị.",
+        signInRequired:
+          "Hãy đăng nhập bằng tài khoản SkillBridge thật trước khi bắt đầu phỏng vấn.",
+        startFailed: "Không thể bắt đầu phỏng vấn.",
+        endFailed: "Không thể kết thúc phỏng vấn.",
+        submitFailed: "Không thể gửi câu trả lời.",
+        microphoneUnavailableSameSession:
+          "Microphone không khả dụng. Tiếp tục bằng text trong cùng session này.",
+        microphoneUnavailable: "Microphone không khả dụng. Tiếp tục bằng text.",
+        realtimeTokenUnavailable:
+          "Chế độ giọng nói trực tiếp chưa khả dụng. Tiếp tục bằng text.",
+        reconnectFailed: "Không thể kết nối lại giọng nói trực tiếp. Tiếp tục bằng text.",
+      },
+      roles: {
+        frontend_developer: "Lập trình viên Frontend",
+        backend_developer: "Lập trình viên Backend",
+        fullstack_developer: "Lập trình viên Fullstack",
+        mobile_developer: "Lập trình viên Mobile",
+        devops_engineer: "Kỹ sư DevOps",
+        qa_tester: "QA Tester",
+        data_analyst: "Data Analyst",
+        ai_ml_engineer: "Kỹ sư AI / ML",
       },
     },
   },
