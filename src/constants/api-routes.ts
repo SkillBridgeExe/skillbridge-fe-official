@@ -107,7 +107,6 @@ export const API_ROUTES = {
     PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,
     ORDERS: `${API}/admin/billing/orders`,
     SUBSCRIPTIONS: `${API}/admin/billing/subscriptions`,
-    MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,
   },
 
   ADMIN_USERS: {
@@ -116,6 +115,26 @@ export const API_ROUTES = {
     DETAIL: (id: string) => `${API}/admin/users/${id}`,
     STATUS: (id: string) => `${API}/admin/users/${id}/status`,
     ROLES: (id: string) => `${API}/admin/users/${id}/roles`,
+  },
+
+  MENTORS: {
+    SUMMARY: `${API}/mentors/summary`,
+    FILTERS: `${API}/mentors/filters`,
+    LIST: `${API}/mentors`,
+    DETAIL: (slug: string) => `${API}/mentors/${slug}`,
+    AVATAR: (slug: string) => `${API}/mentors/${slug}/avatar`,
+    MY_PROFILE: `${API}/mentors/me/profile`,
+    SUBMIT_PROFILE: `${API}/mentors/me/profile/submit`,
+  },
+
+  ADMIN_MENTORS: {
+    LIST: `${API}/admin/mentors`,
+    STATUS: (profileId: string) => `${API}/admin/mentors/${profileId}/status`,
+    AVATAR: (profileId: string) => `${API}/admin/mentors/${profileId}/avatar`,
+  },
+
+  SKILLS: {
+    LIST: `${API}/skills`,
   },
 
   USER: {
