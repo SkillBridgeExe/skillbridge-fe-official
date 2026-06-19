@@ -10,13 +10,6 @@ import type {
   SubscriptionStatus,
 } from "@/api/billing";
 
-export type MentorBookingStatus =
-  | "PENDING_DEPOSIT"
-  | "AWAITING_MENTOR_ACCEPT"
-  | "AWAITING_REMAINING"
-  | "PAID"
-  | "CANCELLED";
-
 export interface AdminPlanFeatureInput {
   featureKey: string;
   limitValue: number;
@@ -93,25 +86,6 @@ export interface AdminSubscriptionDto {
   createdAt?: string;
 }
 
-export interface AdminMentorBookingsQuery extends PaginationQuery {
-  status?: MentorBookingStatus;
-  studentId?: string;
-  mentorId?: string;
-}
-
-export interface AdminMentorBookingDto {
-  id: string;
-  studentId?: string | null;
-  studentEmail?: string | null;
-  mentorId?: string | null;
-  mentorEmail?: string | null;
-  status: MentorBookingStatus;
-  amountVnd?: number | null;
-  depositOrderCode?: number | null;
-  remainingOrderCode?: number | null;
-  createdAt?: string;
-}
-
 export async function getAdminBillingPlansApi(includeInactive: boolean): Promise<BillingPlanDto[]> {
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto[]>>(
     httpClient.get(API_ROUTES.ADMIN_BILLING.PLANS, { params: { includeInactive } }),
@@ -127,7 +101,6 @@ export async function createAdminBillingPlanApi(payload: CreateAdminBillingPlanD
   );
   return envelope.data;
 }
-
 export async function updateAdminBillingPlanApi(
   code: string,
   payload: UpdateAdminBillingPlanDto,
@@ -166,16 +139,6 @@ export async function getAdminSubscriptionsApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<PaginatedResponse<AdminSubscriptionDto>>>(
     httpClient.get(API_ROUTES.ADMIN_BILLING.SUBSCRIPTIONS, { params: query }),
     "Failed to load subscriptions.",
-  );
-  return envelope.data;
-}
-
-export async function getAdminMentorBookingsApi(
-  query: AdminMentorBookingsQuery,
-): Promise<PaginatedResponse<AdminMentorBookingDto>> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<PaginatedResponse<AdminMentorBookingDto>>>(
-    httpClient.get(API_ROUTES.ADMIN_BILLING.MENTOR_BOOKINGS, { params: query }),
-    "Failed to load mentor bookings.",
   );
   return envelope.data;
 }
