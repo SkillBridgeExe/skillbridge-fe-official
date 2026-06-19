@@ -1,224 +1,181 @@
-import React, { useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, Search, SlidersHorizontal, UsersRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
+import { MentorCard } from "@/components/ecosystem/MentorCard";
+import { MentorFilters } from "@/components/ecosystem/MentorFilters";
+import { MentorListSkeleton } from "@/components/ecosystem/MentorListSkeleton";
+import { MentorMarketplaceHero } from "@/components/ecosystem/MentorMarketplaceHero";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Search } from "lucide-react";
-
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import gsap from "gsap";
-import { MENTORS } from "@/lib/mock-data/mentorsInfor";
-import { MentorCard } from "@/components/ecosystem/MentorCard";
-import { MentorSearchBar } from "@/components/ecosystem/MentorSearchBar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useMentorFilters, useMentors, useMentorSummary } from "@/hooks/use-mentors";
+import { getMentorMarketplaceQuery, selectFeaturedMentors } from "@/lib/mentor-marketplace";
+
+const FEATURED_MENTORS_QUERY = { sort: "rating_desc" as const, page: 1, limit: 3 };
 
 export default function Ecosystem() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All Categories");
-  const [visibleCount, setVisibleCount] = useState(5);
+  const { t } = useTranslation("common");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = useMemo(() => getMentorMarketplaceQuery(searchParams), [searchParams]);
+  const [searchInput, setSearchInput] = useState(query.query ?? "");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const summaryQuery = useMentorSummary();
+  const filtersQuery = useMentorFilters();
+  const mentorsQuery = useMentors(query);
+  const featuredMentorsQuery = useMentors(FEATURED_MENTORS_QUERY);
+  const featuredMentors = useMemo(
+    () =>
+      selectFeaturedMentors(
+        summaryQuery.data?.spotlightMentor,
+        featuredMentorsQuery.data?.items ?? [],
+      ),
+    [featuredMentorsQuery.data?.items, summaryQuery.data?.spotlightMentor],
+  );
 
+  useEffect(() => {
+    setSearchInput(query.query ?? "");
+  }, [query.query]);
 
-   const toggleSearchFilter = (value: string) => {
-      setSearchTerm((prev) =>
-         prev.toLowerCase() === value.toLowerCase() ? "" : value
-      );
-   };
+  const updateParam = useCallback(
+    (key: "query" | "domain" | "minRating" | "sort" | "page", value?: string) => {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        if (key !== "page") next.delete("page");
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
+  useEffect(() => {
+    if (searchInput.trim() === (query.query ?? "")) return;
+    const timer = window.setTimeout(() => updateParam("query", searchInput.trim() || undefined), 350);
+    return () => window.clearTimeout(timer);
+  }, [query.query, searchInput, updateParam]);
 
-  
-  const megaMenuCategories = [
-    { name: "Software Engineering", skills: ["Frontend Developer", "Backend Developer", "Fullstack Developer", "Mobile Developer", "DevOps Engineer"] },
-    { name: "Data Science & AI", skills: ["AI Engineer", "Data Scientist", "Data Analyst", "Machine Learning", "Data Engineer"] },
-    { name: "Design & UX", skills: ["UX Researcher", "UI/UX Designer", "Product Designer", "Graphic Designer"] },
-    { name: "Product & Business", skills: ["Product Manager", "Business Analyst", "Scrum Master", "Project Manager"] }
-  ];
+  const resetFilters = () => {
+    setSearchInput("");
+    setSearchParams(new URLSearchParams());
+  };
 
-  const filteredMentors = MENTORS.filter(mentor => {
-    const matchesSearch = mentor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mentor.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mentor.expertise.some(e => e.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    const matchesCategory = activeCategory === "All Categories" ||
-                           mentor.expertise.some(e => e.includes(activeCategory)) || 
-                           megaMenuCategories.find(c => c.name === activeCategory)?.skills.some(s => mentor.expertise.includes(s));
-
-    return matchesSearch && matchesCategory;
-  });
-
-  const displayedMentors = filteredMentors.slice(0, visibleCount);
-
-  useLayoutEffect(() => {
-    gsap.fromTo(".mentor-card-anim", 
-      { y: 30, opacity: 0 }, 
-      { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
-    );
-  }, [displayedMentors]);
+  const totalPages = Math.max(1, Math.ceil((mentorsQuery.data?.total ?? 0) / (query.limit ?? 6)));
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-12 text-center">
-           {/* <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-xs border border-primary/20 mb-6 uppercase tracking-widest">Global Network</div> */}
-           <h1 className="text-4xl font-poppins font-bold text-slate-900 mb-4">The SkillBridge Mentorship</h1>
-           <p className="text-slate-500 max-w-2xl mx-auto">Connecting you with industry mentors to accelerate your journey from learning to earning and unlock your full potential.
-              </p>
-        </header>
+      <main className="min-h-dvh bg-background pb-20 pt-5 sm:pt-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+          <MentorMarketplaceHero
+            summary={summaryQuery.data}
+            featuredMentors={featuredMentors}
+          />
 
-             {/* Reusable Search Bar + Suggested Keywords */}
-             <MentorSearchBar
-               searchTerm={searchTerm}
-               setSearchTerm={setSearchTerm}
-               activeCategory={activeCategory}
-               setActiveCategory={setActiveCategory}
-               showSuggestedKeywords={true}
-             />
-
-             {/* Layout: Sidebar Filter & Main Content */}
-             <div className="flex flex-col lg:flex-row gap-10 items-start mt-8">
-                {/* Left Sidebar (MentorCruise style) */}
-                <div className="w-full lg:w-[280px] xl:w-[320px] flex-shrink-0 lg:sticky top-24 space-y-8 lg:max-h-[calc(100dvh-8rem)] overflow-y-auto custom-scrollbar pr-2 pb-10 hidden md:block">
-                   
-                   {/* Filter 1: Skills */}
-                   <div className="space-y-4">
-                      <h3 className="text-2xl font-poppins font-bold text-slate-900 border-b border-slate-200 pb-3">Skills</h3>
-                      <Card className="bg-slate-900 border-none shadow-md text-white rounded-2xl overflow-hidden">
-                         <CardContent className="p-5">
-                            <div className="relative mb-5">
-                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                               <Input className="bg-slate-800 border-none text-white placeholder:text-white/50 pl-9 rounded-xl h-10 w-full focus-visible:ring-1 focus-visible:ring-primary/50" placeholder="Search for skills" />
-                            </div>
-                            <div className="space-y-4">
-                               {[
-                                  { label: "AI", count: 193 },
-                                  { label: "System Design", count: 127 },
-                                  { label: "Frontend", count: 122 },
-                                  { label: "Backend", count: 117 },
-                                  { label: "Python", count: 106 },
-                                  { label: "React", count: 102 }
-                               ].map(skill => (
-                                  <div key={skill.label} className="flex items-center justify-between group cursor-pointer">
-                                     <div className="flex items-center gap-3">
-                                        <Checkbox
-                                          checked={searchTerm.toLowerCase() === skill.label.toLowerCase()}
-                                          onCheckedChange={() => toggleSearchFilter(skill.label)}
-                                          id={`skill-${skill.label}`}
-                                          className="border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-slate-900 rounded-[4px] w-[18px] h-[18px]"
-                                        />
-                                        <label htmlFor={`skill-${skill.label}`} className="text-sm font-medium text-white/90 group-hover:text-primary transition-colors cursor-pointer">{skill.label}</label>
-                                     </div>
-                                     <span className="text-xs text-white/50 font-medium">{skill.count}</span>
-                                  </div>
-                               ))}
-                            </div>
-                            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 mt-5 p-0 h-auto text-sm w-full font-bold justify-start">Show more</Button>
-                         </CardContent>
-                      </Card>
-                   </div>
-
-                   {/* Filter 2: Job titles */}
-                   <div className="space-y-4">
-                      <h3 className="text-2xl font-poppins font-bold text-slate-900 border-b border-slate-200 pb-3">Job titles</h3>
-                      <Card className="bg-slate-900 border-none shadow-md text-white rounded-2xl overflow-hidden">
-                         <CardContent className="p-5">
-                            <div className="relative mb-5">
-                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                               <Input className="bg-slate-800 border-none text-white placeholder:text-white/50 pl-9 rounded-xl h-10 w-full focus-visible:ring-1 focus-visible:ring-primary/50" placeholder="Search for job titles" />
-                            </div>
-                            <div className="space-y-4">
-                               {[
-                                  { label: "Founder", count: 139 },
-                                  { label: "Sr. Frontend", count: 72 },
-                                  { label: "Data Scientist", count: 52 },
-                                  { label: "UX Researcher", count: 39 },
-                                  { label: "Engineering Lead", count: 33 }
-                               ].map(job => (
-                                  <div key={job.label} className="flex items-center justify-between group cursor-pointer">
-                                     <div className="flex items-center gap-3">
-                                        <Checkbox
-                                          checked={searchTerm.toLowerCase() === job.label.toLowerCase()}
-                                          onCheckedChange={() => toggleSearchFilter(job.label)}
-                                          id={`job-${job.label}`}
-                                          className="border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-slate-900 rounded-[4px] w-[18px] h-[18px]"
-                                        />
-                                        <label htmlFor={`job-${job.label}`} className="text-sm font-medium text-white/90 group-hover:text-primary transition-colors cursor-pointer">{job.label}</label>
-                                     </div>
-                                     <span className="text-xs text-white/50 font-medium">{job.count}</span>
-                                  </div>
-                               ))}
-                            </div>
-                            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 mt-5 p-0 h-auto text-sm w-full font-bold justify-start">Show more</Button>
-                         </CardContent>
-                      </Card>
-                   </div>
-
-                   {/* Filter 3: Experience Level */}
-                   <div className="space-y-4">
-                      <h3 className="text-2xl font-poppins font-bold text-slate-900 border-b border-slate-200 pb-3">Experience</h3>
-                      <Card className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden p-5">
-                         <div className="space-y-4">
-                            {["Entry Level", "Mid Level", "Senior (5+ yrs)", "Staff/Principal", "Executive/CTO"].map(level => (
-                               <div key={level} className="flex items-center gap-3 group cursor-pointer">
-                                  <Checkbox id={`exp-${level}`} className="border-slate-300 rounded-[4px]" />
-                                  <label htmlFor={`exp-${level}`} className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors cursor-pointer">{level}</label>
-                               </div>
-                            ))}
-                         </div>
-                      </Card>
-                   </div>
-
-                   {/* Filter 4: Company Tier */}
-                   <div className="space-y-4">
-                      <h3 className="text-2xl font-poppins font-bold text-slate-900 border-b border-slate-200 pb-3">Company Tier</h3>
-                      <Card className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden p-5">
-                         <div className="space-y-4">
-                            {["FAANG", "Fortune 500", "Top Startups", "Unicorns"].map(tier => (
-                               <div key={tier} className="flex items-center gap-3 group cursor-pointer">
-                                  <Checkbox id={`tier-${tier}`} className="border-slate-300 rounded-[4px]" />
-                                  <label htmlFor={`tier-${tier}`} className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors cursor-pointer">{tier}</label>
-                               </div>
-                            ))}
-                         </div>
-                      </Card>
-                   </div>
-
+          <section id="mentor-results" className="scroll-mt-24 pt-14 sm:pt-20">
+            <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-3xl font-black tracking-[-0.03em] text-slate-950 dark:text-white sm:text-4xl">
+                  {t("mentor.marketplace.findMentor")}
+                </h2>
+                <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {t("mentor.marketplace.results", { count: mentorsQuery.data?.total ?? 0 })}
+                </p>
+              </div>
+              <div className="flex w-full gap-2 lg:max-w-xl">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder={t("mentor.marketplace.searchPlaceholder")}
+                    className="h-12 rounded-xl border-slate-200 bg-white pl-11 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950"
+                  />
                 </div>
+                <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="h-12 rounded-xl border-slate-200 bg-white px-4 lg:hidden dark:border-slate-800 dark:bg-slate-950">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      <span className="sr-only">{t("mentor.marketplace.filters")}</span>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[88vw] max-w-sm overflow-y-auto">
+                    <SheetHeader className="mb-7 text-left">
+                      <SheetTitle>{t("mentor.marketplace.filters")}</SheetTitle>
+                    </SheetHeader>
+                    <MentorFilters
+                      query={query}
+                      filters={filtersQuery.data}
+                      onChange={updateParam}
+                      onReset={resetFilters}
+                    />
+                    <Button onClick={() => setFiltersOpen(false)} className="mt-8 h-11 w-full rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90">
+                      {t("mentor.marketplace.applyFilters")}
+                    </Button>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
 
-                {/* Main Content (Mentor Cards) */}
-                <div className="flex-1 space-y-6 w-full">
-                   <div className="flex items-center justify-between mb-4">
-                     <div className="text-sm font-bold text-slate-500">{filteredMentors.length}+ mentors found</div>
-                   </div>
+            <div className="grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[290px_minmax(0,1fr)]">
+              <aside className="sticky top-24 hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_40px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950 lg:block">
+                <MentorFilters query={query} filters={filtersQuery.data} onChange={updateParam} onReset={resetFilters} />
+              </aside>
 
-                   {displayedMentors.map((mentor, i) => (
-                     <MentorCard key={i} mentor={mentor} />
-                   ))}
+              <div>
+                {mentorsQuery.isLoading ? <MentorListSkeleton /> : null}
+                {mentorsQuery.isError ? (
+                  <StatePanel
+                    icon={<AlertCircle className="h-9 w-9" />}
+                    title={t("mentor.marketplace.loadErrorTitle")}
+                    body={t("mentor.marketplace.loadErrorBody")}
+                    action={<Button onClick={() => void mentorsQuery.refetch()} className="rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90">{t("mentor.marketplace.retry")}</Button>}
+                  />
+                ) : null}
+                {!mentorsQuery.isLoading && !mentorsQuery.isError && mentorsQuery.data?.items.length === 0 ? (
+                  <StatePanel
+                    icon={<UsersRound className="h-9 w-9" />}
+                    title={t("mentor.marketplace.noResultsTitle")}
+                    body={t("mentor.marketplace.noResultsBody")}
+                    action={<Button variant="outline" onClick={resetFilters} className="rounded-xl">{t("mentor.marketplace.reset")}</Button>}
+                  />
+                ) : null}
+                {mentorsQuery.data?.items.length ? (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {mentorsQuery.data.items.map((mentor) => <MentorCard key={mentor.id} mentor={mentor} />)}
+                  </div>
+                ) : null}
 
-                   {visibleCount < filteredMentors.length && (
-                      <div className="text-center py-8">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setVisibleCount(prev => prev + 5)}
-                          className="rounded-full px-8 py-6 font-bold shadow-sm hover:shadow-md border-slate-200 text-slate-700 bg-white"
-                        >
-                           Show More Mentors
-                        </Button>
-                      </div>
-                   )}
-
-                   {filteredMentors.length === 0 && (
-                      <div className="text-center py-24 space-y-5 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                         <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mx-auto border border-slate-100 shadow-sm">
-                            <Search className="w-10 h-10 text-primary/30" />
-                         </div>
-                         <div>
-                            <h4 className="text-xl font-bold text-slate-700">No mentors found matching your criteria</h4>
-                            <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">Try adjusting your category or searching for different keywords to find the perfect mentor.</p>
-                         </div>
-                         <Button variant="outline" onClick={() => {setSearchTerm(""); setActiveCategory("All Categories");}} className="rounded-xl border-slate-300 text-slate-600 font-semibold px-6 mt-2">Clear All Filters</Button>
-                      </div>
-                   )}
-                </div>
-             </div>
-      </div>
+                {mentorsQuery.data && mentorsQuery.data.total > (query.limit ?? 6) ? (
+                  <nav className="mt-9 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950" aria-label="Mentor pagination">
+                    <Button variant="ghost" disabled={(query.page ?? 1) <= 1} onClick={() => updateParam("page", String((query.page ?? 1) - 1))} className="rounded-xl font-bold">
+                      {t("mentor.marketplace.previous")}
+                    </Button>
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      {t("mentor.marketplace.page", { current: query.page ?? 1, total: totalPages })}
+                    </span>
+                    <Button variant="ghost" disabled={(query.page ?? 1) >= totalPages} onClick={() => updateParam("page", String((query.page ?? 1) + 1))} className="rounded-xl font-bold">
+                      {t("mentor.marketplace.next")}
+                    </Button>
+                  </nav>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
     </Layout>
+  );
+}
+
+function StatePanel({ icon, title, body, action }: { icon: React.ReactNode; title: string; body: string; action: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center dark:border-slate-700 dark:bg-slate-950">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">{icon}</div>
+      <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950 dark:text-white">{title}</h3>
+      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{body}</p>
+      <div className="mt-6">{action}</div>
+    </div>
   );
 }

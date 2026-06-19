@@ -863,7 +863,7 @@ export default function Index() {
                 <li><Link to="/diagnosis" className="hover:text-blue-600 transition-colors">{t("footer.linkDiagnosis")}</Link></li>
                 <li><Link to="/learning" className="hover:text-blue-600 transition-colors">{t("footer.linkRoadmap")}</Link></li>
                 <li><Link to="/interview" className="hover:text-blue-600 transition-colors">{t("footer.linkInterview")}</Link></li>
-                <li><Link to="/mentor-connect" className="hover:text-blue-600 transition-colors">{t("footer.linkMentor")}</Link></li>
+                <li><Link to="/ecosystem" className="hover:text-blue-600 transition-colors">{t("footer.linkMentor")}</Link></li>
                 <li><Link to="/pricing" className="hover:text-blue-600 transition-colors">{t("footer.linkPricing")}</Link></li>
               </ul>
             </div>

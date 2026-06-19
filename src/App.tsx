@@ -67,14 +67,11 @@ const App = () => (
               />
               <Route path="/ecosystem" element={<Pages.Ecosystem />} />
               <Route path="/ecosystem/mentor/:mentorSlug" element={<Pages.MentorProfile />} />
-              {/* TODO(mentor-booking): Replace legacy /payment callers with the real mentor checkout flow; redirecting here drops mentor/package/price query data. */}
               <Route path="/payment" element={<Navigate to="/pricing" replace />} />
               <Route path="/pricing" element={<Pages.Pricing />} />
               <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />
               <Route path="/billing/checkout" element={<AuthGuard requireAuth><Pages.BillingCheckoutReturn /></AuthGuard>} />
               <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
-              <Route path="/billing/mentor" element={<AuthGuard requireAuth><Pages.MentorBilling /></AuthGuard>} />
-              <Route path="/mentor-connect" element={<Pages.MentorConnect />} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/roadmap-generator" element={FEATURES.roadmap ? <Pages.RoadmapGenerator /> : <ComingSoon feature="roadmap" />} />
@@ -87,29 +84,21 @@ const App = () => (
               <Route path="/business/top-candidates" element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}/>
               <Route path="/business/applicants" element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}/>
 
-              <Route path="/mentor-room/:roomId" element={<Pages.MentorRoom />} />
-              <Route path="/mentor-dashboard" element={<Pages.MentorDashboardShell />}>
+              <Route path="/mentor-dashboard" element={<AuthGuard requiredRole="mentor"><Pages.MentorDashboardShell /></AuthGuard>}>
                 <Route index element={<Pages.MentorOverview />} />
-                <Route path="overview" element={<Pages.MentorOverview />} />
-                <Route path="availability" element={<Pages.MentorAvailability />} />
                 <Route path="profile" element={<Pages.MentorProfileSetup />} />
-                <Route path="requests" element={<Pages.MentorRequests />} />
-                <Route path="workspace" element={<Pages.MentorWorkspace />} />
-                <Route path="history" element={<Pages.MentorHistory />} />
-                <Route path="reviews" element={<Pages.MentorReviews />} />
-                <Route path="wallet" element={<Pages.MentorWallet />} />
               </Route>
-              <Route path="/mentor" element={<AuthGuard requiredRole="mentor"><Pages.MentorLanding /></AuthGuard>}/>
+              <Route path="/mentor" element={<Navigate to="/mentor-dashboard" replace />} />
 
               <Route path="/admin" element={<AuthGuard requiredRole="admin"><Pages.AdminDashboard /></AuthGuard>}>
                 <Route index element={<Pages.AdminOverview />} />
                 <Route path="insights" element={<Pages.AdminInsights />} />
                 <Route path="users" element={<Pages.AdminUserManagement />} />
                 <Route path="users/:id" element={<Pages.AdminUserProfile />} />
+                <Route path="mentors" element={<Pages.AdminMentors />} />
                 <Route path="billing/plans" element={<Pages.AdminBillingPlans />} />
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
-                <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 

@@ -1,213 +1,108 @@
-import { motion } from "framer-motion";
+import { ArrowUpRight, CheckCircle2, Circle, Eye, FilePenLine, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import {
-  Users, Star, DollarSign, Calendar,
-  ArrowRight, MessageCircle, Video, AlertCircle
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { MentorStatusBadge } from "@/components/mentor/MentorStatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
-import { SESSION_HISTORY, MENTEE_REQUESTS } from "@/lib/mock-data/mentor-dashboard";
-
-const KPI = [
-  { label: "Total Sessions", value: "124", sub: "+8 this month", icon: Calendar, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-500/10" },
-  { label: "Avg. Review", value: "4.8", sub: "From total reviews", icon: Star, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10" },
-  { label: "Active Mentees", value: "4", sub: "3 fully paid", icon: Users, color: "text-primary", bg: "bg-primary/5" },
-  { label: "Monthly Earnings", value: "₫2.7M", sub: "+₫450K vs last month", icon: DollarSign, color: "text-violet-600", bg: "bg-violet-50" },
-];
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyMentorProfile } from "@/hooks/use-mentors";
+import { getMentorProfileCompletion } from "@/lib/mentor-marketplace";
+import { QUERY_KEYS } from "@/constants/app";
+import { getMyAvatarUrl, getSafeAvatarUrl, isProtectedAvatarUrl } from "@/services/user-profile.service";
 
 export default function MentorOverview() {
-  const recentSessions = SESSION_HISTORY.slice(0, 3);
-  const newRequests = MENTEE_REQUESTS.filter(r => r.status === "new");
+  const { t } = useTranslation("common");
+  const profileQuery = useMyMentorProfile();
+  const profile = profileQuery.data;
+  const avatarQuery = useQuery({
+    queryKey: QUERY_KEYS.USER_AVATAR,
+    queryFn: getMyAvatarUrl,
+    enabled: isProtectedAvatarUrl(profile?.avatarUrl),
+  });
+  const avatarSrc = avatarQuery.data || getSafeAvatarUrl(profile?.avatarUrl);
+
+  if (profileQuery.isLoading) return <OverviewSkeleton />;
+  if (profileQuery.isError) return <ErrorPanel onRetry={() => void profileQuery.refetch()} />;
+
+  if (!profile) {
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950 sm:p-10">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><FilePenLine className="h-7 w-7" /></div>
+        <h1 className="mt-6 text-3xl font-black tracking-[-0.03em] text-slate-950 dark:text-white">{t("mentor.dashboard.emptyTitle")}</h1>
+        <p className="mt-3 max-w-2xl leading-7 text-slate-500 dark:text-slate-400">{t("mentor.dashboard.emptyBody")}</p>
+        <Button asChild className="mt-7 h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"><Link to="/mentor-dashboard/profile">{t("mentor.dashboard.editProfile")}<ArrowUpRight className="ml-2 h-4 w-4" /></Link></Button>
+      </section>
+    );
+  }
+
+  const completion = getMentorProfileCompletion(profile);
+  const statusMessage = profile.status === "PENDING_REVIEW"
+    ? t("mentor.dashboard.pendingBody")
+    : profile.status === "SUSPENDED"
+      ? t("mentor.dashboard.suspendedBody")
+      : profile.status === "APPROVED"
+        ? t("mentor.dashboard.approvedBody")
+        : profile.status === "REJECTED"
+          ? profile.rejectionReason || t("mentor.dashboard.missingFields")
+          : t("mentor.dashboard.missingFields");
 
   return (
-    <div className="w-full max-w-none space-y-8">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-poppins font-bold text-slate-900 dark:text-white">
-              Good morning, Minh! 
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 text-base mt-2">Saturday, 21 Month 3 Year 2026</p>
-          </div>
-          <div className="hidden md:flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl px-4 py-2">
-            <AlertCircle className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-semibold text-amber-700 dark:text-amber-500">3 new pending requests</span>
-            <Link to="/mentor-dashboard/requests">
-              <Button size="sm" variant="ghost" className="text-amber-700 dark:text-amber-500 h-7 px-2 hover:bg-amber-100">
-                View now <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </Link>
-          </div>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-[-0.03em] text-slate-950 dark:text-white">{t("mentor.dashboard.overview")}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{t("mentor.dashboard.subtitle")}</p>
         </div>
-      </motion.div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="h-11 rounded-xl border-slate-200 font-bold dark:border-slate-800"><Link to="/mentor-dashboard/profile"><FilePenLine className="mr-2 h-4 w-4" />{t("mentor.dashboard.editProfile")}</Link></Button>
+          {profile.status === "APPROVED" ? <Button asChild className="h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"><Link to={`/ecosystem/mentor/${profile.slug}`}><Eye className="mr-2 h-4 w-4" />{t("mentor.dashboard.viewPublic")}</Link></Button> : null}
+        </div>
+      </header>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {KPI.map((kpi, i) => (
-          <motion.div
-            key={kpi.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07, duration: 0.4 }}
-          >
-            <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all">
-              <CardContent className="p-5">
-                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-3", kpi.bg)}>
-                  <kpi.icon className={cn("w-5 h-5", kpi.color)} />
-                </div>
-                <p className="text-3xl font-black text-slate-900 dark:text-white">{kpi.value}</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">{kpi.label}</p>
-                <p className="text-xs text-primary font-medium mt-1">{kpi.sub}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-slate-500 dark:text-slate-400">{t("mentor.dashboard.status")}</p><div className="mt-3"><MentorStatusBadge status={profile.status} /></div></div><ShieldCheck className="h-7 w-7 text-primary" /></div>
+          <p className="mt-5 text-sm leading-6 text-slate-600 dark:text-slate-300">{statusMessage}</p>
+          {profile.status === "REJECTED" && profile.rejectionReason ? <div className="mt-5 rounded-xl bg-rose-50 p-4 text-sm text-rose-800 dark:bg-rose-950 dark:text-rose-200"><p className="font-bold">{t("mentor.dashboard.rejectionReason")}</p><p className="mt-1 leading-6">{profile.rejectionReason}</p></div> : null}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center justify-between"><p className="text-sm font-bold text-slate-500 dark:text-slate-400">{t("mentor.dashboard.completion")}</p><span className="text-2xl font-black text-slate-950 dark:text-white">{completion.percentage}%</span></div>
+          <Progress value={completion.percentage} className="mt-4 h-2" />
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {[
+              ["headline", t("mentor.dashboard.headline")],
+              ["shortBio", t("mentor.dashboard.shortBio")],
+              ["domains", t("mentor.dashboard.domains")],
+              ["sessionPriceVnd", t("mentor.dashboard.price")],
+              ["sessionDurationMinutes", t("mentor.dashboard.duration")],
+              ["skills", t("mentor.dashboard.skills")],
+              ["verificationContact", t("mentor.dashboard.verificationContact")],
+            ].map(([field, label]) => {
+              const missing = completion.missing.some((item) => item === field);
+              return <div key={field} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">{missing ? <Circle className="h-4 w-4 text-slate-300 dark:text-slate-700" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />}<span>{label}</span></div>;
+            })}
+          </div>
+        </section>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Upcoming session */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Next session */}
-          <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm overflow-hidden">
-            <div className="bg-primary p-4 text-white">
-              <div className="flex items-center gap-2 mb-1">
-                <Video className="w-4 h-4" />
-                <span className="font-bold text-sm">Upcoming Session</span>
-              </div>
-              <p className="text-white/80 text-xs">Today • 20:00 - 21:30</p>
-            </div>
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-primary text-white font-bold text-sm">HN</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-bold text-slate-900 dark:text-white">Hoang Van Nam</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">React Performance & Code Review</p>
-                  </div>
-                </div>
-                <Badge className="bg-primary/10 text-primary/90 border-0 text-xs">Paid</Badge>
-              </div>
-              <div className="flex items-center gap-2 mt-4">
-                  <Button 
-                    className="flex-1 bg-primary hover:bg-primary gap-2 shadow-sm" 
-                    size="sm"
-                    onClick={() => window.open("/mentor-room/m001", "_blank")}
-                  >
-                    <Video className="w-4 h-4" /> Join Call
-                  </Button>
-                  <Link to="/mentor-dashboard/workspace?mentee=m001">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <MessageCircle className="w-4 h-4" /> Chat
-                    </Button>
-                  </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent sessions */}
-          <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white">Recent Sessions</CardTitle>
-                <Link to="/mentor-dashboard/history">
-                  <Button variant="ghost" size="sm" className="text-primary text-xs h-7">
-                    View all <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentSessions.map((session) => (
-                <div key={session.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0b1120] hover:bg-slate-100 dark:bg-slate-800 transition-all">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold">
-                      {session.menteeName.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{session.menteeName}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{session.topic}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-bold text-primary">+₫{session.earnings.toLocaleString()}</p>
-                    <p className="text-[11px] text-slate-400">{session.date}</p>
-                  </div>
-                  <div className={cn("w-2 h-2 rounded-full flex-shrink-0", session.status === "completed" ? "bg-primary/90" : "bg-slate-300 dark:bg-slate-700")} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <Avatar className="h-20 w-20 rounded-2xl"><AvatarImage src={avatarSrc} className="object-cover" /><AvatarFallback className="rounded-2xl bg-primary font-black text-primary-foreground">{profile.displayName.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+          <div className="min-w-0 flex-1"><p className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{profile.displayName}</p><p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">{profile.headline}</p><p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{profile.shortBio}</p></div>
         </div>
-
-        {/* Right column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* New Requests */}
-          <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white">New Requests</CardTitle>
-                <Badge className="bg-red-100 text-red-600 border-0 text-xs">{newRequests.length} new</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {newRequests.map((req) => (
-                <div key={req.id} className="p-3 bg-slate-50 dark:bg-[#0b1120] rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback className="bg-primary text-white text-xs font-bold">{req.initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{req.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{req.goalRole}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-3">{req.message}</p>
-                  <Link to="/mentor-dashboard/requests">
-                    <Button size="sm" className="w-full h-7 text-xs bg-primary hover:bg-primary">
-                      View & Respond
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Quick stats */}
-          <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white">Quick Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { label: "Session Completion Rate", value: 94, color: "bg-primary" },
-                { label: "reviews 5 stars", value: 78, color: "bg-amber-400" },
-                { label: "Rate reschedule", value: 67, color: "bg-blue-50 dark:bg-blue-500/100" },
-              ].map((stat) => (
-                <div key={stat.label} className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-600 dark:text-slate-400 font-medium">{stat.label}</span>
-                    <span className="font-bold text-slate-700 dark:text-slate-300">{stat.value}%</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <motion.div
-                      className={cn("h-full rounded-full", stat.color)}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stat.value}%` }}
-                      transition={{ delay: 0.5, duration: 1 }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      </section>
     </div>
   );
+}
+
+function OverviewSkeleton() {
+  return <div className="space-y-6"><Skeleton className="h-16 w-2/3" /><div className="grid gap-5 lg:grid-cols-2"><Skeleton className="h-56 rounded-2xl" /><Skeleton className="h-56 rounded-2xl" /></div><Skeleton className="h-44 rounded-2xl" /></div>;
+}
+
+function ErrorPanel({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation("common");
+  return <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center dark:border-rose-900 dark:bg-slate-950"><p className="font-bold text-slate-900 dark:text-white">{t("mentor.marketplace.loadErrorTitle")}</p><Button onClick={onRetry} className="mt-5 rounded-xl">{t("mentor.marketplace.retry")}</Button></div>;
 }

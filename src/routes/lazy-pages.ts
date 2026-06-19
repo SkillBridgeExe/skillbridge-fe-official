@@ -20,18 +20,14 @@ export const LearningComingSoon = lazy(() => import("@/pages/user/LearningComing
 export const Practice = lazy(() => import("@/pages/user/Practice"));
 export const LearningSession = lazy(() => import("@/pages/user/LearningSession"));
 export const Interview = lazy(() => import("@/pages/user/Interview"));
-export const Payment = lazy(() => import("@/pages/user/Payment"));
 export const Pricing = lazy(() => import("@/pages/user/Pricing"));
 export const BillingCheckoutReturn = lazy(() => import("@/pages/user/BillingCheckoutReturn"));
 export const BillingCheckoutStatus = lazy(() => import("@/pages/user/BillingCheckoutStatus"));
 export const BillingMe = lazy(() => import("@/pages/user/BillingMe"));
-export const MentorBilling = lazy(() => import("@/pages/user/MentorBilling"));
-export const MentorConnect = lazy(() => import("@/pages/user/MentorConnect"));
 export const Jobs = lazy(() => import("@/pages/user/Jobs"));
 export const RoadmapGenerator = lazy(() => import("@/pages/user/RoadmapGenerator"));
 export const SuccessStats = lazy(() => import("@/pages/user/SuccessStats"));
 export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
-export const MentorLanding = lazy(() => import("@/pages/user/MentorLanding"));
 
 export const BusinessDashboard = lazy(() => import("@/pages/business/BusinessDashboard"));
 export const BusinessProfile = lazy(() => import("@/pages/business/BusinessProfile"));
@@ -42,14 +38,7 @@ export const BusinessApplicants = lazy(() => import("@/pages/business/BusinessAp
 export const MentorProfile = lazy(() => import("@/pages/mentor/MentorProfile"));
 export const MentorDashboardShell = lazy(() => import("@/pages/mentor/MentorDashboardShell"));
 export const MentorOverview = lazy(() => import("@/pages/mentor/MentorOverview"));
-export const MentorAvailability = lazy(() => import("@/pages/mentor/MentorAvailability"));
 export const MentorProfileSetup = lazy(() => import("@/pages/mentor/MentorProfileSetup"));
-export const MentorRequests = lazy(() => import("@/pages/mentor/MentorRequests"));
-export const MentorWorkspace = lazy(() => import("@/pages/mentor/MentorWorkspace"));
-export const MentorRoom = lazy(() => import("@/pages/mentor/MentorRoom"));
-export const MentorHistory = lazy(() => import("@/pages/mentor/MentorHistory"));
-export const MentorReviews = lazy(() => import("@/pages/mentor/MentorReviews"));
-export const MentorWallet = lazy(() => import("@/pages/mentor/MentorWallet"));
 
 export const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 export const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview"));
@@ -59,7 +48,7 @@ export const AdminUserProfile = lazy(() => import("@/pages/admin/AdminUserProfil
 export const AdminBillingPlans = lazy(() => import("@/pages/admin/AdminBillingPlans"));
 export const AdminBillingOrders = lazy(() => import("@/pages/admin/AdminBillingOrders"));
 export const AdminBillingSubscriptions = lazy(() => import("@/pages/admin/AdminBillingSubscriptions"));
-export const AdminBillingMentorBookings = lazy(() => import("@/pages/admin/AdminBillingMentorBookings"));
+export const AdminMentors = lazy(() => import("@/pages/admin/AdminMentors"));
 
 // Dev-only mascot animation showcase (visit /mascot). Safe to remove later.
 export const MascotShowcase = lazy(() => import("@/pages/dev/MascotShowcase"));
