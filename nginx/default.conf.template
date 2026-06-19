@@ -55,6 +55,13 @@ server {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
+    # Build-time version metadata — never cached so it always reflects the
+    # current deploy. Safe to expose: no secrets, just version/sha/time.
+    location = /version.json {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Content-Type "application/json";
+    }
+
     # SPA fallback: any unknown path → index.html (React Router handles routing).
     location / {
         try_files $uri $uri/ /index.html;

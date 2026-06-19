@@ -49,6 +49,71 @@ const sectionUiToBeMap: Record<string, BuilderSection> = {
   "certifications": "certifications",
 };
 
+/**
+ * FE fallback map for known BE English evaluation text → Vietnamese.
+ * Only maps stable strings the BE is known to return.
+ * Unknown strings pass through as-is (do not machine-translate arbitrary text).
+ */
+const BE_TEXT_VI_MAP: Record<string, string> = {
+  // Labels
+  "Excellent": "Rất tốt",
+  "Good": "Tốt",
+  "Needs improvement": "Cần cải thiện",
+  "NEEDS IMPROVEMENT": "Cần cải thiện",
+  "Needs Improvement": "Cần cải thiện",
+  "No data": "Chưa có thông tin",
+  "Missing": "Thiếu",
+  // Common checklist criteria — summary
+  "No obvious format/spelling issues": "Không có lỗi định dạng/chính tả rõ ràng",
+  "Summary length is adequate": "Độ dài tóm tắt phù hợp",
+  "Contains action verbs": "Có động từ hành động",
+  "Contains measurable results": "Có kết quả đo lường được",
+  "2-3 concise sentences: strengths + goal": "2-3 câu ngắn gọn: điểm mạnh + mục tiêu",
+  "Active voice, strong words": "Câu chủ động, từ ngữ mạnh",
+  "No first-person pronouns": "Không dùng đại từ ngôi thứ nhất",
+  "No vague/buzzword filler": "Không dùng từ chung chung/buzzword",
+  // Common checklist criteria — experience
+  "Each role has measurable impact bullets": "Mỗi vị trí có gạch đầu dòng thể hiện tác động đo lường được",
+  "Action verbs lead each bullet": "Mỗi gạch đầu dòng bắt đầu bằng động từ hành động",
+  "No passive voice": "Không dùng câu bị động",
+  "Dates are consistent": "Ngày tháng nhất quán",
+  "Job titles are clear": "Chức danh rõ ràng",
+  // Common checklist criteria — projects
+  "Each project needs a name": "Mỗi dự án cần có tên",
+  "Each project needs a description": "Mỗi dự án cần có mô tả",
+  "Each project needs tools/technologies": "Mỗi dự án cần công cụ/công nghệ",
+  "Projects show impact or outcome": "Dự án thể hiện tác động hoặc kết quả",
+  // Common checklist criteria — skills
+  "Has relevant skills listed": "Có liệt kê kỹ năng liên quan",
+  "Skills are categorized": "Kỹ năng được phân loại",
+  "No outdated or irrelevant skills": "Không có kỹ năng lỗi thời hoặc không liên quan",
+  // Common checklist criteria — education
+  "Degree and major are specified": "Đã ghi rõ bằng cấp và chuyên ngành",
+  "GPA included if strong": "Điểm GPA nếu cao",
+  // Common checklist criteria — basic info
+  "Email is provided": "Đã cung cấp email",
+  "Phone number is provided": "Đã cung cấp số điện thoại",
+  "Full name is provided": "Đã cung cấp họ tên",
+  "LinkedIn or portfolio link provided": "Đã cung cấp link LinkedIn hoặc portfolio",
+  // Common missing text
+  "Add a professional summary": "Thêm tóm tắt chuyên môn",
+  "Add work experience details": "Thêm chi tiết kinh nghiệm làm việc",
+  "Add project descriptions": "Thêm mô tả dự án",
+  "Add measurable achievements": "Thêm thành tích đo lường được",
+  "Add more technical skills": "Thêm kỹ năng kỹ thuật",
+  "Add education details": "Thêm thông tin học vấn",
+  "Include quantified results": "Bao gồm kết quả định lượng",
+  "Use stronger action verbs": "Sử dụng động từ hành động mạnh hơn",
+  "Remove buzzwords and filler": "Loại bỏ từ chung chung và từ thừa",
+  "Shorten to 2-3 sentences": "Rút gọn còn 2-3 câu",
+};
+
+/** Localize known BE English text when UI is Vietnamese. Pass-through otherwise. */
+function localizeBeText(text: string, lang: "vi" | "en"): string {
+  if (lang === "en") return text;
+  return BE_TEXT_VI_MAP[text] ?? BE_TEXT_VI_MAP[text.trim()] ?? text;
+}
+
 const isSectionDirty = (sectionId: string, state: ReturnType<typeof useCvBuilderStore.getState>): boolean => {
   switch (sectionId) {
     case "basic-info":
@@ -110,6 +175,10 @@ export function CvFormPanel() {
     const snapshot = getBuilderSnapshot(state);
     const roleCode = useDiagnosisStore.getState().targetRole;
 
+    // Override cvLanguage with current UI language so BE returns localized text
+    const uiLang = i18n.language.startsWith("vi") ? "vi" : "en";
+    snapshot.cvLanguage = uiLang as typeof snapshot.cvLanguage;
+
     setEvaluatingMap((prev) => ({ ...prev, [beSection]: true }));
 
     evaluateMutation.mutate(
@@ -129,7 +198,7 @@ export function CvFormPanel() {
         },
       }
     );
-  }, [draftId, evaluateMutation, isLoggedIn, setSectionEvaluation]);
+  }, [draftId, evaluateMutation, i18n.language, isLoggedIn, setSectionEvaluation]);
 
   const prevActiveSectionRef = useRef(activeSection);
 
@@ -183,7 +252,7 @@ export function CvFormPanel() {
           <PopoverTrigger asChild>
             <button className={cn("px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm", badgeClass)}>
               <span>{score}%</span>
-              <span className="font-sans font-semibold text-[9px] uppercase tracking-wider">{label}</span>
+              <span className="font-sans font-semibold text-[9px] uppercase tracking-wider">{localizeBeText(label, currentLang)}</span>
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4" align="end">
@@ -200,7 +269,7 @@ export function CvFormPanel() {
                     <X className="w-3.5 h-3.5 text-[#9F2F2D] shrink-0 mt-0.5" />
                   )}
                   <span className={cn("leading-tight", item.pass ? "text-slate-600" : "text-slate-400")}>
-                    {item.criterion}
+                    {localizeBeText(item.criterion, currentLang)}
                   </span>
                 </div>
               ))}
@@ -213,7 +282,7 @@ export function CvFormPanel() {
                 </div>
                 <ul className="list-disc pl-3.5 space-y-1 text-[11px] text-[#705615] leading-relaxed">
                   {missing.map((txt, i) => (
-                    <li key={i}>{txt}</li>
+                    <li key={i}>{localizeBeText(txt, currentLang)}</li>
                   ))}
                 </ul>
               </div>

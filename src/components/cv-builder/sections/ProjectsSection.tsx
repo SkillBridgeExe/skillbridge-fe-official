@@ -19,7 +19,7 @@ const BULLETS_INSTRUCTION =
 type ProjectNotice = AiGateCode | "LOCAL_ONLY" | "FALLBACK";
 
 export function ProjectsSection() {
-  const { projects, addProject, updateProject, removeProject, draftId } = useCvBuilderStore();
+  const { projects, addProject, updateProject, removeProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -83,6 +83,7 @@ export function ProjectsSection() {
           setPendingId(null);
           setBackupMap((prev) => ({ ...prev, [id]: currentText }));
           updateProject(id, "description", data.suggestion);
+          clearSectionEvaluation("projects");
           if (data.fallback) setNotice({ id, kind: "FALLBACK" });
         },
         onGateFail: (reason) => {

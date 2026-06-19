@@ -1,9 +1,9 @@
-import React, { memo, useState } from "react";
+import React, { useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, X, ArrowLeft, Share2, Download,
-  Sparkles, TrendingUp, Target, Lightbulb, Zap, Shield, Code, Users,
+  Sparkles, TrendingUp, Target, Shield, Code, Users,
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
@@ -256,6 +256,9 @@ export function DiagnosisStep3Results() {
   /* ── Skill Details collapse ── */
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  /* ── AI Insights Tab ── */
+  const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
+
   /* ── Ribbon data ── */
   const coverage = jdMatch?.required_coverage != null
     ? Math.round(jdMatch.required_coverage * 100)
@@ -276,24 +279,24 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  MASTHEAD — kicker + actions + VerdictHero + Ribbon
        * ──────────────────────────────────────────────────────────────────── */}
-      <div className="space-y-2 pb-4">
+      <div className="relative z-10 max-w-4xl mx-auto space-y-2 pb-6">
         {/* Top bar */}
         <div className="flex items-center justify-between">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-primary transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
+          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-[#2F3437] transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
           </button>
           <div className="flex items-center gap-3">
-            <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+            <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
               <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
             </Button>
-            <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F1EF] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
+            <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50">
               <Download className="w-3.5 h-3.5" /> {t("results.download")}
             </Button>
           </div>
         </div>
 
         {/* Kicker */}
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[#787774] text-center pt-2">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-[#787774] text-center pt-6">
           {kickerText}
         </p>
 
@@ -308,7 +311,7 @@ export function DiagnosisStep3Results() {
 
         {/* Ribbon — inline stats + deal-breaker chips */}
         {isJdMode && (
-          <div className="flex justify-center">
+          <div className="flex justify-center mt-4">
             <Ribbon
               matched={presentCount}
               partial={partialCount}
@@ -325,11 +328,11 @@ export function DiagnosisStep3Results() {
           <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
             <span className="text-[#787774]">
               <Shield className="w-3.5 h-3.5 inline mr-1" />
-              ATS <span className="font-mono">{reviewData?.breakdown.ats ?? 0}</span>
+              ATS <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.ats ?? 0}</span>
             </span>
             <span className="text-[#787774]">
               <Code className="w-3.5 h-3.5 inline mr-1" />
-              {t("results.structure")} <span className="font-mono">{reviewData?.breakdown.structure ?? 0}</span>
+              {t("results.structure")} <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.structure ?? 0}</span>
             </span>
           </div>
         )}
@@ -508,52 +511,92 @@ export function DiagnosisStep3Results() {
             {/* Interview Plan */}
             {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
 
-            {/* AI Insights */}
-            <div className={cn(CARD, "overflow-hidden")}>
-              <div className="border-b border-[#EAEAEA] p-5">
-                <h3 className="flex items-center gap-2 text-base font-bold text-[#2F3437]">
-                  <Sparkles className="w-5 h-5 text-primary" /> {t("results.insightsTitle")}
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-[#F1F1EF]">
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#EDF3EC] text-[#346538] flex items-center justify-center shrink-0"><Shield className="w-4 h-4" /></div>
-                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.strengths")}</h4>
-                  </div>
-                  <ul className="space-y-3">
-                    {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}</li>
-                    ))}
-                  </ul>
+            {/* AI Insights: Tabbed Assessment & Magic Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+              {/* Tabbed Assessment (Strengths / Gaps) */}
+              <div className="lg:col-span-3 space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#EAEAEA] pb-2 px-1">
+                  <button
+                    onClick={() => setInsightTab("strengths")}
+                    className={cn(
+                      "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
+                      insightTab === "strengths" ? "text-[#346538]" : "text-[#787774]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" /> {t("results.strengths")}
+                    </div>
+                    {insightTab === "strengths" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#346538]" />}
+                  </button>
+                  <button
+                    onClick={() => setInsightTab("gaps")}
+                    className={cn(
+                      "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
+                      insightTab === "gaps" ? "text-[#9F2F2D]" : "text-[#787774]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4" /> {t("results.gaps")}
+                    </div>
+                    {insightTab === "gaps" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#9F2F2D]" />}
+                  </button>
                 </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#FDEBEC] text-[#9F2F2D] flex items-center justify-center shrink-0"><Target className="w-4 h-4" /></div>
-                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.gaps")}</h4>
-                  </div>
-                  <ul className="space-y-3">
-                    {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#F1F1EF] text-[#787774] flex items-center justify-center shrink-0"><Lightbulb className="w-4 h-4" /></div>
-                    <h4 className="text-sm font-bold text-[#2F3437]">{t("results.actionPlan")}</h4>
-                  </div>
-                  <ul className="space-y-3">
-                    {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#2F3437] font-medium"><Zap className="w-4 h-4 mt-0.5 shrink-0 text-[#787774]" />{item}</li>
-                    ))}
-                  </ul>
+
+                <div className={cn(CARD, "p-6 min-h-[280px]")}>
+                  {insightTab === "strengths" ? (
+                    <div className="space-y-4 animate-in fade-in duration-500">
+                      <ul className="space-y-3">
+                        {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                            <TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-in fade-in duration-500">
+                      <ul className="space-y-3">
+                        {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* CTA + inline learning roadmap derived from this match's GapReport */}
-              <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+              {/* The Magic Card (Action Plan) */}
+              <div className="lg:col-span-2">
+                <div className="relative h-full overflow-hidden rounded-2xl bg-white shadow-lg border border-indigo-100 group">
+                  {/* Glowing background */}
+                  <div className="absolute -inset-2 opacity-30 blur-2xl bg-gradient-to-br from-indigo-300 via-purple-300 to-emerald-300 pointer-events-none transition-opacity duration-1000 group-hover:opacity-50" />
+
+                  <div className="relative h-full flex flex-col p-6 bg-white/60 backdrop-blur-3xl z-10">
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <h4 className="text-lg font-bold text-[#2F3437] tracking-tight">{t("results.actionPlan")}</h4>
+                    </div>
+
+                    <ul className="space-y-4 flex-1">
+                      {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
+                        <li key={i} className="flex items-start gap-3 text-[13px] text-[#2F3437] font-medium leading-relaxed">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2 shadow-[0_0_4px_rgba(99,102,241,0.5)]" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* CTA + inline learning roadmap derived from this match's GapReport */}
+            <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
           </div>
         </Chapter>
       </div>

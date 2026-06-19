@@ -1665,9 +1665,16 @@ export default {
       toastWriteTextFirst: "Hãy viết nội dung trước đã",
       toastAiSuggestFailed: "AI đề xuất thất bại",
       toastSomethingWrong: "Đã có lỗi xảy ra.",
-      turnIntoBullets: "Chuyển thành gạch đầu dòng",
+      turnIntoBullets: "Viết lại thành bullet CV",
       noCerts: "Chưa thêm chứng chỉ nào.",
       remove: "Xóa",
+      review: {
+        completionScore: "Điểm hoàn thiện CV",
+        fix: "Sửa",
+        completed: "Hoàn thành",
+        needsImprovement: "Cần cải thiện",
+        missing: "Chưa bắt đầu",
+      },
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
       commonSkillsSuggest: "Kỹ năng thường gặp cho {{role}}",
       skills: {

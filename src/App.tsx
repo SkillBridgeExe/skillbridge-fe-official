@@ -1,5 +1,6 @@
 import "./global.css";
 import "@/i18n";
+import "@/lib/version"; // W28: log version stamp to console on boot
 
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
