@@ -7,5 +7,8 @@
 // (API keys, client SECRET, DB/JWT secrets) here. Those live on the BACKEND.
 window.__APP_CONFIG__ = {
   API_URL: "${API_URL}",
-  GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+  GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}",
+  APP_VERSION: "${APP_VERSION}",
+  GIT_SHA: "${GIT_SHA}",
+  BUILD_TIME: "${BUILD_TIME}"
 };
