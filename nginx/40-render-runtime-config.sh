@@ -10,4 +10,4 @@ template="/usr/share/nginx/config.template.js"
 output="/usr/share/nginx/html/config.js"
 
 echo "40-render-runtime-config: rendering ${output} from Cloud Run env"
-envsubst '${API_URL} ${GOOGLE_CLIENT_ID}' < "${template}" > "${output}"
+envsubst '${API_URL} ${GOOGLE_CLIENT_ID} ${APP_VERSION} ${GIT_SHA} ${BUILD_TIME}' < "${template}" > "${output}"

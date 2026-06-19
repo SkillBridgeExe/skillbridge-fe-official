@@ -1,5 +1,6 @@
 import Navbar from "./Navbar";
 import { useLocation, Link } from "react-router-dom";
+import { GIT_SHA_SHORT, APP_VERSION } from "@/lib/version";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -72,6 +73,9 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
         </div>
         <div className="max-w-7xl mx-auto border-t border-slate-50 mt-12 pt-8 flex items-center justify-between">
           <p className="text-xs text-slate-400">© 2026 SkillBridge. All rights reserved.</p>
+          <p className="text-[10px] text-slate-300 font-mono select-all" title={`v${APP_VERSION} (${GIT_SHA_SHORT})`}>
+            v{APP_VERSION}·{GIT_SHA_SHORT}
+          </p>
         </div>
       </footer>}
     </div>

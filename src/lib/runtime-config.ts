@@ -15,6 +15,9 @@ interface AppConfig {
   PAYOS_RETURN_URL?: string;
   ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
   ENABLE_GITHUB_EVIDENCE?: string | boolean;
+  APP_VERSION?: string;
+  GIT_SHA?: string;
+  BUILD_TIME?: string;
 }
 
 const runtime: AppConfig =

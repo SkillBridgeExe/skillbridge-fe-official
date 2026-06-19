@@ -2,11 +2,60 @@ import { defineConfig, loadEnv, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
+import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Resolve git SHA at build time. Falls back gracefully if not in a git repo.
+ */
+function getGitSha(): string {
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * Vite plugin: writes /version.json into the output directory after build.
+ * Served by nginx at /version.json — no auth, no secrets, just commit + time.
+ */
+function versionJsonPlugin(): Plugin {
+  return {
+    name: "version-json",
+    apply: "build",
+    closeBundle() {
+      const outDir = path.resolve(__dirname, "dist/spa");
+      const info = {
+        version: process.env.VITE_APP_VERSION || "0.0.0",
+        gitSha: process.env.VITE_GIT_SHA || getGitSha(),
+        buildTime: process.env.VITE_BUILD_TIME || new Date().toISOString(),
+      };
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(outDir, "version.json"),
+        JSON.stringify(info, null, 2) + "\n",
+      );
+    },
+  };
+}
+
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+
+  // Auto-populate version env vars so they are always available to the app
+  // even when CI doesn't set them explicitly.
+  if (!process.env.VITE_GIT_SHA) {
+    process.env.VITE_GIT_SHA = getGitSha();
+  }
+  if (!process.env.VITE_BUILD_TIME) {
+    process.env.VITE_BUILD_TIME = new Date().toISOString();
+  }
+
+  return ({
   server: {
     host: "::",
     port: 8080,
@@ -20,7 +69,7 @@ export default defineConfig(({ mode }) => ({
     proxy: {
       "/api": {
         target:
-          loadEnv(mode, process.cwd(), "").VITE_DEV_API_PROXY ||
+          env.VITE_DEV_API_PROXY ||
           "https://skillbridge-be-973344038436.asia-southeast1.run.app",
         changeOrigin: true,
       },
@@ -39,11 +88,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist/spa",
   },
-  plugins: [react()],
+  plugins: [react(), versionJsonPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@shared": path.resolve(__dirname, "./shared"),
     },
   },
-}));
+  });
+});
