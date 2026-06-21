@@ -225,3 +225,67 @@ export async function downloadAdminMentorAvatarApi(profileId: string): Promise<B
   });
   return response.data;
 }
+
+// ── Slot types & APIs ──────────────────────────────────────────────────────
+
+export const MENTOR_SLOT_STATUSES = ["OPEN", "HELD", "BOOKED", "BLOCKED"] as const;
+export type MentorSlotStatus = (typeof MENTOR_SLOT_STATUSES)[number];
+
+export interface MentorSlotDto {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: MentorSlotStatus;
+  holdExpiresAt?: string | null;
+}
+
+export interface ListMentorSlotsQuery {
+  from: string;
+  to: string;
+}
+
+export interface CreateMentorSlotDto {
+  startsAt: string;
+  endsAt: string;
+}
+
+export async function getMentorSlotsApi(
+  slug: string,
+  query: ListMentorSlotsQuery,
+): Promise<MentorSlotDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto[]>>(
+    httpClient.get(API_ROUTES.MENTORS.SLOTS(slug), { params: query }),
+    "Failed to load mentor slots.",
+  );
+  return envelope.data;
+}
+
+export async function getMyMentorSlotsApi(
+  query: ListMentorSlotsQuery,
+): Promise<MentorSlotDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto[]>>(
+    httpClient.get(API_ROUTES.MENTORS.MY_SLOTS, { params: query }),
+    "Failed to load your mentor slots.",
+  );
+  return envelope.data;
+}
+
+export async function createMentorSlotApi(
+  payload: CreateMentorSlotDto,
+): Promise<MentorSlotDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto>>(
+    httpClient.post(API_ROUTES.MENTORS.MY_SLOTS, payload),
+    "Failed to create slot.",
+  );
+  return envelope.data;
+}
+
+export async function deleteMentorSlotApi(
+  slotId: string,
+): Promise<{ deleted: true }> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<{ deleted: true }>>(
+    httpClient.delete(API_ROUTES.MENTORS.MY_SLOT(slotId)),
+    "Failed to delete slot.",
+  );
+  return envelope.data;
+}

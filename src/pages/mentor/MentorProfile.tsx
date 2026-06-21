@@ -1,20 +1,67 @@
+import { useState, useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, BadgeCheck, BriefcaseBusiness, Clock3, ExternalLink, Globe2, Linkedin, Star, UsersRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BriefcaseBusiness, Clock3, ExternalLink, Globe2, Linkedin, Loader2, Star, UsersRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { formatVnd } from "@/components/ecosystem/MentorCard";
 import Layout from "@/components/layout/Layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMentorProfile } from "@/hooks/use-mentors";
+import { useMentorProfile, useMentorSlots } from "@/hooks/use-mentors";
+import { useCreateBooking } from "@/hooks/use-mentor-bookings";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MentorProfile() {
   const { mentorSlug } = useParams<{ mentorSlug: string }>();
   const { t } = useTranslation("common");
   const reduceMotion = useReducedMotion();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const profileQuery = useMentorProfile(mentorSlug);
+  const createBookingMutation = useCreateBooking();
+  
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  
+  // Fetch next 14 days of slots
+  const { fromDate, toDate } = useMemo(() => {
+    const now = new Date();
+    return {
+      fromDate: now.toISOString(),
+      toDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    };
+  }, []);
+  
+  const slotsQuery = useMentorSlots(mentorSlug, { from: fromDate, to: toDate });
+  
+  const handleBookSession = async () => {
+    if (!selectedSlotId || !mentorSlug) return;
+    try {
+      const result = await createBookingMutation.mutateAsync({
+        mentorProfileId: mentor.id,
+        slotId: selectedSlotId,
+      });
+      if (result.checkout?.checkoutUrl) {
+        window.location.href = result.checkout.checkoutUrl;
+      } else if (result.checkout?.orderCode) {
+        navigate(`/billing/checkout/${result.checkout.orderCode}`);
+      } else {
+        toast({ title: t("mentor.profile.bookSuccess", "Booking created successfully") });
+        navigate("/billing/mentor");
+      }
+    } catch (error) {
+      toast({
+        title: t("common.error", "Error"),
+        description: error instanceof Error ? error.message : "Failed to book session",
+        variant: "destructive",
+      });
+      // Refetch slots in case the selected slot was already held/booked
+      setSelectedSlotId(null);
+      void slotsQuery.refetch();
+    }
+  };
 
   if (profileQuery.isLoading) return <ProfileSkeleton />;
 
@@ -109,29 +156,75 @@ export default function MentorProfile() {
               </Section>
             </div>
 
-            <aside className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-none lg:sticky lg:top-24">
-              <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white">{t("mentor.profile.sessionDetails")}</h2>
-              <div className="mt-6 space-y-5">
-                {mentor.linkedinUrl ? (
-                  <a
-                    href={mentor.linkedinUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 font-bold text-primary transition-colors hover:bg-primary/10"
-                  >
-                    <span className="inline-flex items-center gap-2"><Linkedin className="h-4 w-4" />{t("mentor.profile.linkedin")}</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                ) : null}
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.sessionPrice")}</p>
-                  <p className="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white">{formatVnd(mentor.sessionPriceVnd)}</p>
-                </div>
-                <div className="border-t border-slate-100 pt-5 dark:border-slate-800">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.duration")}</p>
-                  <p className="mt-1 flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Clock3 className="h-4 w-4 text-primary" />{t("mentor.card.perSession", { minutes: mentor.sessionDurationMinutes })}</p>
+            <aside className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-none lg:sticky lg:top-24">
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white">{t("mentor.profile.sessionDetails")}</h2>
+                <div className="mt-6 space-y-5">
+                  {mentor.linkedinUrl ? (
+                    <a
+                      href={mentor.linkedinUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 font-bold text-primary transition-colors hover:bg-primary/10"
+                    >
+                      <span className="inline-flex items-center gap-2"><Linkedin className="h-4 w-4" />{t("mentor.profile.linkedin")}</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : null}
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.sessionPrice")}</p>
+                    <p className="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white">{formatVnd(mentor.sessionPriceVnd)}</p>
+                  </div>
+                  <div className="border-t border-slate-100 pt-5 dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.duration")}</p>
+                    <p className="mt-1 flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Clock3 className="h-4 w-4 text-primary" />{t("mentor.card.perSession", { minutes: mentor.sessionDurationMinutes })}</p>
+                  </div>
                 </div>
               </div>
+
+              {/* Slot Picker */}
+              <div className="border-t border-slate-100 pt-5 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.availableSlots", "Lịch trống (14 ngày tới)")}</p>
+                <div className="mt-3 flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
+                  {slotsQuery.isLoading ? (
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                  ) : slotsQuery.data?.filter(s => s.status === "OPEN").length ? (
+                    slotsQuery.data.filter(s => s.status === "OPEN").map(slot => (
+                      <button
+                        key={slot.id}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                        className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${selectedSlotId === slot.id ? "border-primary bg-primary/10" : "border-slate-200 hover:border-primary/50 dark:border-slate-800"}`}
+                      >
+                        <div>
+                          <p className={`font-bold ${selectedSlotId === slot.id ? "text-primary" : "text-slate-950 dark:text-white"}`}>
+                            {new Date(slot.startsAt).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {new Date(slot.startsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {new Date(slot.endsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        {selectedSlotId === slot.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">{t("mentor.profile.noSlots", "Hiện chưa có lịch trống.")}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Note & CTA */}
+              {selectedSlotId ? (
+                <div className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+                  <Button
+                    onClick={handleBookSession}
+                    disabled={createBookingMutation.isPending}
+                    className="w-full rounded-xl bg-primary py-6 text-base font-black text-primary-foreground hover:bg-primary/90"
+                  >
+                    {createBookingMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                    {t("mentor.profile.bookNow", "Đặt lịch ngay")}
+                  </Button>
+                </div>
+              ) : null}
             </aside>
           </div>
         </div>

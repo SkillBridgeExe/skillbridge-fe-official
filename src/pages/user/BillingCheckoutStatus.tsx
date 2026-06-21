@@ -103,6 +103,9 @@ export default function BillingCheckoutStatus() {
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_USAGE });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
+    // Also invalidate mentor booking state (deposit/remaining payment)
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_MENTOR_BOOKINGS });
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MENTOR_OWNED_BOOKINGS });
   }, [queryClient]);
 
   const reconcileLatest = useCallback(async () => {
