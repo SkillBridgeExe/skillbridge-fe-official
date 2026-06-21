@@ -107,6 +107,9 @@ export const API_ROUTES = {
     PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,
     ORDERS: `${API}/admin/billing/orders`,
     SUBSCRIPTIONS: `${API}/admin/billing/subscriptions`,
+    MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,
+    MENTOR_BOOKING_REFUND: (bookingId: string) =>
+      `${API}/admin/billing/mentor-bookings/${bookingId}/refund`,
   },
 
   ADMIN_USERS: {
@@ -123,8 +126,28 @@ export const API_ROUTES = {
     LIST: `${API}/mentors`,
     DETAIL: (slug: string) => `${API}/mentors/${slug}`,
     AVATAR: (slug: string) => `${API}/mentors/${slug}/avatar`,
+    SLOTS: (slug: string) => `${API}/mentors/${slug}/slots`,
     MY_PROFILE: `${API}/mentors/me/profile`,
     SUBMIT_PROFILE: `${API}/mentors/me/profile/submit`,
+    MY_SLOTS: `${API}/mentors/me/slots`,
+    MY_SLOT: (slotId: string) => `${API}/mentors/me/slots/${slotId}`,
+    MY_BOOKINGS: `${API}/mentors/me/bookings`,
+    MY_BOOKING_MEETING_LINK: (bookingId: string) =>
+      `${API}/mentors/me/bookings/${bookingId}/meeting-link`,
+    MY_BOOKING_COMPLETE: (bookingId: string) =>
+      `${API}/mentors/me/bookings/${bookingId}/complete`,
+    MY_BOOKING_CANCEL: (bookingId: string) =>
+      `${API}/mentors/me/bookings/${bookingId}/cancel`,
+  },
+
+  MENTOR_BOOKINGS: {
+    CREATE: `${API}/mentor-bookings`,
+    MY_LIST: `${API}/mentor-bookings/me`,
+    DETAIL: (bookingId: string) => `${API}/mentor-bookings/${bookingId}`,
+    PAY_REMAINING: (bookingId: string) =>
+      `${API}/mentor-bookings/${bookingId}/pay-remaining`,
+    CANCEL: (bookingId: string) => `${API}/mentor-bookings/${bookingId}/cancel`,
+    REVIEW: (bookingId: string) => `${API}/mentor-bookings/${bookingId}/review`,
   },
 
   ADMIN_MENTORS: {

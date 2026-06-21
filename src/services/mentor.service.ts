@@ -10,7 +10,13 @@ import {
   submitMyMentorProfileApi,
   updateAdminMentorStatusApi,
   updateMyMentorProfileApi,
+  getMentorSlotsApi,
+  getMyMentorSlotsApi,
+  createMentorSlotApi,
+  deleteMentorSlotApi,
   type AdminMentorListQuery,
+  type CreateMentorSlotDto,
+  type ListMentorSlotsQuery,
   type MentorListQuery,
   type SkillSearchQuery,
   type UpdateAdminMentorStatusRequest,
@@ -20,6 +26,8 @@ import {
 export type {
   AdminMentorListQuery,
   AdminMentorListDto,
+  CreateMentorSlotDto,
+  ListMentorSlotsQuery,
   MentorCardDto,
   MentorFiltersDto,
   MentorListDto,
@@ -28,6 +36,8 @@ export type {
   MentorPublicProfileDto,
   MentorProfileStatus,
   MentorSkillDto,
+  MentorSlotDto,
+  MentorSlotStatus,
   MentorSort,
   MentorSummaryDto,
   SkillPickerItemDto,
@@ -40,6 +50,7 @@ export {
   MENTOR_PROFILE_STATUSES,
   MENTOR_SESSION_DURATIONS,
   MENTOR_SORTS,
+  MENTOR_SLOT_STATUSES,
 } from "@/api/mentors";
 
 export const getMentorSummary = () => getMentorSummaryApi();
@@ -59,3 +70,13 @@ export const updateAdminMentorStatus = (
 export const searchMentorSkills = (query: SkillSearchQuery) => searchMentorSkillsApi(query);
 export const downloadAdminMentorAvatar = (profileId: string) =>
   downloadAdminMentorAvatarApi(profileId);
+
+// Slots
+export const getMentorSlots = (slug: string, query: ListMentorSlotsQuery) =>
+  getMentorSlotsApi(slug, query);
+export const getMyMentorSlots = (query: ListMentorSlotsQuery) =>
+  getMyMentorSlotsApi(query);
+export const createMentorSlot = (payload: CreateMentorSlotDto) =>
+  createMentorSlotApi(payload);
+export const deleteMentorSlot = (slotId: string) =>
+  deleteMentorSlotApi(slotId);

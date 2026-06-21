@@ -1,18 +1,24 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
 import {
+  createMentorSlot,
+  deleteMentorSlot,
   downloadAdminMentorAvatar,
   getAdminMentors,
   getMentorFilters,
   getMentorProfile,
   getMentors,
+  getMentorSlots,
   getMentorSummary,
   getMyMentorProfile,
+  getMyMentorSlots,
   searchMentorSkills,
   submitMyMentorProfile,
   updateAdminMentorStatus,
   updateMyMentorProfile,
   type AdminMentorListQuery,
+  type CreateMentorSlotDto,
+  type ListMentorSlotsQuery,
   type MentorListQuery,
   type SkillSearchQuery,
   type UpdateAdminMentorStatusRequest,
@@ -108,10 +114,53 @@ export function useUpdateAdminMentorStatus() {
   });
 }
 
+// ── Slot hooks ─────────────────────────────────────────────────────────────
+
+export function useMentorSlots(slug: string | undefined, query: ListMentorSlotsQuery) {
+  return useQuery({
+    queryKey: QUERY_KEYS.MENTOR_SLOTS(slug ?? "", query),
+    queryFn: () => getMentorSlots(slug!, query),
+    enabled: Boolean(slug),
+  });
+}
+
+export function useMyMentorSlots(query: ListMentorSlotsQuery) {
+  return useQuery({
+    queryKey: QUERY_KEYS.MY_MENTOR_SLOTS(query),
+    queryFn: () => getMyMentorSlots(query),
+  });
+}
+
+export function useCreateMentorSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateMentorSlotDto) => createMentorSlot(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] });
+      void queryClient.invalidateQueries({ queryKey: ["mentors", "slots"] });
+    },
+  });
+}
+
+export function useDeleteMentorSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slotId: string) => deleteMentorSlot(slotId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] });
+      void queryClient.invalidateQueries({ queryKey: ["mentors", "slots"] });
+    },
+  });
+}
+
+// ── Cache invalidation ─────────────────────────────────────────────────────
+
 function invalidateMentorCaches(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["mentors"] }),
     queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] }),
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_MENTOR_PROFILE }),
+    queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] }),
   ]);
 }
+

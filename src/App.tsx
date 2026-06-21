@@ -88,8 +88,11 @@ const App = () => (
               <Route path="/mentor-dashboard" element={<AuthGuard requiredRole="mentor"><Pages.MentorDashboardShell /></AuthGuard>}>
                 <Route index element={<Pages.MentorOverview />} />
                 <Route path="profile" element={<Pages.MentorProfileSetup />} />
+                <Route path="availability" element={<Pages.MentorAvailability />} />
+                <Route path="requests" element={<Pages.MentorRequests />} />
               </Route>
               <Route path="/mentor" element={<Navigate to="/mentor-dashboard" replace />} />
+              <Route path="/billing/mentor" element={<AuthGuard requireAuth><Pages.MentorBilling /></AuthGuard>} />
 
               <Route path="/admin" element={<AuthGuard requiredRole="admin"><Pages.AdminDashboard /></AuthGuard>}>
                 <Route index element={<Pages.AdminOverview />} />
@@ -100,6 +103,7 @@ const App = () => (
                 <Route path="billing/plans" element={<Pages.AdminBillingPlans />} />
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
+                <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 

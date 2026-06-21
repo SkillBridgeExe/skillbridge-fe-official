@@ -1,4 +1,4 @@
-import { Eye, LayoutDashboard, UserRoundPen } from "lucide-react";
+import { CalendarDays, CalendarCheck2, Eye, LayoutDashboard, UserRoundPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -13,6 +13,8 @@ export default function MentorDashboardShell() {
   const items = [
     { to: "/mentor-dashboard", label: t("mentor.dashboard.overview"), icon: LayoutDashboard, end: true },
     { to: "/mentor-dashboard/profile", label: t("mentor.dashboard.editProfile"), icon: UserRoundPen, end: false },
+    { to: "/mentor-dashboard/availability", label: t("mentor.dashboard.availability", "Lịch trống"), icon: CalendarDays, end: false },
+    { to: "/mentor-dashboard/requests", label: t("mentor.dashboard.requests", "Yêu cầu"), icon: CalendarCheck2, end: false },
   ];
 
   return (
