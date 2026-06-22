@@ -12,7 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Upload, History, Sparkles, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Upload, History, Sparkles, ShieldCheck, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
@@ -271,72 +271,71 @@ export function DiagnosisStep1Upload() {
         </div>
       )}
 
+      {/* Header moved outside the white card */}
+      <div className="flex items-center justify-end gap-3 pb-3">
+        {hasApiSession && <QuotaLine enabled={hasApiSession} t={t} />}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setHistoryOpen(true)}
+          className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 gap-1.5 font-bold text-xs uppercase tracking-wider px-3 h-8 rounded-lg active:scale-[0.98] shrink-0"
+        >
+          <History className="w-3.5 h-3.5" /> <span>{t("upload.historyLink")}</span>
+        </Button>
+      </div>
+
       {/* Main Form Double-Bezel Card */}
       <div className="bg-slate-50/50 p-2 md:p-3 rounded-[2.5rem] border border-slate-100 shadow-sm animate-in zoom-in-95 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
         <div className="bg-white rounded-[calc(2.5rem-0.75rem)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-900/5 p-6 md:p-10 lg:p-12 space-y-0">
-          
-        {/* Header */}
-        <div className="flex items-center justify-end gap-3 pb-3">
-          {hasApiSession && <QuotaLine enabled={hasApiSession} t={t} />}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setHistoryOpen(true)}
-            className="text-slate-500 hover:text-slate-900 hover:bg-slate-50 gap-1.5 font-bold text-xs uppercase tracking-wider px-3 h-8 rounded-lg active:scale-[0.98] shrink-0"
-          >
-            <History className="w-3.5 h-3.5" /> <span>{t("upload.historyLink")}</span>
-          </Button>
-        </div>
 
         {/* 2-Door CV Section */}
         <div>
           {isFromBuilder ? (
-            <div className="space-y-3 w-full">
-              <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl">
-                <div className="flex items-center gap-3 min-w-0">
+            <div className="w-full">
+              <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl relative group">
+                <div className="flex items-center gap-3 min-w-0 pr-8">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-[#2F3437] truncate">{builderCvName || "Generated_CV.pdf"}</p>
-                    <p className="text-xs text-[#787774]">{t("upload.builderSource")}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[11px] text-[#787774]">{t("upload.builderSource")}</p>
+                      <button 
+                        onClick={() => setStep("builder")}
+                        className="text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        {t("upload.editInBuilder")}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1 text-xs rounded-lg border-primary text-primary hover:bg-primary/5 h-9 active:scale-[0.98]" 
-                  onClick={() => setStep("builder")}
-                >
-                  {t("upload.editInBuilder")}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 text-xs rounded-lg text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50 hover:border-red-300 h-9 active:scale-[0.98]" 
+                <button
+                  type="button"
                   onClick={() => { clearBuilderState(); setCvFile(null); }}
+                  className="absolute right-4 text-slate-400 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-red-50"
+                  title={t("upload.removeCv")}
                 >
-                  {t("upload.removeCv")}
-                </Button>
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ) : cvFile ? (
-            <div className="space-y-3 w-full">
-              <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl">
-                <div className="flex items-center gap-3 min-w-0">
+            <div className="w-full">
+              <div className="flex items-center justify-between p-4 bg-[#EDF3EC]/40 border border-[#DCE9D7] rounded-xl relative group">
+                <div className="flex items-center gap-3 min-w-0 pr-8">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-[#2F3437] truncate">{cvFile.name}</p>
                     <p className="text-xs text-[#787774]">{(cvFile.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full text-xs rounded-lg text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50 hover:border-red-300 h-9 active:scale-[0.98]" 
+                <button
+                  type="button"
                   onClick={() => setCvFile(null)}
+                  className="absolute right-4 text-slate-400 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-red-50"
+                  title={t("upload.removeCv")}
                 >
-                  {t("upload.removeCv")}
-                </Button>
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ) : (
@@ -404,10 +403,10 @@ export function DiagnosisStep1Upload() {
         </div>
 
         {/* Target Role Selector */}
-        <div className="space-y-6 mt-8">
+        <div className="space-y-6 mt-12">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-800">
-              {t("upload.roleLabel")} <span className="text-ink-accent">*</span>
+            <label className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              {t("upload.roleLabel")} <span className="text-[10px] text-slate-400 font-normal uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded-sm">(Bắt buộc)</span>
             </label>
             <Select 
               value={targetRole || ""} 
@@ -429,13 +428,15 @@ export function DiagnosisStep1Upload() {
           {/* Job Description block */}
           <div className="space-y-3">
             {!showJd ? (
-              <button 
-                type="button"
-                onClick={() => setShowJd(true)}
-                className="text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors flex items-center gap-1.5"
-              >
-                + {t("upload.addJd")}
-              </button>
+              <div className="pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowJd(true)}
+                  className="text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors flex items-center gap-1 mb-2"
+                >
+                  {t("upload.addJd")} <ChevronDown className="w-4 h-4 ml-0.5" />
+                </button>
+              </div>
             ) : (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between mb-2">
@@ -460,22 +461,16 @@ export function DiagnosisStep1Upload() {
         {/* Consent Checkbox */}
         {hasUsableCv && (
           <div className="mt-8">
-            <label className={cn(
-              "flex items-start gap-3 p-3.5 border rounded-xl cursor-pointer group transition-colors",
-              consentAccepted
-                ? "bg-ink-accent-tint border-ink-accent/20"
-                : "bg-white border-slate-200 hover:border-slate-300"
-            )}>
+            <label className="flex items-start gap-3 py-2 cursor-pointer group transition-colors select-none">
               <input
                 type="checkbox"
                 checked={consentAccepted}
                 onChange={(e) => setConsentAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-ink-accent focus:ring-ink-accent/40 accent-ink-accent shrink-0"
+                className="mt-[3px] w-4 h-4 rounded border-slate-300 text-ink-accent focus:ring-ink-accent/40 accent-ink-accent shrink-0 cursor-pointer"
               />
-              <div className="flex items-start gap-2">
-                <ShieldCheck className={cn("w-4 h-4 mt-0.5 shrink-0", consentAccepted ? "text-ink-accent" : "text-slate-400")} />
-                <span className="text-xs text-slate-600 leading-relaxed">{t("upload.consentLabel")}</span>
-              </div>
+              <span className="text-sm text-slate-600 leading-relaxed group-hover:text-slate-900 transition-colors">
+                {t("upload.consentLabel")}
+              </span>
             </label>
           </div>
         )}
