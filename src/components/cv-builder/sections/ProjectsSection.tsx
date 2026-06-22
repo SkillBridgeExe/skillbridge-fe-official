@@ -11,6 +11,7 @@ import type { AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
+import { useCompanionStore } from "@/store/useCompanionStore";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const BULLETS_INSTRUCTION =
@@ -192,6 +193,40 @@ export function ProjectsSection() {
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>{t("builder.undo")}</span>
+                </Button>
+              )}
+
+              {/* Companion AI trigger for project description */}
+              {isLoggedIn && draftId && proj.description.trim() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  disabled={!draftId || !proj.description.trim()}
+                  onClick={() => {
+                    const id = `cvbuilder:projects[${index}].description`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_builder",
+                        props: {
+                          draftId,
+                          fieldPath: id,
+                          section: "projects",
+                          currentValue: proj.description,
+                          onApply: (after: string) => {
+                            updateProject(proj.id, "description", after);
+                            clearSectionEvaluation("projects");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
                 </Button>
               )}
             </div>

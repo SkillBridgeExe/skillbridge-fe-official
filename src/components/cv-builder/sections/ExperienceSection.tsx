@@ -11,6 +11,7 @@ import type { AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
+import { useCompanionStore } from "@/store/useCompanionStore";
 
 
 export function ExperienceSection() {
@@ -279,6 +280,40 @@ export function ExperienceSection() {
                 (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) &&
                 renderSuggestionBox(exp.id, "description")
               }
+
+              {/* Companion AI trigger for description */}
+              {isLoggedIn && draftId && exp.description.trim() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  disabled={!draftId || !exp.description.trim()}
+                  onClick={() => {
+                    const id = `cvbuilder:experience[${index}].description`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_builder",
+                        props: {
+                          draftId,
+                          fieldPath: id,
+                          section: "experience",
+                          currentValue: exp.description,
+                          onApply: (after: string) => {
+                            updateExperience(exp.id, "description", after);
+                            clearSectionEvaluation("experience");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                </Button>
+              )}
             </div>
 
             {/* Achievements field */}
@@ -312,6 +347,40 @@ export function ExperienceSection() {
                 (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) &&
                 renderSuggestionBox(exp.id, "achievements")
               }
+
+              {/* Companion AI trigger for achievements */}
+              {isLoggedIn && draftId && exp.achievements.trim() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  disabled={!draftId || !exp.achievements.trim()}
+                  onClick={() => {
+                    const id = `cvbuilder:experience[${index}].achievements`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_builder",
+                        props: {
+                          draftId,
+                          fieldPath: id,
+                          section: "experience",
+                          currentValue: exp.achievements,
+                          onApply: (after: string) => {
+                            updateExperience(exp.id, "achievements", after);
+                            clearSectionEvaluation("experience");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                </Button>
+              )}
             </div>
 
           </div>
