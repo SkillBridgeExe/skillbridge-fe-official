@@ -20,6 +20,7 @@ import { GapReportCard } from "./GapReportCard";
 import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
+import { NextStepsCard } from "./NextStepsCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 
 /* ── Design tokens (§0b — editorial W24) ── */
@@ -510,6 +511,9 @@ export function DiagnosisStep3Results() {
 
             {/* Interview Plan */}
             {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+
+            {/* Next Steps (Companion) */}
+            {isJdMode && jdMatch?.matchId && <NextStepsCard matchId={jdMatch.matchId} />}
 
             {/* AI Insights: Tabbed Assessment & Magic Card */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

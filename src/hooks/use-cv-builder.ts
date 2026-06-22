@@ -1,15 +1,19 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ensureBuilderDraft,
   evaluateSection,
   renderBuilderPdf,
   rewriteField,
   saveBuilderDraft,
+  assistantAnalyze,
+  assistantRewrite,
+  assistantSkillsNudge,
   type BuilderSnapshot,
   type EvaluateSectionInput,
 } from "@/services/cv-builder.service";
 import { assessAiInput, getAiGateCode, type AiGateCode } from "@/lib/ai-input-gate";
 import type { RewriteRequest, RewriteResponse } from "@shared/api";
+import type { AssistantAnalyzeRequest, AssistantRewriteRequest } from "@/types/companion";
 
 /** Tạo draft builder trên BE — gọi 1 lần khi vào builder (lưu id vào store.draftId). */
 export function useEnsureBuilderDraftMutation() {
@@ -89,4 +93,32 @@ export function useAiRewrite() {
 /** Render + tải PDF của draft. */
 export function useRenderBuilderPdfMutation() {
   return useMutation({ mutationFn: renderBuilderPdf });
+}
+
+// ── Companion / CV Assistant ────────────────────────────────────────
+
+/** Turn-1: phân tích field + hỏi — mutation vì user trigger thủ công (focus/click). */
+export function useAssistantAnalyzeMutation() {
+  return useMutation({
+    mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantAnalyzeRequest) =>
+      assistantAnalyze(draftId, input),
+  });
+}
+
+/** Turn-2: viết lại từ answers — mutation (LLM, timeout dài). */
+export function useAssistantRewriteMutation() {
+  return useMutation({
+    mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantRewriteRequest) =>
+      assistantRewrite(draftId, input),
+  });
+}
+
+/** Skills nudge — query (deterministic GET, enabled khi có draftId). */
+export function useSkillsNudgeQuery(draftId: string | null, lang: "vi" | "en" = "vi") {
+  return useQuery({
+    queryKey: ["skills-nudge", draftId, lang],
+    queryFn: () => assistantSkillsNudge(draftId!, lang),
+    enabled: !!draftId,
+    staleTime: 60_000,
+  });
 }

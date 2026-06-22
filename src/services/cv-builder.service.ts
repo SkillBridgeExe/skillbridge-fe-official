@@ -15,8 +15,18 @@ import {
   renderBuilderPdfApi,
   rewriteFieldApi,
   updateBuilderDraftApi,
+  assistantAnalyzeApi,
+  assistantRewriteApi,
+  assistantSkillsNudgeApi,
 } from "@/api/cv/builder";
 import { requireSession } from "@/services/diagnosis.service";
+import type {
+  AssistantAnalyzeRequest,
+  AssistantRewriteRequest,
+  AssistantRewriteResponse,
+  CvAssistantTurn,
+  SkillsNudgeItem,
+} from "@/types/companion";
 import type {
   Certification,
   CvLanguage,
@@ -289,4 +299,33 @@ export async function rewriteField(
 export async function renderBuilderPdf(draftId: string): Promise<Blob> {
   requireSession();
   return renderBuilderPdfApi(draftId);
+}
+
+// ── Companion / CV Assistant ────────────────────────────────────────
+
+/** Turn-1: phân tích field + hỏi (deterministic, KHÔNG quota). */
+export async function assistantAnalyze(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<CvAssistantTurn> {
+  requireSession();
+  return assistantAnalyzeApi(draftId, input);
+}
+
+/** Turn-2: viết lại từ câu trả lời (LLM, tốn quota CHỈ khi ok). */
+export async function assistantRewrite(
+  draftId: string,
+  input: AssistantRewriteRequest,
+): Promise<AssistantRewriteResponse> {
+  requireSession();
+  return assistantRewriteApi(draftId, input);
+}
+
+/** Gợi ý hoàn thiện skills (deterministic, KHÔNG quota). */
+export async function assistantSkillsNudge(
+  draftId: string,
+  lang: "vi" | "en" = "vi",
+): Promise<SkillsNudgeItem[]> {
+  requireSession();
+  return assistantSkillsNudgeApi(draftId, lang);
 }

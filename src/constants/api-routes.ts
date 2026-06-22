@@ -44,6 +44,10 @@ export const API_ROUTES = {
     BUILDER_EVALUATE: (id: string) => `${API}/cvs/${id}/builder/evaluate`,
     BUILDER_REWRITE: (id: string) => `${API}/cvs/${id}/builder/rewrite`,
     RENDER_PDF: (id: string) => `${API}/cvs/${id}/render-pdf`,
+    // Companion / CV Assistant (PR #126)
+    ASSISTANT_ANALYZE: (id: string) => `${API}/cvs/${id}/builder/assistant/analyze`,
+    ASSISTANT_REWRITE: (id: string) => `${API}/cvs/${id}/builder/assistant/rewrite`,
+    ASSISTANT_SKILLS_NUDGE: (id: string) => `${API}/cvs/${id}/builder/assistant/skills-nudge`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)
@@ -59,6 +63,7 @@ export const API_ROUTES = {
     GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
     ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
     INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
+    NEXT_STEPS: (matchId: string) => `${API}/cv-matches/${matchId}/next-steps`,
   },
 
   // Unified plan entitlements and quotas.

@@ -1,10 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { X, Lightbulb, Plus, Check } from "lucide-react";
+import { X, Lightbulb, Plus, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
+import { useSkillsNudgeQuery } from "@/hooks/use-cv-builder";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // Curated reference lists per role (NOT AI — a static, honest "common skills" helper).
 const SUGGESTIONS = {
@@ -13,9 +15,16 @@ const SUGGESTIONS = {
 };
 
 export function SkillsSection() {
-  const { technicalSkills, softSkills, tools, languages, addSkill, removeSkill, targetPosition } = useCvBuilderStore();
-  const { t } = useTranslation("diagnosis");
+  const { technicalSkills, softSkills, tools, languages, addSkill, removeSkill, targetPosition, draftId } = useCvBuilderStore();
+  const { t, i18n } = useTranslation("diagnosis");
   const [inputs, setInputs] = useState({ technicalSkills: "", softSkills: "", tools: "", languages: "" });
+  const isLoggedIn = useAuthStore(
+    (state) => state.authStatus === "authenticated" && state.authSource === "api",
+  );
+
+  const lang = (i18n.language.startsWith("vi") ? "vi" : "en") as "vi" | "en";
+  const nudgeQuery = useSkillsNudgeQuery(isLoggedIn ? draftId : null, lang);
+  const nudgeItems = nudgeQuery.data ?? [];
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: "technicalSkills" | "softSkills" | "tools" | "languages") => {
     if (e.key === "Enter" && inputs[field].trim()) {
@@ -40,6 +49,24 @@ export function SkillsSection() {
 
   return (
     <div className="space-y-6 p-4">
+      {/* Skills Nudge (BE-driven, deterministic) */}
+      {nudgeItems.length > 0 && (
+        <div className="p-3 bg-indigo-50/60 border border-indigo-100/80 rounded-lg space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600">
+            <Zap className="w-3.5 h-3.5" />
+            {t("skillsNudge.title", { defaultValue: "Gợi ý hoàn thiện kỹ năng" })}
+          </div>
+          <ul className="space-y-1">
+            {nudgeItems.map((item) => (
+              <li key={item.code} className="text-xs text-indigo-700/80 leading-relaxed flex items-start gap-1.5">
+                <span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" />
+                {item.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {suggestions.length > 0 && (
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">

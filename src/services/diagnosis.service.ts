@@ -22,6 +22,7 @@ import {
   getInterviewPlanApi,
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
+import { getNextStepsApi } from "@/api/cv/next-steps";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
@@ -44,6 +45,7 @@ import type {
   SkillMatchItem,
   TailorAction,
 } from "@shared/api";
+import type { NextStepsResponse } from "@/types/companion";
 
 // ── Input/Output của service ────────────────────────────────────────
 
@@ -425,4 +427,15 @@ export async function rewriteTailorBullet({
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);
+}
+
+// ── Companion: next-steps (diagnosis page) ──────────────────────────
+
+/** Bước tiếp theo ưu tiên theo gap thật (deterministic, KHÔNG quota). */
+export async function getNextSteps(
+  matchId: string,
+  lang: DiagnosisLang = "vi",
+): Promise<NextStepsResponse> {
+  requireSession();
+  return getNextStepsApi(matchId, lang);
 }
