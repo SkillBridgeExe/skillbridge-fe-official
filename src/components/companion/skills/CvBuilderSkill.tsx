@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-cv-builder";
 import { useTranslation } from "react-i18next";
 import type { AssistantAnswer, AssistantQuestion } from "@/types/companion";
+import { assistantLocales } from "./assistant-locale";
 
 const MAX_REASK = 2;
 
@@ -130,7 +131,7 @@ export function CvBuilderSkill({
   currentValue,
   onApply,
 }: CvBuilderSkillProps) {
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
 
   const {
     cvLanguage,
@@ -150,9 +151,13 @@ export function CvBuilderSkill({
     resetCompanion,
   } = useCvBuilderStore();
 
-  // The assistant speaks the CV's OWN language (set from the scanned doc.language), NOT the UI language —
-  // a Vietnamese CV gets Vietnamese questions even if the user browses the app in English.
-  const locale: "vi" | "en" = cvLanguage === "vi" ? "vi" : "en";
+  // The assistant CONVERSES in the UI language but WRITES CV text in the CV's language: the user is asked
+  // in their UI language, yet the rewritten bullet matches the CV (a VN user with an EN CV is asked in VN
+  // and gets EN bullets). askLocale → analyze (questions); outputLocale → rewrite (the patch text).
+  const { conversation: askLocale, output: outputLocale } = assistantLocales({
+    uiLanguage: i18n.language,
+    cvLanguage,
+  });
 
   const isActiveField = !!fieldPath && companionField === fieldPath;
 
@@ -183,7 +188,7 @@ export function CvBuilderSkill({
         current_value: currentValue,
         section,
         field_path: fieldPath,
-        locale,
+        locale: askLocale,
       },
       {
         onSuccess: (turn) => {
@@ -202,7 +207,7 @@ export function CvBuilderSkill({
       },
     );
   }, [
-    draftId, currentValue, section, fieldPath, locale,
+    draftId, currentValue, section, fieldPath, askLocale,
     analyzeMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
     setCompanionMessage, clearCompanionAnswers,
   ]);
@@ -243,7 +248,7 @@ export function CvBuilderSkill({
         answers: answerList,
         target: fieldPath ?? "",
         kind: section === "summary" ? "summary" : "bullet",
-        locale,
+        locale: outputLocale,
       },
       {
         onSuccess: (res) => {
@@ -277,7 +282,7 @@ export function CvBuilderSkill({
       },
     );
   }, [
-    draftId, companionTurn, answers, currentValue, fieldPath, section, locale,
+    draftId, companionTurn, answers, currentValue, fieldPath, section, outputLocale,
     rewriteMutation, setMascotState, setCompanionPatch,
     setCompanionMessage, incrementReask, companionReaskCount, t,
   ]);
