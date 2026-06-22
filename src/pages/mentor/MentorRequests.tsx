@@ -1,286 +1,283 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Eye, Clock, Target, Briefcase, FileText, AlertCircle
+import { useTranslation } from "react-i18next";
+import {
+  CalendarCheck2,
+  CheckCircle2,
+  ExternalLink,
+  Link2,
+  Loader2,
+  MessageSquareText,
+  XCircle,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/hooks/use-toast";
-import { MENTEE_REQUESTS, WAITING_PAYMENT_REQUESTS, MenteeRequest } from "@/lib/mock-data/mentor-dashboard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useMentorOwnedBookings,
+  useSetMeetingLink,
+  useCompleteBooking,
+  useMentorCancelBooking,
+} from "@/hooks/use-mentor-bookings";
+import { useToast } from "@/hooks/use-toast";
+import { formatVnd } from "@/components/ecosystem/MentorCard";
+import type { MentorBookingDto } from "@/services/mentor-bookings.service";
+
+const STATUS_STYLES: Record<string, string> = {
+  PENDING_DEPOSIT: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  AWAITING_REMAINING: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
+  CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  CANCELLED: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+  EXPIRED: "bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300",
+};
 
 export default function MentorRequests() {
-  const [newRequests, setNewRequests] = useState<MenteeRequest[]>(MENTEE_REQUESTS);
-  const [waitingRequests, setWaitingRequests] = useState<MenteeRequest[]>(WAITING_PAYMENT_REQUESTS);
-  const [selectedRequest, setSelectedRequest] = useState<MenteeRequest | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
+  const { t } = useTranslation("common");
+  const bookingsQuery = useMentorOwnedBookings();
 
-  const handleAccept = (req: MenteeRequest) => {
-    setNewRequests(prev => prev.filter(r => r.id !== req.id));
-    setWaitingRequests(prev => [...prev, { ...req, status: "accepted" }]);
-    setShowDetail(false);
-    toast({ title: "Request Accepted!", description: `${req.name} will be notified to complete the 90% payment.` });
+  if (bookingsQuery.isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-60" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
+
+  const bookings = bookingsQuery.data ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+          {t("mentor.requests.title", "Yêu cầu đặt lịch")}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {t("mentor.requests.subtitle", "Quản lý các buổi mentoring được đặt cho bạn")}
+        </p>
+      </div>
+
+      {bookings.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-center dark:border-slate-800 dark:bg-slate-950">
+          <CalendarCheck2 className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+          <p className="mt-4 font-bold text-slate-500 dark:text-slate-400">
+            {t("mentor.requests.noBookings", "Chưa có booking nào")}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bookings.map((booking) => (
+            <BookingCard key={booking.id} booking={booking} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BookingCard({ booking }: { booking: MentorBookingDto }) {
+  const { t } = useTranslation("common");
+  const { toast } = useToast();
+  const setMeetingLink = useSetMeetingLink();
+  const complete = useCompleteBooking();
+  const cancel = useMentorCancelBooking();
+
+  const [meetingUrl, setMeetingUrl] = useState(booking.meetingUrl ?? "");
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
+
+  const isPastSlotEnd = booking.slotEnd ? new Date(booking.slotEnd) < new Date() : false;
+
+  const handleSetLink = async () => {
+    if (!meetingUrl.trim()) return;
+    try {
+      await setMeetingLink.mutateAsync({
+        bookingId: booking.id,
+        payload: { meetingUrl: meetingUrl.trim() },
+      });
+      toast({ title: t("mentor.requests.linkSet", "Meeting link đã cập nhật") });
+    } catch (error) {
+      toast({
+        title: t("mentor.requests.linkFailed", "Lỗi cập nhật link"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDecline = (req: MenteeRequest) => {
-    setNewRequests(prev => prev.filter(r => r.id !== req.id));
-    setShowDetail(false);
-    toast({ title: "Request Declined", description: `Request from ${req.name} has been declined.`, variant: "destructive" });
+  const handleComplete = async () => {
+    try {
+      await complete.mutateAsync(booking.id);
+      toast({ title: t("mentor.requests.completed", "Đã hoàn thành buổi mentoring") });
+    } catch (error) {
+      toast({
+        title: t("mentor.requests.completeFailed", "Lỗi"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
   };
 
-  const openDetail = (req: MenteeRequest) => {
-    setSelectedRequest(req);
-    setShowDetail(true);
+  const handleCancel = async () => {
+    if (cancelReason.trim().length < 3) return;
+    try {
+      await cancel.mutateAsync({
+        bookingId: booking.id,
+        payload: { reason: cancelReason.trim() },
+      });
+      toast({ title: t("mentor.requests.cancelled", "Đã hủy booking") });
+      setShowCancel(false);
+    } catch (error) {
+      toast({
+        title: t("mentor.requests.cancelFailed", "Lỗi hủy booking"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="w-full max-w-none space-y-6 pb-12">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-poppins font-bold text-slate-900 dark:text-white">Manage Requests</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Receive and process connection requests from students</p>
-      </motion.div>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[booking.status] ?? ""}`}>
+              {booking.status.replace(/_/g, " ")}
+            </Badge>
+            {booking.refundStatus !== "NOT_REQUIRED" ? (
+              <Badge variant="outline" className="rounded-full text-xs">
+                Refund: {booking.refundStatus}
+              </Badge>
+            ) : null}
+          </div>
+          {booking.slotStart ? (
+            <p className="mt-2 font-bold text-slate-950 dark:text-white">
+              {new Date(booking.slotStart).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+              {" • "}
+              {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {" – "}
+              {booking.slotEnd ? new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : ""}
+            </p>
+          ) : null}
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {t("mentor.requests.amount", "Tổng")}: {formatVnd(booking.totalAmountVnd)}
+          </p>
+        </div>
 
-      <Tabs defaultValue="new">
-        <TabsList className="bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-          <TabsTrigger value="new" className="rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm flex items-center gap-2">
-            New Requests
-            {newRequests.length > 0 && (
-              <span className="flex items-center justify-center min-w-[20px] h-[20px] bg-red-500 dark:bg-red-500/100 text-white text-[11px] font-bold px-1.5 rounded-full ring-2 ring-white shadow-sm">{newRequests.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="waiting" className="rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm flex items-center gap-2">
-            Pending Payment
-            {waitingRequests.length > 0 && (
-              <span className="flex items-center justify-center min-w-[20px] h-[20px] bg-red-500 dark:bg-red-500/100 text-white text-[11px] font-bold px-1.5 rounded-full ring-2 ring-white shadow-sm">{waitingRequests.length}</span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        {/* Meeting link for CONFIRMED bookings */}
+        {booking.meetingUrl ? (
+          <a
+            href={booking.meetingUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+          >
+            <ExternalLink className="h-4 w-4" /> Meeting
+          </a>
+        ) : null}
+      </div>
 
-        {/* New Requests Tab */}
-        <TabsContent value="new" className="mt-5 space-y-4">
-          {newRequests.length === 0 && (
-            <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-              <CardContent className="py-16 text-center">
-                <CheckCircle2 className="w-12 h-12 text-primary mx-auto mb-3" />
-                <p className="font-bold text-slate-700 dark:text-slate-300">No new requests</p>
-                <p className="text-sm text-slate-400 mt-1">All requests have been processed!</p>
-              </CardContent>
-            </Card>
-          )}
-          <AnimatePresence>
-            {newRequests.map((req, idx) => (
-              <motion.div
-                key={req.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -50, height: 0 }}
-                transition={{ delay: idx * 0.06 }}
+      {/* Actions by status */}
+      {booking.status === "CONFIRMED" ? (
+        <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+          {/* Set meeting link */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[240px] flex-1">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
+                <Link2 className="mr-1 inline h-3.5 w-3.5" />
+                {t("mentor.requests.meetingLink", "Meeting URL")}
+              </label>
+              <Input
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <Button
+              onClick={handleSetLink}
+              disabled={setMeetingLink.isPending || !meetingUrl.trim()}
+              size="sm"
+              className="h-10 rounded-xl font-bold"
+            >
+              {setMeetingLink.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Link2 className="mr-1 h-4 w-4" />}
+              {t("mentor.requests.setLink", "Lưu link")}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {isPastSlotEnd ? (
+              <Button
+                onClick={handleComplete}
+                disabled={complete.isPending}
+                className="h-10 rounded-xl bg-emerald-600 font-bold text-white hover:bg-emerald-700"
               >
-                <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="w-12 h-12 flex-shrink-0">
-                        <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{req.initials}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-slate-900 dark:text-white">{req.name}</h3>
-                          <Badge className="bg-blue-50 dark:bg-blue-500/10 text-blue-600 border-blue-100 text-[10px]">10% Deposit paid</Badge>
-                          <span className="text-xs text-slate-400">{req.requestedAt}</span>
-                        </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5"> Goal: {req.goalRole} • {req.experience} experience</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2 italic">"{req.message}"</p>
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {req.skills.map(skill => (
-                            <Badge key={skill} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-0 text-[10px]">{skill}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openDetail(req)}
-                        className="gap-1.5 flex-1 text-xs"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View detailed CV & Roadmap
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAccept(req)}
-                        className="gap-1.5 flex-1 text-xs bg-primary hover:bg-primary/90"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Accept
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDecline(req)}
-                        className="gap-1.5 text-xs text-red-500 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:bg-red-500/10"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Decline
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </TabsContent>
+                {complete.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                {t("mentor.requests.markComplete", "Hoàn thành")}
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              onClick={() => setShowCancel(!showCancel)}
+              className="h-10 rounded-xl font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+            >
+              <XCircle className="mr-1 h-4 w-4" />
+              {t("mentor.requests.cancel", "Hủy")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
-        {/* Waiting Payment Tab */}
-        <TabsContent value="waiting" className="mt-5 space-y-4">
-          {waitingRequests.length === 0 && (
-            <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-              <CardContent className="py-16 text-center">
-                <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="font-bold text-slate-700 dark:text-slate-300">No requests awaiting payment</p>
-              </CardContent>
-            </Card>
-          )}
-          <AnimatePresence>
-            {waitingRequests.map((req, idx) => (
-              <motion.div
-                key={req.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.06 }}
-              >
-                <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm border-l-4 border-l-amber-400">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="w-12 h-12">
-                        <AvatarFallback className="bg-destructive text-white font-bold">{req.initials}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-slate-900 dark:text-white">{req.name}</h3>
-                          <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 border-amber-200 dark:border-amber-500/20 text-[10px]">
-                            <Clock className="w-3 h-3 mr-1" /> Pending Payment 90%
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5"> {req.goalRole}</p>
-                        {req.sessionDate && (
-                          <div className="flex items-center gap-2 mt-2 p-2 bg-amber-50 dark:bg-amber-500/10 rounded-lg">
-                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                            <p className="text-xs text-amber-700 dark:text-amber-500 font-semibold">
-                              Booked schedule: {req.sessionDate} at {req.sessionTime}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-slate-50 dark:bg-[#0b1120] rounded-xl text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      Awaiting student to complete 90% payment before session. "Join Call" will enable after payment.
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </TabsContent>
-      </Tabs>
+      {/* Cancel button for non-confirmed cancellable statuses */}
+      {["PENDING_DEPOSIT", "AWAITING_REMAINING"].includes(booking.status) ? (
+        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <Button
+            variant="outline"
+            onClick={() => setShowCancel(!showCancel)}
+            className="h-10 rounded-xl font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+          >
+            <XCircle className="mr-1 h-4 w-4" />
+            {t("mentor.requests.cancel", "Hủy")}
+          </Button>
+        </div>
+      ) : null}
 
-      {/* Detail Dialog */}
-      <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white flex items-center gap-3">
-              {selectedRequest && (
-                <>
-                  <Avatar className="w-9 h-9">
-                    <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{selectedRequest.initials}</AvatarFallback>
-                  </Avatar>
-                  Profile of {selectedRequest?.name}
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
-            <ScrollArea className="flex-1 pr-2">
-              <div className="space-y-4 pb-4">
-                {/* Basic info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 dark:bg-[#0b1120] rounded-xl p-3">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Goal</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Target className="w-4 h-4 text-primary" /> {selectedRequest.goalRole}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#0b1120] rounded-xl p-3">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Experience</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4 text-blue-500" /> {selectedRequest.experience}
-                    </p>
-                  </div>
-                </div>
+      {/* Cancellation reason input (for CONFIRMED/AWAITING_REMAINING) */}
+      {showCancel && ["CONFIRMED", "AWAITING_REMAINING", "PENDING_DEPOSIT"].includes(booking.status) ? (
+        <div className="mt-3 space-y-2 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-800 dark:bg-red-950/20">
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder={t("mentor.requests.cancelReasonPlaceholder", "Lý do hủy (tối thiểu 3 ký tự)...")}
+            className="rounded-xl"
+            rows={2}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCancel}
+              disabled={cancel.isPending || cancelReason.trim().length < 3}
+              size="sm"
+              className="rounded-xl bg-red-600 font-bold text-white hover:bg-red-700"
+            >
+              {cancel.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              {t("mentor.requests.confirmCancel", "Xác nhận hủy")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)} className="rounded-xl font-bold">
+              {t("common.cancel", "Đóng")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
-                {/* Message */}
-                <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
-                  <p className="text-xs font-bold text-violet-600 uppercase tracking-widest mb-2">Message</p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{selectedRequest.message}"</p>
-                </div>
-
-                {/* CV Summary */}
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" /> CV Summary (AI Analyzed)
-                  </p>
-                  <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 rounded-xl p-4">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{selectedRequest.cvSummary}</p>
-                  </div>
-                </div>
-
-                {/* Skills */}
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Current Skills</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedRequest.skills.map(skill => (
-                      <Badge key={skill} className="bg-primary/5 text-primary/90 border-primary/20">{skill}</Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Roadmap */}
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">AI Suggested Roadmap</p>
-                  <div className="space-y-2">
-                    {selectedRequest.roadmap.map((step, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-[#0b1120] rounded-xl">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
-                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={() => handleAccept(selectedRequest)}
-                    className="flex-1 bg-primary hover:bg-primary/90 gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Accept Request
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDecline(selectedRequest)}
-                    className="flex-1 text-red-500 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:bg-red-500/10 gap-2"
-                  >
-                    <XCircle className="w-4 h-4" /> Decline
-                  </Button>
-                </div>
-              </div>
-            </ScrollArea>
-          )}
-        </DialogContent>
-      </Dialog>
+      {booking.cancellationReason ? (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+          <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+          <p className="text-sm text-slate-600 dark:text-slate-300">{booking.cancellationReason}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

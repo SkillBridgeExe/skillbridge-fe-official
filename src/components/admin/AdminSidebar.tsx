@@ -31,7 +31,7 @@ const NAV_ITEMS: AdminNavItem[] = [
     icon: Users,
     children: [
       { key: "users-user", label: "Users", href: "/admin/users?role=USER" },
-      { key: "users-mentor", label: "Mentors", href: "/admin/users?role=MENTOR" },
+      { key: "users-mentor", label: "Mentors", href: "/admin/mentors" },
       { key: "users-business", label: "Business", href: "/admin/users?role=BUSINESS" },
       { key: "users-admin", label: "Admins", href: "/admin/users?role=ADMIN" },
     ],
@@ -45,7 +45,6 @@ const NAV_ITEMS: AdminNavItem[] = [
       { key: "billing-plans", label: "Plans", href: "/admin/billing/plans" },
       { key: "billing-orders", label: "Orders", href: "/admin/billing/orders" },
       { key: "billing-subscriptions", label: "Subscriptions", href: "/admin/billing/subscriptions" },
-      { key: "billing-mentor-bookings", label: "Mentor Bookings", href: "/admin/billing/mentor-bookings" },
     ],
   },
 ];
@@ -75,7 +74,6 @@ export default function AdminSidebar({
       "billing-plans": t("billing.admin.nav.plans"),
       "billing-orders": t("billing.admin.nav.orders"),
       "billing-subscriptions": t("billing.admin.nav.subscriptions"),
-      "billing-mentor-bookings": t("billing.admin.nav.mentorBookings"),
     };
     return labels[key] ?? fallback;
   };

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { type ChatMessage, type InterviewMode } from "./types";
-import { getInterviewModeLabel } from "./interview-view-model";
+import { getInterviewModeLabelKey } from "./interview-view-model";
 
 interface InterviewSessionProps {
   videoRef: RefObject<HTMLVideoElement>;
@@ -82,16 +83,19 @@ export function InterviewSession({
   onStop,
   apiError,
 }: InterviewSessionProps) {
+  const { t } = useTranslation("common");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isVoiceConnected = isLiveConnected && !isVoiceFallback;
+  const isLiveRealtime = interviewMode === "realtime" && isVoiceConnected;
   const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
-  const modeLabel = getInterviewModeLabel({
+  const modeLabelKey = getInterviewModeLabelKey({
     interviewMode,
     isLiveConnected: isVoiceConnected,
     isVoiceFallback,
     questionAudioError,
   });
+  const modeLabel = t(`interview.session.mode.${modeLabelKey}`);
   const progress =
     maxDurationSeconds > 0
       ? Math.max(0, Math.min(100, (secondsRemaining / maxDurationSeconds) * 100))
@@ -141,7 +145,7 @@ export function InterviewSession({
                     {timeRemainingLabel}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Time remaining
+                    {t("interview.session.timeRemaining")}
                   </p>
                 </div>
               </div>
@@ -152,7 +156,9 @@ export function InterviewSession({
                   {totalQuestionsPlanned ? `/${totalQuestionsPlanned}` : ""}
                 </Badge>
                 <Badge variant="outline" className="rounded-full">
-                  {remainingQuestions == null ? `${answeredCount} answered` : `${remainingQuestions} left`}
+                  {remainingQuestions == null
+                    ? t("interview.session.answered", { count: answeredCount })
+                    : t("interview.session.left", { count: remainingQuestions })}
                 </Badge>
                 <Badge
                   variant={isVoiceConnected ? "default" : "outline"}
@@ -170,12 +176,12 @@ export function InterviewSession({
                   {isEnding ? (
                     <>
                       <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Ending
+                      {t("interview.session.ending")}
                     </>
                   ) : (
                     <>
                       <StopCircle className="mr-1.5 h-3.5 w-3.5" />
-                      End
+                      {t("interview.session.end")}
                     </>
                   )}
                 </Button>
@@ -200,7 +206,11 @@ export function InterviewSession({
                 <button
                   onClick={() => setIsFullscreen((value) => !value)}
                   className="absolute right-5 top-5 z-30 rounded-xl bg-black/50 p-2.5 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  title={
+                    isFullscreen
+                      ? t("interview.session.exitFullscreen")
+                      : t("interview.session.fullscreen")
+                  }
                   type="button"
                 >
                   {isFullscreen ? (
@@ -246,14 +256,14 @@ export function InterviewSession({
                   >
                     {isInterviewerSpeaking ? (
                       <>
-                        <Volume2 className="mr-1.5 h-3 w-3" /> Speaking
+                        <Volume2 className="mr-1.5 h-3 w-3" /> {t("interview.session.speaking")}
                       </>
                     ) : isLoading ? (
                       <>
-                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" /> Thinking
+                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" /> {t("interview.session.thinking")}
                       </>
                     ) : (
-                      "Ready"
+                      t("interview.session.ready")
                     )}
                   </div>
                 </div>
@@ -265,7 +275,9 @@ export function InterviewSession({
                     </div>
                     <div>
                       <p className="text-sm font-semibold">{webcamError}</p>
-                      <p className="mt-1 text-xs text-slate-500">The interview can continue without video.</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t("interview.session.videoFallback")}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -274,7 +286,7 @@ export function InterviewSession({
 
                 <div className="absolute left-5 top-5 z-30 flex items-center gap-2">
                   <div className="rounded-full bg-red-500/80 px-3 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur-md">
-                    LIVE
+                    {t("interview.session.live")}
                   </div>
                   <div className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
                     {modeLabel}
@@ -301,9 +313,13 @@ export function InterviewSession({
         <div className="border-b border-slate-100 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Interview Transcript</h3>
+              <h3 className="text-sm font-bold text-slate-900">
+                {t("interview.session.transcriptTitle")}
+              </h3>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Submit one answer at a time
+                {isLiveRealtime
+                  ? t("interview.session.liveTranscriptSubtitle")
+                  : t("interview.session.transcriptSubtitle")}
               </p>
             </div>
             {(interviewMode === "guided" || interviewMode === "realtime") && (
@@ -312,8 +328,12 @@ export function InterviewSession({
                 variant={isMicActive ? "default" : "outline"}
                 className="h-9 w-9 rounded-full"
                 onClick={toggleLiveMic}
-                disabled={isLoading}
-                title={isLiveConnected ? "Toggle microphone" : "Reconnect voice"}
+                disabled={isLoading || (!isLiveRealtime && isInterviewerSpeaking)}
+                title={
+                  isLiveConnected
+                    ? t("interview.session.toggleMicrophone")
+                    : t("interview.session.reconnectVoice")
+                }
               >
                 {isMicActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </Button>
@@ -359,7 +379,9 @@ export function InterviewSession({
                 <Bot className="h-3.5 w-3.5 animate-spin text-primary" />
               </div>
               <Card className="border-slate-100 bg-slate-50 shadow-none">
-                <CardContent className="px-4 py-3 text-xs text-slate-500">Generating next question...</CardContent>
+                <CardContent className="px-4 py-3 text-xs text-slate-500">
+                  {t("interview.session.generatingNextQuestion")}
+                </CardContent>
               </Card>
             </div>
           )}
@@ -370,8 +392,23 @@ export function InterviewSession({
         <div className="border-t border-slate-100 p-3">
           {interviewFinished ? (
             <Button className="w-full rounded-xl font-bold" onClick={onStop} disabled={isEnding}>
-              View Results
+              {t("interview.session.viewResults")}
             </Button>
+          ) : isLiveRealtime ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                {isMicActive ? (
+                  <Mic className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <MicOff className="h-4 w-4 text-slate-400" />
+                )}
+                <span>
+                  {isMicActive
+                    ? t("interview.session.liveMicOn")
+                    : t("interview.session.liveMicMuted")}
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="space-y-2">
               <Textarea
@@ -385,8 +422,8 @@ export function InterviewSession({
                 }}
                 placeholder={
                   isVoiceConnected
-                    ? "Your spoken transcript appears here. Edit only if the transcript is wrong."
-                    : "Text fallback: type your answer here."
+                    ? t("interview.session.spokenPlaceholder")
+                    : t("interview.session.textPlaceholder")
                 }
                 disabled={isLoading || isEnding}
                 className="min-h-[110px] resize-none rounded-xl bg-slate-50"
@@ -397,7 +434,7 @@ export function InterviewSession({
                 disabled={!userAnswer.trim() || isLoading || isEnding}
               >
                 <Send className="mr-2 h-4 w-4" />
-                Submit Answer
+                {t("interview.session.submitAnswer")}
               </Button>
             </div>
           )}

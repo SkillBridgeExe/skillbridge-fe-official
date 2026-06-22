@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Award,
   BarChart3,
@@ -11,7 +12,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { INTERVIEW_SETUP_STEPS } from "@/constants/interview";
@@ -21,18 +35,21 @@ import {
   getInterviewDetail,
   type InterviewDetailResponseDto,
   type InterviewSessionDto,
-  type PlatformInterviewType,
+  type LiveInterviewTurnInput,
 } from "@/api/interview-api";
 import {
   useCvListForInterview,
   useCvMatchesForInterview,
   useEndInterview,
+  useInterviewDetail,
   useInterviewHistory,
   useRefreshRealtimeToken,
   useStartInterview,
   useSubmitInterviewTurn,
 } from "@/hooks/use-interview";
 import { ResultsView } from "@/components/interview/ResultsView";
+import { InterviewHistoryDetailView } from "@/components/interview/InterviewHistoryDetailView";
+import { InterviewHistoryPanel } from "@/components/interview/InterviewHistoryPanel";
 import { InterviewSetup } from "@/components/interview/InterviewSetup";
 import { InterviewSession } from "@/components/interview/InterviewSession";
 import {
@@ -41,20 +58,54 @@ import {
   type ChatMessage,
   type InterviewMode,
   type InterviewPhase,
+  type InterviewSpeechSpeed,
   type InterviewType,
+  type InterviewVoice,
+  type InterviewWorkspaceTab,
 } from "@/components/interview/types";
 import {
+  buildInterviewInitialMessages,
+  buildInterviewNextMessages,
+  buildInterviewStartRequest,
+  canOpenInterviewHistory,
+  canSwitchInterviewWorkspace,
   formatDuration,
+  getInterviewEndIntent,
+  getInterviewEndOutcome,
+  getInterviewHistoryDetailState,
+  getInterviewHistoryState,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
+  getLiveTranscriptWarnings,
+  readInterviewVoicePreference,
   secondsRemainingFromExpiry,
+  shouldRequestLiveClosingSignal,
+  shouldRequestQuestionAudio,
+  takeRecentInterviewSessions,
+  writeInterviewVoicePreference,
+  type LiveTranscriptWarning,
+  type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
 import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
+import { acquireInterviewMedia } from "@/lib/interview-media";
 
 type EndReason = "manual" | "timer" | "finished";
 
+interface LiveReviewTurn {
+  id: string;
+  turnOrder: number;
+  interviewerQuestion: string;
+  userAnswerText: string;
+  userAnswerTranscript: string;
+  durationSeconds?: number;
+  warnings: LiveTranscriptWarning[];
+}
+
 export default function Interview() {
+  const { t, i18n } = useTranslation("common");
+  const { toast } = useToast();
   const [phase, setPhase] = useState<InterviewPhase>("setup");
+  const [workspaceTab, setWorkspaceTab] = useState<InterviewWorkspaceTab>("practice");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tipsExpanded, setTipsExpanded] = useState(true);
   const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
@@ -63,13 +114,19 @@ export default function Interview() {
   const [selectedLanguage, setSelectedLanguage] = useState<"vi" | "en">("vi");
   const [interviewMode, setInterviewMode] = useState<InterviewMode>("guided");
   const [interviewType, setInterviewType] = useState<InterviewType>("technical");
+  const [voicePreference, setVoicePreference] = useState<InterviewVoicePreference>(() =>
+    readInterviewVoicePreference(typeof window === "undefined" ? null : window.localStorage),
+  );
   const [activeSession, setActiveSession] = useState<InterviewSessionDto | null>(null);
   const [resultDetail, setResultDetail] = useState<InterviewDetailResponseDto | null>(null);
+  const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
+  const [isLiveReviewOpen, setIsLiveReviewOpen] = useState(false);
   const [interviewFinished, setInterviewFinished] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
@@ -81,22 +138,32 @@ export default function Interview() {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isQuestionAudioPlaying, setIsQuestionAudioPlaying] = useState(false);
   const [questionAudioError, setQuestionAudioError] = useState<string | null>(null);
+  const [liveReviewTurns, setLiveReviewTurns] = useState<LiveReviewTurn[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const liveSessionRef = useRef<OpenAIRealtimeSession | null>(null);
   const questionAudioRef = useRef<HTMLAudioElement | null>(null);
   const questionAudioUrlRef = useRef<string | null>(null);
-  const streamingAiMessageIdRef = useRef<string | null>(null);
+  const acceptsUserSpeechRef = useRef(false);
   const questionStartedAtRef = useRef<Date | null>(null);
+  const liveAiMessageIdRef = useRef<string | null>(null);
+  const liveQuestionBufferRef = useRef("");
+  const liveLastQuestionRef = useRef("");
+  const liveTurnOrderRef = useRef(1);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
+  const liveClosingRequestedRef = useRef(false);
 
   const canUseApi = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
   );
 
-  const interviewHistoryQuery = useInterviewHistory(canUseApi, { page: 1, limit: 20 });
+  const interviewHistoryQuery = useInterviewHistory(canUseApi);
+  const historyDetailQuery = useInterviewDetail(
+    selectedHistorySessionId,
+    canUseApi && phase === "history-detail",
+  );
   const cvListQuery = useCvListForInterview(canUseApi);
   const cvMatchesQuery = useCvMatchesForInterview(selectedCvId, canUseApi && Boolean(selectedCvId));
   const startInterviewMutation = useStartInterview();
@@ -107,7 +174,30 @@ export default function Interview() {
   const cvItems = cvListQuery.data?.items ?? [];
   const matchItems = cvMatchesQuery.data?.items ?? [];
   const interviewHistory = interviewHistoryQuery.data?.items ?? [];
+  const canSelectHistory = canOpenInterviewHistory(phase);
+  const canSwitchWorkspace = canSwitchInterviewWorkspace(phase);
+  const interviewHistoryState = getInterviewHistoryState({
+    canUseApi,
+    isLoading: interviewHistoryQuery.isLoading,
+    isError: interviewHistoryQuery.isError,
+    itemCount: interviewHistory.length,
+  });
+  const historyDetailState = getInterviewHistoryDetailState({
+    selectedSessionId: selectedHistorySessionId,
+    isLoading: historyDetailQuery.isLoading,
+    isError: historyDetailQuery.isError,
+    result: historyDetailQuery.data
+      ? {
+          status: historyDetailQuery.data.status,
+          overallScore: historyDetailQuery.data.overallScore,
+        }
+      : null,
+  });
+  const showPracticeSetup = phase === "setup" && workspaceTab === "practice";
+  const showHistoryList = phase === "setup" && workspaceTab === "history";
   const answeredCount = chatHistory.filter((message) => message.role === "user").length;
+  const endIntent = getInterviewEndIntent(answeredCount);
+  const recentInterviewSessions = takeRecentInterviewSessions(interviewHistory);
   const totalQuestionsPlanned = activeSession?.totalQuestionsPlanned ?? null;
   const currentQuestionNumber = totalQuestionsPlanned
     ? Math.min(answeredCount + 1, totalQuestionsPlanned)
@@ -133,7 +223,7 @@ export default function Interview() {
           };
         }
         if (step.id === "result") {
-          return { ...step, status: phase === "results" ? "active" : "pending" };
+          return { ...step, status: phase === "results" || phase === "history-detail" ? "active" : "pending" };
         }
         return step;
       }),
@@ -152,6 +242,105 @@ export default function Interview() {
       ? Math.max(...scoredHistory.map((session) => Math.round(Number(session.overallScore))))
       : 0;
 
+  const liveWarningsFor = useCallback(
+    (question: string, answer: string, transcript = answer): LiveTranscriptWarning[] =>
+      Array.from(new Set(getLiveTranscriptWarnings(`${question}\n${answer}\n${transcript}`))),
+    [],
+  );
+
+  const appendLiveAssistantTranscript = useCallback((delta: string) => {
+    const normalized = delta.normalize("NFC");
+    if (!normalized.trim()) return;
+
+    let messageId = liveAiMessageIdRef.current;
+    liveQuestionBufferRef.current = `${liveQuestionBufferRef.current}${normalized}`.normalize("NFC");
+    liveLastQuestionRef.current = liveQuestionBufferRef.current.trim() || liveLastQuestionRef.current;
+    setCurrentQuestion(liveLastQuestionRef.current);
+
+    setChatHistory((current) => {
+      if (!messageId) {
+        messageId = `live-ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        liveAiMessageIdRef.current = messageId;
+        return [
+          ...current,
+          {
+            id: messageId,
+            role: "ai",
+            content: normalized.trimStart(),
+            timestamp: new Date(),
+          },
+        ];
+      }
+
+      return current.map((message) =>
+        message.id === messageId
+          ? { ...message, content: `${message.content}${normalized}`.normalize("NFC") }
+          : message,
+      );
+    });
+  }, []);
+
+  const appendLiveUserTranscript = useCallback(
+    (transcript: string) => {
+      const normalized = transcript.trim().normalize("NFC");
+      if (!normalized) return;
+
+      const now = new Date();
+      const question =
+        liveLastQuestionRef.current.trim() ||
+        liveQuestionBufferRef.current.trim() ||
+        currentQuestion.trim() ||
+        "Live interviewer question";
+      const durationSeconds = questionStartedAtRef.current
+        ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
+        : undefined;
+      const turnOrder = liveTurnOrderRef.current;
+      liveTurnOrderRef.current += 1;
+
+      setChatHistory((current) => [
+        ...current,
+        { id: `live-user-${turnOrder}`, role: "user", content: normalized, timestamp: now },
+      ]);
+      setLiveReviewTurns((current) => [
+        ...current,
+        {
+          id: `live-turn-${turnOrder}`,
+          turnOrder,
+          interviewerQuestion: question,
+          userAnswerText: normalized,
+          userAnswerTranscript: normalized,
+          durationSeconds,
+          warnings: liveWarningsFor(question, normalized),
+        },
+      ]);
+
+      liveAiMessageIdRef.current = null;
+      liveQuestionBufferRef.current = "";
+      questionStartedAtRef.current = now;
+    },
+    [currentQuestion, liveWarningsFor],
+  );
+  const dateLocale = i18n.language?.startsWith("vi") ? "vi-VN" : "en-US";
+  const roleLabel = useCallback(
+    (value: string): string =>
+      t(`interview.roles.${value}`, {
+        defaultValue: AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value.replace(/_/g, " "),
+      }),
+    [t],
+  );
+  const formatSessionDate = useCallback(
+    (value: string): string => {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return t("interview.history.unknownDate");
+      return new Intl.DateTimeFormat(dateLocale, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(date);
+    },
+    [dateLocale, t],
+  );
+
   const stopMedia = useCallback(() => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -160,6 +349,14 @@ export default function Interview() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+  }, []);
+
+  const setSelectedVoice = useCallback((voice: InterviewVoice) => {
+    setVoicePreference((current) => ({ ...current, voice }));
+  }, []);
+
+  const setSpeechSpeed = useCallback((speechSpeed: InterviewSpeechSpeed) => {
+    setVoicePreference((current) => ({ ...current, speechSpeed }));
   }, []);
 
   const stopQuestionAudio = useCallback(() => {
@@ -181,7 +378,9 @@ export default function Interview() {
     setIsLiveConnected(false);
     setIsMicActive(false);
     setIsAiSpeaking(false);
-    streamingAiMessageIdRef.current = null;
+    acceptsUserSpeechRef.current = false;
+    liveAiMessageIdRef.current = null;
+    liveQuestionBufferRef.current = "";
   }, []);
 
   const setVoiceFallback = useCallback((reason: string) => {
@@ -190,53 +389,60 @@ export default function Interview() {
     setIsLiveConnected(false);
     setIsMicActive(false);
     setIsAiSpeaking(false);
+    acceptsUserSpeechRef.current = false;
+    liveAiMessageIdRef.current = null;
+    liveQuestionBufferRef.current = "";
     setIsVoiceFallback(true);
     setVoiceFallbackReason(reason);
   }, []);
 
   const requestSessionMedia = useCallback(
-    async (needsAudio: boolean): Promise<MediaStream | null> => {
+    async (): Promise<MediaStream | null> => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setWebcamError("Media devices are not supported in this browser.");
+        setWebcamError(t("interview.errors.mediaUnsupported"));
         return null;
       }
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: needsAudio
-            ? {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              }
-            : false,
-        });
-        stopMedia();
-        mediaStreamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-        setWebcamError(null);
-        return stream;
-      } catch (error) {
-        const name = error instanceof DOMException ? error.name : "";
+      const { stream, microphoneError, cameraError } = await acquireInterviewMedia(
+        navigator.mediaDevices,
+      );
+
+      if (!stream || microphoneError) {
+        const name = microphoneError instanceof DOMException ? microphoneError.name : "";
         setWebcamError(
           name === "NotFoundError"
-            ? "Camera or microphone was not found."
-            : "Camera or microphone permission was denied.",
+            ? t("interview.errors.mediaNotFound")
+            : t("interview.errors.mediaDenied"),
         );
         return null;
       }
+
+      stopMedia();
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        void videoRef.current.play();
+      }
+
+      if (cameraError) {
+        const name = cameraError instanceof DOMException ? cameraError.name : "";
+        setWebcamError(
+          name === "NotFoundError"
+            ? t("interview.errors.mediaNotFound")
+            : t("interview.errors.mediaDenied"),
+        );
+      } else {
+        setWebcamError(null);
+      }
+      return stream;
     },
-    [stopMedia],
+    [stopMedia, t],
   );
 
   const connectRealtime = useCallback(
-    async (clientSecret: string, stream: MediaStream) => {
+    async (clientSecret: string, stream: MediaStream, liveConversation = false) => {
       if (stream.getAudioTracks().length === 0) {
-        throw new Error("No microphone track is available.");
+        throw new Error(t("interview.errors.noMicrophoneTrack"));
       }
 
       const realtimeSession = new OpenAIRealtimeSession();
@@ -246,9 +452,10 @@ export default function Interview() {
         switch (event.type) {
           case "connected":
             setIsLiveConnected(true);
-            setIsMicActive(true);
+            setIsMicActive(liveConversation);
             setIsVoiceFallback(false);
             setVoiceFallbackReason(null);
+            acceptsUserSpeechRef.current = liveConversation;
             break;
           case "disconnected":
             setIsLiveConnected(false);
@@ -257,48 +464,46 @@ export default function Interview() {
           case "user_transcript": {
             const transcript = event.data?.trim();
             if (!transcript) break;
-            setUserAnswer((current) => (current.trim() ? `${current.trim()}\n${transcript}` : transcript));
+            if (liveConversation) {
+              appendLiveUserTranscript(transcript);
+            } else if (acceptsUserSpeechRef.current) {
+              setUserAnswer((current) => (current.trim() ? `${current.trim()}\n${transcript}` : transcript));
+            }
             break;
           }
           case "ai_speaking":
+            if (!liveConversation) {
+              acceptsUserSpeechRef.current = false;
+              liveSessionRef.current?.setMicEnabled(false);
+              setIsMicActive(false);
+            }
             setIsAiSpeaking(true);
             break;
           case "ai_stopped":
             setIsAiSpeaking(false);
-            streamingAiMessageIdRef.current = null;
+            if (liveConversation) {
+              liveLastQuestionRef.current =
+                liveQuestionBufferRef.current.trim() || liveLastQuestionRef.current;
+              if (liveLastQuestionRef.current) setCurrentQuestion(liveLastQuestionRef.current);
+              questionStartedAtRef.current = new Date();
+            }
             break;
           case "error":
-            setVoiceFallback(event.data || "Realtime voice failed. Continue in text mode.");
+            setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
             break;
           case "ai_transcript": {
-            const delta = event.data ?? "";
-            if (!delta) break;
-            const existingId = streamingAiMessageIdRef.current;
-            if (!existingId) {
-              const id = `rt-ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-              streamingAiMessageIdRef.current = id;
-              setChatHistory((current) => [
-                ...current,
-                { id, role: "ai", content: delta, timestamp: new Date() },
-              ]);
-              break;
-            }
-            setChatHistory((current) =>
-              current.map((message) =>
-                message.id === existingId
-                  ? { ...message, content: `${message.content}${delta}` }
-                  : message,
-              ),
-            );
+            if (liveConversation && event.data) appendLiveAssistantTranscript(event.data);
             break;
           }
         }
       });
 
-      await realtimeSession.connect({ clientSecret, stream });
-      realtimeSession.setMicEnabled(true);
+      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: liveConversation });
+      realtimeSession.setMicEnabled(liveConversation);
+      acceptsUserSpeechRef.current = liveConversation;
+      setIsMicActive(liveConversation);
     },
-    [setVoiceFallback],
+    [appendLiveAssistantTranscript, appendLiveUserTranscript, setVoiceFallback, t],
   );
 
   const playQuestionAudio = useCallback(
@@ -318,18 +523,22 @@ export default function Interview() {
         };
         audio.onerror = () => {
           setIsQuestionAudioPlaying(false);
-          setQuestionAudioError("Could not play the interviewer voice. Continue with the visible question.");
+          setQuestionAudioError(t("interview.errors.questionAudioPlayFailed"));
         };
         await audio.play();
       } catch (error) {
         setIsQuestionAudioPlaying(false);
-        const fallback = "Could not play the interviewer voice. Continue with the visible question.";
+        const fallback = t("interview.errors.questionAudioPlayFailed");
         setQuestionAudioError(
-          getQuestionAudioErrorMessage(error, getApiErrorMessage(error, fallback)),
+          getQuestionAudioErrorMessage(
+            error,
+            getApiErrorMessage(error, fallback),
+            t("interview.errors.questionAudioTimeout"),
+          ),
         );
       }
     },
-    [stopQuestionAudio],
+    [stopQuestionAudio, t],
   );
 
   const resetInterviewState = useCallback(() => {
@@ -338,6 +547,7 @@ export default function Interview() {
     stopQuestionAudio();
     setActiveSession(null);
     setResultDetail(null);
+    setSelectedHistorySessionId(null);
     setChatHistory([]);
     setCurrentQuestion("");
     setUserAnswer("");
@@ -350,51 +560,102 @@ export default function Interview() {
     setQuestionAudioError(null);
     setIsLoading(false);
     setIsEnding(false);
+    setIsEndDialogOpen(false);
+    setIsLiveReviewOpen(false);
+    setLiveReviewTurns([]);
     endingRef.current = false;
     autoEndRef.current = false;
+    liveClosingRequestedRef.current = false;
+    acceptsUserSpeechRef.current = false;
     questionStartedAtRef.current = null;
+    liveAiMessageIdRef.current = null;
+    liveQuestionBufferRef.current = "";
+    liveLastQuestionRef.current = "";
+    liveTurnOrderRef.current = 1;
   }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
+
+  const openHistoryDetail = useCallback(
+    (sessionId: string) => {
+      if (!canOpenInterviewHistory(phase)) return;
+      setSelectedHistorySessionId(sessionId);
+      setWorkspaceTab("history");
+      setApiError(null);
+      setPhase("history-detail");
+      setSidebarOpen(true);
+    },
+    [phase],
+  );
+
+  const switchToPractice = useCallback(() => {
+    if (!canSwitchInterviewWorkspace(phase)) return;
+    setWorkspaceTab("practice");
+    setSelectedHistorySessionId(null);
+    setApiError(null);
+    setPhase("setup");
+    setSidebarOpen(true);
+  }, [phase]);
+
+  const switchToHistory = useCallback(() => {
+    if (!canSwitchInterviewWorkspace(phase)) return;
+    setWorkspaceTab("history");
+    setSelectedHistorySessionId(null);
+    setApiError(null);
+    setPhase("setup");
+    setSidebarOpen(true);
+  }, [phase]);
+
+  const startNewInterviewFromHistory = useCallback(() => {
+    resetInterviewState();
+    setWorkspaceTab("practice");
+    setPhase("setup");
+    setSidebarOpen(true);
+  }, [resetInterviewState]);
 
   const startInterview = async () => {
     if (!canUseApi) {
-      setApiError("Please sign in with a real SkillBridge account before starting an interview.");
+      setApiError(t("interview.errors.signInRequired"));
       return;
     }
 
     resetInterviewState();
+    setWorkspaceTab("practice");
     setIsLoading(true);
 
     try {
       const started = await startInterviewMutation.mutateAsync({
-        cvId: selectedCvId ?? undefined,
-        cvMatchId: selectedMatchId ?? undefined,
-        targetRole,
-        language: selectedLanguage,
-        mode: interviewMode === "realtime" ? "VOICE" : "HYBRID",
-        interviewType: toBackendInterviewType(interviewType),
+        ...buildInterviewStartRequest({
+          selectedCvId,
+          selectedMatchId,
+          targetRole,
+          selectedLanguage,
+          interviewMode,
+          interviewType,
+          voice: voicePreference.voice,
+          speechSpeed: voicePreference.speechSpeed,
+        }),
       });
 
-      const initialMessages = uniqueMessages([
-        started.firstMessage,
-        interviewMode === "guided" ? started.firstQuestion : "",
-      ]).map(
-        (content) => ({ role: "ai" as const, content, timestamp: new Date() }),
-      );
+      const initialMessages =
+        interviewMode === "realtime"
+          ? []
+          : buildInterviewInitialMessages(started.firstMessage, started.firstQuestion).map(
+              (content) => ({ role: "ai" as const, content, timestamp: new Date() }),
+            );
 
       setActiveSession(started);
-      setCurrentQuestion(started.firstQuestion);
+      setCurrentQuestion(interviewMode === "realtime" ? "" : started.firstQuestion);
       setSecondsRemaining(secondsRemainingFromExpiry(started.expiresAt) || started.maxDurationSeconds);
       setChatHistory(initialMessages);
       setPhase("interviewing");
       setSidebarOpen(false);
       questionStartedAtRef.current = new Date();
 
-      const stream = await requestSessionMedia(true);
+      const stream = await requestSessionMedia();
       let realtimeConnected = false;
 
       if (!stream || stream.getAudioTracks().length === 0) {
         if (interviewMode === "realtime") {
-          setVoiceFallback("Microphone is unavailable. Continue in text mode in this same session.");
+          setVoiceFallback(t("interview.errors.microphoneUnavailableSameSession"));
         }
       } else {
         const tokenFallbackReason = getRealtimeTokenFallbackReason({
@@ -402,29 +663,33 @@ export default function Interview() {
           realtimeEnabled: started.realtime.enabled,
           clientSecret: started.realtime.clientSecret,
           reason: started.realtime.reason,
+          fallbackMessage: t("interview.errors.realtimeTokenUnavailable"),
         });
 
         if (tokenFallbackReason) {
           setVoiceFallback(tokenFallbackReason);
         } else if (started.realtime.enabled && started.realtime.clientSecret) {
           try {
-            await connectRealtime(started.realtime.clientSecret, stream);
+            await connectRealtime(started.realtime.clientSecret, stream, interviewMode === "realtime");
             realtimeConnected = true;
           } catch (error) {
             if (interviewMode === "realtime") {
-              setVoiceFallback(getApiErrorMessage(error, "Realtime voice failed. Continue in text mode."));
+              setVoiceFallback(getApiErrorMessage(error, t("interview.errors.realtimeVoiceFailed")));
             }
           }
         }
       }
 
       if (interviewMode === "realtime" && realtimeConnected) {
-        liveSessionRef.current?.speakOfficialQuestion(started.firstQuestion, selectedLanguage);
-      } else {
+        acceptsUserSpeechRef.current = true;
+        liveSessionRef.current?.setMicEnabled(true);
+        setIsMicActive(true);
+        liveSessionRef.current?.startLiveInterview();
+      } else if (shouldRequestQuestionAudio(interviewMode)) {
         void playQuestionAudio(started.id);
       }
     } catch (error) {
-      setApiError(getApiErrorMessage(error, "Failed to start interview."));
+      setApiError(getApiErrorMessage(error, t("interview.errors.startFailed")));
       setPhase("setup");
       stopMedia();
       disconnectRealtime();
@@ -433,8 +698,31 @@ export default function Interview() {
     }
   };
 
+  const applyEndedInterview = useCallback(
+    (detail: InterviewDetailResponseDto) => {
+      if (getInterviewEndOutcome(detail.status) === "cancelled") {
+        resetInterviewState();
+        setWorkspaceTab("practice");
+        setPhase("setup");
+        setSidebarOpen(true);
+        toast({
+          title: t("interview.cancelledToast.title"),
+          description: t("interview.cancelledToast.description"),
+        });
+        return;
+      }
+
+      setResultDetail(detail);
+      setActiveSession(detail);
+      setInterviewFinished(true);
+      setPhase("results");
+      setSidebarOpen(true);
+    },
+    [resetInterviewState, t, toast],
+  );
+
   const finishInterview = useCallback(
-    async (reason: EndReason = "manual") => {
+    async (reason: EndReason = "manual", liveTurns?: LiveInterviewTurnInput[]) => {
       const sessionId = activeSession?.id;
       if (!sessionId || endingRef.current) return;
 
@@ -447,37 +735,37 @@ export default function Interview() {
       stopQuestionAudio();
 
       try {
-        const detail = await endInterviewMutation.mutateAsync(sessionId);
-        setResultDetail(detail);
-        setActiveSession(detail);
-        setInterviewFinished(true);
-        setPhase("results");
-        setSidebarOpen(true);
-        void interviewHistoryQuery.refetch();
+        const detail = await endInterviewMutation.mutateAsync({ sessionId, liveTurns });
+        applyEndedInterview(detail);
       } catch (error) {
         if (reason === "timer" || reason === "finished") {
           try {
             const detail = await getInterviewDetail(sessionId);
-            setResultDetail(detail);
-            setActiveSession(detail);
-            setInterviewFinished(true);
-            setPhase("results");
-            setSidebarOpen(true);
+            applyEndedInterview(detail);
             return;
           } catch {
             // Keep the original end error below.
           }
         }
-        setApiError(getApiErrorMessage(error, "Failed to end interview."));
+        setApiError(getApiErrorMessage(error, t("interview.errors.endFailed")));
       } finally {
         setIsEnding(false);
         endingRef.current = false;
       }
     },
-    [activeSession?.id, disconnectRealtime, endInterviewMutation, interviewHistoryQuery, stopMedia, stopQuestionAudio],
+    [
+      activeSession?.id,
+      applyEndedInterview,
+      disconnectRealtime,
+      endInterviewMutation,
+      stopMedia,
+      stopQuestionAudio,
+      t,
+    ],
   );
 
   const handleSubmitAnswer = async () => {
+    if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
     const answer = userAnswer.trim();
     if (!answer || !activeSession?.id || isLoading || isEnding) return;
 
@@ -490,6 +778,9 @@ export default function Interview() {
       ...current,
       { role: "user", content: answer, timestamp: now },
     ]);
+    acceptsUserSpeechRef.current = false;
+    liveSessionRef.current?.setMicEnabled(false);
+    setIsMicActive(false);
     setUserAnswer("");
     setIsLoading(true);
     setApiError(null);
@@ -507,10 +798,11 @@ export default function Interview() {
       const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
       if (nextQuestion) setCurrentQuestion(nextQuestion);
 
-      const nextMessages = uniqueMessages([
-        response.aiMessage,
-        interviewMode === "guided" ? nextQuestion : "",
-      ]).map((content) => ({ role: "ai" as const, content, timestamp: new Date() }));
+      const nextMessages = buildInterviewNextMessages(nextQuestion).map((content) => ({
+        role: "ai" as const,
+        content,
+        timestamp: new Date(),
+      }));
 
       if (nextMessages.length > 0) {
         setChatHistory((current) => [...current, ...nextMessages]);
@@ -521,23 +813,19 @@ export default function Interview() {
         await finishInterview("finished");
       } else {
         questionStartedAtRef.current = new Date();
-        if (nextQuestion) {
-          if (interviewMode === "realtime" && liveSessionRef.current?.isConnected) {
-            liveSessionRef.current.speakOfficialQuestion(nextQuestion, selectedLanguage);
-          } else {
-            void playQuestionAudio(response.session.id);
-          }
+        if (nextQuestion && shouldRequestQuestionAudio(interviewMode)) {
+          void playQuestionAudio(response.session.id);
         }
       }
     } catch (error) {
-      setApiError(getApiErrorMessage(error, "Failed to submit answer."));
+      setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const reconnectRealtime = useCallback(async () => {
-    if (!activeSession?.id || !canUseApi) return;
+  const reconnectRealtime = useCallback(async (): Promise<boolean> => {
+    if (!activeSession?.id || !canUseApi) return false;
 
     setIsLoading(true);
     setApiError(null);
@@ -545,23 +833,25 @@ export default function Interview() {
     try {
       let stream = mediaStreamRef.current;
       if (!stream || stream.getAudioTracks().length === 0) {
-        stream = await requestSessionMedia(true);
+        stream = await requestSessionMedia();
       }
 
       if (!stream || stream.getAudioTracks().length === 0) {
-        setVoiceFallback("Microphone is unavailable. Continue in text mode.");
-        return;
+        setVoiceFallback(t("interview.errors.microphoneUnavailable"));
+        return false;
       }
 
       const realtime = await refreshRealtimeTokenMutation.mutateAsync(activeSession.id);
       if (!realtime.enabled || !realtime.clientSecret) {
-        setVoiceFallback(realtime.reason || "Realtime token is unavailable. Continue in text mode.");
-        return;
+        setVoiceFallback(realtime.reason || t("interview.errors.realtimeTokenUnavailable"));
+        return false;
       }
 
-      await connectRealtime(realtime.clientSecret, stream);
+      await connectRealtime(realtime.clientSecret, stream, interviewMode === "realtime");
+      return true;
     } catch (error) {
-      setVoiceFallback(getApiErrorMessage(error, "Realtime reconnect failed. Continue in text mode."));
+      setVoiceFallback(getApiErrorMessage(error, t("interview.errors.reconnectFailed")));
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -569,21 +859,73 @@ export default function Interview() {
     activeSession?.id,
     canUseApi,
     connectRealtime,
+    interviewMode,
     refreshRealtimeTokenMutation,
     requestSessionMedia,
     setVoiceFallback,
+    t,
   ]);
 
   const toggleLiveMic = async () => {
+    if ((interviewMode !== "realtime" && (isAiSpeaking || isQuestionAudioPlaying)) || isLoading) {
+      return;
+    }
+
     if (!liveSessionRef.current?.isConnected) {
-      await reconnectRealtime();
+      const reconnected = await reconnectRealtime();
+      if (!reconnected || !liveSessionRef.current?.isConnected) return;
+      acceptsUserSpeechRef.current = true;
+      liveSessionRef.current.setMicEnabled(true);
+      setIsMicActive(true);
       return;
     }
 
     const next = !isMicActive;
     liveSessionRef.current.setMicEnabled(next);
+    if (next) acceptsUserSpeechRef.current = true;
     setIsMicActive(next);
   };
+
+  const updateLiveReviewTurn = (
+    id: string,
+    field: "interviewerQuestion" | "userAnswerText",
+    value: string,
+  ) => {
+    setLiveReviewTurns((current) =>
+      current.map((turn) => {
+        if (turn.id !== id) return turn;
+        const next = { ...turn, [field]: value };
+        const transcript = field === "userAnswerText" ? value : next.userAnswerTranscript;
+        return {
+          ...next,
+          userAnswerTranscript: transcript,
+          warnings: liveWarningsFor(next.interviewerQuestion, next.userAnswerText, transcript),
+        };
+      }),
+    );
+  };
+
+  const liveTurnInputs = useMemo(
+    () =>
+      liveReviewTurns
+        .map<LiveInterviewTurnInput | null>((turn) => {
+          const interviewerQuestion = turn.interviewerQuestion.trim();
+          const userAnswerText = turn.userAnswerText.trim();
+          if (!interviewerQuestion || !userAnswerText || turn.warnings.length > 0) return null;
+          return {
+            turnOrder: turn.turnOrder,
+            interviewerQuestion,
+            userAnswerText,
+            userAnswerTranscript: (turn.userAnswerTranscript || userAnswerText).trim(),
+            durationSeconds: turn.durationSeconds,
+          };
+        })
+        .filter((turn): turn is LiveInterviewTurnInput => turn !== null),
+    [liveReviewTurns],
+  );
+  const liveReviewHasWarnings = liveReviewTurns.some((turn) => turn.warnings.length > 0);
+  const liveReviewCanScore =
+    liveReviewTurns.length > 0 && liveTurnInputs.length === liveReviewTurns.length;
 
   useEffect(() => {
     if (phase !== "interviewing" || !activeSession?.expiresAt) return;
@@ -591,16 +933,47 @@ export default function Interview() {
     const tick = () => {
       const remaining = secondsRemainingFromExpiry(activeSession.expiresAt);
       setSecondsRemaining(remaining);
+      if (
+        shouldRequestLiveClosingSignal({
+          interviewMode,
+          isVoiceFallback,
+          isLiveConnected,
+          secondsRemaining: remaining,
+          alreadyRequested: liveClosingRequestedRef.current,
+        })
+      ) {
+        liveClosingRequestedRef.current = true;
+        liveSessionRef.current?.requestLiveInterviewClosing(selectedLanguage);
+      }
       if (remaining === 0 && !autoEndRef.current) {
         autoEndRef.current = true;
-        void finishInterview("timer");
+        void finishInterview(
+          "timer",
+          interviewMode === "realtime" && !isVoiceFallback ? liveTurnInputs : undefined,
+        );
       }
     };
 
     tick();
     const interval = window.setInterval(tick, 1000);
     return () => window.clearInterval(interval);
-  }, [activeSession?.expiresAt, finishInterview, phase]);
+  }, [
+    activeSession?.expiresAt,
+    finishInterview,
+    interviewMode,
+    isLiveConnected,
+    isVoiceFallback,
+    liveTurnInputs,
+    phase,
+    selectedLanguage,
+  ]);
+
+  useEffect(() => {
+    writeInterviewVoicePreference(
+      typeof window === "undefined" ? null : window.localStorage,
+      voicePreference,
+    );
+  }, [voicePreference]);
 
   useEffect(() => {
     if (phase !== "interviewing" || !videoRef.current || !mediaStreamRef.current) return;
@@ -623,7 +996,7 @@ export default function Interview() {
       <div className="flex h-[calc(100dvh-80px)] overflow-hidden">
         <aside
           className={cn(
-            "h-full shrink-0 border-r border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col transition-all duration-300",
+            "h-full shrink-0 overflow-hidden border-r border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col transition-all duration-300",
             sidebarOpen ? "w-[260px]" : "w-0 overflow-hidden border-r-0",
           )}
         >
@@ -631,16 +1004,39 @@ export default function Interview() {
             <h2 className="font-poppins text-sm font-bold leading-tight text-slate-900">
               {roleLabel(targetRole)}
             </h2>
-            <p className="mt-0.5 text-[11px] text-slate-400">AI Mock Interview</p>
+            <p className="mt-0.5 text-[11px] text-slate-400">{t("interview.title")}</p>
             <div className="mt-3 flex items-center gap-2">
               <Progress value={progressPercent} className="h-1.5 flex-1" />
               <span className="text-[10px] font-bold text-slate-500">
                 {completedSteps}/{steps.length}
               </span>
             </div>
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={workspaceTab === "practice" ? "default" : "ghost"}
+                className="h-8 rounded-lg text-xs font-bold"
+                onClick={switchToPractice}
+                disabled={!canSwitchWorkspace}
+              >
+                {t("interview.workspace.practice")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={workspaceTab === "history" ? "default" : "ghost"}
+                className="h-8 rounded-lg text-xs font-bold"
+                onClick={switchToHistory}
+                disabled={!canSwitchWorkspace}
+              >
+                {t("interview.workspace.history")}
+              </Button>
+            </div>
           </div>
 
-          <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <nav className="space-y-1 p-3">
             {steps.map((step) => {
               const Icon = STEP_ICONS[step.icon] || Circle;
               const isActive = step.status === "active";
@@ -666,7 +1062,9 @@ export default function Interview() {
                   >
                     {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                   </div>
-                  <span className="truncate text-xs font-semibold">{step.label}</span>
+                  <span className="truncate text-xs font-semibold">
+                    {t(`interview.steps.${step.id}`, { defaultValue: step.label })}
+                  </span>
                   {isCompleted && <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-400" />}
                 </button>
               );
@@ -675,50 +1073,109 @@ export default function Interview() {
 
           <div className="border-t border-slate-100 p-4">
             <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Your Stats
+              {t("interview.stats.yourStats")}
             </h4>
             <div className="mb-4 grid grid-cols-2 gap-2">
-              <StatCard label="Total" value={String(interviewHistory.length)} icon={Video} />
-              <StatCard label="Avg Score" value={scoredHistory.length ? `${averageScore}%` : "N/A"} icon={BarChart3} />
-              <StatCard label="Best" value={scoredHistory.length ? `${bestScore}%` : "N/A"} icon={Award} />
-              <StatCard label="Completed" value={String(scoredHistory.length)} icon={TrendingUp} />
+              <StatCard label={t("interview.stats.total")} value={String(interviewHistory.length)} icon={Video} />
+              <StatCard
+                label={t("interview.stats.avgScore")}
+                value={scoredHistory.length ? `${averageScore}%` : "N/A"}
+                icon={BarChart3}
+              />
+              <StatCard
+                label={t("interview.stats.best")}
+                value={scoredHistory.length ? `${bestScore}%` : "N/A"}
+                icon={Award}
+              />
+              <StatCard label={t("interview.stats.completed")} value={String(scoredHistory.length)} icon={TrendingUp} />
             </div>
 
-            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Recent Sessions
-            </h4>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {t("interview.sidebar.recentSessions")}
+              </h4>
+              <button
+                type="button"
+                className="text-[10px] font-bold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={switchToHistory}
+                disabled={!canSwitchWorkspace}
+              >
+                {t("interview.sidebar.viewAll")}
+              </button>
+            </div>
             <div className="space-y-2">
-              {!canUseApi ? (
+              {interviewHistoryState === "signed-out" ? (
                 <p className="py-3 text-center text-[11px] text-slate-400">
-                  Sign in with an API account to load history.
+                  {t("interview.sidebar.signedOut")}
                 </p>
-              ) : interviewHistoryQuery.isLoading ? (
-                <p className="py-3 text-center text-[11px] text-slate-400">Loading history...</p>
-              ) : interviewHistory.length === 0 ? (
-                <p className="py-3 text-center text-[11px] text-slate-400">No sessions yet</p>
+              ) : interviewHistoryState === "loading" ? (
+                <p className="py-3 text-center text-[11px] text-slate-400">
+                  {t("interview.sidebar.loadingHistory")}
+                </p>
+              ) : interviewHistoryState === "error" ? (
+                <div className="space-y-2 py-3 text-center">
+                  <p className="text-[11px] text-rose-500">{t("interview.sidebar.historyError")}</p>
+                  <button
+                    type="button"
+                    className="text-[11px] font-bold text-primary hover:underline"
+                    onClick={() => void interviewHistoryQuery.refetch()}
+                    disabled={interviewHistoryQuery.isFetching}
+                  >
+                    {interviewHistoryQuery.isFetching
+                      ? t("interview.sidebar.retrying")
+                      : t("interview.sidebar.tryAgain")}
+                  </button>
+                </div>
+              ) : interviewHistoryState === "empty" ? (
+                <p className="py-3 text-center text-[11px] text-slate-400">
+                  {t("interview.sidebar.emptyHistory")}
+                </p>
               ) : (
-                interviewHistory.slice(0, 5).map((session) => (
-                  <div key={session.id} className="rounded-lg bg-slate-50 p-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-[11px] font-bold text-slate-700">
-                        {roleLabel(session.targetRole)}
+                recentInterviewSessions.map((session) => {
+                  const selected = session.id === selectedHistorySessionId;
+                  return (
+                    <button
+                      key={session.id}
+                      type="button"
+                      onClick={() => openHistoryDetail(session.id)}
+                      disabled={!canSelectHistory}
+                      className={cn(
+                        "w-full rounded-lg p-2 text-left transition-colors",
+                        selected
+                          ? "border border-primary/20 bg-primary/10"
+                          : "bg-slate-50 hover:bg-slate-100",
+                        !canSelectHistory && "cursor-not-allowed opacity-60 hover:bg-slate-50",
+                      )}
+                      title={
+                        canSelectHistory
+                          ? t("interview.sidebar.viewResult")
+                          : t("interview.sidebar.historyDisabled")
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[11px] font-bold text-slate-700">
+                          {roleLabel(session.targetRole)}
+                        </p>
+                        <span className="text-xs font-black text-primary">
+                          {session.overallScore == null ? "N/A" : `${Math.round(session.overallScore)}%`}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {formatSessionDate(session.createdAt)}
                       </p>
-                      <span className="text-xs font-black text-primary">
-                        {session.overallScore == null ? "N/A" : `${Math.round(session.overallScore)}%`}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(session.createdAt)}</p>
-                  </div>
-                ))
+                    </button>
+                  );
+                })
               )}
             </div>
+          </div>
           </div>
         </aside>
 
         <button
           onClick={() => setSidebarOpen((value) => !value)}
           className="z-10 flex h-full w-5 shrink-0 items-center justify-center transition-colors hover:bg-slate-100/80"
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          title={sidebarOpen ? t("interview.sidebar.hide") : t("interview.sidebar.show")}
           type="button"
         >
           {sidebarOpen ? (
@@ -728,7 +1185,7 @@ export default function Interview() {
           )}
         </button>
 
-        {phase === "setup" && (
+        {showPracticeSetup && (
           <main className="custom-scrollbar relative flex-1 overflow-y-auto bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
               <InterviewSetup
@@ -752,6 +1209,10 @@ export default function Interview() {
                 setInterviewMode={setInterviewMode}
                 interviewType={interviewType}
                 setInterviewType={setInterviewType}
+                selectedVoice={voicePreference.voice}
+                setSelectedVoice={setSelectedVoice}
+                speechSpeed={voicePreference.speechSpeed}
+                setSpeechSpeed={setSpeechSpeed}
               />
               {apiError && (
                 <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -789,7 +1250,7 @@ export default function Interview() {
             handleSubmitAnswer={handleSubmitAnswer}
             toggleLiveMic={toggleLiveMic}
             interviewFinished={interviewFinished}
-            onStop={() => void finishInterview("manual")}
+            onStop={() => setIsEndDialogOpen(true)}
             apiError={apiError}
           />
         )}
@@ -800,17 +1261,161 @@ export default function Interview() {
               <ResultsView
                 result={resultDetail}
                 duration={resultDetail?.durationSeconds}
-                onRetry={() => {
-                  resetInterviewState();
-                  setPhase("setup");
-                  setSidebarOpen(true);
-                  void interviewHistoryQuery.refetch();
-                }}
+                onRetry={startNewInterviewFromHistory}
               />
             </div>
           </main>
         )}
+
+        {showHistoryList && (
+          <InterviewHistoryPanel
+            state={interviewHistoryState}
+            sessions={interviewHistory}
+            selectedSessionId={selectedHistorySessionId}
+            isFetching={interviewHistoryQuery.isFetching}
+            canSelectHistory={canSelectHistory}
+            onRetry={() => void interviewHistoryQuery.refetch()}
+            onSelectSession={openHistoryDetail}
+            onStartNew={startNewInterviewFromHistory}
+          />
+        )}
+
+        {phase === "history-detail" && (
+          <InterviewHistoryDetailView
+            state={historyDetailState}
+            result={historyDetailQuery.data ?? null}
+            isFetching={historyDetailQuery.isFetching}
+            onRetry={() => void historyDetailQuery.refetch()}
+            onBackToHistory={switchToHistory}
+            onStartNew={startNewInterviewFromHistory}
+          />
+        )}
       </div>
+
+      <AlertDialog open={isEndDialogOpen} onOpenChange={setIsEndDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(
+                endIntent === "cancel"
+                  ? "interview.endConfirmation.cancelTitle"
+                  : "interview.endConfirmation.scoreTitle",
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                endIntent === "cancel"
+                  ? "interview.endConfirmation.cancelDescription"
+                  : "interview.endConfirmation.scoreDescription",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEnding}>
+              {t("interview.endConfirmation.keepInterviewing")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={cn(
+                endIntent === "cancel" &&
+                  "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+              )}
+              disabled={isEnding}
+              onClick={() => {
+                setIsEndDialogOpen(false);
+                if (interviewMode === "realtime" && !isVoiceFallback && liveReviewTurns.length > 0) {
+                  setIsLiveReviewOpen(true);
+                  return;
+                }
+                void finishInterview(
+                  "manual",
+                  interviewMode === "realtime" && !isVoiceFallback ? [] : undefined,
+                );
+              }}
+            >
+              {t(
+                endIntent === "cancel"
+                  ? "interview.endConfirmation.confirmCancel"
+                  : "interview.endConfirmation.confirmScore",
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isLiveReviewOpen} onOpenChange={setIsLiveReviewOpen}>
+        <AlertDialogContent className="max-w-4xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("interview.liveReview.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("interview.liveReview.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="custom-scrollbar max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+            {liveReviewTurns.map((turn) => (
+              <div key={turn.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    {t("interview.liveReview.turn", { count: turn.turnOrder })}
+                  </p>
+                  {turn.warnings.length > 0 && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                      {t("interview.liveReview.needsReview")}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      {t("interview.liveReview.questionLabel")}
+                    </label>
+                    <Textarea
+                      value={turn.interviewerQuestion}
+                      onChange={(event) =>
+                        updateLiveReviewTurn(turn.id, "interviewerQuestion", event.target.value)
+                      }
+                      className="min-h-[82px] resize-none rounded-xl bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      {t("interview.liveReview.answerLabel")}
+                    </label>
+                    <Textarea
+                      value={turn.userAnswerText}
+                      onChange={(event) =>
+                        updateLiveReviewTurn(turn.id, "userAnswerText", event.target.value)
+                      }
+                      className="min-h-[110px] resize-none rounded-xl bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {liveReviewHasWarnings && (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              {t("interview.liveReview.warning")}
+            </p>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEnding}>
+              {t("interview.liveReview.back")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!liveReviewCanScore || isEnding}
+              onClick={() => {
+                setIsLiveReviewOpen(false);
+                void finishInterview("manual", liveTurnInputs);
+              }}
+            >
+              {t("interview.liveReview.confirmScore")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
@@ -823,28 +1428,4 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
       <p className="text-[10px] font-semibold text-slate-400">{label}</p>
     </div>
   );
-}
-
-function toBackendInterviewType(type: InterviewType): PlatformInterviewType {
-  if (type === "hr") return "HR";
-  if (type === "mixed") return "MIXED";
-  return "TECHNICAL";
-}
-
-function uniqueMessages(messages: string[]): string[] {
-  return Array.from(new Set(messages.map((message) => message.trim()).filter(Boolean)));
-}
-
-function roleLabel(value: string): string {
-  return AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value.replace(/_/g, " ");
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown date";
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }

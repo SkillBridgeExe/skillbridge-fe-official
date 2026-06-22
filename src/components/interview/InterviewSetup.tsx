@@ -1,4 +1,7 @@
 import type { CvListItemDto, CvMatchDto } from "@shared/api";
+import { Camera, ChevronDown, ChevronUp, Mic, Play, Radio, RefreshCw, Video } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { INTERVIEW_SETUP_TIPS } from "@/constants/interview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +19,14 @@ import { cn } from "@/lib/utils";
 import {
   AVAILABLE_LANGUAGES,
   AVAILABLE_TARGET_ROLES,
+  INTERVIEW_SPEECH_SPEED_OPTIONS,
+  INTERVIEW_VOICE_OPTIONS,
   TIP_ICONS,
   type InterviewMode,
+  type InterviewSpeechSpeed,
   type InterviewType,
+  type InterviewVoice,
 } from "./types";
-import { INTERVIEW_SETUP_TIPS } from "@/constants/interview";
-import { Camera, ChevronDown, ChevronUp, Mic, Play, Radio, RefreshCw, Video } from "lucide-react";
 
 interface InterviewSetupProps {
   tipsExpanded: boolean;
@@ -44,19 +49,10 @@ interface InterviewSetupProps {
   setInterviewMode: (v: InterviewMode) => void;
   interviewType: InterviewType;
   setInterviewType: (v: InterviewType) => void;
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "Unknown date";
-  return new Date(value).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function roleLabel(value: string): string {
-  return AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value;
+  selectedVoice: InterviewVoice;
+  setSelectedVoice: (v: InterviewVoice) => void;
+  speechSpeed: InterviewSpeechSpeed;
+  setSpeechSpeed: (v: InterviewSpeechSpeed) => void;
 }
 
 export function InterviewSetup({
@@ -80,23 +76,41 @@ export function InterviewSetup({
   setInterviewMode,
   interviewType,
   setInterviewType,
+  selectedVoice,
+  setSelectedVoice,
+  speechSpeed,
+  setSpeechSpeed,
 }: InterviewSetupProps) {
+  const { t, i18n } = useTranslation("common");
   const selectedCv = cvItems.find((cv) => cv.id === selectedCvId);
+  const dateLocale = i18n.language?.startsWith("vi") ? "vi-VN" : "en-US";
+  const formatDate = (value: string | null | undefined): string => {
+    if (!value) return t("interview.history.unknownDate");
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return t("interview.history.unknownDate");
+    return new Intl.DateTimeFormat(dateLocale, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  };
+  const roleLabel = (value: string): string =>
+    t(`interview.roles.${value}`, {
+      defaultValue: AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value,
+    });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-2xl font-poppins font-bold text-slate-900">
-            AI Mock Interview
+            {t("interview.title")}
           </h1>
           <Badge variant="secondary" className="rounded-full">
-            Backend scored
+            {t("interview.badge.autoScored")}
           </Badge>
         </div>
-        <p className="text-sm text-slate-500">
-          Choose context, pick a voice mode, and fall back to text only if microphone or realtime fails.
-        </p>
+        <p className="text-sm text-slate-500">{t("interview.setup.subtitle")}</p>
       </div>
 
       <Tabs
@@ -105,9 +119,9 @@ export function InterviewSetup({
         className="w-full"
       >
         <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="technical">Technical</TabsTrigger>
-          <TabsTrigger value="hr">HR</TabsTrigger>
-          <TabsTrigger value="mixed">Mixed</TabsTrigger>
+          <TabsTrigger value="technical">{t("interview.setup.type.technical")}</TabsTrigger>
+          <TabsTrigger value="hr">{t("interview.setup.type.hr")}</TabsTrigger>
+          <TabsTrigger value="mixed">{t("interview.setup.type.mixed")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -115,12 +129,12 @@ export function InterviewSetup({
         <div className="space-y-5">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Interview Context</CardTitle>
+              <CardTitle className="text-sm">{t("interview.setup.contextTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CV
+                  {t("interview.setup.cvLabel")}
                 </label>
                 {isCvLoading ? (
                   <Skeleton className="h-10 w-full" />
@@ -133,10 +147,10 @@ export function InterviewSetup({
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Use target role only" />
+                      <SelectValue placeholder={t("interview.setup.useTargetRoleOnly")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No CV - target role only</SelectItem>
+                      <SelectItem value="none">{t("interview.setup.noCvTargetRoleOnly")}</SelectItem>
                       {cvItems.map((cv) => (
                         <SelectItem key={cv.id} value={cv.id}>
                           {cv.title || cv.originalFileName || `CV ${cv.id.slice(0, 8)}`}
@@ -147,7 +161,7 @@ export function InterviewSetup({
                 )}
                 {selectedCv && (
                   <p className="text-xs text-slate-500">
-                    Uploaded {formatDate(selectedCv.createdAt)}
+                    {t("interview.setup.uploadedAt", { date: formatDate(selectedCv.createdAt) })}
                     {selectedCv.targetRole ? ` · ${roleLabel(selectedCv.targetRole)}` : ""}
                   </p>
                 )}
@@ -155,7 +169,7 @@ export function InterviewSetup({
 
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CV/JD Match
+                  {t("interview.setup.cvJdMatchLabel")}
                 </label>
                 {isMatchesLoading ? (
                   <Skeleton className="h-10 w-full" />
@@ -167,14 +181,18 @@ export function InterviewSetup({
                   >
                     <SelectTrigger>
                       <SelectValue
-                        placeholder={selectedCvId ? "Optional match context" : "Choose CV first"}
+                        placeholder={
+                          selectedCvId
+                            ? t("interview.setup.optionalMatchContext")
+                            : t("interview.setup.chooseCvFirst")
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No match context</SelectItem>
+                      <SelectItem value="none">{t("interview.setup.noMatchContext")}</SelectItem>
                       {matchItems.map((match) => (
                         <SelectItem key={match.id} value={match.id}>
-                          {(match.jobDescription?.title || "Saved JD").slice(0, 54)}
+                          {(match.jobDescription?.title || t("interview.setup.savedJd")).slice(0, 54)}
                           {match.overallScore != null ? ` · ${Math.round(match.overallScore)}%` : ""}
                         </SelectItem>
                       ))}
@@ -182,15 +200,13 @@ export function InterviewSetup({
                   </Select>
                 )}
                 {selectedCvId && !isMatchesLoading && matchItems.length === 0 && (
-                  <p className="text-xs text-slate-500">
-                    No saved JD match yet. The interview can still use CV + role.
-                  </p>
+                  <p className="text-xs text-slate-500">{t("interview.setup.noSavedMatch")}</p>
                 )}
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Target Role
+                  {t("interview.setup.targetRole")}
                 </label>
                 <Select value={targetRole} onValueChange={setTargetRole}>
                   <SelectTrigger>
@@ -199,7 +215,7 @@ export function InterviewSetup({
                   <SelectContent>
                     {AVAILABLE_TARGET_ROLES.map((role) => (
                       <SelectItem key={role.value} value={role.value}>
-                        {role.label}
+                        {roleLabel(role.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -208,7 +224,7 @@ export function InterviewSetup({
 
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Language
+                  {t("interview.setup.language")}
                 </label>
                 <ToggleGroup
                   type="single"
@@ -232,9 +248,9 @@ export function InterviewSetup({
                 <Camera className="w-10 h-10 text-blue-400/80" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-white">Camera starts only when you begin</p>
+                <p className="text-sm font-bold text-white">{t("interview.setup.cameraTitle")}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  No microphone or camera permission is requested on setup load.
+                  {t("interview.setup.cameraDescription")}
                 </p>
               </div>
             </div>
@@ -248,7 +264,9 @@ export function InterviewSetup({
               onClick={() => setTipsExpanded(!tipsExpanded)}
               className="flex items-center justify-between w-full text-left"
             >
-              <CardTitle className="text-sm uppercase tracking-wider">Things to know</CardTitle>
+              <CardTitle className="text-sm uppercase tracking-wider">
+                {t("interview.setup.tipsTitle")}
+              </CardTitle>
               {tipsExpanded ? (
                 <ChevronUp className="w-4 h-4 text-slate-400" />
               ) : (
@@ -261,13 +279,19 @@ export function InterviewSetup({
               INTERVIEW_SETUP_TIPS.map((tip) => {
                 const TipIcon = TIP_ICONS[tip.icon] || Video;
                 return (
-                  <div key={tip.title} className="flex gap-3">
+                  <div key={tip.id} className="flex gap-3">
                     <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
                       <TipIcon className="w-4 h-4 text-slate-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-800 leading-tight">{tip.title}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{tip.desc}</p>
+                      <p className="text-xs font-bold text-slate-800 leading-tight">
+                        {t(`interview.setup.tips.${tip.id}.title`, { defaultValue: tip.title })}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        {t(`interview.setup.tips.${tip.id}.description`, {
+                          defaultValue: tip.desc,
+                        })}
+                      </p>
                     </div>
                   </div>
                 );
@@ -286,9 +310,11 @@ export function InterviewSetup({
                 >
                   <Mic className="h-4 w-4 shrink-0" />
                   <span>
-                    <span className="block text-xs font-bold">Guided Voice</span>
+                    <span className="block text-xs font-bold">
+                      {t("interview.setup.modes.guided.title")}
+                    </span>
                     <span className="block text-[11px] font-medium text-slate-500">
-                      Backend controls questions, AI reads them aloud.
+                      {t("interview.setup.modes.guided.description")}
                     </span>
                   </span>
                 </ToggleGroupItem>
@@ -298,13 +324,76 @@ export function InterviewSetup({
                 >
                   <Radio className="h-4 w-4 shrink-0" />
                   <span>
-                    <span className="block text-xs font-bold">Live Realtime</span>
+                    <span className="block text-xs font-bold">
+                      {t("interview.setup.modes.realtime.title")}
+                    </span>
                     <span className="block text-[11px] font-medium text-slate-500">
-                      gpt-realtime-2 speaks and listens like a live interviewer.
+                      {t("interview.setup.modes.realtime.description")}
                     </span>
                   </span>
                 </ToggleGroupItem>
               </ToggleGroup>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-white p-3">
+              <div className="mb-3">
+                <p className="text-xs font-bold text-slate-800">
+                  {t("interview.setup.voice.title")}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  {t("interview.setup.voice.description")}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {t("interview.setup.voice.voiceLabel")}
+                  </label>
+                  <Select
+                    value={selectedVoice}
+                    onValueChange={(value) => setSelectedVoice(value as InterviewVoice)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERVIEW_VOICE_OPTIONS.map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          {t(`interview.setup.voice.voices.${voice.i18nKey}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {t("interview.setup.voice.speedLabel")}
+                  </label>
+                  <ToggleGroup
+                    type="single"
+                    value={String(speechSpeed)}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      setSpeechSpeed(Number(value) as InterviewSpeechSpeed);
+                    }}
+                    className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100 p-1"
+                    disabled={isLoading}
+                  >
+                    {INTERVIEW_SPEECH_SPEED_OPTIONS.map((speed) => (
+                      <ToggleGroupItem
+                        key={speed.value}
+                        value={String(speed.value)}
+                        className="h-8 rounded-md px-1 text-[11px] font-bold data-[state=on]:bg-white"
+                      >
+                        {t(`interview.setup.voice.speeds.${speed.i18nKey}`)}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              </div>
             </div>
 
             <Button
@@ -318,19 +407,19 @@ export function InterviewSetup({
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Starting...
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> {t("interview.setup.starting")}
                 </>
               ) : interviewMode === "realtime" ? (
                 <>
-                  <Radio className="w-4 h-4 mr-2" /> Start Live Realtime
+                  <Radio className="w-4 h-4 mr-2" /> {t("interview.setup.startLiveRealtime")}
                 </>
               ) : interviewMode === "guided" ? (
                 <>
-                  <Mic className="w-4 h-4 mr-2" /> Start Guided Voice
+                  <Mic className="w-4 h-4 mr-2" /> {t("interview.setup.startGuidedVoice")}
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4 mr-2" /> Start Interview
+                  <Play className="w-4 h-4 mr-2" /> {t("interview.setup.startInterview")}
                 </>
               )}
             </Button>

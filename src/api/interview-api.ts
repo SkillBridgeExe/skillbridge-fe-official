@@ -9,6 +9,17 @@ export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
 export type PlatformInterviewModality = "TEXT" | "AUDIO";
+export type PlatformInterviewVoice =
+  | "alloy"
+  | "ash"
+  | "ballad"
+  | "coral"
+  | "echo"
+  | "sage"
+  | "shimmer"
+  | "verse"
+  | "marin"
+  | "cedar";
 
 export interface RealtimeClientSecretDto {
   enabled: boolean;
@@ -28,6 +39,8 @@ export interface InterviewSessionDto {
   language: PlatformInterviewLanguage | string;
   mode: PlatformInterviewMode;
   interviewType: PlatformInterviewType;
+  voice: PlatformInterviewVoice | string;
+  speechSpeed: number;
   status: PlatformInterviewStatus | string;
   totalQuestionsPlanned: number | null;
   maxDurationSeconds: number;
@@ -81,6 +94,8 @@ export interface StartInterviewRequest {
   language?: PlatformInterviewLanguage;
   mode?: PlatformInterviewMode;
   interviewType?: PlatformInterviewType;
+  voice?: PlatformInterviewVoice;
+  speechSpeed?: number;
 }
 
 export interface StartInterviewResponseDto extends InterviewSessionDto {
@@ -95,6 +110,14 @@ export interface SubmitInterviewTurnRequest {
   userAnswer: string;
   userTranscript?: string;
   modality?: PlatformInterviewModality;
+  durationSeconds?: number;
+}
+
+export interface LiveInterviewTurnInput {
+  turnOrder: number;
+  interviewerQuestion: string;
+  userAnswerText: string;
+  userAnswerTranscript?: string;
   durationSeconds?: number;
 }
 
@@ -143,9 +166,13 @@ export async function submitInterviewTurn(
   return envelope.data;
 }
 
-export async function endInterview(sessionId: string): Promise<InterviewDetailResponseDto> {
+export async function endInterview(
+  sessionId: string,
+  liveTurns?: LiveInterviewTurnInput[],
+): Promise<InterviewDetailResponseDto> {
+  const payload = liveTurns ? { sessionId, liveTurns } : { sessionId };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
-    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }),
+    httpClient.post(API_ROUTES.INTERVIEW.END, payload),
     "Failed to end interview.",
   );
   return envelope.data;
@@ -154,8 +181,12 @@ export async function endInterview(sessionId: string): Promise<InterviewDetailRe
 export async function getInterviewHistory(
   query: InterviewHistoryQuery = {},
 ): Promise<InterviewHistoryResponse> {
+  const params: InterviewHistoryQuery = {
+    page: query.page ?? 1,
+    limit: query.limit ?? 10,
+  };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewHistoryResponse>>(
-    httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params: query }),
+    httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params }),
     "Failed to load interview history.",
   );
   return envelope.data;

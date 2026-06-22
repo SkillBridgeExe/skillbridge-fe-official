@@ -32,13 +32,14 @@ export interface BillingPlanDto {
   features: BillingPlanFeatureDto[];
 }
 
+/**
+ * POST /api/billing/checkout — subscription-only.
+ * Mentor deposit/remaining payments MUST go through the mentor booking API
+ * (POST /api/mentor-bookings, POST /api/mentor-bookings/:id/pay-remaining).
+ */
 export interface CreateCheckoutDto {
-  purpose: BillingPurpose;
+  purpose: "SUBSCRIPTION";
   planCode?: string;
-  mentorId?: string;
-  bookingId?: string;
-  slotStart?: string;
-  slotEnd?: string;
 }
 
 export interface CheckoutResponseDto {

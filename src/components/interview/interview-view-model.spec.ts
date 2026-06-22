@@ -1,11 +1,29 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
+  buildInterviewInitialMessages,
+  buildInterviewNextMessages,
+  canOpenInterviewHistory,
+  canSwitchInterviewWorkspace,
+  buildInterviewStartRequest,
+  getLiveTranscriptWarnings,
+  getInterviewEndIntent,
+  getInterviewEndOutcome,
+  getInterviewHistoryDetailState,
+  getInterviewHistoryState,
   getInterviewModeLabel,
+  getInterviewModeLabelKey,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
+  shouldRequestLiveClosingSignal,
+  shouldRequestQuestionAudio,
+  getInterviewSessionStatusKey,
+  getInterviewSessionStatusLabel,
+  readInterviewVoicePreference,
+  takeRecentInterviewSessions,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
+  writeInterviewVoicePreference,
 } from "./interview-view-model";
 
 const detail: InterviewDetailResponseDto = {
@@ -17,6 +35,8 @@ const detail: InterviewDetailResponseDto = {
   language: "vi",
   mode: "TEXT",
   interviewType: "TECHNICAL",
+  voice: "marin",
+  speechSpeed: 1.15,
   status: "COMPLETED",
   totalQuestionsPlanned: 7,
   maxDurationSeconds: 600,
@@ -71,6 +91,87 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
+  it.each([
+    ["setup", true],
+    ["results", true],
+    ["history-detail", true],
+    ["interviewing", false],
+  ] as const)("allows opening interview history only outside active interviews", (phase, expected) => {
+    expect(canOpenInterviewHistory(phase)).toBe(expected);
+  });
+
+  it.each([
+    ["setup", true],
+    ["results", true],
+    ["history-detail", true],
+    ["interviewing", false],
+  ] as const)("allows switching Practice/History only outside active interviews", (phase, expected) => {
+    expect(canSwitchInterviewWorkspace(phase)).toBe(expected);
+  });
+
+  it.each([
+    [{ canUseApi: false, isLoading: false, isError: false, itemCount: 0 }, "signed-out"],
+    [{ canUseApi: true, isLoading: true, isError: false, itemCount: 0 }, "loading"],
+    [{ canUseApi: true, isLoading: false, isError: true, itemCount: 0 }, "error"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 0 }, "empty"],
+    [{ canUseApi: true, isLoading: false, isError: false, itemCount: 2 }, "ready"],
+  ] as const)("derives the interview history panel state", (input, expected) => {
+    expect(getInterviewHistoryState(input)).toBe(expected);
+  });
+
+  it.each([
+    ["COMPLETED", "completed"],
+    ["IN_PROGRESS", "inProgress"],
+    ["CANCELLED", "cancelled"],
+    ["UNKNOWN", "unknown"],
+  ] as const)("normalizes interview session status keys", (status, expected) => {
+    expect(getInterviewSessionStatusKey(status)).toBe(expected);
+  });
+
+  it.each([
+    ["COMPLETED", "Completed"],
+    ["IN_PROGRESS", "In progress"],
+    ["CANCELLED", "Cancelled"],
+    ["UNKNOWN", "Unknown"],
+  ] as const)("formats interview session status labels", (status, expected) => {
+    expect(getInterviewSessionStatusLabel(status)).toBe(expected);
+  });
+
+  it.each([
+    [{ selectedSessionId: null, isLoading: false, isError: false, result: null }, "idle"],
+    [{ selectedSessionId: "session-1", isLoading: true, isError: false, result: null }, "loading"],
+    [{ selectedSessionId: "session-1", isLoading: false, isError: true, result: null }, "error"],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "IN_PROGRESS", overallScore: null },
+      },
+      "not-scored",
+    ],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "COMPLETED", overallScore: null },
+      },
+      "not-scored",
+    ],
+    [
+      {
+        selectedSessionId: "session-1",
+        isLoading: false,
+        isError: false,
+        result: { status: "COMPLETED", overallScore: 82 },
+      },
+      "ready",
+    ],
+  ] as const)("derives the selected interview history detail state", (input, expected) => {
+    expect(getInterviewHistoryDetailState(input)).toBe(expected);
+  });
+
   it("calculates countdown from backend expiresAt", () => {
     const now = new Date("2026-06-12T10:09:10.000Z");
 
@@ -97,6 +198,14 @@ describe("interview view model", () => {
 
   it("keeps guided mode labeled as voice when realtime transcription is not connected", () => {
     expect(
+      getInterviewModeLabelKey({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: null,
+      }),
+    ).toBe("guidedVoice");
+    expect(
       getInterviewModeLabel({
         interviewMode: "guided",
         isLiveConnected: false,
@@ -106,7 +215,57 @@ describe("interview view model", () => {
     ).toBe("Guided Voice");
   });
 
+  it.each([
+    [0, "cancel"],
+    [1, "score"],
+    [3, "score"],
+  ] as const)("uses %i answered turns to choose the %s end flow", (answeredCount, expected) => {
+    expect(getInterviewEndIntent(answeredCount)).toBe(expected);
+  });
+
+  it("combines the opening message and first question into one interviewer bubble", () => {
+    expect(buildInterviewInitialMessages("Welcome.", "Tell me about your project.")).toEqual([
+      "Welcome.\n\nTell me about your project.",
+    ]);
+  });
+
+  it("shows only the official next question after an answered turn", () => {
+    expect(buildInterviewNextMessages("What trade-off did you make?")).toEqual([
+      "What trade-off did you make?",
+    ]);
+    expect(buildInterviewNextMessages(null)).toEqual([]);
+  });
+
+  it.each([
+    ["CANCELLED", "cancelled"],
+    ["COMPLETED", "scored"],
+  ] as const)("maps a %s end response to the %s UI outcome", (status, expected) => {
+    expect(getInterviewEndOutcome(status)).toBe(expected);
+  });
+
+  it.each([
+    [[], []],
+    [["session-3", "session-2", "session-1"], ["session-3", "session-2", "session-1"]],
+    [
+      ["session-4", "session-3", "session-2", "session-1"],
+      ["session-4", "session-3", "session-2"],
+    ],
+  ] as const)("keeps at most three recent sessions without mutating the source", (ids, expected) => {
+    const sessions = ids.map((id) => ({ id }));
+
+    expect(takeRecentInterviewSessions(sessions).map((session) => session.id)).toEqual(expected);
+    expect(sessions.map((session) => session.id)).toEqual(ids);
+  });
+
   it("shows text fallback when guided question audio fails", () => {
+    expect(
+      getInterviewModeLabelKey({
+        interviewMode: "guided",
+        isLiveConnected: false,
+        isVoiceFallback: false,
+        questionAudioError: "Could not play audio.",
+      }),
+    ).toBe("textFallback");
     expect(
       getInterviewModeLabel({
         interviewMode: "guided",
@@ -147,4 +306,103 @@ describe("interview view model", () => {
       ),
     ).toBe("The interviewer voice took too long to load. Continue with the visible question.");
   });
+
+  it("does not request guided question audio for live realtime mode", () => {
+    expect(shouldRequestQuestionAudio("realtime")).toBe(false);
+    expect(shouldRequestQuestionAudio("guided")).toBe(true);
+  });
+
+  it("requests live closing once when realtime is near the time limit", () => {
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "realtime",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 45,
+        alreadyRequested: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "realtime",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 44,
+        alreadyRequested: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRequestLiveClosingSignal({
+        interviewMode: "guided",
+        isVoiceFallback: false,
+        isLiveConnected: true,
+        secondsRemaining: 45,
+        alreadyRequested: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("flags CJK and leaked transcription prompt fragments in live transcripts", () => {
+    expect(
+      getLiveTranscriptWarnings("第一张原有很不流动来的求接下午. Em có làm API backend."),
+    ).toContain("cjk");
+    expect(
+      getLiveTranscriptWarnings(
+        "Cuộc phỏng vấn bằng tiếng Việt. Giữ nguyên dấu tiếng Việt và các thuật ngữ kỹ thuật tiếng Anh như React, TypeScript và API.",
+      ),
+    ).toContain("promptLeak");
+    expect(getLiveTranscriptWarnings("Em dùng React, TypeScript và API Gateway.")).toEqual([]);
+  });
+
+  it("builds the start interview request with voice and speed settings", () => {
+    expect(
+      buildInterviewStartRequest({
+        selectedCvId: null,
+        selectedMatchId: "match-1",
+        targetRole: "frontend_developer",
+        selectedLanguage: "vi",
+        interviewMode: "realtime",
+        interviewType: "mixed",
+        voice: "coral",
+        speechSpeed: 1.3,
+      }),
+    ).toMatchObject({
+      cvId: undefined,
+      cvMatchId: "match-1",
+      targetRole: "frontend_developer",
+      language: "vi",
+      mode: "VOICE",
+      interviewType: "MIXED",
+      voice: "coral",
+      speechSpeed: 1.3,
+    });
+  });
+
+  it("reads and writes interview voice preferences safely", () => {
+    const storage = new MemoryStorage();
+
+    expect(readInterviewVoicePreference(storage)).toEqual({
+      voice: "marin",
+      speechSpeed: 1.15,
+    });
+
+    writeInterviewVoicePreference(storage, { voice: "sage", speechSpeed: 1.3 });
+
+    expect(readInterviewVoicePreference(storage)).toEqual({
+      voice: "sage",
+      speechSpeed: 1.3,
+    });
+  });
 });
+
+class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}

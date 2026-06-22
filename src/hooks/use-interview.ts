@@ -11,7 +11,21 @@ import {
   startInterview,
   submitInterviewTurn,
   type InterviewHistoryQuery,
+  type LiveInterviewTurnInput,
 } from "@/api/interview-api";
+
+interface EndInterviewMutationInput {
+  sessionId: string;
+  liveTurns?: LiveInterviewTurnInput[];
+}
+
+function shouldRetryInterviewHistory(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) return false;
+  if (!error || typeof error !== "object") return true;
+
+  const status = (error as { response?: { status?: unknown } }).response?.status;
+  return typeof status !== "number" || status >= 500;
+}
 
 export function useInterviewHistory(enabled = true, query: InterviewHistoryQuery = {}) {
   const hasApiSession = useHasApiSession();
@@ -26,6 +40,7 @@ export function useInterviewHistory(enabled = true, query: InterviewHistoryQuery
     queryFn: () => getInterviewHistory(query),
     enabled: enabled && hasApiSession,
     staleTime: 60_000,
+    retry: shouldRetryInterviewHistory,
   });
 }
 
@@ -78,7 +93,8 @@ export function useEndInterview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: endInterview,
+    mutationFn: ({ sessionId, liveTurns }: EndInterviewMutationInput) =>
+      endInterview(sessionId, liveTurns),
     onSuccess: (session) => {
       queryClient.setQueryData(QUERY_KEYS.INTERVIEW_DETAIL(session.id), session);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.INTERVIEW_HISTORY });

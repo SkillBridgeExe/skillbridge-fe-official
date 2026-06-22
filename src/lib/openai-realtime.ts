@@ -17,6 +17,7 @@ export type RealtimeEventCallback = (event: RealtimeEvent) => void;
 interface ConnectRealtimeOptions {
   clientSecret: string;
   stream: MediaStream;
+  initialMicEnabled?: boolean;
 }
 
 export class OpenAIRealtimeSession {
@@ -35,7 +36,7 @@ export class OpenAIRealtimeSession {
     };
   }
 
-  async connect({ clientSecret, stream }: ConnectRealtimeOptions): Promise<void> {
+  async connect({ clientSecret, stream, initialMicEnabled = true }: ConnectRealtimeOptions): Promise<void> {
     this.disconnect();
 
     const pc = new RTCPeerConnection();
@@ -66,7 +67,6 @@ export class OpenAIRealtimeSession {
     };
 
     dc.onopen = () => {
-      this.configureTranscription();
       this.flushPendingPayloads();
     };
 
@@ -79,6 +79,7 @@ export class OpenAIRealtimeSession {
     };
 
     for (const track of stream.getAudioTracks()) {
+      track.enabled = initialMicEnabled;
       pc.addTrack(track, stream);
     }
 
@@ -111,8 +112,30 @@ export class OpenAIRealtimeSession {
     });
   }
 
+  startLiveInterview(): void {
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+      },
+    });
+  }
+
+  requestLiveInterviewClosing(language: "vi" | "en"): void {
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+        instructions:
+          language === "vi"
+            ? "Cảm ơn ứng viên bằng tiếng Việt trong 2-3 câu ngắn, nói buổi phỏng vấn sắp kết thúc, không hỏi thêm câu mới, và không đưa điểm số hoặc đáp án mẫu."
+            : "Thank the candidate in 2-3 short English sentences, say the interview is ending soon, ask no new questions, and do not provide scores or model answers.",
+      },
+    });
+  }
+
   speakOfficialQuestion(question: string, language: "vi" | "en"): void {
-    const trimmed = question.trim();
+    const trimmed = question.trim().normalize("NFC");
     if (!trimmed) return;
 
     this.send({
@@ -125,8 +148,8 @@ export class OpenAIRealtimeSession {
             type: "input_text",
             text:
               language === "vi"
-                ? `Hay doc cau hoi phong van chinh thuc sau bang tieng Viet tu nhien, khong them diem so hay loi giai thich: ${trimmed}`
-                : `Ask this official interview question in natural English. Do not add scoring or explanation: ${trimmed}`,
+                ? `Hãy đọc câu hỏi phỏng vấn chính thức sau bằng tiếng Việt tự nhiên. Chỉ đọc câu hỏi, không thêm điểm số hoặc lời giải thích: ${trimmed}`
+                : `Ask this official interview question in natural English. Only read the question; do not add scoring or explanation: ${trimmed}`,
           },
         ],
       },
@@ -167,28 +190,6 @@ export class OpenAIRealtimeSession {
     return this.connected;
   }
 
-  private configureTranscription(): void {
-    this.send({
-      type: "session.update",
-      session: {
-        type: "realtime",
-        output_modalities: ["audio"],
-        audio: {
-          input: {
-            transcription: {
-              model: "gpt-4o-mini-transcribe",
-            },
-            turn_detection: {
-              type: "server_vad",
-              create_response: false,
-              interrupt_response: true,
-            },
-          },
-        },
-      },
-    });
-  }
-
   private handleEvent(raw: unknown): void {
     if (typeof raw !== "string") return;
 
@@ -200,12 +201,23 @@ export class OpenAIRealtimeSession {
     }
 
     if (event.type === "error") {
-      this.emit({ type: "error", data: event.error?.message ?? "Realtime API error." });
+      this.emit({
+        type: "error",
+        data: (event.error?.message ?? "Realtime API error.").normalize("NFC"),
+      });
+      return;
+    }
+
+    if (event.type === "conversation.item.input_audio_transcription.failed") {
+      this.emit({
+        type: "error",
+        data: (event.error?.message ?? "Realtime transcription failed.").normalize("NFC"),
+      });
       return;
     }
 
     if (event.type === "conversation.item.input_audio_transcription.completed") {
-      this.emit({ type: "user_transcript", data: event.transcript });
+      this.emit({ type: "user_transcript", data: event.transcript?.normalize("NFC") });
       return;
     }
 
@@ -213,7 +225,7 @@ export class OpenAIRealtimeSession {
       event.type === "response.output_audio_transcript.delta" ||
       event.type === "response.audio_transcript.delta"
     ) {
-      this.emit({ type: "ai_transcript", data: event.delta });
+      this.emit({ type: "ai_transcript", data: event.delta?.normalize("NFC") });
       return;
     }
 

@@ -1,301 +1,228 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  DollarSign, Clock, CheckCircle2, Plus, Trash2, Star, MapPin, Briefcase
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { CalendarPlus, Clock3, Trash2, AlertCircle, CalendarDays, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { toast } from "@/hooks/use-toast";
-import { useMascotSuccess } from "@/hooks/useMascot";
-import { WEEKDAYS, AvailabilitySlot } from "@/lib/mock-data/mentor-dashboard";
-import { useMentorStore, PricingPlan } from "@/store/useMentorStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyMentorProfile, useMyMentorSlots, useCreateMentorSlot, useDeleteMentorSlot } from "@/hooks/use-mentors";
+import { useToast } from "@/hooks/use-toast";
 
-const TIME_OPTIONS = [
-  "06:00","07:00","08:00","09:00","10:00","11:00","12:00",
-  "13:00","14:00","15:00","16:00","17:00","18:00","19:00",
-  "20:00","21:00","22:00","23:00"
-];
+const SLOT_STATUS_STYLES: Record<string, string> = {
+  OPEN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  HELD: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  BOOKED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  BLOCKED: "bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300",
+};
 
 export default function MentorAvailability() {
-  const { myProfile, pricingPlans: initialPricingPlans, updateMyProfile, updatePricingPlans, setPricingSetupCompleted } = useMentorStore();
-  const { celebrate } = useMascotSuccess();
+  const { t } = useTranslation("common");
+  const { toast } = useToast();
+  const profileQuery = useMyMentorProfile();
+  const profile = profileQuery.data;
 
-  const [pricingPlans, setPricingPlans] = useState(
-    initialPricingPlans.length > 0 ? initialPricingPlans : [
-      { title: "Quick Plan", price: 50, description: "Perfect for quick architecture reviews or specific bug fixes.\n\n- 1 hour call per month\n- Unlimited Q&A via chat\n- Expect responses in 24 hours or less\n- Hands-on support" }
-    ]
+  // Default date range: from now to 30 days out — stable across re-renders
+  const { defaultFrom, defaultTo } = useMemo(() => {
+    const now = new Date();
+    return {
+      defaultFrom: now.toISOString(),
+      defaultTo: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }, []);
+
+  const slotsQuery = useMyMentorSlots({ from: defaultFrom, to: defaultTo });
+  const createSlot = useCreateMentorSlot();
+  const deleteSlot = useDeleteMentorSlot();
+
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+
+  const canManageSlots = profile?.status === "APPROVED" && profile.isAcceptingBookings;
+
+  // Auto-calculate endsAt when startsAt changes based on profile duration
+  const handleStartsAtChange = (value: string) => {
+    setStartsAt(value);
+    if (profile?.sessionDurationMinutes && value) {
+      const start = new Date(value);
+      const end = new Date(start.getTime() + profile.sessionDurationMinutes * 60 * 1000);
+      // Format for datetime-local input
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const formatted = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+      setEndsAt(formatted);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!startsAt || !endsAt) return;
+    try {
+      await createSlot.mutateAsync({
+        startsAt: new Date(startsAt).toISOString(),
+        endsAt: new Date(endsAt).toISOString(),
+      });
+      setStartsAt("");
+      setEndsAt("");
+      toast({ title: t("mentor.availability.slotCreated", "Slot created successfully") });
+    } catch (error) {
+      toast({
+        title: t("mentor.availability.slotCreateFailed", "Failed to create slot"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (slotId: string) => {
+    try {
+      await deleteSlot.mutateAsync(slotId);
+      toast({ title: t("mentor.availability.slotDeleted", "Slot deleted") });
+    } catch (error) {
+      toast({
+        title: t("mentor.availability.slotDeleteFailed", "Failed to delete slot"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const slots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
+  const futureSlots = useMemo(
+    () => slots.filter((s) => new Date(s.endsAt) > new Date()).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+    [slots],
   );
-  const [slots, setSlots] = useState<AvailabilitySlot[]>(myProfile.availableSlots || []);
-  const [showPreview, setShowPreview] = useState(false);
 
-  const addPricingPlan = () => {
-    if (pricingPlans.length < 4) {
-      setPricingPlans([...pricingPlans, { title: "", price: "", description: "" }]);
-    } else {
-      toast({ title: "Maximum plans reached", description: "You can only have up to 4 pricing plans." });
-    }
-  };
-
-  const updatePricingPlan = (idx: number, field: keyof PricingPlan, value: string | number) => {
-    setPricingPlans(pricingPlans.map((p, i) => i === idx ? { ...p, [field]: value } : p));
-  };
-
-  const removePricingPlan = (idx: number) => {
-    setPricingPlans(pricingPlans.filter((_, i) => i !== idx));
-  };
-
-  const addSlot = () => {
-    setSlots([...slots, { day: "Monday", from: "09:00", to: "11:00" }]);
-  };
-
-  const updateSlot = (idx: number, field: keyof AvailabilitySlot, value: string) => {
-    setSlots(slots.map((s, i) => i === idx ? { ...s, [field]: value } : s));
-  };
-
-  const removeSlot = (idx: number) => {
-    setSlots(slots.filter((_, i) => i !== idx));
-  };
-
-  const handleSave = () => {
-    if (pricingPlans.length === 0 || pricingPlans.some(p => !p.title || p.price === "" || !p.description)) {
-      toast({ title: "Incomplete Pricing", description: "Please fill in all pricing plans correctly.", variant: "destructive" });
-      return;
-    }
-    updateMyProfile({ availableSlots: slots });
-    updatePricingPlans(pricingPlans);
-    setPricingSetupCompleted(true);
-    celebrate("Đã lưu lịch & bảng giá! 🎉");
-  };
+  if (profileQuery.isLoading) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-60" /><Skeleton className="h-64 rounded-2xl" /></div>;
+  }
 
   return (
-    <div className="w-full max-w-none space-y-6 pb-12">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+          {t("mentor.availability.title", "Quản lý lịch")}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {t("mentor.availability.subtitle", "Tạo và quản lý các slot mentor của bạn")}
+        </p>
+      </div>
+
+      {!canManageSlots ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-950/30">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <div>
-            <h1 className="text-2xl font-poppins font-bold text-slate-900 dark:text-white">Availability & Pricing</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Set your availability and hourly rate for mentoring sessions</p>
-          </div>
-          <div className="flex gap-2">
-            {/* <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2">
-              <Eye className="w-4 h-4" /> Preview
-            </Button> */}
+            <p className="font-bold text-amber-800 dark:text-amber-200">
+              {t("mentor.availability.notReady", "Profile chưa sẵn sàng")}
+            </p>
+            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+              {t("mentor.availability.notReadyHint", "Profile của bạn cần được approve và bật accepting bookings để tạo slot.")}
+            </p>
           </div>
         </div>
-      </motion.div>
-
-      {/* Pricing */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-primary" /> Pricing Plans
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={addPricingPlan} disabled={pricingPlans.length >= 4} className="gap-1.5 text-xs h-8">
-                <Plus className="w-3.5 h-3.5" /> Add Plan
-              </Button>
+      ) : (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
+            <CalendarPlus className="h-5 w-5 text-primary" />
+            {t("mentor.availability.createSlot", "Tạo slot mới")}
+          </h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {t("mentor.availability.createSlotHint", "Slot phải cách hiện tại ít nhất 24 giờ. Duration tự khớp với profile ({{minutes}} phút).", { minutes: profile?.sessionDurationMinutes ?? 60 })}
+          </p>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
+                {t("mentor.availability.startTime", "Bắt đầu")}
+              </label>
+              <Input
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => handleStartsAtChange(e.target.value)}
+                className="h-11 rounded-xl"
+              />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {pricingPlans.length === 0 && (
-              <div className="text-center py-6 text-slate-400">
-                <p className="text-sm">No pricing plans added. Click "Add Plan" to start.</p>
-              </div>
-            )}
-            {pricingPlans.map((plan, idx) => (
-              <div key={idx} className="p-4 bg-slate-50 dark:bg-[#0b1120] rounded-xl border border-slate-100 dark:border-slate-800 relative space-y-4">
-                <button
-                  onClick={() => removePricingPlan(idx)}
-                  className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mr-8">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Plan Title</Label>
-                    <Input
-                      value={plan.title}
-                      placeholder="e.g., Quick Plan, Technical Plan"
-                      onChange={e => updatePricingPlan(idx, "title", e.target.value)}
-                      className="border-slate-200 dark:border-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Price per session (VND)</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        value={plan.price}
-                        onChange={e => {
-                          const val = e.target.value;
-                          updatePricingPlan(idx, "price", val === "" ? "" : Number(val));
-                        }}
-                        className="pl-8 border-slate-200 dark:border-slate-800 focus:border-emerald-400 font-medium"
-                      />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">$</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Description</Label>
-                  <Textarea
-                    value={plan.description}
-                    placeholder="Describe what is included in this plan..."
-                    onChange={e => updatePricingPlan(idx, "description", e.target.value)}
-                    className="border-slate-200 dark:border-slate-800 min-h-[100px]"
-                  />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">List specific features, response times, or call hours included.</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Availability */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <Card className="glass border-white/50 dark:border-slate-700/50 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" /> Weekly Availability
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={addSlot} className="gap-1.5 text-xs h-8">
-                <Plus className="w-3.5 h-3.5" /> Add Time Slot
-              </Button>
+            <div className="min-w-[200px] flex-1">
+              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
+                {t("mentor.availability.endTime", "Kết thúc")}
+              </label>
+              <Input
+                type="datetime-local"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+                className="h-11 rounded-xl"
+              />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {slots.length === 0 && (
-              <div className="text-center py-8 text-slate-400">
-                <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No time slots assigned. Click "Add Time Slot" to start.</p>
-              </div>
-            )}
-            {slots.map((slot, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 p-3 bg-slate-50 dark:bg-[#0b1120] rounded-xl border border-slate-100 dark:border-slate-800"
-              >
-                <Select value={slot.day} onValueChange={v => updateSlot(idx, "day", v)}>
-                  <SelectTrigger className="h-9 border-slate-200 dark:border-slate-800 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WEEKDAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={slot.from} onValueChange={v => updateSlot(idx, "from", v)}>
-                  <SelectTrigger className="h-9 border-slate-200 dark:border-slate-800 text-sm w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={slot.to} onValueChange={v => updateSlot(idx, "to", v)}>
-                  <SelectTrigger className="h-9 border-slate-200 dark:border-slate-800 text-sm w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <button
-                  onClick={() => removeSlot(idx)}
-                  className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:bg-red-500/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </motion.div>
-            ))}
-
-            {/* Visual calendar preview */}
-            {slots.length > 0 && (
-              <div className="mt-4 p-4 bg-primary/5/50 border border-emerald-100 rounded-xl">
-                <p className="text-xs font-bold text-primary/90 mb-3"> Your weekly schedule summary</p>
-                <div className="flex flex-wrap gap-2">
-                  {WEEKDAYS.map(day => {
-                    const daySlots = slots.filter(s => s.day === day);
-                    return daySlots.length > 0 ? (
-                      <div key={day} className="bg-white dark:bg-slate-900 border border-primary/20 rounded-xl px-3 py-2 min-w-[100px]">
-                        <p className="text-xs font-bold text-primary/90 mb-1">{day.slice(0, 3)}</p>
-                        {daySlots.map((s, i) => (
-                          <p key={i} className="text-[11px] text-slate-600 dark:text-slate-400">{s.from} – {s.to}</p>
-                        ))}
-                      </div>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Save Button */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex justify-end pt-4">
-        <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 gap-2 px-8">
-          <CheckCircle2 className="w-4 h-4" /> Save
-        </Button>
-      </motion.div>
-
-      {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white"> Preview your profile</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">This is how students will see your profile on the mentor search page.</p>
-            
-            {/* Mock mentor card preview */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="flex items-start gap-4">
-                <Avatar className="w-14 h-14 ring-4 ring-slate-100">
-                  <AvatarFallback className="bg-primary text-white font-bold text-lg">NM</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-slate-900 dark:text-white">{myProfile.name}</h3>
-                    <Badge className="bg-primary/10 text-primary/90 border-0 text-[10px]"> Verified</Badge>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{myProfile.headline}</p>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="flex items-center gap-1 text-xs text-amber-500 font-bold"><Star className="w-3 h-3 fill-amber-400" /> 4.8</span>
-                    <span className="flex items-center gap-1 text-xs text-slate-400"><Briefcase className="w-3 h-3" /> 124 sessions</span>
-                    <span className="flex items-center gap-1 text-xs text-slate-400"><MapPin className="w-3 h-3" /> TP.HCM</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {myProfile.skills.slice(0, 5).map(skill => (
-                  <Badge key={skill} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-0 text-[10px]">{skill}</Badge>
-                ))}
-              </div>
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-[11px] text-slate-400">Starting from</p>
-                  <p className="font-black text-slate-900 dark:text-white">${pricingPlans.length > 0 ? pricingPlans[0].price.toLocaleString() : 0}</p>
-                </div>
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-xs">
-                  Connect now
-                </Button>
-              </div>
-            </div>
+            <Button
+              onClick={handleCreate}
+              disabled={!startsAt || !endsAt || createSlot.isPending}
+              className="h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"
+            >
+              {createSlot.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
+              {t("mentor.availability.addSlot", "Thêm slot")}
+            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </section>
+      )}
+
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
+            <CalendarDays className="h-5 w-5 text-primary" />
+            {t("mentor.availability.upcoming", "Slots sắp tới")}
+            {slotsQuery.isLoading ? null : (
+              <span className="ml-auto text-sm font-semibold text-slate-400">{futureSlots.length}</span>
+            )}
+          </h2>
+        </div>
+
+        {slotsQuery.isLoading ? (
+          <div className="space-y-3 p-5 sm:p-6">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+          </div>
+        ) : futureSlots.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <CalendarDays className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+            <p className="mt-4 font-bold text-slate-500 dark:text-slate-400">
+              {t("mentor.availability.noSlots", "Chưa có slot nào")}
+            </p>
+            <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">
+              {t("mentor.availability.noSlotsHint", "Tạo slot để học viên có thể đặt lịch.")}
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {futureSlots.map((slot) => (
+              <li key={slot.id} className="flex items-center gap-4 px-5 py-4 sm:px-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Clock3 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-950 dark:text-white">
+                    {new Date(slot.startsAt).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {new Date(slot.startsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    {" – "}
+                    {new Date(slot.endsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${SLOT_STATUS_STYLES[slot.status] ?? ""}`}>
+                  {slot.status}
+                </Badge>
+                {slot.status === "OPEN" && new Date(slot.startsAt) > new Date() ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(slot.id)}
+                    disabled={deleteSlot.isPending}
+                    className="h-9 w-9 shrink-0 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                    title={t("mentor.availability.deleteSlot", "Xóa slot")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

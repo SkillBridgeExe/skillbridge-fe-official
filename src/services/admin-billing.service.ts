@@ -1,12 +1,10 @@
 import {
   createAdminBillingPlanApi,
   getAdminBillingPlansApi,
-  getAdminMentorBookingsApi,
   getAdminPaymentOrdersApi,
   getAdminSubscriptionsApi,
   replaceAdminPlanFeaturesApi,
   updateAdminBillingPlanApi,
-  type AdminMentorBookingsQuery,
   type AdminOrdersQuery,
   type AdminSubscriptionsQuery,
   type CreateAdminBillingPlanDto,
@@ -15,15 +13,12 @@ import {
 } from "@/api/admin-billing";
 
 export type {
-  AdminMentorBookingDto,
-  AdminMentorBookingsQuery,
   AdminOrdersQuery,
   AdminPaymentOrderDto,
   AdminPlanFeatureInput,
   AdminSubscriptionDto,
   AdminSubscriptionsQuery,
   CreateAdminBillingPlanDto,
-  MentorBookingStatus,
   ReplaceAdminPlanFeaturesDto,
   UpdateAdminBillingPlanDto,
 } from "@/api/admin-billing";
@@ -51,8 +46,4 @@ export function getAdminPaymentOrders(query: AdminOrdersQuery) {
 
 export function getAdminSubscriptions(query: AdminSubscriptionsQuery) {
   return getAdminSubscriptionsApi(query);
-}
-
-export function getAdminMentorBookings(query: AdminMentorBookingsQuery) {
-  return getAdminMentorBookingsApi(query);
 }
