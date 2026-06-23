@@ -70,6 +70,38 @@ describe("useCompanionStore", () => {
     expect(st.positionMode).toBe("manual");
   });
 
+  it("resetPositionMode flips manual → auto (Fix A: re-enable anchoring on queue advance)", () => {
+    const s = useCompanionStore.getState();
+    s.setPosition(10, 20); // latches to manual (drag)
+    expect(useCompanionStore.getState().positionMode).toBe("manual");
+    s.resetPositionMode();
+    expect(useCompanionStore.getState().positionMode).toBe("auto");
+  });
+
+  it("clearDismissed re-opens a dismissed context on re-activate (Fix F: new card = new advice)", () => {
+    const s = useCompanionStore.getState();
+    s.registerContext(reg("issue"));
+    s.activateContext("issue");
+    s.dismissActive();
+    expect(useCompanionStore.getState().bubbleOpen).toBe(false);
+    expect(useCompanionStore.getState().dismissed.issue).toBe(true);
+    // Advancing to a genuinely NEW card clears the dismiss → re-activate auto-opens.
+    s.clearDismissed("issue");
+    expect(useCompanionStore.getState().dismissed.issue).toBeUndefined();
+    s.activateContext("issue");
+    expect(useCompanionStore.getState().bubbleOpen).toBe(true);
+  });
+
+  it("clearDismissed on a non-dismissed id is a no-op (preserves SAME-issue dismiss elsewhere)", () => {
+    const s = useCompanionStore.getState();
+    s.registerContext(reg("a"));
+    s.registerContext(reg("b"));
+    s.activateContext("a");
+    s.dismissActive(); // dismiss "a"
+    s.clearDismissed("b"); // unrelated id — must not touch "a"
+    expect(useCompanionStore.getState().dismissed.a).toBe(true);
+  });
+
   it("unregistering the active context clears activeId", () => {
     const s = useCompanionStore.getState();
     s.registerContext(reg("f1"));

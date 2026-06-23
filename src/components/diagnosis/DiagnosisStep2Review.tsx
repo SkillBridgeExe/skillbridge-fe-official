@@ -21,7 +21,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
-import { useCompanionStore, visibleIssues } from "@/store/useCompanionStore";
+import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 
@@ -319,11 +319,19 @@ export function DiagnosisStep2Review() {
      the diagnosis:issue context owns the bubble and the legacy review nudge gates off. */
   const matchId = reviewData?.jdMatch?.matchId;
   const gapReportQuery = useGapReportQuery(matchId, diagnosisLang);
+  // Fix D: wait for the gap-report query to settle before the first scan when it
+  // is enabled (a JD has been compared). Disabled (no matchId) → isLoading=false →
+  // a gap-less scan runs immediately (legitimate honest-empty for gap detectors).
+  const issuesReady = !!reviewData?.document && !gapReportQuery.isLoading;
   useElementIssuesCompanion(
     { jdMatch: reviewData?.jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
-    !!reviewData?.document,
+    issuesReady,
   );
-  const hasVisibleIssues = useCompanionStore((s) => visibleIssues(s).length > 0);
+  // Fix E: gate the completeness nudge teardown on whether the issue context is
+  // ACTUALLY registered (atomic handoff), not on hasVisibleIssues — the resolvable
+  // filter (Fix C) can diverge from the store's visible queue, and keying off the
+  // latter would tear the nudge down while the issue context isn't live → blank frame.
+  const issueContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:issue"]);
 
   /* ── Companion: Step-2 review completeness nudge (#16) ── */
   const completenessGap = pickTopCompletenessGap(reviewData?.document);
@@ -332,8 +340,8 @@ export function DiagnosisStep2Review() {
   useEffect(() => {
     const store = useCompanionStore.getState();
     // Element-issues subsume the completeness nudge (it IS the missing_section/exp_no_dates
-    // detector now) — gate it off whenever a real issue is visible (single-active).
-    if (!completenessGap || !reviewData?.document || hasVisibleIssues) {
+    // detector now) — gate it off whenever the issue context is live (single-active).
+    if (!completenessGap || !reviewData?.document || issueContextActive) {
       store.unregisterContext("diagnosis:review");
       return;
     }
@@ -355,7 +363,7 @@ export function DiagnosisStep2Review() {
     store.activateContext("diagnosis:review");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:review");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completenessGap, summary.experiences, summary.skills, hasVisibleIssues]);
+  }, [completenessGap, summary.experiences, summary.skills, issueContextActive]);
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },

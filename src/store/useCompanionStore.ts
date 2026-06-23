@@ -74,7 +74,11 @@ interface CompanionState {
   activateContext: (id: string) => void;
   closeBubble: () => void;
   dismissActive: () => void;
+  /** Clear the session dismiss flag for one context so activateContext re-opens it. */
+  clearDismissed: (id: string) => void;
   setPosition: (x: number, y: number) => void;
+  /** Re-enable anchoring after a manual drag (advancing the queue → re-anchor). */
+  resetPositionMode: () => void;
   setDragging: (b: boolean) => void;
   setIssues: (issues: ElementIssue[]) => void;
   nextIssue: () => void;
@@ -120,7 +124,22 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
         ? { ...s.dismissed, [s.activeId]: true }
         : s.dismissed,
     })),
+  // Fix F: drop the session dismiss flag for one context so a subsequent
+  // activateContext re-opens the bubble (used when the queue advances to a
+  // genuinely NEW card = new advice the user hasn't dismissed).
+  clearDismissed: (id) =>
+    set((s) => {
+      if (!s.dismissed[id]) return {};
+      const dismissed = { ...s.dismissed };
+      delete dismissed[id];
+      return { dismissed };
+    }),
   setPosition: (x, y) => set({ position: { x, y }, positionMode: "manual" }),
+  // Fix A: advancing the issue queue reuses ONE context id, so the shell's
+  // activeId-change reset never fires — the queue re-points but stays latched
+  // to "manual" after a drag. This action lets the wiring re-enable anchoring
+  // when the active anchor changes.
+  resetPositionMode: () => set({ positionMode: "auto" }),
   setDragging: (isDragging) => set({ isDragging }),
   // ── Issue-queue actions ──
   // Reset the active index to the start of the (re-filtered) visible queue so a

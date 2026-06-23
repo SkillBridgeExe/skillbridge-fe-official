@@ -245,3 +245,22 @@ export function collectElementIssues(input: ElementIssuesInput): ElementIssue[] 
   ];
   return issues.sort((a, b) => b.severity - a.severity);
 }
+
+/**
+ * Pick the worst (first, since the queue is severity-sorted) issue whose anchor
+ * card is currently RESOLVABLE on screen — so the dolphin only ever points at a
+ * card that actually exists on the current step/tab. Detectors emit anchors for
+ * cards that may live on the OTHER step / behind a non-default tab / in an async
+ * card; those `anchorId`s won't resolve there, so we skip them rather than park
+ * the bubble in the corner (Fix C). Returns null when no visible issue resolves
+ * (honest-empty). Pure: takes an `isResolvable` predicate so it is jsdom-testable.
+ */
+export function pickActiveResolvableIssue(
+  visible: ElementIssue[],
+  isResolvable: (anchorId: string) => boolean,
+): ElementIssue | null {
+  for (const issue of visible) {
+    if (isResolvable(issue.anchorId)) return issue;
+  }
+  return null;
+}

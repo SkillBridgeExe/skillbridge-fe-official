@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { collectElementIssues, type ElementIssue } from "./element-issues";
+import {
+  collectElementIssues,
+  pickActiveResolvableIssue,
+  type ElementIssue,
+} from "./element-issues";
 import type {
   CvJdMatch,
   CvReviewData,
@@ -376,5 +380,45 @@ describe("collectElementIssues — sorting", () => {
     };
     const issues = collectElementIssues(input);
     expect(issues[0].kind).toBe("gap_item");
+  });
+});
+
+// ── pickActiveResolvableIssue (Fix C — only point at an on-screen card) ──
+
+describe("pickActiveResolvableIssue", () => {
+  const mk = (id: string, anchorId: string): ElementIssue => ({
+    id,
+    kind: "gap_item",
+    anchorId,
+    severity: 1,
+    whatKey: "k.what",
+    why: null,
+    whyKey: "k.why",
+    ctaKind: null,
+  });
+
+  it("returns the FIRST (worst, since severity-sorted) issue whose anchor resolves", () => {
+    const visible = [mk("a", "anchor-a"), mk("b", "anchor-b"), mk("c", "anchor-c")];
+    // anchor-a is off-screen (e.g. the OTHER step) → skip it; anchor-b is on-screen.
+    const onScreen = new Set(["anchor-b", "anchor-c"]);
+    const active = pickActiveResolvableIssue(visible, (id) => onScreen.has(id));
+    expect(active?.id).toBe("b");
+  });
+
+  it("returns null when NO visible issue resolves (honest-empty, no corner-parking)", () => {
+    const visible = [mk("a", "anchor-a"), mk("b", "anchor-b")];
+    const active = pickActiveResolvableIssue(visible, () => false);
+    expect(active).toBeNull();
+  });
+
+  it("returns null for an empty visible queue", () => {
+    expect(pickActiveResolvableIssue([], () => true)).toBeNull();
+  });
+
+  it("preserves severity order — the worst resolvable wins even if a lower one also resolves", () => {
+    // queue is already severity-sorted; first resolvable is the worst on-screen.
+    const visible = [mk("worst", "off"), mk("mid", "on-1"), mk("low", "on-2")];
+    const active = pickActiveResolvableIssue(visible, (id) => id.startsWith("on-"));
+    expect(active?.id).toBe("mid");
   });
 });

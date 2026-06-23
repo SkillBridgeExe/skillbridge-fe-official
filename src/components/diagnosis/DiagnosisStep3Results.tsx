@@ -23,7 +23,7 @@ import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 import { useNextStepsQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
-import { useCompanionStore, visibleIssues } from "@/store/useCompanionStore";
+import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
@@ -273,11 +273,24 @@ export function DiagnosisStep3Results() {
      its full inputs, then collect + register on data-loaded (boundary). When real
      issues exist, the hook gates off the legacy results/proveit contexts below. */
   const gapReportQuery = useGapReportQuery(jdMatch?.matchId, nextStepsLang);
+  // Fix D: don't scan mid-flight. When the gap-report query is enabled (JD mode
+  // with a matchId) the first collect must wait for it to settle, else the gap_item
+  // / deal_breaker detectors run with gapReport=undefined → only 3 detectors → []
+  // → no bubble. When the query is disabled (no matchId / add-ons off) a gap-less
+  // scan is a legitimate honest-empty, so reviewData alone gates the scan.
+  const gapReportSettled = !gapReportQuery.isLoading; // false only while actively fetching an enabled query
+  const issuesReady = !!reviewData && gapReportSettled;
   useElementIssuesCompanion(
     { jdMatch: jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
-    !!reviewData,
+    issuesReady,
   );
-  const hasVisibleIssues = useCompanionStore((s) => visibleIssues(s).length > 0);
+  // Fix E: gate the legacy results/proveit teardown on whether the issue context
+  // is ACTUALLY registered (not merely on hasVisibleIssues). With Fix C the
+  // resolvable-filter can yield no on-screen issue even when the store has visible
+  // issues — keying off hasVisibleIssues then tears legacy down AND skips the issue
+  // context → a zero-context blank frame. Subscribing to the registered context
+  // makes the handoff atomic: legacy yields iff diagnosis:issue is live, else reclaims.
+  const issueContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:issue"]);
 
   /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
      yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
@@ -291,9 +304,9 @@ export function DiagnosisStep3Results() {
 
   useEffect(() => {
     const store = useCompanionStore.getState();
-    // Pillar 1+2 element-issues subsume the next-step surfacing: when any real
-    // issue is visible, the diagnosis:issue context owns the bubble (single-active).
-    if (!topStep || provedItem || hasVisibleIssues) {
+    // Pillar 1+2 element-issues subsume the next-step surfacing: when the issue
+    // context is live, the diagnosis:issue context owns the bubble (single-active).
+    if (!topStep || provedItem || issueContextActive) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -320,13 +333,13 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:results");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, hasVisibleIssues]);
+  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, issueContextActive]);
 
   /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
   useEffect(() => {
     const store = useCompanionStore.getState();
-    // Element-issues (Pillar 1+2) subsume prove-it surfacing too.
-    if (!provedItem || hasVisibleIssues) {
+    // Element-issues (Pillar 1+2) subsume prove-it surfacing too (atomic handoff).
+    if (!provedItem || issueContextActive) {
       store.unregisterContext("diagnosis:proveit");
       return;
     }
@@ -348,7 +361,7 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:proveit");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provedItem?.skill_canonical, hasVisibleIssues]);
+  }, [provedItem?.skill_canonical, issueContextActive]);
 
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
