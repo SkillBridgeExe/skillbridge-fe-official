@@ -27,6 +27,7 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
+import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
@@ -280,17 +281,18 @@ export function DiagnosisStep3Results() {
   // scan is a legitimate honest-empty, so reviewData alone gates the scan.
   const gapReportSettled = !gapReportQuery.isLoading; // false only while actively fetching an enabled query
   const issuesReady = !!reviewData && gapReportSettled;
+  // Auto-surfacing disabled (owner decision 06-23): this no longer registers/activates
+  // the diagnosis:issue context — kept mounted so the detectors stay wired for future
+  // chat grounding. The calm corner chat advisor below is the SOLE diagnosis context.
   useElementIssuesCompanion(
     { jdMatch: jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
     issuesReady,
   );
-  // Fix E: gate the legacy results/proveit teardown on whether the issue context
-  // is ACTUALLY registered (not merely on hasVisibleIssues). With Fix C the
-  // resolvable-filter can yield no on-screen issue even when the store has visible
-  // issues — keying off hasVisibleIssues then tears legacy down AND skips the issue
-  // context → a zero-context blank frame. Subscribing to the registered context
-  // makes the handoff atomic: legacy yields iff diagnosis:issue is live, else reclaims.
-  const issueContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:issue"]);
+  // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
+  useDiagnosisChatCompanion(reviewData);
+  // The chat advisor owns the bubble while registered → the legacy results/proveit
+  // nudges gate off whenever the chat context is live (single-active invariant).
+  const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
 
   /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
      yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
@@ -304,9 +306,10 @@ export function DiagnosisStep3Results() {
 
   useEffect(() => {
     const store = useCompanionStore.getState();
-    // Pillar 1+2 element-issues subsume the next-step surfacing: when the issue
-    // context is live, the diagnosis:issue context owns the bubble (single-active).
-    if (!topStep || provedItem || issueContextActive) {
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — the legacy next-step nudge stays gated off whenever the
+    // chat advisor is live (single-active). Code retained for future reuse.
+    if (!topStep || provedItem || chatContextActive) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -333,13 +336,14 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:results");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, issueContextActive]);
+  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, chatContextActive]);
 
   /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
   useEffect(() => {
     const store = useCompanionStore.getState();
-    // Element-issues (Pillar 1+2) subsume prove-it surfacing too (atomic handoff).
-    if (!provedItem || issueContextActive) {
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — prove-it stays gated off whenever the chat advisor is live.
+    if (!provedItem || chatContextActive) {
       store.unregisterContext("diagnosis:proveit");
       return;
     }
@@ -361,7 +365,7 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:proveit");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provedItem?.skill_canonical, issueContextActive]);
+  }, [provedItem?.skill_canonical, chatContextActive]);
 
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
@@ -408,25 +412,21 @@ export function DiagnosisStep3Results() {
         </p>
 
         {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
-        {isJdMode ? (
-          <ScoreBreakdownPopover jdMatch={jdMatch}>
-            <VerdictHero
-              target={matchScore}
-              label={scoreLabel}
-              verdictMessage={scoreMessage}
-              isJdMode={isJdMode}
-              rubricBand={jdMatch?.rubric_band}
-            />
-          </ScoreBreakdownPopover>
-        ) : (
-          <VerdictHero
-            target={matchScore}
-            label={scoreLabel}
-            verdictMessage={scoreMessage}
-            isJdMode={isJdMode}
-            rubricBand={jdMatch?.rubric_band}
-          />
-        )}
+        <VerdictHero
+          target={matchScore}
+          label={
+            isJdMode ? (
+              <ScoreBreakdownPopover jdMatch={jdMatch}>
+                {scoreLabel}
+              </ScoreBreakdownPopover>
+            ) : (
+              scoreLabel
+            )
+          }
+          verdictMessage={scoreMessage}
+          isJdMode={isJdMode}
+          rubricBand={jdMatch?.rubric_band}
+        />
 
         {/* Ribbon — inline stats + deal-breaker chips */}
         {isJdMode && (
@@ -493,7 +493,7 @@ export function DiagnosisStep3Results() {
             </div>
 
             {/* Narrative ("Vì sao điểm này") */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 flex flex-col justify-center">
               {isJdMode && <MatchNarrative jdMatch={jdMatch} t={t} />}
               {!isJdMode && (
                 <div className="space-y-3">

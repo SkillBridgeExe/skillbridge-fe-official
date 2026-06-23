@@ -24,6 +24,7 @@ import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./e
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
+import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -323,15 +324,18 @@ export function DiagnosisStep2Review() {
   // is enabled (a JD has been compared). Disabled (no matchId) → isLoading=false →
   // a gap-less scan runs immediately (legitimate honest-empty for gap detectors).
   const issuesReady = !!reviewData?.document && !gapReportQuery.isLoading;
+  // Auto-surfacing disabled (owner decision 06-23): this no longer registers/activates
+  // the diagnosis:issue context — kept mounted so the detectors stay wired for future
+  // chat grounding. The calm corner chat advisor below is the SOLE diagnosis context.
   useElementIssuesCompanion(
     { jdMatch: reviewData?.jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
     issuesReady,
   );
-  // Fix E: gate the completeness nudge teardown on whether the issue context is
-  // ACTUALLY registered (atomic handoff), not on hasVisibleIssues — the resolvable
-  // filter (Fix C) can diverge from the store's visible queue, and keying off the
-  // latter would tear the nudge down while the issue context isn't live → blank frame.
-  const issueContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:issue"]);
+  // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
+  useDiagnosisChatCompanion(reviewData);
+  // The chat advisor owns the bubble while it is registered → the legacy completeness
+  // nudge gates off whenever the chat context is live (single-active invariant).
+  const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
 
   /* ── Companion: Step-2 review completeness nudge (#16) ── */
   const completenessGap = pickTopCompletenessGap(reviewData?.document);
@@ -339,9 +343,10 @@ export function DiagnosisStep2Review() {
 
   useEffect(() => {
     const store = useCompanionStore.getState();
-    // Element-issues subsume the completeness nudge (it IS the missing_section/exp_no_dates
-    // detector now) — gate it off whenever the issue context is live (single-active).
-    if (!completenessGap || !reviewData?.document || issueContextActive) {
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — the legacy completeness nudge stays gated off whenever the
+    // chat advisor is live (single-active). Code retained for future reuse.
+    if (!completenessGap || !reviewData?.document || chatContextActive) {
       store.unregisterContext("diagnosis:review");
       return;
     }
@@ -363,7 +368,7 @@ export function DiagnosisStep2Review() {
     store.activateContext("diagnosis:review");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:review");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completenessGap, summary.experiences, summary.skills, issueContextActive]);
+  }, [completenessGap, summary.experiences, summary.skills, chatContextActive]);
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },

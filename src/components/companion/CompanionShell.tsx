@@ -38,7 +38,9 @@ import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
+import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
 import type { ElementIssue } from "./skills/element-issues";
+import type { CompanionChatMessage } from "@/store/useCompanionStore";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -189,7 +191,8 @@ export function CompanionShell() {
     || turn?.skill === "diagnosis_upload"
     || turn?.skill === "diagnosis_progress"
     || turn?.skill === "diagnosis_element_issue"
-    || turn?.skill === "diagnosis_commentary";
+    || turn?.skill === "diagnosis_commentary"
+    || turn?.skill === "diagnosis_chat";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
@@ -418,6 +421,16 @@ export function CompanionShell() {
                   issue={turn.props.issue as ElementIssue}
                   onCta={turn.props.onCta as () => void}
                   onDismiss={turn.props.onDismiss as (() => void) | undefined}
+                />
+              )}
+
+              {/* ── diagnosis_chat (calm corner advisor — chat-driven, owner decision 06-23) ── */}
+              {turn?.skill === "diagnosis_chat" && (
+                <DiagnosisChatSkill
+                  messages={turn.props.messages as CompanionChatMessage[]}
+                  opener={turn.props.opener as string | null}
+                  suggestions={turn.props.suggestions as string[]}
+                  onSend={turn.props.onSend as (q: string) => void}
                 />
               )}
               </div>

@@ -1956,6 +1956,26 @@ export default {
         fair: "Solid start — your CV scores {{score}}/100. A few focused fixes will lift it.",
         low: "Your CV scores {{score}}/100. Let's tackle the biggest fix first.",
       },
+      // Calm corner advisor — chat-driven (owner decision 06-23). The opener is a
+      // STATIC enum-keyed template that only interpolates the REAL overall score;
+      // the band tweaks the verb (low → offer to help raise it). NO LLM, NO fabrication.
+      chat: {
+        opener: {
+          excellent: "Your CV scores {{score}}/100 — strong work. Curious how I scored it, or want me to dig into any part? Just ask.",
+          good: "Your CV scores {{score}}/100. Any questions about how I scored it, or a part you'd like me to dig into? Ask me anything.",
+          fair: "Your CV scores {{score}}/100. Want to know why, or which part to fix first? Ask me — I'm here to help.",
+          low: "Your CV scores {{score}}/100. Let me help you raise it — ask me what's weakest or how I scored it, and we'll work through it.",
+        },
+        placeholder: "Ask about your score…",
+        send: "Send",
+        thinking: "Thinking…",
+        error: "The assistant is being connected — please try again in a moment.",
+        suggestions: [
+          "Why is my score this?",
+          "What's my weakest part?",
+          "How can I improve?",
+        ],
+      },
     },
     skillsNudge: {
       title: "Skill completeness suggestions",

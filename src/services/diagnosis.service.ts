@@ -23,6 +23,7 @@ import {
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
 import { getNextStepsApi } from "@/api/cv/next-steps";
+import { askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
@@ -45,7 +46,12 @@ import type {
   SkillMatchItem,
   TailorAction,
 } from "@shared/api";
-import type { NextStepsResponse } from "@/types/companion";
+import type {
+  DiagnosisChatRequest,
+  DiagnosisChatResponse,
+  DiagnosisChatTurn,
+  NextStepsResponse,
+} from "@/types/companion";
 
 // ── Input/Output của service ────────────────────────────────────────
 
@@ -438,4 +444,34 @@ export async function getNextSteps(
 ): Promise<NextStepsResponse> {
   requireSession();
   return getNextStepsApi(matchId, lang);
+}
+
+// ── Companion: corner-advisor chat (diagnosis page) ─────────────────
+
+/**
+ * Hỏi trợ lý góc màn hình về cách CV được chấm / chỗ nào yếu. BE trả lời grounded
+ * từ gap-report của match (KHÔNG LLM phía FE). BE endpoint build TÁCH RIÊNG — nếu
+ * chưa có (404/501) promise sẽ reject để UI hiện trạng thái "đang kết nối", không crash.
+ */
+export async function askDiagnosisChat({
+  matchId,
+  question,
+  thread,
+  cvId,
+  language = "vi",
+}: {
+  matchId: string;
+  question: string;
+  thread?: DiagnosisChatTurn[];
+  cvId?: string;
+  language?: string;
+}): Promise<DiagnosisChatResponse> {
+  requireSession();
+  const body: DiagnosisChatRequest = {
+    question,
+    ...(thread && thread.length > 0 ? { thread } : {}),
+    ...(cvId ? { cvId } : {}),
+    language,
+  };
+  return askDiagnosisChatApi(matchId, body);
 }

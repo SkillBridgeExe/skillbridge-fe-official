@@ -15,7 +15,18 @@ export type CompanionSkill =
   | "diagnosis_upload"
   | "diagnosis_progress"
   | "diagnosis_element_issue"
-  | "diagnosis_commentary";
+  | "diagnosis_commentary"
+  | "diagnosis_chat";
+
+/** One message in the calm corner-advisor chat thread (ephemeral, NOT persisted). */
+export interface CompanionChatMessage {
+  role: "user" | "assistant";
+  text: string;
+  /** Assistant placeholder while the answer is in flight. */
+  pending?: boolean;
+  /** Assistant slot that failed (e.g. endpoint not built / network) → retry row. */
+  error?: boolean;
+}
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
 export type IssueDismissMode = "once" | "snooze" | "intentional";
@@ -70,6 +81,9 @@ interface CompanionState {
   activeIssueIndex: number;
   /** Sticky dismissed/snoozed issue ids (persisted cross-session). */
   dismissedIssues: Set<string>;
+  // ── Corner-advisor chat slice (ephemeral — NOT persisted) ──
+  /** Two-way chat thread for the calm corner advisor (user asks, assistant answers). */
+  chatMessages: CompanionChatMessage[];
   registerContext: (reg: CompanionContextReg) => void;
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
@@ -85,6 +99,17 @@ interface CompanionState {
   nextIssue: () => void;
   prevIssue: () => void;
   dismissIssue: (id: string, mode: IssueDismissMode) => void;
+  // ── Chat actions ──
+  /** Append a user or assistant message to the corner-advisor thread. */
+  appendChatMessage: (msg: CompanionChatMessage) => void;
+  /** Append a pending (in-flight) assistant placeholder message. */
+  setChatPending: () => void;
+  /** Resolve the last assistant message (the pending placeholder) with the answer text. */
+  resolveLastAssistant: (text: string) => void;
+  /** Mark the last assistant message as failed (graceful error + retry row). */
+  failLastAssistant: () => void;
+  /** Clear the whole chat thread (e.g. on leaving the diagnosis tab / reset). */
+  clearChat: () => void;
   resetCompanion: () => void;
 }
 
@@ -98,6 +123,7 @@ const initial = {
   isDragging: false,
   issues: [] as ElementIssue[],
   activeIssueIndex: 0,
+  chatMessages: [] as CompanionChatMessage[],
 };
 
 export const useCompanionStore = create<CompanionState>()((set) => ({
@@ -172,9 +198,48 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       const activeIssueIndex = Math.min(s.activeIssueIndex, Math.max(nextVisibleLen - 1, 0));
       return { dismissedIssues, dismissed, activeIssueIndex };
     }),
+  // ── Chat actions (ephemeral corner-advisor thread) ──
+  appendChatMessage: (msg) =>
+    set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
+  // Append an in-flight assistant placeholder (drives the "thinking" row).
+  setChatPending: () =>
+    set((s) => ({ chatMessages: [...s.chatMessages, { role: "assistant" as const, text: "", pending: true }] })),
+  // Resolve the LAST assistant message (the pending placeholder) with the real answer.
+  resolveLastAssistant: (text) =>
+    set((s) => {
+      const idx = lastAssistantIndex(s.chatMessages);
+      if (idx < 0) return {};
+      const chatMessages = s.chatMessages.slice();
+      chatMessages[idx] = { role: "assistant", text, pending: false, error: false };
+      return { chatMessages };
+    }),
+  // Mark the LAST assistant message as failed → renderer shows a friendly error + retry.
+  failLastAssistant: () =>
+    set((s) => {
+      const idx = lastAssistantIndex(s.chatMessages);
+      if (idx < 0) return {};
+      const chatMessages = s.chatMessages.slice();
+      chatMessages[idx] = { role: "assistant", text: "", pending: false, error: true };
+      return { chatMessages };
+    }),
+  clearChat: () => set({ chatMessages: [] }),
   resetCompanion: () =>
-    set({ ...initial, contexts: {}, dismissed: {}, dismissedIssues: loadDismissedIssues() }),
+    set({
+      ...initial,
+      contexts: {},
+      dismissed: {},
+      chatMessages: [],
+      dismissedIssues: loadDismissedIssues(),
+    }),
 }));
+
+/** Index of the last assistant message in the thread, or -1 if there is none. */
+function lastAssistantIndex(messages: CompanionChatMessage[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant") return i;
+  }
+  return -1;
+}
 
 export const bubbleVisible = (s: CompanionState): boolean =>
   s.bubbleOpen && !s.isDragging && s.activeId !== null;

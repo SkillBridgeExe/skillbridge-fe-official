@@ -1950,6 +1950,26 @@ export default {
         fair: "Khởi đầu vững — CV đạt {{score}}/100. Vài chỉnh sửa trọng tâm sẽ nâng điểm.",
         low: "CV đạt {{score}}/100. Cùng xử lý việc lớn nhất trước nhé.",
       },
+      // Trợ lý góc màn hình — điều hướng bằng chat (quyết định owner 06-23). Câu mở
+      // đầu là template TĨNH theo band, chỉ chèn ĐIỂM THẬT; band đổi động từ (thấp →
+      // đề nghị giúp nâng điểm). KHÔNG LLM, KHÔNG bịa.
+      chat: {
+        opener: {
+          excellent: "CV bạn được {{score}}/100 — rất tốt. Bạn có thắc mắc gì về cách mình chấm, hay muốn mình phân tích sâu chỗ nào không? Hỏi mình nhé.",
+          good: "CV bạn được {{score}}/100. Bạn có thắc mắc gì về cách mình chấm, hay muốn mình phân tích sâu chỗ nào không? Hỏi mình nhé.",
+          fair: "CV bạn được {{score}}/100. Bạn muốn biết vì sao, hay nên sửa chỗ nào trước không? Cứ hỏi mình nhé.",
+          low: "CV bạn được {{score}}/100. Để mình giúp bạn nâng điểm nhé — hỏi mình chỗ nào yếu nhất hay mình chấm thế nào, rồi cùng xử lý.",
+        },
+        placeholder: "Hỏi về điểm của bạn…",
+        send: "Gửi",
+        thinking: "Đang suy nghĩ…",
+        error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        suggestions: [
+          "Sao điểm mình vậy?",
+          "Chỗ nào yếu nhất?",
+          "Làm sao cải thiện?",
+        ],
+      },
     },
     skillsNudge: {
       title: "Gợi ý hoàn thiện kỹ năng",

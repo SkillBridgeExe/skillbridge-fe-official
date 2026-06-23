@@ -65,6 +65,8 @@ export const API_ROUTES = {
     ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
     INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
     NEXT_STEPS: (matchId: string) => `${API}/cv-matches/${matchId}/next-steps`,
+    /** Corner-advisor two-way chat (BE endpoint built separately). */
+    CHAT: (matchId: string) => `${API}/cv-matches/${matchId}/chat`,
   },
 
   // Unified plan entitlements and quotas.

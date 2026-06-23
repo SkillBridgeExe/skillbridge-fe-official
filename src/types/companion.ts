@@ -116,6 +116,39 @@ export interface NextStepsResponse {
   steps: NextStepItem[];
 }
 
+// ── Diagnosis corner-advisor chat: POST /api/cv-matches/:matchId/chat ─
+// The calm corner advisor: the user drives a two-way chat about HOW their CV
+// was scored / where it's weak. The BE answer endpoint is built separately;
+// these client-side types let the FE wire the call + graceful states now.
+
+/** One prior turn passed back so the BE can ground its answer in the thread. */
+export interface DiagnosisChatTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export interface DiagnosisChatRequest {
+  /** The user's question (required, non-empty). */
+  question: string;
+  /** Prior turns for context (optional — short, trimmed by the caller). */
+  thread?: DiagnosisChatTurn[];
+  /** CV-only fallback when there is no JD match id. */
+  cvId?: string;
+  /** "vi" | "en" — answer language. */
+  language?: string;
+}
+
+export interface DiagnosisChatResponse {
+  /** The grounded answer text to show in the thread. */
+  answer: string;
+  /** If the answer is about a score dimension, its key (e.g. "skills_relevance") → scroll `dim-{key}`. */
+  cited_dimension?: string;
+  /** If the answer is about a specific gap, its id → scroll `gap-{id}`. */
+  cited_gap_id?: string;
+  /** Optional suggested follow-up step. */
+  suggested_next_step?: string | null;
+}
+
 // ── CV Intake: POST /api/cvs/:id/builder/assistant/extract ──────────
 
 export interface ExtractRequest {

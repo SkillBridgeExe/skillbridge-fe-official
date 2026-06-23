@@ -34,6 +34,15 @@ import {
 
 const ISSUE_CONTEXT_ID = "diagnosis:issue";
 
+// ⛔ Auto-surfacing disabled — the advisor is chat-driven (owner decision 06-23);
+// detectors retained for future chat grounding.
+// The dolphin no longer auto-jumps to cards or auto-pops issue/commentary bubbles.
+// On the diagnosis tab the ONLY active context is `diagnosis:chat` (the calm corner
+// advisor). This hook keeps `collectElementIssues` + the IntersectionObserver code
+// intact (they will feed chat grounding later) but registers/activates NOTHING and
+// sets NO issues into the store, so the IntersectionObserver/auto-jump never fires.
+const AUTO_SURFACING_ENABLED = false;
+
 // IntersectionObserver tuning (the "earn the interruption" zone): discount the
 // ~80px sticky header up top, and bias toward cards the user is actually reading
 // (a card barely peeking at the very bottom should not count) → bottom inset.
@@ -72,7 +81,15 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
   const hasGapReport = !!input.gapReport;
 
   // ── Boundary: (re)collect issues when data settles ──
+  // Auto-surfacing disabled (owner decision 06-23): never push issues into the
+  // store, so the IntersectionObserver/auto-jump below has nothing to anchor to and
+  // the calm corner chat advisor is the only context. Keep the store's issue queue
+  // empty (clear any stale queue) without running the detectors as a side effect.
   useEffect(() => {
+    if (!AUTO_SURFACING_ENABLED) {
+      useCompanionStore.getState().setIssues([]);
+      return;
+    }
     const store = useCompanionStore.getState();
     if (!ready) {
       store.setIssues([]);
@@ -190,6 +207,14 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
 
   useEffect(() => {
     const store = useCompanionStore.getState();
+    // Auto-surfacing disabled (owner decision 06-23): never register/activate the
+    // diagnosis:issue context. Ensure any stale registration is torn down so the
+    // calm corner chat advisor is the sole diagnosis context.
+    if (!AUTO_SURFACING_ENABLED) {
+      store.unregisterContext(ISSUE_CONTEXT_ID);
+      prevAnchorRef.current = null;
+      return;
+    }
     if (!activeId) {
       // Nothing in view + no whole-doc fallback → honest-empty. Drop our context;
       // leave legacy contexts (results/proveit) to their own effects.

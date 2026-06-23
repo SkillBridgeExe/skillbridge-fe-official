@@ -180,3 +180,57 @@ describe("useCompanionStore — issue queue", () => {
     expect(visibleIssues(useCompanionStore.getState()).map((i) => i.id)).toEqual(["y"]);
   });
 });
+
+describe("useCompanionStore chat slice (corner advisor)", () => {
+  beforeEach(() => useCompanionStore.getState().resetCompanion());
+
+  it("starts empty and resets to empty", () => {
+    expect(useCompanionStore.getState().chatMessages).toEqual([]);
+  });
+
+  it("appendChatMessage + setChatPending build a user→pending-assistant pair", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "why?" });
+    s.setChatPending();
+    const msgs = useCompanionStore.getState().chatMessages;
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0]).toMatchObject({ role: "user", text: "why?" });
+    expect(msgs[1]).toMatchObject({ role: "assistant", pending: true });
+  });
+
+  it("resolveLastAssistant fills the pending placeholder with the answer", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.setChatPending();
+    s.resolveLastAssistant("here is the answer");
+    const after = useCompanionStore.getState().chatMessages;
+    const last = after[after.length - 1];
+    expect(last).toMatchObject({ role: "assistant", text: "here is the answer", pending: false, error: false });
+  });
+
+  it("failLastAssistant flips the pending placeholder to an error row", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.setChatPending();
+    s.failLastAssistant();
+    const after = useCompanionStore.getState().chatMessages;
+    const last = after[after.length - 1];
+    expect(last).toMatchObject({ role: "assistant", error: true, pending: false });
+  });
+
+  it("clearChat empties the thread", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.clearChat();
+    expect(useCompanionStore.getState().chatMessages).toEqual([]);
+  });
+
+  it("resolve/fail are no-ops when there is no assistant message", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.resolveLastAssistant("x");
+    s.failLastAssistant();
+    // The lone user message is untouched (no assistant slot to resolve).
+    expect(useCompanionStore.getState().chatMessages).toEqual([{ role: "user", text: "q" }]);
+  });
+});
