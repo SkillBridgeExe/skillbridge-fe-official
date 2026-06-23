@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Bot, User, Sparkles, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { sendLearningChatMessage } from "@/services/learning-roadmap.service";
+import { sendLearningChatMessage, getLearningChatHistory } from "@/services/learning-roadmap.service";
 
 interface ChatMessage {
   id: string;
@@ -59,7 +59,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-export function AIChatPanel({ onClose }: { onClose?: () => void }) {
+export function AIChatPanel({ sessionId, onClose }: { sessionId?: string; onClose?: () => void }) {
   const { t, i18n } = useTranslation("common");
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -72,6 +72,33 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   ]);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const storageKey = sessionId ? `skillbridge_chat_conv_id_${sessionId}` : "skillbridge_chat_conv_id_global";
+
+  // Load conversation ID and history on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem(storageKey);
+    if (savedId) {
+      setConversationId(savedId);
+      setTyping(true);
+      getLearningChatHistory(savedId)
+        .then((res) => {
+          if (res.history && res.history.length > 0) {
+            setMessages(res.history.map((m: any) => ({
+              id: m.id || Date.now().toString(),
+              role: m.role,
+              text: m.text || m.message || "",
+            })));
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load chat panel history:", err);
+        })
+        .finally(() => {
+          setTyping(false);
+        });
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -95,6 +122,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
         language: i18n.language.startsWith("vi") ? "vi" : "en",
       });
       setConversationId(reply.conversationId);
+      localStorage.setItem(storageKey, reply.conversationId);
       setTyping(false);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: reply.message }]);
     } catch (error) {

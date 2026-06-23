@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MessageCircle, X, Send, Bot, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { sendLearningChatMessage } from "@/services/learning-roadmap.service";
+import { sendLearningChatMessage, getLearningChatHistory } from "@/services/learning-roadmap.service";
 
 interface ChatMessage {
   id: string;
@@ -66,6 +66,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
+
 export function AIChatbot() {
   const { t, i18n } = useTranslation("common");
   const [open, setOpen] = useState(false);
@@ -80,6 +81,31 @@ export function AIChatbot() {
   ]);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load conversation ID and history on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem("skillbridge_chat_conv_id_global");
+    if (savedId) {
+      setConversationId(savedId);
+      setTyping(true);
+      getLearningChatHistory(savedId)
+        .then((res) => {
+          if (res.history && res.history.length > 0) {
+            setMessages(res.history.map((m: any) => ({
+              id: m.id || Date.now().toString(),
+              role: m.role,
+              text: m.text || m.message || "",
+            })));
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load global chat history:", err);
+        })
+        .finally(() => {
+          setTyping(false);
+        });
+    }
+  }, []);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -103,6 +129,7 @@ export function AIChatbot() {
         language: i18n.language.startsWith("vi") ? "vi" : "en",
       });
       setConversationId(reply.conversationId);
+      localStorage.setItem("skillbridge_chat_conv_id_global", reply.conversationId);
       setTyping(false);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: reply.message }]);
     } catch (error) {

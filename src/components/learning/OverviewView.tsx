@@ -21,7 +21,7 @@ import {
   Clock,
   CalendarDays
 } from "lucide-react";
-import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
+import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import type { LearningSession } from "./types";
 import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
 
@@ -71,6 +71,7 @@ export function OverviewView() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
+  const { weekPlans, setWeekPlans } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
   // ✅ Build roadmap modules from weekPlans — drives status, progress, connector animations
   const roadmapModules = useMemo(() => {
@@ -102,10 +103,10 @@ export function OverviewView() {
     });
   }, [weeks]);
 
-  // ✅ Fix: sync mockedSessions khi weeks thay đổi (AI roadmap được apply)
-  const [mockedSessions, setMockedSessions] = useState<LearningSession[]>([]);
+  // ✅ Fix: sync activeSessions khi weeks thay đổi (AI roadmap được apply)
+  const [activeSessions, setActiveSessions] = useState<LearningSession[]>([]);
   useEffect(() => {
-    setMockedSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
+    setActiveSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
   }, [weeks]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -140,13 +141,13 @@ export function OverviewView() {
   // Get today's sessions for instant access
   const todayIndex = new Date().getDay() - 1; // 0=Mon
   const todaySessions = weekOffset === 0
-    ? mockedSessions.filter(s => s.dayOfWeek === (todayIndex < 0 ? 6 : todayIndex))
+    ? activeSessions.filter(s => s.dayOfWeek === (todayIndex < 0 ? 6 : todayIndex))
     : [];
 
   const handleOpenReschedule = () => {
     // Initialize editing state with current values
     const initialEdits: Record<string, { dayOfWeek: number, estimatedMinutes: number }> = {};
-    mockedSessions.filter(s => s.status !== "completed").forEach(s => {
+    activeSessions.filter(s => s.status !== "completed").forEach(s => {
       initialEdits[s.id] = { dayOfWeek: s.dayOfWeek, estimatedMinutes: s.estimatedMinutes };
     });
     setEditingSessions(initialEdits);
@@ -154,7 +155,7 @@ export function OverviewView() {
   };
 
   const handleSaveReschedule = () => {
-    setMockedSessions(prev => prev.map(session => {
+    setActiveSessions(prev => prev.map(session => {
       if (editingSessions[session.id]) {
         return {
           ...session,
@@ -164,6 +165,24 @@ export function OverviewView() {
       }
       return session;
     }));
+    
+    if (weekPlans.length > 0) {
+      const updated = weekPlans.map(week => ({
+        ...week,
+        sessions: week.sessions.map(s => {
+          if (editingSessions[s.id]) {
+            return {
+              ...s,
+              dayOfWeek: editingSessions[s.id].dayOfWeek,
+              estimatedMinutes: editingSessions[s.id].estimatedMinutes
+            };
+          }
+          return s;
+        })
+      }));
+      setWeekPlans(updated);
+    }
+    
     setIsRescheduleOpen(false);
   };
 
@@ -223,7 +242,7 @@ export function OverviewView() {
               </div>
               
               <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-4">
-                {mockedSessions.filter(s => s.status !== "completed").map((session) => (
+                {activeSessions.filter(s => s.status !== "completed").map((session) => (
                   <Card key={session.id} className="p-4 border border-slate-200 shadow-sm rounded-xl">
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -299,7 +318,7 @@ export function OverviewView() {
         <div className="overflow-x-auto min-w-full custom-scrollbar pb-2">
           <div className="grid grid-cols-7 divide-x divide-slate-100 min-w-[900px]">
             {dates.map((date, idx) => {
-              const sessions = getSessionsForDay(idx, mockedSessions);
+              const sessions = getSessionsForDay(idx, activeSessions);
               const today = isToday(date);
               return (
                 <div

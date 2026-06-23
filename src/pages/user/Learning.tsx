@@ -109,7 +109,11 @@ export default function Learning() {
                       className="border-amber-200 bg-amber-50 text-amber-700"
                     >
                       {item.display_name}
-                      {item.estimated_hours ? ` - ${t("learning.common.hours", { count: item.estimated_hours })}` : ""}
+                      {item.estimated_hours
+                        ? ` - ${t("learning.common.hours", { count: item.estimated_hours })}`
+                        : item.reason
+                        ? ` - ${item.reason}`
+                        : ""}
                     </Badge>
                   ))}
                 </div>

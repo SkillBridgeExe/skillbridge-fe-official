@@ -10,6 +10,7 @@ import {
   type ComposedRoadmap,
 } from "@/services/learning-roadmap.service";
 import type { LearningRoadmap } from "@/types/user";
+import { deriveSessionStatuses } from "./session-progress";
 
 interface RoadmapStore {
   composedRoadmap: ComposedRoadmap | null;
@@ -54,10 +55,10 @@ export const useRoadmapStore = create<RoadmapStore>()(
 export function useActiveWeekPlans() {
   const { composedRoadmap, isAIGenerated, weekPlans } = useRoadmapStore();
   if (isAIGenerated && weekPlans.length > 0) {
-    return sanitizeWeekPlans(weekPlans);
+    return deriveSessionStatuses(sanitizeWeekPlans(weekPlans));
   }
   if (isAIGenerated && composedRoadmap) {
-    return sanitizeWeekPlans(roadmapToWeekPlans(composedRoadmap));
+    return deriveSessionStatuses(sanitizeWeekPlans(roadmapToWeekPlans(composedRoadmap)));
   }
   return [];
 }

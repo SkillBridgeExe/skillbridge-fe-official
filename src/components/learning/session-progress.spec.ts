@@ -91,4 +91,30 @@ describe("session-progress", () => {
 
     expect(isSessionReadyToComplete(session, progress)).toBe(true);
   });
+
+  it("marks a checklist-free section complete when '__completed' is checked", () => {
+    const checklistFreeSession: LearningSession = {
+      ...session,
+      sections: [
+        {
+          id: "checklist-free-sec",
+          title: "Checklist Free Section",
+          completed: false,
+          exercises: 0,
+          completedExercises: 0,
+          type: "practice",
+          checklist: [],
+        },
+      ],
+      lessonContent: undefined,
+    };
+
+    let progress = createInitialSessionProgress(checklistFreeSession);
+    let nextSession = applyProgressToSession(checklistFreeSession, progress);
+    expect(nextSession.sections[0].completed).toBe(false);
+
+    progress = toggleChecklistItem(progress, "checklist-free-sec", "__completed");
+    nextSession = applyProgressToSession(checklistFreeSession, progress);
+    expect(nextSession.sections[0].completed).toBe(true);
+  });
 });

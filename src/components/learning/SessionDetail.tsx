@@ -46,6 +46,8 @@ import {
   isSessionReadyToComplete,
   setExerciseProof,
   toggleChecklistItem,
+  readStoredSessionProgress,
+  writeStoredSessionProgress,
   type SessionProgressState,
 } from "./session-progress";
 
@@ -64,7 +66,7 @@ function buildTimeline(session: LearningSession) {
 }
 
 function buildQuiz(session: LearningSession) {
-  if (session.lessonContent?.quiz.length) {
+  if (session.lessonContent?.quiz && session.lessonContent.quiz.length) {
     return session.lessonContent.quiz.map((item) => ({
       question: item.question,
       options: item.options,
@@ -73,40 +75,18 @@ function buildQuiz(session: LearningSession) {
     }));
   }
 
-  return session.sections.slice(0, 3).map((sec, i) => ({
-    question: `Which best describes "${sec.title}"?`,
-    options: [
-      `It covers ${sec.type} fundamentals`,
-      `It is the main topic of this section`,
-      `It is a prerequisite for section ${i + 2}`,
-      `It is only relevant for advanced learners`,
-    ],
-    correct: 1,
-    explanation: "",
-  }));
+  return [];
 }
 
 function buildResourceSummary(session: LearningSession): string[] {
-  if (session.lessonContent) {
+  if (session.lessonContent?.summary) {
     return [
       session.lessonContent.summary,
       ...session.lessonContent.sections.map((section) => `${section.title}: ${section.body}`),
     ];
   }
 
-  if (session.resources.length === 0) {
-    return [
-      `${session.title} is planned as a ${Math.round(session.estimatedMinutes / 60)}h practice block.`,
-      "Use the section checklist on the left as your completion proof.",
-    ];
-  }
-
-  return session.resources.map((resource) => {
-    const source = resource.platform ?? resource.type;
-    const duration = resource.duration ? ` (${resource.duration})` : "";
-    const proof = resource.proofOfCompletion ? ` Proof: ${resource.proofOfCompletion}.` : "";
-    return `${resource.title} - ${source}${duration}.${proof}`;
-  });
+  return [];
 }
 
 function displayScore(value?: number): string | null {
@@ -121,25 +101,7 @@ function fallbackOutcomeLabel(value?: string): string {
 type SessionResource = LearningSession["resources"][number];
 type RecommendedCourse = NonNullable<LearningSession["recommendedCourses"]>[number];
 
-const SESSION_PROGRESS_STORAGE_PREFIX = "skillbridge:learning-session-progress:";
 
-function readStoredSessionProgress(sessionId: string): Partial<SessionProgressState> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`${SESSION_PROGRESS_STORAGE_PREFIX}${sessionId}`);
-    return raw ? JSON.parse(raw) as Partial<SessionProgressState> : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredSessionProgress(sessionId: string, progress: SessionProgressState) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    `${SESSION_PROGRESS_STORAGE_PREFIX}${sessionId}`,
-    JSON.stringify(progress),
-  );
-}
 
 function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   const { t } = useTranslation("common");
@@ -328,116 +290,7 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
   );
 }
 
-const LEGACY_UNUSED_AI_SUMMARY = `## Key Takeaways
 
-**Generics** allow you to write flexible, reusable code that works with different data types while maintaining type safety.
-
-### Core Concepts
-- **Type Parameters** — Use \`<T>\` to create placeholder types that get resolved at usage time
-- **Constraints** — Use \`extends\` to restrict what types can be passed: \`<T extends HasLength>\`
-- **Default Types** — Provide fallback types: \`<T = string>\`
-
-### Why This Matters
-Without generics, you'd need to either use \`any\` (losing type safety) or write duplicate functions for each type. Generics give you the best of both worlds.
-
-### Common Patterns
-1. **Identity Function** — The simplest generic: \`function identity<T>(arg: T): T\`
-2. **Container Types** — \`Array<T>\`, \`Promise<T>\`, \`Map<K, V>\`
-3. **Factory Functions** — Creating typed instances dynamically`;
-
-const LEGACY_UNUSED_QUIZ = [
-  {
-    question: "What is the primary purpose of Generics in TypeScript?",
-    options: [
-      "To make code run faster",
-      "To write reusable code that works with multiple types",
-      "To replace interfaces",
-      "To add runtime type checking",
-    ],
-    correct: 1,
-  },
-  {
-    question: "Which syntax is used to define a generic constraint?",
-    options: [
-      "<T implements Interface>",
-      "<T : Interface>",
-      "<T extends Interface>",
-      "<T super Interface>",
-    ],
-    correct: 2,
-  },
-  {
-    question: "What does `<T = string>` mean in a generic definition?",
-    options: [
-      "T must be a string",
-      "T defaults to string if not specified",
-      "T is assigned the value 'string'",
-      "T cannot be a string",
-    ],
-    correct: 1,
-  },
-];
-
-// ─── Mock doc content for reading sections ──────────
-const LEGACY_UNUSED_DOC_CONTENT = `
-## Introduction to Generics
-
-Generics are one of TypeScript's most powerful features. They allow you to create reusable components that can work with a variety of types rather than a single one.
-
-### The Problem
-
-Without generics, you would need to use \`any\`:
-
-\`\`\`typescript
-function identity(arg: any): any {
-  return arg;
-}
-\`\`\`
-
-This works, but we lose type information. The return type is \`any\`, not the type we passed in.
-
-### The Solution: Generics
-
-\`\`\`typescript
-function identity<T>(arg: T): T {
-  return arg;
-}
-
-// Usage
-const result = identity<string>("hello"); // type: string
-const num = identity(42); // type: number (inferred)
-\`\`\`
-
-Now TypeScript knows the exact return type!
-
-### Generic Constraints
-
-Sometimes you want to restrict what types can be used:
-
-\`\`\`typescript
-interface HasLength {
-  length: number;
-}
-
-function logLength<T extends HasLength>(arg: T): T {
-  console.log(arg.length);
-  return arg;
-}
-
-logLength("hello");     // ✅ string has .length
-logLength([1, 2, 3]);   // ✅ array has .length
-logLength(42);           // ❌ number doesn't have .length
-\`\`\`
-
-> **💡 Pro Tip:** Use constraints liberally. They make your generic functions more predictable and give better error messages.
-
-### Key Points to Remember
-
-- Use \`<T>\` to define type parameters
-- Use \`extends\` to add constraints
-- TypeScript can often *infer* the type argument
-- Generics work with functions, classes, interfaces, and type aliases
-`;
 
 // ─── YouTube Embed helper ───────────────────────────
 function getYouTubeId(url: string): string | null {
@@ -647,156 +500,147 @@ function VideoContentPanel({ session }: { session: LearningSession }) {
       </div>
 
       {/* ═══ AI Summary ═══ */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        <button
-          onClick={() => setSummaryExpanded(!summaryExpanded)}
-          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-indigo-100 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary" />
+      {session.lessonContent?.summary && (
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <button
+            onClick={() => setSummaryExpanded(!summaryExpanded)}
+            className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-indigo-100 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.aiLessonSummary")}</h4>
+                <p className="text-xs text-slate-400">{t("learning.session.aiGeneratedBy")}</p>
+              </div>
             </div>
-            <div className="text-left">
-              <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.aiLessonSummary")}</h4>
-              <p className="text-xs text-slate-400">{t("learning.session.aiGeneratedBy")}</p>
+            {summaryExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+          </button>
+          {summaryExpanded && (
+            <div className="px-5 pb-5 border-t border-slate-100">
+              <div className="prose prose-sm prose-slate max-w-none pt-4 [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-semibold [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-xs [&_code]:font-mono [&_strong]:text-slate-800 [&_li]:text-slate-600 [&_p]:text-slate-600 [&_ol]:list-decimal [&_ol]:pl-4">
+                <h2>{session.title}</h2>
+                <p>
+                  {t("learning.session.summaryBody")}
+                </p>
+                <ul className="list-disc pl-4">
+                  {buildResourceSummary(session).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
-          {summaryExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-        </button>
-        {summaryExpanded && (
-          <div className="px-5 pb-5 border-t border-slate-100">
-            <div className="prose prose-sm prose-slate max-w-none pt-4 [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-semibold [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-xs [&_code]:font-mono [&_strong]:text-slate-800 [&_li]:text-slate-600 [&_p]:text-slate-600 [&_ol]:list-decimal [&_ol]:pl-4">
-              <h2>{session.title}</h2>
-              <p>
-                {t("learning.session.summaryBody")}
-              </p>
-              <ul className="list-disc pl-4">
-                {buildResourceSummary(session).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              {false && "".split("\n").map((line, i) => {
-                if (line.startsWith("## ")) return <h2 key={i}>{line.slice(3)}</h2>;
-                if (line.startsWith("### ")) return <h3 key={i} className="mt-4">{line.slice(4)}</h3>;
-                if (line.startsWith("- **")) {
-                  const boldMatch = line.match(/- \*\*(.+?)\*\* — (.+)/);
-                  if (boldMatch) return <li key={i} className="list-disc ml-4"><strong>{boldMatch[1]}</strong> — {boldMatch[2]}</li>;
-                }
-                if (line.match(/^\d+\./)) {
-                  return <li key={i} className="ml-4">{line.replace(/^\d+\.\s/, "")}</li>;
-                }
-                if (line.trim() === "") return <div key={i} className="h-2" />;
-                return <p key={i}>{line}</p>;
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* ═══ Knowledge Check Quiz ═══ */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        <button
-          onClick={() => setQuizExpanded(!quizExpanded)}
-          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-              <HelpCircle className="w-5 h-5 text-amber-500" />
+      {quiz.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <button
+            onClick={() => setQuizExpanded(!quizExpanded)}
+            className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-amber-500" />
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.knowledgeCheck")}</h4>
+                <p className="text-xs text-slate-400">{t("learning.session.questionCount", { count: quiz.length })}</p>
+              </div>
             </div>
-            <div className="text-left">
-              <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.knowledgeCheck")}</h4>
-              <p className="text-xs text-slate-400">{t("learning.session.questionCount", { count: quiz.length })}</p>
-            </div>
-          </div>
-          {quizExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-        </button>
-        {quizExpanded && (
-          <div className="px-5 pb-5 border-t border-slate-100 space-y-6 pt-4">
-            {quiz.map((q, qi) => (
-              <div key={qi} className="space-y-3">
-                <p className="text-sm font-semibold text-slate-800">
-                  <span className="text-primary font-bold mr-2">Q{qi + 1}.</span>
-                  {q.question}
-                </p>
-                <div className="space-y-2">
-                  {q.options.map((opt, oi) => {
-                    const isSelected = quizAnswers[qi] === oi;
-                    const isCorrect = showQuizResults && oi === q.correct;
-                    const isWrong = showQuizResults && isSelected && oi !== q.correct;
-                    return (
-                      <button
-                        key={oi}
-                        onClick={() => !showQuizResults && setQuizAnswers(prev => ({ ...prev, [qi]: oi }))}
-                        className={cn(
-                          "w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all",
-                          isCorrect
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                            : isWrong
-                            ? "bg-red-50 border-red-300 text-red-800"
-                            : isSelected
-                            ? "bg-primary/5 border-primary/30 text-primary"
-                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                      >
-                        <span className={cn(
-                          "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 text-xs font-bold",
-                          isCorrect ? "border-emerald-500 bg-emerald-500 text-white"
-                            : isWrong ? "border-red-500 bg-red-500 text-white"
-                            : isSelected ? "border-primary bg-primary text-white"
-                            : "border-slate-300"
-                        )}>
-                          {isCorrect ? "✓" : isWrong ? "✗" : String.fromCharCode(65 + oi)}
-                        </span>
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                {showQuizResults && q.explanation ? (
-                  <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
-                    {q.explanation}
+            {quizExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+          </button>
+          {quizExpanded && (
+            <div className="px-5 pb-5 border-t border-slate-100 space-y-6 pt-4">
+              {quiz.map((q, qi) => (
+                <div key={qi} className="space-y-3">
+                  <p className="text-sm font-semibold text-slate-800">
+                    <span className="text-primary font-bold mr-2">Q{qi + 1}.</span>
+                    {q.question}
                   </p>
-                ) : null}
-              </div>
-            ))}
+                  <div className="space-y-2">
+                    {q.options.map((opt, oi) => {
+                      const isSelected = quizAnswers[qi] === oi;
+                      const isCorrect = showQuizResults && oi === q.correct;
+                      const isWrong = showQuizResults && isSelected && oi !== q.correct;
+                      return (
+                        <button
+                          key={oi}
+                          onClick={() => !showQuizResults && setQuizAnswers(prev => ({ ...prev, [qi]: oi }))}
+                          className={cn(
+                            "w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all",
+                            isCorrect
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                              : isWrong
+                              ? "bg-red-50 border-red-300 text-red-800"
+                              : isSelected
+                              ? "bg-primary/5 border-primary/30 text-primary"
+                              : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          <span className={cn(
+                            "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 text-xs font-bold",
+                            isCorrect ? "border-emerald-500 bg-emerald-500 text-white"
+                              : isWrong ? "border-red-500 bg-red-500 text-white"
+                              : isSelected ? "border-primary bg-primary text-white"
+                              : "border-slate-300"
+                          )}>
+                            {isCorrect ? "✓" : isWrong ? "✗" : String.fromCharCode(65 + oi)}
+                          </span>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {showQuizResults && q.explanation ? (
+                    <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
+                      {q.explanation}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
 
-            {/* Submit / Results */}
-            {!showQuizResults ? (
-              <Button
-                className="rounded-full w-full"
-                disabled={Object.keys(quizAnswers).length < quiz.length}
-                onClick={() => setShowQuizResults(true)}
-              >
-                {t("learning.session.checkAnswers")}
-              </Button>
-            ) : (
-              <div className={cn(
-                "p-4 rounded-xl text-center",
-                correctCount === quiz.length ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"
-              )}>
-                <p className="font-bold text-lg">
-                  {correctCount === quiz.length
-                    ? t("learning.session.perfectScore")
-                    : t("learning.session.correctCount", { correct: correctCount, total: quiz.length })}
-                </p>
-                <p className="text-sm text-slate-500 mt-1">
-                  {correctCount === quiz.length
-                    ? t("learning.session.mastered")
-                    : t("learning.session.reviewAnswers")}
-                </p>
+              {/* Submit / Results */}
+              {!showQuizResults ? (
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 rounded-full"
-                  onClick={() => { setQuizAnswers({}); setShowQuizResults(false); }}
+                  className="rounded-full w-full"
+                  disabled={Object.keys(quizAnswers).length < quiz.length}
+                  onClick={() => setShowQuizResults(true)}
                 >
-                  {t("learning.session.retryQuiz")}
+                  {t("learning.session.checkAnswers")}
                 </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              ) : (
+                <div className={cn(
+                  "p-4 rounded-xl text-center",
+                  correctCount === quiz.length ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"
+                )}>
+                  <p className="font-bold text-lg">
+                    {correctCount === quiz.length
+                      ? t("learning.session.perfectScore")
+                      : t("learning.session.correctCount", { correct: correctCount, total: quiz.length })}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {correctCount === quiz.length
+                      ? t("learning.session.mastered")
+                      : t("learning.session.reviewAnswers")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 rounded-full"
+                    onClick={() => { setQuizAnswers({}); setShowQuizResults(false); }}
+                  >
+                    {t("learning.session.retryQuiz")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -923,7 +767,33 @@ function DocContentPanel({
                   </li>
                 ))}
               </ul>
-            ) : null}
+            ) : (
+              <div className="mt-3 flex">
+                <button
+                  type="button"
+                  aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")}
+                  onClick={() => onToggleChecklistItem(sec.id, "__completed")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+                    (progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  {(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed") ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <span>{t("learning.session.done")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Circle className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>{t("learning.session.markComplete")}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         ))}
 
@@ -1228,18 +1098,33 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const handleComplete = () => {
     if (!canMarkComplete) return;
     setIsCompleted(true);
-    if (isAIGenerated && weekPlans.length > 0) {
+
+    const updatedProgress = {
+      ...progress,
+      checkedChecklistItems: {
+        ...progress.checkedChecklistItems,
+        "__session": ["completed"],
+      },
+    };
+    setProgress(updatedProgress);
+    writeStoredSessionProgress(session.id, updatedProgress);
+    if (hasApiAuthSession()) {
+      void saveLearningSessionProgress(session.id, updatedProgress).catch(() => undefined);
+    }
+
+    if (weekPlans.length > 0) {
       const updated = weekPlans.map(week => ({
         ...week,
-        sessions: week.sessions.map((s, si, arr) => {
-          if (s.id === session.id) return { ...displaySession, status: "completed" as const };
-          const prev = arr[si - 1];
-          if (prev?.id === session.id && s.status === "locked") return { ...s, status: "in-progress" as const };
+        sessions: week.sessions.map((s) => {
+          if (s.id === session.id) {
+            return { ...s, status: "completed" as const };
+          }
           return s;
         }),
       }));
       setWeekPlans(updated);
     }
+
     const next = ALL_SESSIONS[currentIdx + 1];
     setTimeout(() => next ? navigate(`/learning/session/${next.id}`) : navigate("/learning"), 800);
   };
@@ -1352,7 +1237,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
           {/* Right AI Chat Panel — sticky */}
           {isChatOpen && (
-            <AIChatPanel onClose={() => setIsChatOpen(false)} />
+            <AIChatPanel sessionId={session.id} onClose={() => setIsChatOpen(false)} />
           )}
 
           {/* Floating AI toggle when closed */}
