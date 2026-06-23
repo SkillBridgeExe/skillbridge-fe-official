@@ -1,0 +1,193 @@
+- generic:
+  - generic:
+    - list
+    - region "Notifications alt+T"
+    - generic:
+      - button:
+        - img
+    - generic:
+      - navigation [ref=e153]:
+        - generic [ref=e154]:
+          - link [ref=e232] [cursor=pointer]:
+            - /url: /
+            - img [ref=e233]
+          - generic [ref=e157]:
+            - link [ref=e234] [cursor=pointer]:
+              - /url: /dashboard
+              - text: Dashboard
+            - link [ref=e235] [cursor=pointer]:
+              - /url: /diagnosis
+              - text: Diagnosis
+            - link [ref=e236] [cursor=pointer]:
+              - /url: /learning
+              - text: Learning
+            - link [ref=e237] [cursor=pointer]:
+              - /url: /interview
+              - text: Interview
+            - link [ref=e238] [cursor=pointer]:
+              - /url: /ecosystem
+              - text: Mentorship
+            - link [ref=e239] [cursor=pointer]:
+              - /url: /jobs
+              - text: Jobs
+        - generic [ref=e164]:
+          - button [ref=e240] [cursor=pointer]:
+            - img
+            - generic [ref=e166]: EN
+            - img
+          - generic [ref=e168] [cursor=pointer]: LO
+      - main:
+        - generic:
+          - generic:
+            - generic: Step 1 of 2 — Upload
+            - heading [level=1]: Where does your CV stand?
+          - generic:
+            - generic:
+              - button:
+                - img
+                - generic: View Recent Scans
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: "Pick one of the two options:"
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - paragraph: Already have a CV file
+                            - heading [level=4]:
+                              - img
+                              - text: Upload an existing CV
+                            - paragraph: Upload a PDF, PNG, or JPG file from your device.
+                          - generic: Choose file
+                      - generic:
+                        - generic:
+                          - paragraph: Build a new CV with AI
+                          - heading [level=4]:
+                            - img
+                            - text: Create a new CV with AI
+                          - paragraph: No CV yet? Build a professional, ATS-ready CV.
+                        - generic:
+                          - button: Start building
+                - generic:
+                  - generic:
+                    - generic:
+                      - text: Target role
+                      - generic: (Bắt buộc)
+                    - combobox:
+                      - generic: Select a target role…
+                      - img
+                  - generic:
+                    - generic:
+                      - button:
+                        - text: Add a job description (optional)
+                        - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - button [disabled]:
+                        - img
+                        - text: Analyze CV quality
+                    - paragraph: Provide a CV and pick a target role to begin
+  - generic:
+    - generic:
+      - dialog "Companion assistant":
+        - button "Close":
+          - img
+        - generic:
+          - paragraph: Upload your CV and select a target role to start the analysis.
+  - dialog "Analysis history" [ref=e242]:
+    - generic [ref=e243]:
+      - heading "Analysis history" [level=2] [ref=e244]
+      - paragraph [ref=e245]: Reopen a saved result — no analysis credit used.
+    - generic [ref=e246]:
+      - button "CV Builder draft AI/ML Engineer · 06/23/2026 100" [ref=e247] [cursor=pointer]:
+        - generic [ref=e248]:
+          - generic [ref=e249]:
+            - paragraph [ref=e250]: CV Builder draft
+            - paragraph [ref=e251]: AI/ML Engineer · 06/23/2026
+          - generic [ref=e252]: "100"
+      - button "CV Builder draft AI/ML Engineer · 06/23/2026" [ref=e253] [cursor=pointer]:
+        - generic [ref=e255]:
+          - paragraph [ref=e256]: CV Builder draft
+          - paragraph [ref=e257]: AI/ML Engineer · 06/23/2026
+      - button "CV Builder draft AI/ML Engineer · 06/22/2026" [ref=e258] [cursor=pointer]:
+        - generic [ref=e260]:
+          - paragraph [ref=e261]: CV Builder draft
+          - paragraph [ref=e262]: AI/ML Engineer · 06/22/2026
+      - button "CV Builder draft AI/ML Engineer · 06/22/2026" [ref=e263] [cursor=pointer]:
+        - generic [ref=e265]:
+          - paragraph [ref=e266]: CV Builder draft
+          - paragraph [ref=e267]: AI/ML Engineer · 06/22/2026
+      - button "CV Builder draft AI/ML Engineer · 06/21/2026" [ref=e268] [cursor=pointer]:
+        - generic [ref=e270]:
+          - paragraph [ref=e271]: CV Builder draft
+          - paragraph [ref=e272]: AI/ML Engineer · 06/21/2026
+      - button "CV Builder draft AI/ML Engineer · 06/19/2026" [ref=e273] [cursor=pointer]:
+        - generic [ref=e275]:
+          - paragraph [ref=e276]: CV Builder draft
+          - paragraph [ref=e277]: AI/ML Engineer · 06/19/2026
+      - button "CV Builder draft AI/ML Engineer · 06/19/2026" [ref=e278] [cursor=pointer]:
+        - generic [ref=e280]:
+          - paragraph [ref=e281]: CV Builder draft
+          - paragraph [ref=e282]: AI/ML Engineer · 06/19/2026
+      - button "AI_RAG_mÃ u mÃ¨ canva.pdf AI/ML Engineer · 06/18/2026 100" [ref=e283] [cursor=pointer]:
+        - generic [ref=e284]:
+          - generic [ref=e285]:
+            - paragraph [ref=e286]: AI_RAG_mÃ u mÃ¨ canva.pdf
+            - paragraph [ref=e287]: AI/ML Engineer · 06/18/2026
+          - generic [ref=e288]: "100"
+      - button "AI_APP_Fresher.pdf AI/ML Engineer · 06/18/2026 90" [ref=e289] [cursor=pointer]:
+        - generic [ref=e290]:
+          - generic [ref=e291]:
+            - paragraph [ref=e292]: AI_APP_Fresher.pdf
+            - paragraph [ref=e293]: AI/ML Engineer · 06/18/2026
+          - generic [ref=e294]: "90"
+      - 'button "Nguyá»n_Anh_Minh_BE (6) (1).pdf Backend · 06/18/2026 90" [ref=e295] [cursor=pointer]':
+        - generic [ref=e296]:
+          - generic [ref=e297]:
+            - paragraph [ref=e298]: "Nguyá»\x85n_Anh_Minh_BE (6) (1).pdf"
+            - paragraph [ref=e299]: Backend · 06/18/2026
+          - generic [ref=e300]: "90"
+      - button "CV Builder draft Backend · 06/18/2026" [ref=e301] [cursor=pointer]:
+        - generic [ref=e303]:
+          - paragraph [ref=e304]: CV Builder draft
+          - paragraph [ref=e305]: Backend · 06/18/2026
+      - button "CV Builder draft Backend · 06/18/2026" [ref=e306] [cursor=pointer]:
+        - generic [ref=e308]:
+          - paragraph [ref=e309]: CV Builder draft
+          - paragraph [ref=e310]: Backend · 06/18/2026
+      - button "CV Builder draft Backend · 06/17/2026" [ref=e311] [cursor=pointer]:
+        - generic [ref=e313]:
+          - paragraph [ref=e314]: CV Builder draft
+          - paragraph [ref=e315]: Backend · 06/17/2026
+      - button "CV Builder draft Backend · 06/17/2026" [ref=e316] [cursor=pointer]:
+        - generic [ref=e318]:
+          - paragraph [ref=e319]: CV Builder draft
+          - paragraph [ref=e320]: Backend · 06/17/2026
+      - button "CV Builder draft Backend · 06/17/2026" [ref=e321] [cursor=pointer]:
+        - generic [ref=e323]:
+          - paragraph [ref=e324]: CV Builder draft
+          - paragraph [ref=e325]: Backend · 06/17/2026
+      - button "NGUYEN ANH TUAN Backend · 06/17/2026" [ref=e326] [cursor=pointer]:
+        - generic [ref=e328]:
+          - paragraph [ref=e329]: NGUYEN ANH TUAN
+          - paragraph [ref=e330]: Backend · 06/17/2026
+      - button "Nguyen Anh Tuan - Backend .NET Developer (1).pdf Backend · 06/17/2026 100" [ref=e331] [cursor=pointer]:
+        - generic [ref=e332]:
+          - generic [ref=e333]:
+            - paragraph [ref=e334]: Nguyen Anh Tuan - Backend .NET Developer (1).pdf
+            - paragraph [ref=e335]: Backend · 06/17/2026
+          - generic [ref=e336]: "100"
+      - button "CV Builder draft Frontend · 06/17/2026" [ref=e337] [cursor=pointer]:
+        - generic [ref=e339]:
+          - paragraph [ref=e340]: CV Builder draft
+          - paragraph [ref=e341]: Frontend · 06/17/2026
+      - button "CV Builder draft Frontend · 06/17/2026" [ref=e342] [cursor=pointer]:
+        - generic [ref=e344]:
+          - paragraph [ref=e345]: CV Builder draft
+          - paragraph [ref=e346]: Frontend · 06/17/2026
+    - button "Close" [active] [ref=e347] [cursor=pointer]:
+      - img [ref=e348]
+      - generic [ref=e351]: Close

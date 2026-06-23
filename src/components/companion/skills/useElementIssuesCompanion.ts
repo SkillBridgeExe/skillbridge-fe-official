@@ -53,6 +53,9 @@ function runCta(kind: ElementIssue["ctaKind"]): void {
 
 /** Is this anchor card currently mounted in the DOM? (Fix C resolvability.) */
 function anchorResolves(anchorId: string): boolean {
+  // An empty anchor = a no-card issue (missing section / parse quality) that rests at
+  // the companion's home corner — always "resolvable" so it is never filtered out.
+  if (!anchorId) return true;
   return typeof document !== "undefined" && !!document.getElementById(anchorId);
 }
 

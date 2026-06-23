@@ -1,0 +1,314 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - button "Companion mascot" [ref=e8] [cursor=pointer]:
+    - img "SkillBridge mascot" [active] [ref=e9]
+  - generic [ref=e10]:
+    - navigation [ref=e11]:
+      - generic [ref=e12]:
+        - link "SkillBridge" [ref=e13] [cursor=pointer]:
+          - /url: /
+          - img "SkillBridge" [ref=e14]
+        - generic [ref=e15]:
+          - link "Dashboard" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Diagnosis" [ref=e17] [cursor=pointer]:
+            - /url: /diagnosis
+          - link "Learning" [ref=e18] [cursor=pointer]:
+            - /url: /learning
+          - link "Interview" [ref=e19] [cursor=pointer]:
+            - /url: /interview
+          - link "Mentorship" [ref=e20] [cursor=pointer]:
+            - /url: /ecosystem
+          - link "Jobs" [ref=e21] [cursor=pointer]:
+            - /url: /jobs
+      - generic [ref=e22]:
+        - button "EN" [ref=e23] [cursor=pointer]:
+          - img
+          - generic [ref=e24]: EN
+          - img
+        - generic [ref=e26] [cursor=pointer]: LO
+    - main [ref=e27]:
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - img [ref=e32]
+            - generic [ref=e35]: Upload CV
+          - generic [ref=e37]:
+            - generic [ref=e38]: "2"
+            - generic [ref=e39]: CV Review
+        - generic [ref=e40]:
+          - button "Back to upload" [ref=e41] [cursor=pointer]:
+            - img [ref=e42]
+            - text: Back to upload
+          - 'img "Your CV quality score: 56%" [ref=e44]':
+            - generic [ref=e45]:
+              - img [ref=e46]
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - generic [ref=e51]: "56"
+                  - generic [ref=e52]: /100
+                - generic [ref=e53]: Your CV quality score
+            - paragraph [ref=e55]: Good job — your CV is competitive but still has room to improve.
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - text: ATS
+            - generic [ref=e61]: 90%
+          - generic [ref=e62]:
+            - button "Edit & Download PDF" [ref=e63] [cursor=pointer]:
+              - img
+              - text: Edit & Download PDF
+            - button "Compare JD" [ref=e64] [cursor=pointer]:
+              - img
+              - text: Compare JD
+          - separator [ref=e65]
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - tablist [ref=e68]:
+                - tab "CV Audit" [selected] [ref=e69] [cursor=pointer]:
+                  - img [ref=e70]
+                  - text: CV Audit
+                - tab "Skills Analysis" [ref=e74] [cursor=pointer]:
+                  - img [ref=e75]
+                  - text: Skills Analysis
+                - tab "Market & Careers" [ref=e83] [cursor=pointer]:
+                  - img [ref=e84]
+                  - text: Market & Careers
+              - generic [ref=e88]:
+                - generic [ref=e89]:
+                  - generic [ref=e90]:
+                    - paragraph [ref=e91]: Priority fix
+                    - 'heading "CV của bạn đang ở mức cần cải thiện (56/100). Ưu tiên: Thêm số liệu vào thành tích (hiện chỉ 0% bullet có số) — vd \"giảm 40% thời gian tải\"." [level=2] [ref=e92]'
+                  - generic [ref=e94]:
+                    - generic [ref=e95]:
+                      - generic [ref=e96]:
+                        - img [ref=e97]
+                        - text: Fix these first
+                      - generic [ref=e100]: 0/3 done
+                    - 'heading "CV của bạn đang ở mức cần cải thiện (56/100). Ưu tiên: Thêm số liệu vào thành tích (hiện chỉ 0% bullet có số) — vd \"giảm 40% thời gian tải\"." [level=2] [ref=e101]'
+                    - list [ref=e102]:
+                      - listitem [ref=e103]:
+                        - checkbox [ref=e104] [cursor=pointer]
+                        - generic [ref=e105] [cursor=pointer]: Thêm số liệu vào thành tích (hiện chỉ 0% bullet có số) — vd "giảm 40% thời gian tải".
+                      - listitem [ref=e106]:
+                        - checkbox [ref=e107] [cursor=pointer]
+                        - generic [ref=e108] [cursor=pointer]: "Bổ sung kỹ năng còn thiếu cho vị trí: PyTorch and TensorFlow, Machine Learning, Statistics."
+                      - listitem [ref=e109]:
+                        - checkbox [ref=e110] [cursor=pointer]
+                        - generic [ref=e111] [cursor=pointer]: Mở đầu mỗi bullet bằng động từ hành động mạnh (Xây dựng, Tối ưu, Dẫn dắt) — hiện 0% đạt.
+                - separator
+                - generic [ref=e112]:
+                  - generic [ref=e113]:
+                    - paragraph [ref=e114]: Score breakdown
+                    - heading "See which areas are strong and which fixes should come first." [level=2] [ref=e115]
+                  - generic [ref=e117]: 11 improvement tips
+                  - generic [ref=e118]:
+                    - generic [ref=e119]:
+                      - generic [ref=e120]:
+                        - generic [ref=e121]:
+                          - generic [ref=e122]:
+                            - generic [ref=e123]: "01"
+                            - heading "Action verbs & impact" [level=3] [ref=e124]
+                            - generic [ref=e125]: Priority fix
+                            - generic [ref=e126]: 3 improvement tips
+                          - paragraph [ref=e127]: 0% of 4 bullets open with a strong action verb and 0% are quantified (deterministic analysis).
+                        - generic [ref=e128]:
+                          - generic [ref=e129]:
+                            - generic [ref=e130]: Score
+                            - generic [ref=e131]: 15%
+                          - generic [ref=e135]: 3/20
+                      - generic [ref=e136]:
+                        - list [ref=e137]:
+                          - listitem [ref=e138]:
+                            - generic [ref=e139]:
+                              - generic [ref=e140]: Medium
+                              - paragraph [ref=e142]: Many bullets do not start with a strong action verb.
+                          - listitem [ref=e143]:
+                            - generic [ref=e144]:
+                              - generic [ref=e145]: Medium
+                              - paragraph [ref=e147]: Fewer than ~50% of bullets are quantified (add numbers/%/impact where real).
+                        - button "Show 1 more tips" [ref=e148] [cursor=pointer]:
+                          - img [ref=e149]
+                          - text: Show 1 more tips
+                    - generic [ref=e151]:
+                      - generic [ref=e152]:
+                        - generic [ref=e153]:
+                          - generic [ref=e154]:
+                            - generic [ref=e155]: "02"
+                            - heading "Skills relevance" [level=3] [ref=e156]
+                            - generic [ref=e157]: Priority fix
+                            - generic [ref=e158]: 3 improvement tips
+                          - paragraph [ref=e159]: CV có Python, Git, LangChain, LlamaIndex và OpenAI API phù hợp một phần với AI/ML Engineer, nhưng thiếu các kỹ năng cốt lõi theo khung này như PyTorch/TensorFlow, machine learning, statistics và SQL.
+                        - generic [ref=e160]:
+                          - generic [ref=e161]:
+                            - generic [ref=e162]: Score
+                            - generic [ref=e163]: 25%
+                          - generic [ref=e167]: 5/20
+                      - generic [ref=e168]:
+                        - list [ref=e169]:
+                          - listitem [ref=e170]:
+                            - generic [ref=e171]:
+                              - generic [ref=e172]: Medium
+                              - generic [ref=e173]:
+                                - paragraph [ref=e174]: CV có "Python", "LangChain", "LlamaIndex", "OpenAI API", "FastAPI", "Git" nhưng đây mới là một phần của năng lực AI/ML, thiên về LLM application hơn là AI/ML tổng quát.
+                                - paragraph [ref=e175]:
+                                  - generic [ref=e176]: "Suggestion:"
+                                  - text: Bổ sung kỹ năng xử lý dữ liệu, huấn luyện mô hình, và triển khai mô hình để cân bằng hồ sơ.
+                          - listitem [ref=e177]:
+                            - generic [ref=e178]:
+                              - generic [ref=e179]: Medium
+                              - generic [ref=e180]:
+                                - paragraph [ref=e181]: Không thấy bằng chứng cho "pandas", "data_preprocessing", "docker" hay "communication" ở mức đủ rõ.
+                                - paragraph [ref=e182]:
+                                  - generic [ref=e183]: "Suggestion:"
+                                  - text: Nêu cụ thể các công cụ và hoạt động đã dùng, ví dụ tiền xử lý dữ liệu, đóng gói Docker, hoặc hợp tác nhóm.
+                        - button "Show 1 more tips" [ref=e184] [cursor=pointer]:
+                          - img [ref=e185]
+                          - text: Show 1 more tips
+                    - generic [ref=e187]:
+                      - generic [ref=e188]:
+                        - generic [ref=e189]:
+                          - generic [ref=e190]:
+                            - generic [ref=e191]: "03"
+                            - heading "Experience clarity" [level=3] [ref=e192]
+                            - generic [ref=e193]: Priority fix
+                            - generic [ref=e194]: 3 improvement tips
+                          - paragraph [ref=e195]: Không có mục kinh nghiệm làm việc; hai dự án "RAG Chat with PDF" và "Website Q&A Assistant" chỉ nêu tên, mô tả ngắn và công nghệ nên chưa thể hiện rõ bối cảnh, vai trò hay kết quả.
+                        - generic [ref=e196]:
+                          - generic [ref=e197]:
+                            - generic [ref=e198]: Score
+                            - generic [ref=e199]: 15%
+                          - generic [ref=e203]: 3/20
+                      - generic [ref=e204]:
+                        - list [ref=e205]:
+                          - listitem [ref=e206]:
+                            - generic [ref=e207]:
+                              - generic [ref=e208]: Medium
+                              - generic [ref=e209]:
+                                - paragraph [ref=e210]: Các dự án không có thời gian thực hiện, người dùng mục tiêu hay phạm vi nên khó đánh giá mức độ đóng góp.
+                                - paragraph [ref=e211]:
+                                  - generic [ref=e212]: "Suggestion:"
+                                  - text: Bổ sung mốc thời gian, đối tượng sử dụng, và kết quả đầu ra cho từng dự án.
+                          - listitem [ref=e213]:
+                            - generic [ref=e214]:
+                              - generic [ref=e215]: Medium
+                              - generic [ref=e216]:
+                                - paragraph [ref=e217]: "Mô tả dự án quá ngắn: \"Chatbot hỏi đáp tài liệu PDF.\" và \"Trả lời câu hỏi từ website.\" không cho thấy bạn đã làm gì cụ thể."
+                                - paragraph [ref=e218]:
+                                  - generic [ref=e219]: "Suggestion:"
+                                  - text: Nêu rõ các bước đã thực hiện như thu thập dữ liệu, xây pipeline RAG, tối ưu truy hồi, hoặc triển khai API.
+                        - button "Show 1 more tips" [ref=e220] [cursor=pointer]:
+                          - img [ref=e221]
+                          - text: Show 1 more tips
+                    - generic [ref=e223]:
+                      - generic [ref=e224]:
+                        - generic [ref=e225]:
+                          - generic [ref=e226]:
+                            - generic [ref=e227]: "04"
+                            - heading "Education & learning" [level=3] [ref=e228]
+                            - generic [ref=e229]: Strong
+                            - generic [ref=e230]: 2 improvement tips
+                          - paragraph [ref=e231]: Có thông tin học tập rõ ràng với "ĐẠI HỌC BÁCH KHOA", thời gian "2020 - 2024", GPA "3.32 / 4.0", cùng chứng chỉ "AWS Cloud Practitioner" và các dự án tự làm.
+                        - generic [ref=e232]:
+                          - generic [ref=e233]:
+                            - generic [ref=e234]: Score
+                            - generic [ref=e235]: 75%
+                          - generic [ref=e239]: 15/20
+                      - generic [ref=e240]:
+                        - list [ref=e241]:
+                          - listitem [ref=e242]:
+                            - generic [ref=e243]:
+                              - generic [ref=e244]: Medium
+                              - generic [ref=e245]:
+                                - paragraph [ref=e246]: Có chứng chỉ "AWS Cloud Practitioner" nhưng không có ngày cấp, nên khó đánh giá tính gần đây.
+                                - paragraph [ref=e247]:
+                                  - generic [ref=e248]: "Suggestion:"
+                                  - text: Thêm thời điểm đạt chứng chỉ hoặc mốc hoàn thành khóa học.
+                          - listitem [ref=e249]:
+                            - generic [ref=e250]:
+                              - generic [ref=e251]: Low
+                              - generic [ref=e252]:
+                                - paragraph [ref=e253]: Có bằng chứng tự học qua các dự án "RAG Chat with PDF" và "Website Q&A Assistant" cùng chứng chỉ AWS, thể hiện tinh thần continuous learning.
+                                - paragraph [ref=e254]:
+                                  - generic [ref=e255]: "Suggestion:"
+                                  - text: Nếu có, bổ sung thêm khóa học, chứng chỉ hoặc đóng góp mã nguồn gần đây.
+                        - button "See more" [ref=e256] [cursor=pointer]:
+                          - img [ref=e257]
+                          - text: See more
+                - button "Raw AI parsed data This is what robot ATS systems \"see\" from your layout." [ref=e260] [cursor=pointer]:
+                  - generic [ref=e261]:
+                    - heading "Raw AI parsed data" [level=3] [ref=e262]
+                    - paragraph [ref=e263]: This is what robot ATS systems "see" from your layout.
+                  - img [ref=e264]
+            - complementary [ref=e266]:
+              - generic [ref=e267]:
+                - generic [ref=e268]:
+                  - generic [ref=e270]:
+                    - paragraph [ref=e271]: CV PREVIEW
+                    - heading "Document preview" [level=2] [ref=e272]
+                  - generic [ref=e273]:
+                    - img [ref=e274]
+                    - text: Original
+                - generic [ref=e278]:
+                  - paragraph [ref=e279]: Add a JD (Compare JD button) to get CV rewrite suggestions based on the JD.
+                  - button "Sửa CV gốc" [ref=e280] [cursor=pointer]
+                - generic [ref=e284]:
+                  - heading "Name not found" [level=2] [ref=e286]
+                  - generic [ref=e287]:
+                    - paragraph [ref=e288]: Mong muốn phát triển sự nghiệp trong lĩnh vực AI Application và Retrieval-Augmented Generation.
+                    - generic [ref=e289]:
+                      - generic [ref=e290]:
+                        - img [ref=e291]
+                        - generic [ref=e294]: Skills
+                      - generic [ref=e295]:
+                        - generic [ref=e296]: Python
+                        - generic [ref=e297]: LangChain
+                        - generic [ref=e298]: LlamaIndex
+                        - generic [ref=e299]: OpenAI API
+                        - generic [ref=e300]: FastAPI
+                        - generic [ref=e301]: Git
+                        - generic [ref=e302]: Git
+                        - generic [ref=e303]: Tiếng Việt
+                        - generic [ref=e304]: Tiếng Anh IELTS 6.5
+                    - generic [ref=e305]:
+                      - generic [ref=e306]:
+                        - img [ref=e307]
+                        - generic [ref=e312]: Projects
+                      - generic [ref=e313]:
+                        - generic [ref=e314]:
+                          - generic [ref=e317]: RAG Chat with PDF
+                          - generic [ref=e318]:
+                            - generic [ref=e319]: LangChain
+                            - generic [ref=e320]: OpenAI
+                            - generic [ref=e321]: FAISS
+                          - list [ref=e322]:
+                            - listitem [ref=e323]: Chatbot hỏi đáp tài liệu PDF.
+                            - listitem [ref=e324]: "Công nghệ: LangChain, OpenAI, FAISS."
+                        - generic [ref=e325]:
+                          - generic [ref=e328]: Website Q&A Assistant
+                          - generic [ref=e329]:
+                            - generic [ref=e330]: LlamaIndex
+                            - generic [ref=e331]: FastAPI
+                          - list [ref=e332]:
+                            - listitem [ref=e333]: Trả lời câu hỏi từ website.
+                            - listitem [ref=e334]: "Công nghệ: LlamaIndex, FastAPI."
+                    - generic [ref=e335]:
+                      - generic [ref=e336]:
+                        - img [ref=e337]
+                        - generic [ref=e340]: Education
+                      - generic [ref=e342]:
+                        - generic [ref=e343]:
+                          - generic [ref=e344]: ĐẠI HỌC BÁCH KHOA
+                          - generic [ref=e345]: 2020 – 2024
+                        - generic [ref=e346]: "GPA: 3.32 / 4.0"
+                    - generic [ref=e347]:
+                      - generic [ref=e348]:
+                        - img [ref=e349]
+                        - generic [ref=e352]: Certifications
+                      - generic [ref=e355]: AWS Cloud Practitioner
+          - generic [ref=e356]:
+            - paragraph [ref=e357]: SkillBridge CV Diagnosis Report
+            - button "Start over" [ref=e358] [cursor=pointer]:
+              - img [ref=e359]
+              - text: Start over

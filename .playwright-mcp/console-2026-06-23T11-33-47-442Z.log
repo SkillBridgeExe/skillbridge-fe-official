@@ -1,0 +1,103 @@
+[     129ms] [INFO] %c[SkillBridge]%c v%s (%s) built %s color:#2563eb;font-weight:bold color:inherit dev b0904ef 2026-06-23T07:29:30.117Z @ http://localhost:8080/src/lib/version.ts:23
+[     148ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:21608
+[     178ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=7c998700:4434
+[     178ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=7c998700:4434
+[     457ms] [ERROR] Warning: %s: `ref` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://reactjs.org/link/special-props)%s div 
+    at PopChild (http://localhost:8080/node_modules/.vite/deps/framer-motion.js?v=7c998700:7984:21)
+    at PresenceChild (http://localhost:8080/node_modules/.vite/deps/framer-motion.js?v=7c998700:8032:24)
+    at AnimatePresence (http://localhost:8080/node_modules/.vite/deps/framer-motion.js?v=7c998700:8109:26)
+    at FloatingPortal (http://localhost:8080/node_modules/.vite/deps/@floating-ui_react.js?v=7c998700:2285:5)
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782209905845:38:22)
+    at Provider (http://localhost:8080/node_modules/.vite/deps/chunk-X4WVOHV4.js?v=7c998700:37:15)
+    at TooltipProvider (http://localhost:8080/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=7c998700:158:5)
+    at ThemeProvider (http://localhost:8080/src/components/ThemeProvider.tsx:9:33)
+    at QueryClientProvider (http://localhost:8080/node_modules/.vite/deps/@tanstack_react-query.js?v=7c998700:3130:3)
+    at App @ http://localhost:8080/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=7c998700:63
+[ 1066411ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215493298:200:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3680:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3705:24)
+    at invokeGuardedCallback (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3739:39)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19818:15)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+[ 1066413ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215493298:200:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3680:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3705:24)
+    at invokeGuardedCallback (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3739:39)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19818:15)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+[ 1066414ms] [ERROR] The above error occurred in the <CompanionShell> component:
+
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215493298:42:22)
+    at Provider (http://localhost:8080/node_modules/.vite/deps/chunk-X4WVOHV4.js?v=7c998700:37:15)
+    at TooltipProvider (http://localhost:8080/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=7c998700:158:5)
+    at ThemeProvider (http://localhost:8080/src/components/ThemeProvider.tsx:9:33)
+    at QueryClientProvider (http://localhost:8080/node_modules/.vite/deps/@tanstack_react-query.js?v=7c998700:3130:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14079
+[ 1066419ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215493298:200:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19806:22)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+    at renderRootSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19169:15)
+    at recoverFromConcurrentError (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:18786:28)
+    at performSyncWorkOnRoot (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:18932:28)
+[ 1072773ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215499831:214:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3680:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3705:24)
+    at invokeGuardedCallback (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3739:39)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19818:15)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+[ 1072776ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215499831:214:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3680:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3705:24)
+    at invokeGuardedCallback (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:3739:39)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19818:15)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+[ 1072781ms] [ERROR] The above error occurred in the <CompanionShell> component:
+
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215499831:42:22)
+    at Provider (http://localhost:8080/node_modules/.vite/deps/chunk-X4WVOHV4.js?v=7c998700:37:15)
+    at TooltipProvider (http://localhost:8080/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=7c998700:158:5)
+    at ThemeProvider (http://localhost:8080/src/components/ThemeProvider.tsx:9:33)
+    at QueryClientProvider (http://localhost:8080/node_modules/.vite/deps/@tanstack_react-query.js?v=7c998700:3130:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14079
+[ 1072783ms] ReferenceError: manualTransform is not defined
+    at CompanionShell (http://localhost:8080/src/components/companion/CompanionShell.tsx?t=1782215499831:214:28)
+    at renderWithHooks (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:11596:26)
+    at updateFunctionComponent (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:14630:28)
+    at beginWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:15972:22)
+    at beginWork$1 (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19806:22)
+    at performUnitOfWork (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19251:20)
+    at workLoopSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19190:13)
+    at renderRootSync (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:19169:15)
+    at recoverFromConcurrentError (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:18786:28)
+    at performSyncWorkOnRoot (http://localhost:8080/node_modules/.vite/deps/chunk-4ORZT627.js?v=7c998700:18932:28)

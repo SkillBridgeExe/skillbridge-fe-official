@@ -178,7 +178,10 @@ function detectCompleteness(input: ElementIssuesInput): ElementIssue[] {
       {
         id: `completeness:${gap}`,
         kind: "missing_section",
-        anchorId: "diagnosis-root",
+        // No specific card to point at (the section is MISSING) → empty anchor =
+        // the companion rests at its home corner (fallback) instead of degenerately
+        // anchoring to the whole page (which clips the unit at the edge).
+        anchorId: "",
         severity: NON_GAP_RANK.missing_section,
         whatKey: `companion.elementIssue.missing_section.${gap}.what`,
         why: null,
@@ -201,7 +204,8 @@ function detectParseQuality(input: ElementIssuesInput): ElementIssue[] {
     {
       id: "parse_quality",
       kind: "parse_quality",
-      anchorId: "diagnosis-root",
+      // Whole-document signal, no single card → rest at the home corner (fallback).
+      anchorId: "",
       severity: NON_GAP_RANK.parse_quality,
       whatKey: "companion.elementIssue.parse_quality.what",
       why: null,
