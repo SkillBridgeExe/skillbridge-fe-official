@@ -8,12 +8,13 @@ import {
   assistantAnalyze,
   assistantRewrite,
   assistantSkillsNudge,
+  assistantExtract,
   type BuilderSnapshot,
   type EvaluateSectionInput,
 } from "@/services/cv-builder.service";
 import { assessAiInput, getAiGateCode, type AiGateCode } from "@/lib/ai-input-gate";
 import type { RewriteRequest, RewriteResponse } from "@shared/api";
-import type { AssistantAnalyzeRequest, AssistantRewriteRequest } from "@/types/companion";
+import type { AssistantAnalyzeRequest, AssistantRewriteRequest, ExtractRequest } from "@/types/companion";
 
 /** Tạo draft builder trên BE — gọi 1 lần khi vào builder (lưu id vào store.draftId). */
 export function useEnsureBuilderDraftMutation() {
@@ -120,5 +121,13 @@ export function useSkillsNudgeQuery(draftId: string | null, lang: "vi" | "en" = 
     queryFn: () => assistantSkillsNudge(draftId!, lang),
     enabled: !!draftId,
     staleTime: 60_000,
+  });
+}
+
+/** Narrative extract — mutation (LLM, timeout dài). CvIntakeSkill. */
+export function useAssistantExtractMutation() {
+  return useMutation({
+    mutationFn: ({ draftId, ...input }: { draftId: string } & ExtractRequest) =>
+      assistantExtract(draftId, input),
   });
 }

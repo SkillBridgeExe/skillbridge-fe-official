@@ -48,6 +48,7 @@ export const API_ROUTES = {
     ASSISTANT_ANALYZE: (id: string) => `${API}/cvs/${id}/builder/assistant/analyze`,
     ASSISTANT_REWRITE: (id: string) => `${API}/cvs/${id}/builder/assistant/rewrite`,
     ASSISTANT_SKILLS_NUDGE: (id: string) => `${API}/cvs/${id}/builder/assistant/skills-nudge`,
+    ASSISTANT_EXTRACT: (id: string) => `${API}/cvs/${id}/builder/assistant/extract`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)

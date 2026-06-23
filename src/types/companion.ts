@@ -115,3 +115,33 @@ export interface NextStepsResponse {
   language: string;
   steps: NextStepItem[];
 }
+
+// ── CV Intake: POST /api/cvs/:id/builder/assistant/extract ──────────
+
+export interface ExtractRequest {
+  section: "experience";
+  narrative: string;
+  locale: "vi" | "en";
+  output_lang: "vi" | "en";
+}
+
+export interface ExtractedField<T = string> {
+  value: T;
+  found: boolean;
+  confidence: "high" | "low";
+  source_span: string;
+}
+
+export interface ExtractResponse {
+  fields: {
+    company: ExtractedField<string>;
+    position: ExtractedField<string>;
+    start: ExtractedField<string>;
+    end: ExtractedField<string>;
+    description: ExtractedField<string[]>;
+    achievements: ExtractedField<string[]>;
+  };
+  missing: string[];
+  degraded?: boolean;
+}
+

@@ -18,6 +18,7 @@ import {
   assistantAnalyzeApi,
   assistantRewriteApi,
   assistantSkillsNudgeApi,
+  assistantExtractApi,
 } from "@/api/cv/builder";
 import { requireSession } from "@/services/diagnosis.service";
 import type {
@@ -26,6 +27,8 @@ import type {
   AssistantRewriteResponse,
   CvAssistantTurn,
   SkillsNudgeItem,
+  ExtractRequest,
+  ExtractResponse,
 } from "@/types/companion";
 import type {
   Certification,
@@ -328,4 +331,13 @@ export async function assistantSkillsNudge(
 ): Promise<SkillsNudgeItem[]> {
   requireSession();
   return assistantSkillsNudgeApi(draftId, lang);
+}
+
+/** Narrative extraction: user kể chuyện → AI trích field (LLM). */
+export async function assistantExtract(
+  draftId: string,
+  input: ExtractRequest,
+): Promise<ExtractResponse> {
+  requireSession();
+  return assistantExtractApi(draftId, input);
 }

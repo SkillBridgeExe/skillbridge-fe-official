@@ -18,6 +18,8 @@ import type {
   AssistantRewriteResponse,
   CvAssistantTurn,
   SkillsNudgeItem,
+  ExtractRequest,
+  ExtractResponse,
 } from "@/types/companion";
 import { CV_AI_TIMEOUT_MS } from "./upload";
 
@@ -150,6 +152,23 @@ export async function assistantSkillsNudgeApi(
       timeout: 15_000,
     }),
     "Failed to fetch skills nudge.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/assistant/extract — narrative → field extraction (LLM → timeout dài).
+ * CvIntakeSkill: user kể chuyện → AI trích field.
+ */
+export async function assistantExtractApi(
+  draftId: string,
+  input: ExtractRequest,
+): Promise<ExtractResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<ExtractResponse>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_EXTRACT(draftId), input, {
+      timeout: CV_AI_TIMEOUT_MS,
+    }),
+    "Failed to extract fields from narrative.",
   );
   return envelope.data;
 }
