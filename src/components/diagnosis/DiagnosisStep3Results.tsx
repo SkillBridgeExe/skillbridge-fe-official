@@ -267,9 +267,19 @@ export function DiagnosisStep3Results() {
   const nextStepsQuery = useNextStepsQuery(jdMatch?.matchId, nextStepsLang);
   const topStep = pickTopNextStep(nextStepsQuery.data?.steps ?? []);
 
+  /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
+     yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
+     results effect, and `activateContext` clobbers the already-active prove-it bubble (the store's
+     `priority` field is inert for manually-activated contexts). */
+  const provedItem = pickTopProveIt(
+    jdMatch?.hardSkills ?? [],
+    jdMatch?.softSkills ?? [],
+    reviewData?.evidence_ledger,
+  );
+
   useEffect(() => {
     const store = useCompanionStore.getState();
-    if (!topStep) {
+    if (!topStep || provedItem) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -296,15 +306,9 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:results");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topStep?.canonical, topStep?.action]);
+  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical]);
 
-  /* ── Companion: Prove-it coach (#13) — higher priority than next-step ── */
-  const provedItem = pickTopProveIt(
-    jdMatch?.hardSkills ?? [],
-    jdMatch?.softSkills ?? [],
-    reviewData?.evidence_ledger,
-  );
-
+  /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
   useEffect(() => {
     const store = useCompanionStore.getState();
     if (!provedItem) {
