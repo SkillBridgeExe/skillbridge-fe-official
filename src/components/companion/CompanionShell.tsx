@@ -111,6 +111,12 @@ export function CompanionShell() {
   // so the WHOLE unit (bubble + dolphin) stays on-screen near a viewport edge.
   const { refs, floatingStyles } = useFloating({
     placement: "right-start",
+    // CRITICAL: position via top/left, NOT transform. This element is also a
+    // framer `motion.div` with `drag`, which OWNS the CSS `transform` (its x/y
+    // motion values). If Floating UI also wrote `transform` (the default), framer
+    // would clobber it → the anchored unit collapses to translate(0,0) ≈ top-left
+    // instead of sitting beside the card. top/left and framer's transform coexist.
+    transform: false,
     middleware: [
       offset(12),
       flip(),
@@ -225,12 +231,15 @@ export function CompanionShell() {
         }}
         style={
           anchored
-            ? // Anchored: Floating UI owns positioning (its own `transform`). Do
-              // NOT pass x/y here or framer's transform would clobber it.
+            ? // Anchored: Floating UI owns positioning via top/left (transform:false).
               { ...floatingStyles, zIndex: 70, touchAction: "none" }
-            : // Manual/fallback: fixed bottom-right; framer drives x/y so a parked
-              // unit stays where it was dropped.
-              { x: dragX, y: dragY, touchAction: "none" }
+            : positionMode === "manual" || isDragging
+              ? // Manual: the user dragged/parked the unit → framer drives x/y so it
+                // stays where it was dropped (fixed bottom-right + the drag offset).
+                { x: dragX, y: dragY, touchAction: "none" }
+              : // Pure fallback (no anchor, never dragged) → CLEAN bottom-right with
+                // NO stale drag offset (a leftover offset would push it off-screen).
+                { touchAction: "none" }
         }
         className={
           anchored
@@ -243,11 +252,6 @@ export function CompanionShell() {
           {showBubble && (
             <motion.div
               key="companion-bubble"
-              ref={bubbleRef}
-              role="dialog"
-              aria-live="polite"
-              aria-label="Companion assistant"
-              tabIndex={-1}
               // Pointer interactions inside the bubble must NOT bubble up to the
               // drag-enabled unit (extra safety on top of dragListener={false}).
               onPointerDown={(e) => e.stopPropagation()}
@@ -255,15 +259,26 @@ export function CompanionShell() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-[min(360px,90vw)] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
             >
-              <button
-                onClick={() => dismissActive()}
-                className="float-right text-[#787774] hover:text-[#2F3437] transition-colors p-1 rounded"
-                aria-label="Close"
+              {/* The dialog box is an INNER plain div carrying ref/role/aria —
+                  NOT the AnimatePresence-child motion.div. framer's PopChild reads
+                  `.ref` off its direct child; a ref there triggers React's
+                  "`ref` is not a prop" console error (deprecated in React 18.3+). */}
+              <div
+                ref={bubbleRef}
+                role="dialog"
+                aria-live="polite"
+                aria-label="Companion assistant"
+                tabIndex={-1}
+                className="w-[min(360px,90vw)] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
               >
-                <X className="w-4 h-4" />
-              </button>
+                <button
+                  onClick={() => dismissActive()}
+                  className="float-right text-[#787774] hover:text-[#2F3437] transition-colors p-1 rounded"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
 
               {/* ── cv_builder ── */}
               {turn?.skill === "cv_builder" && (
@@ -338,6 +353,7 @@ export function CompanionShell() {
                   onSnooze={turn.props.onSnooze as () => void}
                 />
               )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
