@@ -14,7 +14,8 @@ export type CompanionSkill =
   | "diagnosis_review"
   | "diagnosis_upload"
   | "diagnosis_progress"
-  | "diagnosis_element_issue";
+  | "diagnosis_element_issue"
+  | "diagnosis_commentary";
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
 export type IssueDismissMode = "once" | "snooze" | "intentional";

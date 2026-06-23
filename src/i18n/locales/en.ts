@@ -1936,6 +1936,25 @@ export default {
         title: "Score breakdown",
         covered: "Covered",
         notCovered: "Not covered",
+        // Phase A commentary — STATIC templates that wrap only the real band/number;
+        // the rationale + tips are rendered VERBATIM from reviewData by the skill.
+        explain: {
+          what: "Here's what this score means: {{band}}.",
+          tipsLabel: "Tips for this area",
+          strong: "This area is strong — {{band}}.",
+          watch: "This area is okay but worth a look — {{band}}.",
+          priority: "This area needs attention first — {{band}}.",
+        },
+      },
+      // Phase A praise — STATIC celebratory templates that wrap only the real
+      // overall number; the band scoreMsg + biggest-fix line stay VERBATIM.
+      praise: {
+        what: "About your overall CV score",
+        biggestFixLabel: "Biggest fix first:",
+        excellent: "Outstanding — your CV scores {{score}}/100. This already beats most of the screening bar.",
+        good: "Nice work — your CV scores {{score}}/100. It's competitive with a little polish left.",
+        fair: "Solid start — your CV scores {{score}}/100. A few focused fixes will lift it.",
+        low: "Your CV scores {{score}}/100. Let's tackle the biggest fix first.",
       },
     },
     skillsNudge: {

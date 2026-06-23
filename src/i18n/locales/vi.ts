@@ -1930,6 +1930,25 @@ export default {
         title: "Chi tiết điểm khớp",
         covered: "Đã đáp ứng",
         notCovered: "Chưa đáp ứng",
+        // Phase A commentary — template TĨNH chỉ bọc band/số thật; rationale + tips
+        // được render NGUYÊN VĂN từ reviewData bởi skill.
+        explain: {
+          what: "Điểm này nghĩa là: {{band}}.",
+          tipsLabel: "Gợi ý cho mục này",
+          strong: "Mục này đang mạnh — {{band}}.",
+          watch: "Mục này ổn nhưng nên xem lại — {{band}}.",
+          priority: "Mục này cần ưu tiên sửa trước — {{band}}.",
+        },
+      },
+      // Phase A praise — template TĨNH chúc mừng chỉ bọc số tổng thật; band scoreMsg
+      // và dòng việc-cần-sửa giữ NGUYÊN VĂN.
+      praise: {
+        what: "Về điểm tổng CV của bạn",
+        biggestFixLabel: "Sửa trước việc lớn nhất:",
+        excellent: "Xuất sắc — CV đạt {{score}}/100. Mức này đã vượt phần lớn vòng lọc.",
+        good: "Tốt lắm — CV đạt {{score}}/100. Khá cạnh tranh, chỉ cần trau chuốt thêm.",
+        fair: "Khởi đầu vững — CV đạt {{score}}/100. Vài chỉnh sửa trọng tâm sẽ nâng điểm.",
+        low: "CV đạt {{score}}/100. Cùng xử lý việc lớn nhất trước nhé.",
       },
     },
     skillsNudge: {

@@ -2,7 +2,7 @@
 // Pure selectors for Diagnosis Companion Phase 2 (#16).
 // Checks CV document completeness and identifies the top gap.
 
-import type { CanonicalCvDocument } from "@shared/api";
+import type { CanonicalCvDocument, CvIssue, CvReviewData } from "@shared/api";
 
 export type CompletenessGap =
   | "no_experience"
@@ -39,6 +39,29 @@ export function pickTopCompletenessGap(doc: CanonicalCvDocument | null | undefin
   }
 
   return null;
+}
+
+/**
+ * Per-dimension issue slice — the SINGLE source of truth for how the dimension
+ * cards distribute `reviewData.issues` across the 4 dimension cards. Both the
+ * card (DiagnosisStep2Review → DimensionCard) and the commentary detector
+ * (detectExplainDimension) call this, so the tips the companion shows are
+ * byte-identical to the tips the card shows (anti-fabrication: same verbatim
+ * `CvIssue.detail`/`.suggestion`, never re-composed).
+ *
+ * Mirrors the historical inline logic exactly: ceil-chunk `issues` into
+ * `dimensions.length` consecutive buckets; bucket `i` is `issues[i*per .. ]`.
+ * When there are no dimensions, the whole list is one bucket (index 0).
+ */
+export function dimensionIssueSlice(
+  reviewData: CvReviewData | null | undefined,
+  dimIndex: number,
+): CvIssue[] {
+  const allIssues = reviewData?.issues ?? [];
+  const dimCount = reviewData?.dimensions?.length ?? 0;
+  if (dimCount <= 0) return dimIndex === 0 ? allIssues : [];
+  const perDim = Math.ceil(allIssues.length / dimCount);
+  return allIssues.slice(dimIndex * perDim, (dimIndex + 1) * perDim);
 }
 
 /**

@@ -26,6 +26,7 @@ import { useCompanionStore, visibleIssues } from "@/store/useCompanionStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import {
   collectElementIssues,
+  isCommentaryKind,
   pickActiveResolvableIssue,
   type ElementIssue,
   type ElementIssuesInput,
@@ -225,6 +226,25 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
           anchorInView,
         );
         const issue = fresh ?? active;
+        // Phase A commentary kinds render via DiagnosisCommentarySkill (praise +
+        // dimension-explain); real problem kinds keep the ElementIssueSkill turn.
+        // A real problem ALWAYS out-ranks commentary in the severity sort, so the
+        // commentary skill only surfaces when the active issue IS commentary.
+        if (issue && isCommentaryKind(issue.kind)) {
+          return {
+            skill: "diagnosis_commentary",
+            props: {
+              issue,
+              onCta: () => runCta(issue.ctaKind),
+              // Light dismiss for explain_dimension only; praise carries no dismiss
+              // (it's not a problem). The renderer hides the control when undefined.
+              onDismiss:
+                issue.kind === "explain_dimension"
+                  ? () => useCompanionStore.getState().dismissIssue(issue.id, "once")
+                  : undefined,
+            },
+          };
+        }
         return {
           skill: "diagnosis_element_issue",
           props: {

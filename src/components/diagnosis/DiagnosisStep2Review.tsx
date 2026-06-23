@@ -22,7 +22,7 @@ import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
-import { pickTopCompletenessGap, completenessSummary } from "@/components/companion/skills/diagnosis-review";
+import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
@@ -100,6 +100,7 @@ function DimensionCard({
 
   return (
     <div
+      id={`dim-${dim.key}`}
       className={cn(CARD, "overflow-hidden border-l-4 animate-in fade-in duration-500", tone.rail)}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
     >
@@ -301,13 +302,12 @@ export function DiagnosisStep2Review() {
 
   const scoreLabel = t("review.heroTitle");
 
-  /* ── Distribute issues across dim cards ── */
+  /* ── Distribute issues across dim cards (shared helper = single source of
+     truth; the companion's commentary reuses dimensionIssueSlice so its tips are
+     byte-identical to these cards'). ── */
   const allIssues = reviewData?.issues ?? [];
   const issueGroups: CvIssue[][] = dimensions.length > 0
-    ? dimensions.map((_, i) => {
-        const perDim = Math.ceil(allIssues.length / dimensions.length);
-        return allIssues.slice(i * perDim, (i + 1) * perDim);
-      })
+    ? dimensions.map((_, i) => dimensionIssueSlice(reviewData, i))
     : [allIssues];
 
   const [rawOpen, setRawOpen] = useState(false);

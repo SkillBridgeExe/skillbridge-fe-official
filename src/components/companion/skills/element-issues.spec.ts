@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectElementIssues,
+  isCommentaryKind,
   pickActiveResolvableIssue,
   type ElementIssue,
 } from "./element-issues";
@@ -14,6 +15,9 @@ import type {
   CanonicalCvDocument,
   ExtractionQuality,
   JdIntelligenceItem,
+  ReviewDimension,
+  CvIssue,
+  TopSummary,
 } from "@shared/api";
 
 // ── fixture builders (as-casts, like prove-it.spec.ts / diagnosis-review.spec.ts) ──
@@ -66,6 +70,15 @@ const review = (over: Partial<CvReviewData>): CvReviewData =>
     document: doc({}),
     ...over,
   }) as unknown as CvReviewData;
+
+const dim = (over: Partial<ReviewDimension>): ReviewDimension =>
+  ({ key: "action_verbs", score20: 16, rationale: "Strong action verbs throughout.", ...over }) as ReviewDimension;
+
+const cvIssue = (over: Partial<CvIssue>): CvIssue =>
+  ({ severity: "medium", detail: "Add metrics", suggestion: "Quantify the result", ...over }) as unknown as CvIssue;
+
+const topSummary = (over: Partial<TopSummary>): TopSummary =>
+  ({ headline: "Fix these first", prioritized_actions: [], ...over }) as TopSummary;
 
 const extractionQuality = (over: Partial<ExtractionQuality>): ExtractionQuality =>
   ({
@@ -151,14 +164,21 @@ const cleanInput = () => ({
   gapReport: gapReport({ gap_items: [gapItem({ cv_status: "matched" })] }),
 });
 
+// Problem kinds = everything EXCEPT the Phase A grounded-commentary kinds.
+// Commentary (explain_dimension / praise_overall) is additive: it comments on a
+// clean analysis (e.g. praise a high score), so the "no problems" spine asserts
+// only the problem detectors are empty.
+const PROBLEM_KINDS = (issues: ElementIssue[]) =>
+  issues.filter((i) => i.kind !== "explain_dimension" && i.kind !== "praise_overall");
+
 // ── honest-empty (the spine) ──
 
 describe("collectElementIssues — honest-empty", () => {
-  it("returns [] for a fully clean CV (no LLM, no fabrication)", () => {
-    expect(collectElementIssues(cleanInput())).toEqual([]);
+  it("returns no PROBLEM issues for a fully clean CV (no LLM, no fabrication)", () => {
+    expect(PROBLEM_KINDS(collectElementIssues(cleanInput()))).toEqual([]);
   });
 
-  it("returns [] when all inputs are null", () => {
+  it("returns [] when all inputs are null (no reviewData → no commentary either)", () => {
     expect(collectElementIssues({ jdMatch: null, reviewData: null, gapReport: null })).toEqual([]);
   });
 });
@@ -420,5 +440,180 @@ describe("pickActiveResolvableIssue", () => {
     const visible = [mk("worst", "off"), mk("mid", "on-1"), mk("low", "on-2")];
     const active = pickActiveResolvableIssue(visible, (id) => id.startsWith("on-"));
     expect(active?.id).toBe("mid");
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Phase A — proactive grounded commentary (praise + per-dimension explain)
+// ════════════════════════════════════════════════════════════════════════════
+
+// (a) commentary severity is STRICTLY below every real issue → a gap always wins.
+
+describe("Phase A — commentary ranks below every real issue", () => {
+  it("commentary severities are strictly below every real (non-commentary) issue", () => {
+    const issues = collectElementIssues({
+      jdMatch: jdMatch({ hardSkills: [skill({ canonical_name: "react", status: "present" })] }),
+      reviewData: review({
+        overallScore: 35, // low → praise_overall fires with a CTA
+        dimensions: [dim({ key: "action_verbs", score20: 8 })],
+        evidence_ledger: ledger(["react", "listed_only", "Chỉ liệt kê"]),
+        extraction_quality: extractionQuality({ confidence: "low" }),
+        document: doc({ experience: [] }), // missing_section problem
+        top_summary: topSummary({ prioritized_actions: ["Add a project"] }),
+      }),
+      gapReport: gapReport({ gap_items: [gapItem({ cv_status: "missing", severity: 5 })] }),
+    });
+    const commentary = issues.filter((i) => isCommentaryKind(i.kind));
+    const problems = issues.filter((i) => !isCommentaryKind(i.kind));
+    expect(commentary.length).toBeGreaterThan(0);
+    expect(problems.length).toBeGreaterThan(0);
+    const maxCommentary = Math.max(...commentary.map((i) => i.severity));
+    const minProblem = Math.min(...problems.map((i) => i.severity));
+    // Even the LOWEST-severity real problem (gap severity 5, parse_quality rank 1)
+    // out-ranks the HIGHEST commentary → a real issue always wins the pick.
+    expect(maxCommentary).toBeLessThan(minProblem);
+  });
+
+  it("ranks commentary last in the severity-sorted queue", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({
+        overallScore: 80,
+        dimensions: [dim({ key: "skills_relevance", score20: 12 })],
+      }),
+      gapReport: gapReport({ gap_items: [gapItem({ cv_status: "missing", severity: 1 })] }),
+    });
+    const lastKinds = issues.slice(-2).map((i) => i.kind);
+    expect(lastKinds.every((k) => isCommentaryKind(k))).toBe(true);
+  });
+});
+
+// (b) detectExplainDimension emits verbatim rationale + real score20, nothing composed.
+
+describe("Phase A — detectExplainDimension", () => {
+  it("emits ONE explain item per dimension with VERBATIM rationale + real score20", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({
+        dimensions: [
+          dim({ key: "action_verbs", score20: 16, rationale: "Mạnh động từ hành động." }),
+          dim({ key: "education", score20: 9, rationale: "Học vấn ổn nhưng thiếu khoá học." }),
+        ],
+        issues: [],
+      }),
+      gapReport: null,
+    });
+    const explains = issues.filter((i) => i.kind === "explain_dimension");
+    expect(explains).toHaveLength(2);
+
+    const av = explains.find((i) => i.id === "commentary:dim:action_verbs")!;
+    expect(av.anchorId).toBe("dim-action_verbs");
+    expect(av.why).toBe("Mạnh động từ hành động."); // VERBATIM rationale
+    expect(av.whyKey).toBeNull(); // rationale IS the source — no static substitute
+    expect(av.score20).toBe(16); // real number, not computed
+    expect(av.band).toBe("strong"); // 16×5 = 80% ≥ 70 → strong (same thresholds as card)
+    expect(av.ctaKind).toBeNull();
+
+    const edu = explains.find((i) => i.id === "commentary:dim:education")!;
+    expect(edu.score20).toBe(9); // 9×5 = 45% < 50 → priority
+    expect(edu.band).toBe("priority");
+    expect(edu.why).toBe("Học vấn ổn nhưng thiếu khoá học.");
+  });
+
+  it("carries the SAME tip slice the card shows (byte-identical, verbatim)", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({
+        dimensions: [dim({ key: "action_verbs" }), dim({ key: "skills_relevance" })],
+        // 2 dims, 2 issues → ceil(2/2)=1 per dim → dim0=[i0], dim1=[i1].
+        issues: [
+          cvIssue({ detail: "Tip ZERO", suggestion: "Sug ZERO" }),
+          cvIssue({ detail: "Tip ONE", suggestion: "Sug ONE" }),
+        ],
+      }),
+      gapReport: null,
+    });
+    const av = issues.find((i) => i.id === "commentary:dim:action_verbs")!;
+    const sr = issues.find((i) => i.id === "commentary:dim:skills_relevance")!;
+    expect(av.tips?.map((tp) => tp.detail)).toEqual(["Tip ZERO"]);
+    expect(sr.tips?.map((tp) => tp.detail)).toEqual(["Tip ONE"]);
+    // Tips are the raw CvIssue rows — detail + suggestion verbatim, not re-composed.
+    expect(av.tips?.[0].suggestion).toBe("Sug ZERO");
+  });
+
+  it("honest-empty: no dimensions → no explain items", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({ dimensions: undefined }),
+      gapReport: null,
+    });
+    expect(issues.filter((i) => i.kind === "explain_dimension")).toEqual([]);
+  });
+});
+
+// (c) detectOverallCommentary branches on the real overallScore + carries the
+//     real biggest-fix verbatim.
+
+describe("Phase A — detectOverallCommentary", () => {
+  it("praises a high overall score with no CTA (real number, verbatim band key)", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({ overallScore: 82, dimensions: undefined }),
+      gapReport: null,
+    });
+    const praise = issues.find((i) => i.kind === "praise_overall")!;
+    expect(praise.id).toBe("commentary:overall");
+    expect(praise.anchorId).toBe(""); // whole-doc → corner fallback
+    expect(praise.overallScore).toBe(82); // real number, not computed
+    expect(praise.overallBand).toBe("excellent");
+    expect(praise.whyKey).toBe("review.scoreMsg.excellent"); // existing key, verbatim
+    expect(praise.ctaKind).toBeNull(); // high band = pure praise, no CTA
+    expect(praise.biggestFix).toBeUndefined();
+  });
+
+  it("branches by the SAME thresholds as the card (good / fair / low)", () => {
+    const bandOf = (overallScore: number) =>
+      collectElementIssues({ jdMatch: null, reviewData: review({ overallScore, dimensions: undefined }), gapReport: null })
+        .find((i) => i.kind === "praise_overall")!.overallBand;
+    expect(bandOf(70)).toBe("excellent");
+    expect(bandOf(60)).toBe("good");
+    expect(bandOf(45)).toBe("fair");
+    expect(bandOf(30)).toBe("low");
+  });
+
+  it("low band carries the real biggest-fix VERBATIM + a roadmap CTA", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({
+        overallScore: 28,
+        dimensions: undefined,
+        top_summary: topSummary({ prioritized_actions: ["Bổ sung 1 dự án thực tế", "Khác"] }),
+      }),
+      gapReport: null,
+    });
+    const praise = issues.find((i) => i.kind === "praise_overall")!;
+    expect(praise.overallBand).toBe("low");
+    expect(praise.biggestFix).toBe("Bổ sung 1 dự án thực tế"); // VERBATIM prioritized_actions[0]
+    expect(praise.ctaKind).toBe("roadmap");
+  });
+
+  it("low band with NO prioritized actions → no biggest-fix, no CTA (honest-empty)", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({ overallScore: 20, dimensions: undefined, top_summary: topSummary({ prioritized_actions: [] }) }),
+      gapReport: null,
+    });
+    const praise = issues.find((i) => i.kind === "praise_overall")!;
+    expect(praise.biggestFix).toBeUndefined();
+    expect(praise.ctaKind).toBeNull();
+  });
+
+  it("honest-empty: no overallScore → no praise item", () => {
+    const issues = collectElementIssues({
+      jdMatch: null,
+      reviewData: review({ overallScore: undefined as unknown as number, dimensions: undefined }),
+      gapReport: null,
+    });
+    expect(issues.filter((i) => i.kind === "praise_overall")).toEqual([]);
   });
 });

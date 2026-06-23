@@ -37,6 +37,7 @@ import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
 import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
+import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
 import type { ElementIssue } from "./skills/element-issues";
 
 const POSE: Record<string, MascotState> = {
@@ -187,7 +188,8 @@ export function CompanionShell() {
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
     || turn?.skill === "diagnosis_progress"
-    || turn?.skill === "diagnosis_element_issue";
+    || turn?.skill === "diagnosis_element_issue"
+    || turn?.skill === "diagnosis_commentary";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
@@ -407,6 +409,15 @@ export function CompanionShell() {
                   onCta={turn.props.onCta as () => void}
                   onDismiss={turn.props.onDismiss as () => void}
                   onSnooze={turn.props.onSnooze as () => void}
+                />
+              )}
+
+              {/* ── diagnosis_commentary (Phase A grounded commentary) ── */}
+              {turn?.skill === "diagnosis_commentary" && (
+                <DiagnosisCommentarySkill
+                  issue={turn.props.issue as ElementIssue}
+                  onCta={turn.props.onCta as () => void}
+                  onDismiss={turn.props.onDismiss as (() => void) | undefined}
                 />
               )}
               </div>
