@@ -82,6 +82,34 @@ export interface InterviewResultViewModel {
 }
 
 export type InterviewQuestionBankSourceKind = "curated" | "fallback";
+
+export interface InterviewQuestionMetadataInput {
+  topicPhase?: string | null;
+  skillCanonical?: string | null;
+  currentThread?: string | null;
+  questionBankKey?: string | null;
+}
+
+const CURATED_QUESTION_BANK_ROLE_KEYS = new Set([
+  "backend_developer",
+  "frontend_developer",
+  "fullstack_developer",
+  "devops_engineer",
+  "qa_engineer",
+  "qa_tester",
+]);
+
+const CURATED_QUESTION_BANK_ROLE_TOKENS = new Set([
+  "backend",
+  "frontend",
+  "fullstack",
+  "devops",
+  "sre",
+  "qa",
+  "tester",
+  "sdet",
+]);
+
 export type InterviewHistoryState =
   | "signed-out"
   | "loading"
@@ -129,26 +157,43 @@ export function getInterviewQuestionBankSourceKind(
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
-  if (
-    normalized === "backend_developer" ||
-    normalized === "frontend_developer" ||
-    normalized === "fullstack_developer" ||
-    normalized === "devops_engineer" ||
-    normalized === "qa_engineer" ||
-    normalized === "qa_tester"
-  ) {
+  if (CURATED_QUESTION_BANK_ROLE_KEYS.has(normalized)) {
     return "curated";
   }
 
+  const roleTokens = new Set(normalized.split("_").filter(Boolean));
+  if (roleTokens.has("back") && roleTokens.has("end")) {
+    return "curated";
+  }
+  if (roleTokens.has("front") && roleTokens.has("end")) {
+    return "curated";
+  }
+  if (roleTokens.has("full") && roleTokens.has("stack")) {
+    return "curated";
+  }
   if (
-    /\bbackend\b|\bfrontend\b|\bfullstack\b|\bdevops\b|\bsre\b|\bqa\b|\btester\b|\bsdet\b/.test(
-      normalized,
+    [...CURATED_QUESTION_BANK_ROLE_TOKENS].some((token) =>
+      roleTokens.has(token),
     )
   ) {
     return "curated";
   }
 
   return "fallback";
+}
+
+export function hasVisibleInterviewQuestionMetadata(
+  metadata: InterviewQuestionMetadataInput | null | undefined,
+): boolean {
+  return Boolean(
+    metadata &&
+    [
+      metadata.topicPhase,
+      metadata.skillCanonical,
+      metadata.currentThread,
+      metadata.questionBankKey,
+    ].some((value) => typeof value === "string" && value.trim().length > 0),
+  );
 }
 
 export function takeRecentInterviewSessions<T>(

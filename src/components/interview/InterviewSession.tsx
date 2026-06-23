@@ -25,6 +25,7 @@ import {
 import { type ChatMessage, type InterviewMode } from "./types";
 import {
   getInterviewModeLabelKey,
+  hasVisibleInterviewQuestionMetadata,
   type InterviewQuestionBankSourceKind,
 } from "./interview-view-model";
 
@@ -246,28 +247,29 @@ export function InterviewSession({
               <Progress value={progress} className="h-1.5" />
             )}
 
-            {currentQuestionMeta && questionMetaChips.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
-                <span className="font-bold uppercase tracking-wider text-slate-400">
-                  {t("interview.session.questionMeta.title")}
-                </span>
-                {questionMetaChips.map((chip) => (
-                  <span
-                    key={`${chip.label}-${chip.value}`}
-                    className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700"
-                  >
-                    {chip.label}: {chip.value}
+            {currentQuestionMeta &&
+              hasVisibleInterviewQuestionMetadata(currentQuestionMeta) && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+                  <span className="font-bold uppercase tracking-wider text-slate-400">
+                    {t("interview.session.questionMeta.title")}
                   </span>
-                ))}
-                {currentQuestionMeta.questionBankKey && (
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
-                    {t("interview.session.questionMeta.bankKey", {
-                      key: currentQuestionMeta.questionBankKey,
-                    })}
-                  </span>
-                )}
-              </div>
-            )}
+                  {questionMetaChips.map((chip) => (
+                    <span
+                      key={`${chip.label}-${chip.value}`}
+                      className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700"
+                    >
+                      {chip.label}: {chip.value}
+                    </span>
+                  ))}
+                  {currentQuestionMeta.questionBankKey && (
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                      {t("interview.session.questionMeta.bankKey", {
+                        key: currentQuestionMeta.questionBankKey,
+                      })}
+                    </span>
+                  )}
+                </div>
+              )}
 
             <div
               className={cn(

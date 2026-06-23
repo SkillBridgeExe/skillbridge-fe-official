@@ -275,6 +275,30 @@ describe("interview i18n keys", () => {
       }
     },
   );
+
+  it("uses Vietnamese labels for question bank metadata and rubric copy", () => {
+    const expectedViLabels = {
+      "common.interview.setup.questionBank.curated": "Bộ câu hỏi tuyển chọn",
+      "common.interview.setup.questionBank.fallback": "AI dự phòng",
+      "common.interview.setup.questionBank.curatedTitle":
+        "Bộ câu hỏi tuyển chọn",
+      "common.interview.session.questionMeta.curated": "Bộ câu hỏi tuyển chọn",
+      "common.interview.session.questionMeta.fallback": "AI dự phòng",
+      "common.interview.session.questionMeta.phase": "Giai đoạn",
+      "common.interview.session.questionMeta.skill": "Kỹ năng",
+      "common.interview.session.questionMeta.thread": "Chủ đề",
+      "common.interview.session.questionMeta.bankKey": "Mã câu hỏi: {{key}}",
+      "common.interview.results.weight": "trọng số",
+      "common.interview.results.devPlanItems": "Việc cần làm",
+      "common.interview.results.phase": "Giai đoạn",
+      "common.interview.results.skill": "Kỹ năng",
+      "common.interview.results.questionBankKey": "Mã câu hỏi: {{key}}",
+    } as const;
+
+    for (const [key, expected] of Object.entries(expectedViLabels)) {
+      expect(readPath(vi, key), key).toBe(expected);
+    }
+  });
 });
 
 function readPath(resource: unknown, key: string): unknown {

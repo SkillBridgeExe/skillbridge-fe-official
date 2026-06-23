@@ -15,6 +15,7 @@ import {
   getInterviewModeLabelKey,
   getInterviewQuestionBankSourceKind,
   getQuestionAudioErrorMessage,
+  hasVisibleInterviewQuestionMetadata,
   getRealtimeTokenFallbackReason,
   shouldRequestLiveClosingSignal,
   shouldRequestQuestionAudio,
@@ -427,6 +428,41 @@ describe("interview view model", () => {
     );
     expect(getInterviewQuestionBankSourceKind("qa_tester")).toBe("curated");
     expect(getInterviewQuestionBankSourceKind("data_analyst")).toBe("fallback");
+  });
+
+  it("keeps prefixed and specialized IT roles on the curated question-bank path", () => {
+    expect(getInterviewQuestionBankSourceKind("senior_backend_developer")).toBe(
+      "curated",
+    );
+    expect(getInterviewQuestionBankSourceKind("java_backend_engineer")).toBe(
+      "curated",
+    );
+    expect(getInterviewQuestionBankSourceKind("react_frontend")).toBe(
+      "curated",
+    );
+    expect(getInterviewQuestionBankSourceKind("platform_sre")).toBe("curated");
+    expect(getInterviewQuestionBankSourceKind("automation_sdet")).toBe(
+      "curated",
+    );
+  });
+
+  it("shows question metadata when only the question bank key is available", () => {
+    expect(
+      hasVisibleInterviewQuestionMetadata({
+        topicPhase: null,
+        skillCanonical: null,
+        currentThread: null,
+        questionBankKey: "backend-skill-rest-api-01",
+      }),
+    ).toBe(true);
+    expect(
+      hasVisibleInterviewQuestionMetadata({
+        topicPhase: null,
+        skillCanonical: null,
+        currentThread: null,
+        questionBankKey: null,
+      }),
+    ).toBe(false);
   });
 
   it("keeps guided mode labeled as voice when realtime transcription is not connected", () => {
