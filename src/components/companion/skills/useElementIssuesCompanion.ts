@@ -98,7 +98,13 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
   );
 
   // Recompute the active resolvable issue on queue change OR DOM mutation.
-  const visible = useCompanionStore(visibleIssues);
+  // Read imperatively from getState() (NOT a subscription): `visibleIssues` filters
+  // and returns a NEW array every call, so subscribing here (`useCompanionStore(visibleIssues)`)
+  // makes useSyncExternalStore see a changed snapshot on every render → infinite loop
+  // ("getSnapshot should be cached" / "Maximum update depth"). Re-renders are already
+  // driven by `visibleSig` (a stable string) + `resolveTick`, so this stays fresh.
+  void resolveTick;
+  const visible = visibleIssues(useCompanionStore.getState());
   const active = pickActiveResolvableIssue(visible, anchorResolves);
   // `resolveTick` participates so the memo below re-derives after a DOM change.
   void resolveTick;
