@@ -43,11 +43,20 @@ export interface TimeCommitment {
 }
 
 export interface LearningResource {
+  id?: string;
   title: string;
   url: string;
   type: 'youtube' | 'course' | 'article';
   duration?: string;
   platform?: string;
+  isInternal?: boolean;
+  lowConfidence?: boolean;
+  sourceType?: string;
+  outcomeType?: string;
+  proofOfCompletion?: string;
+  matchScore?: number;
+  qualityScore?: number;
+  freshnessScore?: number;
 }
 
 export interface LearningModule {

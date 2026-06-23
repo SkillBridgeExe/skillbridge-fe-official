@@ -736,54 +736,148 @@ export interface InterviewPlanResponse {
 }
 
 // Learning roadmap derived from a CV/JD match's GapReport (POST /api/cv-matches/:matchId/roadmap).
-export interface RoadmapCourse {
+export type RoadmapLanguagePref = "vi" | "en" | "both";
+
+export interface GenerateRoadmapFromMatchRequest {
+  available_days?: number;
+  hours_per_week?: number;
+  language_pref?: RoadmapLanguagePref;
+}
+
+export type LearningResourceSourceType =
+  | "course"
+  | "official_doc"
+  | "video"
+  | "exercise"
+  | "mini_project"
+  | "interview_drill"
+  | "cv_fix_task";
+
+export interface LearningResourceDto {
+  id: string;
+  source_type: LearningResourceSourceType;
+  title: string;
+  url?: string;
+  is_internal: boolean;
+  content_template_id?: string;
+  description?: string;
+  duration_minutes: number;
+  outcome_type: string;
+  proof_of_completion?: string;
+  match_score: number;
+  quality_score: number;
+  freshness_score: number;
+  low_confidence: boolean;
+}
+
+export interface RecommendedCourseDto {
   id: string;
   title: string;
-  url: string;
-  provider: string;
-  language: string;
-  duration_minutes: number;
-  rating: number;
-  is_free: boolean;
+  url?: string;
+  provider?: string;
+  duration_minutes?: number;
+  is_free?: boolean;
+  language?: string;
+  difficulty?: string;
+  rating?: number;
+  skills?: Array<{ skill_canonical_name: string; teaches_level: number }>;
+  match_score?: number;
 }
 
-export interface RoadmapPhase {
-  phase_name: string;
-  order: number;
-  weeks: number;
-  rationale: string;
-}
-
-export interface RoadmapStep {
+export interface LessonSectionContentDto {
+  id: string;
   title: string;
-  description: string;
-  step_order: number;
-  phase_order: number;
-  estimated_days: number;
-  skill_canonical_names: string[];
-  learning_objectives: string[];
-  recommended_courses: RoadmapCourse[];
+  body: string;
+  checklist: string[];
 }
 
-export interface RoadmapParsedResponse {
+export interface LessonQuizQuestionDto {
+  id: string;
+  question: string;
+  options: string[];
+  correct_option_index: number;
+  explanation: string;
+}
+
+export interface LessonExerciseContentDto {
+  id: string;
   title: string;
-  total_weeks: number;
-  phases: RoadmapPhase[];
-  steps: RoadmapStep[];
-  ai_summary: string;
-  ai_advice: string;
-  uncovered_skills: string[];
-  skills_without_courses: string[];
-  /** True when there were no LEARNING gaps to build a roadmap from (honest empty-state, no LLM call). */
-  no_learning_gaps?: boolean;
+  prompt: string;
+  acceptance_criteria: string[];
+  proof_of_completion: string;
+}
+
+export interface SkillBridgeLessonContentDto {
+  skill_canonical: string;
+  title: string;
+  summary: string;
+  license_type: "skillbridge_original" | "official_reference" | "link_only";
+  reuse_policy: "full_reuse_allowed" | "summary_only" | "link_only";
+  source_resource_ids: string[];
+  sections: LessonSectionContentDto[];
+  quiz: LessonQuizQuestionDto[];
+  exercises: LessonExerciseContentDto[];
+}
+
+export interface ComposedRoadmapStepDto {
+  skill_canonical: string;
+  display_name: string;
+  strategy: "deep_build" | "crash_prep";
+  estimated_hours: number;
+  priority: number;
+  resources: LearningResourceDto[];
+  recommended_courses?: RecommendedCourseDto[];
+  lesson_content?: SkillBridgeLessonContentDto;
+}
+
+export interface NotFeasibleItemDto {
+  skill_canonical: string;
+  display_name: string;
+  reason?: string;
+  estimated_hours?: number;
+  required_hours?: number;
 }
 
 export interface RoadmapFromMatchResponse {
-  ai_request_id: string;
-  parsed_response: RoadmapParsedResponse;
-  retrieval_log_id: string | null;
-  retrieved_chunks_count: number;
-  token_usage: number;
+  budget_hours: number;
+  steps: ComposedRoadmapStepDto[];
+  not_feasible_items: NotFeasibleItemDto[];
+  ai_summary: string;
+  no_learning_gaps?: boolean;
+}
+
+export interface LearningSessionProgressDto {
+  session_id: string;
+  checked_checklist_items: Record<string, string[]>;
+  exercise_proofs: Record<string, string>;
+  updated_at: string | null;
+}
+
+export interface UpsertLearningSessionProgressRequest {
+  checked_checklist_items: Record<string, string[]>;
+  exercise_proofs: Record<string, string>;
+}
+
+export interface LearningChatRequest {
+  message: string;
+  conversationId?: string;
+  language?: "vi" | "en";
+}
+
+export interface LearningChatMessageDto {
+  id?: string;
+  role: "assistant" | "user";
+  message?: string;
+  text?: string;
+  createdAt?: string;
+  citations?: Array<{ title: string; url?: string }>;
+}
+
+export interface LearningChatResponse {
+  conversationId: string;
+  message: string;
+  citations?: Array<{ title: string; url?: string }>;
+  history?: LearningChatMessageDto[];
 }
 
 export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";

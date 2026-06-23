@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -11,17 +12,19 @@ import {
   ChevronRight,
   ChevronDown,
   Circle,
+  ExternalLink,
 } from "lucide-react";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
-import { SKILL_COLORS } from "@/lib/mock-data/learning";
+import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
 
 const statusConfig = {
-  completed:     { label: "Completed", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
-  "in-progress": { label: "In Progress",     icon: PlayCircle,   color: "text-primary bg-primary/10" },
-  locked:        { label: "Locked",   icon: Lock,         color: "text-slate-400 bg-slate-50" },
+  completed: { labelKey: "learning.status.completed", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
+  "in-progress": { labelKey: "learning.status.inProgress", icon: PlayCircle, color: "text-primary bg-primary/10" },
+  locked: { labelKey: "learning.status.locked", icon: Lock, color: "text-slate-400 bg-slate-50" },
 } as const;
 
 export function ListRoadmapView() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const weeks = useActiveWeekPlans();
@@ -49,10 +52,16 @@ export function ListRoadmapView() {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-bold text-slate-900">{week.moduleTitle}</h3>
-                <p className="text-xs text-slate-400">Week {week.weekNumber} · {completedCount}/{week.sessions.length} completed</p>
+                <p className="text-xs text-slate-400">
+                  {t("learning.common.week", { number: week.weekNumber })} -{" "}
+                  {t("learning.common.sectionsCompleted", { done: completedCount, total: week.sessions.length })}
+                </p>
               </div>
               <div className="text-xs text-slate-400 font-medium">
-                {Math.round(week.sessions.reduce((sum, s) => sum + s.stars, 0))}/{week.sessions.reduce((sum, s) => sum + s.maxStars, 0)} ⭐
+                {t("learning.common.starProgress", {
+                  earned: Math.round(week.sessions.reduce((sum, s) => sum + s.stars, 0)),
+                  total: week.sessions.reduce((sum, s) => sum + s.maxStars, 0),
+                })}
               </div>
             </div>
 
@@ -63,7 +72,7 @@ export function ListRoadmapView() {
                 const isInProgress = session.status === "in-progress";
                 const config = statusConfig[session.status];
                 const StatusIcon = config.icon;
-                const colors = SKILL_COLORS[session.skill] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" };
+                const colors = SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR;
                 const completedSections = session.sections.filter(s => s.completed).length;
                 const isExpanded = expandedSession === session.id;
 
@@ -107,7 +116,7 @@ export function ListRoadmapView() {
                           </Badge>
                           <span className={cn("inline-flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5", config.color)}>
                             <StatusIcon className="w-3 h-3" />
-                            {config.label}
+                            {t(config.labelKey)}
                           </span>
                         </div>
 
@@ -118,9 +127,9 @@ export function ListRoadmapView() {
                         <div className="flex items-center gap-4 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {session.estimatedMinutes} min
+                            {t("learning.common.mins", { count: session.estimatedMinutes })}
                           </span>
-                          <span>{completedSections}/{session.sections.length} sections</span>
+                          <span>{t("learning.common.sections", { count: `${completedSections}/${session.sections.length}` })}</span>
                           <div className="flex items-center gap-0.5">
                             {Array.from({ length: session.maxStars }).map((_, i) => (
                               <Star key={i} className={cn("w-3 h-3", i < session.stars ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200")} />
@@ -170,11 +179,52 @@ export function ListRoadmapView() {
                         ))}
 
                         {/* Enter session button */}
+                        {session.resources.length > 0 && (
+                          <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-white p-3">
+                            {session.resources.map((resource) => (
+                              <div key={`${session.id}-${resource.title}`} className="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="truncate text-xs font-bold text-slate-800">{resource.title}</p>
+                                    {resource.lowConfidence && (
+                                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                        {t("learning.common.pendingSource")}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-1 text-[11px] font-medium text-slate-500">
+                                    {resource.platform ?? resource.type}
+                                    {resource.duration ? ` - ${resource.duration}` : ""}
+                                    {resource.proofOfCompletion ? ` - ${resource.proofOfCompletion}` : ""}
+                                  </p>
+                                </div>
+                                {resource.isInternal ? (
+                                  <button
+                                    onClick={() => navigate(`/learning/session/${session.id}`)}
+                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90"
+                                  >
+                                    {t("learning.common.startPractice")}
+                                  </button>
+                                ) : resource.url ? (
+                                  <a
+                                    href={resource.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-primary/30 hover:text-primary"
+                                  >
+                                    {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <button
                           onClick={() => navigate(`/learning/session/${session.id}`)}
                           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors mt-2"
                         >
-                          Enter Session
+                          {t("learning.common.enterSession")}
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>

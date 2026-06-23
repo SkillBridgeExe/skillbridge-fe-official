@@ -92,6 +92,13 @@ export const API_ROUTES = {
     PROGRESS: (id: string) => `${API}/roadmaps/${id}/progress`,
   },
 
+  LEARNING: {
+    CHAT: `${API}/learning/chat`,
+    CHAT_HISTORY: (conversationId: string) => `${API}/learning/chat/${conversationId}`,
+    SESSION_PROGRESS: (sessionId: string) =>
+      `${API}/learning/sessions/${encodeURIComponent(sessionId)}/progress`,
+  },
+
   BILLING: {
     PLANS: `${API}/billing/plans`,
     CHECKOUT: `${API}/billing/checkout`,

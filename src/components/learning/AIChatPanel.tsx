@@ -1,33 +1,14 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Bot, User, Sparkles, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sendLearningChatMessage } from "@/services/learning-roadmap.service";
 
 interface ChatMessage {
   id: string;
   role: "assistant" | "user";
   text: string;
-}
-
-const CANNED: Array<{ keywords: string[]; answer: string }> = [
-  {
-    keywords: ["generic", "generics"],
-    answer: "**Generics** in TypeScript allow you to write flexible, reusable code with different data types.\n\n```ts\nfunction identity<T>(arg: T): T {\n  return arg;\n}\n```\n\nWhat else would you like me to explain?",
-  },
-  {
-    keywords: ["conditional type", "conditional types"],
-    answer: "**Conditional Types** take the form `A extends B ? C : D`.\n\nFor example:\n```ts\ntype IsString<T> = T extends string ? true : false;\n```\n\nThey're very useful when writing advanced utility types.",
-  },
-];
-
-function getReply(input: string): string {
-  const lower = input.toLowerCase();
-  for (const entry of CANNED) {
-    if (entry.keywords.some(kw => lower.includes(kw))) {
-      return entry.answer;
-    }
-  }
-  return "The AI assistant is currently in beta. I can only answer questions about: generics, conditional types, and your learning progress. What would you like to know more about?";
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
@@ -79,12 +60,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export function AIChatPanel({ onClose }: { onClose?: () => void }) {
+  const { t, i18n } = useTranslation("common");
   const [input, setInput] = useState("");
+  const [conversationId, setConversationId] = useState<string | undefined>();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "init",
       role: "assistant",
-      text: "Hello! I'm SkillBridge's AI learning assistant 🎓\n\nDo you have any questions about today's session?",
+      text: t("learning.chat.sessionGreeting"),
     },
   ]);
   const [typing, setTyping] = useState(false);
@@ -96,7 +79,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
     }
   }, [messages, typing]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
@@ -105,11 +88,20 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
     setInput("");
     setTyping(true);
 
-    setTimeout(() => {
-      const reply = getReply(trimmed);
+    try {
+      const reply = await sendLearningChatMessage({
+        message: trimmed,
+        conversationId,
+        language: i18n.language.startsWith("vi") ? "vi" : "en",
+      });
+      setConversationId(reply.conversationId);
       setTyping(false);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: reply }]);
-    }, 800);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: reply.message }]);
+    } catch (error) {
+      setTyping(false);
+      const message = error instanceof Error ? error.message : t("learning.chat.sendError");
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: message }]);
+    }
   };
 
   return (
@@ -122,7 +114,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-sm">SkillBridge AI</p>
-            <p className="text-[11px] text-slate-500">Demo · scripted</p>
+            <p className="text-[11px] text-slate-500">{t("learning.chat.status")}</p>
           </div>
         </div>
         {onClose && (
@@ -154,7 +146,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl pr-2">
           <input
             className="flex-1 text-sm bg-transparent px-4 py-3 outline-none placeholder:text-slate-400"
-            placeholder="Ask about this session..."
+            placeholder={t("learning.chat.sessionPlaceholder")}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSend()}

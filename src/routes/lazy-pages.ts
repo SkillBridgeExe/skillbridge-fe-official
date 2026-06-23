@@ -25,7 +25,6 @@ export const BillingCheckoutReturn = lazy(() => import("@/pages/user/BillingChec
 export const BillingCheckoutStatus = lazy(() => import("@/pages/user/BillingCheckoutStatus"));
 export const BillingMe = lazy(() => import("@/pages/user/BillingMe"));
 export const Jobs = lazy(() => import("@/pages/user/Jobs"));
-export const RoadmapGenerator = lazy(() => import("@/pages/user/RoadmapGenerator"));
 export const SuccessStats = lazy(() => import("@/pages/user/SuccessStats"));
 export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 

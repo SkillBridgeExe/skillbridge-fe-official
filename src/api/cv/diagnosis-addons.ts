@@ -2,6 +2,7 @@ import { httpClient } from "@/api/core/http-client";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { API_ROUTES } from "@/constants/api-routes";
 import type {
+  GenerateRoadmapFromMatchRequest,
   GapReportResponse,
   GithubEvidenceResponse,
   InterviewPlanResponse,
@@ -18,9 +19,10 @@ export type DiagnosisLang = "vi" | "en";
  */
 export async function generateRoadmapFromMatchApi(
   matchId: string,
+  body: GenerateRoadmapFromMatchRequest = {},
 ): Promise<RoadmapFromMatchResponse> {
   const envelope = await unwrapEnvelope<ApiEnvelope<RoadmapFromMatchResponse>>(
-    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), {}),
+    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), body),
     "Failed to generate the learning roadmap.",
   );
   return envelope.data;

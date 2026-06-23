@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Star, Clock, ChevronRight, Lock, CheckCircle2, PlayCircle } from "lucide-react";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
-import type { LearningSession, WeekPlan } from "./demo-roadmap";
+import type { LearningSession, WeekPlan } from "./types";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -31,6 +32,7 @@ function StarRating({ stars, max }: { stars: number; max: number }) {
 }
 
 function SessionCard({ session }: { session: LearningSession }) {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const isLocked = session.status === "locked";
   const isDone   = session.status === "completed";
@@ -60,7 +62,7 @@ function SessionCard({ session }: { session: LearningSession }) {
             session.status === "in-progress" ? "bg-primary text-white" :
             "bg-slate-300 text-slate-600"
           )}>
-            Session {session.sessionNumber}
+            {t("learning.common.session", { number: session.sessionNumber })}
           </span>
           <span className={cn("text-xs border rounded-full px-2 py-0.5 font-medium whitespace-nowrap", skillClass)}>
             {session.skill}
@@ -84,7 +86,7 @@ function SessionCard({ session }: { session: LearningSession }) {
         <StarRating stars={session.stars} max={session.maxStars} />
         <span className="flex items-center gap-1 text-xs text-slate-400">
           <Clock className="w-3 h-3" />
-          {session.estimatedMinutes}m
+          {t("learning.common.mins", { count: session.estimatedMinutes })}
         </span>
       </div>
 
@@ -92,7 +94,7 @@ function SessionCard({ session }: { session: LearningSession }) {
       {!isLocked && (
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span>{completedSections}/{totalSections} sections</span>
+            <span>{t("learning.common.sections", { count: `${completedSections}/${totalSections}` })}</span>
             <ChevronRight className={cn(
               "w-4 h-4 transition-transform",
               !isLocked && "group-hover:translate-x-1"
@@ -114,6 +116,11 @@ function SessionCard({ session }: { session: LearningSession }) {
 }
 
 function WeekColumn({ week }: { week: WeekPlan }) {
+  const { t, i18n } = useTranslation("common");
+  const dayLabels = DAY_LABELS.map((_, index) => {
+    const date = new Date(2024, 0, 1 + index);
+    return date.toLocaleDateString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US", { weekday: "long" });
+  });
   // Group sessions by dayOfWeek
   const byDay = new Map<number, LearningSession[]>();
   week.sessions.forEach(s => {
@@ -136,11 +143,13 @@ function WeekColumn({ week }: { week: WeekPlan }) {
           "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm",
           allDone ? "bg-emerald-500 text-white" : "bg-primary text-white"
         )}>
-          W{week.weekNumber}
+          {t("learning.common.weekShort", { number: week.weekNumber })}
         </div>
         <div>
           <p className="font-bold text-slate-900 text-sm truncate max-w-[220px]">{week.moduleTitle}</p>
-          <p className="text-xs text-slate-500">{completedCount}/{totalCount} sessions completed</p>
+          <p className="text-xs text-slate-500">
+            {t("learning.common.sectionsCompleted", { done: completedCount, total: totalCount })}
+          </p>
         </div>
       </div>
 
@@ -149,7 +158,7 @@ function WeekColumn({ week }: { week: WeekPlan }) {
         {activeDays.map(day => (
           <div key={day}>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-              {DAY_LABELS[day - 1] ?? `Day ${day}`}
+              {dayLabels[day - 1] ?? t("learning.overview.day")}
             </p>
             <div className="space-y-2">
               {(byDay.get(day) ?? []).map(session => (
@@ -164,6 +173,7 @@ function WeekColumn({ week }: { week: WeekPlan }) {
 }
 
 export function WeeklyPlan() {
+  const { t } = useTranslation("common");
   const [activeWeek, setActiveWeek] = useState(1);
   const weeks = useActiveWeekPlans();
   const currentWeek = weeks.find(w => w.weekNumber === activeWeek) ?? weeks[0];
@@ -191,7 +201,7 @@ export function WeeklyPlan() {
                   : "border-slate-200 bg-white text-slate-700 hover:border-primary/40"
               )}
             >
-              <span>Week {w.weekNumber}</span>
+              <span>{t("learning.common.week", { number: w.weekNumber })}</span>
               {!isLocked && (
                 <span className={cn(
                   "ml-2 text-xs px-1.5 py-0.5 rounded-full font-normal",
