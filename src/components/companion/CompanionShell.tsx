@@ -79,7 +79,10 @@ export function CompanionShell() {
 
   const activeReg = activeId ? contexts[activeId] : null;
   const turn = activeReg?.getTurn();
-  const showBubble = visible && !!turn;
+  // Hide the bubble WHILE dragging the dolphin (it re-appears on drop, re-positioned
+  // by FU-B against the dolphin's final spot) — avoids the bubble lagging the dolphin
+  // mid-drag and keeps the drag gesture clean.
+  const showBubble = visible && !!turn && !isDragging;
 
   // ── Anchor resolution (Phase 1b) ──
   // Re-resolve every render: the DOM element may mount after the context registers.
@@ -138,6 +141,44 @@ export function CompanionShell() {
   useEffect(() => {
     refs.setReference(anchored ? anchorEl : null);
   }, [anchored, anchorEl, refs]);
+
+  // ── FU-B: the BUBBLE anchors to the DOLPHIN (its reference is the dolphin element,
+  // NOT the card). placement "top" + flip()+shift()+size() means the bubble auto-flips
+  // below / shifts inward / clamps wherever the dolphin ends up — anchored beside a
+  // card, dragged to ANY edge, or the fallback corner. This is what makes the bubble
+  // NEVER occluded in every mode (the old single-FU clip only ran in anchored mode). ──
+  const dolphinNodeRef = useRef<HTMLDivElement | null>(null);
+  const bubbleFloat = useFloating({
+    placement: "top",
+    transform: false, // top/left, so framer's scale-pop transform never clobbers it
+    middleware: [
+      offset(10),
+      flip(),
+      shift({ padding: 12 }),
+      size({
+        padding: 12,
+        apply({ availableWidth, availableHeight, elements }) {
+          Object.assign(elements.floating.style, {
+            maxWidth: `${Math.max(0, availableWidth)}px`,
+            maxHeight: `${Math.max(0, availableHeight)}px`,
+          });
+        },
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // The dolphin wrapper is BOTH FU-A's floating element AND FU-B's reference AND the
+  // node we measure for the drop-clamp — one stable merged callback ref (refs objects
+  // are stable, so this never thrashes the ref on re-render).
+  const setDolphinRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      dolphinNodeRef.current = node;
+      refs.setFloating(node);
+      bubbleFloat.refs.setReference(node);
+    },
+    [refs, bubbleFloat.refs],
+  );
 
   // Pose: dragging → "swimming"; success flash → "success";
   // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
@@ -211,12 +252,11 @@ export function CompanionShell() {
 
   return (
     <FloatingPortal>
-      {/* ── THE UNIT — bubble (top) + dolphin (bottom), one positioned element.
-            refs.setFloating anchors the whole unit to the card when `anchored`;
-            otherwise it falls back to fixed bottom-right (+ the parked drag
-            offset). Dragging is started only from the dolphin. ── */}
+      {/* ── DOLPHIN — FU-A floating element (anchored to the active issue's card via
+            refs.setFloating) + framer drag root + FU-B's reference. The bubble is a
+            SEPARATE element (below) anchored to THIS via FU-B, so it never clips. ── */}
       <motion.div
-        ref={refs.setFloating}
+        ref={setDolphinRef}
         drag
         dragMomentum={false}
         dragListener={false}
@@ -224,46 +264,62 @@ export function CompanionShell() {
         onDragStart={() => setDragging(true)}
         onDragEnd={(_e, info) => {
           setDragging(false);
-          setPosition(
-            position.x + info.offset.x,
-            position.y + info.offset.y,
-          );
+          let nx = position.x + info.offset.x;
+          let ny = position.y + info.offset.y;
+          // Clamp so the DOLPHIN itself never lands off-screen (the bubble is kept on
+          // screen independently by FU-B). Measure the just-dropped on-screen box.
+          const node = dolphinNodeRef.current;
+          if (node && typeof window !== "undefined") {
+            const r = node.getBoundingClientRect();
+            const m = 8;
+            if (r.left < m) nx += m - r.left;
+            else if (r.right > window.innerWidth - m) nx -= r.right - (window.innerWidth - m);
+            if (r.top < m) ny += m - r.top;
+            else if (r.bottom > window.innerHeight - m) ny -= r.bottom - (window.innerHeight - m);
+          }
+          setPosition(nx, ny);
         }}
         style={
           anchored
-            ? // Anchored: Floating UI owns positioning via top/left (transform:false).
+            ? // Anchored: FU-A owns positioning via top/left (transform:false).
               { ...floatingStyles, zIndex: 70, touchAction: "none" }
             : positionMode === "manual" || isDragging
-              ? // Manual: the user dragged/parked the unit → framer drives x/y so it
-                // stays where it was dropped (fixed bottom-right + the drag offset).
+              ? // Manual: framer drives x/y so a parked dolphin stays where dropped.
                 { x: dragX, y: dragY, touchAction: "none" }
-              : // Pure fallback (no anchor, never dragged) → CLEAN bottom-right with
-                // NO stale drag offset (a leftover offset would push it off-screen).
+              : // Pure fallback (no anchor, never dragged) → clean bottom-right.
                 { touchAction: "none" }
         }
-        className={
-          anchored
-            ? "flex flex-col items-end gap-2"
-            : "fixed bottom-6 right-6 z-[70] flex flex-col items-end gap-2"
-        }
+        className={anchored ? "z-[70]" : "fixed bottom-6 right-6 z-[70]"}
       >
-        {/* ── Speech bubble (above the dolphin) ── */}
+        <button
+          onPointerDown={(e) => dragControls.start(e)}
+          onClick={handleDolphinClick}
+          className="cursor-grab active:cursor-grabbing focus:outline-none"
+          aria-label="Companion mascot"
+        >
+          <MascotSticker state={pose} size={200} />
+        </button>
+      </motion.div>
+
+      {/* ── BUBBLE — FU-B floating element, anchored to the dolphin so it auto-flips/
+            shifts to stay on-screen in EVERY mode. The plain wrapper holds the FU
+            position; the inner motion.div animates (scale-only, no y → no transform
+            fight with FU-B's top/left); the dialog div carries the ref/role (a ref on
+            the AnimatePresence child triggers framer's "`ref` is not a prop"). ── */}
+      <div
+        ref={bubbleFloat.refs.setFloating}
+        style={{ ...bubbleFloat.floatingStyles, zIndex: 71 }}
+      >
         <AnimatePresence>
           {showBubble && (
             <motion.div
               key="companion-bubble"
-              // Pointer interactions inside the bubble must NOT bubble up to the
-              // drag-enabled unit (extra safety on top of dragListener={false}).
               onPointerDown={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              {/* The dialog box is an INNER plain div carrying ref/role/aria —
-                  NOT the AnimatePresence-child motion.div. framer's PopChild reads
-                  `.ref` off its direct child; a ref there triggers React's
-                  "`ref` is not a prop" console error (deprecated in React 18.3+). */}
               <div
                 ref={bubbleRef}
                 role="dialog"
@@ -357,17 +413,7 @@ export function CompanionShell() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* ── Dolphin mascot (below the bubble) — the drag handle ── */}
-        <button
-          onPointerDown={(e) => dragControls.start(e)}
-          onClick={handleDolphinClick}
-          className="cursor-grab active:cursor-grabbing focus:outline-none"
-          aria-label="Companion mascot"
-        >
-          <MascotSticker state={pose} size={180} />
-        </button>
-      </motion.div>
+      </div>
     </FloatingPortal>
   );
 }

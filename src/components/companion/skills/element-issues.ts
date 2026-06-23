@@ -125,6 +125,13 @@ function detectGapItems(input: ElementIssuesInput): ElementIssue[] {
   };
   return items
     .filter((g) => g.cv_status !== "matched")
+    // Match GapReportCard's render cap EXACTLY (severity desc, top 6): only the
+    // top-6 gaps get a rendered card with id=`gap-<requirement_id>`. A gap ranked
+    // #7+ has no DOM anchor → the companion could never reach it → it must NOT be
+    // emitted (an orphan issue would silently never surface). Keep detector and
+    // renderer in lockstep.
+    .sort((a, b) => b.severity - a.severity)
+    .slice(0, 6)
     .map((g) => {
       const issue: ElementIssue = {
         id: `gap:${g.requirement_id}`,
