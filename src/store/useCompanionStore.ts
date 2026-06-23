@@ -82,6 +82,8 @@ interface CompanionState {
   position: { x: number; y: number };
   positionMode: "auto" | "manual";
   isDragging: boolean;
+  /** Temporarily hide the companion during blocking page states (e.g. diagnosis scan overlay). */
+  suspended: boolean;
   // ── Issue-queue slice (Pillar 1+2: anchored per-element analysis) ──
   /** Full severity-sorted queue from collectElementIssues (incl. dismissed). */
   issues: ElementIssue[];
@@ -103,6 +105,7 @@ interface CompanionState {
   /** Re-enable anchoring after a manual drag (advancing the queue → re-anchor). */
   resetPositionMode: () => void;
   setDragging: (b: boolean) => void;
+  setSuspended: (b: boolean) => void;
   setIssues: (issues: ElementIssue[]) => void;
   nextIssue: () => void;
   prevIssue: () => void;
@@ -147,6 +150,7 @@ const initial = {
   position: { x: 0, y: 0 },
   positionMode: "auto" as "auto" | "manual",
   isDragging: false,
+  suspended: false,
   issues: [] as ElementIssue[],
   activeIssueIndex: 0,
   chatMessages: [] as CompanionChatMessage[],
@@ -194,6 +198,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
   // when the active anchor changes.
   resetPositionMode: () => set({ positionMode: "auto" }),
   setDragging: (isDragging) => set({ isDragging }),
+  setSuspended: (suspended) => set({ suspended }),
   // ── Issue-queue actions ──
   // Reset the active index to the start of the (re-filtered) visible queue so a
   // re-scan always lands on the worst non-dismissed issue.
@@ -325,7 +330,7 @@ function lastAssistantIndex(messages: CompanionChatMessage[]): number {
 }
 
 export const bubbleVisible = (s: CompanionState): boolean =>
-  s.bubbleOpen && !s.isDragging && s.activeId !== null;
+  s.bubbleOpen && !s.isDragging && !s.suspended && s.activeId !== null;
 
 /**
  * The visible issue queue: severity-sorted issues minus any that are dismissed

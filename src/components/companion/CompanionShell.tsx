@@ -64,6 +64,7 @@ export function CompanionShell() {
   const dismissActive = useCompanionStore((s) => s.dismissActive);
   const closeBubble = useCompanionStore((s) => s.closeBubble);
   const activateContext = useCompanionStore((s) => s.activateContext);
+  const suspended = useCompanionStore((s) => s.suspended);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
@@ -242,7 +243,7 @@ export function CompanionShell() {
   }, [position.x, position.y, isDragging, dragX, dragY]);
 
   // Don't render if no contexts are registered
-  if (Object.keys(contexts).length === 0) return null;
+  if (suspended || Object.keys(contexts).length === 0) return null;
 
   const handleDolphinClick = () => {
     if (bOpen) {

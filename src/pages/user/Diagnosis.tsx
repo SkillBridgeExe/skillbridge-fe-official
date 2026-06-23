@@ -12,6 +12,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useCompanionStore } from "@/store/useCompanionStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -56,6 +57,12 @@ export default function Diagnosis() {
 
   const location = useLocation();
   const canUseApi = useHasApiSession();
+  const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
+
+  useEffect(() => {
+    setCompanionSuspended(isAnalyzing);
+    return () => setCompanionSuspended(false);
+  }, [isAnalyzing, setCompanionSuspended]);
 
   // Handle initialization from builder and mode parameter
   useEffect(() => {

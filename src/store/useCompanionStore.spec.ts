@@ -62,6 +62,21 @@ describe("useCompanionStore", () => {
     expect(bubbleVisible(useCompanionStore.getState())).toBe(true);
   });
 
+  it("suspending the companion hides it during blocking diagnosis overlays without losing active context", () => {
+    const s = useCompanionStore.getState();
+    s.registerContext(reg("diagnosis"));
+    s.activateContext("diagnosis");
+    expect(bubbleVisible(useCompanionStore.getState())).toBe(true);
+
+    s.setSuspended(true);
+    expect(useCompanionStore.getState().activeId).toBe("diagnosis");
+    expect(useCompanionStore.getState().bubbleOpen).toBe(true);
+    expect(bubbleVisible(useCompanionStore.getState())).toBe(false);
+
+    s.setSuspended(false);
+    expect(bubbleVisible(useCompanionStore.getState())).toBe(true);
+  });
+
   it("setPosition switches mode to manual", () => {
     const s = useCompanionStore.getState();
     s.setPosition(120, 240);

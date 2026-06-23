@@ -477,18 +477,15 @@ export async function askDiagnosisChat({
   language?: string;
 }): Promise<DiagnosisChatResponse> {
   requireSession();
-  const body: DiagnosisChatRequest = {
+  const baseBody: DiagnosisChatRequest = {
     question,
     ...(thread && thread.length > 0 ? { thread } : {}),
-    // The CV-only route already carries cvId in its path; we still pass it in the
-    // body so the match route can use it as a fallback grounding hint.
-    ...(cvId ? { cvId } : {}),
     ...(focus ? { focus } : {}),
     language,
   };
   // Prefer the JD-match route (gap-report grounded). Fall back to the CV-only route
   // when there is no match. Reject when there is truly nothing to chat about.
-  if (matchId) return askDiagnosisChatApi(matchId, body);
-  if (cvId) return askCvDiagnosisChatApi(cvId, body);
+  if (matchId) return askDiagnosisChatApi(matchId, baseBody);
+  if (cvId) return askCvDiagnosisChatApi(cvId, baseBody);
   return Promise.reject(new Error("NO_CHAT_TARGET"));
 }
