@@ -32,6 +32,7 @@ export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 export const BusinessDashboard = lazy(() => import("@/pages/business/BusinessDashboard"));
 export const BusinessProfile = lazy(() => import("@/pages/business/BusinessProfile"));
 export const BusinessJobs = lazy(() => import("@/pages/business/BusinessJobs"));
+export const BusinessJobEdit = lazy(() => import("@/pages/business/BusinessJobEdit"));
 export const TopCandidates = lazy(() => import("@/pages/business/TopCandidates"));
 export const BusinessApplicants = lazy(() => import("@/pages/business/BusinessApplicants"));
 

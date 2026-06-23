@@ -84,6 +84,7 @@ const App = () => (
               <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
               <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
               <Route path="/business/jobs" element={<AuthGuard requiredRole="business"><Pages.BusinessJobs /></AuthGuard>}/>
+              <Route path="/business/jobs/:jobId/edit" element={<AuthGuard requiredRole="business"><Pages.BusinessJobEdit /></AuthGuard>}/>
               <Route path="/business/top-candidates" element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}/>
               <Route path="/business/applicants" element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}/>
 
