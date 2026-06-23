@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -22,9 +22,13 @@ import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
-import { useNextStepsQuery } from "@/hooks/use-diagnosis";
+import { useNextStepsQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
+import { pickTopProveIt } from "@/components/companion/skills/prove-it";
+import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
+import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
+import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -265,9 +269,56 @@ export function DiagnosisStep3Results() {
   const nextStepsQuery = useNextStepsQuery(jdMatch?.matchId, nextStepsLang);
   const topStep = pickTopNextStep(nextStepsQuery.data?.steps ?? []);
 
+  /* ── Companion Pillar 1+2: anchored per-element issues (subsumes results/proveit) ──
+     Fetch the gap report (gap_items + jd_intelligence) so the detector layer has
+     its full inputs, then collect + register on data-loaded (boundary). When real
+     issues exist, the hook gates off the legacy results/proveit contexts below. */
+  const gapReportQuery = useGapReportQuery(jdMatch?.matchId, nextStepsLang);
+  // Fix D: don't scan mid-flight. When the gap-report query is enabled (JD mode
+  // with a matchId) the first collect must wait for it to settle, else the gap_item
+  // / deal_breaker detectors run with gapReport=undefined → only 3 detectors → []
+  // → no bubble. When the query is disabled (no matchId / add-ons off) a gap-less
+  // scan is a legitimate honest-empty, so reviewData alone gates the scan.
+  const gapReportSettled = !gapReportQuery.isLoading; // false only while actively fetching an enabled query
+  const issuesReady = !!reviewData && gapReportSettled;
+  // Auto-surfacing disabled (owner decision 06-23): this no longer registers/activates
+  // the diagnosis:issue context — kept mounted so the detectors stay wired for future
+  // chat grounding. The calm corner chat advisor below is the SOLE diagnosis context.
+  useElementIssuesCompanion(
+    { jdMatch: jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
+    issuesReady,
+  );
+  // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
+  // Step 3 is a single Skill-Gap section → fixed focus so the advisor frames its
+  // opener + answers around the gap results in view. Step 3 has no tabs, so the
+  // reveal is a plain scroll (no-op-safe when the element doesn't exist).
+  const revealCard = useCallback((anchorId: string) => {
+    if (typeof document === "undefined") return;
+    document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+  // matchId already works here; pass lastCvId too so the advisor still chats on a
+  // CV-only result view (no JD compared) via the CV-only route.
+  useDiagnosisChatCompanion(reviewData, "gap_results", revealCard, lastCvId);
+  // The chat advisor owns the bubble while registered → the legacy results/proveit
+  // nudges gate off whenever the chat context is live (single-active invariant).
+  const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
+
+  /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
+     yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
+     results effect, and `activateContext` clobbers the already-active prove-it bubble (the store's
+     `priority` field is inert for manually-activated contexts). */
+  const provedItem = pickTopProveIt(
+    jdMatch?.hardSkills ?? [],
+    jdMatch?.softSkills ?? [],
+    reviewData?.evidence_ledger,
+  );
+
   useEffect(() => {
     const store = useCompanionStore.getState();
-    if (!topStep) {
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — the legacy next-step nudge stays gated off whenever the
+    // chat advisor is live (single-active). Code retained for future reuse.
+    if (!topStep || provedItem || chatContextActive) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -294,7 +345,36 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:results");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topStep?.canonical, topStep?.action]);
+  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, chatContextActive]);
+
+  /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — prove-it stays gated off whenever the chat advisor is live.
+    if (!provedItem || chatContextActive) {
+      store.unregisterContext("diagnosis:proveit");
+      return;
+    }
+    store.registerContext({
+      id: "diagnosis:proveit",
+      priority: 20, // higher than results (10) → takes over
+      anchorId: "gap-anchor",
+      getTurn: () => ({
+        skill: "diagnosis_proveit",
+        props: {
+          displayName: provedItem.display_name,
+          onCta: () => {
+            useDiagnosisStore.getState().setStep("builder");
+            useCompanionStore.getState().dismissActive();
+          },
+        },
+      }),
+    });
+    store.activateContext("diagnosis:proveit");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provedItem?.skill_canonical, chatContextActive]);
 
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
@@ -340,10 +420,18 @@ export function DiagnosisStep3Results() {
           {kickerText}
         </p>
 
-        {/* Verdict Hero */}
+        {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
         <VerdictHero
           target={matchScore}
-          label={scoreLabel}
+          label={
+            isJdMode ? (
+              <ScoreBreakdownPopover jdMatch={jdMatch}>
+                {scoreLabel}
+              </ScoreBreakdownPopover>
+            ) : (
+              scoreLabel
+            )
+          }
           verdictMessage={scoreMessage}
           isJdMode={isJdMode}
           rubricBand={jdMatch?.rubric_band}
@@ -414,7 +502,7 @@ export function DiagnosisStep3Results() {
             </div>
 
             {/* Narrative ("Vì sao điểm này") */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 flex flex-col justify-center">
               {isJdMode && <MatchNarrative jdMatch={jdMatch} t={t} />}
               {!isJdMode && (
                 <div className="space-y-3">

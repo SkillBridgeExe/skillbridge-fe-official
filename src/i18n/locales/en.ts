@@ -1905,6 +1905,169 @@ export default {
         apply: "Apply",
         editStory: "Edit story",
         close: "Close",
+        coachStuck: "Not sure what to write? Tell me about it",
+      },
+      // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
+      // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
+      // CHOICE options are CATEGORIES (route the next question), never specifics.
+      coach: {
+        openDayToDay: "Forget the CV for a sec — what did you actually do day-to-day in that role?",
+        starProbe: "Walk me through one specific thing: what was the situation, what did you do, and what was the result?",
+        pickImpactType: "What did your result mostly affect? (pick one so I ask the right follow-up)",
+        pickRoleType: "Which area was your role closest to?",
+        terminalStop: "If there's genuinely nothing more to add, leave it blank — never make something up.",
+        options: {
+          other: "Other",
+          impact: {
+            saved_time: "Saved time",
+            increased_revenue: "Increased revenue",
+            improved_quality: "Improved quality",
+            reduced_cost: "Reduced cost",
+          },
+          role: {
+            frontend: "Frontend",
+            backend: "Backend",
+            fullstack: "Fullstack",
+            data: "Data / AI",
+            devops: "DevOps / Infra",
+          },
+        },
+      },
+      proveit: {
+        msg: "The skill \"{{skill}}\" is on your CV but lacks concrete evidence. Adding a real example will make it more convincing.",
+        cta: "Add evidence",
+      },
+      elementIssue: {
+        // "1 of N" + navigation + dismiss/snooze
+        oneOfN: "{{index}} of {{total}}",
+        whyFirst: "Why this first?",
+        dismiss: "Dismiss",
+        dismissOnce: "Dismiss for now",
+        snooze: "Remind me later",
+        intentional: "I left this on purpose",
+        factor: {
+          market_demand: "Market demand",
+          evidence_risk: "Evidence risk",
+          interview_risk: "Interview risk",
+        },
+        cta: {
+          intake: "Add evidence",
+          rewrite: "Rewrite for clarity",
+          builder: "Open Builder to fix",
+          roadmap: "See learning roadmap",
+        },
+        // Each "what" is code-owned; the static "why" is only used when the BE returns no string.
+        listed_no_evidence: {
+          what: "This skill is on your CV but has no concrete example.",
+          why: "Recruiters want proof — a line on how you actually used it is far more convincing.",
+        },
+        gap_item: {
+          what: "This is a priority gap against the job's requirements.",
+          why: "Closing this gap makes your CV match the JD more closely.",
+        },
+        exp_no_dates: {
+          what: "Some experience entries are missing start/end dates.",
+          why: "ATS systems need timestamps to place your career timeline correctly.",
+        },
+        parse_quality: {
+          what: "I'm not fully confident I read this part correctly.",
+          why: "This CV was a little hard to parse — double-check the content so the scoring is accurate.",
+        },
+        deal_breaker: {
+          what: "Your CV shows no signal for this required item.",
+          why: "This is a deal-breaker requirement — missing it entirely risks an early screen-out.",
+        },
+        missing_section: {
+          no_experience: {
+            what: "Your CV has no experience entries.",
+            why: "Add at least one position so the AI scores accurately and recruiters can see your journey.",
+          },
+          no_projects: {
+            what: "Your CV has no projects.",
+            why: "Projects demonstrate concrete skills — especially valuable when experience is light.",
+          },
+          no_skills: {
+            what: "No technical skills were detected.",
+            why: "Check the Skills section — without it your CV struggles to match JD keywords.",
+          },
+          no_summary: {
+            what: "Your CV is missing a professional summary.",
+            why: "A 2-3 sentence overview helps recruiters grasp who you are in the first 6 seconds.",
+          },
+        },
+      },
+      review: {
+        summary: "CV parsed — summary: {{experiences}} experiences, {{skills}} skills.",
+        gap: {
+          no_experience: "Your CV has no experience entries — add at least one position for a more accurate review.",
+          exp_no_dates: "Some experience entries are missing start/end dates — ATS systems need this information.",
+          no_projects: "No projects found — adding projects helps demonstrate your skills with real examples.",
+          no_skills: "No technical skills detected — please check the Skills section of your CV.",
+          no_summary: "Your CV is missing a professional summary — add 2-3 sentences to help recruiters scan quickly.",
+        },
+        cta: "Open Builder to fix",
+      },
+      upload: {
+        greet: "Upload your CV and select a target role to start the analysis.",
+        reading: "Reading your CV...",
+      },
+      progress: {
+        title: "Compared to last time",
+        scoreDelta: "Match score: {{prev}}% → {{curr}}% (+{{delta}})",
+        gapsClosed: "Closed {{count}} gaps",
+        gapsWorsened: "{{count}} items need attention",
+        baseline: "This is your first analysis — results will be saved as a baseline.",
+      },
+      scoreBreakdown: {
+        title: "Score breakdown",
+        covered: "Covered",
+        notCovered: "Not covered",
+        // Phase A commentary — STATIC templates that wrap only the real band/number;
+        // the rationale + tips are rendered VERBATIM from reviewData by the skill.
+        explain: {
+          what: "Here's what this score means: {{band}}.",
+          tipsLabel: "Tips for this area",
+          strong: "This area is strong — {{band}}.",
+          watch: "This area is okay but worth a look — {{band}}.",
+          priority: "This area needs attention first — {{band}}.",
+        },
+      },
+      // Phase A praise — STATIC celebratory templates that wrap only the real
+      // overall number; the band scoreMsg + biggest-fix line stay VERBATIM.
+      praise: {
+        what: "About your overall CV score",
+        biggestFixLabel: "Biggest fix first:",
+        excellent: "Outstanding — your CV scores {{score}}/100. This already beats most of the screening bar.",
+        good: "Nice work — your CV scores {{score}}/100. It's competitive with a little polish left.",
+        fair: "Solid start — your CV scores {{score}}/100. A few focused fixes will lift it.",
+        low: "Your CV scores {{score}}/100. Let's tackle the biggest fix first.",
+      },
+      // Calm corner advisor — chat-driven (owner decision 06-23). Openers are
+      // STATIC enum-keyed templates that only interpolate the REAL overall score.
+      // Focus-aware: keyed by the section the user is viewing (TAB-level). `cv_audit`
+      // keys further by score band (low → offer to help raise it). NO LLM, NO fabrication.
+      chat: {
+        opener: {
+          cv_audit: {
+            excellent: "Your CV scores {{score}}/100 — strong work. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            good: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            fair: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            low: "Your CV scores {{score}}/100. Let me help you raise it — I can explain why each part scored the way it did, or show you what to fix first. Where do you want to start?",
+          },
+          skills_analysis: "You're looking at your skills analysis. I can explain which skills counted for this role and which are missing or weak — what would you like to know?",
+          market_careers: "You're looking at market opportunities. I can explain how this role was matched and the gaps that matter — what would you like to know?",
+          gap_results: "This is your skill gap. I can explain which gaps matter most and the prioritized actions to close them — where do you want to start?",
+        },
+        placeholder: "Ask about your score…",
+        send: "Send",
+        thinking: "Thinking…",
+        error: "The assistant is being connected — please try again in a moment.",
+        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        suggestions: [
+          "Why is my score this?",
+          "What's my weakest part?",
+          "How can I improve?",
+        ],
       },
     },
     skillsNudge: {

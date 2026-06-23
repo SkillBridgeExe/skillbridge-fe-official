@@ -36,6 +36,9 @@ export const API_ROUTES = {
     MATCH_DETAIL: (cvId: string, matchId: string) => `${API}/cvs/${cvId}/matches/${matchId}`,
     INTERVIEW_PLAN: (cvId: string) => `${API}/cvs/${cvId}/interview-plan`,
     GITHUB_EVIDENCE: (cvId: string) => `${API}/cvs/${cvId}/github-evidence`,
+    // CV-only corner-advisor chat (no JD match) — mirror of CV_MATCHES.CHAT but
+    // grounded in the CV review alone. Used when there is no JD match id.
+    DIAGNOSIS_CHAT: (cvId: string) => `${API}/cvs/${cvId}/diagnosis-chat`,
     // Top-N job thật cho CV (jobs.controller.ts) — ?limit&role
     JOB_RECOMMENDATIONS: (cvId: string) => `${API}/cvs/${cvId}/job-recommendations`,
     // CV Builder (W5 sẽ dùng — endpoints đã LIVE trên BE)
@@ -65,6 +68,8 @@ export const API_ROUTES = {
     ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
     INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
     NEXT_STEPS: (matchId: string) => `${API}/cv-matches/${matchId}/next-steps`,
+    /** Corner-advisor two-way chat (BE endpoint built separately). */
+    CHAT: (matchId: string) => `${API}/cv-matches/${matchId}/chat`,
   },
 
   // Unified plan entitlements and quotas.

@@ -8,15 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
-  Send, Check, X, Loader2, AlertTriangle, Quote,
+  Send, Check, X, AlertTriangle, Quote,
   Sparkles,
 } from "lucide-react";
+import { ThinkingDots } from "../ThinkingDots";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAssistantExtractMutation } from "@/hooks/use-cv-builder";
 import { useTranslation } from "react-i18next";
 import { computeIntakeFields, type IntakeFieldDiff } from "./cv-intake-apply";
 import { assistantLocales } from "./assistant-locale";
+import { nextCoachTurn, type CoachTrigger } from "./coach-flow";
+import { CoachTurnView } from "./CoachTurnView";
 import type { ExtractResponse } from "@/types/companion";
 
 export interface CvIntakeSkillProps {
@@ -31,6 +34,17 @@ export interface CvIntakeSkillProps {
     achievements: string;
   };
   onApply: (fields: Record<string, string>) => void;
+  /**
+   * Pillar 3 (no-dead-end): when set, the intake opens in COACH mode — a
+   * deterministic coaching turn (open OR A/B/C choice) is surfaced above the
+   * narrative Textarea instead of a cold prompt. Generation still flows ONLY
+   * through extract→computeIntakeFields; the coach turn just routes/scaffolds.
+   */
+  coachTrigger?: CoachTrigger;
+  /** Known upstream gap (e.g. "result"/"role") that routes the CHOICE bank. */
+  coachGap?: string | null;
+  /** Pre-fill the narrative (e.g. the rewrite's currentValue on MAX_REASK). */
+  seedNarrative?: string;
 }
 
 type Phase = "intake" | "thinking" | "preview";
@@ -49,6 +63,9 @@ export function CvIntakeSkill({
   draftId,
   currentEntry,
   onApply,
+  coachTrigger,
+  coachGap,
+  seedNarrative,
 }: CvIntakeSkillProps) {
   const { t, i18n } = useTranslation("diagnosis");
   const cvLanguage = useCvBuilderStore((s) => s.cvLanguage);
@@ -62,19 +79,28 @@ export function CvIntakeSkill({
   const extractMutation = useAssistantExtractMutation();
 
   const [phase, setPhase] = useState<Phase>("intake");
-  const [narrative, setNarrative] = useState("");
+  const [narrative, setNarrative] = useState(seedNarrative ?? "");
   const [extracted, setExtracted] = useState<ExtractResponse | null>(null);
   const [diffs, setDiffs] = useState<IntakeFieldDiff[]>([]);
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [overrideChecked, setOverrideChecked] = useState<Record<string, boolean>>({});
-  const [degraded, setDegraded] = useState(false);
+
+  // ── Pillar 3 coaching state (no-dead-end) ──
+  // `coachMode` is set either from the incoming prop (rewrite MAX_REASK / input-gate)
+  // OR locally when an extract comes back `degraded` (we coach instead of closing).
+  // `coachStep` walks the deterministic funnel; `coachTag` records the user's CHOICE
+  // category for routing/tagging ONLY — it never asserts a fact and is never fed into
+  // generation (anti-fab: the real content still comes from the typed narrative).
+  const [coachMode, setCoachMode] = useState<CoachTrigger | null>(coachTrigger ?? null);
+  const [coachGapState, setCoachGapState] = useState<string | null>(coachGap ?? null);
+  const [coachStep, setCoachStep] = useState(0);
+  const [coachTag, setCoachTag] = useState<string | null>(null);
 
   // ── Phase: INTAKE → THINKING → PREVIEW ──
   const handleExtract = useCallback(() => {
     if (!narrative.trim() || !draftId) return;
     setPhase("thinking");
     setMascotState("thinking"); // floating dolphin shows the thinking pose during extraction
-    setDegraded(false);
 
     extractMutation.mutate(
       {
@@ -88,10 +114,17 @@ export function CvIntakeSkill({
         onSuccess: (res) => {
           setMascotState("idle");
           if (res.degraded) {
-            setDegraded(true);
-            setPhase("preview");
+            // No dead-end: don't close. Keep the narrative + coach the user toward
+            // a more specific story. Each degraded re-submit DEEPENS the funnel
+            // (un-freeze → narrow/choice → STAR → honest terminal). Generation always
+            // re-runs through the SAME extract pipeline when they resubmit.
+            setCoachMode((prev) => prev ?? "degraded");
+            setCoachStep((s) => s + 1);
+            setPhase("intake");
             return;
           }
+          // A clean extraction clears any prior coaching frame.
+          setCoachMode(null);
           setExtracted(res);
           const computed = computeIntakeFields(res, currentEntry, askLocale);
           setDiffs(computed);
@@ -130,15 +163,40 @@ export function CvIntakeSkill({
     useCompanionStore.getState().dismissActive();
   }, []);
 
+  // ── Coaching turn (deterministic, i18n keys only — never fabricated content) ──
+  // Present only in coach mode; drives the prompt + (for CHOICE) the A/B/C chips.
+  const coachTurn = coachMode
+    ? nextCoachTurn({ trigger: coachMode, gap: coachGapState, step: coachStep })
+    : null;
+
+  // A CHOICE chip only ROUTES/TAGS the next turn — it asserts no fact. We record
+  // the picked category (for a later OPEN probe) and advance the funnel; the real
+  // CV content still comes only from what the user types into the narrative box.
+  const handleCoachChoice = useCallback((optionKey: string) => {
+    setCoachTag(optionKey);
+    setCoachStep((s) => s + 1);
+    // Once a category is picked the gap is "answered" — drop into the OPEN funnel
+    // so the next turn elicits the real content instead of re-asking the category.
+    setCoachGapState(null);
+  }, []);
+
   // ── INTAKE ──
   if (phase === "intake") {
     return (
       <div className="space-y-3">
-        <p className="text-[13px] font-medium text-[#2F3437] leading-relaxed">
-          {t("companion.intake.prompt", {
-            defaultValue: "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
-          })}
-        </p>
+        {coachTurn ? (
+          <CoachTurnView
+            turn={coachTurn}
+            selectedKey={coachTag}
+            onChoose={handleCoachChoice}
+          />
+        ) : (
+          <p className="text-[13px] font-medium text-[#2F3437] leading-relaxed">
+            {t("companion.intake.prompt", {
+              defaultValue: "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
+            })}
+          </p>
+        )}
         <Textarea
           value={narrative}
           onChange={(e) => setNarrative(e.target.value)}
@@ -165,36 +223,12 @@ export function CvIntakeSkill({
   if (phase === "thinking") {
     return (
       <div className="space-y-2 py-2">
-        <div className="flex items-center gap-2 text-xs text-[#787774]">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-          <span>{t("companion.intake.extracting", { defaultValue: "Đang đọc…" })}</span>
-        </div>
+        <ThinkingDots label={t("companion.intake.extracting", { defaultValue: "Đang đọc…" })} />
         <div className="space-y-1.5">
           <div className="h-3 bg-slate-100 rounded-full w-full animate-pulse" />
           <div className="h-3 bg-slate-100 rounded-full w-5/6 animate-pulse" style={{ animationDelay: "100ms" }} />
           <div className="h-3 bg-slate-100 rounded-full w-4/6 animate-pulse" style={{ animationDelay: "200ms" }} />
         </div>
-      </div>
-    );
-  }
-
-  // ── PREVIEW (degraded) ──
-  if (degraded) {
-    return (
-      <div className="space-y-3">
-        <p className="text-[13px] text-[#2F3437] leading-relaxed">
-          {t("companion.intake.degraded", {
-            defaultValue: "Mình chưa đọc được, bạn điền tay nhé.",
-          })}
-        </p>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleDiscard}
-          className="h-8 text-xs"
-        >
-          {t("companion.intake.close", { defaultValue: "Đóng" })}
-        </Button>
       </div>
     );
   }
@@ -303,7 +337,7 @@ export function CvIntakeSkill({
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => { setPhase("intake"); setDegraded(false); }}
+          onClick={() => { setPhase("intake"); setCoachMode(null); }}
           className="h-8 text-xs text-[#787774] hover:text-[#2F3437]"
         >
           {t("companion.intake.editStory", { defaultValue: "Sửa lại chuyện" })}

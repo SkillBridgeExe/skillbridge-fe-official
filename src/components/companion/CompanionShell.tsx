@@ -1,24 +1,46 @@
 // ─── CompanionShell ─────────────────────────────────────────────────
-// Single floating, draggable dolphin mascot + speech-bubble.
+// Single floating, draggable dolphin mascot WITH a speech-bubble above it.
 // Mounted once at app root. Reads useCompanionStore for the active
 // context + useCvBuilderStore for the mascot pose. Hosts skill
 // renderers inside the bubble: CvBuilderSkill, CvIntakeSkill,
-// DiagnosisResultsSkill.
+// DiagnosisResultsSkill, etc.
 //
-// Phase 1b: when the active context supplies an `anchorId`, the mascot
-// anchors next to that DOM section via Floating UI (flip + shift).
-// Fallback: no anchor / drag → fixed bottom-right (Phase 1 behavior).
+// Architecture (unit model): the mascot + bubble are ONE visual unit — a
+// dolphin with a speech bubble RIGHT ABOVE it. The UNIT is the Floating UI
+// floating element; it anchors to the problem CARD (the active context's
+// `anchorId`) so the dolphin "swims to" the card and speaks there. Bubble and
+// mascot always move together. Three positioning modes:
+//   1. anchored  — sits beside the card (Floating UI middleware keeps it on-screen)
+//   2. manual    — the user dragged the dolphin; the unit detaches and stays put
+//   3. fallback  — no anchor + not dragged → fixed bottom-right
+// Dragging is initiated ONLY from the dolphin (dragControls), so clicking/typing
+// inside the bubble never drags the unit.
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion";
 import { X } from "lucide-react";
-import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
+import {
+  useFloating,
+  offset,
+  flip,
+  shift,
+  size,
+  autoUpdate,
+  FloatingPortal,
+} from "@floating-ui/react";
 import { MascotSticker, type MascotState } from "@/components/mascot/MascotSticker";
 import { useCompanionStore, bubbleVisible } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
+import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
+import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
+import { ElementIssueSkill } from "./skills/ElementIssueSkill";
+import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
+import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
+import type { ElementIssue } from "./skills/element-issues";
+import type { CompanionChatMessage } from "@/store/useCompanionStore";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -42,15 +64,29 @@ export function CompanionShell() {
   const dismissActive = useCompanionStore((s) => s.dismissActive);
   const closeBubble = useCompanionStore((s) => s.closeBubble);
   const activateContext = useCompanionStore((s) => s.activateContext);
+  const suspended = useCompanionStore((s) => s.suspended);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+
+  // Drag is initiated ONLY from the dolphin (not the bubble), so typing/clicking
+  // inside the bubble never drags the whole unit.
+  const dragControls = useDragControls();
+  // Persisted drag offset for the manual/fallback path. Framer owns the transform
+  // for these motion values, so a parked unit stays exactly where it was dropped.
+  // (Seeded from the store so it survives re-renders / re-anchor toggles.)
+  const dragX = useMotionValue(position.x);
+  const dragY = useMotionValue(position.y);
 
   const activeReg = activeId ? contexts[activeId] : null;
   const turn = activeReg?.getTurn();
-  const showBubble = visible && !!turn;
+  // Hide the bubble WHILE dragging the dolphin (it re-appears on drop, re-positioned
+  // by FU-B against the dolphin's final spot) — avoids the bubble lagging the dolphin
+  // mid-drag and keeps the drag gesture clean.
+  const showBubble = visible && !!turn && !isDragging;
 
   // ── Anchor resolution (Phase 1b) ──
   // Re-resolve every render: the DOM element may mount after the context registers.
@@ -61,39 +97,108 @@ export function CompanionShell() {
     if (!anchorId) { setAnchorEl(null); return; }
     // Resolve immediately + set up a MutationObserver to catch late-mounting elements
     setAnchorEl(document.getElementById(anchorId));
+    // Scope observer to the diagnosis container when possible (perf)
+    const scopeEl = document.getElementById("diagnosis-root") ?? document.body;
     const obs = new MutationObserver(() => {
       setAnchorEl(document.getElementById(anchorId));
     });
-    obs.observe(document.body, { childList: true, subtree: true });
+    obs.observe(scopeEl, { childList: true, subtree: true });
     return () => obs.disconnect();
   }, [anchorId]);
 
-  // Anchored when: anchor exists + not dragging + position hasn't been manually set
-  const anchored = !!anchorEl && !isDragging && positionMode !== "manual";
+  // ── Positioning gate (restored on the UNIT) ──
+  // anchored: the unit (bubble + dolphin) sits beside the card. We DROP the
+  // anchor while the user is dragging (isDragging) or after they parked the unit
+  // (positionMode === "manual"), so a dragged unit stays where it was dropped.
+  // When neither anchored nor manual applies → fixed bottom-right fallback.
+  const anchored = !!anchorEl && positionMode !== "manual" && !isDragging;
 
-  // Floating UI: only active when anchored
+  // Floating UI for the UNIT — its own floating element referencing the card.
+  // size() clamps the unit to the available viewport space (no edge clipping),
+  // so the WHOLE unit (bubble + dolphin) stays on-screen near a viewport edge.
   const { refs, floatingStyles } = useFloating({
-    placement: "left-start",
-    middleware: [offset(12), flip(), shift({ padding: 12 })],
+    placement: "right-start",
+    // CRITICAL: position via top/left, NOT transform. This element is also a
+    // framer `motion.div` with `drag`, which OWNS the CSS `transform` (its x/y
+    // motion values). If Floating UI also wrote `transform` (the default), framer
+    // would clobber it → the anchored unit collapses to translate(0,0) ≈ top-left
+    // instead of sitting beside the card. top/left and framer's transform coexist.
+    transform: false,
+    middleware: [
+      offset(12),
+      flip(),
+      shift({ padding: 12 }),
+      size({
+        padding: 12,
+        apply({ availableWidth, availableHeight, elements }) {
+          Object.assign(elements.floating.style, {
+            maxWidth: `${Math.max(0, availableWidth)}px`,
+            maxHeight: `${Math.max(0, availableHeight)}px`,
+          });
+        },
+      }),
+    ],
     whileElementsMounted: autoUpdate,
   });
 
-  // Sync the reference element with the anchor
+  // Sync the reference element with the resolved anchor card.
   useEffect(() => {
-    if (anchored && anchorEl) {
-      refs.setReference(anchorEl);
-    } else {
-      refs.setReference(null);
-    }
+    refs.setReference(anchored ? anchorEl : null);
   }, [anchored, anchorEl, refs]);
 
-  // Pose: dragging → "swimming"; success flash → "success"; diagnosis_results → "tip" (advisory);
-  // otherwise cv_intake/cv_builder follow mascotState.
+  // ── FU-B: the BUBBLE anchors to the DOLPHIN (its reference is the dolphin element,
+  // NOT the card). placement "top" + flip()+shift()+size() means the bubble auto-flips
+  // below / shifts inward / clamps wherever the dolphin ends up — anchored beside a
+  // card, dragged to ANY edge, or the fallback corner. This is what makes the bubble
+  // NEVER occluded in every mode (the old single-FU clip only ran in anchored mode). ──
+  const dolphinNodeRef = useRef<HTMLDivElement | null>(null);
+  const bubbleFloat = useFloating({
+    placement: "top",
+    transform: false, // top/left, so framer's scale-pop transform never clobbers it
+    middleware: [
+      offset(10),
+      flip(),
+      shift({ padding: 12 }),
+      size({
+        padding: 12,
+        apply({ availableWidth, availableHeight, elements }) {
+          Object.assign(elements.floating.style, {
+            maxWidth: `${Math.max(0, availableWidth)}px`,
+            maxHeight: `${Math.max(0, availableHeight)}px`,
+          });
+        },
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // The dolphin wrapper is BOTH FU-A's floating element AND FU-B's reference AND the
+  // node we measure for the drop-clamp — one stable merged callback ref (refs objects
+  // are stable, so this never thrashes the ref on re-render).
+  const setDolphinRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      dolphinNodeRef.current = node;
+      refs.setFloating(node);
+      bubbleFloat.refs.setReference(node);
+    },
+    [refs, bubbleFloat.refs],
+  );
+
+  // Pose: dragging → "swimming"; success flash → "success";
+  // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
+  const isAdvisorySkill = turn?.skill === "diagnosis_results"
+    || turn?.skill === "diagnosis_proveit"
+    || turn?.skill === "diagnosis_review"
+    || turn?.skill === "diagnosis_upload"
+    || turn?.skill === "diagnosis_progress"
+    || turn?.skill === "diagnosis_element_issue"
+    || turn?.skill === "diagnosis_commentary"
+    || turn?.skill === "diagnosis_chat";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
       ? "success"
-      : turn?.skill === "diagnosis_results"
+      : isAdvisorySkill
         ? "tip"
         : (POSE[mascotState] ?? "idle");
 
@@ -104,8 +209,41 @@ export function CompanionShell() {
     return () => clearTimeout(timer);
   }, [showSuccess]);
 
+  // Note: re-anchoring after a drag is driven by the wiring hook's
+  // resetPositionMode() on anchor change (Fix A) — advancing the issue queue
+  // reuses ONE context id, so the shell never sees an activeId change; the hook
+  // flips positionMode back to "auto" for a genuinely new card.
+
+  // ── Keyboard: Esc → dismiss bubble ──
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && bOpen) { dismissActive(); }
+    },
+    [bOpen, dismissActive],
+  );
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // ── Focus trap: when bubble opens, focus the bubble ──
+  useEffect(() => {
+    if (showBubble && bubbleRef.current) {
+      bubbleRef.current.focus();
+    }
+  }, [showBubble]);
+
+  // Keep the framer drag offset in sync with the stored position when NOT
+  // actively dragging (framer owns the motion values mid-drag). This makes the
+  // parked offset authoritative across re-anchor toggles / re-renders.
+  useEffect(() => {
+    if (isDragging) return;
+    dragX.set(position.x);
+    dragY.set(position.y);
+  }, [position.x, position.y, isDragging, dragX, dragY]);
+
   // Don't render if no contexts are registered
-  if (Object.keys(contexts).length === 0) return null;
+  if (suspended || Object.keys(contexts).length === 0) return null;
 
   const handleDolphinClick = () => {
     if (bOpen) {
@@ -119,100 +257,190 @@ export function CompanionShell() {
   };
 
   return (
-    <motion.div
-      ref={anchored ? refs.setFloating : undefined}
-      drag
-      dragMomentum={false}
-      onDragStart={() => setDragging(true)}
-      onDragEnd={(_e, info) => {
-        setDragging(false);
-        setPosition(
-          position.x + info.offset.x,
-          position.y + info.offset.y,
-        );
-      }}
-      style={
-        anchored
-          ? { ...floatingStyles, zIndex: 60, touchAction: "none" }
-          : { touchAction: "none" }
-      }
-      className={
-        anchored
-          ? "flex flex-col items-end gap-2"
-          : "fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2"
-      }
-    >
-      {/* Bubble */}
-      <AnimatePresence>
-        {showBubble && (
-          <motion.div
-            key="companion-bubble"
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="w-[360px] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl"
-          >
-            <button
-              onClick={() => dismissActive()}
-              className="float-right text-[#787774] hover:text-[#2F3437] transition-colors p-1 rounded"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* ── cv_builder ── */}
-            {turn?.skill === "cv_builder" && (
-              <CvBuilderSkill
-                key={turn.props.fieldPath as string}
-                draftId={(turn.props.draftId as string) ?? draftId ?? ""}
-                fieldPath={turn.props.fieldPath as string}
-                section={turn.props.section as "projects" | "experience" | "summary"}
-                currentValue={turn.props.currentValue as string}
-                onApply={(after) => {
-                  (turn.props.onApply as (a: string) => void)(after);
-                  setShowSuccess(true);
-                }}
-              />
-            )}
-
-            {/* ── cv_intake ── */}
-            {turn?.skill === "cv_intake" && (
-              <CvIntakeSkill
-                key={`intake-${turn.props.entryIndex}`}
-                draftId={(turn.props.draftId as string) ?? draftId ?? ""}
-                entryIndex={turn.props.entryIndex as number}
-                currentEntry={turn.props.currentEntry as {
-                  company: string; position: string; startDate: string;
-                  endDate: string; description: string; achievements: string;
-                }}
-                onApply={(fields) => {
-                  (turn.props.onApply as (f: Record<string, string>) => void)(fields);
-                  setShowSuccess(true);
-                }}
-              />
-            )}
-
-            {/* ── diagnosis_results ── */}
-            {turn?.skill === "diagnosis_results" && (
-              <DiagnosisResultsSkill
-                action={turn.props.action as string}
-                ctaKind={turn.props.ctaKind as "roadmap" | "builder"}
-                onCta={turn.props.onCta as () => void}
-              />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Dolphin mascot */}
-      <button
-        onClick={handleDolphinClick}
-        className="cursor-pointer focus:outline-none"
-        aria-label="Companion mascot"
+    <FloatingPortal>
+      {/* ── DOLPHIN — FU-A floating element (anchored to the active issue's card via
+            refs.setFloating) + framer drag root + FU-B's reference. The bubble is a
+            SEPARATE element (below) anchored to THIS via FU-B, so it never clips. ── */}
+      <motion.div
+        ref={setDolphinRef}
+        drag
+        dragMomentum={false}
+        dragListener={false}
+        dragControls={dragControls}
+        onDragStart={() => setDragging(true)}
+        onDragEnd={(_e, info) => {
+          setDragging(false);
+          let nx = position.x + info.offset.x;
+          let ny = position.y + info.offset.y;
+          // Clamp so the DOLPHIN itself never lands off-screen (the bubble is kept on
+          // screen independently by FU-B). Measure the just-dropped on-screen box.
+          const node = dolphinNodeRef.current;
+          if (node && typeof window !== "undefined") {
+            const r = node.getBoundingClientRect();
+            const m = 8;
+            if (r.left < m) nx += m - r.left;
+            else if (r.right > window.innerWidth - m) nx -= r.right - (window.innerWidth - m);
+            if (r.top < m) ny += m - r.top;
+            else if (r.bottom > window.innerHeight - m) ny -= r.bottom - (window.innerHeight - m);
+          }
+          setPosition(nx, ny);
+        }}
+        style={
+          anchored
+            ? // Anchored: FU-A owns positioning via top/left (transform:false).
+              { ...floatingStyles, zIndex: 70, touchAction: "none" }
+            : positionMode === "manual" || isDragging
+              ? // Manual: framer drives x/y so a parked dolphin stays where dropped.
+                { x: dragX, y: dragY, touchAction: "none" }
+              : // Pure fallback (no anchor, never dragged) → clean bottom-right.
+                { touchAction: "none" }
+        }
+        className={anchored ? "z-[70]" : "fixed bottom-6 right-6 z-[70]"}
       >
-        <MascotSticker state={pose} size={96} />
-      </button>
-    </motion.div>
+        <button
+          onPointerDown={(e) => dragControls.start(e)}
+          onClick={handleDolphinClick}
+          className="cursor-grab active:cursor-grabbing focus:outline-none"
+          aria-label="Companion mascot"
+        >
+          <MascotSticker state={pose} size={200} />
+        </button>
+      </motion.div>
+
+      {/* ── BUBBLE — FU-B floating element, anchored to the dolphin so it auto-flips/
+            shifts to stay on-screen in EVERY mode. The plain wrapper holds the FU
+            position; the inner motion.div animates (scale-only, no y → no transform
+            fight with FU-B's top/left); the dialog div carries the ref/role (a ref on
+            the AnimatePresence child triggers framer's "`ref` is not a prop"). ── */}
+      <div
+        ref={bubbleFloat.refs.setFloating}
+        style={{ ...bubbleFloat.floatingStyles, zIndex: 71 }}
+      >
+        <AnimatePresence>
+          {showBubble && (
+            <motion.div
+              key="companion-bubble"
+              onPointerDown={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div
+                ref={bubbleRef}
+                role="dialog"
+                aria-live="polite"
+                aria-label="Companion assistant"
+                tabIndex={-1}
+                className="w-[min(360px,90vw)] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
+              >
+                <button
+                  onClick={() => dismissActive()}
+                  className="float-right text-[#787774] hover:text-[#2F3437] transition-colors p-1 rounded"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+              {/* ── cv_builder ── */}
+              {turn?.skill === "cv_builder" && (
+                <CvBuilderSkill
+                  key={turn.props.fieldPath as string}
+                  draftId={(turn.props.draftId as string) ?? draftId ?? ""}
+                  fieldPath={turn.props.fieldPath as string}
+                  section={turn.props.section as "projects" | "experience" | "summary"}
+                  currentValue={turn.props.currentValue as string}
+                  onApply={(after) => {
+                    (turn.props.onApply as (a: string) => void)(after);
+                    setShowSuccess(true);
+                  }}
+                />
+              )}
+
+              {/* ── cv_intake ── */}
+              {turn?.skill === "cv_intake" && (
+                <CvIntakeSkill
+                  key={`intake-${turn.props.entryIndex}`}
+                  draftId={(turn.props.draftId as string) ?? draftId ?? ""}
+                  entryIndex={turn.props.entryIndex as number}
+                  currentEntry={turn.props.currentEntry as {
+                    company: string; position: string; startDate: string;
+                    endDate: string; description: string; achievements: string;
+                  }}
+                  coachTrigger={turn.props.coachTrigger as
+                    | "degraded" | "needs_detail" | "gate" | undefined}
+                  coachGap={turn.props.coachGap as string | null | undefined}
+                  seedNarrative={turn.props.seedNarrative as string | undefined}
+                  onApply={(fields) => {
+                    (turn.props.onApply as (f: Record<string, string>) => void)(fields);
+                    setShowSuccess(true);
+                  }}
+                />
+              )}
+
+              {/* ── diagnosis_results ── */}
+              {turn?.skill === "diagnosis_results" && (
+                <DiagnosisResultsSkill
+                  action={turn.props.action as string}
+                  ctaKind={turn.props.ctaKind as "roadmap" | "builder"}
+                  onCta={turn.props.onCta as () => void}
+                />
+              )}
+
+              {/* ── diagnosis_proveit ── */}
+              {turn?.skill === "diagnosis_proveit" && (
+                <DiagnosisProveItSkill
+                  displayName={turn.props.displayName as string}
+                  onCta={turn.props.onCta as () => void}
+                />
+              )}
+
+              {/* ── diagnosis_review / diagnosis_upload ── */}
+              {(turn?.skill === "diagnosis_review" || turn?.skill === "diagnosis_upload") && (
+                <DiagnosisReviewSkill
+                  message={turn.props.message as string}
+                  ctaLabel={turn.props.ctaLabel as string | undefined}
+                  onCta={turn.props.onCta as (() => void) | undefined}
+                />
+              )}
+
+              {/* ── diagnosis_element_issue (Pillar 1+2) ── */}
+              {turn?.skill === "diagnosis_element_issue" && (
+                <ElementIssueSkill
+                  issue={turn.props.issue as ElementIssue}
+                  index={turn.props.index as number}
+                  total={turn.props.total as number}
+                  onCta={turn.props.onCta as () => void}
+                  onDismiss={turn.props.onDismiss as () => void}
+                  onSnooze={turn.props.onSnooze as () => void}
+                />
+              )}
+
+              {/* ── diagnosis_commentary (Phase A grounded commentary) ── */}
+              {turn?.skill === "diagnosis_commentary" && (
+                <DiagnosisCommentarySkill
+                  issue={turn.props.issue as ElementIssue}
+                  onCta={turn.props.onCta as () => void}
+                  onDismiss={turn.props.onDismiss as (() => void) | undefined}
+                />
+              )}
+
+              {/* ── diagnosis_chat (calm corner advisor — chat-driven, owner decision 06-23) ── */}
+              {turn?.skill === "diagnosis_chat" && (
+                <DiagnosisChatSkill
+                  messages={turn.props.messages as CompanionChatMessage[]}
+                  opener={turn.props.opener as string | null}
+                  suggestions={turn.props.suggestions as string[]}
+                  onSend={turn.props.onSend as (q: string) => void}
+                  onRetry={turn.props.onRetry as (index: number) => void}
+                  isPending={turn.props.isPending as boolean}
+                />
+              )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </FloatingPortal>
   );
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
 import { ActionRail } from "./editorial";
+import { useCompanionStore } from "@/store/useCompanionStore";
 
 /**
  * "Còn x/y lượt chấm" từ GET /api/me/entitlements (BE #49) — số thật theo plan,
@@ -110,6 +111,24 @@ export function DiagnosisStep1Upload() {
     : null;
 
   const hasUsableCv = Boolean(cvFile) || (isFromBuilder && Boolean(builderCvId));
+
+  /* ── Companion: Step-1 upload guide (#16) ── */
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    store.registerContext({
+      id: "diagnosis:upload",
+      priority: 5,
+      getTurn: () => ({
+        skill: "diagnosis_upload",
+        props: {
+          message: t("companion.upload.greet"),
+        },
+      }),
+    });
+    store.activateContext("diagnosis:upload");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:upload");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const formatHistoryDate = (iso: string) =>
     new Date(iso).toLocaleDateString(i18n.language?.startsWith("vi") ? "vi-VN" : "en-US", {

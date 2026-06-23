@@ -1,4 +1,4 @@
-import { motion, type Transition, type TargetAndTransition } from "framer-motion";
+import { motion, useReducedMotion, type Transition, type TargetAndTransition } from "framer-motion";
 import { cn } from "@/lib/utils";
 import laptopPng from "@/assets/mascot/laptop.png";
 import lightbulbPng from "@/assets/mascot/lightbulb.png";
@@ -109,6 +109,7 @@ export function MascotSticker({
   className,
   interactive = true,
 }: MascotStickerProps) {
+  const prefersReducedMotion = useReducedMotion();
   // Tăng kích thước 1.3 lần riêng cho state 'love' để bù trừ khoảng trống thừa của file ảnh hearts.png
   const adjustedSize = state === "love" ? size * 1.3 : size;
 
@@ -119,7 +120,10 @@ export function MascotSticker({
     return <MascotVideo size={adjustedSize} className={className} type="laptop1" />;
   }
 
-  const { animate, transition } = MOTION[state];
+  const motionDef = MOTION[state];
+  // WCAG: respect prefers-reduced-motion — disable repeat-Infinity loops
+  const animate = prefersReducedMotion ? {} : motionDef.animate;
+  const transition = prefersReducedMotion ? {} : motionDef.transition;
 
   return (
     <motion.img
@@ -128,7 +132,8 @@ export function MascotSticker({
       draggable={false}
       style={{
         width: adjustedSize,
-        height: "auto",
+        aspectRatio: "1 / 1",
+        objectFit: "contain",
         transformOrigin: "bottom center",
         // Đặt lề âm để kéo chữ sát lại gần chú cá heo
         marginBottom: state === "love" ? -16 : 0

@@ -23,6 +23,7 @@ import {
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
 import { getNextStepsApi } from "@/api/cv/next-steps";
+import { askCvDiagnosisChatApi, askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
@@ -45,7 +46,13 @@ import type {
   SkillMatchItem,
   TailorAction,
 } from "@shared/api";
-import type { NextStepsResponse } from "@/types/companion";
+import type {
+  DiagnosisChatFocus,
+  DiagnosisChatRequest,
+  DiagnosisChatResponse,
+  DiagnosisChatTurn,
+  NextStepsResponse,
+} from "@/types/companion";
 
 // ── Input/Output của service ────────────────────────────────────────
 
@@ -438,4 +445,47 @@ export async function getNextSteps(
 ): Promise<NextStepsResponse> {
   requireSession();
   return getNextStepsApi(matchId, lang);
+}
+
+// ── Companion: corner-advisor chat (diagnosis page) ─────────────────
+
+/**
+ * Hỏi trợ lý góc màn hình về cách CV được chấm / chỗ nào yếu. BE trả lời grounded
+ * (KHÔNG LLM phía FE):
+ * - Có JD match → POST /api/cv-matches/:matchId/chat (grounded từ gap-report của match).
+ * - CV-only (chưa so JD) → POST /api/cvs/:cvId/diagnosis-chat (grounded từ review của CV).
+ * - Không có cả hai → reject (không có gì để chat).
+ * BE endpoint build TÁCH RIÊNG — nếu chưa có (404/501) promise sẽ reject để UI hiện
+ * trạng thái "đang kết nối", không crash.
+ */
+export async function askDiagnosisChat({
+  matchId,
+  cvId,
+  question,
+  thread,
+  focus,
+  language = "vi",
+}: {
+  /** JD match id — preferred chat target when a JD has been compared. */
+  matchId?: string | null;
+  /** CV id — CV-only fallback when there is no JD match. */
+  cvId?: string | null;
+  question: string;
+  thread?: DiagnosisChatTurn[];
+  /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */
+  focus?: DiagnosisChatFocus;
+  language?: string;
+}): Promise<DiagnosisChatResponse> {
+  requireSession();
+  const baseBody: DiagnosisChatRequest = {
+    question,
+    ...(thread && thread.length > 0 ? { thread } : {}),
+    ...(focus ? { focus } : {}),
+    language,
+  };
+  // Prefer the JD-match route (gap-report grounded). Fall back to the CV-only route
+  // when there is no match. Reject when there is truly nothing to chat about.
+  if (matchId) return askDiagnosisChatApi(matchId, baseBody);
+  if (cvId) return askCvDiagnosisChatApi(cvId, baseBody);
+  return Promise.reject(new Error("NO_CHAT_TARGET"));
 }

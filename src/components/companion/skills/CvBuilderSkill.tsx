@@ -19,8 +19,15 @@ import {
 import { useTranslation } from "react-i18next";
 import type { AssistantAnswer, AssistantQuestion } from "@/types/companion";
 import { assistantLocales } from "./assistant-locale";
+import { ThinkingDots } from "../ThinkingDots";
+import { openIntakeCoach } from "./open-intake-coach";
 
 const MAX_REASK = 2;
+
+const EMPTY_ENTRY = {
+  company: "", position: "", startDate: "", endDate: "",
+  description: "", achievements: "",
+} as const;
 
 /* ── Sub-components ── */
 
@@ -226,6 +233,40 @@ export function CvBuilderSkill({
     }
   }, [isActiveField, fieldPath, draftId, currentValue, mascotState, companionTurn, analyzeMutation.isPending, handleAnalyze]);
 
+  // ── Route a re-ask dead-end INTO the intake coaching loop (no dead-end) ──
+  // The current bullet seeds the narrative; the discarded res.gap selects the
+  // coaching funnel. The intake applies grounded fields back to THIS single
+  // builder field (achievements field → achievements text, else description).
+  const routeToIntakeCoach = useCallback(
+    (gap: string | null) => {
+      if (!draftId) return;
+      const isAchievements = section === "experience" && /achievements/i.test(fieldPath ?? "");
+      const id = `intake-coach:${fieldPath || section}`;
+      openIntakeCoach({
+        id,
+        draftId,
+        entryIndex: 0,
+        // Seed the field being coached so the diff has a real `before`.
+        currentEntry: isAchievements
+          ? { ...EMPTY_ENTRY, achievements: currentValue }
+          : { ...EMPTY_ENTRY, description: currentValue },
+        coachTrigger: "needs_detail",
+        coachGap: gap,
+        seedNarrative: currentValue,
+        onApply: (fields) => {
+          // Map the grounded extracted field back to this single builder field.
+          const next = isAchievements
+            ? fields.achievements ?? fields.description
+            : fields.description ?? fields.achievements;
+          if (next && next.trim()) onApply(next);
+        },
+      });
+      // Hand off to the intake bubble; this builder session is done.
+      resetCompanion();
+    },
+    [draftId, section, fieldPath, currentValue, onApply, resetCompanion],
+  );
+
   // ── Submit answers (Turn-2) ──
   const handleSubmitAnswers = useCallback(() => {
     if (!draftId || !companionTurn) return;
@@ -259,12 +300,11 @@ export function CvBuilderSkill({
           } else if (res.reason === "NEEDS_DETAIL") {
             incrementReask();
             if (companionReaskCount + 1 >= MAX_REASK) {
-              setCompanionMessage(
-                t("companion.reaskLimit", {
-                  defaultValue: "Hãy thử sửa tay phần này — trợ lý chưa thu thập đủ chi tiết.",
-                }),
-              );
-              setMascotState("presenting");
+              // No dead-end: instead of "edit it yourself", route into the intake
+              // coaching loop seeded with the current bullet + the discarded res.gap.
+              // The user re-tells the story; generation re-runs through the SAME
+              // extract→computeIntakeFields pipeline (anti-fab — no new path).
+              routeToIntakeCoach(res.gap ?? null);
             } else {
               setCompanionMessage(res.message ?? null);
               setMascotState("asking");
@@ -284,7 +324,7 @@ export function CvBuilderSkill({
   }, [
     draftId, companionTurn, answers, currentValue, fieldPath, section, outputLocale,
     rewriteMutation, setMascotState, setCompanionPatch,
-    setCompanionMessage, incrementReask, companionReaskCount, t,
+    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach,
   ]);
 
   // ── Apply patch ──
@@ -304,9 +344,8 @@ export function CvBuilderSkill({
   // ── Loading state for analyze ──
   if (analyzeMutation.isPending) {
     return (
-      <div className="flex items-center gap-2 text-xs text-[#787774] py-2">
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-        <span>{t("companion.analyzing", { defaultValue: "Đang phân tích..." })}</span>
+      <div className="py-2">
+        <ThinkingDots label={t("companion.analyzing", { defaultValue: "Đang phân tích..." })} />
       </div>
     );
   }
@@ -389,10 +428,7 @@ export function CvBuilderSkill({
       {/* ── STATE: THINKING ── */}
       {mascotState === "thinking" && (
         <div className="space-y-2 py-2">
-          <div className="flex items-center gap-2 text-xs text-[#787774]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-            <span>{t("companion.thinking", { defaultValue: "Đang viết lại... (có thể mất vài giây)" })}</span>
-          </div>
+          <ThinkingDots label={t("companion.thinking", { defaultValue: "Đang viết lại... (có thể mất vài giây)" })} />
           <div className="space-y-1.5">
             <div className="h-3 bg-slate-100 rounded-full w-full animate-pulse" />
             <div className="h-3 bg-slate-100 rounded-full w-5/6 animate-pulse" style={{ animationDelay: "100ms" }} />

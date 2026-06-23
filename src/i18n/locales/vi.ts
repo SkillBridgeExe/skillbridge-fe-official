@@ -1894,6 +1894,168 @@ export default {
         apply: "Áp dụng",
         editStory: "Sửa lại chuyện",
         close: "Đóng",
+        coachStuck: "Chưa biết viết gì? Kể tôi nghe",
+      },
+      // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
+      // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
+      // CHOICE options are CATEGORIES (route the next question), never specifics.
+      coach: {
+        openDayToDay: "Quên CV đi — trong vai trò đó bạn đã làm gì hằng ngày?",
+        starProbe: "Kể một việc cụ thể: tình huống là gì, bạn làm gì, và kết quả ra sao?",
+        pickImpactType: "Kết quả của bạn thiên về điều gì? (chọn để tôi hỏi tiếp đúng hướng)",
+        pickRoleType: "Vai trò của bạn gần với mảng nào nhất?",
+        terminalStop: "Nếu thật sự không còn gì để thêm, cứ để trống — đừng bịa nội dung.",
+        options: {
+          other: "Khác",
+          impact: {
+            saved_time: "Tiết kiệm thời gian",
+            increased_revenue: "Tăng doanh thu",
+            improved_quality: "Cải thiện chất lượng",
+            reduced_cost: "Giảm chi phí",
+          },
+          role: {
+            frontend: "Frontend",
+            backend: "Backend",
+            fullstack: "Fullstack",
+            data: "Dữ liệu / AI",
+            devops: "DevOps / Hạ tầng",
+          },
+        },
+      },
+      proveit: {
+        msg: "Kỹ năng \"{{skill}}\" đã có trong CV nhưng chưa có bằng chứng cụ thể. Thêm một ví dụ thật sẽ tăng sức thuyết phục.",
+        cta: "Bổ sung bằng chứng",
+      },
+      elementIssue: {
+        // "1 of N" + điều hướng + dismiss/snooze
+        oneOfN: "{{index}} / {{total}}",
+        whyFirst: "Vì sao cái này trước?",
+        dismiss: "Bỏ qua",
+        dismissOnce: "Bỏ qua lần này",
+        snooze: "Nhắc sau",
+        intentional: "Mình để vậy có chủ đích",
+        factor: {
+          market_demand: "Thị trường cần",
+          evidence_risk: "Rủi ro bằng chứng",
+          interview_risk: "Rủi ro phỏng vấn",
+        },
+        cta: {
+          intake: "Bổ sung bằng chứng",
+          rewrite: "Viết lại cho rõ",
+          builder: "Mở Builder để sửa",
+          roadmap: "Xem lộ trình học",
+        },
+        // Mỗi "what" = câu code sở hữu; "why" tĩnh chỉ dùng khi BE không trả chuỗi.
+        listed_no_evidence: {
+          what: "Kỹ năng này có trong CV nhưng chưa có ví dụ cụ thể.",
+          why: "Nhà tuyển dụng cần bằng chứng — một dòng mô tả bạn đã dùng nó ra sao sẽ thuyết phục hơn nhiều.",
+        },
+        gap_item: {
+          what: "Đây là khoảng trống ưu tiên so với yêu cầu công việc.",
+          why: "Khép lại khoảng trống này giúp CV khớp sát hơn với JD.",
+        },
+        exp_no_dates: {
+          what: "Một số mục kinh nghiệm thiếu ngày bắt đầu/kết thúc.",
+          why: "Hệ thống ATS cần mốc thời gian để xếp đúng dòng nghề của bạn.",
+        },
+        parse_quality: {
+          what: "Chỗ này mình đọc chưa chắc chắn.",
+          why: "Bản CV hơi khó parse — kiểm lại nội dung để mình chấm đúng nhé.",
+        },
+        deal_breaker: {
+          what: "Yêu cầu bắt buộc này CV chưa có tín hiệu nào.",
+          why: "Đây là điều kiện loại — thiếu hẳn dễ bị gạt từ vòng lọc.",
+        },
+        missing_section: {
+          no_experience: {
+            what: "CV chưa có mục kinh nghiệm nào.",
+            why: "Thêm ít nhất 1 vị trí để AI chấm đúng hơn và nhà tuyển dụng thấy được hành trình của bạn.",
+          },
+          no_projects: {
+            what: "CV chưa có dự án.",
+            why: "Dự án minh chứng kỹ năng cụ thể, đặc biệt khi kinh nghiệm còn ít.",
+          },
+          no_skills: {
+            what: "Chưa tìm thấy kỹ năng kỹ thuật.",
+            why: "Hãy kiểm tra lại mục Skills — thiếu phần này CV khó khớp từ khóa JD.",
+          },
+          no_summary: {
+            what: "CV thiếu phần tóm tắt chuyên môn.",
+            why: "2-3 câu tổng quan giúp recruiter nắm nhanh bạn là ai trong 6 giây đầu.",
+          },
+        },
+      },
+      review: {
+        summary: "CV đã parse xong — tổng hợp: {{experiences}} kinh nghiệm, {{skills}} kỹ năng.",
+        gap: {
+          no_experience: "CV chưa có mục kinh nghiệm nào — hãy thêm ít nhất 1 vị trí để AI chấm đúng hơn.",
+          exp_no_dates: "Một số kinh nghiệm thiếu ngày bắt đầu/kết thúc — ATS cần thông tin này.",
+          no_projects: "CV chưa có dự án — thêm dự án giúp minh chứng kỹ năng tốt hơn.",
+          no_skills: "Chưa tìm thấy kỹ năng kỹ thuật — hãy kiểm tra lại mục Skills trong CV.",
+          no_summary: "CV thiếu phần tóm tắt chuyên môn — thêm 2-3 câu tổng quan giúp recruiter đọc nhanh.",
+        },
+        cta: "Mở Builder để bổ sung",
+      },
+      upload: {
+        greet: "Tải CV lên và chọn vai trò mục tiêu để bắt đầu phân tích.",
+        reading: "Đang đọc CV của bạn...",
+      },
+      progress: {
+        title: "So sánh với lần trước",
+        scoreDelta: "Điểm khớp: {{prev}}% → {{curr}}% (+{{delta}})",
+        gapsClosed: "Đã đóng {{count}} khoảng trống",
+        gapsWorsened: "{{count}} mục cần xem lại",
+        baseline: "Đây là lần chấm đầu tiên — kết quả sẽ được lưu làm mốc.",
+      },
+      scoreBreakdown: {
+        title: "Chi tiết điểm khớp",
+        covered: "Đã đáp ứng",
+        notCovered: "Chưa đáp ứng",
+        // Phase A commentary — template TĨNH chỉ bọc band/số thật; rationale + tips
+        // được render NGUYÊN VĂN từ reviewData bởi skill.
+        explain: {
+          what: "Điểm này nghĩa là: {{band}}.",
+          tipsLabel: "Gợi ý cho mục này",
+          strong: "Mục này đang mạnh — {{band}}.",
+          watch: "Mục này ổn nhưng nên xem lại — {{band}}.",
+          priority: "Mục này cần ưu tiên sửa trước — {{band}}.",
+        },
+      },
+      // Phase A praise — template TĨNH chúc mừng chỉ bọc số tổng thật; band scoreMsg
+      // và dòng việc-cần-sửa giữ NGUYÊN VĂN.
+      praise: {
+        what: "Về điểm tổng CV của bạn",
+        biggestFixLabel: "Sửa trước việc lớn nhất:",
+        excellent: "Xuất sắc — CV đạt {{score}}/100. Mức này đã vượt phần lớn vòng lọc.",
+        good: "Tốt lắm — CV đạt {{score}}/100. Khá cạnh tranh, chỉ cần trau chuốt thêm.",
+        fair: "Khởi đầu vững — CV đạt {{score}}/100. Vài chỉnh sửa trọng tâm sẽ nâng điểm.",
+        low: "CV đạt {{score}}/100. Cùng xử lý việc lớn nhất trước nhé.",
+      },
+      // Trợ lý góc màn hình — điều hướng bằng chat (quyết định owner 06-23). Câu mở
+      // đầu là template TĨNH, chỉ chèn ĐIỂM THẬT. Theo section đang xem (cấp TAB):
+      // cv_audit còn chia theo band (thấp → đề nghị giúp nâng điểm). KHÔNG LLM, KHÔNG bịa.
+      chat: {
+        opener: {
+          cv_audit: {
+            excellent: "CV bạn được {{score}}/100 — rất tốt. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            good: "CV bạn được {{score}}/100. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            fair: "CV bạn được {{score}}/100. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            low: "CV bạn được {{score}}/100. Để mình giúp bạn nâng điểm nhé — mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước. Bạn muốn bắt đầu từ đâu?",
+          },
+          skills_analysis: "Bạn đang xem phân tích kỹ năng. Mình có thể giải thích kỹ năng nào được tính cho vai trò này và chỗ nào còn thiếu/yếu — bạn muốn biết điều gì?",
+          market_careers: "Bạn đang xem cơ hội thị trường. Mình có thể giải thích vai trò này được so khớp ra sao và những khoảng cách đáng lưu ý — bạn muốn biết điều gì?",
+          gap_results: "Đây là khoảng cách kỹ năng của bạn. Mình có thể giải thích khoảng cách nào quan trọng nhất và các bước ưu tiên để lấp — bạn muốn bắt đầu từ đâu?",
+        },
+        placeholder: "Hỏi về điểm của bạn…",
+        send: "Gửi",
+        thinking: "Đang suy nghĩ…",
+        error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        suggestions: [
+          "Sao điểm mình vậy?",
+          "Chỗ nào yếu nhất?",
+          "Làm sao cải thiện?",
+        ],
       },
     },
     skillsNudge: {
