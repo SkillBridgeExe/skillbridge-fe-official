@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
 import type { CvReviewData } from "@shared/api";
-import type { DiagnosisChatTurn } from "@/types/companion";
+import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
 
@@ -39,21 +39,41 @@ export function openerBandKey(score: number): "excellent" | "good" | "fair" | "l
 }
 
 /**
+ * Pick the focus-aware opener i18n key. Only `cv_audit` keys further by the REAL
+ * overall-score band (so the verb still matches what the hero says); the other
+ * sections use a flat per-focus opener. ALL openers are STATIC enum-keyed templates
+ * — the only dynamic value is the REAL `{{score}}` interpolation. NO LLM, NO fabrication.
+ */
+function openerKeyForFocus(focus: DiagnosisChatFocus, score: number): string {
+  if (focus === "cv_audit") {
+    return `companion.chat.opener.cv_audit.${openerBandKey(score)}`;
+  }
+  return `companion.chat.opener.${focus}`;
+}
+
+/**
  * Mount on a diagnosis step to register the calm corner chat advisor.
  * @param reviewData  the loaded review (overall score + jdMatch for the chat target).
+ * @param focus       the section the user is currently viewing (TAB-level). Drives the
+ *                    focus-aware opener and is sent to the BE so it emphasizes that
+ *                    section. Switching focus only swaps the opener text — same single
+ *                    `diagnosis:chat` context, no aggressive re-pop.
  */
-export function useDiagnosisChatCompanion(reviewData: CvReviewData | null | undefined): void {
+export function useDiagnosisChatCompanion(
+  reviewData: CvReviewData | null | undefined,
+  focus: DiagnosisChatFocus,
+): void {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
   // matchId source: the JD match id when a JD has been compared; else CV-only fallback.
   const matchId = reviewData?.jdMatch?.matchId ?? null;
 
-  // Opener: REAL score + STATIC enum-keyed template. null until reviewData is ready.
+  // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
   const hasReview = typeof reviewData?.overallScore === "number";
   const score = reviewData?.overallScore ?? 0;
   const opener = hasReview
-    ? t(`companion.chat.opener.${openerBandKey(score)}`, { score })
+    ? t(openerKeyForFocus(focus, score), { score })
     : null;
 
   // Suggested-question chips (static seed; i18n array).
@@ -73,6 +93,7 @@ export function useDiagnosisChatCompanion(reviewData: CvReviewData | null | unde
         matchId,
         question: vars.question,
         thread: vars.thread,
+        focus,
         language,
       });
     },

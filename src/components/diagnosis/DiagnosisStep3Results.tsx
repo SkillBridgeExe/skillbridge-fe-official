@@ -289,7 +289,9 @@ export function DiagnosisStep3Results() {
     issuesReady,
   );
   // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
-  useDiagnosisChatCompanion(reviewData);
+  // Step 3 is a single Skill-Gap section → fixed focus so the advisor frames its
+  // opener + answers around the gap results in view.
+  useDiagnosisChatCompanion(reviewData, "gap_results");
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);

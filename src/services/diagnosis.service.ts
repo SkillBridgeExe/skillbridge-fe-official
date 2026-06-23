@@ -47,6 +47,7 @@ import type {
   TailorAction,
 } from "@shared/api";
 import type {
+  DiagnosisChatFocus,
   DiagnosisChatRequest,
   DiagnosisChatResponse,
   DiagnosisChatTurn,
@@ -458,12 +459,15 @@ export async function askDiagnosisChat({
   question,
   thread,
   cvId,
+  focus,
   language = "vi",
 }: {
   matchId: string;
   question: string;
   thread?: DiagnosisChatTurn[];
   cvId?: string;
+  /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */
+  focus?: DiagnosisChatFocus;
   language?: string;
 }): Promise<DiagnosisChatResponse> {
   requireSession();
@@ -471,6 +475,7 @@ export async function askDiagnosisChat({
     question,
     ...(thread && thread.length > 0 ? { thread } : {}),
     ...(cvId ? { cvId } : {}),
+    ...(focus ? { focus } : {}),
     language,
   };
   return askDiagnosisChatApi(matchId, body);

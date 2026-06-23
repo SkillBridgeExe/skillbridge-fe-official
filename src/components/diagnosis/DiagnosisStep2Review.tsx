@@ -20,6 +20,7 @@ import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
+import type { DiagnosisChatFocus } from "@/types/companion";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
@@ -332,7 +333,11 @@ export function DiagnosisStep2Review() {
     issuesReady,
   );
   // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
-  useDiagnosisChatCompanion(reviewData);
+  // Tab → chat focus so the advisor's opener + answers are context-relevant to the
+  // section in view. Switching tabs just swaps the opener text (same single context).
+  const chatFocus: DiagnosisChatFocus =
+    activeTab === "skills" ? "skills_analysis" : activeTab === "market" ? "market_careers" : "cv_audit";
+  useDiagnosisChatCompanion(reviewData, chatFocus);
   // The chat advisor owns the bubble while it is registered → the legacy completeness
   // nudge gates off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);

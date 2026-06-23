@@ -127,6 +127,19 @@ export interface DiagnosisChatTurn {
   text: string;
 }
 
+/**
+ * Which diagnosis section the user is currently viewing — TAB-level granularity.
+ * Step 2 (DiagnosisStep2Review) has 3 tabs (CV Audit / Skills Analysis /
+ * Market & Careers); Step 3 (DiagnosisStep3Results) is a single Skill-Gap section.
+ * Passed to the BE so it can EMPHASIZE that section in the answer — it does NOT
+ * change the FACTS, only what to foreground.
+ */
+export type DiagnosisChatFocus =
+  | "cv_audit"
+  | "skills_analysis"
+  | "market_careers"
+  | "gap_results";
+
 export interface DiagnosisChatRequest {
   /** The user's question (required, non-empty). */
   question: string;
@@ -134,6 +147,8 @@ export interface DiagnosisChatRequest {
   thread?: DiagnosisChatTurn[];
   /** CV-only fallback when there is no JD match id. */
   cvId?: string;
+  /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */
+  focus?: DiagnosisChatFocus;
   /** "vi" | "en" — answer language. */
   language?: string;
 }
