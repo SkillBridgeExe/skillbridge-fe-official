@@ -16,13 +16,14 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useCompareJdMutation, useInterviewPlanQuery } from "@/hooks/use-diagnosis";
+import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
-import { useCompanionStore } from "@/store/useCompanionStore";
+import { useCompanionStore, visibleIssues } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary } from "@/components/companion/skills/diagnosis-review";
+import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -312,13 +313,27 @@ export function DiagnosisStep2Review() {
   const [rawOpen, setRawOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'audit' | 'skills' | 'market'>('audit');
 
+  /* ── Companion Pillar 1+2: anchored per-element issues (boundary = parse-done) ──
+     The detector layer runs off reviewData (completeness/parse-quality/listed-no-evidence)
+     plus jdMatch + the gap report when a JD has been compared. When real issues exist,
+     the diagnosis:issue context owns the bubble and the legacy review nudge gates off. */
+  const matchId = reviewData?.jdMatch?.matchId;
+  const gapReportQuery = useGapReportQuery(matchId, diagnosisLang);
+  useElementIssuesCompanion(
+    { jdMatch: reviewData?.jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
+    !!reviewData?.document,
+  );
+  const hasVisibleIssues = useCompanionStore((s) => visibleIssues(s).length > 0);
+
   /* ── Companion: Step-2 review completeness nudge (#16) ── */
   const completenessGap = pickTopCompletenessGap(reviewData?.document);
   const summary = completenessSummary(reviewData?.document);
 
   useEffect(() => {
     const store = useCompanionStore.getState();
-    if (!completenessGap || !reviewData?.document) {
+    // Element-issues subsume the completeness nudge (it IS the missing_section/exp_no_dates
+    // detector now) — gate it off whenever a real issue is visible (single-active).
+    if (!completenessGap || !reviewData?.document || hasVisibleIssues) {
       store.unregisterContext("diagnosis:review");
       return;
     }
@@ -340,7 +355,7 @@ export function DiagnosisStep2Review() {
     store.activateContext("diagnosis:review");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:review");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completenessGap, summary.experiences, summary.skills]);
+  }, [completenessGap, summary.experiences, summary.skills, hasVisibleIssues]);
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },

@@ -1818,6 +1818,65 @@ export default {
         msg: "Kỹ năng \"{{skill}}\" đã có trong CV nhưng chưa có bằng chứng cụ thể. Thêm một ví dụ thật sẽ tăng sức thuyết phục.",
         cta: "Bổ sung bằng chứng",
       },
+      elementIssue: {
+        // "1 of N" + điều hướng + dismiss/snooze
+        oneOfN: "{{index}} / {{total}}",
+        whyFirst: "Vì sao cái này trước?",
+        dismiss: "Bỏ qua",
+        dismissOnce: "Bỏ qua lần này",
+        snooze: "Nhắc sau",
+        intentional: "Mình để vậy có chủ đích",
+        factor: {
+          market_demand: "Thị trường cần",
+          evidence_risk: "Rủi ro bằng chứng",
+          interview_risk: "Rủi ro phỏng vấn",
+        },
+        cta: {
+          intake: "Bổ sung bằng chứng",
+          rewrite: "Viết lại cho rõ",
+          builder: "Mở Builder để sửa",
+          roadmap: "Xem lộ trình học",
+        },
+        // Mỗi "what" = câu code sở hữu; "why" tĩnh chỉ dùng khi BE không trả chuỗi.
+        listed_no_evidence: {
+          what: "Kỹ năng này có trong CV nhưng chưa có ví dụ cụ thể.",
+          why: "Nhà tuyển dụng cần bằng chứng — một dòng mô tả bạn đã dùng nó ra sao sẽ thuyết phục hơn nhiều.",
+        },
+        gap_item: {
+          what: "Đây là khoảng trống ưu tiên so với yêu cầu công việc.",
+          why: "Khép lại khoảng trống này giúp CV khớp sát hơn với JD.",
+        },
+        exp_no_dates: {
+          what: "Một số mục kinh nghiệm thiếu ngày bắt đầu/kết thúc.",
+          why: "Hệ thống ATS cần mốc thời gian để xếp đúng dòng nghề của bạn.",
+        },
+        parse_quality: {
+          what: "Chỗ này mình đọc chưa chắc chắn.",
+          why: "Bản CV hơi khó parse — kiểm lại nội dung để mình chấm đúng nhé.",
+        },
+        deal_breaker: {
+          what: "Yêu cầu bắt buộc này CV chưa có tín hiệu nào.",
+          why: "Đây là điều kiện loại — thiếu hẳn dễ bị gạt từ vòng lọc.",
+        },
+        missing_section: {
+          no_experience: {
+            what: "CV chưa có mục kinh nghiệm nào.",
+            why: "Thêm ít nhất 1 vị trí để AI chấm đúng hơn và nhà tuyển dụng thấy được hành trình của bạn.",
+          },
+          no_projects: {
+            what: "CV chưa có dự án.",
+            why: "Dự án minh chứng kỹ năng cụ thể, đặc biệt khi kinh nghiệm còn ít.",
+          },
+          no_skills: {
+            what: "Chưa tìm thấy kỹ năng kỹ thuật.",
+            why: "Hãy kiểm tra lại mục Skills — thiếu phần này CV khó khớp từ khóa JD.",
+          },
+          no_summary: {
+            what: "CV thiếu phần tóm tắt chuyên môn.",
+            why: "2-3 câu tổng quan giúp recruiter nắm nhanh bạn là ai trong 6 giây đầu.",
+          },
+        },
+      },
       review: {
         summary: "CV đã parse xong — tổng hợp: {{experiences}} kinh nghiệm, {{skills}} kỹ năng.",
         gap: {

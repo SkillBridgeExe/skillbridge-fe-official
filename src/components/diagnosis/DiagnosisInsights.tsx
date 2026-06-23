@@ -346,7 +346,7 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
             const visibleSources = sources.slice(0, 3);
             const extra = Math.max(0, sources.length - visibleSources.length);
             return (
-              <div key={item.skill_canonical} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
+              <div key={item.skill_canonical} id={`evidence-${item.skill_canonical}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] font-bold text-[#2F3437]">{item.display_name}</span>
                   <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-bold", evidenceStrengthClass(item.strength))}>

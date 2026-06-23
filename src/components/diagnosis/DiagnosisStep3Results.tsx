@@ -22,10 +22,11 @@ import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
-import { useNextStepsQuery } from "@/hooks/use-diagnosis";
-import { useCompanionStore } from "@/store/useCompanionStore";
+import { useNextStepsQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
+import { useCompanionStore, visibleIssues } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
+import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
@@ -267,6 +268,17 @@ export function DiagnosisStep3Results() {
   const nextStepsQuery = useNextStepsQuery(jdMatch?.matchId, nextStepsLang);
   const topStep = pickTopNextStep(nextStepsQuery.data?.steps ?? []);
 
+  /* ── Companion Pillar 1+2: anchored per-element issues (subsumes results/proveit) ──
+     Fetch the gap report (gap_items + jd_intelligence) so the detector layer has
+     its full inputs, then collect + register on data-loaded (boundary). When real
+     issues exist, the hook gates off the legacy results/proveit contexts below. */
+  const gapReportQuery = useGapReportQuery(jdMatch?.matchId, nextStepsLang);
+  useElementIssuesCompanion(
+    { jdMatch: jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
+    !!reviewData,
+  );
+  const hasVisibleIssues = useCompanionStore((s) => visibleIssues(s).length > 0);
+
   /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
      yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
      results effect, and `activateContext` clobbers the already-active prove-it bubble (the store's
@@ -279,7 +291,9 @@ export function DiagnosisStep3Results() {
 
   useEffect(() => {
     const store = useCompanionStore.getState();
-    if (!topStep || provedItem) {
+    // Pillar 1+2 element-issues subsume the next-step surfacing: when any real
+    // issue is visible, the diagnosis:issue context owns the bubble (single-active).
+    if (!topStep || provedItem || hasVisibleIssues) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -306,12 +320,13 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:results");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical]);
+  }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, hasVisibleIssues]);
 
   /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
   useEffect(() => {
     const store = useCompanionStore.getState();
-    if (!provedItem) {
+    // Element-issues (Pillar 1+2) subsume prove-it surfacing too.
+    if (!provedItem || hasVisibleIssues) {
       store.unregisterContext("diagnosis:proveit");
       return;
     }
@@ -333,7 +348,7 @@ export function DiagnosisStep3Results() {
     store.activateContext("diagnosis:proveit");
     return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provedItem?.skill_canonical]);
+  }, [provedItem?.skill_canonical, hasVisibleIssues]);
 
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");

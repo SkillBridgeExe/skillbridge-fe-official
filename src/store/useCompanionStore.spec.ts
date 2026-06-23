@@ -1,9 +1,22 @@
+// @vitest-environment jsdom
 import { describe, expect, it, beforeEach } from "vitest";
-import { useCompanionStore, bubbleVisible } from "./useCompanionStore";
+import { useCompanionStore, bubbleVisible, visibleIssues, activeIssue } from "./useCompanionStore";
+import type { ElementIssue } from "@/components/companion/skills/element-issues";
 
 const reg = (id: string) => ({
   id,
   getTurn: () => ({ skill: "cv_builder" as const, props: { id } }),
+});
+
+const issue = (id: string, severity: number): ElementIssue => ({
+  id,
+  kind: "gap_item",
+  anchorId: `anchor-${id}`,
+  severity,
+  whatKey: "k.what",
+  why: null,
+  whyKey: "k.why",
+  ctaKind: null,
 });
 
 describe("useCompanionStore", () => {
@@ -64,5 +77,74 @@ describe("useCompanionStore", () => {
     s.unregisterContext("f1");
     expect(useCompanionStore.getState().activeId).toBeNull();
     expect(useCompanionStore.getState().contexts).toEqual({});
+  });
+});
+
+describe("useCompanionStore — issue queue", () => {
+  beforeEach(() => {
+    localStorage.removeItem("companion-dismissed");
+    useCompanionStore.setState({ dismissedIssues: new Set() });
+    useCompanionStore.getState().resetCompanion();
+  });
+
+  it("setIssues stores the queue, exposes the visible (non-dismissed) slice and the worst-first active issue", () => {
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("a", 5), issue("b", 3)]);
+    const st = useCompanionStore.getState();
+    expect(st.issues).toHaveLength(2);
+    expect(st.activeIssueIndex).toBe(0);
+    expect(visibleIssues(st).map((i) => i.id)).toEqual(["a", "b"]);
+    expect(activeIssue(st)?.id).toBe("a");
+  });
+
+  it("nextIssue advances; prevIssue goes back; both clamp at the ends", () => {
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("a", 5), issue("b", 3), issue("c", 1)]);
+    s.nextIssue();
+    expect(activeIssue(useCompanionStore.getState())?.id).toBe("b");
+    s.nextIssue();
+    s.nextIssue(); // clamp — no 4th item
+    expect(activeIssue(useCompanionStore.getState())?.id).toBe("c");
+    s.prevIssue();
+    expect(activeIssue(useCompanionStore.getState())?.id).toBe("b");
+    s.prevIssue();
+    s.prevIssue(); // clamp at 0
+    expect(activeIssue(useCompanionStore.getState())?.id).toBe("a");
+  });
+
+  it("dismissIssue(snooze) removes it from the visible queue AND persists to localStorage", () => {
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("a", 5), issue("b", 3)]);
+    s.dismissIssue("a", "snooze");
+    const st = useCompanionStore.getState();
+    expect(visibleIssues(st).map((i) => i.id)).toEqual(["b"]);
+    expect(activeIssue(st)?.id).toBe("b");
+    // persisted cross-session
+    expect(JSON.parse(localStorage.getItem("companion-dismissed") ?? "[]")).toContain("a");
+  });
+
+  it("dismissIssue(once) hides it this session but does NOT persist", () => {
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("a", 5), issue("b", 3)]);
+    s.dismissIssue("a", "once");
+    expect(visibleIssues(useCompanionStore.getState()).map((i) => i.id)).toEqual(["b"]);
+    expect(localStorage.getItem("companion-dismissed")).toBeNull();
+  });
+
+  it("a persisted-dismissed id stays dismissed after a re-setIssues (re-scan)", () => {
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("a", 5), issue("b", 3)]);
+    s.dismissIssue("a", "intentional");
+    // simulate a fresh scan returning the same issues
+    s.setIssues([issue("a", 5), issue("b", 3)]);
+    expect(visibleIssues(useCompanionStore.getState()).map((i) => i.id)).toEqual(["b"]);
+  });
+
+  it("loads persisted dismissed ids on reset (cross-session continuity)", () => {
+    localStorage.setItem("companion-dismissed", JSON.stringify(["x"]));
+    useCompanionStore.getState().resetCompanion();
+    const s = useCompanionStore.getState();
+    s.setIssues([issue("x", 9), issue("y", 2)]);
+    expect(visibleIssues(useCompanionStore.getState()).map((i) => i.id)).toEqual(["y"]);
   });
 });

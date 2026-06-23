@@ -21,6 +21,8 @@ import { CvIntakeSkill } from "./skills/CvIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
 import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
+import { ElementIssueSkill } from "./skills/ElementIssueSkill";
+import type { ElementIssue } from "./skills/element-issues";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -98,7 +100,8 @@ export function CompanionShell() {
     || turn?.skill === "diagnosis_proveit"
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
-    || turn?.skill === "diagnosis_progress";
+    || turn?.skill === "diagnosis_progress"
+    || turn?.skill === "diagnosis_element_issue";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
@@ -257,6 +260,18 @@ export function CompanionShell() {
                 message={turn.props.message as string}
                 ctaLabel={turn.props.ctaLabel as string | undefined}
                 onCta={turn.props.onCta as (() => void) | undefined}
+              />
+            )}
+
+            {/* ── diagnosis_element_issue (Pillar 1+2) ── */}
+            {turn?.skill === "diagnosis_element_issue" && (
+              <ElementIssueSkill
+                issue={turn.props.issue as ElementIssue}
+                index={turn.props.index as number}
+                total={turn.props.total as number}
+                onCta={turn.props.onCta as () => void}
+                onDismiss={turn.props.onDismiss as () => void}
+                onSnooze={turn.props.onSnooze as () => void}
               />
             )}
           </motion.div>

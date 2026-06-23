@@ -1824,6 +1824,65 @@ export default {
         msg: "The skill \"{{skill}}\" is on your CV but lacks concrete evidence. Adding a real example will make it more convincing.",
         cta: "Add evidence",
       },
+      elementIssue: {
+        // "1 of N" + navigation + dismiss/snooze
+        oneOfN: "{{index}} of {{total}}",
+        whyFirst: "Why this first?",
+        dismiss: "Dismiss",
+        dismissOnce: "Dismiss for now",
+        snooze: "Remind me later",
+        intentional: "I left this on purpose",
+        factor: {
+          market_demand: "Market demand",
+          evidence_risk: "Evidence risk",
+          interview_risk: "Interview risk",
+        },
+        cta: {
+          intake: "Add evidence",
+          rewrite: "Rewrite for clarity",
+          builder: "Open Builder to fix",
+          roadmap: "See learning roadmap",
+        },
+        // Each "what" is code-owned; the static "why" is only used when the BE returns no string.
+        listed_no_evidence: {
+          what: "This skill is on your CV but has no concrete example.",
+          why: "Recruiters want proof — a line on how you actually used it is far more convincing.",
+        },
+        gap_item: {
+          what: "This is a priority gap against the job's requirements.",
+          why: "Closing this gap makes your CV match the JD more closely.",
+        },
+        exp_no_dates: {
+          what: "Some experience entries are missing start/end dates.",
+          why: "ATS systems need timestamps to place your career timeline correctly.",
+        },
+        parse_quality: {
+          what: "I'm not fully confident I read this part correctly.",
+          why: "This CV was a little hard to parse — double-check the content so the scoring is accurate.",
+        },
+        deal_breaker: {
+          what: "Your CV shows no signal for this required item.",
+          why: "This is a deal-breaker requirement — missing it entirely risks an early screen-out.",
+        },
+        missing_section: {
+          no_experience: {
+            what: "Your CV has no experience entries.",
+            why: "Add at least one position so the AI scores accurately and recruiters can see your journey.",
+          },
+          no_projects: {
+            what: "Your CV has no projects.",
+            why: "Projects demonstrate concrete skills — especially valuable when experience is light.",
+          },
+          no_skills: {
+            what: "No technical skills were detected.",
+            why: "Check the Skills section — without it your CV struggles to match JD keywords.",
+          },
+          no_summary: {
+            what: "Your CV is missing a professional summary.",
+            why: "A 2-3 sentence overview helps recruiters grasp who you are in the first 6 seconds.",
+          },
+        },
+      },
       review: {
         summary: "CV parsed — summary: {{experiences}} experiences, {{skills}} skills.",
         gap: {

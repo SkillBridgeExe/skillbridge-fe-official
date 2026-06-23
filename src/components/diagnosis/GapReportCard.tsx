@@ -117,6 +117,7 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                 return (
                   <div
                     key={`${gap.requirement_id || gap.canonical_name}-${i}`}
+                    id={`gap-${gap.requirement_id}`}
                     className="p-1.5 rounded-2xl bg-slate-50 border border-slate-200/50 shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.01] hover:shadow-md group"
                     style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
                   >

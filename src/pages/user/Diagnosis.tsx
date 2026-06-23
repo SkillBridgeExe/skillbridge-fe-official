@@ -301,7 +301,7 @@ export default function Diagnosis() {
     return (
       <Layout hideFooter>
         <Suspense fallback={<PageLoader />}>
-          <div className="h-[calc(100dvh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
+          <div id="cv-builder-anchor" className="h-[calc(100dvh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
             <CvBuilderHeader />
             <div className="flex-1 flex overflow-hidden">
               <div className="w-[45%] h-full border-r border-slate-200 bg-white flex overflow-hidden shrink-0">
@@ -329,7 +329,7 @@ export default function Diagnosis() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
+      <div id="diagnosis-root" className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
 
         {/* LOADING OVERLAY */}
         <AnimatePresence>
