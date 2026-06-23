@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
-  Send, Check, X, Loader2, AlertTriangle, Quote,
+  Send, Check, X, AlertTriangle, Quote,
   Sparkles,
 } from "lucide-react";
+import { ThinkingDots } from "../ThinkingDots";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAssistantExtractMutation } from "@/hooks/use-cv-builder";
@@ -165,10 +166,7 @@ export function CvIntakeSkill({
   if (phase === "thinking") {
     return (
       <div className="space-y-2 py-2">
-        <div className="flex items-center gap-2 text-xs text-[#787774]">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-          <span>{t("companion.intake.extracting", { defaultValue: "Đang đọc…" })}</span>
-        </div>
+        <ThinkingDots label={t("companion.intake.extracting", { defaultValue: "Đang đọc…" })} />
         <div className="space-y-1.5">
           <div className="h-3 bg-slate-100 rounded-full w-full animate-pulse" />
           <div className="h-3 bg-slate-100 rounded-full w-5/6 animate-pulse" style={{ animationDelay: "100ms" }} />

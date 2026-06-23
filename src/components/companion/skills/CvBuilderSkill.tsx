@@ -19,6 +19,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { AssistantAnswer, AssistantQuestion } from "@/types/companion";
 import { assistantLocales } from "./assistant-locale";
+import { ThinkingDots } from "../ThinkingDots";
 
 const MAX_REASK = 2;
 
@@ -304,9 +305,8 @@ export function CvBuilderSkill({
   // ── Loading state for analyze ──
   if (analyzeMutation.isPending) {
     return (
-      <div className="flex items-center gap-2 text-xs text-[#787774] py-2">
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-        <span>{t("companion.analyzing", { defaultValue: "Đang phân tích..." })}</span>
+      <div className="py-2">
+        <ThinkingDots label={t("companion.analyzing", { defaultValue: "Đang phân tích..." })} />
       </div>
     );
   }
@@ -389,10 +389,7 @@ export function CvBuilderSkill({
       {/* ── STATE: THINKING ── */}
       {mascotState === "thinking" && (
         <div className="space-y-2 py-2">
-          <div className="flex items-center gap-2 text-xs text-[#787774]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-            <span>{t("companion.thinking", { defaultValue: "Đang viết lại... (có thể mất vài giây)" })}</span>
-          </div>
+          <ThinkingDots label={t("companion.thinking", { defaultValue: "Đang viết lại... (có thể mất vài giây)" })} />
           <div className="space-y-1.5">
             <div className="h-3 bg-slate-100 rounded-full w-full animate-pulse" />
             <div className="h-3 bg-slate-100 rounded-full w-5/6 animate-pulse" style={{ animationDelay: "100ms" }} />
