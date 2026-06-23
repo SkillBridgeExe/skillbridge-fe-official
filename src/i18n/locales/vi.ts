@@ -10,7 +10,8 @@ export default {
       },
       marketplace: {
         heroTitle: "Gặp mentor cho bước tiến tiếp theo",
-        heroSubtitle: "Tìm chuyên gia đã xác minh để nhận hướng dẫn thực tế cho bước tiếp theo trong sự nghiệp.",
+        heroSubtitle:
+          "Tìm chuyên gia đã xác minh để nhận hướng dẫn thực tế cho bước tiếp theo trong sự nghiệp.",
         findMentor: "Tìm mentor phù hợp",
         becomeMentor: "Trở thành mentor",
         verifiedExperts: "Chuyên gia xác minh",
@@ -33,7 +34,8 @@ export default {
         reset: "Đặt lại",
         applyFilters: "Áp dụng",
         noResultsTitle: "Không có mentor phù hợp",
-        noResultsBody: "Hãy thử tìm kiếm rộng hơn hoặc đặt lại bộ lọc để xem tất cả mentor.",
+        noResultsBody:
+          "Hãy thử tìm kiếm rộng hơn hoặc đặt lại bộ lọc để xem tất cả mentor.",
         loadErrorTitle: "Không thể tải danh sách mentor",
         loadErrorBody: "Kiểm tra kết nối và thử lại.",
         retry: "Thử lại",
@@ -68,14 +70,18 @@ export default {
         editProfile: "Chỉnh sửa hồ sơ",
         viewPublic: "Xem hồ sơ công khai",
         title: "Hồ sơ mentor",
-        subtitle: "Tạo hồ sơ rõ ràng để người học hiểu bạn có thể đồng hành với họ như thế nào.",
+        subtitle:
+          "Tạo hồ sơ rõ ràng để người học hiểu bạn có thể đồng hành với họ như thế nào.",
         completion: "Mức độ hoàn thiện",
         status: "Trạng thái duyệt",
         emptyTitle: "Tạo hồ sơ mentor",
-        emptyBody: "Thêm chuyên môn, định hướng mentoring và thông tin phiên trước khi gửi duyệt.",
+        emptyBody:
+          "Thêm chuyên môn, định hướng mentoring và thông tin phiên trước khi gửi duyệt.",
         rejectionReason: "Phản hồi từ quản trị viên",
-        pendingBody: "Hồ sơ đang được duyệt. Bạn chưa thể chỉnh sửa cho đến khi có kết quả.",
-        suspendedBody: "Hồ sơ đang tạm ngưng. Hãy liên hệ quản trị viên để được hỗ trợ.",
+        pendingBody:
+          "Hồ sơ đang được duyệt. Bạn chưa thể chỉnh sửa cho đến khi có kết quả.",
+        suspendedBody:
+          "Hồ sơ đang tạm ngưng. Hãy liên hệ quản trị viên để được hỗ trợ.",
         approvedBody: "Hồ sơ của bạn đang hiển thị trên marketplace mentor.",
         save: "Lưu hồ sơ",
         saving: "Đang lưu",
@@ -84,17 +90,21 @@ export default {
         saved: "Đã lưu hồ sơ mentor",
         submitted: "Đã gửi hồ sơ để xét duyệt",
         basicInfo: "Thông tin cơ bản",
-        avatarHint: "Ảnh này được dùng cho hồ sơ mentor công khai sau khi được duyệt.",
+        avatarHint:
+          "Ảnh này được dùng cho hồ sơ mentor công khai sau khi được duyệt.",
         headline: "Tiêu đề chuyên môn",
         company: "Công ty",
         shortBio: "Giới thiệu ngắn",
         fullBio: "Phong cách mentoring",
         verificationContact: "Thông tin xác minh",
-        verificationContactHint: "Cung cấp ít nhất LinkedIn hoặc số điện thoại để quản trị viên xác minh hồ sơ.",
-        verificationContactRequired: "Cần ít nhất LinkedIn hoặc số điện thoại trước khi gửi duyệt.",
+        verificationContactHint:
+          "Cung cấp ít nhất LinkedIn hoặc số điện thoại để quản trị viên xác minh hồ sơ.",
+        verificationContactRequired:
+          "Cần ít nhất LinkedIn hoặc số điện thoại trước khi gửi duyệt.",
         linkedinUrl: "Liên kết LinkedIn",
         phoneNumber: "Số điện thoại",
-        phonePrivacy: "Số điện thoại chỉ dùng để xét duyệt và không xuất hiện trên hồ sơ công khai.",
+        phonePrivacy:
+          "Số điện thoại chỉ dùng để xét duyệt và không xuất hiện trên hồ sơ công khai.",
         domains: "Lĩnh vực",
         domainPlaceholder: "Nhập lĩnh vực rồi nhấn Enter",
         skills: "Kỹ năng",
@@ -103,11 +113,13 @@ export default {
         price: "Giá tham khảo (VND)",
         duration: "Thời lượng phiên",
         accepting: "Đang nhận mentee",
-        missingFields: "Hãy hoàn thiện các trường bắt buộc trước khi gửi duyệt.",
+        missingFields:
+          "Hãy hoàn thiện các trường bắt buộc trước khi gửi duyệt.",
       },
       admin: {
         title: "Duyệt mentor",
-        subtitle: "Kiểm tra hồ sơ mentor trước khi hiển thị trên marketplace công khai.",
+        subtitle:
+          "Kiểm tra hồ sơ mentor trước khi hiển thị trên marketplace công khai.",
         searchPlaceholder: "Tìm tiêu đề, công ty hoặc hồ sơ",
         allStatuses: "Tất cả trạng thái",
         profile: "Hồ sơ",
@@ -407,7 +419,8 @@ export default {
         subtitle:
           "Quét QR payOS hoặc hoàn tất form nhúng. Hệ thống sẽ tự xác nhận thanh toán.",
         embedTitle: "payOS checkout",
-        embedReady: "Form thanh toán đang nằm bên dưới. Hoàn tất tại đây và hệ thống sẽ tự động xác minh đơn.",
+        embedReady:
+          "Form thanh toán đang nằm bên dưới. Hoàn tất tại đây và hệ thống sẽ tự động xác minh đơn.",
         embedLoading: "Đang tải payOS checkout...",
         embedErrorTitle: "Không tải được checkout nhúng",
         embedErrorDesc:
@@ -425,7 +438,8 @@ export default {
         linkUnavailableDesc:
           "Chưa tìm thấy link payOS đang hoạt động cho đơn này. Vui lòng kiểm tra lại sau ít phút.",
         summaryTitle: "Tóm tắt đơn",
-        summaryDesc: "Trạng thái này lấy từ SkillBridge billing, không lấy từ URL trình duyệt.",
+        summaryDesc:
+          "Trạng thái này lấy từ SkillBridge billing, không lấy từ URL trình duyệt.",
         orderCode: "Mã đơn",
         purpose: "Mục đích",
         amount: "Số tiền",
@@ -440,7 +454,8 @@ export default {
         unverifiedTitle: "Chưa xác minh được thanh toán",
         statusError:
           "Không kiểm tra được trạng thái đơn — mạng hoặc máy chủ đang trục trặc. Đơn của bạn không bị mất.",
-        verifyError: "Chưa xác minh được trạng thái thanh toán mới nhất: {{error}}",
+        verifyError:
+          "Chưa xác minh được trạng thái thanh toán mới nhất: {{error}}",
         providerReturned:
           "payOS trả về trạng thái {{status}}. SkillBridge đang xác minh trạng thái cuối cùng của đơn.",
         viewMyPlan: "Xem gói của tôi",
@@ -473,13 +488,19 @@ export default {
           MENTOR_REMAINING: "Thanh toán phần còn lại cho mentor",
         },
         nextActions: {
-          PENDING: "Hoàn tất form payOS, sau đó giữ trang này mở trong lúc hệ thống xác minh đơn.",
-          PROCESSING: "Cổng thanh toán đang xử lý đơn. Giữ trang này mở hoặc kiểm tra lại sau ít phút.",
+          PENDING:
+            "Hoàn tất form payOS, sau đó giữ trang này mở trong lúc hệ thống xác minh đơn.",
+          PROCESSING:
+            "Cổng thanh toán đang xử lý đơn. Giữ trang này mở hoặc kiểm tra lại sau ít phút.",
           PAID: "Thanh toán đã được xác nhận. Gói, quota và quyền sử dụng đang được làm mới.",
-          CANCELLED: "Thanh toán đã bị hủy. Bạn có thể tạo checkout mới khi sẵn sàng.",
-          EXPIRED: "Link thanh toán đã hết hạn. Quay lại bảng giá để tạo checkout mới.",
-          FAILED: "Thanh toán chưa hoàn tất. Kiểm tra lại đơn hoặc tạo checkout mới.",
-          UNKNOWN: "Kiểm tra lại đơn nếu cổng thanh toán đã chuyển bạn về trang này.",
+          CANCELLED:
+            "Thanh toán đã bị hủy. Bạn có thể tạo checkout mới khi sẵn sàng.",
+          EXPIRED:
+            "Link thanh toán đã hết hạn. Quay lại bảng giá để tạo checkout mới.",
+          FAILED:
+            "Thanh toán chưa hoàn tất. Kiểm tra lại đơn hoặc tạo checkout mới.",
+          UNKNOWN:
+            "Kiểm tra lại đơn nếu cổng thanh toán đã chuyển bạn về trang này.",
         },
         returnTitle: "Đang hoàn tất thanh toán",
         returnRedirecting: "Đang chuyển tới trang checkout nhúng...",
@@ -718,9 +739,33 @@ export default {
         chooseCvFirst: "Chọn CV trước",
         noMatchContext: "Không dùng ngữ cảnh match",
         savedJd: "JD đã lưu",
-        noSavedMatch: "Chưa có JD match đã lưu. Phỏng vấn vẫn có thể dùng CV + vai trò.",
+        noSavedMatch:
+          "Chưa có JD match đã lưu. Phỏng vấn vẫn có thể dùng CV + vai trò.",
         targetRole: "Vai trò mục tiêu",
         language: "Ngôn ngữ",
+        criteriaTitle: "Mục tiêu và tiêu chí chấm",
+        criteriaDescription:
+          "Phỏng vấn {{type}} cho {{role}}. Câu hỏi gốc sẽ dùng bộ câu hỏi đã chuẩn bị khi có; AI chỉ hỏi câu hỏi phụ và chấm điểm thích ứng.",
+        criteria: {
+          technicalDepth: "Độ sâu và độ đúng kỹ thuật",
+          problemSolving: "Cách giải quyết vấn đề và trade-off",
+          communication: "Giao tiếp rõ ràng, có cấu trúc",
+          evidenceCredibility: "Bằng chứng cụ thể từ dự án hoặc task thật",
+          roleFit: "Độ phù hợp vai trò, động lực và khả năng phát triển",
+        },
+        questionBank: {
+          curated: "Bộ câu hỏi tuyển chọn",
+          fallback: "AI dự phòng",
+          curatedTitle: "Bộ câu hỏi tuyển chọn",
+          curatedDescription:
+            "Vai trò này dùng câu hỏi do SkillBridge tự biên soạn trước khi AI hỏi câu hỏi phụ.",
+          fallbackTitle: "Câu hỏi dự phòng tổng quát",
+          fallbackDescription:
+            "Vai trò này chưa được seed trong V1, backend sẽ dùng mẫu câu hỏi được tạo tự động.",
+        },
+        privacyScoringTitle: "Chấm điểm an toàn về quyền riêng tư",
+        privacyScoringDescription:
+          "Chấm điểm dựa trên transcript, rubric và chất lượng bằng chứng. Ngoại hình qua camera không được chấm.",
         cameraTitle: "Camera chỉ bật khi bạn bắt đầu",
         cameraDescription:
           "Màn setup chưa yêu cầu quyền microphone hoặc camera.",
@@ -754,8 +799,7 @@ export default {
           },
           realtime: {
             title: "Hội thoại trực tiếp",
-            description:
-              "AI nghe và phản hồi như một interviewer trực tiếp.",
+            description: "AI nghe và phản hồi như một interviewer trực tiếp.",
           },
         },
         voice: {
@@ -812,10 +856,20 @@ export default {
         liveMicMuted: "Mic live đang tắt",
         spokenPlaceholder:
           "Bấm mic khi bạn nói; transcript sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
-        textPlaceholder: "Fallback text: nhập câu trả lời của bạn ở đây.",
+        textPlaceholder:
+          "Nhập bằng văn bản dự phòng: nhập câu trả lời của bạn ở đây.",
         submitAnswer: "Gửi câu trả lời",
+        questionMeta: {
+          title: "Trọng tâm câu hỏi",
+          curated: "Bộ câu hỏi tuyển chọn",
+          fallback: "AI dự phòng",
+          phase: "Giai đoạn",
+          skill: "Kỹ năng",
+          thread: "Chủ đề",
+          bankKey: "Mã câu hỏi: {{key}}",
+        },
         mode: {
-          textFallback: "Fallback text",
+          textFallback: "Văn bản dự phòng",
           liveRealtime: "Hội thoại trực tiếp",
           guidedVoice: "Giọng nói có hướng dẫn",
         },
@@ -871,13 +925,33 @@ export default {
         bodyLanguageDescription:
           "Chỉ được chấm khi buổi phỏng vấn ghi nhận tín hiệu phi ngôn ngữ",
         bodyLanguageEmpty: "Phiên này không ghi nhận ngôn ngữ cơ thể.",
+        rubricBreakdown: "Rubric chấm điểm",
+        rubricBreakdownDescription:
+          "Các tiêu chí được backend chấm theo trọng số phù hợp với vai trò.",
+        confidenceEvidence: "Hiệu chỉnh độ tự tin & bằng chứng",
+        confidenceEvidenceDescription:
+          "Tín hiệu an toàn về quyền riêng tư dựa trên chất lượng câu trả lời, không dựa trên ngoại hình.",
+        confidenceEvidenceEmpty: "Chưa có tín hiệu độ tự tin hoặc bằng chứng.",
+        weight: "trọng số",
         recommendedNextSteps: "Bước tiếp theo được gợi ý",
         recommendedNextStepsDescription: "Gợi ý từ kết quả chấm phỏng vấn",
         recommendations: "Khuyến nghị",
         suggestedModules: "Module gợi ý",
-        noMetrics: "Chưa có metric để hiển thị.",
+        coachingStrengths: "Điểm mạnh coaching",
+        developmentPlan: "Kế hoạch phát triển",
+        developmentPlanDescription:
+          "Hành động học, sửa CV và luyện phỏng vấn được suy ra từ kết quả chấm.",
+        coachingPriorities: "Ưu tiên coaching",
+        devPlanItems: "Việc cần làm",
+        noMetrics: "Chưa có chỉ số để hiển thị.",
         noItems: "Chưa có mục nào.",
         questionAnalysis: "Phân tích từng câu hỏi",
+        curatedQuestion: "Câu hỏi tuyển chọn",
+        fallbackQuestion: "Câu hỏi dự phòng",
+        phase: "Giai đoạn",
+        skill: "Kỹ năng",
+        depthSignal: "Độ sâu",
+        questionBankKey: "Mã câu hỏi: {{key}}",
         noPersistedAnswers: "Chưa có câu trả lời đã lưu để hiển thị.",
         noSummary: "Chưa có tóm tắt.",
       },
@@ -901,7 +975,8 @@ export default {
         microphoneUnavailable: "Microphone không khả dụng. Tiếp tục bằng text.",
         realtimeTokenUnavailable:
           "Chế độ giọng nói trực tiếp chưa khả dụng. Tiếp tục bằng text.",
-        reconnectFailed: "Không thể kết nối lại giọng nói trực tiếp. Tiếp tục bằng text.",
+        reconnectFailed:
+          "Không thể kết nối lại giọng nói trực tiếp. Tiếp tục bằng text.",
       },
       roles: {
         frontend_developer: "Lập trình viên Frontend",
@@ -1412,7 +1487,8 @@ export default {
       footnote:
         "Mọi số liệu trong báo cáo là số thật từ phân tích CV/JD và pool tin tuyển dụng — không phải nhận định bịa.",
       priorityTitle: "Mục tiêu cần cải thiện ưu tiên",
-      priorityDesc: "Các khoảng cách năng lực cốt lõi (gồm kỹ năng, cấp độ, ngoại ngữ, học vấn) được phân tích từ CV và JD.",
+      priorityDesc:
+        "Các khoảng cách năng lực cốt lõi (gồm kỹ năng, cấp độ, ngoại ngữ, học vấn) được phân tích từ CV và JD.",
       type: {
         hard_skill: "Kỹ năng chuyên môn",
         soft_skill: "Kỹ năng mềm",
@@ -1643,8 +1719,10 @@ export default {
       toastDownloadFailedDesc: "Không tạo được PDF trên máy chủ.",
       toastLocalActionTitle: "Chưa có bản nháp trên máy chủ",
       toastSaveFailedTitle: "Lưu thất bại",
-      toastSaveFailedDesc: "Không lưu được thay đổi mới nhất. Vui lòng thử lại trước khi tiếp tục.",
-      toastSaveUnavailableDesc: "Tự động lưu đang khởi tạo. Vui lòng thử lại sau giây lát.",
+      toastSaveFailedDesc:
+        "Không lưu được thay đổi mới nhất. Vui lòng thử lại trước khi tiếp tục.",
+      toastSaveUnavailableDesc:
+        "Tự động lưu đang khởi tạo. Vui lòng thử lại sau giây lát.",
       toastDraftErrorTitle: "Lỗi tạo bản nháp",
       toastDraftErrorDesc:
         "Không tạo được bản nháp trên máy chủ. Đang làm việc ở chế độ cục bộ.",
@@ -1788,7 +1866,8 @@ export default {
       stateAsking: "Trợ lý hỏi",
       stateThinking: "Đang suy nghĩ...",
       statePresenting: "Đề xuất",
-      reaskLimit: "Hãy thử sửa tay phần này — trợ lý chưa thu thập đủ chi tiết.",
+      reaskLimit:
+        "Hãy thử sửa tay phần này — trợ lý chưa thu thập đủ chi tiết.",
       manualEdit: "Sửa tay",
       fieldStrong: "Nội dung đã đủ tốt.",
       error: {
@@ -1800,8 +1879,10 @@ export default {
       },
       intake: {
         trigger: "✨ Trợ lý điền nhanh",
-        prompt: "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
-        placeholder: "Ví dụ: Tôi làm Frontend Developer ở FPT từ tháng 3/2023 đến 12/2024. Tôi xây dựng dashboard quản lý, triển khai CI/CD…",
+        prompt:
+          "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
+        placeholder:
+          "Ví dụ: Tôi làm Frontend Developer ở FPT từ tháng 3/2023 đến 12/2024. Tôi xây dựng dashboard quản lý, triển khai CI/CD…",
         extract: "Phân tích",
         extracting: "Đang đọc…",
         previewTitle: "Trích xuất từ chuyện kể",

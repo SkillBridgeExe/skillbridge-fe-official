@@ -74,6 +74,21 @@ const requiredInterviewKeys = [
   "common.interview.setup.noSavedMatch",
   "common.interview.setup.targetRole",
   "common.interview.setup.language",
+  "common.interview.setup.criteriaTitle",
+  "common.interview.setup.criteriaDescription",
+  "common.interview.setup.criteria.technicalDepth",
+  "common.interview.setup.criteria.problemSolving",
+  "common.interview.setup.criteria.communication",
+  "common.interview.setup.criteria.evidenceCredibility",
+  "common.interview.setup.criteria.roleFit",
+  "common.interview.setup.questionBank.curated",
+  "common.interview.setup.questionBank.fallback",
+  "common.interview.setup.questionBank.curatedTitle",
+  "common.interview.setup.questionBank.curatedDescription",
+  "common.interview.setup.questionBank.fallbackTitle",
+  "common.interview.setup.questionBank.fallbackDescription",
+  "common.interview.setup.privacyScoringTitle",
+  "common.interview.setup.privacyScoringDescription",
   "common.interview.setup.cameraTitle",
   "common.interview.setup.cameraDescription",
   "common.interview.setup.tipsTitle",
@@ -135,6 +150,13 @@ const requiredInterviewKeys = [
   "common.interview.session.spokenPlaceholder",
   "common.interview.session.textPlaceholder",
   "common.interview.session.submitAnswer",
+  "common.interview.session.questionMeta.title",
+  "common.interview.session.questionMeta.curated",
+  "common.interview.session.questionMeta.fallback",
+  "common.interview.session.questionMeta.phase",
+  "common.interview.session.questionMeta.skill",
+  "common.interview.session.questionMeta.thread",
+  "common.interview.session.questionMeta.bankKey",
   "common.interview.endConfirmation.cancelTitle",
   "common.interview.endConfirmation.cancelDescription",
   "common.interview.endConfirmation.scoreTitle",
@@ -176,13 +198,30 @@ const requiredInterviewKeys = [
   "common.interview.results.bodyLanguage",
   "common.interview.results.bodyLanguageDescription",
   "common.interview.results.bodyLanguageEmpty",
+  "common.interview.results.rubricBreakdown",
+  "common.interview.results.rubricBreakdownDescription",
+  "common.interview.results.confidenceEvidence",
+  "common.interview.results.confidenceEvidenceDescription",
+  "common.interview.results.confidenceEvidenceEmpty",
+  "common.interview.results.weight",
   "common.interview.results.recommendedNextSteps",
   "common.interview.results.recommendedNextStepsDescription",
   "common.interview.results.recommendations",
   "common.interview.results.suggestedModules",
+  "common.interview.results.coachingStrengths",
+  "common.interview.results.developmentPlan",
+  "common.interview.results.developmentPlanDescription",
+  "common.interview.results.coachingPriorities",
+  "common.interview.results.devPlanItems",
   "common.interview.results.noMetrics",
   "common.interview.results.noItems",
   "common.interview.results.questionAnalysis",
+  "common.interview.results.curatedQuestion",
+  "common.interview.results.fallbackQuestion",
+  "common.interview.results.phase",
+  "common.interview.results.skill",
+  "common.interview.results.depthSignal",
+  "common.interview.results.questionBankKey",
   "common.interview.results.noPersistedAnswers",
   "common.interview.results.noSummary",
   "common.interview.errors.mediaUnsupported",
@@ -223,14 +262,41 @@ describe("interview i18n keys", () => {
   it.each([
     ["en", en],
     ["vi", vi],
-  ] as const)("prefixes every voice description with its name for %s", (_locale, resource) => {
-    for (const voice of INTERVIEW_VOICE_OPTIONS) {
-      const key = `common.interview.setup.voice.voices.${voice.i18nKey}`;
-      const label = readPath(resource, key);
-      const voiceName = voice.value[0].toUpperCase() + voice.value.slice(1);
+  ] as const)(
+    "prefixes every voice description with its name for %s",
+    (_locale, resource) => {
+      for (const voice of INTERVIEW_VOICE_OPTIONS) {
+        const key = `common.interview.setup.voice.voices.${voice.i18nKey}`;
+        const label = readPath(resource, key);
+        const voiceName = voice.value[0].toUpperCase() + voice.value.slice(1);
 
-      expect(label, key).toEqual(expect.any(String));
-      expect(label, key).toMatch(new RegExp(`^${voiceName}\\s+-\\s+\\S`));
+        expect(label, key).toEqual(expect.any(String));
+        expect(label, key).toMatch(new RegExp(`^${voiceName}\\s+-\\s+\\S`));
+      }
+    },
+  );
+
+  it("uses Vietnamese labels for question bank metadata and rubric copy", () => {
+    const expectedViLabels = {
+      "common.interview.setup.questionBank.curated": "Bộ câu hỏi tuyển chọn",
+      "common.interview.setup.questionBank.fallback": "AI dự phòng",
+      "common.interview.setup.questionBank.curatedTitle":
+        "Bộ câu hỏi tuyển chọn",
+      "common.interview.session.questionMeta.curated": "Bộ câu hỏi tuyển chọn",
+      "common.interview.session.questionMeta.fallback": "AI dự phòng",
+      "common.interview.session.questionMeta.phase": "Giai đoạn",
+      "common.interview.session.questionMeta.skill": "Kỹ năng",
+      "common.interview.session.questionMeta.thread": "Chủ đề",
+      "common.interview.session.questionMeta.bankKey": "Mã câu hỏi: {{key}}",
+      "common.interview.results.weight": "trọng số",
+      "common.interview.results.devPlanItems": "Việc cần làm",
+      "common.interview.results.phase": "Giai đoạn",
+      "common.interview.results.skill": "Kỹ năng",
+      "common.interview.results.questionBankKey": "Mã câu hỏi: {{key}}",
+    } as const;
+
+    for (const [key, expected] of Object.entries(expectedViLabels)) {
+      expect(readPath(vi, key), key).toBe(expected);
     }
   });
 });

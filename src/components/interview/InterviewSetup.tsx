@@ -1,5 +1,18 @@
 import type { CvListItemDto, CvMatchDto } from "@shared/api";
-import { Camera, ChevronDown, ChevronUp, Mic, Play, Radio, RefreshCw, Video } from "lucide-react";
+import {
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Database,
+  ListChecks,
+  Mic,
+  Play,
+  Radio,
+  RefreshCw,
+  ShieldCheck,
+  Video,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { INTERVIEW_SETUP_TIPS } from "@/constants/interview";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +40,7 @@ import {
   type InterviewType,
   type InterviewVoice,
 } from "./types";
+import { getInterviewQuestionBankSourceKind } from "./interview-view-model";
 
 interface InterviewSetupProps {
   tipsExpanded: boolean;
@@ -96,8 +110,18 @@ export function InterviewSetup({
   };
   const roleLabel = (value: string): string =>
     t(`interview.roles.${value}`, {
-      defaultValue: AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value,
+      defaultValue:
+        AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ??
+        value,
     });
+  const questionBankSourceKind = getInterviewQuestionBankSourceKind(targetRole);
+  const criteriaKeys = [
+    "technicalDepth",
+    "problemSolving",
+    "communication",
+    "evidenceCredibility",
+    "roleFit",
+  ] as const;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -110,7 +134,9 @@ export function InterviewSetup({
             {t("interview.badge.autoScored")}
           </Badge>
         </div>
-        <p className="text-sm text-slate-500">{t("interview.setup.subtitle")}</p>
+        <p className="text-sm text-slate-500">
+          {t("interview.setup.subtitle")}
+        </p>
       </div>
 
       <Tabs
@@ -119,9 +145,13 @@ export function InterviewSetup({
         className="w-full"
       >
         <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="technical">{t("interview.setup.type.technical")}</TabsTrigger>
+          <TabsTrigger value="technical">
+            {t("interview.setup.type.technical")}
+          </TabsTrigger>
           <TabsTrigger value="hr">{t("interview.setup.type.hr")}</TabsTrigger>
-          <TabsTrigger value="mixed">{t("interview.setup.type.mixed")}</TabsTrigger>
+          <TabsTrigger value="mixed">
+            {t("interview.setup.type.mixed")}
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -129,7 +159,9 @@ export function InterviewSetup({
         <div className="space-y-5">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">{t("interview.setup.contextTitle")}</CardTitle>
+              <CardTitle className="text-sm">
+                {t("interview.setup.contextTitle")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -147,13 +179,19 @@ export function InterviewSetup({
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("interview.setup.useTargetRoleOnly")} />
+                      <SelectValue
+                        placeholder={t("interview.setup.useTargetRoleOnly")}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">{t("interview.setup.noCvTargetRoleOnly")}</SelectItem>
+                      <SelectItem value="none">
+                        {t("interview.setup.noCvTargetRoleOnly")}
+                      </SelectItem>
                       {cvItems.map((cv) => (
                         <SelectItem key={cv.id} value={cv.id}>
-                          {cv.title || cv.originalFileName || `CV ${cv.id.slice(0, 8)}`}
+                          {cv.title ||
+                            cv.originalFileName ||
+                            `CV ${cv.id.slice(0, 8)}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -161,8 +199,12 @@ export function InterviewSetup({
                 )}
                 {selectedCv && (
                   <p className="text-xs text-slate-500">
-                    {t("interview.setup.uploadedAt", { date: formatDate(selectedCv.createdAt) })}
-                    {selectedCv.targetRole ? ` · ${roleLabel(selectedCv.targetRole)}` : ""}
+                    {t("interview.setup.uploadedAt", {
+                      date: formatDate(selectedCv.createdAt),
+                    })}
+                    {selectedCv.targetRole
+                      ? ` · ${roleLabel(selectedCv.targetRole)}`
+                      : ""}
                   </p>
                 )}
               </div>
@@ -176,7 +218,9 @@ export function InterviewSetup({
                 ) : (
                   <Select
                     value={selectedMatchId ?? "none"}
-                    onValueChange={(value) => setSelectedMatchId(value === "none" ? null : value)}
+                    onValueChange={(value) =>
+                      setSelectedMatchId(value === "none" ? null : value)
+                    }
                     disabled={!selectedCvId || matchItems.length === 0}
                   >
                     <SelectTrigger>
@@ -189,25 +233,50 @@ export function InterviewSetup({
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">{t("interview.setup.noMatchContext")}</SelectItem>
+                      <SelectItem value="none">
+                        {t("interview.setup.noMatchContext")}
+                      </SelectItem>
                       {matchItems.map((match) => (
                         <SelectItem key={match.id} value={match.id}>
-                          {(match.jobDescription?.title || t("interview.setup.savedJd")).slice(0, 54)}
-                          {match.overallScore != null ? ` · ${Math.round(match.overallScore)}%` : ""}
+                          {(
+                            match.jobDescription?.title ||
+                            t("interview.setup.savedJd")
+                          ).slice(0, 54)}
+                          {match.overallScore != null
+                            ? ` · ${Math.round(match.overallScore)}%`
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
-                {selectedCvId && !isMatchesLoading && matchItems.length === 0 && (
-                  <p className="text-xs text-slate-500">{t("interview.setup.noSavedMatch")}</p>
-                )}
+                {selectedCvId &&
+                  !isMatchesLoading &&
+                  matchItems.length === 0 && (
+                    <p className="text-xs text-slate-500">
+                      {t("interview.setup.noSavedMatch")}
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  {t("interview.setup.targetRole")}
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    {t("interview.setup.targetRole")}
+                  </label>
+                  <Badge
+                    variant={
+                      questionBankSourceKind === "curated"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className="rounded-full text-[10px]"
+                  >
+                    {t(
+                      `interview.setup.questionBank.${questionBankSourceKind}`,
+                    )}
+                  </Badge>
+                </div>
                 <Select value={targetRole} onValueChange={setTargetRole}>
                   <SelectTrigger>
                     <SelectValue />
@@ -229,15 +298,86 @@ export function InterviewSetup({
                 <ToggleGroup
                   type="single"
                   value={selectedLanguage}
-                  onValueChange={(value) => value && setSelectedLanguage(value as "vi" | "en")}
+                  onValueChange={(value) =>
+                    value && setSelectedLanguage(value as "vi" | "en")
+                  }
                   className="justify-start"
                 >
                   {AVAILABLE_LANGUAGES.map((lang) => (
-                    <ToggleGroupItem key={lang.value} value={lang.value} className="px-5">
+                    <ToggleGroupItem
+                      key={lang.value}
+                      value={lang.value}
+                      className="px-5"
+                    >
                       {lang.label}
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+                  <ListChecks className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm">
+                    {t("interview.setup.criteriaTitle")}
+                  </CardTitle>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    {t("interview.setup.criteriaDescription", {
+                      role: roleLabel(targetRole),
+                      type: t(`interview.setup.type.${interviewType}`),
+                    })}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {criteriaKeys.map((key) => (
+                  <div
+                    key={key}
+                    className="flex items-start gap-2 rounded-lg bg-slate-50 p-3"
+                  >
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <span className="text-xs font-semibold leading-relaxed text-slate-700">
+                      {t(`interview.setup.criteria.${key}`)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3">
+                  <Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      {t(
+                        `interview.setup.questionBank.${questionBankSourceKind}Title`,
+                      )}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      {t(
+                        `interview.setup.questionBank.${questionBankSourceKind}Description`,
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      {t("interview.setup.privacyScoringTitle")}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      {t("interview.setup.privacyScoringDescription")}
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -248,7 +388,9 @@ export function InterviewSetup({
                 <Camera className="w-10 h-10 text-blue-400/80" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-white">{t("interview.setup.cameraTitle")}</p>
+                <p className="text-sm font-bold text-white">
+                  {t("interview.setup.cameraTitle")}
+                </p>
                 <p className="text-xs text-slate-400 mt-1">
                   {t("interview.setup.cameraDescription")}
                 </p>
@@ -285,7 +427,9 @@ export function InterviewSetup({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800 leading-tight">
-                        {t(`interview.setup.tips.${tip.id}.title`, { defaultValue: tip.title })}
+                        {t(`interview.setup.tips.${tip.id}.title`, {
+                          defaultValue: tip.title,
+                        })}
                       </p>
                       <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                         {t(`interview.setup.tips.${tip.id}.description`, {
@@ -301,7 +445,9 @@ export function InterviewSetup({
               <ToggleGroup
                 type="single"
                 value={interviewMode}
-                onValueChange={(value) => value && setInterviewMode(value as InterviewMode)}
+                onValueChange={(value) =>
+                  value && setInterviewMode(value as InterviewMode)
+                }
                 className="grid grid-cols-1 gap-2 rounded-lg bg-slate-100 p-1"
               >
                 <ToggleGroupItem
@@ -352,7 +498,9 @@ export function InterviewSetup({
                   </label>
                   <Select
                     value={selectedVoice}
-                    onValueChange={(value) => setSelectedVoice(value as InterviewVoice)}
+                    onValueChange={(value) =>
+                      setSelectedVoice(value as InterviewVoice)
+                    }
                     disabled={isLoading}
                   >
                     <SelectTrigger className="h-9">
@@ -407,19 +555,23 @@ export function InterviewSetup({
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> {t("interview.setup.starting")}
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />{" "}
+                  {t("interview.setup.starting")}
                 </>
               ) : interviewMode === "realtime" ? (
                 <>
-                  <Radio className="w-4 h-4 mr-2" /> {t("interview.setup.startLiveRealtime")}
+                  <Radio className="w-4 h-4 mr-2" />{" "}
+                  {t("interview.setup.startLiveRealtime")}
                 </>
               ) : interviewMode === "guided" ? (
                 <>
-                  <Mic className="w-4 h-4 mr-2" /> {t("interview.setup.startGuidedVoice")}
+                  <Mic className="w-4 h-4 mr-2" />{" "}
+                  {t("interview.setup.startGuidedVoice")}
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4 mr-2" /> {t("interview.setup.startInterview")}
+                  <Play className="w-4 h-4 mr-2" />{" "}
+                  {t("interview.setup.startInterview")}
                 </>
               )}
             </Button>
