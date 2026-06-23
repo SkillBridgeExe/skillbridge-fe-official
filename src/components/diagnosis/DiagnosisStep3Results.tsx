@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -290,8 +290,13 @@ export function DiagnosisStep3Results() {
   );
   // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
   // Step 3 is a single Skill-Gap section → fixed focus so the advisor frames its
-  // opener + answers around the gap results in view.
-  useDiagnosisChatCompanion(reviewData, "gap_results");
+  // opener + answers around the gap results in view. Step 3 has no tabs, so the
+  // reveal is a plain scroll (no-op-safe when the element doesn't exist).
+  const revealCard = useCallback((anchorId: string) => {
+    if (typeof document === "undefined") return;
+    document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+  useDiagnosisChatCompanion(reviewData, "gap_results", revealCard);
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);

@@ -188,34 +188,77 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     expect(useCompanionStore.getState().chatMessages).toEqual([]);
   });
 
-  it("appendChatMessage + setChatPending build a user→pending-assistant pair", () => {
+  it("appendChatMessage + setChatPending build a user→pending-assistant pair (question stored)", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "why?" });
-    s.setChatPending();
+    s.setChatPending("why?");
     const msgs = useCompanionStore.getState().chatMessages;
     expect(msgs).toHaveLength(2);
     expect(msgs[0]).toMatchObject({ role: "user", text: "why?" });
-    expect(msgs[1]).toMatchObject({ role: "assistant", pending: true });
+    expect(msgs[1]).toMatchObject({ role: "assistant", pending: true, question: "why?" });
   });
 
   it("resolveLastAssistant fills the pending placeholder with the answer", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });
-    s.setChatPending();
+    s.setChatPending("q");
     s.resolveLastAssistant("here is the answer");
     const after = useCompanionStore.getState().chatMessages;
     const last = after[after.length - 1];
     expect(last).toMatchObject({ role: "assistant", text: "here is the answer", pending: false, error: false });
   });
 
-  it("failLastAssistant flips the pending placeholder to an error row", () => {
+  it("failLastAssistant flips the pending placeholder to a retryable error row (default)", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });
-    s.setChatPending();
+    s.setChatPending("q");
     s.failLastAssistant();
     const after = useCompanionStore.getState().chatMessages;
     const last = after[after.length - 1];
-    expect(last).toMatchObject({ role: "assistant", error: true, pending: false });
+    expect(last).toMatchObject({ role: "assistant", error: true, pending: false, errorKind: "retry", question: "q" });
+  });
+
+  it("failLastAssistant('limit') marks a distinct no-retry limit row", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.setChatPending("q");
+    s.failLastAssistant("limit");
+    const msgs = useCompanionStore.getState().chatMessages;
+    const last = msgs[msgs.length - 1];
+    expect(last).toMatchObject({ role: "assistant", error: true, errorKind: "limit" });
+  });
+
+  it("retryAssistantAt heals a SPECIFIC failed row in place + returns its question (no new bubble)", () => {
+    const s = useCompanionStore.getState();
+    // First exchange fails…
+    s.appendChatMessage({ role: "user", text: "q1" });
+    s.setChatPending("q1");
+    s.failLastAssistant();
+    // …second exchange succeeds.
+    s.appendChatMessage({ role: "user", text: "q2" });
+    s.setChatPending("q2");
+    s.resolveLastAssistant("a2");
+    const failedIndex = 1; // the q1 assistant row
+    const question = useCompanionStore.getState().retryAssistantAt(failedIndex);
+    expect(question).toBe("q1");
+    const msgs = useCompanionStore.getState().chatMessages;
+    expect(msgs).toHaveLength(4); // no duplicate user bubble appended
+    expect(msgs[failedIndex]).toMatchObject({ role: "assistant", pending: true, error: false, question: "q1" });
+    expect(msgs[3]).toMatchObject({ role: "assistant", text: "a2" }); // untouched
+  });
+
+  it("resolveAssistantAt / failAssistantAt target a row by index (concurrent-send safe)", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q1" });
+    s.setChatPending("q1"); // index 1
+    s.appendChatMessage({ role: "user", text: "q2" });
+    s.setChatPending("q2"); // index 3
+    // Resolve the SECOND (index 3) first, then the first (index 1) — order independent.
+    s.resolveAssistantAt(3, "a2");
+    s.failAssistantAt(1, "retry");
+    const msgs = useCompanionStore.getState().chatMessages;
+    expect(msgs[1]).toMatchObject({ role: "assistant", error: true, errorKind: "retry" });
+    expect(msgs[3]).toMatchObject({ role: "assistant", text: "a2", error: false });
   });
 
   it("clearChat empties the thread", () => {

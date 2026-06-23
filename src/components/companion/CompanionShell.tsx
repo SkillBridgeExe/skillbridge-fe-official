@@ -431,6 +431,8 @@ export function CompanionShell() {
                   opener={turn.props.opener as string | null}
                   suggestions={turn.props.suggestions as string[]}
                   onSend={turn.props.onSend as (q: string) => void}
+                  onRetry={turn.props.onRetry as (index: number) => void}
+                  isPending={turn.props.isPending as boolean}
                 />
               )}
               </div>

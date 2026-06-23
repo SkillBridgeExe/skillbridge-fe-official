@@ -6,18 +6,29 @@
 // in useElementIssuesCompanion).
 //
 // This hook registers exactly ONE context `id="diagnosis:chat"` (priority 5, NO
-// anchorId → corner fallback) WHILE MOUNTED, and unregisters on unmount (so the
+// anchorId → corner fallback) ONCE on mount, and unregisters on unmount (so the
 // dolphin disappears off the diagnosis tab — no site-wide dolphin). The turn
 // carries a grounded opener (built from the REAL overall score band + a STATIC
 // enum-keyed i18n template — no LLM, no fabrication), suggested-question chips,
 // the live chat thread, and an onSend that calls the (separately-built) BE chat
 // endpoint and degrades gracefully when it isn't there yet.
+//
+// ── Why register ONCE (anti-Clippy) ──────────────────────────────────
+// `getTurn` reads the LATEST props from a ref (`propsRef`) that we refresh on
+// every render. So the context stays fresh (new messages, swapped opener on a
+// tab switch, the current onSend) WITHOUT re-registering or re-activating. If we
+// re-ran the register+activate effect on every render (the old bug), the bubble
+// would re-open after the user closed it — `closeBubble` doesn't set `dismissed`,
+// so the next `activateContext` re-opens it (Clippy). Registering+activating only
+// once on mount means a closed bubble STAYS closed.
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 
@@ -25,6 +36,14 @@ export const CHAT_CONTEXT_ID = "diagnosis:chat";
 
 /** Trim the thread we send back as grounding context (recent turns, content only). */
 const THREAD_LIMIT = 8;
+
+/**
+ * Reveal a cited card by anchor id. Step 2 passes a tab-aware reveal (switches to
+ * the CV Audit tab when the `dim-*` anchor isn't mounted yet); Step 3 passes a
+ * plain scroll. The hook calls this instead of scrolling directly so a cite that
+ * lives on a different tab still lands.
+ */
+export type RevealCard = (anchorId: string) => void;
 
 /**
  * Score → opener band key. Mirrors DiagnosisStep2Review's `scoreMessage` thresholds
@@ -51,17 +70,31 @@ function openerKeyForFocus(focus: DiagnosisChatFocus, score: number): string {
   return `companion.chat.opener.${focus}`;
 }
 
+/** Is this axios/Api error the BE's daily-cap 429? Status preserved by the API client; errorCode as fallback. */
+function isDailyLimitError(error: unknown): boolean {
+  if (isAxiosError(error) && error.response?.status === 429) return true;
+  // unwrapEnvelope re-throws an ApiError (loses status) but the client re-attaches
+  // `status`; also accept the BE feature-usage code as a robust fallback.
+  if (typeof error === "object" && error !== null && (error as { status?: number }).status === 429) {
+    return true;
+  }
+  return getApiErrorCode(error) === "FEATURE_USAGE_LIMIT_REACHED";
+}
+
 /**
  * Mount on a diagnosis step to register the calm corner chat advisor.
  * @param reviewData  the loaded review (overall score + jdMatch for the chat target).
  * @param focus       the section the user is currently viewing (TAB-level). Drives the
  *                    focus-aware opener and is sent to the BE so it emphasizes that
- *                    section. Switching focus only swaps the opener text — same single
- *                    `diagnosis:chat` context, no aggressive re-pop.
+ *                    section. Switching focus only swaps the opener text (via the props
+ *                    ref, on the next bubble render) — same single `diagnosis:chat`
+ *                    context, NO re-register / NO re-pop.
+ * @param revealCard  scrolls (and, on Step 2, tab-switches) a cited card into view.
  */
 export function useDiagnosisChatCompanion(
   reviewData: CvReviewData | null | undefined,
   focus: DiagnosisChatFocus,
+  revealCard?: RevealCard,
 ): void {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
@@ -99,10 +132,68 @@ export function useDiagnosisChatCompanion(
     },
   });
 
+  // Latest props for getTurn — refreshed every render (at the end of the hook) so
+  // the registered context reads fresh values WITHOUT re-registering (anti-Clippy).
+  // Declared up here so the callbacks below can read propsRef.current.revealCard.
+  const propsRef = useRef<{
+    opener: string | null;
+    suggestions: string[];
+    onSend: (q: string) => void;
+    onRetry: (index: number) => void;
+    isPending: boolean;
+    revealCard?: RevealCard;
+  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, isPending: false, revealCard });
+
+  // Reveal a cited card after a successful answer (no-op-safe). revealCard handles
+  // the wrong-tab case for `dim-*` anchors; fall back to a direct scroll.
+  const revealCited = useCallback((res: { cited_dimension?: string; cited_gap_id?: string }) => {
+    const anchorId = res.cited_dimension
+      ? `dim-${res.cited_dimension}`
+      : res.cited_gap_id
+        ? `gap-${res.cited_gap_id}`
+        : null;
+    if (!anchorId) return;
+    const reveal = propsRef.current.revealCard;
+    if (reveal) reveal(anchorId);
+    else if (typeof document !== "undefined") {
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, []);
+
+  /**
+   * Send `question` and resolve/fail the assistant row at `assistantIndex`. Used by
+   * both a fresh send (new pending row appended at the end) and a per-row retry
+   * (the failed row flipped back to pending in place). Resolving BY INDEX means a
+   * concurrent send appended later never clobbers the row this call owns.
+   */
+  const runChat = useCallback(
+    (question: string, thread: DiagnosisChatTurn[], assistantIndex: number) => {
+      chatMutation.mutate(
+        { question, thread },
+        {
+          onSuccess: (res) => {
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer);
+            revealCited(res);
+          },
+          onError: (error) => {
+            // Daily-cap 429 → distinct "limit reached" row with NO retry affordance.
+            // Everything else keeps the friendly retryable error row.
+            useCompanionStore
+              .getState()
+              .failAssistantAt(assistantIndex, isDailyLimitError(error) ? "limit" : "retry");
+          },
+        },
+      );
+    },
+    [chatMutation, revealCited],
+  );
+
   const onSend = useCallback(
     (question: string) => {
       const text = question.trim();
       if (!text) return;
+      // Guard against a double-send race: ignore while a request is in flight.
+      if (chatMutation.isPending) return;
       const store = useCompanionStore.getState();
       // Build the grounding thread from what's already on screen (before appending).
       const thread: DiagnosisChatTurn[] = store.chatMessages
@@ -110,35 +201,46 @@ export function useDiagnosisChatCompanion(
         .slice(-THREAD_LIMIT)
         .map((m) => ({ role: m.role, text: m.text }));
       store.appendChatMessage({ role: "user", text });
-      store.setChatPending();
-
-      chatMutation.mutate(
-        { question: text, thread },
-        {
-          onSuccess: (res) => {
-            useCompanionStore.getState().resolveLastAssistant(res.answer);
-            // If the answer cites a card, swim the user's eye there (no auto-jump of
-            // the dolphin — just a gentle scroll of the page to the cited card).
-            if (typeof document !== "undefined") {
-              const el = res.cited_dimension
-                ? document.getElementById(`dim-${res.cited_dimension}`)
-                : res.cited_gap_id
-                  ? document.getElementById(`gap-${res.cited_gap_id}`)
-                  : null;
-              el?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          },
-          onError: () => {
-            useCompanionStore.getState().failLastAssistant();
-          },
-        },
-      );
+      store.setChatPending(text);
+      // The pending placeholder is now the last message → its index.
+      const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
+      runChat(text, thread, assistantIndex);
     },
-    [chatMutation],
+    // chatMutation drives the pending guard; runChat carries the send logic. onSend
+    // identity changing per render no longer re-registers the context (register is
+    // mount-only), so this is safe.
+    [chatMutation, runChat],
   );
 
-  // ── Register the corner advisor while mounted; unregister on unmount. ──
-  // Re-register on opener/suggestions/handler change so the turn reads fresh values.
+  /**
+   * Per-row retry: heal the SPECIFIC failed row at `index` in place (back to pending,
+   * keeping its owning question) and re-send THAT question — never append a duplicate
+   * user bubble. The grounding thread is rebuilt from the turns BEFORE this row.
+   */
+  const onRetry = useCallback(
+    (index: number) => {
+      if (chatMutation.isPending) return;
+      const store = useCompanionStore.getState();
+      const question = store.retryAssistantAt(index);
+      if (!question) return;
+      const thread: DiagnosisChatTurn[] = store.chatMessages
+        .slice(0, index)
+        .filter((m) => !m.pending && !m.error && m.text)
+        .slice(-THREAD_LIMIT)
+        .map((m) => ({ role: m.role, text: m.text }));
+      runChat(question, thread, index);
+    },
+    [chatMutation, runChat],
+  );
+
+  // Refresh the props ref every render so getTurn reads fresh values (new opener on
+  // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
+  propsRef.current = { opener, suggestions, onSend, onRetry, isPending: chatMutation.isPending, revealCard };
+
+  // ── Register + activate the corner advisor ONCE on mount; unregister on unmount. ──
+  // getTurn reads propsRef.current (always fresh) + the live thread from the store,
+  // so the turn stays current without re-running this effect. Registering+activating
+  // only once means a bubble the user closed (closeBubble) STAYS closed.
   useEffect(() => {
     const store = useCompanionStore.getState();
     store.registerContext({
@@ -151,13 +253,17 @@ export function useDiagnosisChatCompanion(
           // Live-read the thread at render time (same getState() pattern as
           // useElementIssuesCompanion) so new messages appear without re-register.
           messages: useCompanionStore.getState().chatMessages,
-          opener,
-          suggestions,
-          onSend,
+          // Live-read the rest from the props ref so opener/onSend/onRetry/isPending
+          // stay fresh across tab switches and in-flight sends — WITHOUT re-registering.
+          opener: propsRef.current.opener,
+          suggestions: propsRef.current.suggestions,
+          onSend: propsRef.current.onSend,
+          onRetry: propsRef.current.onRetry,
+          isPending: propsRef.current.isPending,
         },
       }),
     });
-    // Activate so the inviting opener bubble appears once (auto-open-once honored by
+    // Activate ONCE so the inviting opener bubble appears (auto-open-once honored by
     // the store's dismiss memory); the dolphin click-to-open works thereafter.
     store.activateContext(CHAT_CONTEXT_ID);
 
@@ -166,6 +272,7 @@ export function useDiagnosisChatCompanion(
       s.unregisterContext(CHAT_CONTEXT_ID);
       s.clearChat();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opener, onSend]);
+    // Mount-only: NEVER re-run (re-running would re-pop a closed bubble = Clippy).
+    // All referenced values (store getState, propsRef) are stable, so [] is correct.
+  }, []);
 }

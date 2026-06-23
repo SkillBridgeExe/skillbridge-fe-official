@@ -1963,19 +1963,20 @@ export default {
       chat: {
         opener: {
           cv_audit: {
-            excellent: "Your CV scores {{score}}/100 — strong work. Curious how I scored it, or want me to dig into any part? Just ask.",
-            good: "Your CV scores {{score}}/100. Any questions about how I scored it, or a part you'd like me to dig into? Ask me anything.",
-            fair: "Your CV scores {{score}}/100. Want to know why, or which part to fix first? Ask me — I'm here to help.",
-            low: "Your CV scores {{score}}/100. Let me help you raise it — ask me what's weakest or how I scored it, and we'll work through it.",
+            excellent: "Your CV scores {{score}}/100 — strong work. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            good: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            fair: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            low: "Your CV scores {{score}}/100. Let me help you raise it — I can explain why each part scored the way it did, or show you what to fix first. Where do you want to start?",
           },
-          skills_analysis: "You're looking at your skills analysis. Want me to point out what's missing or weak for this role?",
-          market_careers: "You're looking at market opportunities. Want me to break down this role for you?",
-          gap_results: "This is your skill gap. Ask me which gap matters most or how to close it.",
+          skills_analysis: "You're looking at your skills analysis. I can explain which skills counted for this role and which are missing or weak — what would you like to know?",
+          market_careers: "You're looking at market opportunities. I can explain how this role was matched and the gaps that matter — what would you like to know?",
+          gap_results: "This is your skill gap. I can explain which gaps matter most and the prioritized actions to close them — where do you want to start?",
         },
         placeholder: "Ask about your score…",
         send: "Send",
         thinking: "Thinking…",
         error: "The assistant is being connected — please try again in a moment.",
+        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
         suggestions: [
           "Why is my score this?",
           "What's my weakest part?",

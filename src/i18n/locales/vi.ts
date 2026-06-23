@@ -1956,19 +1956,20 @@ export default {
       chat: {
         opener: {
           cv_audit: {
-            excellent: "CV bạn được {{score}}/100 — rất tốt. Bạn có thắc mắc gì về cách mình chấm, hay muốn mình phân tích sâu chỗ nào không? Hỏi mình nhé.",
-            good: "CV bạn được {{score}}/100. Bạn có thắc mắc gì về cách mình chấm, hay muốn mình phân tích sâu chỗ nào không? Hỏi mình nhé.",
-            fair: "CV bạn được {{score}}/100. Bạn muốn biết vì sao, hay nên sửa chỗ nào trước không? Cứ hỏi mình nhé.",
-            low: "CV bạn được {{score}}/100. Để mình giúp bạn nâng điểm nhé — hỏi mình chỗ nào yếu nhất hay mình chấm thế nào, rồi cùng xử lý.",
+            excellent: "CV bạn được {{score}}/100 — rất tốt. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            good: "CV bạn được {{score}}/100. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            fair: "CV bạn được {{score}}/100. Mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước — bạn muốn bắt đầu từ đâu?",
+            low: "CV bạn được {{score}}/100. Để mình giúp bạn nâng điểm nhé — mình có thể giải thích vì sao từng phần được chấm như vậy, hoặc chỉ bạn nên sửa gì trước. Bạn muốn bắt đầu từ đâu?",
           },
-          skills_analysis: "Bạn đang xem phân tích kỹ năng. Muốn mình soi chỗ còn thiếu/yếu so với vai trò không?",
-          market_careers: "Bạn đang xem cơ hội thị trường. Cần mình phân tích vai trò này không?",
-          gap_results: "Đây là khoảng cách kỹ năng của bạn. Hỏi mình chỗ nào yếu nhất hay cách lấp nhé.",
+          skills_analysis: "Bạn đang xem phân tích kỹ năng. Mình có thể giải thích kỹ năng nào được tính cho vai trò này và chỗ nào còn thiếu/yếu — bạn muốn biết điều gì?",
+          market_careers: "Bạn đang xem cơ hội thị trường. Mình có thể giải thích vai trò này được so khớp ra sao và những khoảng cách đáng lưu ý — bạn muốn biết điều gì?",
+          gap_results: "Đây là khoảng cách kỹ năng của bạn. Mình có thể giải thích khoảng cách nào quan trọng nhất và các bước ưu tiên để lấp — bạn muốn bắt đầu từ đâu?",
         },
         placeholder: "Hỏi về điểm của bạn…",
         send: "Gửi",
         thinking: "Đang suy nghĩ…",
         error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
         suggestions: [
           "Sao điểm mình vậy?",
           "Chỗ nào yếu nhất?",

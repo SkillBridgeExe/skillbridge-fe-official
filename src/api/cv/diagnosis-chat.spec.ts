@@ -42,4 +42,15 @@ describe("askDiagnosisChatApi", () => {
     vi.mocked(httpClient.post).mockRejectedValueOnce(new Error("Request failed with status code 404"));
     await expect(askDiagnosisChatApi("match-1", { question: "q" })).rejects.toThrow();
   });
+
+  it("re-attaches the HTTP 429 status onto the thrown error (so the caller can show the daily-cap state)", async () => {
+    // Shape of an axios error with response.status (isAxiosError checks `isAxiosError === true`).
+    const axiosErr = Object.assign(new Error("Request failed with status code 429"), {
+      isAxiosError: true,
+      response: { status: 429, data: { errorCode: "FEATURE_USAGE_LIMIT_REACHED", message: "Daily limit reached" } },
+    });
+    vi.mocked(httpClient.post).mockRejectedValueOnce(axiosErr as never);
+
+    await expect(askDiagnosisChatApi("match-1", { question: "q" })).rejects.toMatchObject({ status: 429 });
+  });
 });

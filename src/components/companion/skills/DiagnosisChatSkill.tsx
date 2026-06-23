@@ -24,13 +24,17 @@ interface Props {
   opener: string | null;
   suggestions: string[];
   onSend: (question: string) => void;
+  /** Per-row retry: heal the failed assistant row at this index in place + re-send its question. */
+  onRetry: (index: number) => void;
+  /** True while a request is in flight → disables the composer/chips (anti double-send). */
+  isPending: boolean;
 }
 
-export function DiagnosisChatSkill({ messages, opener, suggestions, onSend }: Props) {
+export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRetry, isPending }: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
-  const lastUserText = useRef<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasMessages = messages.length > 0;
 
@@ -42,26 +46,21 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend }: Pr
 
   const submit = (text: string) => {
     const q = text.trim();
-    if (!q) return;
-    lastUserText.current = q;
+    if (!q || isPending) return;
     onSend(q);
     setDraft("");
+    // Re-focus the composer so the user can keep typing after send / chip-click.
+    textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // Ignore Enter while a request is in flight (anti double-send race).
+      if (isPending) return;
       submit(draft);
     }
   };
-
-  // Find the most recent user message to retry from (error row → resend it).
-  const lastUserMessage = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].text;
-    }
-    return lastUserText.current;
-  })();
 
   return (
     // stopPropagation so typing/clicking inside the chat never starts a unit drag.
@@ -79,7 +78,8 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend }: Pr
                   key={s}
                   type="button"
                   onClick={() => submit(s)}
-                  className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97]"
+                  disabled={isPending}
+                  className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -118,18 +118,22 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend }: Pr
               );
             }
             if (m.error) {
+              // Daily-cap 429 → distinct "limit reached" copy with NO retry (retrying
+              // can't help until the quota resets). Other errors are transient → retry.
+              const isLimit = m.errorKind === "limit";
               return (
                 <div key={i} className="flex justify-start">
                   <div className="max-w-[90%] space-y-2 rounded-2xl rounded-bl-sm border border-[#F1E5C0] bg-[#FBF3DB] px-3 py-2">
                     <p className="flex items-start gap-1.5 text-[12px] font-medium leading-relaxed text-[#956400]">
                       <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {t("companion.chat.error")}
+                      {isLimit ? t("companion.chat.limitReached") : t("companion.chat.error")}
                     </p>
-                    {lastUserMessage && (
+                    {!isLimit && (
                       <button
                         type="button"
-                        onClick={() => submit(lastUserMessage)}
-                        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold text-[#956400] hover:bg-[#F1E5C0]/40 transition-colors"
+                        onClick={() => onRetry(i)}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold text-[#956400] hover:bg-[#F1E5C0]/40 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <RotateCcw className="h-3 w-3" /> {t("companion.retry")}
                       </button>
@@ -152,24 +156,26 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend }: Pr
       {/* ── Composer ── */}
       <div className="flex items-end gap-2 border-t border-[#F1F1EF] pt-2.5">
         <textarea
+          ref={textareaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={isPending}
           rows={1}
           placeholder={t("companion.chat.placeholder")}
           aria-label={t("companion.chat.placeholder")}
-          className="max-h-28 min-h-[38px] flex-1 resize-none rounded-lg border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437] placeholder:text-[#9AA1A6] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="max-h-28 min-h-[38px] flex-1 resize-none rounded-lg border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437] placeholder:text-[#9AA1A6] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-[#F8F8F7] disabled:opacity-60"
         />
         <button
           type="button"
           onClick={() => submit(draft)}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || isPending}
           aria-label={t("companion.chat.send")}
           className={cn(
             "flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg transition-all active:scale-[0.95]",
-            draft.trim()
+            draft.trim() && !isPending
               ? "bg-primary text-white hover:bg-primary/90"
-              : "bg-[#F1F1EF] text-[#9AA1A6]",
+              : "bg-[#F1F1EF] text-[#9AA1A6] cursor-not-allowed",
           )}
         >
           <Send className="h-4 w-4" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
@@ -337,7 +337,23 @@ export function DiagnosisStep2Review() {
   // section in view. Switching tabs just swaps the opener text (same single context).
   const chatFocus: DiagnosisChatFocus =
     activeTab === "skills" ? "skills_analysis" : activeTab === "market" ? "market_careers" : "cv_audit";
-  useDiagnosisChatCompanion(reviewData, chatFocus);
+  // Reveal a cited card: `dim-*` anchors only live on the CV Audit tab, so if the
+  // element isn't mounted (user is on another tab), switch to 'audit' first, then
+  // scroll on the next tick. No-op-safe when the element truly doesn't exist.
+  const revealCard = useCallback((anchorId: string) => {
+    if (typeof document === "undefined") return;
+    const scrollTo = () =>
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const el = document.getElementById(anchorId);
+    if (!el && anchorId.startsWith("dim-")) {
+      setActiveTab("audit");
+      // Wait for the audit panel to mount the dim card, then scroll.
+      requestAnimationFrame(() => requestAnimationFrame(scrollTo));
+      return;
+    }
+    scrollTo();
+  }, []);
+  useDiagnosisChatCompanion(reviewData, chatFocus, revealCard);
   // The chat advisor owns the bubble while it is registered → the legacy completeness
   // nudge gates off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
