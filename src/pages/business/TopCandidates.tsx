@@ -6,6 +6,7 @@ import {
   Filter,
   Search,
   X,
+  Beaker,
 } from "lucide-react";
 
 interface Candidate {
@@ -166,11 +167,19 @@ function CandidateProfileModal({
           </div>
 
           <div className="flex gap-3">
-            <button className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
+            <button
+              disabled
+              title="Feature coming soon"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-400 bg-slate-50 cursor-not-allowed"
+            >
               <FileText size={14} />
               View CV
             </button>
-            <button className="flex-1 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-sm font-medium">
+            <button
+              disabled
+              title="Feature coming soon"
+              className="flex-1 py-2.5 bg-sky-100 text-sky-400 rounded-lg text-sm font-medium cursor-not-allowed"
+            >
               Invite
             </button>
           </div>
@@ -211,6 +220,16 @@ export default function TopCandidates() {
 
   return (
     <BusinessLayout title="Top Candidates" subtitle="Discover high-ranking learners by skills and fit.">
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-start gap-3 mb-6">
+        <Beaker className="text-amber-500 mt-0.5 shrink-0" size={20} />
+        <div>
+          <h3 className="font-semibold text-sm">Demo Preview</h3>
+          <p className="text-xs mt-1">
+            Candidate discovery is currently in preview. The profiles listed here are illustrative mock data to demonstrate the UI/UX capabilities of the candidate matching system. Live API integration is coming soon.
+          </p>
+        </div>
+      </div>
+
       {viewProfile && <CandidateProfileModal candidate={viewProfile} onClose={() => setViewProfile(null)} />}
 
       <div className="space-y-5">

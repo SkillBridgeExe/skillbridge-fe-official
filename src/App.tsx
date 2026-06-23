@@ -107,6 +107,8 @@ const App = () => (
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
                 <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
+                <Route path="reports" element={<Pages.AdminJobReports />} />
+                <Route path="business-profiles" element={<Pages.AdminBusinessProfiles />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 

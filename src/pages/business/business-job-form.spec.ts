@@ -37,7 +37,7 @@ const baseDraft: JobVersionDto = {
   benefits: ["Mentor support"],
   interviewProcess: ["HR screen", "Technical chat"],
   workingTime: "Mon-Fri",
-  locations: [],
+  locations: [{ cityCode: "SGN", countryCode: "VN", addressLine: "Q1", isPrimary: true }],
   skills: [],
   skillsConfirmedAt: null,
   publishedAt: null,
@@ -54,6 +54,8 @@ describe("business job form mapping", () => {
     expect(form.salaryMin).toBe("3000000");
     expect(form.responsibilitiesText).toBe("Build UI\nFix bugs");
     expect(form.requirementsText).toBe("React basics\nGit");
+    expect(form.locations).toHaveLength(1);
+    expect(form.locations[0].cityCode).toBe("SGN");
   });
 
   it("trims and drops blank lines when building array fields", () => {
@@ -77,6 +79,16 @@ describe("business job form mapping", () => {
       salaryMin: undefined,
       salaryMax: 7000000,
       requirements: ["React", "TypeScript"],
+      locations: [{ cityCode: "SGN", countryCode: "VN", addressLine: "Q1", isPrimary: true }],
     });
+  });
+
+  it("handles empty locations array in update request", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    form.locations = []; // Empty locations should not be sent or should be undefined
+
+    const request = formToUpdateJobDraftRequest(form, baseDraft.revision);
+
+    expect(request.locations).toBeUndefined();
   });
 });

@@ -6,8 +6,12 @@ import {
   ExternalLink,
   Link2,
   Loader2,
-  MessageSquareText,
   XCircle,
+  Clock,
+  Calendar,
+  AlertCircle,
+  FileText,
+  UserCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,17 +29,18 @@ import { formatVnd } from "@/components/ecosystem/MentorCard";
 import type { MentorBookingDto } from "@/services/mentor-bookings.service";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING_DEPOSIT: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  AWAITING_REMAINING: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
-  CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  CANCELLED: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
-  EXPIRED: "bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300",
+  PENDING_DEPOSIT: "bg-amber-100 text-amber-800",
+  AWAITING_REMAINING: "bg-orange-100 text-orange-800",
+  CONFIRMED: "bg-emerald-100 text-emerald-800",
+  COMPLETED: "bg-blue-100 text-blue-800",
+  CANCELLED: "bg-red-100 text-red-800",
+  EXPIRED: "bg-slate-100 text-slate-600",
 };
 
 export default function MentorRequests() {
   const { t } = useTranslation("common");
   const bookingsQuery = useMentorOwnedBookings();
+  const [selectedBooking, setSelectedBooking] = useState<MentorBookingDto | null>(null);
 
   if (bookingsQuery.isLoading) {
     return (
@@ -52,26 +57,33 @@ export default function MentorRequests() {
 
   return (
     <div className="space-y-6">
+      {selectedBooking && (
+        <BookingDetailDrawer
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+        />
+      )}
+
       <div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-          {t("mentor.requests.title", "Yêu cầu đặt lịch")}
+        <h1 className="text-2xl font-black tracking-tight text-slate-950">
+          {t("mentor.requests.title", "Mentoring Requests")}
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {t("mentor.requests.subtitle", "Quản lý các buổi mentoring được đặt cho bạn")}
+        <p className="mt-1 text-sm text-slate-500">
+          {t("mentor.requests.subtitle", "Manage your upcoming and past mentoring sessions.")}
         </p>
       </div>
 
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-center dark:border-slate-800 dark:bg-slate-950">
-          <CalendarCheck2 className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-          <p className="mt-4 font-bold text-slate-500 dark:text-slate-400">
-            {t("mentor.requests.noBookings", "Chưa có booking nào")}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-center">
+          <CalendarCheck2 className="h-12 w-12 text-slate-300" />
+          <p className="mt-4 font-bold text-slate-500">
+            {t("mentor.requests.noBookings", "No bookings yet")}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {bookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
+            <BookingCard key={booking.id} booking={booking} onClick={() => setSelectedBooking(booking)} />
           ))}
         </div>
       )}
@@ -79,7 +91,48 @@ export default function MentorRequests() {
   );
 }
 
-function BookingCard({ booking }: { booking: MentorBookingDto }) {
+function BookingCard({ booking, onClick }: { booking: MentorBookingDto; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-sky-200 cursor-pointer"
+    >
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+          <UserCircle2 size={24} className="text-slate-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h3 className="font-bold text-slate-900 group-hover:text-primary transition-colors">
+              User #{booking.studentId.substring(0, 8)}
+            </h3>
+            <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-bold border-none ${STATUS_STYLES[booking.status] ?? ""}`}>
+              {booking.status.replace(/_/g, " ")}
+            </Badge>
+          </div>
+
+          {booking.slotStart && (
+            <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
+              <span className="flex items-center gap-1.5">
+                <Calendar size={14} className="text-slate-400" />
+                {new Date(booking.slotStart).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock size={14} className="text-slate-400" />
+                {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          )}
+          <p className="mt-2 text-sm font-medium text-primary">
+            {formatVnd(booking.totalAmountVnd)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; onClose: () => void }) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const setMeetingLink = useSetMeetingLink();
@@ -99,10 +152,10 @@ function BookingCard({ booking }: { booking: MentorBookingDto }) {
         bookingId: booking.id,
         payload: { meetingUrl: meetingUrl.trim() },
       });
-      toast({ title: t("mentor.requests.linkSet", "Meeting link đã cập nhật") });
+      toast({ title: t("mentor.requests.linkSet", "Meeting link updated") });
     } catch (error) {
       toast({
-        title: t("mentor.requests.linkFailed", "Lỗi cập nhật link"),
+        title: t("mentor.requests.linkFailed", "Failed to update link"),
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
@@ -112,10 +165,10 @@ function BookingCard({ booking }: { booking: MentorBookingDto }) {
   const handleComplete = async () => {
     try {
       await complete.mutateAsync(booking.id);
-      toast({ title: t("mentor.requests.completed", "Đã hoàn thành buổi mentoring") });
+      toast({ title: t("mentor.requests.completed", "Session marked as completed") });
     } catch (error) {
       toast({
-        title: t("mentor.requests.completeFailed", "Lỗi"),
+        title: t("mentor.requests.completeFailed", "Failed to complete"),
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
@@ -129,155 +182,206 @@ function BookingCard({ booking }: { booking: MentorBookingDto }) {
         bookingId: booking.id,
         payload: { reason: cancelReason.trim() },
       });
-      toast({ title: t("mentor.requests.cancelled", "Đã hủy booking") });
+      toast({ title: t("mentor.requests.cancelled", "Booking cancelled") });
       setShowCancel(false);
     } catch (error) {
       toast({
-        title: t("mentor.requests.cancelFailed", "Lỗi hủy booking"),
+        title: t("mentor.requests.cancelFailed", "Failed to cancel"),
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
     }
   };
 
+  // Mock handlers for Demo actions
+  const handleMockAccept = () => {
+    toast({ title: "Demo: Booking Accepted", description: "This is a demo action. Live integration pending." });
+  };
+  const handleMockReschedule = () => {
+    toast({ title: "Demo: Reschedule Requested", description: "This is a demo action. Live integration pending." });
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-950 sm:p-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[booking.status] ?? ""}`}>
-              {booking.status.replace(/_/g, " ")}
-            </Badge>
-            {booking.refundStatus !== "NOT_REQUIRED" ? (
-              <Badge variant="outline" className="rounded-full text-xs">
-                Refund: {booking.refundStatus}
-              </Badge>
-            ) : null}
-          </div>
-          {booking.slotStart ? (
-            <p className="mt-2 font-bold text-slate-950 dark:text-white">
-              {new Date(booking.slotStart).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
-              {" • "}
-              {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-              {" – "}
-              {booking.slotEnd ? new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : ""}
-            </p>
-          ) : null}
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {t("mentor.requests.amount", "Tổng")}: {formatVnd(booking.totalAmountVnd)}
-          </p>
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex justify-end" onClick={onClose}>
+      <div
+        className="w-full max-w-lg bg-white h-full shadow-2xl animate-in slide-in-from-right-8 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
+          <h2 className="text-lg font-bold text-slate-900">Booking Details</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+            <XCircle size={20} />
+          </button>
         </div>
 
-        {/* Meeting link for CONFIRMED bookings */}
-        {booking.meetingUrl ? (
-          <a
-            href={booking.meetingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
-          >
-            <ExternalLink className="h-4 w-4" /> Meeting
-          </a>
-        ) : null}
-      </div>
-
-      {/* Actions by status */}
-      {booking.status === "CONFIRMED" ? (
-        <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-          {/* Set meeting link */}
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[240px] flex-1">
-              <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
-                <Link2 className="mr-1 inline h-3.5 w-3.5" />
-                {t("mentor.requests.meetingLink", "Meeting URL")}
-              </label>
-              <Input
-                value={meetingUrl}
-                onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                className="h-10 rounded-xl"
-              />
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* Header */}
+          <div className="flex gap-4">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+              <UserCircle2 size={32} className="text-slate-400" />
             </div>
-            <Button
-              onClick={handleSetLink}
-              disabled={setMeetingLink.isPending || !meetingUrl.trim()}
-              size="sm"
-              className="h-10 rounded-xl font-bold"
-            >
-              {setMeetingLink.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Link2 className="mr-1 h-4 w-4" />}
-              {t("mentor.requests.setLink", "Lưu link")}
-            </Button>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">User #{booking.studentId.substring(0, 8)}</h3>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-bold border-none ${STATUS_STYLES[booking.status] ?? ""}`}>
+                  {booking.status.replace(/_/g, " ")}
+                </Badge>
+                {booking.refundStatus !== "NOT_REQUIRED" && (
+                  <Badge variant="outline" className="rounded-full text-xs">
+                    Refund: {booking.refundStatus}
+                  </Badge>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {isPastSlotEnd ? (
+
+          {/* Schedule */}
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+            <div className="flex items-center gap-3 text-sm text-slate-700">
+              <Calendar size={16} className="text-slate-400" />
+              <span className="font-medium">
+                {booking.slotStart ? new Date(booking.slotStart).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }) : "TBD"}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-slate-700">
+              <Clock size={16} className="text-slate-400" />
+              <span className="font-medium">
+                {booking.slotStart ? new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : ""}
+                {" - "}
+                {booking.slotEnd ? new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : ""}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-slate-700">
+              <AlertCircle size={16} className="text-slate-400" />
+              <span className="font-medium text-primary">{formatVnd(booking.totalAmountVnd)}</span>
+            </div>
+          </div>
+
+          {/* Message / Purpose */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <FileText size={16} className="text-slate-400" />
+              Request Notes
+            </h4>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600 italic">
+              "Looking for guidance on backend architecture and API design for a scalable e-commerce application. Specifically need help with PostgreSQL database schema."
+              <p className="text-xs text-slate-400 mt-2 not-italic font-medium">— Mock Note for Demo</p>
+            </div>
+          </div>
+
+          {/* Meeting Link Section */}
+          {booking.status === "CONFIRMED" && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <Link2 size={16} className="text-slate-400" />
+                Meeting Link
+              </h4>
+              <div className="flex gap-2">
+                <Input
+                  value={meetingUrl}
+                  onChange={(e) => setMeetingUrl(e.target.value)}
+                  placeholder="https://meet.google.com/..."
+                  className="bg-slate-50"
+                />
+                <Button
+                  onClick={handleSetLink}
+                  disabled={setMeetingLink.isPending || !meetingUrl.trim()}
+                  className="shrink-0"
+                >
+                  {setMeetingLink.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Save Link
+                </Button>
+              </div>
+              {booking.meetingUrl && (
+                <a
+                  href={booking.meetingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline mt-2"
+                >
+                  <ExternalLink size={14} /> Open Meeting Room
+                </a>
+              )}
+            </div>
+          )}
+
+          {booking.cancellationReason && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 text-sm">
+              <span className="font-semibold block mb-1">Cancellation Reason:</span>
+              {booking.cancellationReason}
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-6 border-t border-slate-100 bg-slate-50 space-y-4">
+          {/* Demo Actions for PENDING states */}
+          {["PENDING_DEPOSIT", "AWAITING_REMAINING"].includes(booking.status) && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-amber-700">
+                Demo actions: live accept/reschedule APIs are not connected yet.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={handleMockAccept} className="w-full font-bold bg-sky-500 hover:bg-sky-600 text-white">
+                  Accept Request
+                </Button>
+                <Button variant="outline" onClick={handleMockReschedule} className="w-full font-bold text-slate-700">
+                  Reschedule
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Real Actions */}
+          {booking.status === "CONFIRMED" && (
+            <div className="flex gap-3">
+              {isPastSlotEnd && (
+                <Button
+                  onClick={handleComplete}
+                  disabled={complete.isPending}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                >
+                  {complete.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  Mark Completed
+                </Button>
+              )}
               <Button
-                onClick={handleComplete}
-                disabled={complete.isPending}
-                className="h-10 rounded-xl bg-emerald-600 font-bold text-white hover:bg-emerald-700"
+                variant="outline"
+                onClick={() => setShowCancel(!showCancel)}
+                className="flex-1 text-red-600 hover:bg-red-50 font-bold"
               >
-                {complete.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
-                {t("mentor.requests.markComplete", "Hoàn thành")}
+                Cancel Session
               </Button>
-            ) : null}
-            <Button
-              variant="outline"
-              onClick={() => setShowCancel(!showCancel)}
-              className="h-10 rounded-xl font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-            >
-              <XCircle className="mr-1 h-4 w-4" />
-              {t("mentor.requests.cancel", "Hủy")}
-            </Button>
-          </div>
-        </div>
-      ) : null}
+            </div>
+          )}
 
-      {/* Cancel button for non-confirmed cancellable statuses */}
-      {["PENDING_DEPOSIT", "AWAITING_REMAINING"].includes(booking.status) ? (
-        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <Button
-            variant="outline"
-            onClick={() => setShowCancel(!showCancel)}
-            className="h-10 rounded-xl font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-          >
-            <XCircle className="mr-1 h-4 w-4" />
-            {t("mentor.requests.cancel", "Hủy")}
-          </Button>
+          {showCancel && ["CONFIRMED", "AWAITING_REMAINING", "PENDING_DEPOSIT"].includes(booking.status) && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-100 mt-4 animate-in fade-in zoom-in-95">
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Reason for cancellation..."
+                className="bg-white mb-3"
+                rows={2}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)}>
+                  Abort
+                </Button>
+                <Button
+                  onClick={handleCancel}
+                  disabled={cancel.isPending || cancelReason.trim().length < 3}
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {cancel.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      ) : null}
-
-      {/* Cancellation reason input (for CONFIRMED/AWAITING_REMAINING) */}
-      {showCancel && ["CONFIRMED", "AWAITING_REMAINING", "PENDING_DEPOSIT"].includes(booking.status) ? (
-        <div className="mt-3 space-y-2 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-800 dark:bg-red-950/20">
-          <Textarea
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder={t("mentor.requests.cancelReasonPlaceholder", "Lý do hủy (tối thiểu 3 ký tự)...")}
-            className="rounded-xl"
-            rows={2}
-          />
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCancel}
-              disabled={cancel.isPending || cancelReason.trim().length < 3}
-              size="sm"
-              className="rounded-xl bg-red-600 font-bold text-white hover:bg-red-700"
-            >
-              {cancel.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {t("mentor.requests.confirmCancel", "Xác nhận hủy")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)} className="rounded-xl font-bold">
-              {t("common.cancel", "Đóng")}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {booking.cancellationReason ? (
-        <div className="mt-3 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
-          <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-          <p className="text-sm text-slate-600 dark:text-slate-300">{booking.cancellationReason}</p>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }
