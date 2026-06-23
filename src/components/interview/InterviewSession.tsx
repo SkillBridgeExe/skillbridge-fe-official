@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Bot,
   Clock,
+  Database,
   Maximize2,
   Mic,
   MicOff,
@@ -22,7 +23,18 @@ import {
   Volume2,
 } from "lucide-react";
 import { type ChatMessage, type InterviewMode } from "./types";
-import { getInterviewModeLabelKey } from "./interview-view-model";
+import {
+  getInterviewModeLabelKey,
+  type InterviewQuestionBankSourceKind,
+} from "./interview-view-model";
+
+interface CurrentQuestionMetadata {
+  topicPhase: string | null;
+  skillCanonical: string | null;
+  currentThread: string | null;
+  questionBankKey: string | null;
+  sourceKind: InterviewQuestionBankSourceKind;
+}
 
 interface InterviewSessionProps {
   videoRef: RefObject<HTMLVideoElement>;
@@ -43,6 +55,7 @@ interface InterviewSessionProps {
   isQuestionAudioPlaying: boolean;
   questionAudioError: string | null;
   currentQuestion: string;
+  currentQuestionMeta: CurrentQuestionMetadata | null;
   chatHistory: ChatMessage[];
   isLoading: boolean;
   userAnswer: string;
@@ -73,6 +86,7 @@ export function InterviewSession({
   isQuestionAudioPlaying,
   questionAudioError,
   currentQuestion,
+  currentQuestionMeta,
   chatHistory,
   isLoading,
   userAnswer,
@@ -98,12 +112,35 @@ export function InterviewSession({
   const modeLabel = t(`interview.session.mode.${modeLabelKey}`);
   const progress =
     maxDurationSeconds > 0
-      ? Math.max(0, Math.min(100, (secondsRemaining / maxDurationSeconds) * 100))
+      ? Math.max(
+          0,
+          Math.min(100, (secondsRemaining / maxDurationSeconds) * 100),
+        )
       : 0;
   const remainingQuestions =
     totalQuestionsPlanned == null
       ? null
       : Math.max(totalQuestionsPlanned - answeredCount, 0);
+  const questionMetaChips = [
+    currentQuestionMeta?.topicPhase
+      ? {
+          label: t("interview.session.questionMeta.phase"),
+          value: formatMetaLabel(currentQuestionMeta.topicPhase),
+        }
+      : null,
+    currentQuestionMeta?.skillCanonical
+      ? {
+          label: t("interview.session.questionMeta.skill"),
+          value: formatMetaLabel(currentQuestionMeta.skillCanonical),
+        }
+      : null,
+    currentQuestionMeta?.currentThread
+      ? {
+          label: t("interview.session.questionMeta.thread"),
+          value: currentQuestionMeta.currentThread,
+        }
+      : null,
+  ].filter((chip): chip is { label: string; value: string } => chip !== null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -158,7 +195,9 @@ export function InterviewSession({
                 <Badge variant="outline" className="rounded-full">
                   {remainingQuestions == null
                     ? t("interview.session.answered", { count: answeredCount })
-                    : t("interview.session.left", { count: remainingQuestions })}
+                    : t("interview.session.left", {
+                        count: remainingQuestions,
+                      })}
                 </Badge>
                 <Badge
                   variant={isVoiceConnected ? "default" : "outline"}
@@ -166,6 +205,21 @@ export function InterviewSession({
                 >
                   {modeLabel}
                 </Badge>
+                {currentQuestionMeta && (
+                  <Badge
+                    variant={
+                      currentQuestionMeta.sourceKind === "curated"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className="rounded-full gap-1"
+                  >
+                    <Database className="h-3 w-3" />
+                    {t(
+                      `interview.session.questionMeta.${currentQuestionMeta.sourceKind}`,
+                    )}
+                  </Badge>
+                )}
                 <Button
                   size="sm"
                   variant="destructive"
@@ -188,7 +242,32 @@ export function InterviewSession({
               </div>
             </div>
 
-            {maxDurationSeconds > 0 && <Progress value={progress} className="h-1.5" />}
+            {maxDurationSeconds > 0 && (
+              <Progress value={progress} className="h-1.5" />
+            )}
+
+            {currentQuestionMeta && questionMetaChips.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+                <span className="font-bold uppercase tracking-wider text-slate-400">
+                  {t("interview.session.questionMeta.title")}
+                </span>
+                {questionMetaChips.map((chip) => (
+                  <span
+                    key={`${chip.label}-${chip.value}`}
+                    className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700"
+                  >
+                    {chip.label}: {chip.value}
+                  </span>
+                ))}
+                {currentQuestionMeta.questionBankKey && (
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                    {t("interview.session.questionMeta.bankKey", {
+                      key: currentQuestionMeta.questionBankKey,
+                    })}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div
               className={cn(
@@ -200,7 +279,9 @@ export function InterviewSession({
               <div
                 className={cn(
                   "relative overflow-hidden rounded-2xl bg-slate-900 shadow-xl",
-                  isFullscreen ? "mx-auto aspect-video w-full max-w-6xl" : "aspect-video w-full",
+                  isFullscreen
+                    ? "mx-auto aspect-video w-full max-w-6xl"
+                    : "aspect-video w-full",
                 )}
               >
                 <button
@@ -241,14 +322,19 @@ export function InterviewSession({
                             : "border-emerald-400/50 text-emerald-400",
                       )}
                     >
-                      <Bot className={cn("h-8 w-8 md:h-10 md:w-10", isInterviewerSpeaking && "animate-bounce")} />
+                      <Bot
+                        className={cn(
+                          "h-8 w-8 md:h-10 md:w-10",
+                          isInterviewerSpeaking && "animate-bounce",
+                        )}
+                      />
                     </div>
                   </div>
                   <div
                     className={cn(
                       "flex h-8 items-center justify-center border-t px-2 text-[10px] font-bold uppercase tracking-widest",
-                        isInterviewerSpeaking
-                          ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
+                      isInterviewerSpeaking
+                        ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
                         : isLoading
                           ? "border-blue-400/30 bg-blue-400/20 text-blue-400"
                           : "border-emerald-400/30 bg-emerald-400/20 text-emerald-400",
@@ -256,11 +342,13 @@ export function InterviewSession({
                   >
                     {isInterviewerSpeaking ? (
                       <>
-                        <Volume2 className="mr-1.5 h-3 w-3" /> {t("interview.session.speaking")}
+                        <Volume2 className="mr-1.5 h-3 w-3" />{" "}
+                        {t("interview.session.speaking")}
                       </>
                     ) : isLoading ? (
                       <>
-                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" /> {t("interview.session.thinking")}
+                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />{" "}
+                        {t("interview.session.thinking")}
                       </>
                     ) : (
                       t("interview.session.ready")
@@ -281,7 +369,12 @@ export function InterviewSession({
                     </div>
                   </div>
                 ) : (
-                  <video ref={videoRef} className="h-full w-full scale-x-[-1] object-cover" autoPlay muted />
+                  <video
+                    ref={videoRef}
+                    className="h-full w-full scale-x-[-1] object-cover"
+                    autoPlay
+                    muted
+                  />
                 )}
 
                 <div className="absolute left-5 top-5 z-30 flex items-center gap-2">
@@ -328,14 +421,20 @@ export function InterviewSession({
                 variant={isMicActive ? "default" : "outline"}
                 className="h-9 w-9 rounded-full"
                 onClick={toggleLiveMic}
-                disabled={isLoading || (!isLiveRealtime && isInterviewerSpeaking)}
+                disabled={
+                  isLoading || (!isLiveRealtime && isInterviewerSpeaking)
+                }
                 title={
                   isLiveConnected
                     ? t("interview.session.toggleMicrophone")
                     : t("interview.session.reconnectVoice")
                 }
               >
-                {isMicActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                {isMicActive ? (
+                  <Mic className="h-4 w-4" />
+                ) : (
+                  <MicOff className="h-4 w-4" />
+                )}
               </Button>
             )}
           </div>
@@ -345,7 +444,10 @@ export function InterviewSession({
           {chatHistory.map((message, index) => (
             <div
               key={`${message.timestamp.getTime()}-${index}`}
-              className={cn("flex gap-2", message.role === "user" ? "justify-end" : "justify-start")}
+              className={cn(
+                "flex gap-2",
+                message.role === "user" ? "justify-end" : "justify-start",
+              )}
             >
               {message.role === "ai" && (
                 <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -367,7 +469,10 @@ export function InterviewSession({
                     message.role === "ai" ? "text-slate-400" : "text-white/70",
                   )}
                 >
-                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>
@@ -391,7 +496,11 @@ export function InterviewSession({
 
         <div className="border-t border-slate-100 p-3">
           {interviewFinished ? (
-            <Button className="w-full rounded-xl font-bold" onClick={onStop} disabled={isEnding}>
+            <Button
+              className="w-full rounded-xl font-bold"
+              onClick={onStop}
+              disabled={isEnding}
+            >
               {t("interview.session.viewResults")}
             </Button>
           ) : isLiveRealtime ? (
@@ -442,4 +551,10 @@ export function InterviewSession({
       </aside>
     </>
   );
+}
+
+function formatMetaLabel(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

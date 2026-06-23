@@ -21,9 +21,42 @@ export interface InterviewResultQuestionViewModel {
   question: string;
   answer: string;
   score: number | null;
+  phase: string | null;
+  topicPhase: string | null;
+  depthSignal: string | null;
+  currentThread: string | null;
+  skillCanonical: string | null;
+  questionBankKey: string | null;
+  isCuratedQuestion: boolean;
+  confidenceEvidence: InterviewEvidenceMetricViewModel[];
   strengths: string[];
   improvements: string[];
   durationSeconds: number | null;
+}
+
+export interface InterviewEvidenceMetricViewModel {
+  label: string;
+  value: string;
+}
+
+export interface InterviewRubricDimensionViewModel {
+  dimension: string;
+  score: number;
+  band: string;
+  weight: number;
+}
+
+export interface InterviewCoachingPriorityViewModel {
+  track: string;
+  title: string;
+  why: string;
+}
+
+export interface InterviewDevPlanItemViewModel {
+  track: string;
+  title: string;
+  priority: number | null;
+  rationale: string;
 }
 
 export interface InterviewResultViewModel {
@@ -38,15 +71,38 @@ export interface InterviewResultViewModel {
   modules: string[];
   technicalDelivery: Record<string, number>;
   communicationFlow: Record<string, number>;
-  bodyLanguage: Record<string, number> | null;
+  confidenceEvidence: InterviewEvidenceMetricViewModel[];
+  rubricDimensions: InterviewRubricDimensionViewModel[];
+  coachingSummary: string | null;
+  coachingStrengths: string[];
+  coachingPriorities: InterviewCoachingPriorityViewModel[];
+  devPlanItems: InterviewDevPlanItemViewModel[];
   durationSeconds: number | null;
   questions: InterviewResultQuestionViewModel[];
 }
 
-export type InterviewHistoryState = "signed-out" | "loading" | "error" | "empty" | "ready";
-export type InterviewHistoryDetailState = "idle" | "loading" | "error" | "not-scored" | "ready";
-export type InterviewSessionStatusKey = "completed" | "inProgress" | "cancelled" | "unknown";
-export type InterviewModeLabelKey = "textFallback" | "liveRealtime" | "guidedVoice";
+export type InterviewQuestionBankSourceKind = "curated" | "fallback";
+export type InterviewHistoryState =
+  | "signed-out"
+  | "loading"
+  | "error"
+  | "empty"
+  | "ready";
+export type InterviewHistoryDetailState =
+  | "idle"
+  | "loading"
+  | "error"
+  | "not-scored"
+  | "ready";
+export type InterviewSessionStatusKey =
+  | "completed"
+  | "inProgress"
+  | "cancelled"
+  | "unknown";
+export type InterviewModeLabelKey =
+  | "textFallback"
+  | "liveRealtime"
+  | "guidedVoice";
 export type InterviewEndIntent = "cancel" | "score";
 export type InterviewEndOutcome = "cancelled" | "scored";
 export type LiveTranscriptWarning = "cjk" | "promptLeak";
@@ -56,7 +112,9 @@ export interface InterviewVoicePreference {
   speechSpeed: InterviewSpeechSpeed;
 }
 
-export function getInterviewEndIntent(answeredCount: number): InterviewEndIntent {
+export function getInterviewEndIntent(
+  answeredCount: number,
+): InterviewEndIntent {
   return answeredCount > 0 ? "score" : "cancel";
 }
 
@@ -64,7 +122,39 @@ export function getInterviewEndOutcome(status: string): InterviewEndOutcome {
   return status.toUpperCase() === "CANCELLED" ? "cancelled" : "scored";
 }
 
-export function takeRecentInterviewSessions<T>(sessions: readonly T[], limit = 3): T[] {
+export function getInterviewQuestionBankSourceKind(
+  targetRole: string,
+): InterviewQuestionBankSourceKind {
+  const normalized = targetRole
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (
+    normalized === "backend_developer" ||
+    normalized === "frontend_developer" ||
+    normalized === "fullstack_developer" ||
+    normalized === "devops_engineer" ||
+    normalized === "qa_engineer" ||
+    normalized === "qa_tester"
+  ) {
+    return "curated";
+  }
+
+  if (
+    /\bbackend\b|\bfrontend\b|\bfullstack\b|\bdevops\b|\bsre\b|\bqa\b|\btester\b|\bsdet\b/.test(
+      normalized,
+    )
+  ) {
+    return "curated";
+  }
+
+  return "fallback";
+}
+
+export function takeRecentInterviewSessions<T>(
+  sessions: readonly T[],
+  limit = 3,
+): T[] {
   return sessions.slice(0, limit);
 }
 
@@ -72,11 +162,15 @@ export function buildInterviewInitialMessages(
   firstMessage: string | null | undefined,
   firstQuestion: string | null | undefined,
 ): string[] {
-  const content = uniqueNonEmptyStrings([firstMessage, firstQuestion]).join("\n\n");
+  const content = uniqueNonEmptyStrings([firstMessage, firstQuestion]).join(
+    "\n\n",
+  );
   return content ? [content] : [];
 }
 
-export function buildInterviewNextMessages(nextQuestion: string | null | undefined): string[] {
+export function buildInterviewNextMessages(
+  nextQuestion: string | null | undefined,
+): string[] {
   return uniqueNonEmptyStrings([nextQuestion]);
 }
 
@@ -160,13 +254,19 @@ export function normalizeInterviewVoice(value: unknown): InterviewVoice {
     : DEFAULT_INTERVIEW_VOICE;
 }
 
-export function normalizeInterviewSpeechSpeed(value: unknown): InterviewSpeechSpeed {
+export function normalizeInterviewSpeechSpeed(
+  value: unknown,
+): InterviewSpeechSpeed {
   const numeric = Number(value);
-  const match = INTERVIEW_SPEECH_SPEED_OPTIONS.find((option) => option.value === numeric);
+  const match = INTERVIEW_SPEECH_SPEED_OPTIONS.find(
+    (option) => option.value === numeric,
+  );
   return match?.value ?? DEFAULT_INTERVIEW_SPEECH_SPEED;
 }
 
-export function toBackendInterviewType(type: InterviewType): PlatformInterviewType {
+export function toBackendInterviewType(
+  type: InterviewType,
+): PlatformInterviewType {
   if (type === "hr") return "HR";
   if (type === "mixed") return "MIXED";
   return "TECHNICAL";
@@ -191,7 +291,9 @@ export function getInterviewHistoryState({
   return itemCount === 0 ? "empty" : "ready";
 }
 
-export function getInterviewSessionStatusKey(status: string): InterviewSessionStatusKey {
+export function getInterviewSessionStatusKey(
+  status: string,
+): InterviewSessionStatusKey {
   if (status === "COMPLETED") return "completed";
   if (status === "IN_PROGRESS") return "inProgress";
   if (status === "CANCELLED") return "cancelled";
@@ -230,11 +332,15 @@ export function getInterviewHistoryDetailState({
   if (!selectedSessionId) return "idle";
   if (isLoading) return "loading";
   if (isError) return "error";
-  if (!result || result.status !== "COMPLETED" || result.overallScore == null) return "not-scored";
+  if (!result || result.status !== "COMPLETED" || result.overallScore == null)
+    return "not-scored";
   return "ready";
 }
 
-export function secondsRemainingFromExpiry(expiresAt: string | null, now = new Date()): number {
+export function secondsRemainingFromExpiry(
+  expiresAt: string | null,
+  now = new Date(),
+): number {
   if (!expiresAt) return 0;
   const expiresMs = new Date(expiresAt).getTime();
   if (Number.isNaN(expiresMs)) return 0;
@@ -307,7 +413,11 @@ export function getRealtimeTokenFallbackReason({
 }: RealtimeTokenFallbackOptions): string | null {
   if (realtimeEnabled && clientSecret) return null;
   if (interviewMode === "guided") return null;
-  return reason || fallbackMessage || "Realtime token is unavailable. Continue in text mode.";
+  return (
+    reason ||
+    fallbackMessage ||
+    "Realtime token is unavailable. Continue in text mode."
+  );
 }
 
 export function getQuestionAudioErrorMessage(
@@ -322,7 +432,9 @@ export function getQuestionAudioErrorMessage(
   return fallback;
 }
 
-export function shouldRequestQuestionAudio(interviewMode: InterviewMode): boolean {
+export function shouldRequestQuestionAudio(
+  interviewMode: InterviewMode,
+): boolean {
   return interviewMode === "guided";
 }
 
@@ -351,7 +463,9 @@ export function shouldRequestLiveClosingSignal({
   );
 }
 
-export function getLiveTranscriptWarnings(text: string): LiveTranscriptWarning[] {
+export function getLiveTranscriptWarnings(
+  text: string,
+): LiveTranscriptWarning[] {
   const warnings: LiveTranscriptWarning[] = [];
   if (/[\u3400-\u9FFF\uF900-\uFAFF]/u.test(text)) warnings.push("cjk");
   if (
@@ -368,19 +482,27 @@ function isTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const value = error as { code?: unknown; message?: unknown };
   if (value.code === "ECONNABORTED" || value.code === "ETIMEDOUT") return true;
-  return typeof value.message === "string" && /\btimeout\b/i.test(value.message);
+  return (
+    typeof value.message === "string" && /\btimeout\b/i.test(value.message)
+  );
 }
 
 export function coerceStringList(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+    return value.filter(
+      (item): item is string => typeof item === "string" && item.trim() !== "",
+    );
   }
   if (typeof value === "string" && value.trim() !== "") return [value.trim()];
   return [];
 }
 
-function uniqueNonEmptyStrings(messages: Array<string | null | undefined>): string[] {
-  return Array.from(new Set(messages.map((message) => message?.trim()).filter(Boolean))) as string[];
+function uniqueNonEmptyStrings(
+  messages: Array<string | null | undefined>,
+): string[] {
+  return Array.from(
+    new Set(messages.map((message) => message?.trim()).filter(Boolean)),
+  ) as string[];
 }
 
 function score(value: number | null | undefined): number | null {
@@ -389,7 +511,7 @@ function score(value: number | null | undefined): number | null {
 
 function feedbackRecord(
   feedback: InterviewFeedback | null,
-  key: "technical_delivery" | "communication_flow" | "body_language",
+  key: "technical_delivery" | "communication_flow",
 ): Record<string, number> | null {
   const value = feedback?.[key];
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -400,15 +522,175 @@ function feedbackRecord(
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function readBooleanLabel(value: unknown): string | null {
+  if (typeof value !== "boolean") return null;
+  return value ? "Yes" : "No";
+}
+
+function readFinalScoreOverall(value: unknown): number | null {
+  if (!isRecord(value)) return null;
+  return score(readNumber(value.overall));
+}
+
+function readRubricDimensions(
+  value: unknown,
+): InterviewRubricDimensionViewModel[] {
+  if (!isRecord(value) || !Array.isArray(value.dimensions)) return [];
+
+  return value.dimensions
+    .map((dimension): InterviewRubricDimensionViewModel | null => {
+      if (!isRecord(dimension)) return null;
+      const name = readString(dimension.dimension);
+      const dimensionScore = score(readNumber(dimension.score));
+      const band = readString(dimension.band);
+      const weight = readNumber(dimension.weight);
+      if (!name || dimensionScore == null || !band || weight == null)
+        return null;
+      return {
+        dimension: name,
+        score: dimensionScore,
+        band,
+        weight,
+      };
+    })
+    .filter(
+      (dimension): dimension is InterviewRubricDimensionViewModel =>
+        dimension !== null,
+    );
+}
+
+function readCoachingSummary(value: unknown): string | null {
+  return isRecord(value) ? readString(value.summary) : null;
+}
+
+function readCoachingStrengths(value: unknown): string[] {
+  return isRecord(value) ? coerceStringList(value.strengths) : [];
+}
+
+function readCoachingPriorities(
+  value: unknown,
+): InterviewCoachingPriorityViewModel[] {
+  if (!isRecord(value) || !Array.isArray(value.priorities)) return [];
+
+  return value.priorities
+    .map((priority): InterviewCoachingPriorityViewModel | null => {
+      if (!isRecord(priority)) return null;
+      const track = readString(priority.track);
+      const title = readString(priority.title);
+      const why = readString(priority.why);
+      if (!track || !title || !why) return null;
+      return { track, title, why };
+    })
+    .filter(
+      (priority): priority is InterviewCoachingPriorityViewModel =>
+        priority !== null,
+    );
+}
+
+function readDevPlanItems(value: unknown): InterviewDevPlanItemViewModel[] {
+  if (!isRecord(value)) return [];
+  return ["learn_items", "cv_fix_items", "interview_practice_items"].flatMap(
+    (key) => {
+      const bucket = value[key];
+      if (!Array.isArray(bucket)) return [];
+      return bucket
+        .map((item): InterviewDevPlanItemViewModel | null => {
+          if (!isRecord(item)) return null;
+          const track = readString(item.track);
+          const title = readString(item.display_name);
+          if (!track || !title) return null;
+          return {
+            track,
+            title,
+            priority: readNumber(item.priority),
+            rationale: readString(item.rationale) ?? "",
+          };
+        })
+        .filter((item): item is InterviewDevPlanItemViewModel => item !== null);
+    },
+  );
+}
+
+function readConfidenceEvidence(
+  value: unknown,
+): InterviewEvidenceMetricViewModel[] {
+  if (!isRecord(value)) return [];
+
+  const starPresent = isRecord(value.star_present) ? value.star_present : null;
+  const starCoverage = starPresent
+    ? [
+        ["situation", "Situation"],
+        ["task", "Task"],
+        ["action", "Action"],
+        ["result", "Result"],
+      ]
+        .filter(([key]) => starPresent[key] === true)
+        .map(([, label]) => label)
+        .join(", ")
+    : "";
+
+  return [
+    metric("Confidence tone", readString(value.confidence_tone)),
+    metric("Evidence quality", readString(value.evidence_quality)),
+    metric("Clarity", readString(value.clarity)),
+    metric("Off topic", readBooleanLabel(value.off_topic)),
+    metric("Specific example", readBooleanLabel(value.has_specific_example)),
+    metric("STAR coverage", starCoverage || null),
+  ].filter((item): item is InterviewEvidenceMetricViewModel => item !== null);
+}
+
+function metric(
+  label: string,
+  value: string | null,
+): InterviewEvidenceMetricViewModel | null {
+  return value ? { label, value } : null;
+}
+
 export function toInterviewResultViewModel(
   detail: InterviewDetailResponseDto,
   fallbacks: { summary?: string } = {},
 ): InterviewResultViewModel {
   const feedback = detail.aiFeedback;
+  const finalScoreOverall = readFinalScoreOverall(detail.finalScore);
+  const questions = detail.turns
+    .filter((turn) => turn.userAnswerText || turn.userAnswerTranscript)
+    .map((turn) => {
+      const questionBankKey = readString(turn.questionBankKey);
+      return {
+        question: turn.interviewerQuestion,
+        answer: turn.userAnswerText ?? turn.userAnswerTranscript ?? "",
+        score: score(turn.perQuestionScore),
+        phase: turn.phase ?? null,
+        topicPhase: turn.topicPhase ?? null,
+        depthSignal: turn.depthSignal ?? null,
+        currentThread: turn.currentThread ?? null,
+        skillCanonical: turn.skillCanonical ?? null,
+        questionBankKey,
+        isCuratedQuestion: Boolean(questionBankKey),
+        confidenceEvidence: readConfidenceEvidence(turn.insight),
+        strengths: coerceStringList(turn.strengths),
+        improvements: coerceStringList(turn.improvements),
+        durationSeconds: turn.durationSeconds,
+      };
+    });
+
   return {
     sessionId: detail.id,
     targetRole: detail.targetRole,
-    overallScore: score(detail.overallScore),
+    overallScore: finalScoreOverall ?? score(detail.overallScore),
     semanticScore: score(detail.semanticScore),
     llmScore: score(detail.llmScore),
     communicationScore: score(detail.communicationScore),
@@ -420,17 +702,15 @@ export function toInterviewResultViewModel(
     modules: coerceStringList(feedback?.suggested_modules),
     technicalDelivery: feedbackRecord(feedback, "technical_delivery") ?? {},
     communicationFlow: feedbackRecord(feedback, "communication_flow") ?? {},
-    bodyLanguage: feedbackRecord(feedback, "body_language"),
+    confidenceEvidence:
+      questions.find((question) => question.confidenceEvidence.length > 0)
+        ?.confidenceEvidence ?? [],
+    rubricDimensions: readRubricDimensions(detail.finalScore),
+    coachingSummary: readCoachingSummary(detail.coaching),
+    coachingStrengths: readCoachingStrengths(detail.coaching),
+    coachingPriorities: readCoachingPriorities(detail.coaching),
+    devPlanItems: readDevPlanItems(detail.devPlan),
     durationSeconds: detail.durationSeconds,
-    questions: detail.turns
-      .filter((turn) => turn.userAnswerText || turn.userAnswerTranscript)
-      .map((turn) => ({
-        question: turn.interviewerQuestion,
-        answer: turn.userAnswerText ?? turn.userAnswerTranscript ?? "",
-        score: score(turn.perQuestionScore),
-        strengths: coerceStringList(turn.strengths),
-        improvements: coerceStringList(turn.improvements),
-        durationSeconds: turn.durationSeconds,
-      })),
+    questions,
   };
 }

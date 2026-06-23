@@ -35,6 +35,7 @@ import {
   getInterviewDetail,
   type InterviewDetailResponseDto,
   type InterviewSessionDto,
+  type InterviewTurnDto,
   type LiveInterviewTurnInput,
 } from "@/api/interview-api";
 import {
@@ -74,6 +75,7 @@ import {
   getInterviewEndOutcome,
   getInterviewHistoryDetailState,
   getInterviewHistoryState,
+  getInterviewQuestionBankSourceKind,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
   getLiveTranscriptWarnings,
@@ -83,6 +85,7 @@ import {
   shouldRequestQuestionAudio,
   takeRecentInterviewSessions,
   writeInterviewVoicePreference,
+  type InterviewQuestionBankSourceKind,
   type LiveTranscriptWarning,
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
@@ -99,6 +102,27 @@ interface LiveReviewTurn {
   userAnswerTranscript: string;
   durationSeconds?: number;
   warnings: LiveTranscriptWarning[];
+}
+
+interface CurrentQuestionMetadata {
+  topicPhase: string | null;
+  skillCanonical: string | null;
+  currentThread: string | null;
+  questionBankKey: string | null;
+  sourceKind: InterviewQuestionBankSourceKind;
+}
+
+function questionMetadataFromTurn(
+  turn: Pick<InterviewTurnDto, "topicPhase" | "skillCanonical" | "currentThread" | "questionBankKey"> | null,
+  targetRole: string,
+): CurrentQuestionMetadata {
+  return {
+    topicPhase: turn?.topicPhase ?? null,
+    skillCanonical: turn?.skillCanonical ?? null,
+    currentThread: turn?.currentThread ?? null,
+    questionBankKey: turn?.questionBankKey ?? null,
+    sourceKind: turn?.questionBankKey ? "curated" : getInterviewQuestionBankSourceKind(targetRole),
+  };
 }
 
 export default function Interview() {
@@ -122,6 +146,7 @@ export default function Interview() {
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
+  const [currentQuestionMeta, setCurrentQuestionMeta] = useState<CurrentQuestionMetadata | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
@@ -550,6 +575,7 @@ export default function Interview() {
     setSelectedHistorySessionId(null);
     setChatHistory([]);
     setCurrentQuestion("");
+    setCurrentQuestionMeta(null);
     setUserAnswer("");
     setInterviewFinished(false);
     setApiError(null);
@@ -644,6 +670,14 @@ export default function Interview() {
 
       setActiveSession(started);
       setCurrentQuestion(interviewMode === "realtime" ? "" : started.firstQuestion);
+      setCurrentQuestionMeta(
+        interviewMode === "realtime"
+          ? null
+          : questionMetadataFromTurn(
+              { topicPhase: started.phase, skillCanonical: null, currentThread: null, questionBankKey: null },
+              started.targetRole,
+            ),
+      );
       setSecondsRemaining(secondsRemainingFromExpiry(started.expiresAt) || started.maxDurationSeconds);
       setChatHistory(initialMessages);
       setPhase("interviewing");
@@ -796,7 +830,16 @@ export default function Interview() {
 
       setActiveSession(response.session);
       const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
-      if (nextQuestion) setCurrentQuestion(nextQuestion);
+      if (nextQuestion) {
+        setCurrentQuestion(nextQuestion);
+        setCurrentQuestionMeta(
+          response.nextTurn
+            ? questionMetadataFromTurn(response.nextTurn, response.session.targetRole)
+            : questionMetadataFromTurn(null, response.session.targetRole),
+        );
+      } else {
+        setCurrentQuestionMeta(null);
+      }
 
       const nextMessages = buildInterviewNextMessages(nextQuestion).map((content) => ({
         role: "ai" as const,
@@ -1243,6 +1286,7 @@ export default function Interview() {
             isQuestionAudioPlaying={isQuestionAudioPlaying}
             questionAudioError={questionAudioError}
             currentQuestion={currentQuestion}
+            currentQuestionMeta={currentQuestionMeta}
             chatHistory={chatHistory}
             isLoading={isLoading}
             userAnswer={userAnswer}
