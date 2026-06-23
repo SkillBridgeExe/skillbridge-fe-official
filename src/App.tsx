@@ -11,6 +11,7 @@ import AuthGuard from "@/components/layout/AuthGuard";
 import AuthBootstrap from "@/components/auth/AuthBootstrap";
 import PageLoader from "@/components/common/PageLoader";
 import { MascotOverlay } from "@/components/mascot/MascotOverlay";
+import { CompanionShell } from "@/components/companion/CompanionShell";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { QuotaUpgradeListener } from "@/components/billing/QuotaUpgradeListener";
@@ -37,6 +38,7 @@ const App = () => (
         <Sonner />
         <QuotaUpgradeListener />
         <MascotOverlay />
+        <CompanionShell />
         <AuthBootstrap />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>

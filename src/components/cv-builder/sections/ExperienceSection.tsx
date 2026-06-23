@@ -11,6 +11,7 @@ import type { AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
+import { useCompanionStore } from "@/store/useCompanionStore";
 
 
 export function ExperienceSection() {
@@ -220,14 +221,56 @@ export function ExperienceSection() {
         <div key={exp.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 relative group">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.experience")} #{index + 1}</h4>
-            <Button
-              variant="ghost" size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => removeExperience(exp.id)} disabled={experience.length === 1}
-              aria-label={`${t("builder.remove")} ${t("builder.entry.experience")} ${index + 1}`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {/* Intake trigger: kể chuyện → AI điền field */}
+              {isLoggedIn && draftId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  onClick={() => {
+                    const id = `cvbuilder:intake:experience[${index}]`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_intake",
+                        props: {
+                          draftId,
+                          entryIndex: index,
+                          currentEntry: {
+                            company: exp.company,
+                            position: exp.position,
+                            startDate: exp.startDate,
+                            endDate: exp.endDate,
+                            description: exp.description,
+                            achievements: exp.achievements,
+                          },
+                          onApply: (fields: Record<string, string>) => {
+                            for (const [field, value] of Object.entries(fields)) {
+                              updateExperience(exp.id, field as keyof typeof exp, value);
+                            }
+                            clearSectionEvaluation("experience");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.intake.trigger", { defaultValue: "✨ Trợ lý điền nhanh" })}</span>
+                </Button>
+              )}
+              <Button
+                variant="ghost" size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => removeExperience(exp.id)} disabled={experience.length === 1}
+                aria-label={`${t("builder.remove")} ${t("builder.entry.experience")} ${index + 1}`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -279,6 +322,40 @@ export function ExperienceSection() {
                 (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) &&
                 renderSuggestionBox(exp.id, "description")
               }
+
+              {/* Companion AI trigger for description */}
+              {isLoggedIn && draftId && exp.description.trim() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  disabled={!draftId || !exp.description.trim()}
+                  onClick={() => {
+                    const id = `cvbuilder:experience[${index}].description`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_builder",
+                        props: {
+                          draftId,
+                          fieldPath: id,
+                          section: "experience",
+                          currentValue: exp.description,
+                          onApply: (after: string) => {
+                            updateExperience(exp.id, "description", after);
+                            clearSectionEvaluation("experience");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                </Button>
+              )}
             </div>
 
             {/* Achievements field */}
@@ -312,6 +389,40 @@ export function ExperienceSection() {
                 (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) &&
                 renderSuggestionBox(exp.id, "achievements")
               }
+
+              {/* Companion AI trigger for achievements */}
+              {isLoggedIn && draftId && exp.achievements.trim() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  disabled={!draftId || !exp.achievements.trim()}
+                  onClick={() => {
+                    const id = `cvbuilder:experience[${index}].achievements`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_builder",
+                        props: {
+                          draftId,
+                          fieldPath: id,
+                          section: "experience",
+                          currentValue: exp.achievements,
+                          onApply: (after: string) => {
+                            updateExperience(exp.id, "achievements", after);
+                            clearSectionEvaluation("experience");
+                          },
+                        },
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                </Button>
+              )}
             </div>
 
           </div>

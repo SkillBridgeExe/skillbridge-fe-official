@@ -11,6 +11,7 @@ import { assessAiInput, type AiGateCode } from "@/lib/ai-input-gate";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
+import { useCompanionStore } from "@/store/useCompanionStore";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const GENERATE_SUMMARY_INSTRUCTION =
@@ -378,6 +379,40 @@ export function SummarySection() {
             <Sparkles className="w-3 h-3 mr-1" /> {t("builder.regenerate")}
           </Button>
         </div>
+      )}
+
+      {/* Companion AI trigger for summary */}
+      {isLoggedIn && draftId && summary.trim() && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+          disabled={!draftId || !summary.trim()}
+          onClick={() => {
+            const id = "cvbuilder:summary";
+            useCompanionStore.getState().registerContext({
+              id,
+              getTurn: () => ({
+                skill: "cv_builder",
+                props: {
+                  draftId,
+                  fieldPath: id,
+                  section: "summary",
+                  currentValue: summary,
+                  onApply: (after: string) => {
+                    setSummary(after);
+                    clearSectionEvaluation("summary");
+                  },
+                },
+              }),
+            });
+            useCompanionStore.getState().activateContext(id);
+            useCompanionStore.setState({ bubbleOpen: true });
+          }}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+        </Button>
       )}
     </div>
   );

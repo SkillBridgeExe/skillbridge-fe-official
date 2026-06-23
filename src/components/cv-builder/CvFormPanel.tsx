@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCompanionStore } from "@/store/useCompanionStore";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -167,6 +168,10 @@ export function CvFormPanel() {
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
+
+  // Companion is builder-scoped: clear the floating dolphin + its context registry when the builder
+  // unmounts, so it doesn't follow the user onto unrelated pages (anti-Clippy).
+  useEffect(() => () => useCompanionStore.getState().resetCompanion(), []);
 
   const handleEvaluateSection = useCallback((beSection: BuilderSection, _sectionId: string) => {
     if (!isLoggedIn || !draftId) return;

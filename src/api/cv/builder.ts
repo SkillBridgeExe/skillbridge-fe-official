@@ -12,6 +12,15 @@ import type {
   RewriteResponse,
   UpdateBuilderDraftInput,
 } from "@shared/api";
+import type {
+  AssistantAnalyzeRequest,
+  AssistantRewriteRequest,
+  AssistantRewriteResponse,
+  CvAssistantTurn,
+  SkillsNudgeItem,
+  ExtractRequest,
+  ExtractResponse,
+} from "@/types/companion";
 import { CV_AI_TIMEOUT_MS } from "./upload";
 
 /** POST /api/cvs/builder — tạo draft builder trên BE (cvKind=BUILT, review=null). */
@@ -91,4 +100,75 @@ export async function renderBuilderPdfApi(draftId: string): Promise<Blob> {
     timeout: CV_AI_TIMEOUT_MS,
   });
   return response.data as Blob;
+}
+
+// ── Companion / CV Assistant (PR #126) ──────────────────────────────
+
+/**
+ * POST /api/cvs/:id/builder/assistant/analyze — Turn-1: phân tích + hỏi.
+ * Deterministic (KHÔNG LLM, KHÔNG quota) nhưng nới timeout cho cold-start.
+ */
+export async function assistantAnalyzeApi(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<CvAssistantTurn> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CvAssistantTurn>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_ANALYZE(draftId), input, {
+      timeout: 30_000,
+    }),
+    "Failed to analyze the field.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/assistant/rewrite — Turn-2: viết lại (LLM → timeout dài).
+ * Tốn quota CV_BUILDER_REWRITE CHỈ khi trả patch (ok=true).
+ */
+export async function assistantRewriteApi(
+  draftId: string,
+  input: AssistantRewriteRequest,
+): Promise<AssistantRewriteResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AssistantRewriteResponse>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_REWRITE(draftId), input, {
+      timeout: CV_AI_TIMEOUT_MS,
+    }),
+    "Failed to generate a rewrite.",
+  );
+  return envelope.data;
+}
+
+/**
+ * GET /api/cvs/:id/builder/assistant/skills-nudge — gợi ý hoàn thiện skills.
+ * Deterministic (KHÔNG LLM, KHÔNG quota). Mảng rỗng = đã đủ.
+ */
+export async function assistantSkillsNudgeApi(
+  draftId: string,
+  lang: "vi" | "en" = "vi",
+): Promise<SkillsNudgeItem[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<SkillsNudgeItem[]>>(
+    httpClient.get(API_ROUTES.CV.ASSISTANT_SKILLS_NUDGE(draftId), {
+      params: { lang },
+      timeout: 15_000,
+    }),
+    "Failed to fetch skills nudge.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/assistant/extract — narrative → field extraction (LLM → timeout dài).
+ * CvIntakeSkill: user kể chuyện → AI trích field.
+ */
+export async function assistantExtractApi(
+  draftId: string,
+  input: ExtractRequest,
+): Promise<ExtractResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<ExtractResponse>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_EXTRACT(draftId), input, {
+      timeout: CV_AI_TIMEOUT_MS,
+    }),
+    "Failed to extract fields from narrative.",
+  );
+  return envelope.data;
 }
