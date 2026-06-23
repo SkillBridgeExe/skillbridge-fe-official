@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
@@ -21,6 +21,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
+import { useCompanionStore } from "@/store/useCompanionStore";
+import { pickTopCompletenessGap, completenessSummary } from "@/components/companion/skills/diagnosis-review";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -309,6 +311,36 @@ export function DiagnosisStep2Review() {
 
   const [rawOpen, setRawOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'audit' | 'skills' | 'market'>('audit');
+
+  /* ── Companion: Step-2 review completeness nudge (#16) ── */
+  const completenessGap = pickTopCompletenessGap(reviewData?.document);
+  const summary = completenessSummary(reviewData?.document);
+
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    if (!completenessGap || !reviewData?.document) {
+      store.unregisterContext("diagnosis:review");
+      return;
+    }
+    store.registerContext({
+      id: "diagnosis:review",
+      priority: 10,
+      getTurn: () => ({
+        skill: "diagnosis_review",
+        props: {
+          message: t(`companion.review.gap.${completenessGap}`),
+          ctaLabel: t("companion.review.cta"),
+          onCta: () => {
+            useDiagnosisStore.getState().setStep("builder");
+            useCompanionStore.getState().dismissActive();
+          },
+        },
+      }),
+    });
+    store.activateContext("diagnosis:review");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:review");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completenessGap, summary.experiences, summary.skills]);
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },

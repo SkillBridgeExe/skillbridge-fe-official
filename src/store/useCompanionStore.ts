@@ -5,7 +5,15 @@
 
 import { create } from "zustand";
 
-export type CompanionTurn = { skill: "cv_builder" | "cv_intake" | "diagnosis_results"; props: Record<string, unknown> };
+export type CompanionSkill =
+  | "cv_builder"
+  | "cv_intake"
+  | "diagnosis_results"
+  | "diagnosis_proveit"
+  | "diagnosis_review"
+  | "diagnosis_upload"
+  | "diagnosis_progress";
+export type CompanionTurn = { skill: CompanionSkill; props: Record<string, unknown> };
 export interface CompanionContextReg {
   id: string;
   priority?: number;

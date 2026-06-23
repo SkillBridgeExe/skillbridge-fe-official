@@ -1820,6 +1820,37 @@ export default {
         editStory: "Edit story",
         close: "Close",
       },
+      proveit: {
+        msg: "The skill \"{{skill}}\" is on your CV but lacks concrete evidence. Adding a real example will make it more convincing.",
+        cta: "Add evidence",
+      },
+      review: {
+        summary: "CV parsed — summary: {{experiences}} experiences, {{skills}} skills.",
+        gap: {
+          no_experience: "Your CV has no experience entries — add at least one position for a more accurate review.",
+          exp_no_dates: "Some experience entries are missing start/end dates — ATS systems need this information.",
+          no_projects: "No projects found — adding projects helps demonstrate your skills with real examples.",
+          no_skills: "No technical skills detected — please check the Skills section of your CV.",
+          no_summary: "Your CV is missing a professional summary — add 2-3 sentences to help recruiters scan quickly.",
+        },
+        cta: "Open Builder to fix",
+      },
+      upload: {
+        greet: "Upload your CV and select a target role to start the analysis.",
+        reading: "Reading your CV...",
+      },
+      progress: {
+        title: "Compared to last time",
+        scoreDelta: "Match score: {{prev}}% → {{curr}}% (+{{delta}})",
+        gapsClosed: "Closed {{count}} gaps",
+        gapsWorsened: "{{count}} items need attention",
+        baseline: "This is your first analysis — results will be saved as a baseline.",
+      },
+      scoreBreakdown: {
+        title: "Score breakdown",
+        covered: "Covered",
+        notCovered: "Not covered",
+      },
     },
     skillsNudge: {
       title: "Skill completeness suggestions",

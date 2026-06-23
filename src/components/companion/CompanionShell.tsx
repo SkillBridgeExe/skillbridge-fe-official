@@ -9,7 +9,7 @@
 // anchors next to that DOM section via Floating UI (flip + shift).
 // Fallback: no anchor / drag → fixed bottom-right (Phase 1 behavior).
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
@@ -19,6 +19,8 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
+import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
+import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -47,6 +49,7 @@ export function CompanionShell() {
   const draftId = useCvBuilderStore((s) => s.draftId);
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
   const activeReg = activeId ? contexts[activeId] : null;
   const turn = activeReg?.getTurn();
@@ -61,10 +64,12 @@ export function CompanionShell() {
     if (!anchorId) { setAnchorEl(null); return; }
     // Resolve immediately + set up a MutationObserver to catch late-mounting elements
     setAnchorEl(document.getElementById(anchorId));
+    // Scope observer to the diagnosis container when possible (perf)
+    const scopeEl = document.getElementById("diagnosis-root") ?? document.body;
     const obs = new MutationObserver(() => {
       setAnchorEl(document.getElementById(anchorId));
     });
-    obs.observe(document.body, { childList: true, subtree: true });
+    obs.observe(scopeEl, { childList: true, subtree: true });
     return () => obs.disconnect();
   }, [anchorId]);
 
@@ -87,13 +92,18 @@ export function CompanionShell() {
     }
   }, [anchored, anchorEl, refs]);
 
-  // Pose: dragging → "swimming"; success flash → "success"; diagnosis_results → "tip" (advisory);
-  // otherwise cv_intake/cv_builder follow mascotState.
+  // Pose: dragging → "swimming"; success flash → "success";
+  // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
+  const isAdvisorySkill = turn?.skill === "diagnosis_results"
+    || turn?.skill === "diagnosis_proveit"
+    || turn?.skill === "diagnosis_review"
+    || turn?.skill === "diagnosis_upload"
+    || turn?.skill === "diagnosis_progress";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
       ? "success"
-      : turn?.skill === "diagnosis_results"
+      : isAdvisorySkill
         ? "tip"
         : (POSE[mascotState] ?? "idle");
 
@@ -103,6 +113,32 @@ export function CompanionShell() {
     const timer = setTimeout(() => setShowSuccess(false), SUCCESS_DURATION);
     return () => clearTimeout(timer);
   }, [showSuccess]);
+
+  // Reset position mode to "auto" when a NEW context becomes active (re-anchor).
+  useEffect(() => {
+    if (activeId) {
+      useCompanionStore.setState({ positionMode: "auto" });
+    }
+  }, [activeId]);
+
+  // ── Keyboard: Esc → dismiss bubble ──
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && bOpen) { dismissActive(); }
+    },
+    [bOpen, dismissActive],
+  );
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // ── Focus trap: when bubble opens, focus the bubble ──
+  useEffect(() => {
+    if (showBubble && bubbleRef.current) {
+      bubbleRef.current.focus();
+    }
+  }, [showBubble]);
 
   // Don't render if no contexts are registered
   if (Object.keys(contexts).length === 0) return null;
@@ -147,11 +183,16 @@ export function CompanionShell() {
         {showBubble && (
           <motion.div
             key="companion-bubble"
+            ref={bubbleRef}
+            role="dialog"
+            aria-live="polite"
+            aria-label="Companion assistant"
+            tabIndex={-1}
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="w-[360px] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl"
+            className="w-[min(360px,90vw)] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
           >
             <button
               onClick={() => dismissActive()}
@@ -199,6 +240,23 @@ export function CompanionShell() {
                 action={turn.props.action as string}
                 ctaKind={turn.props.ctaKind as "roadmap" | "builder"}
                 onCta={turn.props.onCta as () => void}
+              />
+            )}
+
+            {/* ── diagnosis_proveit ── */}
+            {turn?.skill === "diagnosis_proveit" && (
+              <DiagnosisProveItSkill
+                displayName={turn.props.displayName as string}
+                onCta={turn.props.onCta as () => void}
+              />
+            )}
+
+            {/* ── diagnosis_review / diagnosis_upload ── */}
+            {(turn?.skill === "diagnosis_review" || turn?.skill === "diagnosis_upload") && (
+              <DiagnosisReviewSkill
+                message={turn.props.message as string}
+                ctaLabel={turn.props.ctaLabel as string | undefined}
+                onCta={turn.props.onCta as (() => void) | undefined}
               />
             )}
           </motion.div>

@@ -1814,6 +1814,37 @@ export default {
         editStory: "Sửa lại chuyện",
         close: "Đóng",
       },
+      proveit: {
+        msg: "Kỹ năng \"{{skill}}\" đã có trong CV nhưng chưa có bằng chứng cụ thể. Thêm một ví dụ thật sẽ tăng sức thuyết phục.",
+        cta: "Bổ sung bằng chứng",
+      },
+      review: {
+        summary: "CV đã parse xong — tổng hợp: {{experiences}} kinh nghiệm, {{skills}} kỹ năng.",
+        gap: {
+          no_experience: "CV chưa có mục kinh nghiệm nào — hãy thêm ít nhất 1 vị trí để AI chấm đúng hơn.",
+          exp_no_dates: "Một số kinh nghiệm thiếu ngày bắt đầu/kết thúc — ATS cần thông tin này.",
+          no_projects: "CV chưa có dự án — thêm dự án giúp minh chứng kỹ năng tốt hơn.",
+          no_skills: "Chưa tìm thấy kỹ năng kỹ thuật — hãy kiểm tra lại mục Skills trong CV.",
+          no_summary: "CV thiếu phần tóm tắt chuyên môn — thêm 2-3 câu tổng quan giúp recruiter đọc nhanh.",
+        },
+        cta: "Mở Builder để bổ sung",
+      },
+      upload: {
+        greet: "Tải CV lên và chọn vai trò mục tiêu để bắt đầu phân tích.",
+        reading: "Đang đọc CV của bạn...",
+      },
+      progress: {
+        title: "So sánh với lần trước",
+        scoreDelta: "Điểm khớp: {{prev}}% → {{curr}}% (+{{delta}})",
+        gapsClosed: "Đã đóng {{count}} khoảng trống",
+        gapsWorsened: "{{count}} mục cần xem lại",
+        baseline: "Đây là lần chấm đầu tiên — kết quả sẽ được lưu làm mốc.",
+      },
+      scoreBreakdown: {
+        title: "Chi tiết điểm khớp",
+        covered: "Đã đáp ứng",
+        notCovered: "Chưa đáp ứng",
+      },
     },
     skillsNudge: {
       title: "Gợi ý hoàn thiện kỹ năng",

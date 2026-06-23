@@ -25,6 +25,8 @@ import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillM
 import { useNextStepsQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
+import { pickTopProveIt } from "@/components/companion/skills/prove-it";
+import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -296,6 +298,39 @@ export function DiagnosisStep3Results() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topStep?.canonical, topStep?.action]);
 
+  /* ── Companion: Prove-it coach (#13) — higher priority than next-step ── */
+  const provedItem = pickTopProveIt(
+    jdMatch?.hardSkills ?? [],
+    jdMatch?.softSkills ?? [],
+    reviewData?.evidence_ledger,
+  );
+
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    if (!provedItem) {
+      store.unregisterContext("diagnosis:proveit");
+      return;
+    }
+    store.registerContext({
+      id: "diagnosis:proveit",
+      priority: 20, // higher than results (10) → takes over
+      anchorId: "gap-anchor",
+      getTurn: () => ({
+        skill: "diagnosis_proveit",
+        props: {
+          displayName: provedItem.display_name,
+          onCta: () => {
+            useDiagnosisStore.getState().setStep("builder");
+            useCompanionStore.getState().dismissActive();
+          },
+        },
+      }),
+    });
+    store.activateContext("diagnosis:proveit");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provedItem?.skill_canonical]);
+
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
 
@@ -340,14 +375,26 @@ export function DiagnosisStep3Results() {
           {kickerText}
         </p>
 
-        {/* Verdict Hero */}
-        <VerdictHero
-          target={matchScore}
-          label={scoreLabel}
-          verdictMessage={scoreMessage}
-          isJdMode={isJdMode}
-          rubricBand={jdMatch?.rubric_band}
-        />
+        {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
+        {isJdMode ? (
+          <ScoreBreakdownPopover jdMatch={jdMatch}>
+            <VerdictHero
+              target={matchScore}
+              label={scoreLabel}
+              verdictMessage={scoreMessage}
+              isJdMode={isJdMode}
+              rubricBand={jdMatch?.rubric_band}
+            />
+          </ScoreBreakdownPopover>
+        ) : (
+          <VerdictHero
+            target={matchScore}
+            label={scoreLabel}
+            verdictMessage={scoreMessage}
+            isJdMode={isJdMode}
+            rubricBand={jdMatch?.rubric_band}
+          />
+        )}
 
         {/* Ribbon — inline stats + deal-breaker chips */}
         {isJdMode && (
