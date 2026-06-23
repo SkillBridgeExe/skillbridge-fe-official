@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Sparkles,
   Users,
+  Flag,
 } from "lucide-react";
 import { AdminAssistantMark } from "@/components/admin/AdminBrand";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -36,6 +37,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       { key: "users-admin", label: "Admins", href: "/admin/users?role=ADMIN" },
     ],
   },
+  { key: "reports", label: "Job Reports", href: "/admin/reports", icon: Flag },
   {
     key: "billing",
     label: "Billing",

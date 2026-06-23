@@ -5,6 +5,7 @@ import type {
   SalaryPeriod,
   UpdateJobDraftRequest,
   WorkMode,
+  JobLocationDto,
 } from "@/types/jobs";
 
 export interface BusinessJobFormState {
@@ -25,6 +26,7 @@ export interface BusinessJobFormState {
   educationLevel: string;
   languageCode: string;
   applicationDeadline: string;
+  locations: JobLocationDto[];
   summary: string;
   responsibilitiesText: string;
   requirementsText: string;
@@ -76,6 +78,7 @@ export function draftToBusinessJobForm(draft: JobVersionDto): BusinessJobFormSta
     educationLevel: nullableString(draft.educationLevel),
     languageCode: nullableString(draft.languageCode),
     applicationDeadline: nullableString(draft.applicationDeadline),
+    locations: draft.locations ?? [],
     summary: nullableString(draft.summary),
     responsibilitiesText: draft.responsibilities.join("\n"),
     requirementsText: draft.requirements.join("\n"),
@@ -115,6 +118,7 @@ export function formToUpdateJobDraftRequest(
     languageCode: optionalString(form.languageCode),
     applicationDeadline: optionalString(form.applicationDeadline),
     summary: optionalString(form.summary),
+    locations: form.locations.length > 0 ? form.locations : undefined,
     responsibilities: splitLines(form.responsibilitiesText),
     requirements: splitLines(form.requirementsText),
     niceToHave: splitLines(form.niceToHaveText),
