@@ -32,6 +32,7 @@ export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 export const BusinessDashboard = lazy(() => import("@/pages/business/BusinessDashboard"));
 export const BusinessProfile = lazy(() => import("@/pages/business/BusinessProfile"));
 export const BusinessJobs = lazy(() => import("@/pages/business/BusinessJobs"));
+export const BusinessJobEdit = lazy(() => import("@/pages/business/BusinessJobEdit"));
 export const TopCandidates = lazy(() => import("@/pages/business/TopCandidates"));
 export const BusinessApplicants = lazy(() => import("@/pages/business/BusinessApplicants"));
 
@@ -53,6 +54,8 @@ export const AdminBillingOrders = lazy(() => import("@/pages/admin/AdminBillingO
 export const AdminBillingSubscriptions = lazy(() => import("@/pages/admin/AdminBillingSubscriptions"));
 export const AdminMentors = lazy(() => import("@/pages/admin/AdminMentors"));
 export const AdminBillingMentorBookings = lazy(() => import("@/pages/admin/AdminBillingMentorBookings"));
+export const AdminJobReports = lazy(() => import("@/pages/admin/AdminJobReports"));
+export const AdminBusinessProfiles = lazy(() => import("@/pages/admin/AdminBusinessProfiles"));
 
 // Dev-only mascot animation showcase (visit /mascot). Safe to remove later.
 export const MascotShowcase = lazy(() => import("@/pages/dev/MascotShowcase"));

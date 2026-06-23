@@ -84,6 +84,7 @@ const App = () => (
               <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
               <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
               <Route path="/business/jobs" element={<AuthGuard requiredRole="business"><Pages.BusinessJobs /></AuthGuard>}/>
+              <Route path="/business/jobs/:jobId/edit" element={<AuthGuard requiredRole="business"><Pages.BusinessJobEdit /></AuthGuard>}/>
               <Route path="/business/top-candidates" element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}/>
               <Route path="/business/applicants" element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}/>
 
@@ -106,6 +107,8 @@ const App = () => (
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
                 <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
+                <Route path="reports" element={<Pages.AdminJobReports />} />
+                <Route path="business-profiles" element={<Pages.AdminBusinessProfiles />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 

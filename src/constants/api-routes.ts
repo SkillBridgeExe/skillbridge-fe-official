@@ -171,4 +171,82 @@ export const API_ROUTES = {
     AVATAR: `${API}/users/me/avatar`,
     SKILLS: `${API}/users/me/skills`,
   },
+
+  // ── §4 Public job discovery ───────────────────────────────────────────
+  JOBS: {
+    LIST: `${API}/jobs`,
+    FILTERS: `${API}/jobs/filters`,
+    DETAIL: (slug: string) => `${API}/jobs/${slug}`,
+    MATCH: (jobId: string) => `${API}/jobs/${jobId}/match`,
+    APPLY: (jobId: string) => `${API}/jobs/${jobId}/applications`,
+    REPORT: (jobId: string) => `${API}/jobs/${jobId}/reports`,
+  },
+
+  // ── §5.2 Saved jobs (USER) ────────────────────────────────────────────
+  SAVED_JOBS: {
+    LIST: `${API}/users/me/saved-jobs`,
+    TOGGLE: (jobId: string) => `${API}/users/me/saved-jobs/${jobId}`,
+  },
+
+  // ── §5.4 My applications (USER) ───────────────────────────────────────
+  MY_APPLICATIONS: {
+    LIST: `${API}/users/me/job-applications`,
+    DETAIL: (id: string) => `${API}/users/me/job-applications/${id}`,
+    WITHDRAW: (id: string) => `${API}/users/me/job-applications/${id}/withdraw`,
+  },
+
+  // ── §4.4 Public company ───────────────────────────────────────────────
+  COMPANIES: {
+    DETAIL: (slug: string) => `${API}/companies/${slug}`,
+    JOBS: (slug: string) => `${API}/companies/${slug}/jobs`,
+    LOGO: (slug: string) => `${API}/companies/${slug}/logo`,
+    COVER: (slug: string) => `${API}/companies/${slug}/cover`,
+  },
+
+  // ── §6 Business company onboarding ────────────────────────────────────
+  BUSINESS_COMPANY: {
+    GET: `${API}/business/company`,
+    UPDATE: `${API}/business/company`,
+    SEND_VERIFY: `${API}/business/company/work-email/send-verification`,
+    VERIFY: `${API}/business/company/work-email/verify`,
+    LOGO: `${API}/business/company/logo`,
+    COVER: `${API}/business/company/cover`,
+    SUBMIT: `${API}/business/company/submit`,
+  },
+
+  // ── §7–8 Business job editor + applicant pipeline ─────────────────────
+  BUSINESS_JOBS: {
+    LIST: `${API}/business/jobs`,
+    CREATE: `${API}/business/jobs`,
+    DETAIL: (jobId: string) => `${API}/business/jobs/${jobId}`,
+    DRAFT: (jobId: string) => `${API}/business/jobs/${jobId}/draft`,
+    EXTRACT_SKILLS: (jobId: string) => `${API}/business/jobs/${jobId}/draft/extract-skills`,
+    SKILLS: (jobId: string) => `${API}/business/jobs/${jobId}/draft/skills`,
+    PUBLISH: (jobId: string) => `${API}/business/jobs/${jobId}/publish`,
+    CLOSE: (jobId: string) => `${API}/business/jobs/${jobId}/close`,
+    DUPLICATE: (jobId: string) => `${API}/business/jobs/${jobId}/duplicate`,
+    DELETE: (jobId: string) => `${API}/business/jobs/${jobId}`,
+    APPLICATIONS: (jobId: string) => `${API}/business/jobs/${jobId}/applications`,
+  },
+
+  // ── §8 Business application detail ────────────────────────────────────
+  BUSINESS_APPLICATIONS: {
+    DETAIL: (appId: string) => `${API}/business/applications/${appId}`,
+    CV: (appId: string) => `${API}/business/applications/${appId}/cv`,
+    STATUS: (appId: string) => `${API}/business/applications/${appId}/status`,
+  },
+
+  // ── §9 Admin business review + job reports/takedown ───────────────────
+  ADMIN_BUSINESS: {
+    PROFILES: `${API}/admin/business-profiles`,
+    PROFILE: (id: string) => `${API}/admin/business-profiles/${id}`,
+    PROFILE_STATUS: (id: string) => `${API}/admin/business-profiles/${id}/status`,
+  },
+
+  ADMIN_JOBS: {
+    DETAIL: (jobId: string) => `${API}/admin/jobs/${jobId}`,
+    STATUS: (jobId: string) => `${API}/admin/jobs/${jobId}/status`,
+    REPORTS: `${API}/admin/job-reports`,
+    RESOLVE_REPORT: (reportId: string) => `${API}/admin/job-reports/${reportId}`,
+  },
 } as const;
