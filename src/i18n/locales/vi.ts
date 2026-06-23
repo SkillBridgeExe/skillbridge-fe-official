@@ -1794,6 +1794,26 @@ export default {
       error: {
         unknown: "Đã xảy ra lỗi. Thử lại sau.",
       },
+      results: {
+        ctaRoadmap: "Xem lộ trình học",
+        ctaBuilder: "Bổ sung bằng chứng",
+      },
+      intake: {
+        trigger: "✨ Trợ lý điền nhanh",
+        prompt: "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
+        placeholder: "Ví dụ: Tôi làm Frontend Developer ở FPT từ tháng 3/2023 đến 12/2024. Tôi xây dựng dashboard quản lý, triển khai CI/CD…",
+        extract: "Phân tích",
+        extracting: "Đang đọc…",
+        previewTitle: "Trích xuất từ chuyện kể",
+        lowConfidence: "kiểm lại",
+        override: "Ghi đè",
+        source: "nguồn:",
+        missing: "Chuyện chưa nhắc — bạn bổ sung?",
+        degraded: "Mình chưa đọc được, bạn điền tay nhé.",
+        apply: "Áp dụng",
+        editStory: "Sửa lại chuyện",
+        close: "Đóng",
+      },
     },
     skillsNudge: {
       title: "Gợi ý hoàn thiện kỹ năng",

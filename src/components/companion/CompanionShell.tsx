@@ -1,21 +1,29 @@
 // ─── CompanionShell ─────────────────────────────────────────────────
 // Single floating, draggable dolphin mascot + speech-bubble.
 // Mounted once at app root. Reads useCompanionStore for the active
-// context + useCvBuilderStore for the mascot pose. Hosts CvBuilderSkill
-// inside the bubble.
+// context + useCvBuilderStore for the mascot pose. Hosts skill
+// renderers inside the bubble: CvBuilderSkill, CvIntakeSkill,
+// DiagnosisResultsSkill.
+//
+// Phase 1b: when the active context supplies an `anchorId`, the mascot
+// anchors next to that DOM section via Floating UI (flip + shift).
+// Fallback: no anchor / drag → fixed bottom-right (Phase 1 behavior).
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import { MascotSticker, type MascotState } from "@/components/mascot/MascotSticker";
 import { useCompanionStore, bubbleVisible } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { CvBuilderSkill } from "./skills/CvBuilderSkill";
+import { CvIntakeSkill } from "./skills/CvIntakeSkill";
+import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
   asking: "tip",
-  thinking: "video_laptop1",
+  thinking: "thinking",
   presenting: "tip",
 };
 
@@ -26,9 +34,11 @@ export function CompanionShell() {
   const contexts = useCompanionStore((s) => s.contexts);
   const bOpen = useCompanionStore((s) => s.bubbleOpen);
   const visible = useCompanionStore(bubbleVisible);
+  const isDragging = useCompanionStore((s) => s.isDragging);
   const setDragging = useCompanionStore((s) => s.setDragging);
   const setPosition = useCompanionStore((s) => s.setPosition);
   const position = useCompanionStore((s) => s.position);
+  const positionMode = useCompanionStore((s) => s.positionMode);
   const dismissActive = useCompanionStore((s) => s.dismissActive);
   const closeBubble = useCompanionStore((s) => s.closeBubble);
   const activateContext = useCompanionStore((s) => s.activateContext);
@@ -42,8 +52,52 @@ export function CompanionShell() {
   const turn = activeReg?.getTurn();
   const showBubble = visible && !!turn;
 
+  // ── Anchor resolution (Phase 1b) ──
+  // Re-resolve every render: the DOM element may mount after the context registers.
+  const anchorId = activeReg?.anchorId;
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!anchorId) { setAnchorEl(null); return; }
+    // Resolve immediately + set up a MutationObserver to catch late-mounting elements
+    setAnchorEl(document.getElementById(anchorId));
+    const obs = new MutationObserver(() => {
+      setAnchorEl(document.getElementById(anchorId));
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [anchorId]);
+
+  // Anchored when: anchor exists + not dragging + position hasn't been manually set
+  const anchored = !!anchorEl && !isDragging && positionMode !== "manual";
+
+  // Floating UI: only active when anchored
+  const { refs, floatingStyles } = useFloating({
+    placement: "left-start",
+    middleware: [offset(12), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // Sync the reference element with the anchor
+  useEffect(() => {
+    if (anchored && anchorEl) {
+      refs.setReference(anchorEl);
+    } else {
+      refs.setReference(null);
+    }
+  }, [anchored, anchorEl, refs]);
+
+  // Pose: dragging → "swimming"; success flash → "success"; diagnosis_results → "tip" (advisory);
+  // otherwise cv_intake/cv_builder follow mascotState.
+  const pose: MascotState = isDragging
+    ? "swimming"
+    : showSuccess
+      ? "success"
+      : turn?.skill === "diagnosis_results"
+        ? "tip"
+        : (POSE[mascotState] ?? "idle");
+
   // Success pose after apply: flash for SUCCESS_DURATION, robustly cleaned up.
-  const pose: MascotState = showSuccess ? "success" : (POSE[mascotState] ?? "idle");
   useEffect(() => {
     if (!showSuccess) return;
     const timer = setTimeout(() => setShowSuccess(false), SUCCESS_DURATION);
@@ -66,6 +120,7 @@ export function CompanionShell() {
 
   return (
     <motion.div
+      ref={anchored ? refs.setFloating : undefined}
       drag
       dragMomentum={false}
       onDragStart={() => setDragging(true)}
@@ -76,12 +131,20 @@ export function CompanionShell() {
           position.y + info.offset.y,
         );
       }}
-      className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2"
-      style={{ touchAction: "none" }}
+      style={
+        anchored
+          ? { ...floatingStyles, zIndex: 60, touchAction: "none" }
+          : { touchAction: "none" }
+      }
+      className={
+        anchored
+          ? "flex flex-col items-end gap-2"
+          : "fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2"
+      }
     >
       {/* Bubble */}
       <AnimatePresence>
-        {showBubble && turn?.skill === "cv_builder" && (
+        {showBubble && (
           <motion.div
             key="companion-bubble"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -97,17 +160,47 @@ export function CompanionShell() {
             >
               <X className="w-4 h-4" />
             </button>
-            <CvBuilderSkill
-              key={turn.props.fieldPath as string}
-              draftId={(turn.props.draftId as string) ?? draftId ?? ""}
-              fieldPath={turn.props.fieldPath as string}
-              section={turn.props.section as "projects" | "experience" | "summary"}
-              currentValue={turn.props.currentValue as string}
-              onApply={(after) => {
-                (turn.props.onApply as (a: string) => void)(after);
-                setShowSuccess(true);
-              }}
-            />
+
+            {/* ── cv_builder ── */}
+            {turn?.skill === "cv_builder" && (
+              <CvBuilderSkill
+                key={turn.props.fieldPath as string}
+                draftId={(turn.props.draftId as string) ?? draftId ?? ""}
+                fieldPath={turn.props.fieldPath as string}
+                section={turn.props.section as "projects" | "experience" | "summary"}
+                currentValue={turn.props.currentValue as string}
+                onApply={(after) => {
+                  (turn.props.onApply as (a: string) => void)(after);
+                  setShowSuccess(true);
+                }}
+              />
+            )}
+
+            {/* ── cv_intake ── */}
+            {turn?.skill === "cv_intake" && (
+              <CvIntakeSkill
+                key={`intake-${turn.props.entryIndex}`}
+                draftId={(turn.props.draftId as string) ?? draftId ?? ""}
+                entryIndex={turn.props.entryIndex as number}
+                currentEntry={turn.props.currentEntry as {
+                  company: string; position: string; startDate: string;
+                  endDate: string; description: string; achievements: string;
+                }}
+                onApply={(fields) => {
+                  (turn.props.onApply as (f: Record<string, string>) => void)(fields);
+                  setShowSuccess(true);
+                }}
+              />
+            )}
+
+            {/* ── diagnosis_results ── */}
+            {turn?.skill === "diagnosis_results" && (
+              <DiagnosisResultsSkill
+                action={turn.props.action as string}
+                ctaKind={turn.props.ctaKind as "roadmap" | "builder"}
+                onCta={turn.props.onCta as () => void}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

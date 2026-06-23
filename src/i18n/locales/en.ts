@@ -1800,6 +1800,26 @@ export default {
       error: {
         unknown: "Something went wrong. Try again later.",
       },
+      results: {
+        ctaRoadmap: "See learning roadmap",
+        ctaBuilder: "Add evidence",
+      },
+      intake: {
+        trigger: "✨ Quick fill assistant",
+        prompt: "Tell me about this experience (company, role, timeline, what you did, results)…",
+        placeholder: "Example: I worked as a Frontend Developer at FPT from March 2023 to December 2024. I built management dashboards, deployed CI/CD…",
+        extract: "Analyze",
+        extracting: "Reading…",
+        previewTitle: "Extracted from your story",
+        lowConfidence: "check this",
+        override: "Override",
+        source: "source:",
+        missing: "Not mentioned — would you like to add?",
+        degraded: "Could not read this. Please fill in manually.",
+        apply: "Apply",
+        editStory: "Edit story",
+        close: "Close",
+      },
     },
     skillsNudge: {
       title: "Skill completeness suggestions",

@@ -5,10 +5,12 @@
 
 import { create } from "zustand";
 
-export type CompanionTurn = { skill: "cv_builder"; props: Record<string, unknown> };
+export type CompanionTurn = { skill: "cv_builder" | "cv_intake" | "diagnosis_results"; props: Record<string, unknown> };
 export interface CompanionContextReg {
   id: string;
   priority?: number;
+  /** DOM element id to anchor the mascot to (e.g. "gap-anchor"). Omit = fixed bottom-right. */
+  anchorId?: string;
   getTurn: () => CompanionTurn;
 }
 
