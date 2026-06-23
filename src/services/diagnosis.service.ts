@@ -23,7 +23,7 @@ import {
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
 import { getNextStepsApi } from "@/api/cv/next-steps";
-import { askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
+import { askCvDiagnosisChatApi, askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
@@ -451,21 +451,27 @@ export async function getNextSteps(
 
 /**
  * Hỏi trợ lý góc màn hình về cách CV được chấm / chỗ nào yếu. BE trả lời grounded
- * từ gap-report của match (KHÔNG LLM phía FE). BE endpoint build TÁCH RIÊNG — nếu
- * chưa có (404/501) promise sẽ reject để UI hiện trạng thái "đang kết nối", không crash.
+ * (KHÔNG LLM phía FE):
+ * - Có JD match → POST /api/cv-matches/:matchId/chat (grounded từ gap-report của match).
+ * - CV-only (chưa so JD) → POST /api/cvs/:cvId/diagnosis-chat (grounded từ review của CV).
+ * - Không có cả hai → reject (không có gì để chat).
+ * BE endpoint build TÁCH RIÊNG — nếu chưa có (404/501) promise sẽ reject để UI hiện
+ * trạng thái "đang kết nối", không crash.
  */
 export async function askDiagnosisChat({
   matchId,
+  cvId,
   question,
   thread,
-  cvId,
   focus,
   language = "vi",
 }: {
-  matchId: string;
+  /** JD match id — preferred chat target when a JD has been compared. */
+  matchId?: string | null;
+  /** CV id — CV-only fallback when there is no JD match. */
+  cvId?: string | null;
   question: string;
   thread?: DiagnosisChatTurn[];
-  cvId?: string;
   /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */
   focus?: DiagnosisChatFocus;
   language?: string;
@@ -474,9 +480,15 @@ export async function askDiagnosisChat({
   const body: DiagnosisChatRequest = {
     question,
     ...(thread && thread.length > 0 ? { thread } : {}),
+    // The CV-only route already carries cvId in its path; we still pass it in the
+    // body so the match route can use it as a fallback grounding hint.
     ...(cvId ? { cvId } : {}),
     ...(focus ? { focus } : {}),
     language,
   };
-  return askDiagnosisChatApi(matchId, body);
+  // Prefer the JD-match route (gap-report grounded). Fall back to the CV-only route
+  // when there is no match. Reject when there is truly nothing to chat about.
+  if (matchId) return askDiagnosisChatApi(matchId, body);
+  if (cvId) return askCvDiagnosisChatApi(cvId, body);
+  return Promise.reject(new Error("NO_CHAT_TARGET"));
 }

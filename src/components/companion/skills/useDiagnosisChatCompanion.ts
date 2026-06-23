@@ -90,16 +90,21 @@ function isDailyLimitError(error: unknown): boolean {
  *                    ref, on the next bubble render) — same single `diagnosis:chat`
  *                    context, NO re-register / NO re-pop.
  * @param revealCard  scrolls (and, on Step 2, tab-switches) a cited card into view.
+ * @param cvId        CV-only chat target. When there is no JD match id, the advisor
+ *                    still works by posting to the CV-only route with this cvId. Pass
+ *                    the diagnosis store's `lastCvId`. Step 3 can omit it (matchId works).
  */
 export function useDiagnosisChatCompanion(
   reviewData: CvReviewData | null | undefined,
   focus: DiagnosisChatFocus,
   revealCard?: RevealCard,
+  cvId?: string | null,
 ): void {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
-  // matchId source: the JD match id when a JD has been compared; else CV-only fallback.
+  // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
+  // compared, the CV-only route (cvId) is the fallback target so the advisor still works.
   const matchId = reviewData?.jdMatch?.matchId ?? null;
 
   // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
@@ -117,13 +122,16 @@ export function useDiagnosisChatCompanion(
   //    flips the last assistant slot to an error row — never crashes. ──
   const chatMutation = useMutation({
     mutationFn: (vars: { question: string; thread: DiagnosisChatTurn[] }) => {
-      if (!matchId) {
-        // No match id (CV-only, no compared JD yet) → no chat target server-side.
+      if (!matchId && !cvId) {
+        // Neither a JD match nor a CV id → no chat target server-side at all.
         // Reject → failLastAssistant → friendly "assistant being connected" row.
         return Promise.reject(new Error("NO_CHAT_TARGET"));
       }
+      // The service picks the route: matchId → /cv-matches/:id/chat (gap-report
+      // grounded); else cvId → /cvs/:cvId/diagnosis-chat (CV-only, review grounded).
       return askDiagnosisChat({
         matchId,
+        cvId,
         question: vars.question,
         thread: vars.thread,
         focus,

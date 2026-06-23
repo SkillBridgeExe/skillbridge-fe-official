@@ -353,7 +353,9 @@ export function DiagnosisStep2Review() {
     }
     scrollTo();
   }, []);
-  useDiagnosisChatCompanion(reviewData, chatFocus, revealCard);
+  // Pass lastCvId so the advisor works on a CV-only scan (no JD match): when there's
+  // no matchId, the hook/service post to the CV-only route grounded in the CV review.
+  useDiagnosisChatCompanion(reviewData, chatFocus, revealCard, lastCvId);
   // The chat advisor owns the bubble while it is registered → the legacy completeness
   // nudge gates off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);

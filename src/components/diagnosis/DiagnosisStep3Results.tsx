@@ -296,7 +296,9 @@ export function DiagnosisStep3Results() {
     if (typeof document === "undefined") return;
     document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
-  useDiagnosisChatCompanion(reviewData, "gap_results", revealCard);
+  // matchId already works here; pass lastCvId too so the advisor still chats on a
+  // CV-only result view (no JD compared) via the CV-only route.
+  useDiagnosisChatCompanion(reviewData, "gap_results", revealCard, lastCvId);
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
