@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +22,9 @@ import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
+import { useNextStepsQuery } from "@/hooks/use-diagnosis";
+import { useCompanionStore } from "@/store/useCompanionStore";
+import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -192,7 +195,7 @@ function InferredSkillsBlock({
  * ════════════════════════════════════════════════════════════════════════ */
 
 export function DiagnosisStep3Results() {
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
   const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
   const { toast } = useToast();
 
@@ -256,6 +259,42 @@ export function DiagnosisStep3Results() {
 
   /* ── Skill Details collapse ── */
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  /* ── Companion: register results context (auto-pop once, honest-empty) ── */
+  const nextStepsLang = i18n.language.startsWith("vi") ? "vi" : "en";
+  const nextStepsQuery = useNextStepsQuery(jdMatch?.matchId, nextStepsLang);
+  const topStep = pickTopNextStep(nextStepsQuery.data?.steps ?? []);
+
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    if (!topStep) {
+      store.unregisterContext("diagnosis:results");
+      return;
+    }
+    const cta = ctaForStep(topStep);
+    store.registerContext({
+      id: "diagnosis:results",
+      priority: 10,
+      anchorId: "gap-anchor",
+      getTurn: () => ({
+        skill: "diagnosis_results",
+        props: {
+          action: topStep.action,
+          ctaKind: cta,
+          onCta: () => {
+            const el =
+              document.getElementById(cta === "builder" ? "cv-builder-anchor" : "roadmap-anchor") ??
+              document.getElementById("roadmap-anchor");
+            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+            useCompanionStore.getState().dismissActive();
+          },
+        },
+      }),
+    });
+    store.activateContext("diagnosis:results");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:results");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topStep?.canonical, topStep?.action]);
 
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
@@ -395,7 +434,7 @@ export function DiagnosisStep3Results() {
        *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
        * ──────────────────────────────────────────────────────────────────── */}
       {isJdMode && jdMatch?.matchId && (
-        <div className="py-12 md:py-16">
+        <div id="gap-anchor" className="py-12 md:py-16">
           <Chapter
             kicker="02"
             title={t("editorial.chap2")}
@@ -600,7 +639,9 @@ export function DiagnosisStep3Results() {
             </div>
 
             {/* CTA + inline learning roadmap derived from this match's GapReport */}
-            <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+            <div id="roadmap-anchor">
+              <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+            </div>
           </div>
         </Chapter>
       </div>
