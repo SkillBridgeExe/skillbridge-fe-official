@@ -132,7 +132,8 @@ export function MascotSticker({
       draggable={false}
       style={{
         width: adjustedSize,
-        height: "auto",
+        aspectRatio: "1 / 1",
+        objectFit: "contain",
         transformOrigin: "bottom center",
         // Đặt lề âm để kéo chữ sát lại gần chú cá heo
         marginBottom: state === "love" ? -16 : 0
