@@ -56,6 +56,18 @@ describe("computeIntakeFields", () => {
     expect(diffs.find((d) => d.field === "company")).toBeUndefined();
   });
 
+  it("skips fields the BE marked not-found, even with a non-empty value (ongoing 'present' end)", () => {
+    const extract: ExtractResponse = {
+      ...baseExtract,
+      fields: {
+        ...baseExtract.fields,
+        end: mkField("present", false), // ongoing → found:false; must never be auto-applied
+      },
+    };
+    const diffs = computeIntakeFields(extract, emptyEntry);
+    expect(diffs.find((d) => d.field === "endDate")).toBeUndefined();
+  });
+
   it("handles degraded response (caller should check degraded before calling)", () => {
     // computeIntakeFields is still callable but the caller gates on degraded=true
     const degradedExtract: ExtractResponse = { ...baseExtract, degraded: true };

@@ -60,6 +60,9 @@ export function computeIntakeFields(
   for (const [beKey, storeKey] of Object.entries(FIELD_MAP)) {
     const fieldData = fields[beKey as keyof typeof fields];
     if (!fieldData) continue;
+    // Honor the anti-fabrication flag: a field the BE could not ground (found:false) must never be
+    // applied — even when it carries a non-empty placeholder like the ongoing end-date "present".
+    if (!fieldData.found) continue;
 
     // Convert value to string
     const afterRaw = Array.isArray(fieldData.value)
