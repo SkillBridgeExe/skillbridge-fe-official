@@ -1819,6 +1819,33 @@ export default {
         apply: "Apply",
         editStory: "Edit story",
         close: "Close",
+        coachStuck: "Not sure what to write? Tell me about it",
+      },
+      // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
+      // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
+      // CHOICE options are CATEGORIES (route the next question), never specifics.
+      coach: {
+        openDayToDay: "Forget the CV for a sec — what did you actually do day-to-day in that role?",
+        starProbe: "Walk me through one specific thing: what was the situation, what did you do, and what was the result?",
+        pickImpactType: "What did your result mostly affect? (pick one so I ask the right follow-up)",
+        pickRoleType: "Which area was your role closest to?",
+        terminalStop: "If there's genuinely nothing more to add, leave it blank — never make something up.",
+        options: {
+          other: "Other",
+          impact: {
+            saved_time: "Saved time",
+            increased_revenue: "Increased revenue",
+            improved_quality: "Improved quality",
+            reduced_cost: "Reduced cost",
+          },
+          role: {
+            frontend: "Frontend",
+            backend: "Backend",
+            fullstack: "Fullstack",
+            data: "Data / AI",
+            devops: "DevOps / Infra",
+          },
+        },
       },
       proveit: {
         msg: "The skill \"{{skill}}\" is on your CV but lacks concrete evidence. Adding a real example will make it more convincing.",

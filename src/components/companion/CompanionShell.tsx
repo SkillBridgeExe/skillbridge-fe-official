@@ -230,6 +230,10 @@ export function CompanionShell() {
                   company: string; position: string; startDate: string;
                   endDate: string; description: string; achievements: string;
                 }}
+                coachTrigger={turn.props.coachTrigger as
+                  | "degraded" | "needs_detail" | "gate" | undefined}
+                coachGap={turn.props.coachGap as string | null | undefined}
+                seedNarrative={turn.props.seedNarrative as string | undefined}
                 onApply={(fields) => {
                   (turn.props.onApply as (f: Record<string, string>) => void)(fields);
                   setShowSuccess(true);

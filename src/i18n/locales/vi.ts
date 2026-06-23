@@ -1813,6 +1813,33 @@ export default {
         apply: "Áp dụng",
         editStory: "Sửa lại chuyện",
         close: "Đóng",
+        coachStuck: "Chưa biết viết gì? Kể tôi nghe",
+      },
+      // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
+      // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
+      // CHOICE options are CATEGORIES (route the next question), never specifics.
+      coach: {
+        openDayToDay: "Quên CV đi — trong vai trò đó bạn đã làm gì hằng ngày?",
+        starProbe: "Kể một việc cụ thể: tình huống là gì, bạn làm gì, và kết quả ra sao?",
+        pickImpactType: "Kết quả của bạn thiên về điều gì? (chọn để tôi hỏi tiếp đúng hướng)",
+        pickRoleType: "Vai trò của bạn gần với mảng nào nhất?",
+        terminalStop: "Nếu thật sự không còn gì để thêm, cứ để trống — đừng bịa nội dung.",
+        options: {
+          other: "Khác",
+          impact: {
+            saved_time: "Tiết kiệm thời gian",
+            increased_revenue: "Tăng doanh thu",
+            improved_quality: "Cải thiện chất lượng",
+            reduced_cost: "Giảm chi phí",
+          },
+          role: {
+            frontend: "Frontend",
+            backend: "Backend",
+            fullstack: "Fullstack",
+            data: "Dữ liệu / AI",
+            devops: "DevOps / Hạ tầng",
+          },
+        },
       },
       proveit: {
         msg: "Kỹ năng \"{{skill}}\" đã có trong CV nhưng chưa có bằng chứng cụ thể. Thêm một ví dụ thật sẽ tăng sức thuyết phục.",
