@@ -1737,6 +1737,16 @@ export default {
       },
       marketDemand: "Nhu cầu thị trường: {{pct}}%",
       moreGaps: "và {{count}} khoảng cách khác...",
+      severity: { high: "Ưu tiên cao", med: "Ưu tiên vừa", low: "Ưu tiên thấp" },
+      evidenceFrom: "Tính từ: {{sources}}",
+      evidenceKind: {
+        experience: "Kinh nghiệm",
+        project: "Dự án",
+        education: "Học vấn",
+        certification: "Chứng chỉ",
+        summary: "Tóm tắt",
+        skill: "Kỹ năng",
+      },
     },
     jdIntel: {
       title: "JD yêu cầu (ngoài kỹ năng)",

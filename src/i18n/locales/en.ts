@@ -1746,6 +1746,16 @@ export default {
       },
       marketDemand: "Market demand: {{pct}}%",
       moreGaps: "and {{count}} more gaps...",
+      severity: { high: "High priority", med: "Medium priority", low: "Low priority" },
+      evidenceFrom: "From: {{sources}}",
+      evidenceKind: {
+        experience: "Experience",
+        project: "Project",
+        education: "Education",
+        certification: "Certification",
+        summary: "Summary",
+        skill: "Skill",
+      },
     },
     jdIntel: {
       title: "JD Requirements (beyond skills)",
