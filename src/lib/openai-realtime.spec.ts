@@ -166,26 +166,6 @@ describe("OpenAIRealtimeSession", () => {
     expect(sent).toEqual([]);
   });
 
-  it("can start a live interviewer response without injecting a user prompt", () => {
-    const session = new OpenAIRealtimeSession();
-    const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
-      readyState: "open",
-      send: (payload: string) => sent.push(JSON.parse(payload)),
-    };
-
-    session.startLiveInterview();
-
-    expect(sent).toEqual([
-      {
-        type: "response.create",
-        response: {
-          output_modalities: ["audio"],
-        },
-      },
-    ]);
-  });
-
   it("can ask the live interviewer to close without injecting a user prompt", () => {
     const session = new OpenAIRealtimeSession();
     const sent: unknown[] = [];

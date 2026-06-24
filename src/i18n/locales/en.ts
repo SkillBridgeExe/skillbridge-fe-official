@@ -932,6 +932,37 @@ export default {
         savedJd: "Saved JD",
         noSavedMatch:
           "No saved JD match yet. The interview can still use CV + role.",
+        roleOnlyStillAvailable:
+          "You can still start a role-only interview from the question bank.",
+        uploadCvTitle: "Upload CV for better personalization",
+        uploadCvDescription:
+          "Add a CV here if you want the questions to use your real projects and experience.",
+        uploadCvCta: "Upload CV",
+        cvConsentLabel:
+          "I consent to SkillBridge processing this CV for interview personalization.",
+        uploadAndUseCv: "Upload & use this CV",
+        jdRequiresCv: "Upload or select a CV before adding JD context.",
+        addJdTitle: "Add JD context",
+        addJdDescription:
+          "Paste or upload a job description to focus questions on the exact role requirements.",
+        addJdContext: "Add JD context",
+        jdPaste: "Paste text",
+        jdUpload: "Upload file",
+        jdPastePlaceholder:
+          "Paste the job description here. Include responsibilities, required skills, and seniority when available.",
+        chooseJdFile: "Choose JD file",
+        jdFileHint: "Supported: TXT, PDF, DOCX up to the backend limit.",
+        createJdMatch: "Create CV/JD match",
+        uploadCvSuccessTitle: "CV ready for interview",
+        uploadCvSuccessDescription:
+          "The uploaded CV is now selected for this interview.",
+        uploadCvFailedTitle: "CV upload failed",
+        uploadCvFailed: "Could not upload and analyze this CV.",
+        createJdMatchSuccessTitle: "JD context ready",
+        createJdMatchSuccessDescription:
+          "The new CV/JD match is now selected for this interview.",
+        createJdMatchFailedTitle: "JD match failed",
+        createJdMatchFailed: "Could not create the CV/JD match.",
         targetRole: "Target Role",
         language: "Language",
         criteriaTitle: "Interview goal and scoring criteria",
@@ -1041,11 +1072,19 @@ export default {
         transcriptSubtitle: "Submit one answer at a time",
         liveTranscriptSubtitle: "Captured automatically",
         toggleMicrophone: "Press mic when you answer",
+        pauseResumeMicrophone: "Pause or resume automatic listening",
         reconnectVoice: "Reconnect voice",
         generatingNextQuestion: "Generating next question...",
         viewResults: "View Results",
         liveMicOn: "Live mic is on",
         liveMicMuted: "Live mic is muted",
+        realtimeMic: {
+          manual: "Use text fallback to answer.",
+          interviewerSpeaking: "Interviewer is speaking. Listening is paused.",
+          submitting: "Submitting your answer...",
+          listening: "Listening automatically. Start answering when ready.",
+          paused: "Listening paused. Press the mic to resume.",
+        },
         spokenPlaceholder:
           "Press the mic when you speak; your transcript appears here. Edit only if it is wrong.",
         textPlaceholder: "Text fallback: type your answer here.",

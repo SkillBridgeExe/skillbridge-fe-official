@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
   buildInterviewInitialMessages,
@@ -6,6 +6,8 @@ import {
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
+  buildServerOwnedRealtimeTurnRequest,
+  createQuestionAudioRequestGuard,
   getLiveTranscriptWarnings,
   getInterviewEndIntent,
   getInterviewEndOutcome,
@@ -15,10 +17,12 @@ import {
   getInterviewModeLabelKey,
   getInterviewQuestionBankSourceKind,
   getQuestionAudioErrorMessage,
+  getRealtimeMicStatusKey,
   hasVisibleInterviewQuestionMetadata,
   getRealtimeTokenFallbackReason,
   shouldRequestLiveClosingSignal,
   shouldRequestQuestionAudio,
+  speakOfficialRealtimeQuestion,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
   readInterviewVoicePreference,
@@ -27,6 +31,7 @@ import {
   toInterviewResultViewModel,
   writeInterviewVoicePreference,
 } from "./interview-view-model";
+import { DEFAULT_INTERVIEW_MODE } from "./types";
 
 const detail: InterviewDetailResponseDto = {
   id: "session-1",
@@ -93,6 +98,10 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
+  it("defaults new interviews to realtime hands-free mode", () => {
+    expect(DEFAULT_INTERVIEW_MODE).toBe("realtime");
+  });
+
   it.each([
     ["setup", true],
     ["results", true],
@@ -595,6 +604,118 @@ describe("interview view model", () => {
   it("does not request guided question audio for live realtime mode", () => {
     expect(shouldRequestQuestionAudio("realtime")).toBe(false);
     expect(shouldRequestQuestionAudio("guided")).toBe(true);
+  });
+
+  it("speaks the backend official question when realtime starts", () => {
+    const session = { speakOfficialQuestion: vi.fn() };
+
+    expect(
+      speakOfficialRealtimeQuestion(
+        session,
+        "  Describe a backend API you built.  ",
+        "en",
+      ),
+    ).toBe(true);
+
+    expect(session.speakOfficialQuestion).toHaveBeenCalledWith(
+      "Describe a backend API you built.",
+      "en",
+    );
+  });
+
+  it("ignores empty realtime official questions", () => {
+    const session = { speakOfficialQuestion: vi.fn() };
+
+    expect(speakOfficialRealtimeQuestion(session, "   ", "vi")).toBe(false);
+
+    expect(session.speakOfficialQuestion).not.toHaveBeenCalled();
+  });
+
+  it("builds a server-owned realtime /turn payload from transcript audio", () => {
+    expect(
+      buildServerOwnedRealtimeTurnRequest({
+        sessionId: "session-1",
+        transcript: "  I used Postgres transactions.  ",
+        durationSeconds: 42,
+      }),
+    ).toEqual({
+      sessionId: "session-1",
+      userAnswer: "I used Postgres transactions.",
+      userTranscript: "I used Postgres transactions.",
+      modality: "AUDIO",
+      durationSeconds: 42,
+    });
+  });
+
+  it.each([
+    [
+      {
+        isLiveRealtime: true,
+        isLoading: false,
+        isInterviewerSpeaking: false,
+        isMicActive: true,
+      },
+      "listening",
+    ],
+    [
+      {
+        isLiveRealtime: true,
+        isLoading: false,
+        isInterviewerSpeaking: false,
+        isMicActive: false,
+      },
+      "paused",
+    ],
+    [
+      {
+        isLiveRealtime: true,
+        isLoading: true,
+        isInterviewerSpeaking: false,
+        isMicActive: false,
+      },
+      "submitting",
+    ],
+    [
+      {
+        isLiveRealtime: true,
+        isLoading: false,
+        isInterviewerSpeaking: true,
+        isMicActive: false,
+      },
+      "interviewerSpeaking",
+    ],
+    [
+      {
+        isLiveRealtime: false,
+        isLoading: false,
+        isInterviewerSpeaking: false,
+        isMicActive: false,
+      },
+      "manual",
+    ],
+  ] as const)("derives realtime mic status %s", (input, expected) => {
+    expect(getRealtimeMicStatusKey(input)).toBe(expected);
+  });
+
+  it("does not submit blank realtime transcripts", () => {
+    expect(
+      buildServerOwnedRealtimeTurnRequest({
+        sessionId: "session-1",
+        transcript: "   ",
+      }),
+    ).toBeNull();
+  });
+
+  it("invalidates stale question audio requests", () => {
+    const guard = createQuestionAudioRequestGuard();
+    const first = guard.next();
+    const second = guard.next();
+
+    expect(guard.isCurrent(first)).toBe(false);
+    expect(guard.isCurrent(second)).toBe(true);
+
+    guard.invalidate();
+    expect(guard.isCurrent(second)).toBe(false);
   });
 
   it("requests live closing once when realtime is near the time limit", () => {
