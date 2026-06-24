@@ -241,6 +241,7 @@ export default {
           level: "Trình độ phù hợp",
           skills: "Kỹ năng bổ trợ",
           total: "Tổng điểm phù hợp: {{score}}/100",
+          pts: "điểm",
         },
       },
       overview: {

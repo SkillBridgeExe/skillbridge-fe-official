@@ -30,6 +30,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
@@ -271,13 +272,13 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
             )}
             {matchScore && (
               course.matchBreakdown ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-xs text-emerald-700 font-semibold cursor-help hover:bg-emerald-100 transition-colors">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-xs text-emerald-700 font-semibold cursor-pointer hover:bg-emerald-100 transition-colors">
                       {t("learning.common.matchScore", { score: matchScore })}
                     </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
+                  </PopoverTrigger>
+                  <PopoverContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
                       {t("learning.common.matchBreakdown.title")}
                     </p>
@@ -294,7 +295,7 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
                           <div key={labelKey} className="space-y-1">
                             <div className="flex justify-between text-xs font-medium">
                               <span className="text-slate-600">{t(labelKey)}</span>
-                              <span className="font-semibold text-slate-900">+{points} pt</span>
+                              <span className="font-semibold text-slate-900">+{points} {t("learning.common.matchBreakdown.pts")}</span>
                             </div>
                             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
@@ -306,8 +307,8 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
                     <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-900">
                       <span>{t("learning.common.matchBreakdown.total", { score: matchScore })}</span>
                     </div>
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               ) : (
                 <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
                   {t("learning.common.matchScore", { score: matchScore })}

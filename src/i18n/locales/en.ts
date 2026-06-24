@@ -240,6 +240,7 @@ export default {
           level: "Difficulty Fit",
           skills: "Skill Coverage (Multi-skill)",
           total: "Total Match Score: {{score}}/100",
+          pts: "pts",
         },
       },
       overview: {
