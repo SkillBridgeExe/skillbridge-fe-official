@@ -1673,6 +1673,12 @@ export default {
       whyScore: "Vì sao có điểm này",
       capped: "Điểm bị giới hạn vì độ phủ kỹ năng bắt buộc còn thấp.",
       coverage: "Độ phủ bắt buộc",
+      bandRationale: {
+        strong: "Bạn đáp ứng phần lớn yêu cầu bắt buộc — điểm cao đến từ độ phủ kỹ năng và bằng chứng tốt.",
+        good: "Bạn khớp khá nhiều yêu cầu; điểm chưa tối đa do còn vài kỹ năng ở mức một phần hoặc thiếu bằng chứng.",
+        fair: "Mới khớp một phần yêu cầu — điểm phản ánh số kỹ năng còn thiếu hoặc chưa đủ mạnh.",
+        low: "Còn thiếu nhiều yêu cầu bắt buộc — đây là lý do điểm hiện ở mức thấp.",
+      },
       inferredTitle: "Kỹ năng suy luận",
       inferredHint:
         "Đây là tín hiệu mềm suy ra từ công cụ hoặc hệ sinh thái liên quan. Chỉ dùng để giải thích, không đổi điểm.",

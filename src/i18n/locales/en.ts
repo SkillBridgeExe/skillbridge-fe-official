@@ -1683,6 +1683,12 @@ export default {
       whyScore: "Why this score",
       capped: "Score cap applied because required coverage is still limited.",
       coverage: "Required coverage",
+      bandRationale: {
+        strong: "You meet most required items — the high score reflects strong skill coverage and evidence.",
+        good: "You match many requirements; the score isn't maxed because a few skills are partial or lack evidence.",
+        fair: "You match part of the requirements — the score reflects the skills still missing or too weak.",
+        low: "Several required items are missing — that's why the score is currently low.",
+      },
       inferredTitle: "Inferred skills",
       inferredHint:
         "These are soft signals inferred from nearby tools or ecosystems. They explain context only and do not change the score.",
