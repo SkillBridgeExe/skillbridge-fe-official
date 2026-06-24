@@ -119,11 +119,17 @@ export function useDiagnosisChatCompanion(
   // naming the WEAKEST dimension (lowest score20). Same anti-fab rule as the opener:
   // it only interpolates a REAL dimension label, never invents a topic — so the chips
   // vary per CV (different weakest dimension → different lead chip) without fabricating.
-  const baseSuggestions = t("companion.chat.suggestions", { returnObjects: true }) as string[];
+  // The base set is now FOCUS-AWARE (per-tab) so the chips match the section the user
+  // is viewing (cv_audit / skills_analysis / market_careers / gap_results). For cv_audit
+  // we still swap the first chip for a GROUNDED one naming the WEAKEST dimension (anti-fab:
+  // only interpolates a REAL dimension label). Other focuses use the focus set verbatim.
+  const baseSuggestions = t(`companion.chat.suggestionsByFocus.${focus}`, {
+    returnObjects: true,
+  }) as string[];
   const weakestDim = reviewData?.dimensions?.length
     ? reviewData.dimensions.reduce((lo, d) => (d.score20 < lo.score20 ? d : lo))
     : null;
-  const suggestions = weakestDim
+  const suggestions = focus === "cv_audit" && weakestDim
     ? [t("companion.chat.suggestDim", { dim: t(`review.dims.${weakestDim.key}`) }), ...baseSuggestions.slice(1)]
     : baseSuggestions;
 
@@ -250,6 +256,18 @@ export function useDiagnosisChatCompanion(
     },
     [chatMutation, runChat],
   );
+
+  // Store-back the focus-aware opener + chips so CompanionShell (which subscribes to
+  // chatOpener/chatSuggestions) REPAINTS on a tab switch. Without this, opener/chips flow
+  // only through propsRef → getTurn(), which re-runs solely on a shell re-render — and a
+  // tab switch does NOT re-render the shell, so the bubble showed stale content.
+  useEffect(() => {
+    useCompanionStore.getState().setChatDisplay({ opener, suggestions });
+    // suggestions is a fresh array each render → join to a stable string dep. opener is
+    // ALSO in the deps and always changes per focus, so a tab switch re-fires this even
+    // if two focuses' chip arrays happened to join to the same string.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opener, suggestions.join("")]);
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.

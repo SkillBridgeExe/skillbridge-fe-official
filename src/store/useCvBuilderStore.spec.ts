@@ -58,3 +58,44 @@ describe("useCvBuilderStore.hydrateFromCanonical", () => {
     expect(useCvBuilderStore.getState().seedSourceCvId).toBeNull();
   });
 });
+
+describe("getSectionStatuses quality-gating", () => {
+  const reset = () => useCvBuilderStore.getState().reset();
+
+  it("marks Career Target needs-improvement when industry is gibberish", () => {
+    reset();
+    const s = useCvBuilderStore.getState();
+    s.setCareerTarget("targetPosition", "Frontend Developer");
+    s.setCareerTarget("careerLevel", "fresher");
+    s.setCareerTarget("industry", "sssssssss");
+    const career = useCvBuilderStore.getState().getSectionStatuses()[1];
+    expect(career.status).toBe("needs-improvement");
+  });
+
+  it("marks Career Target needs-improvement on a role typo", () => {
+    reset();
+    const s = useCvBuilderStore.getState();
+    s.setCareerTarget("targetPosition", "AI Enginer");
+    s.setCareerTarget("careerLevel", "fresher");
+    const career = useCvBuilderStore.getState().getSectionStatuses()[1];
+    expect(career.status).toBe("needs-improvement");
+    expect(career.reason).toContain("typo");
+  });
+
+  it("keeps Career Target completed for clean input", () => {
+    reset();
+    const s = useCvBuilderStore.getState();
+    s.setCareerTarget("targetPosition", "Frontend Developer");
+    s.setCareerTarget("careerLevel", "fresher");
+    s.setCareerTarget("industry", "Fintech");
+    const career = useCvBuilderStore.getState().getSectionStatuses()[1];
+    expect(career.status).toBe("completed");
+  });
+
+  it("marks Summary needs-improvement when gibberish even if long", () => {
+    reset();
+    useCvBuilderStore.getState().setSummary("ssssssssssssssssssssssssssssssss");
+    const summary = useCvBuilderStore.getState().getSectionStatuses()[2];
+    expect(summary.status).toBe("needs-improvement");
+  });
+});

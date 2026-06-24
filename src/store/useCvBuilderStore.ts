@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
 import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/types/companion";
+import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -55,6 +56,8 @@ export type SectionStatus = "completed" | "missing" | "needs-improvement";
 export interface SectionMeta {
   label: string;
   status: SectionStatus;
+  /** Optional machine code explaining a needs-improvement (e.g. "typo:Engineer", "industry_unclear"). */
+  reason?: string;
 }
 
 /* ── Helpers ── */
@@ -413,12 +416,28 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     const basicFilled = [s.fullName, s.email, s.phone].every((v) => v.trim());
     statuses.push({ label: "Basic Information", status: basicFilled ? "completed" : "missing" });
 
-    // 2. Career Target
-    const careerFilled = s.targetPosition.trim() && s.careerLevel;
-    statuses.push({ label: "Career Target", status: careerFilled ? "completed" : "missing" });
+    // 2. Career Target — presence first, then QUALITY (gibberish industry / role typo).
+    const careerPresent = !!(s.targetPosition.trim() && s.careerLevel);
+    const roleCheck = checkRolePosition(s.targetPosition);
+    const industryBad = s.industry.trim() ? isGibberish(s.industry) : false;
+    let careerStatus: SectionStatus = careerPresent ? "completed" : "missing";
+    let careerReason: string | undefined;
+    if (careerPresent && (!roleCheck.ok || industryBad)) {
+      careerStatus = "needs-improvement";
+      careerReason = !roleCheck.ok
+        ? (roleCheck.suspectedTypo ? `typo:${roleCheck.suspectedTypo}` : "role_unclear")
+        : "industry_unclear";
+    }
+    statuses.push({ label: "Career Target", status: careerStatus, reason: careerReason });
 
-    // 3. Summary
-    statuses.push({ label: "Professional Summary", status: s.summary.trim().length > 30 ? "completed" : s.summary.trim() ? "needs-improvement" : "missing" });
+    // 3. Summary — length AND not gibberish.
+    const summaryText = s.summary.trim();
+    const summaryStatus: SectionStatus = !summaryText
+      ? "missing"
+      : isGibberish(summaryText) || summaryText.length <= 30
+        ? "needs-improvement"
+        : "completed";
+    statuses.push({ label: "Professional Summary", status: summaryStatus });
 
     // 4. Education
     const hasEdu = s.education.some((e) => e.school.trim() && e.major.trim());

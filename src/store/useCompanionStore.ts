@@ -94,6 +94,10 @@ interface CompanionState {
   // ── Corner-advisor chat slice (ephemeral — NOT persisted) ──
   /** Two-way chat thread for the calm corner advisor (user asks, assistant answers). */
   chatMessages: CompanionChatMessage[];
+  /** Focus-aware opener for the corner advisor — store-backed so the shell repaints on tab switch. */
+  chatOpener: string | null;
+  /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
+  chatSuggestions: string[];
   registerContext: (reg: CompanionContextReg) => void;
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
@@ -139,6 +143,8 @@ interface CompanionState {
   retryAssistantAt: (index: number) => string | null;
   /** Clear the whole chat thread (e.g. on leaving the diagnosis tab / reset). */
   clearChat: () => void;
+  /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
+  setChatDisplay: (d: { opener: string | null; suggestions: string[] }) => void;
   resetCompanion: () => void;
 }
 
@@ -154,6 +160,8 @@ const initial = {
   issues: [] as ElementIssue[],
   activeIssueIndex: 0,
   chatMessages: [] as CompanionChatMessage[],
+  chatOpener: null as string | null,
+  chatSuggestions: [] as string[],
 };
 
 export const useCompanionStore = create<CompanionState>()((set) => ({
@@ -310,13 +318,16 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     });
     return question;
   },
-  clearChat: () => set({ chatMessages: [] }),
+  clearChat: () => set({ chatMessages: [], chatOpener: null, chatSuggestions: [] }),
+  setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
     set({
       ...initial,
       contexts: {},
       dismissed: {},
       chatMessages: [],
+      chatOpener: null,
+      chatSuggestions: [],
       dismissedIssues: loadDismissedIssues(),
     }),
 }));
