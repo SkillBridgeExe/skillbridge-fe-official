@@ -263,9 +263,11 @@ export function useDiagnosisChatCompanion(
   // tab switch does NOT re-render the shell, so the bubble showed stale content.
   useEffect(() => {
     useCompanionStore.getState().setChatDisplay({ opener, suggestions });
-    // suggestions is a fresh array each render → join to a stable string dep.
+    // suggestions is a fresh array each render → join to a stable string dep. opener is
+    // ALSO in the deps and always changes per focus, so a tab switch re-fires this even
+    // if two focuses' chip arrays happened to join to the same string.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opener, suggestions.join("")]);
+  }, [opener, suggestions.join("")]);
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
