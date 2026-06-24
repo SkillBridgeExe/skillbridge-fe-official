@@ -40,4 +40,13 @@ describe("checkRolePosition", () => {
     expect(checkRolePosition("Team Leader").ok).toBe(true); // "leader" ≠ typo of "lead"
     expect(checkRolePosition("Software Engineers").ok).toBe(true); // plural
   });
+  it("does NOT flag valid shorter words that share a role-word prefix", () => {
+    expect(checkRolePosition("UX Design").ok).toBe(true); // "design" ≠ typo of "designer"
+    expect(checkRolePosition("Product Design").ok).toBe(true);
+    expect(checkRolePosition("Web Development").ok).toBe(true); // "development" ≠ typo
+  });
+  it("still flags a one-letter misspelling", () => {
+    expect(checkRolePosition("Backend Develper").ok).toBe(false); // developer typo
+    expect(checkRolePosition("Data Analist").ok).toBe(false); // analyst typo
+  });
 });

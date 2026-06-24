@@ -58,14 +58,15 @@ export function checkRolePosition(text: string): { ok: boolean; suspectedTypo?: 
     if (tok.length >= 4 && ROLE_WORDS.includes(tok)) return { ok: true };
   }
   // Near-miss of a role word → likely typo (e.g. "Enginer").
-  // Guard: only flag tokens NOT LONGER than the role word — a misspelling drops/garbles
-  // letters (len ≤ word). A LONGER token is usually a legit plural/derived word
-  // ("developers", "leader") and must NOT be flagged.
+  // Guard with a tight LENGTH WINDOW: a real misspelling keeps almost the same length
+  // (at most one letter dropped) — so we require word.length-1 ≤ tok.length ≤ word.length.
+  // This excludes valid SHORTER words that merely share a prefix ("design" vs "designer",
+  // "develop" vs "developer") and LONGER derived words / plurals ("developers", "leader").
   for (const tok of tokens) {
     if (tok.length < 5) continue;
     for (const word of ROLE_WORDS) {
       if (tok === word) continue;
-      if (tok.length > word.length) continue;
+      if (tok.length > word.length || tok.length < word.length - 1) continue;
       const d = editDistance(tok, word);
       if (d >= 1 && d <= 2) {
         return { ok: false, suspectedTypo: word.charAt(0).toUpperCase() + word.slice(1) };
