@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,9 +21,9 @@ import {
   Clock,
   CalendarDays
 } from "lucide-react";
-import { useActiveWeekPlans, useActiveRoadmap } from "@/components/learning/roadmap-store";
-import type { LearningSession } from "./demo-roadmap";
-import { SKILL_COLORS } from "@/lib/mock-data/learning";
+import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
+import type { LearningSession } from "./types";
+import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
 
 // ─── Calendar Helpers ──────────────────────────────
 function getWeekDates(offset: number) {
@@ -52,9 +53,17 @@ function getSessionsForDay(dayIndex: number, allSessions: LearningSession[]) {
 
 // ─── Calendar + Session Overview (PREP-inspired) ───
 export function OverviewView() {
+  const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
   const dates = getWeekDates(weekOffset);
+  const dayLabels = useMemo(() => {
+    const locale = i18n.language.startsWith("vi") ? "vi-VN" : "en-US";
+    return DAY_LABELS.map((_, index) => {
+      const date = new Date(2024, 0, 1 + index);
+      return date.toLocaleDateString(locale, { weekday: "short" });
+    });
+  }, [i18n.language]);
   
   // Drag-to-scroll functionality for PC users
   const roadmapScrollRef = useRef<HTMLDivElement>(null);
@@ -62,9 +71,8 @@ export function OverviewView() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
+  const { weekPlans, setWeekPlans } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
-  const _DEMO_ROADMAP = useActiveRoadmap();
-
   // ✅ Build roadmap modules from weekPlans — drives status, progress, connector animations
   const roadmapModules = useMemo(() => {
     let foundInProgress = false;
@@ -95,10 +103,10 @@ export function OverviewView() {
     });
   }, [weeks]);
 
-  // ✅ Fix: sync mockedSessions khi weeks thay đổi (AI roadmap được apply)
-  const [mockedSessions, setMockedSessions] = useState<LearningSession[]>([]);
+  // ✅ Fix: sync activeSessions khi weeks thay đổi (AI roadmap được apply)
+  const [activeSessions, setActiveSessions] = useState<LearningSession[]>([]);
   useEffect(() => {
-    setMockedSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
+    setActiveSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
   }, [weeks]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -127,19 +135,19 @@ export function OverviewView() {
 
   const monthLabel = useMemo(() => {
     const d = dates[3];
-    return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  }, [dates]);
+    return d.toLocaleDateString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US", { month: "long", year: "numeric" });
+  }, [dates, i18n.language]);
 
   // Get today's sessions for instant access
   const todayIndex = new Date().getDay() - 1; // 0=Mon
   const todaySessions = weekOffset === 0
-    ? mockedSessions.filter(s => s.dayOfWeek === (todayIndex < 0 ? 6 : todayIndex))
+    ? activeSessions.filter(s => s.dayOfWeek === (todayIndex < 0 ? 6 : todayIndex))
     : [];
 
   const handleOpenReschedule = () => {
     // Initialize editing state with current values
     const initialEdits: Record<string, { dayOfWeek: number, estimatedMinutes: number }> = {};
-    mockedSessions.filter(s => s.status !== "completed").forEach(s => {
+    activeSessions.filter(s => s.status !== "completed").forEach(s => {
       initialEdits[s.id] = { dayOfWeek: s.dayOfWeek, estimatedMinutes: s.estimatedMinutes };
     });
     setEditingSessions(initialEdits);
@@ -147,7 +155,7 @@ export function OverviewView() {
   };
 
   const handleSaveReschedule = () => {
-    setMockedSessions(prev => prev.map(session => {
+    setActiveSessions(prev => prev.map(session => {
       if (editingSessions[session.id]) {
         return {
           ...session,
@@ -157,6 +165,24 @@ export function OverviewView() {
       }
       return session;
     }));
+    
+    if (weekPlans.length > 0) {
+      const updated = weekPlans.map(week => ({
+        ...week,
+        sessions: week.sessions.map(s => {
+          if (editingSessions[s.id]) {
+            return {
+              ...s,
+              dayOfWeek: editingSessions[s.id].dayOfWeek,
+              estimatedMinutes: editingSessions[s.id].estimatedMinutes
+            };
+          }
+          return s;
+        })
+      }));
+      setWeekPlans(updated);
+    }
+    
     setIsRescheduleOpen(false);
   };
 
@@ -172,7 +198,7 @@ export function OverviewView() {
               <button
                 onClick={() => setWeekOffset(o => o - 1)}
                 className="w-7 h-7 rounded-md hover:bg-slate-100 flex items-center justify-center transition-colors"
-                title="Previous Week"
+                title={t("learning.overview.previousWeek")}
               >
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
               </button>
@@ -185,12 +211,12 @@ export function OverviewView() {
                     : "text-slate-600 hover:bg-slate-100"
                 )}
               >
-                Today
+                {t("learning.overview.today")}
               </button>
               <button
                 onClick={() => setWeekOffset(o => o + 1)}
                 className="w-7 h-7 rounded-md hover:bg-slate-100 flex items-center justify-center transition-colors"
-                title="Next Week"
+                title={t("learning.overview.nextWeek")}
               >
                 <ChevronRight className="w-4 h-4 text-slate-600" />
               </button>
@@ -201,7 +227,7 @@ export function OverviewView() {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" onClick={handleOpenReschedule} className="h-8 text-xs font-semibold gap-1.5 border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primary hover:bg-primary/5 rounded-lg shadow-sm transition-all bg-white">
                 <Edit3 className="w-3.5 h-3.5" />
-                Reschedule
+                {t("learning.sidebar.reschedule")}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
@@ -209,22 +235,24 @@ export function OverviewView() {
                 <DialogHeader>
                   <DialogTitle className="text-xl font-bold flex items-center gap-2">
                     <CalendarDays className="w-5 h-5 text-primary" />
-                    Adjust Your Schedule
+                    {t("learning.overview.adjustSchedule")}
                   </DialogTitle>
                 </DialogHeader>
-                <p className="text-sm text-slate-500 mt-1">Move upcoming sessions or change their estimated times.</p>
+                <p className="text-sm text-slate-500 mt-1">{t("learning.overview.scheduleHint")}</p>
               </div>
               
               <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-4">
-                {mockedSessions.filter(s => s.status !== "completed").map((session) => (
+                {activeSessions.filter(s => s.status !== "completed").map((session) => (
                   <Card key={session.id} className="p-4 border border-slate-200 shadow-sm rounded-xl">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                           <Badge className={cn("text-[10px] px-1.5 py-0 border font-medium whitespace-nowrap", SKILL_COLORS[session.skill]?.bg, SKILL_COLORS[session.skill]?.text, SKILL_COLORS[session.skill]?.border)}>
+                           <Badge className={cn("text-[10px] px-1.5 py-0 border font-medium whitespace-nowrap", (SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR).bg, (SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR).text, (SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR).border)}>
                             {session.skill}
                           </Badge>
-                          <span className="text-[10px] font-bold text-slate-400">Session {session.sessionNumber}</span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {t("learning.common.session", { number: session.sessionNumber })}
+                          </span>
                         </div>
                         <h4 className="text-sm font-semibold text-slate-800 line-clamp-1">{session.title}</h4>
                       </div>
@@ -234,7 +262,7 @@ export function OverviewView() {
                       {/* Day of Week Select */}
                       <div className="space-y-1.5">
                          <Label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                           <Calendar className="w-3.5 h-3.5" /> Day
+                           <Calendar className="w-3.5 h-3.5" /> {t("learning.overview.day")}
                          </Label>
                          <select
                             className="flex h-9 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -244,7 +272,7 @@ export function OverviewView() {
                               [session.id]: { ...prev[session.id], dayOfWeek: parseInt(e.target.value) }
                             }))}
                          >
-                           {DAY_LABELS.map((label, idx) => (
+                           {dayLabels.map((label, idx) => (
                              <option key={idx} value={idx}>{label}</option>
                            ))}
                          </select>
@@ -253,7 +281,7 @@ export function OverviewView() {
                       {/* Estimated Minutes Input */}
                        <div className="space-y-1.5">
                          <Label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                           <Clock className="w-3.5 h-3.5" /> Duration (mins)
+                           <Clock className="w-3.5 h-3.5" /> {t("learning.overview.durationMins")}
                          </Label>
                          <Input 
                             type="number"
@@ -273,8 +301,12 @@ export function OverviewView() {
               </div>
               
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <Button variant="ghost" onClick={() => setIsRescheduleOpen(false)} className="rounded-xl">Cancel</Button>
-                <Button onClick={handleSaveReschedule} className="rounded-xl shadow-md w-32">Save Changes</Button>
+                <Button variant="ghost" onClick={() => setIsRescheduleOpen(false)} className="rounded-xl">
+                  {t("learning.overview.cancel")}
+                </Button>
+                <Button onClick={handleSaveReschedule} className="rounded-xl shadow-md w-32">
+                  {t("learning.overview.saveChanges")}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -286,7 +318,7 @@ export function OverviewView() {
         <div className="overflow-x-auto min-w-full custom-scrollbar pb-2">
           <div className="grid grid-cols-7 divide-x divide-slate-100 min-w-[900px]">
             {dates.map((date, idx) => {
-              const sessions = getSessionsForDay(idx, mockedSessions);
+              const sessions = getSessionsForDay(idx, activeSessions);
               const today = isToday(date);
               return (
                 <div
@@ -298,7 +330,7 @@ export function OverviewView() {
                 >
                 {/* Day header */}
                 <div className="text-center mb-2.5">
-                  <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{DAY_LABELS[idx]}</p>
+                  <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{dayLabels[idx]}</p>
                   <div className="mt-1 flex justify-center">
                     <span className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
@@ -315,7 +347,7 @@ export function OverviewView() {
                 {sessions.length > 0 ? (
                   <div className="space-y-1.5">
                     {sessions.map(session => {
-                      const colors = SKILL_COLORS[session.skill] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" };
+                      const colors = SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR;
                       const isActive = session.status === "in-progress";
                       const isCompleted = session.status === "completed";
                       const isLocked = session.status === "locked";
@@ -344,7 +376,7 @@ export function OverviewView() {
                               isActive && "bg-primary text-white",
                               isLocked && "bg-slate-100 text-slate-400"
                             )}>
-                              {isCompleted ? "✓" : session.sessionNumber}
+                              {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : session.sessionNumber}
                             </span>
                             <Badge className={cn("text-[10px] px-1.5 py-0.5 border font-semibold", colors.bg, colors.text, colors.border)}>
                               <span className="truncate max-w-[85px]">{session.skill}</span>
@@ -355,8 +387,8 @@ export function OverviewView() {
                           </p>
                           {/* ✅ Start button for active sessions */}
                           {isActive && (
-                            <div className="mt-1.5 w-full text-center bg-primary text-white text-[9px] font-black py-1 rounded-lg">
-                              ▶ START
+                            <div className="mt-1.5 flex w-full items-center justify-center gap-1 bg-primary text-white text-[9px] font-black py-1 rounded-lg">
+                              <PlayCircle className="h-3 w-3" /> {t("learning.common.start")}
                             </div>
                           )}
                           {/* Stars */}
@@ -372,7 +404,7 @@ export function OverviewView() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-slate-300 text-center mt-6 italic">Free day</p>
+                  <p className="text-[11px] text-slate-300 text-center mt-6 italic">{t("learning.common.freeDay")}</p>
                 )}
               </div>
               );
@@ -388,15 +420,15 @@ export function OverviewView() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
               <CalendarDays className="w-5 h-5 text-primary" />
-              Today's Sessions
+              {t("learning.overview.todaysSessions")}
             </h3>
             <Badge variant="outline" className="text-xs bg-white text-slate-500 font-semibold border-slate-200 shadow-sm">
-              {todaySessions.length} total
+              {t("learning.common.total", { count: todaySessions.length })}
             </Badge>
           </div>
           <div className="space-y-3.5">
             {todaySessions.map(session => {
-              const colors = SKILL_COLORS[session.skill] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" };
+              const colors = SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR;
               const isActive = session.status === "in-progress";
               const isCompleted = session.status === "completed";
               const isLocked = session.status === "locked";
@@ -440,17 +472,17 @@ export function OverviewView() {
                       
                       {isLocked && (
                         <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm">
-                          <Lock className="w-3 h-3" /> Locked
+                          <Lock className="w-3 h-3" /> {t("learning.status.locked")}
                         </span>
                       )}
                       {isCompleted && (
                         <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md shadow-sm">
-                          <CheckCircle2 className="w-3 h-3" /> Completed
+                          <CheckCircle2 className="w-3 h-3" /> {t("learning.status.completed")}
                         </span>
                       )}
                       {isActive && (
                         <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md shadow-sm animate-pulse">
-                          Up Next
+                          {t("learning.status.upNext")}
                         </span>
                       )}
                     </div>
@@ -466,11 +498,15 @@ export function OverviewView() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-auto">
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">
                         <List className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{session.sections.filter(s => s.completed).length} / {session.sections.length} sections</span>
+                        <span>
+                          {t("learning.common.sections", {
+                            count: `${session.sections.filter(s => s.completed).length}/${session.sections.length}`,
+                          })}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{session.estimatedMinutes} mins</span>
+                        <span>{t("learning.common.mins", { count: session.estimatedMinutes })}</span>
                       </div>
                       
                       {/* Stars - Only show if not locked or has stars */}
@@ -488,7 +524,7 @@ export function OverviewView() {
                   <div className="hidden sm:flex items-center justify-center pl-6 border-l border-slate-100 h-10 ml-2">
                     {isActive ? (
                       <Button size="sm" className="rounded-xl shadow-md gap-2 font-bold px-4 hover:scale-105 transition-transform">
-                        <PlayCircle className="w-4 h-4 fill-white/20" /> Start
+                        <PlayCircle className="w-4 h-4 fill-white/20" /> {t("learning.common.start")}
                       </Button>
                     ) : isCompleted ? (
                       <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 shadow-sm text-slate-400 group-hover:bg-primary/5 group-hover:text-primary group-hover:border-primary/20 transition-all duration-300">
@@ -510,9 +546,12 @@ export function OverviewView() {
       {/* ═══ Roadmap Flow — Premium SaaS UI ═══ */}
       <div className="pt-4  animate-in fade-in slide-in-from-bottom-6 duration-1000 ease-out delay-150">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Learning Roadmap</h3>
+          <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">{t("learning.page.roadmapTitle")}</h3>
           <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-500 font-semibold border-none px-3 py-1">
-            {roadmapModules.length} modules · {weeks.reduce((acc, w) => acc + w.sessions.reduce((a, s) => a + Math.round(s.estimatedMinutes / 60), 0), 0)} hours
+            {t("learning.page.meta", {
+              count: roadmapModules.length,
+              hours: weeks.reduce((acc, w) => acc + w.sessions.reduce((a, s) => a + Math.round(s.estimatedMinutes / 60), 0), 0),
+            })}
           </Badge>
         </div>
 
@@ -556,7 +595,7 @@ export function OverviewView() {
                     {/* Top Row: Week Badge & Status */}
                     <div className="flex justify-between items-start mb-2">
                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                        Week {mod.weekNumber}
+                        {t("learning.common.week", { number: mod.weekNumber })}
                       </span>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm transition-transform",

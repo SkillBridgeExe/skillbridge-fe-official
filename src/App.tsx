@@ -56,7 +56,7 @@ const App = () => (
               <Route path="/dashboard" element={<Pages.Dashboard />} />
               <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
-              <Route path="/learning" element={<Pages.LearningComingSoon />} />
+              <Route path="/learning" element={<Pages.Learning />} />
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
               <Route path="/practice" element={<Navigate to="/interview" replace />} />
               <Route path="/learning/session/:id" element={<Pages.LearningSession />} />
@@ -77,7 +77,7 @@ const App = () => (
               <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
-              <Route path="/roadmap-generator" element={FEATURES.roadmap ? <Pages.RoadmapGenerator /> : <ComingSoon feature="roadmap" />} />
+              <Route path="/roadmap-generator" element={<Navigate to="/diagnosis" replace />} />
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
 

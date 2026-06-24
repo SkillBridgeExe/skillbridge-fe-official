@@ -4,7 +4,6 @@ import {
   analyzeCvWithJd,
   compareJdForCv,
   generateInterviewPlanFromMatch,
-  generateRoadmapFromMatch,
   getDiagnosisHistory,
   getGapReport,
   getGithubEvidence,
@@ -17,6 +16,11 @@ import {
   rewriteTailorBullet,
   getNextSteps,
 } from "@/services/diagnosis.service";
+import {
+  DEFAULT_ROADMAP_BUDGET,
+  generateRoadmapFromMatch,
+  type RoadmapBudgetInput,
+} from "@/services/learning-roadmap.service";
 import type { CvListQuery } from "@/api/cv/list";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
@@ -161,7 +165,13 @@ export function useGithubEvidenceMutation() {
  *  No `lang` arg — the BE route takes no body params; roadmap language is server-defaulted. */
 export function useGenerateRoadmapFromMatchMutation() {
   return useMutation({
-    mutationFn: ({ matchId }: { matchId: string }) => generateRoadmapFromMatch({ matchId }),
+    mutationFn: ({
+      matchId,
+      body = DEFAULT_ROADMAP_BUDGET,
+    }: {
+      matchId: string;
+      body?: RoadmapBudgetInput;
+    }) => generateRoadmapFromMatch(matchId, body),
     retry: false,
   });
 }

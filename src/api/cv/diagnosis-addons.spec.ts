@@ -24,30 +24,28 @@ describe("diagnosis-addons match-scoped POST bodies", () => {
     vi.clearAllMocks();
   });
 
-  it("generateRoadmapFromMatchApi posts an EMPTY body (BE RoadmapFromMatchDto has no lang; forbidNonWhitelisted would 400)", async () => {
+  it("generateRoadmapFromMatchApi posts budget and language preferences for the composed roadmap", async () => {
     vi.mocked(httpClient.post).mockReturnValueOnce(
       ok({
-        ai_request_id: "r1",
-        parsed_response: {
-          title: "X",
-          total_weeks: 0,
-          phases: [],
-          steps: [],
-          ai_summary: "",
-          ai_advice: "",
-          uncovered_skills: [],
-          skills_without_courses: [],
-          no_learning_gaps: true,
-        },
-        retrieval_log_id: null,
-        retrieved_chunks_count: 0,
-        token_usage: 0,
+        budget_hours: 32,
+        steps: [],
+        not_feasible_items: [],
+        ai_summary: "",
+        no_learning_gaps: true,
       }) as never,
     );
 
-    await generateRoadmapFromMatchApi("match-1");
+    await generateRoadmapFromMatchApi("match-1", {
+      available_days: 30,
+      hours_per_week: 8,
+      language_pref: "vi",
+    });
 
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.CV_MATCHES.ROADMAP("match-1"), {});
+    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.CV_MATCHES.ROADMAP("match-1"), {
+      available_days: 30,
+      hours_per_week: 8,
+      language_pref: "vi",
+    });
   });
 
   it("generateInterviewPlanFromMatchApi posts { lang } (BE InterviewPlanFromMatchDto accepts lang)", async () => {
