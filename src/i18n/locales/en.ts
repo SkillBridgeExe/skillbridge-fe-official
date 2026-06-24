@@ -221,6 +221,15 @@ export default {
         qualityScore: "Quality {{score}}",
         freshnessScore: "Freshness {{score}}",
         exercises: "{{count}} exercises",
+        matchBreakdown: {
+          title: "Match Score Breakdown",
+          rating: "Course Quality (Rating)",
+          language: "Language Preference",
+          price: "Price Fit (Free/Paid)",
+          level: "Difficulty Fit",
+          skills: "Skill Coverage (Multi-skill)",
+          total: "Total Match Score: {{score}}/100",
+        },
       },
       overview: {
         previousWeek: "Previous Week",
@@ -1437,8 +1446,8 @@ export default {
       daysQuestion: "How many days do you have for this learning plan?",
       hoursQuestion: "Nice. How many hours can you study each week?",
       languageQuestion: "Which language should I use for your roadmap?",
-      confirmQuestion:
-        "Great. I will create a {{days}}-day roadmap with {{hours}}h/week in {{language}}. Ready?",
+      confirmQuestion: "Great. I will create your learning roadmap in {{language}}. Ready?",
+
       daysOption: "{{count}} days",
       hoursOption: "{{count}}h/week",
       languageVi: "Tiếng Việt",

@@ -80,6 +80,13 @@ export interface LearningSession {
     rating?: number;
     skills?: Array<{ skill_canonical_name: string; teaches_level: number }>;
     matchScore?: number;
+    matchBreakdown?: {
+      ratingPts: number;
+      languagePts: number;
+      freePts: number;
+      levelFitPts: number;
+      multiSkillPts: number;
+    };
   }>;
 }
 

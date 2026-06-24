@@ -29,6 +29,7 @@ import {
   AlertCircle,
   ExternalLink,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
@@ -269,9 +270,49 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
               </Badge>
             )}
             {matchScore && (
-              <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
-                {t("learning.common.matchScore", { score: matchScore })}
-              </Badge>
+              course.matchBreakdown ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-xs text-emerald-700 font-semibold cursor-help hover:bg-emerald-100 transition-colors">
+                      {t("learning.common.matchScore", { score: matchScore })}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                      {t("learning.common.matchBreakdown.title")}
+                    </p>
+                    <div className="space-y-2.5">
+                      {[
+                        { labelKey: "learning.common.matchBreakdown.rating", points: course.matchBreakdown.ratingPts, max: 30 },
+                        { labelKey: "learning.common.matchBreakdown.language", points: course.matchBreakdown.languagePts, max: 20 },
+                        { labelKey: "learning.common.matchBreakdown.level", points: course.matchBreakdown.levelFitPts, max: 20 },
+                        { labelKey: "learning.common.matchBreakdown.price", points: course.matchBreakdown.freePts, max: 15 },
+                        { labelKey: "learning.common.matchBreakdown.skills", points: course.matchBreakdown.multiSkillPts, max: 15 },
+                      ].map(({ labelKey, points, max }) => {
+                        const percent = (points / max) * 100;
+                        return (
+                          <div key={labelKey} className="space-y-1">
+                            <div className="flex justify-between text-xs font-medium">
+                              <span className="text-slate-600">{t(labelKey)}</span>
+                              <span className="font-semibold text-slate-900">+{points} pt</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-900">
+                      <span>{t("learning.common.matchBreakdown.total", { score: matchScore })}</span>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
+                  {t("learning.common.matchScore", { score: matchScore })}
+                </Badge>
+              )
             )}
           </div>
         </div>
@@ -419,7 +460,17 @@ function SessionSidebar({ session, activeSectionId, onSelectSection, onToggle }:
 }
 
 // ─── Video Content Panel ────────────────────────────
-function VideoContentPanel({ session }: { session: LearningSession }) {
+function VideoContentPanel({
+  session,
+  activeSectionId,
+  progress,
+  onToggleChecklistItem,
+}: {
+  session: LearningSession;
+  activeSectionId?: string;
+  progress: SessionProgressState;
+  onToggleChecklistItem: (sectionId: string, item: string) => void;
+}) {
   const { t } = useTranslation("common");
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [showQuizResults, setShowQuizResults] = useState(false);
@@ -427,8 +478,9 @@ function VideoContentPanel({ session }: { session: LearningSession }) {
   const [timelineExpanded, setTimelineExpanded] = useState(true);
   const [quizExpanded, setQuizExpanded] = useState(true);
 
-  // Find first YouTube resource
-  const ytResource = session.resources.find(r => r.type === "youtube");
+  // Find matching YouTube resource or fallback to first YouTube resource
+  const activeResource = activeSectionId ? session.resources.find(r => r.id === activeSectionId && r.type === "youtube") : undefined;
+  const ytResource = activeResource || session.resources.find(r => r.type === "youtube");
   const ytId = ytResource ? getYouTubeId(ytResource.url) : null;
 
   const quiz = buildQuiz(session);
@@ -456,18 +508,47 @@ function VideoContentPanel({ session }: { session: LearningSession }) {
       )}
 
       {/* Video Title + Meta */}
-      <div>
-        <h3 className="text-xl font-poppins font-bold text-slate-900">{ytResource?.title || session.title}</h3>
-        <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
-          {ytResource?.duration && (
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" /> {ytResource.duration}
-            </span>
-          )}
-          {ytResource?.platform && (
-            <Badge variant="outline" className="text-xs">{ytResource.platform}</Badge>
-          )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <h3 className="text-xl font-poppins font-bold text-slate-900">{ytResource?.title || session.title}</h3>
+          <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
+            {ytResource?.duration && (
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> {ytResource.duration}
+              </span>
+            )}
+            {ytResource?.platform && (
+              <Badge variant="outline" className="text-xs">{ytResource.platform}</Badge>
+            )}
+          </div>
         </div>
+
+        {/* Mark Complete Button for Video */}
+        {activeSectionId && (
+          <button
+            type="button"
+            aria-pressed={(progress.checkedChecklistItems[activeSectionId] ?? []).includes("__completed")}
+            onClick={() => onToggleChecklistItem(activeSectionId, "__completed")}
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0 self-start",
+              (progress.checkedChecklistItems[activeSectionId] ?? []).includes("__completed")
+                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            {(progress.checkedChecklistItems[activeSectionId] ?? []).includes("__completed") ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span>{t("learning.session.done")}</span>
+              </>
+            ) : (
+              <>
+                <Circle className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>{t("learning.session.markComplete")}</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ═══ Video Timeline — generated from session sections ═══ */}
@@ -996,7 +1077,12 @@ function MainContentPanel({
 
         {/* Render based on content type */}
         {(hasYouTube && (isVideoSection || !isDocSection)) ? (
-          <VideoContentPanel session={session} />
+          <VideoContentPanel
+            session={session}
+            activeSectionId={activeSectionId}
+            progress={progress}
+            onToggleChecklistItem={onToggleChecklistItem}
+          />
         ) : (
           <DocContentPanel
             session={session}

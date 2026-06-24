@@ -221,6 +221,15 @@ export default {
         qualityScore: "Chất lượng {{score}}",
         freshnessScore: "Độ mới {{score}}",
         exercises: "{{count}} bài tập",
+        matchBreakdown: {
+          title: "Chi tiết điểm phù hợp",
+          rating: "Chất lượng (Đánh giá)",
+          language: "Ngôn ngữ phù hợp",
+          price: "Học phí (Miễn phí/Trả phí)",
+          level: "Trình độ phù hợp",
+          skills: "Kỹ năng bổ trợ",
+          total: "Tổng điểm phù hợp: {{score}}/100",
+        },
       },
       overview: {
         previousWeek: "Tuần trước",
@@ -1433,8 +1442,8 @@ export default {
       daysQuestion: "Bạn muốn học trong bao nhiêu ngày?",
       hoursQuestion: "Ổn rồi. Mỗi tuần bạn học được khoảng bao nhiêu giờ?",
       languageQuestion: "Bạn muốn mình tạo roadmap bằng ngôn ngữ nào?",
-      confirmQuestion:
-        "Chốt nhé. Mình sẽ tạo lộ trình {{days}} ngày, {{hours}}h/tuần, ngôn ngữ {{language}}.",
+      confirmQuestion: "Chốt nhé. Mình sẽ tạo lộ trình học bằng {{language}}.",
+
       daysOption: "{{count}} ngày",
       hoursOption: "{{count}}h/tuần",
       languageVi: "Tiếng Việt",
