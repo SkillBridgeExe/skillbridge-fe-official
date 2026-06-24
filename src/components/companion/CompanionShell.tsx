@@ -40,7 +40,6 @@ import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
 import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
 import type { ElementIssue } from "./skills/element-issues";
-import type { CompanionChatMessage } from "@/store/useCompanionStore";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -65,6 +64,19 @@ export function CompanionShell() {
   const closeBubble = useCompanionStore((s) => s.closeBubble);
   const activateContext = useCompanionStore((s) => s.activateContext);
   const suspended = useCompanionStore((s) => s.suspended);
+  // Subscribe to the live chat thread so the bubble RE-RENDERS when a message is
+  // appended / resolved / failed. The diagnosis_chat turn live-reads chatMessages
+  // inside getTurn(), but getTurn() only re-runs when this component re-renders —
+  // without subscribing here, a send mutates the store yet the shell never re-renders,
+  // so the thread stays frozen until an unrelated state change forces a repaint.
+  const chatMessages = useCompanionStore((s) => s.chatMessages);
+  // Derive the in-flight flag from the thread itself (is there a pending assistant
+  // row?) instead of the hook's propsRef.isPending. propsRef.isPending flips on the
+  // hook HOST's render when the mutation settles, which does NOT re-render this shell
+  // (only a chatMessages change does) — so reading it here leaves the composer/retry
+  // stuck disabled after a send resolves/fails. The pending row IS in chatMessages,
+  // which we subscribe to, so this stays reactive.
+  const chatPending = chatMessages.some((m) => m.role === "assistant" && !!m.pending);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
@@ -428,12 +440,12 @@ export function CompanionShell() {
               {/* ── diagnosis_chat (calm corner advisor — chat-driven, owner decision 06-23) ── */}
               {turn?.skill === "diagnosis_chat" && (
                 <DiagnosisChatSkill
-                  messages={turn.props.messages as CompanionChatMessage[]}
+                  messages={chatMessages}
                   opener={turn.props.opener as string | null}
                   suggestions={turn.props.suggestions as string[]}
                   onSend={turn.props.onSend as (q: string) => void}
                   onRetry={turn.props.onRetry as (index: number) => void}
-                  isPending={turn.props.isPending as boolean}
+                  isPending={chatPending}
                 />
               )}
               </div>
