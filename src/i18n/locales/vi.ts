@@ -2033,6 +2033,11 @@ export default {
         issueDate: "Ngày cấp",
         credentialUrl: "Link chứng chỉ (Tùy chọn)",
       },
+      quality: {
+        typoRole: "Có phải bạn muốn ghi “{{suggestion}}”? Kiểm tra lại chính tả vị trí nhé.",
+        roleUnclear: "Vị trí này trông chưa rõ — hãy ghi một chức danh cụ thể (vd “Frontend Developer”).",
+        industryUnclear: "Lĩnh vực trông chưa hợp lệ — hãy ghi một ngành cụ thể (vd “Fintech”, “E-commerce”).",
+      },
       ph: {
         fullName: "Nguyễn Văn A",
         email: "nguyenvana@email.com",

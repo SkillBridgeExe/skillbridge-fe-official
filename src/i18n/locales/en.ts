@@ -2044,6 +2044,11 @@ export default {
         issueDate: "Issue Date",
         credentialUrl: "Credential URL (Optional)",
       },
+      quality: {
+        typoRole: "Did you mean “{{suggestion}}”? Double-check the job-title spelling.",
+        roleUnclear: "This position looks unclear — use a concrete title (e.g. “Frontend Developer”).",
+        industryUnclear: "This industry looks invalid — use a concrete one (e.g. “Fintech”, “E-commerce”).",
+      },
       ph: {
         fullName: "Nguyen Van A",
         email: "nguyenvana@email.com",
