@@ -234,13 +234,12 @@ export default {
         exercises: "{{count}} exercises",
         matchBreakdown: {
           title: "Match Score Breakdown",
-          rating: "Course Quality (Rating)",
-          language: "Language Preference",
-          price: "Price Fit (Free/Paid)",
-          level: "Difficulty Fit",
-          skills: "Skill Coverage (Multi-skill)",
+          rating: "Course Quality (Rating): +{{points}} pts",
+          language: "Language Preference: +{{points}} pts",
+          price: "Price Fit (Free/Paid): +{{points}} pts",
+          level: "Difficulty Fit: +{{points}} pts",
+          skills: "Skill Coverage (Multi-skill): +{{points}} pts",
           total: "Total Match Score: {{score}}/100",
-          pts: "pts",
         },
       },
       overview: {

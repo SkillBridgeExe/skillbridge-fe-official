@@ -293,9 +293,8 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
                         const percent = (points / max) * 100;
                         return (
                           <div key={labelKey} className="space-y-1">
-                            <div className="flex justify-between text-xs font-medium">
-                              <span className="text-slate-600">{t(labelKey)}</span>
-                              <span className="font-semibold text-slate-900">+{points} {t("learning.common.matchBreakdown.pts")}</span>
+                            <div className="text-xs font-semibold text-slate-700">
+                              {t(labelKey, { points })}
                             </div>
                             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />

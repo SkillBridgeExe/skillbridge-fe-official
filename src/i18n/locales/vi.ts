@@ -235,13 +235,12 @@ export default {
         exercises: "{{count}} bài tập",
         matchBreakdown: {
           title: "Chi tiết điểm phù hợp",
-          rating: "Chất lượng (Đánh giá)",
-          language: "Ngôn ngữ phù hợp",
-          price: "Học phí (Miễn phí/Trả phí)",
-          level: "Trình độ phù hợp",
-          skills: "Kỹ năng bổ trợ",
+          rating: "Chất lượng (Đánh giá): +{{points}} điểm",
+          language: "Ngôn ngữ phù hợp: +{{points}} điểm",
+          price: "Độ phù hợp học phí: +{{points}} điểm",
+          level: "Trình độ phù hợp: +{{points}} điểm",
+          skills: "Kỹ năng bổ trợ: +{{points}} điểm",
           total: "Tổng điểm phù hợp: {{score}}/100",
-          pts: "điểm",
         },
       },
       overview: {
