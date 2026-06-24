@@ -318,7 +318,13 @@ export function DiagnosisStep3Results() {
     // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
     // diagnosis context — the legacy next-step nudge stays gated off whenever the
     // chat advisor is live (single-active). Code retained for future reuse.
-    if (!topStep || provedItem || chatContextActive) {
+    // Read chatLive FRESH (not the stale subscribed closure): the chat hook above
+    // registers diagnosis:chat in an effect that commits before this one, but the
+    // subscribed `chatContextActive` is still false on the mount render — trusting it
+    // would let this nudge activate + steal activeId, then null it on cleanup, leaving
+    // the Step-3 chat bubble unreachable (same bug fixed in Step 2).
+    const chatLive = chatContextActive || !!store.contexts["diagnosis:chat"];
+    if (!topStep || provedItem || chatLive) {
       store.unregisterContext("diagnosis:results");
       return;
     }
@@ -352,7 +358,10 @@ export function DiagnosisStep3Results() {
     const store = useCompanionStore.getState();
     // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
     // diagnosis context — prove-it stays gated off whenever the chat advisor is live.
-    if (!provedItem || chatContextActive) {
+    // Read chatLive FRESH from the store (see the diagnosis:results effect above) so
+    // this nudge never steals/nulls the chat's activeId on the mount pass.
+    const chatLive = chatContextActive || !!store.contexts["diagnosis:chat"];
+    if (!provedItem || chatLive) {
       store.unregisterContext("diagnosis:proveit");
       return;
     }
