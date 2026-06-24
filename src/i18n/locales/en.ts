@@ -2068,6 +2068,7 @@ export default {
           "What's my weakest part?",
           "How can I improve?",
         ],
+        suggestDim: "Why is {{dim}} scored low?",
       },
     },
     skillsNudge: {

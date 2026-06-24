@@ -2056,6 +2056,7 @@ export default {
           "Chỗ nào yếu nhất?",
           "Làm sao cải thiện?",
         ],
+        suggestDim: "Vì sao {{dim}} chưa cao?",
       },
     },
     skillsNudge: {

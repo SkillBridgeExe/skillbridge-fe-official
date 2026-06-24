@@ -114,8 +114,18 @@ export function useDiagnosisChatCompanion(
     ? t(openerKeyForFocus(focus, score), { score })
     : null;
 
-  // Suggested-question chips (static seed; i18n array).
-  const suggestions = t("companion.chat.suggestions", { returnObjects: true }) as string[];
+  // Suggested-question chips. The base set is a static i18n array; when the real
+  // scored dimensions are present we swap the generic first chip for a GROUNDED one
+  // naming the WEAKEST dimension (lowest score20). Same anti-fab rule as the opener:
+  // it only interpolates a REAL dimension label, never invents a topic — so the chips
+  // vary per CV (different weakest dimension → different lead chip) without fabricating.
+  const baseSuggestions = t("companion.chat.suggestions", { returnObjects: true }) as string[];
+  const weakestDim = reviewData?.dimensions?.length
+    ? reviewData.dimensions.reduce((lo, d) => (d.score20 < lo.score20 ? d : lo))
+    : null;
+  const suggestions = weakestDim
+    ? [t("companion.chat.suggestDim", { dim: t(`review.dims.${weakestDim.key}`) }), ...baseSuggestions.slice(1)]
+    : baseSuggestions;
 
   // ── Chat send → BE (built separately). useMutation per convention (mirrors
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
