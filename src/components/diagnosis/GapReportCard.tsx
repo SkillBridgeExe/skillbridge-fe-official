@@ -19,6 +19,30 @@ const GAP_TYPE_ICON: Record<string, React.ReactNode> = {
   work_mode: <MapPin className="w-3.5 h-3.5" />,
 };
 
+/** Map evidence_refs ("experience_0") → human source labels ("Kinh nghiệm #1"), max 3. */
+function formatEvidenceRefs(
+  refs: string[],
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  return refs
+    .slice(0, 3)
+    .map((r) => {
+      const m = r.match(/^([a-z_]+?)_(\d+)$/i);
+      if (!m) return r;
+      const [, kind, idx] = m;
+      const label = t(`gapReport.evidenceKind.${kind}`, { defaultValue: kind });
+      return `${label} #${Number(idx) + 1}`;
+    })
+    .join(", ");
+}
+
+/** Severity band from the 0-1 score (matches the sort already applied). */
+function severityBand(severity: number): "high" | "med" | "low" {
+  if (severity >= 0.66) return "high";
+  if (severity >= 0.33) return "med";
+  return "low";
+}
+
 /**
  * Báo cáo gap hợp nhất (GET /api/cv-matches/:matchId/gap-report — BE #43/#49).
  * Deterministic phía BE, KHÔNG tốn quota chấm — card tự fetch khi có matchId.
@@ -106,6 +130,13 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                   not_fixable_now: "bg-slate-100 text-slate-700 border-slate-200",
                 }[gap.fixability] || "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
 
+                const sevBand = severityBand(gap.severity);
+                const severityStyle = {
+                  high: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+                  med: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
+                  low: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+                }[sevBand];
+
                 const severityBorderColor = {
                   matched: "border-l-[#346538]",
                   partial: "border-l-[#956400]",
@@ -151,6 +182,10 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                       <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", fixabilityStyle)}>
                         {t(`gapReport.fix.${gap.fixability}`, { defaultValue: gap.fixability })}
                       </span>
+
+                      <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", severityStyle)}>
+                        {t(`gapReport.severity.${sevBand}`)}
+                      </span>
                     </div>
 
                     {/* Middle row: Action */}
@@ -162,6 +197,7 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                     {/* Bottom row: compact metadata */}
                     {((gap.cv_level !== null && gap.required_level !== null) ||
                       (gap.evidence_risk && gap.evidence_risk !== "none") ||
+                      (gap.evidence_refs && gap.evidence_refs.length > 0) ||
                       gap.market_demand !== null) && (
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#787774] font-medium pt-1.5 border-t border-[#F1F1EF]">
                         {gap.cv_level !== null && gap.required_level !== null && (
@@ -179,6 +215,11 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         {gap.market_demand !== null && (
                           <span>
                             {t("gapReport.marketDemand", { pct: gap.market_demand })}
+                          </span>
+                        )}
+                        {gap.evidence_refs && gap.evidence_refs.length > 0 && (
+                          <span>
+                            {t("gapReport.evidenceFrom", { sources: formatEvidenceRefs(gap.evidence_refs, t) })}
                           </span>
                         )}
                       </div>

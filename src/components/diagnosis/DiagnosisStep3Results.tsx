@@ -136,6 +136,7 @@ function MatchNarrative({
   if (!jdMatch?.scoring_breakdown) return null;
   const breakdown = jdMatch.scoring_breakdown;
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
+  const band = coverage >= 80 ? "strong" : coverage >= 60 ? "good" : coverage >= 40 ? "fair" : "low";
 
   return (
     <div className="space-y-3">
@@ -150,6 +151,7 @@ function MatchNarrative({
           {" · "}
           <span className="font-mono tabular-nums font-bold text-[#787774]">{coverage}%</span> {t("matchDepth.coverage")}
         </p>
+        <p className="text-[12px] text-[#787774] leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
       </div>
       {jdMatch.experience_fit?.status && jdMatch.experience_fit.status !== "unknown" && (
         <p className="text-xs font-medium text-[#787774]">

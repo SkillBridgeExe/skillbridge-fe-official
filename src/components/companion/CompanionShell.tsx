@@ -77,6 +77,11 @@ export function CompanionShell() {
   // stuck disabled after a send resolves/fails. The pending row IS in chatMessages,
   // which we subscribe to, so this stays reactive.
   const chatPending = chatMessages.some((m) => m.role === "assistant" && !!m.pending);
+  // Subscribe to the store-backed opener + chips so the bubble REPAINTS when the user
+  // switches tabs (focus change). The hook pushes these via setChatDisplay; reading them
+  // from the subscribed store — not turn.props — is what makes the swap live on tab switch.
+  const chatOpener = useCompanionStore((s) => s.chatOpener);
+  const chatSuggestions = useCompanionStore((s) => s.chatSuggestions);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
@@ -441,8 +446,8 @@ export function CompanionShell() {
               {turn?.skill === "diagnosis_chat" && (
                 <DiagnosisChatSkill
                   messages={chatMessages}
-                  opener={turn.props.opener as string | null}
-                  suggestions={turn.props.suggestions as string[]}
+                  opener={chatOpener}
+                  suggestions={chatSuggestions}
                   onSend={turn.props.onSend as (q: string) => void}
                   onRetry={turn.props.onRetry as (index: number) => void}
                   isPending={chatPending}

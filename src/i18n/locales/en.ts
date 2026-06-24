@@ -1692,6 +1692,12 @@ export default {
       whyScore: "Why this score",
       capped: "Score cap applied because required coverage is still limited.",
       coverage: "Required coverage",
+      bandRationale: {
+        strong: "You meet most required items — the high score reflects strong skill coverage and evidence.",
+        good: "You match many requirements; the score isn't maxed because a few skills are partial or lack evidence.",
+        fair: "You match part of the requirements — the score reflects the skills still missing or too weak.",
+        low: "Several required items are missing — that's why the score is currently low.",
+      },
       inferredTitle: "Inferred skills",
       inferredHint:
         "These are soft signals inferred from nearby tools or ecosystems. They explain context only and do not change the score.",
@@ -1755,6 +1761,16 @@ export default {
       },
       marketDemand: "Market demand: {{pct}}%",
       moreGaps: "and {{count}} more gaps...",
+      severity: { high: "High priority", med: "Medium priority", low: "Low priority" },
+      evidenceFrom: "From: {{sources}}",
+      evidenceKind: {
+        experience: "Experience",
+        project: "Project",
+        education: "Education",
+        certification: "Certification",
+        summary: "Summary",
+        skill: "Skill",
+      },
     },
     jdIntel: {
       title: "JD Requirements (beyond skills)",
@@ -2053,6 +2069,11 @@ export default {
         issueDate: "Issue Date",
         credentialUrl: "Credential URL (Optional)",
       },
+      quality: {
+        typoRole: "Did you mean “{{suggestion}}”? Double-check the job-title spelling.",
+        roleUnclear: "This position looks unclear — use a concrete title (e.g. “Frontend Developer”).",
+        industryUnclear: "This industry looks invalid — use a concrete one (e.g. “Fintech”, “E-commerce”).",
+      },
       ph: {
         fullName: "Nguyen Van A",
         email: "nguyenvana@email.com",
@@ -2295,6 +2316,12 @@ export default {
           "How can I improve?",
         ],
         suggestDim: "Why is {{dim}} scored low?",
+        suggestionsByFocus: {
+          cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
+          skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],
+          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?"],
+          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?"],
+        },
       },
     },
     skillsNudge: {

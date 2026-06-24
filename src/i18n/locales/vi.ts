@@ -1682,6 +1682,12 @@ export default {
       whyScore: "Vì sao có điểm này",
       capped: "Điểm bị giới hạn vì độ phủ kỹ năng bắt buộc còn thấp.",
       coverage: "Độ phủ bắt buộc",
+      bandRationale: {
+        strong: "Bạn đáp ứng phần lớn yêu cầu bắt buộc — điểm cao đến từ độ phủ kỹ năng và bằng chứng tốt.",
+        good: "Bạn khớp khá nhiều yêu cầu; điểm chưa tối đa do còn vài kỹ năng ở mức một phần hoặc thiếu bằng chứng.",
+        fair: "Mới khớp một phần yêu cầu — điểm phản ánh số kỹ năng còn thiếu hoặc chưa đủ mạnh.",
+        low: "Còn thiếu nhiều yêu cầu bắt buộc — đây là lý do điểm hiện ở mức thấp.",
+      },
       inferredTitle: "Kỹ năng suy luận",
       inferredHint:
         "Đây là tín hiệu mềm suy ra từ công cụ hoặc hệ sinh thái liên quan. Chỉ dùng để giải thích, không đổi điểm.",
@@ -1746,6 +1752,16 @@ export default {
       },
       marketDemand: "Nhu cầu thị trường: {{pct}}%",
       moreGaps: "và {{count}} khoảng cách khác...",
+      severity: { high: "Ưu tiên cao", med: "Ưu tiên vừa", low: "Ưu tiên thấp" },
+      evidenceFrom: "Tính từ: {{sources}}",
+      evidenceKind: {
+        experience: "Kinh nghiệm",
+        project: "Dự án",
+        education: "Học vấn",
+        certification: "Chứng chỉ",
+        summary: "Tóm tắt",
+        skill: "Kỹ năng",
+      },
     },
     jdIntel: {
       title: "JD yêu cầu (ngoài kỹ năng)",
@@ -2042,6 +2058,11 @@ export default {
         issueDate: "Ngày cấp",
         credentialUrl: "Link chứng chỉ (Tùy chọn)",
       },
+      quality: {
+        typoRole: "Có phải bạn muốn ghi “{{suggestion}}”? Kiểm tra lại chính tả vị trí nhé.",
+        roleUnclear: "Vị trí này trông chưa rõ — hãy ghi một chức danh cụ thể (vd “Frontend Developer”).",
+        industryUnclear: "Lĩnh vực trông chưa hợp lệ — hãy ghi một ngành cụ thể (vd “Fintech”, “E-commerce”).",
+      },
       ph: {
         fullName: "Nguyễn Văn A",
         email: "nguyenvana@email.com",
@@ -2283,6 +2304,12 @@ export default {
           "Làm sao cải thiện?",
         ],
         suggestDim: "Vì sao {{dim}} chưa cao?",
+        suggestionsByFocus: {
+          cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
+          skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],
+          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?"],
+          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
+        },
       },
     },
     skillsNudge: {
