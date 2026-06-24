@@ -369,7 +369,14 @@ export function DiagnosisStep2Review() {
     // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
     // diagnosis context — the legacy completeness nudge stays gated off whenever the
     // chat advisor is live (single-active). Code retained for future reuse.
-    if (!completenessGap || !reviewData?.document || chatContextActive) {
+    // Read chatLive FRESH from the store, not just the subscribed closure value: on
+    // the mount pass `chatContextActive` is still false (the chat hook registers its
+    // context in an effect that COMMITS AFTER this render), so trusting the closure
+    // would let this legacy nudge briefly activate — stealing activeId and then
+    // nulling it on cleanup, which leaves the chat bubble unreachable. The chat hook
+    // is declared above this effect, so its registration has already committed here.
+    const chatLive = chatContextActive || !!store.contexts["diagnosis:chat"];
+    if (!completenessGap || !reviewData?.document || chatLive) {
       store.unregisterContext("diagnosis:review");
       return;
     }
