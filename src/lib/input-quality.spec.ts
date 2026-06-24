@@ -35,4 +35,9 @@ describe("checkRolePosition", () => {
     expect(r.ok).toBe(false);
     expect(r.suspectedTypo?.toLowerCase()).toContain("engineer");
   });
+  it("does NOT flag legitimate plurals or derived words", () => {
+    expect(checkRolePosition("Backend Developers").ok).toBe(true); // plural, not a typo
+    expect(checkRolePosition("Team Leader").ok).toBe(true); // "leader" ≠ typo of "lead"
+    expect(checkRolePosition("Software Engineers").ok).toBe(true); // plural
+  });
 });
