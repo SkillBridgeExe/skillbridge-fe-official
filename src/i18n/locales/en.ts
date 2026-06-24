@@ -998,7 +998,7 @@ export default {
   },
   home: {
     hero: {
-      badge: "The Intelligent Career Growth Engine",
+      badge: "SkillBridge - Your partner in skill development",
       titleLead: "Bridge Your ",
       titleSkills: "Skills",
       titleMid: " to Your ",

@@ -16,7 +16,7 @@ import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCir
 import { useAuthStore } from "@/store/useAuthStore";
 import { logout as logoutSession } from "@/services/auth.service";
 import { useTranslation } from "react-i18next";
-import logoGif from "@/assets/logo/logo.gif";
+import logoPng from "@/assets/logo/LOGO_Final.png";
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
 import { useHasApiSession } from "@/hooks/use-api-session";
@@ -114,11 +114,16 @@ export default function Navbar() {
       <nav className="w-full max-w-6xl h-16 md:h-[4.5rem] flex items-center justify-between px-4 md:px-6 bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-900/5 rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
         <div className="flex items-center gap-8 md:gap-12">
         <Link to="/" className="flex items-center group">
-          <img
-            src={logoGif}
-            alt="SkillBridge"
-            className="h-20 w-auto object-contain transition-transform group-hover:scale-105"
-          />
+          <div className="flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+            <img
+              src={logoPng}
+              alt="SkillBridge"
+              className="h-[72px] w-auto max-w-none object-contain drop-shadow-sm -my-4 -ml-4 -mr-1"
+            />
+          </div>
+          <span className="hidden sm:inline text-[20px] font-bold tracking-tight text-slate-800">
+            SkillBridge
+          </span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

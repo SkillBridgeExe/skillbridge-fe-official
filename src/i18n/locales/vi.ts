@@ -992,7 +992,7 @@ export default {
   },
   home: {
     hero: {
-      badge: "Nền tảng phát triển sự nghiệp bằng AI",
+      badge: "SkillBridge đồng hành cùng bạn phát triển kỹ năng",
       titleLead: "Cầu nối ",
       titleSkills: "kỹ năng,",
       titleMid: " dẫn bước ",
