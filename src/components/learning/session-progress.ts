@@ -3,6 +3,7 @@ import type { LearningSession, WeekPlan } from "./types";
 export interface SessionProgressState {
   checkedChecklistItems: Record<string, string[]>;
   exerciseProofs: Record<string, string>;
+  savedCourseIds?: string[];
 }
 
 const SESSION_PROGRESS_STORAGE_PREFIX = "skillbridge:learning-session-progress:";
@@ -38,9 +39,15 @@ export function createInitialSessionProgress(
     checkedChecklistItems["__session"] = saved.checkedChecklistItems["__session"];
   }
 
+  const savedCourseIds = saved?.savedCourseIds ?? saved?.checkedChecklistItems?.["__saved_courses"] ?? [];
+  if (savedCourseIds.length > 0 || saved?.checkedChecklistItems?.["__saved_courses"]) {
+    checkedChecklistItems["__saved_courses"] = savedCourseIds;
+  }
+
   return {
     checkedChecklistItems,
     exerciseProofs: saved?.exerciseProofs ?? {},
+    savedCourseIds,
   };
 }
 
@@ -184,5 +191,24 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
       return { ...withProgress, status };
     }),
   }));
+}
+
+export function toggleSavedCourse(
+  progress: SessionProgressState,
+  courseId: string,
+): SessionProgressState {
+  const current = progress.savedCourseIds ?? [];
+  const next = current.includes(courseId)
+    ? current.filter((id) => id !== courseId)
+    : [...current, courseId];
+
+  return {
+    ...progress,
+    checkedChecklistItems: {
+      ...progress.checkedChecklistItems,
+      "__saved_courses": next,
+    },
+    savedCourseIds: next,
+  };
 }
 

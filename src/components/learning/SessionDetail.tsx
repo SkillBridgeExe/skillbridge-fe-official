@@ -28,8 +28,9 @@ import {
   Terminal,
   AlertCircle,
   ExternalLink,
+  Plus,
+  Trash,
 } from "lucide-react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
@@ -40,7 +41,7 @@ import {
   saveLearningSessionProgress,
 } from "@/services/learning-roadmap.service";
 import { buildInternalResourceTask } from "./internal-resource-content";
-import { getActiveSessionResource, getSupplementalSessionResources } from "./session-content";
+import { getActiveSessionResource } from "./session-content";
 import { getNextLearningSectionId, selectLearningSection } from "./session-navigation";
 import {
   applyProgressToSession,
@@ -50,6 +51,7 @@ import {
   toggleChecklistItem,
   readStoredSessionProgress,
   writeStoredSessionProgress,
+  toggleSavedCourse,
   type SessionProgressState,
 } from "./session-progress";
 
@@ -153,7 +155,17 @@ function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   );
 }
 
-function ResourceCard({ resource, primary = false }: { resource: SessionResource; primary?: boolean }) {
+function ResourceCard({
+  resource,
+  primary = false,
+  onToggleSaveCourse,
+  progress,
+}: {
+  resource: SessionResource;
+  primary?: boolean;
+  onToggleSaveCourse?: (courseId: string) => void;
+  progress?: SessionProgressState;
+}) {
   const { t } = useTranslation("common");
   const outcomeTypeKey = resource.outcomeType?.replace(/-/g, "_") || "practice";
   const outcomeLabel = t(`learning.internal.outcomeType.${outcomeTypeKey}`, {
@@ -219,16 +231,29 @@ function ResourceCard({ resource, primary = false }: { resource: SessionResource
         </div>
         {resource.isInternal ? (
           <Badge className="w-fit bg-primary/10 text-primary">{internalTask?.label ?? t("learning.common.internal")}</Badge>
-        ) : resource.url ? (
-          <a
-            href={resource.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:shadow hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 active:scale-95"
-          >
-            {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        ) : null}
+        ) : (
+          <div className="flex gap-2 shrink-0">
+            {progress?.savedCourseIds?.includes(resource.id) && onToggleSaveCourse && (
+              <button
+                type="button"
+                onClick={() => onToggleSaveCourse(resource.id)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50/50 px-3 py-2 text-xs font-bold text-red-600 shadow-sm hover:shadow hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-95 cursor-pointer"
+              >
+                <Trash className="w-3.5 h-3.5" /> {t("learning.common.unsave")}
+              </button>
+            )}
+            {resource.url ? (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:shadow hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 active:scale-95"
+              >
+                {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+          </div>
+        )}
       </div>
       {internalTask && (
         <div className="mt-4 rounded-lg border border-primary/15 bg-white/80 p-3 text-sm text-slate-700">
@@ -255,7 +280,13 @@ function ResourceCard({ resource, primary = false }: { resource: SessionResource
   );
 }
 
-function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
+function RecommendedCourseCard({
+  course,
+  onToggleSaveCourse,
+}: {
+  course: RecommendedCourse;
+  onToggleSaveCourse?: (courseId: string) => void;
+}) {
   const { t } = useTranslation("common");
   const matchScore = displayScore(course.matchScore);
 
@@ -351,16 +382,27 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
             )}
           </div>
         </div>
-        {course.url && (
-          <a
-            href={course.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:shadow hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 active:scale-95"
-          >
-            {t("learning.common.openCourse")} <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
+        <div className="flex gap-2 shrink-0">
+          {onToggleSaveCourse && (
+            <button
+              type="button"
+              onClick={() => onToggleSaveCourse(course.id)}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-bold text-primary shadow-sm hover:shadow hover:bg-primary/10 transition-all duration-200 active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> {t("learning.common.save")}
+            </button>
+          )}
+          {course.url && (
+            <a
+              href={course.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:shadow hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 active:scale-95"
+            >
+              {t("learning.common.openCourse")} <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -768,6 +810,7 @@ function DocContentPanel({
   progress,
   onToggleChecklistItem,
   onExerciseProofChange,
+  onToggleSaveCourse,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -775,14 +818,38 @@ function DocContentPanel({
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
+  onToggleSaveCourse: (courseId: string) => void;
 }) {
   const { t } = useTranslation("common");
+  const [currentPage, setCurrentPage] = useState(1);
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const activeResource = getActiveSessionResource(session, activeSection?.id ?? activeSectionId);
-  const supplementalResources = getSupplementalSessionResources(session, activeSection?.id ?? activeSectionId);
-  const visibleRecommendedCourses = activeResource ? [] : (session.recommendedCourses ?? []);
+  
+  const convertedSavedCourses = (session.recommendedCourses ?? [])
+    .filter((c) => progress.savedCourseIds?.includes(c.id))
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      url: c.url,
+      platform: c.provider,
+      duration: c.duration,
+      isFree: c.isFree,
+      type: "course" as const,
+      matchScore: c.matchScore,
+    }));
+  const allSupplementalResources = convertedSavedCourses;
+
+  const visibleRecommendedCourses = activeResource
+    ? []
+    : (session.recommendedCourses ?? []).filter((c) => !progress.savedCourseIds?.includes(c.id));
   const nextSectionId = getNextLearningSectionId(session.sections, activeSection?.id ?? activeSectionId);
   const nextSection = session.sections.find((section) => section.id === nextSectionId);
+
+  const ITEMS_PER_PAGE = 8;
+  const totalPages = Math.ceil(visibleRecommendedCourses.length / ITEMS_PER_PAGE);
+  const effectivePage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
+  const paginatedCourses = visibleRecommendedCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -980,11 +1047,11 @@ function DocContentPanel({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {t("learning.session.lessonContent")}
           </p>
-          <ResourceCard resource={activeResource} primary />
+          <ResourceCard resource={activeResource} primary progress={progress} onToggleSaveCourse={onToggleSaveCourse} />
         </div>
       )}
 
-      {(!activeResource || supplementalResources.length > 0) && (
+      {allSupplementalResources.length > 0 && (
       <div className="space-y-4 mt-6">
         <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
           <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
@@ -992,20 +1059,14 @@ function DocContentPanel({
             {t("learning.chat.status")}
           </h4>
           <span className="ml-1 h-5 min-w-5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center">
-            {supplementalResources.length}
+            {allSupplementalResources.length}
           </span>
         </div>
-        {supplementalResources.length > 0 ? (
-          <div className="space-y-3">
-            {supplementalResources.map((resource) => (
-              <ResourceCard key={resource.id} resource={resource} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            {t("learning.session.emptyResources")}
-          </div>
-        )}
+        <div className="space-y-3">
+          {allSupplementalResources.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} progress={progress} onToggleSaveCourse={onToggleSaveCourse} />
+          ))}
+        </div>
       </div>
       )}
 
@@ -1021,10 +1082,35 @@ function DocContentPanel({
             </span>
           </div>
           <div className="space-y-3">
-            {visibleRecommendedCourses.map((course) => (
-              <RecommendedCourseCard key={course.id} course={course} />
+            {paginatedCourses.map((course) => (
+              <RecommendedCourseCard key={course.id} course={course} onToggleSaveCourse={onToggleSaveCourse} />
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={effectivePage === 1}
+                className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-semibold text-slate-500">
+                {t("learning.common.pageOf", { current: effectivePage, total: totalPages, defaultValue: `Trang ${effectivePage} / ${totalPages}` })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={effectivePage === totalPages}
+                className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -1083,6 +1169,7 @@ function MainContentPanel({
   progress,
   onToggleChecklistItem,
   onExerciseProofChange,
+  onToggleSaveCourse,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -1090,6 +1177,7 @@ function MainContentPanel({
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
+  onToggleSaveCourse: (courseId: string) => void;
 }) {
   const { t } = useTranslation("common");
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
@@ -1127,6 +1215,7 @@ function MainContentPanel({
             progress={progress}
             onToggleChecklistItem={onToggleChecklistItem}
             onExerciseProofChange={onExerciseProofChange}
+            onToggleSaveCourse={onToggleSaveCourse}
           />
         )}
       </div>
@@ -1215,8 +1304,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const currentIdx = ALL_SESSIONS.findIndex(s => s.id === session.id);
 
-  // ✅ Mark complete + unlock next session in store
-  const { weekPlans, setWeekPlans, isAIGenerated } = useRoadmapStore();
+  const { weekPlans, setWeekPlans } = useRoadmapStore();
   const handleComplete = () => {
     if (!canMarkComplete) return;
     setIsCompleted(true);
@@ -1263,6 +1351,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const handleExerciseProofChange = (exerciseId: string, proof: string) => {
     locallyChangedProgressRef.current = true;
     setProgress((current) => setExerciseProof(current, exerciseId, proof));
+  };
+
+  const handleToggleSaveCourse = (courseId: string) => {
+    locallyChangedProgressRef.current = true;
+    setProgress((current) => toggleSavedCourse(current, courseId));
   };
 
   // Pass handleComplete down to content panels via context or prop
@@ -1355,6 +1448,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
             progress={progress}
             onToggleChecklistItem={handleToggleChecklistItem}
             onExerciseProofChange={handleExerciseProofChange}
+            onToggleSaveCourse={handleToggleSaveCourse}
           />
 
           {/* Right AI Chat Panel — sticky */}
