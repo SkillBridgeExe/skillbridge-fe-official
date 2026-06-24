@@ -782,6 +782,13 @@ export interface RecommendedCourseDto {
   rating?: number;
   skills?: Array<{ skill_canonical_name: string; teaches_level: number }>;
   match_score?: number;
+  match_breakdown?: {
+    rating_pts: number;
+    language_pts: number;
+    free_pts: number;
+    level_fit_pts: number;
+    multi_skill_pts: number;
+  };
 }
 
 export interface LessonSectionContentDto {

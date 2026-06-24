@@ -233,6 +233,15 @@ export default {
         qualityScore: "Chất lượng {{score}}",
         freshnessScore: "Độ mới {{score}}",
         exercises: "{{count}} bài tập",
+        matchBreakdown: {
+          title: "Chi tiết điểm phù hợp",
+          rating: "Chất lượng (Đánh giá)",
+          language: "Ngôn ngữ phù hợp",
+          price: "Học phí (Miễn phí/Trả phí)",
+          level: "Trình độ phù hợp",
+          skills: "Kỹ năng bổ trợ",
+          total: "Tổng điểm phù hợp: {{score}}/100",
+        },
       },
       overview: {
         previousWeek: "Tuần trước",

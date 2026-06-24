@@ -8,7 +8,7 @@ import { MascotSticker } from "@/components/mascot/MascotSticker";
 import type { RoadmapBudgetInput } from "@/services/learning-roadmap.service";
 import type { RoadmapLanguagePref } from "@shared/api";
 
-type WizardStep = "days" | "hours" | "language" | "confirm";
+type WizardStep = "language" | "confirm";
 
 export interface RoadmapWizardAnswers {
   availableDays: number;
@@ -26,8 +26,6 @@ export function createRoadmapBudgetInput(
   };
 }
 
-const DAY_OPTIONS = [14, 30, 60];
-const HOUR_OPTIONS = [4, 8, 12];
 const LANGUAGE_OPTIONS: Array<{ value: RoadmapLanguagePref; labelKey: string }> = [
   { value: "vi", labelKey: "roadmapWizard.languageVi" },
   { value: "en", labelKey: "roadmapWizard.languageEn" },
@@ -46,19 +44,12 @@ export function MascotRoadmapWizard({
   onSubmit,
 }: MascotRoadmapWizardProps) {
   const { t } = useTranslation("diagnosis");
-  const [step, setStep] = useState<WizardStep>("days");
+  const [step, setStep] = useState<WizardStep>("language");
   const [answers, setAnswers] = useState<RoadmapWizardAnswers>({
-    availableDays: 30,
-    hoursPerWeek: 8,
+    availableDays: 365,
+    hoursPerWeek: 40,
     languagePref: "vi",
   });
-
-  // Local state for custom input fields
-  const [customDays, setCustomDays] = useState<string>("");
-  const [customHours, setCustomHours] = useState<string>("");
-
-  const [daysError, setDaysError] = useState<string | null>(null);
-  const [hoursError, setHoursError] = useState<string | null>(null);
 
   // Hover state for the submit button to play with mascot stickers
   const [isSubmitHovered, setIsSubmitHovered] = useState(false);
@@ -76,17 +67,13 @@ export function MascotRoadmapWizard({
   };
 
   const question =
-    step === "days"
-      ? t("roadmapWizard.daysQuestion")
-      : step === "hours"
-        ? t("roadmapWizard.hoursQuestion")
-        : step === "language"
-          ? t("roadmapWizard.languageQuestion")
-          : t("roadmapWizard.confirmQuestion", {
-              days: answers.availableDays,
-              hours: answers.hoursPerWeek,
-              language: t(`roadmapWizard.language.${answers.languagePref}`),
-            });
+    step === "language"
+      ? t("roadmapWizard.languageQuestion")
+      : t("roadmapWizard.confirmQuestion", {
+          days: answers.availableDays,
+          hours: answers.hoursPerWeek,
+          language: t(`roadmapWizard.language.${answers.languagePref}`),
+        });
 
   // Determine MascotSticker animation state
   const mascotState = isPending
@@ -98,7 +85,7 @@ export function MascotRoadmapWizard({
   // Balance visual sizing to make them all equal at a larger size (around 450px rendered size)
   const mascotSize = mascotState === "love" ? 350 : 450;
 
-  const stepNumber = step === "days" ? 1 : step === "hours" ? 2 : step === "language" ? 3 : 4;
+  const stepNumber = step === "language" ? 1 : 2;
   const isShifted = mascotState === "success" || mascotState === "love";
 
   return (
@@ -180,7 +167,7 @@ export function MascotRoadmapWizard({
 
             {/* Stepper Progress Dots */}
             <div className="flex items-center gap-1.5 mb-6">
-              {[1, 2, 3, 4].map((i) => {
+              {[1, 2].map((i) => {
                 const active = i <= stepNumber;
                 return (
                   <div
@@ -192,7 +179,7 @@ export function MascotRoadmapWizard({
                 );
               })}
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 ml-2">
-                {t("roadmapWizard.step", { current: stepNumber, total: 4 })}
+                {t("roadmapWizard.step", { current: stepNumber, total: 2 })}
               </span>
             </div>
 
@@ -218,150 +205,6 @@ export function MascotRoadmapWizard({
 
               {/* Options & Inputs */}
               <div className="space-y-6">
-                {step === "days" && (
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        {t("roadmapWizard.quickChoice")}
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {DAY_OPTIONS.map((days) => (
-                          <ChoiceButton
-                            key={days}
-                            active={answers.availableDays === days && !customDays}
-                            onClick={() => {
-                              setAnswers((current) => ({ ...current, availableDays: days }));
-                              setCustomDays("");
-                              setDaysError(null);
-                              setStep("hours");
-                            }}
-                          >
-                            {t("roadmapWizard.daysOption", { count: days })}
-                          </ChoiceButton>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-5 border-t border-dashed border-primary/15 space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        {t("roadmapWizard.orCustomDays")}
-                      </label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="number"
-                            min="1"
-                            max="365"
-                            value={customDays}
-                            onChange={(e) => {
-                              setCustomDays(e.target.value);
-                              setDaysError(null);
-                            }}
-                            placeholder={t("roadmapWizard.customDaysPlaceholder")}
-                            className="w-full px-4 py-3 border border-primary/20 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary font-bold text-slate-700 shadow-sm no-spinner transition-all duration-200"
-                          />
-                          <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">
-                            {t("roadmapWizard.daysSuffix")}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            const val = parseInt(customDays, 10);
-                            if (isNaN(val) || val <= 0) {
-                              setDaysError(t("roadmapWizard.invalidNumber"));
-                              return;
-                            }
-                            setAnswers((current) => ({ ...current, availableDays: val }));
-                            setStep("hours");
-                          }}
-                          disabled={!customDays}
-                          className="rounded-2xl px-6 text-sm font-bold bg-primary hover:bg-primary/95 hover:scale-[1.02] active:scale-[0.98] text-white h-11 transition-all"
-                        >
-                          {t("roadmapWizard.next")}
-                        </Button>
-                      </div>
-                      {daysError && (
-                        <p className="text-xs text-red-500 font-bold mt-1">
-                          {daysError}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {step === "hours" && (
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        {t("roadmapWizard.quickChoice")}
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {HOUR_OPTIONS.map((hours) => (
-                          <ChoiceButton
-                            key={hours}
-                            active={answers.hoursPerWeek === hours && !customHours}
-                            onClick={() => {
-                              setAnswers((current) => ({ ...current, hoursPerWeek: hours }));
-                              setCustomHours("");
-                              setHoursError(null);
-                              setStep("language");
-                            }}
-                          >
-                            {t("roadmapWizard.hoursOption", { count: hours })}
-                          </ChoiceButton>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-5 border-t border-dashed border-primary/15 space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        {t("roadmapWizard.orCustomHours")}
-                      </label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="number"
-                            min="1"
-                            max="168"
-                            value={customHours}
-                            onChange={(e) => {
-                              setCustomHours(e.target.value);
-                              setHoursError(null);
-                            }}
-                            placeholder={t("roadmapWizard.customHoursPlaceholder")}
-                            className="w-full px-4 py-3 border border-primary/20 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary font-bold text-slate-700 shadow-sm no-spinner transition-all duration-200"
-                          />
-                          <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">
-                            {t("roadmapWizard.hoursSuffix")}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            const val = parseInt(customHours, 10);
-                            if (isNaN(val) || val <= 0 || val > 168) {
-                              setHoursError(t("roadmapWizard.invalidHours"));
-                              return;
-                            }
-                            setAnswers((current) => ({ ...current, hoursPerWeek: val }));
-                            setStep("language");
-                          }}
-                          disabled={!customHours}
-                          className="rounded-2xl px-6 text-sm font-bold bg-primary hover:bg-primary/95 hover:scale-[1.02] active:scale-[0.98] text-white h-11 transition-all"
-                        >
-                          {t("roadmapWizard.next")}
-                        </Button>
-                      </div>
-                      {hoursError && (
-                        <p className="text-xs text-red-500 font-bold mt-1">
-                          {hoursError}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {step === "language" && (
                   <div className="space-y-5">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -387,12 +230,6 @@ export function MascotRoadmapWizard({
                 {step === "confirm" && (
                   <div className="flex flex-col gap-5 pt-2">
                     <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-                      <span className="rounded-full bg-sky-50/50 px-4 py-2 border border-primary/20">
-                        {t("roadmapWizard.daysSummary", { count: answers.availableDays })}
-                      </span>
-                      <span className="rounded-full bg-sky-50/50 px-4 py-2 border border-primary/20">
-                        {t("roadmapWizard.hoursSummary", { count: answers.hoursPerWeek })}
-                      </span>
                       <span className="rounded-full bg-indigo-50 text-indigo-600 px-4 py-2 border border-indigo-100">
                         {t(`roadmapWizard.language.${answers.languagePref}`)}
                       </span>
@@ -418,23 +255,11 @@ export function MascotRoadmapWizard({
 
                 {/* Back button or reset/edit button */}
                 <div className="flex justify-between items-center pt-2">
-                  {step !== "days" && step !== "confirm" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (step === "hours") setStep("days");
-                        if (step === "language") setStep("hours");
-                      }}
-                      className="text-xs font-bold text-slate-400 hover:text-primary transition flex items-center gap-1"
-                    >
-                      &larr; {t("roadmapWizard.back")}
-                    </button>
-                  )}
                   {step === "confirm" && (
                     <button
                       type="button"
                       onClick={() => {
-                        setStep("days");
+                        setStep("language");
                       }}
                       className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-primary transition"
                     >

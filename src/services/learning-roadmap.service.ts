@@ -188,6 +188,15 @@ function toRecommendedCourse(course: RecommendedCourseDto) {
     rating: course.rating,
     skills: course.skills,
     matchScore: course.match_score,
+    matchBreakdown: course.match_breakdown
+      ? {
+          ratingPts: course.match_breakdown.rating_pts,
+          languagePts: course.match_breakdown.language_pts,
+          freePts: course.match_breakdown.free_pts,
+          levelFitPts: course.match_breakdown.level_fit_pts,
+          multiSkillPts: course.match_breakdown.multi_skill_pts,
+        }
+      : undefined,
   };
 }
 
@@ -310,39 +319,53 @@ export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
           status: index === 0 ? "in-progress" : "locked",
           stars: 0,
           maxStars: 5,
-          sections: lessonContent
-            ? lessonContent.sections.map((section) => ({
-                id: section.id,
-                title: section.title,
-                completed: false,
-                exercises: lessonContent.exercises.length,
-                completedExercises: 0,
-                type: "reading",
-                body: section.body,
-                checklist: section.checklist,
-              }))
-            : step.resources.length
-              ? step.resources.map((resource) => ({
-                id: resource.id,
-                title: resource.title,
-                completed: false,
-                exercises: 1,
-                completedExercises: 0,
-                type:
-                  resource.source_type === "video"
-                    ? "video"
-                    : resource.source_type === "official_doc"
-                      ? "reading"
-                      : "practice",
+          sections: [
+            ...(lessonContent
+              ? lessonContent.sections.map((section) => ({
+                  id: section.id,
+                  title: section.title,
+                  completed: false,
+                  exercises: lessonContent.exercises.length,
+                  completedExercises: 0,
+                  type: "reading" as const,
+                  body: section.body,
+                  checklist: section.checklist,
                 }))
-              : (step.recommended_courses ?? []).map((course) => ({
-                id: course.id,
-                title: course.title,
-                completed: false,
-                exercises: 1,
-                completedExercises: 0,
-                type: "practice",
-              })),
+              : step.resources.length
+                ? step.resources.map((resource) => ({
+                  id: resource.id,
+                  title: resource.title,
+                  completed: false,
+                  exercises: 1,
+                  completedExercises: 0,
+                  type:
+                    resource.source_type === "video"
+                      ? ("video" as const)
+                      : resource.source_type === "official_doc"
+                        ? ("reading" as const)
+                        : ("practice" as const),
+                  }))
+                : (step.recommended_courses ?? []).map((course) => ({
+                  id: course.id,
+                  title: course.title,
+                  completed: false,
+                  exercises: 1,
+                  completedExercises: 0,
+                  type: "practice" as const,
+                }))),
+            ...(lessonContent
+              ? resources
+                  .filter((r) => r.sourceType === "video")
+                  .map((resource) => ({
+                    id: resource.id,
+                    title: resource.title,
+                    completed: false,
+                    exercises: 0,
+                    completedExercises: 0,
+                    type: "video" as const,
+                  }))
+              : []),
+          ],
           lessonContent,
           resources,
           recommendedCourses: step.recommended_courses?.map(toRecommendedCourse) ?? [],

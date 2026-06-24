@@ -232,6 +232,15 @@ export default {
         qualityScore: "Quality {{score}}",
         freshnessScore: "Freshness {{score}}",
         exercises: "{{count}} exercises",
+        matchBreakdown: {
+          title: "Match Score Breakdown",
+          rating: "Course Quality (Rating)",
+          language: "Language Preference",
+          price: "Price Fit (Free/Paid)",
+          level: "Difficulty Fit",
+          skills: "Skill Coverage (Multi-skill)",
+          total: "Total Match Score: {{score}}/100",
+        },
       },
       overview: {
         previousWeek: "Previous Week",
