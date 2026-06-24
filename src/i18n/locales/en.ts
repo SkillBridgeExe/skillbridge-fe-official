@@ -10,7 +10,8 @@ export default {
       },
       marketplace: {
         heroTitle: "Meet the mentor for your next move",
-        heroSubtitle: "Find a verified expert for focused, practical guidance on your next career move.",
+        heroSubtitle:
+          "Find a verified expert for focused, practical guidance on your next career move.",
         findMentor: "Find your mentor",
         becomeMentor: "Become a mentor",
         verifiedExperts: "Verified experts",
@@ -33,7 +34,8 @@ export default {
         reset: "Reset",
         applyFilters: "Apply filters",
         noResultsTitle: "No mentors match these filters",
-        noResultsBody: "Try a broader search or reset the filters to explore all mentors.",
+        noResultsBody:
+          "Try a broader search or reset the filters to explore all mentors.",
         loadErrorTitle: "We could not load mentors",
         loadErrorBody: "Check your connection and try again.",
         retry: "Try again",
@@ -68,14 +70,18 @@ export default {
         editProfile: "Edit profile",
         viewPublic: "View public profile",
         title: "Mentor profile",
-        subtitle: "Build a clear profile that helps learners understand how you can support them.",
+        subtitle:
+          "Build a clear profile that helps learners understand how you can support them.",
         completion: "Profile completion",
         status: "Review status",
         emptyTitle: "Create your mentor profile",
-        emptyBody: "Add your expertise, mentoring focus, and session details before submitting for review.",
+        emptyBody:
+          "Add your expertise, mentoring focus, and session details before submitting for review.",
         rejectionReason: "Admin feedback",
-        pendingBody: "Your profile is being reviewed. Editing is locked until the review is complete.",
-        suspendedBody: "This profile is suspended. Contact an administrator for support.",
+        pendingBody:
+          "Your profile is being reviewed. Editing is locked until the review is complete.",
+        suspendedBody:
+          "This profile is suspended. Contact an administrator for support.",
         approvedBody: "Your profile is live in the mentor marketplace.",
         save: "Save profile",
         saving: "Saving",
@@ -84,17 +90,21 @@ export default {
         saved: "Mentor profile saved",
         submitted: "Profile submitted for review",
         basicInfo: "Basic information",
-        avatarHint: "This image is used on your public mentor profile after approval.",
+        avatarHint:
+          "This image is used on your public mentor profile after approval.",
         headline: "Professional headline",
         company: "Company",
         shortBio: "Short introduction",
         fullBio: "About your mentoring approach",
         verificationContact: "Verification contact",
-        verificationContactHint: "Provide at least LinkedIn or a phone number so an administrator can verify the profile.",
-        verificationContactRequired: "Add LinkedIn or a phone number before submitting for review.",
+        verificationContactHint:
+          "Provide at least LinkedIn or a phone number so an administrator can verify the profile.",
+        verificationContactRequired:
+          "Add LinkedIn or a phone number before submitting for review.",
         linkedinUrl: "LinkedIn URL",
         phoneNumber: "Phone number",
-        phonePrivacy: "Your phone number is used for review only and never appears on the public profile.",
+        phonePrivacy:
+          "Your phone number is used for review only and never appears on the public profile.",
         domains: "Domains",
         domainPlaceholder: "Add a domain and press Enter",
         skills: "Skills",
@@ -107,7 +117,8 @@ export default {
       },
       admin: {
         title: "Mentor review",
-        subtitle: "Review mentor profiles before they appear in the public marketplace.",
+        subtitle:
+          "Review mentor profiles before they appear in the public marketplace.",
         searchPlaceholder: "Search headline, company, or profile",
         allStatuses: "All statuses",
         profile: "Profile",
@@ -598,7 +609,8 @@ export default {
         subtitle:
           "Scan the payOS QR or complete the embedded payment form. SkillBridge will verify the payment automatically.",
         embedTitle: "payOS checkout",
-        embedReady: "The payment form is embedded below. Finish payment here and we will verify the order automatically.",
+        embedReady:
+          "The payment form is embedded below. Finish payment here and we will verify the order automatically.",
         embedLoading: "Loading payOS checkout...",
         embedErrorTitle: "Could not load embedded checkout",
         embedErrorDesc:
@@ -616,7 +628,8 @@ export default {
         linkUnavailableDesc:
           "We could not find an active payOS link for this order yet. Check again in a moment.",
         summaryTitle: "Order summary",
-        summaryDesc: "This status comes from SkillBridge billing, not the browser URL.",
+        summaryDesc:
+          "This status comes from SkillBridge billing, not the browser URL.",
         orderCode: "Order code",
         purpose: "Purpose",
         amount: "Amount",
@@ -631,7 +644,8 @@ export default {
         unverifiedTitle: "Payment not verified yet",
         statusError:
           "Could not check the order status — network or server hiccup. Your order is not lost.",
-        verifyError: "We could not verify the latest payment state yet: {{error}}",
+        verifyError:
+          "We could not verify the latest payment state yet: {{error}}",
         providerReturned:
           "payOS returned with status {{status}}. SkillBridge is verifying the final order state.",
         viewMyPlan: "View my plan",
@@ -665,13 +679,19 @@ export default {
           MENTOR_REMAINING: "Mentor remaining payment",
         },
         nextActions: {
-          PENDING: "Complete the payOS form, then keep this page open while we verify the order.",
-          PROCESSING: "The payment provider is processing the order. Keep this page open or check again shortly.",
+          PENDING:
+            "Complete the payOS form, then keep this page open while we verify the order.",
+          PROCESSING:
+            "The payment provider is processing the order. Keep this page open or check again shortly.",
           PAID: "Payment is confirmed. Your plan, quota, and entitlements are being refreshed.",
-          CANCELLED: "Payment was cancelled. You can create a new checkout whenever you are ready.",
-          EXPIRED: "This payment link has expired. Return to pricing to create a new checkout.",
-          FAILED: "Payment was not completed. Check the order again or create a new checkout.",
-          UNKNOWN: "Check the order again if the payment provider has already redirected you back.",
+          CANCELLED:
+            "Payment was cancelled. You can create a new checkout whenever you are ready.",
+          EXPIRED:
+            "This payment link has expired. Return to pricing to create a new checkout.",
+          FAILED:
+            "Payment was not completed. Check the order again or create a new checkout.",
+          UNKNOWN:
+            "Check the order again if the payment provider has already redirected you back.",
         },
         returnTitle: "Finalizing your payment",
         returnRedirecting: "Redirecting to the embedded checkout page...",
@@ -910,9 +930,33 @@ export default {
         chooseCvFirst: "Choose CV first",
         noMatchContext: "No match context",
         savedJd: "Saved JD",
-        noSavedMatch: "No saved JD match yet. The interview can still use CV + role.",
+        noSavedMatch:
+          "No saved JD match yet. The interview can still use CV + role.",
         targetRole: "Target Role",
         language: "Language",
+        criteriaTitle: "Interview goal and scoring criteria",
+        criteriaDescription:
+          "{{type}} interview for {{role}}. The base questions come from the curated bank when available; follow-up and scoring stay adaptive.",
+        criteria: {
+          technicalDepth: "Technical depth and correctness",
+          problemSolving: "Problem-solving process and trade-offs",
+          communication: "Clear, structured communication",
+          evidenceCredibility: "Specific evidence from real projects or tasks",
+          roleFit: "Role fit, motivation, and growth awareness",
+        },
+        questionBank: {
+          curated: "Curated bank",
+          fallback: "AI fallback",
+          curatedTitle: "Curated question bank",
+          curatedDescription:
+            "This role uses seeded SkillBridge-authored questions before AI asks follow-up.",
+          fallbackTitle: "General fallback questions",
+          fallbackDescription:
+            "This role is not seeded in V1 yet, so the backend falls back to generated template questions.",
+        },
+        privacyScoringTitle: "Privacy-safe scoring",
+        privacyScoringDescription:
+          "Scoring uses answer transcript, rubric signals, and evidence quality. Camera appearance is not scored.",
         cameraTitle: "Camera starts only when you begin",
         cameraDescription:
           "No microphone or camera permission is requested on setup load.",
@@ -942,12 +986,12 @@ export default {
         modes: {
           guided: {
             title: "Guided Voice",
-            description: "AI reads each question aloud; you answer one question at a time.",
+            description:
+              "AI reads each question aloud; you answer one question at a time.",
           },
           realtime: {
             title: "Live Conversation",
-            description:
-              "AI listens and responds like a live interviewer.",
+            description: "AI listens and responds like a live interviewer.",
           },
         },
         voice: {
@@ -1006,6 +1050,15 @@ export default {
           "Press the mic when you speak; your transcript appears here. Edit only if it is wrong.",
         textPlaceholder: "Text fallback: type your answer here.",
         submitAnswer: "Submit Answer",
+        questionMeta: {
+          title: "Question focus",
+          curated: "Curated bank",
+          fallback: "AI fallback",
+          phase: "Phase",
+          skill: "Skill",
+          thread: "Thread",
+          bankKey: "Bank key: {{key}}",
+        },
         mode: {
           textFallback: "Text fallback",
           liveRealtime: "Live Conversation",
@@ -1038,7 +1091,8 @@ export default {
       },
       cancelledToast: {
         title: "Interview cancelled",
-        description: "The session had no submitted answers, so no score was generated.",
+        description:
+          "The session had no submitted answers, so no score was generated.",
       },
       results: {
         noResultTitle: "No result available",
@@ -1063,13 +1117,34 @@ export default {
         bodyLanguageDescription:
           "Scored only when the interview captures non-verbal signals",
         bodyLanguageEmpty: "Body language was not captured for this session.",
+        rubricBreakdown: "Rubric Breakdown",
+        rubricBreakdownDescription:
+          "Role-weighted scoring dimensions from the backend rubric.",
+        confidenceEvidence: "Confidence & Evidence Calibration",
+        confidenceEvidenceDescription:
+          "Privacy-safe answer signals from transcript quality, not appearance.",
+        confidenceEvidenceEmpty:
+          "No confidence or evidence signals are available yet.",
+        weight: "weight",
         recommendedNextSteps: "Recommended Next Steps",
         recommendedNextStepsDescription: "Suggested from your interview score",
         recommendations: "Recommendations",
         suggestedModules: "Suggested Modules",
+        coachingStrengths: "Coaching Strengths",
+        developmentPlan: "Development Plan",
+        developmentPlanDescription:
+          "Concrete learning, CV, and interview-practice actions derived from the score.",
+        coachingPriorities: "Coaching Priorities",
+        devPlanItems: "Action Items",
         noMetrics: "No metrics are available yet.",
         noItems: "No items are available yet.",
         questionAnalysis: "Question Analysis",
+        curatedQuestion: "Curated question",
+        fallbackQuestion: "Fallback question",
+        phase: "Phase",
+        skill: "Skill",
+        depthSignal: "Depth",
+        questionBankKey: "Bank: {{key}}",
         noPersistedAnswers: "No saved answers are available yet.",
         noSummary: "No summary is available yet.",
       },
@@ -1090,10 +1165,12 @@ export default {
         submitFailed: "Failed to submit answer.",
         microphoneUnavailableSameSession:
           "Microphone is unavailable. Continue in text mode in this same session.",
-        microphoneUnavailable: "Microphone is unavailable. Continue in text mode.",
+        microphoneUnavailable:
+          "Microphone is unavailable. Continue in text mode.",
         realtimeTokenUnavailable:
           "Live voice mode is unavailable. Continue in text mode.",
-        reconnectFailed: "Could not reconnect live voice. Continue in text mode.",
+        reconnectFailed:
+          "Could not reconnect live voice. Continue in text mode.",
       },
       roles: {
         frontend_developer: "Frontend Developer",
@@ -1109,7 +1186,7 @@ export default {
   },
   home: {
     hero: {
-      badge: "The Intelligent Career Growth Engine",
+      badge: "SkillBridge - Your partner in skill development",
       titleLead: "Bridge Your ",
       titleSkills: "Skills",
       titleMid: " to Your ",
@@ -1352,7 +1429,8 @@ export default {
       toastMissingJdTitle: "Missing job description",
       toastMissingJdDesc: "Paste the job description first.",
       toastFailedTitle: "Analysis failed",
-      praiseHigh: "Strong work — this CV already beats most of the screening bar.",
+      praiseHigh:
+        "Strong work — this CV already beats most of the screening bar.",
       extractionQuality: {
         medium:
           "AI may have missed part of your CV — double-check against the original to be sure the result is complete.",
@@ -1446,8 +1524,8 @@ export default {
       daysQuestion: "How many days do you have for this learning plan?",
       hoursQuestion: "Nice. How many hours can you study each week?",
       languageQuestion: "Which language should I use for your roadmap?",
-      confirmQuestion: "Great. I will create your learning roadmap in {{language}}. Ready?",
-
+      confirmQuestion:
+        "Great. I will create a {{days}}-day roadmap with {{hours}}h/week in {{language}}. Ready?",
       daysOption: "{{count}} days",
       hoursOption: "{{count}}h/week",
       languageVi: "Tiếng Việt",
@@ -1644,7 +1722,8 @@ export default {
       footnote:
         "Every number in this report comes from the real CV/JD analysis and our job-posting pool — no invented judgments.",
       priorityTitle: "Priority Gaps",
-      priorityDesc: "Core competency gaps (including skills, seniority, language, education) analyzed from your CV vs JD.",
+      priorityDesc:
+        "Core competency gaps (including skills, seniority, language, education) analyzed from your CV vs JD.",
       type: {
         hard_skill: "Hard Skill",
         soft_skill: "Soft Skill",
@@ -1832,7 +1911,8 @@ export default {
       original: "Original",
       tabOriginal: "Original (ATS view)",
       tabAi: "AI Suggestions Applied",
-      addJdNote: "Add a JD (Compare JD button) to get CV rewrite suggestions based on the JD.",
+      addJdNote:
+        "Add a JD (Compare JD button) to get CV rewrite suggestions based on the JD.",
       appliedCount: "Applied {{count}}/{{total}} evidence-backed suggestions.",
       manualTasks: "Things you need to add manually:",
       unknownName: "Name not found",
@@ -1844,7 +1924,8 @@ export default {
       saving: "Saving...",
       savedAt: "Saved at {{time}}",
       localOnly: "Sign in to save drafts and unlock AI scoring.",
-      localOnlyAuthed: "Saving unavailable right now — changes stay on this device.",
+      localOnlyAuthed:
+        "Saving unavailable right now — changes stay on this device.",
       backToDiagnosis: "Back to Diagnosis",
       evaluateNow: "Score this section",
       missingTitle: "Needs adding",
@@ -1875,8 +1956,10 @@ export default {
       toastDownloadFailedDesc: "Failed to render the PDF on the server.",
       toastLocalActionTitle: "Server draft unavailable",
       toastSaveFailedTitle: "Save failed",
-      toastSaveFailedDesc: "Could not save the latest changes. Please try again before continuing.",
-      toastSaveUnavailableDesc: "Autosave is still initializing. Please try again in a moment.",
+      toastSaveFailedDesc:
+        "Could not save the latest changes. Please try again before continuing.",
+      toastSaveUnavailableDesc:
+        "Autosave is still initializing. Please try again in a moment.",
       toastDraftErrorTitle: "Error creating draft",
       toastDraftErrorDesc:
         "Failed to create a builder draft on the server. Working in local mode.",
@@ -2005,6 +2088,224 @@ export default {
         issueDate: "e.g. 2023",
         credentialUrl: "https://...",
       },
+    },
+    companion: {
+      analyze: "AI Assistant",
+      analyzing: "Analyzing...",
+      send: "Send",
+      apply: "Apply",
+      discard: "Discard",
+      retry: "Retry",
+      before: "Before",
+      after: "After",
+      freeTextPlaceholder: "Or type details...",
+      thinking: "Rewriting... (may take a few seconds)",
+      stateAsking: "Assistant asks",
+      stateThinking: "Thinking...",
+      statePresenting: "Suggestion",
+      reaskLimit:
+        "Try editing this manually — the assistant couldn't gather enough detail.",
+      manualEdit: "Edit manually",
+      fieldStrong: "This content is already strong.",
+      error: {
+        unknown: "Something went wrong. Try again later.",
+      },
+      results: {
+        ctaRoadmap: "See learning roadmap",
+        ctaBuilder: "Add evidence",
+      },
+      intake: {
+        trigger: "✨ Quick fill assistant",
+        prompt:
+          "Tell me about this experience (company, role, timeline, what you did, results)…",
+        placeholder:
+          "Example: I worked as a Frontend Developer at FPT from March 2023 to December 2024. I built management dashboards, deployed CI/CD…",
+        extract: "Analyze",
+        extracting: "Reading…",
+        previewTitle: "Extracted from your story",
+        lowConfidence: "check this",
+        override: "Override",
+        source: "source:",
+        missing: "Not mentioned — would you like to add?",
+        degraded: "Could not read this. Please fill in manually.",
+        apply: "Apply",
+        editStory: "Edit story",
+        close: "Close",
+        coachStuck: "Not sure what to write? Tell me about it",
+      },
+      // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
+      // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
+      // CHOICE options are CATEGORIES (route the next question), never specifics.
+      coach: {
+        openDayToDay: "Forget the CV for a sec — what did you actually do day-to-day in that role?",
+        starProbe: "Walk me through one specific thing: what was the situation, what did you do, and what was the result?",
+        pickImpactType: "What did your result mostly affect? (pick one so I ask the right follow-up)",
+        pickRoleType: "Which area was your role closest to?",
+        terminalStop: "If there's genuinely nothing more to add, leave it blank — never make something up.",
+        options: {
+          other: "Other",
+          impact: {
+            saved_time: "Saved time",
+            increased_revenue: "Increased revenue",
+            improved_quality: "Improved quality",
+            reduced_cost: "Reduced cost",
+          },
+          role: {
+            frontend: "Frontend",
+            backend: "Backend",
+            fullstack: "Fullstack",
+            data: "Data / AI",
+            devops: "DevOps / Infra",
+          },
+        },
+      },
+      proveit: {
+        msg: "The skill \"{{skill}}\" is on your CV but lacks concrete evidence. Adding a real example will make it more convincing.",
+        cta: "Add evidence",
+      },
+      elementIssue: {
+        // "1 of N" + navigation + dismiss/snooze
+        oneOfN: "{{index}} of {{total}}",
+        whyFirst: "Why this first?",
+        dismiss: "Dismiss",
+        dismissOnce: "Dismiss for now",
+        snooze: "Remind me later",
+        intentional: "I left this on purpose",
+        factor: {
+          market_demand: "Market demand",
+          evidence_risk: "Evidence risk",
+          interview_risk: "Interview risk",
+        },
+        cta: {
+          intake: "Add evidence",
+          rewrite: "Rewrite for clarity",
+          builder: "Open Builder to fix",
+          roadmap: "See learning roadmap",
+        },
+        // Each "what" is code-owned; the static "why" is only used when the BE returns no string.
+        listed_no_evidence: {
+          what: "This skill is on your CV but has no concrete example.",
+          why: "Recruiters want proof — a line on how you actually used it is far more convincing.",
+        },
+        gap_item: {
+          what: "This is a priority gap against the job's requirements.",
+          why: "Closing this gap makes your CV match the JD more closely.",
+        },
+        exp_no_dates: {
+          what: "Some experience entries are missing start/end dates.",
+          why: "ATS systems need timestamps to place your career timeline correctly.",
+        },
+        parse_quality: {
+          what: "I'm not fully confident I read this part correctly.",
+          why: "This CV was a little hard to parse — double-check the content so the scoring is accurate.",
+        },
+        deal_breaker: {
+          what: "Your CV shows no signal for this required item.",
+          why: "This is a deal-breaker requirement — missing it entirely risks an early screen-out.",
+        },
+        missing_section: {
+          no_experience: {
+            what: "Your CV has no experience entries.",
+            why: "Add at least one position so the AI scores accurately and recruiters can see your journey.",
+          },
+          no_projects: {
+            what: "Your CV has no projects.",
+            why: "Projects demonstrate concrete skills — especially valuable when experience is light.",
+          },
+          no_skills: {
+            what: "No technical skills were detected.",
+            why: "Check the Skills section — without it your CV struggles to match JD keywords.",
+          },
+          no_summary: {
+            what: "Your CV is missing a professional summary.",
+            why: "A 2-3 sentence overview helps recruiters grasp who you are in the first 6 seconds.",
+          },
+        },
+      },
+      review: {
+        summary: "CV parsed — summary: {{experiences}} experiences, {{skills}} skills.",
+        gap: {
+          no_experience: "Your CV has no experience entries — add at least one position for a more accurate review.",
+          exp_no_dates: "Some experience entries are missing start/end dates — ATS systems need this information.",
+          no_projects: "No projects found — adding projects helps demonstrate your skills with real examples.",
+          no_skills: "No technical skills detected — please check the Skills section of your CV.",
+          no_summary: "Your CV is missing a professional summary — add 2-3 sentences to help recruiters scan quickly.",
+        },
+        cta: "Open Builder to fix",
+      },
+      upload: {
+        greet: "Upload your CV and select a target role to start the analysis.",
+        reading: "Reading your CV...",
+      },
+      progress: {
+        title: "Compared to last time",
+        scoreDelta: "Match score: {{prev}}% → {{curr}}% (+{{delta}})",
+        gapsClosed: "Closed {{count}} gaps",
+        gapsWorsened: "{{count}} items need attention",
+        baseline: "This is your first analysis — results will be saved as a baseline.",
+      },
+      scoreBreakdown: {
+        title: "Score breakdown",
+        covered: "Covered",
+        notCovered: "Not covered",
+        // Phase A commentary — STATIC templates that wrap only the real band/number;
+        // the rationale + tips are rendered VERBATIM from reviewData by the skill.
+        explain: {
+          what: "Here's what this score means: {{band}}.",
+          tipsLabel: "Tips for this area",
+          strong: "This area is strong — {{band}}.",
+          watch: "This area is okay but worth a look — {{band}}.",
+          priority: "This area needs attention first — {{band}}.",
+        },
+      },
+      // Phase A praise — STATIC celebratory templates that wrap only the real
+      // overall number; the band scoreMsg + biggest-fix line stay VERBATIM.
+      praise: {
+        what: "About your overall CV score",
+        biggestFixLabel: "Biggest fix first:",
+        excellent: "Outstanding — your CV scores {{score}}/100. This already beats most of the screening bar.",
+        good: "Nice work — your CV scores {{score}}/100. It's competitive with a little polish left.",
+        fair: "Solid start — your CV scores {{score}}/100. A few focused fixes will lift it.",
+        low: "Your CV scores {{score}}/100. Let's tackle the biggest fix first.",
+      },
+      // Calm corner advisor — chat-driven (owner decision 06-23). Openers are
+      // STATIC enum-keyed templates that only interpolate the REAL overall score.
+      // Focus-aware: keyed by the section the user is viewing (TAB-level). `cv_audit`
+      // keys further by score band (low → offer to help raise it). NO LLM, NO fabrication.
+      chat: {
+        opener: {
+          cv_audit: {
+            excellent: "Your CV scores {{score}}/100 — strong work. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            good: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            fair: "Your CV scores {{score}}/100. I can explain why each part scored the way it did, or show you what to fix first — where do you want to start?",
+            low: "Your CV scores {{score}}/100. Let me help you raise it — I can explain why each part scored the way it did, or show you what to fix first. Where do you want to start?",
+          },
+          skills_analysis: "You're looking at your skills analysis. I can explain which skills counted for this role and which are missing or weak — what would you like to know?",
+          market_careers: "You're looking at market opportunities. I can explain how this role was matched and the gaps that matter — what would you like to know?",
+          gap_results: "This is your skill gap. I can explain which gaps matter most and the prioritized actions to close them — where do you want to start?",
+        },
+        placeholder: "Ask about your score…",
+        send: "Send",
+        thinking: "Thinking…",
+        error: "The assistant is being connected — please try again in a moment.",
+        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        suggestions: [
+          "Why is my score this?",
+          "What's my weakest part?",
+          "How can I improve?",
+        ],
+        suggestDim: "Why is {{dim}} scored low?",
+      },
+    },
+    skillsNudge: {
+      title: "Skill completeness suggestions",
+      sufficient: "Skills are complete!",
+    },
+    nextSteps: {
+      title: "Next steps",
+      subtitle: "Prioritized by your real skill gaps",
+      empty: "Your CV is already strong for this role!",
+      hint: "Add this skill to your CV with a concrete example.",
     },
   },
 } as const;

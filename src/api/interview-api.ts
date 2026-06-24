@@ -50,6 +50,10 @@ export interface InterviewSessionDto {
   llmScore: number | null;
   communicationScore: number | null;
   aiFeedback: InterviewFeedback | null;
+  finalScore?: unknown;
+  gapItems?: unknown;
+  devPlan?: unknown;
+  coaching?: unknown;
   durationSeconds: number | null;
   startedAt: string;
   endedAt: string | null;
@@ -62,6 +66,7 @@ export interface InterviewTurnDto {
   sessionId: string;
   turnOrder: number;
   phase: string | null;
+  topicPhase?: string | null;
   modality: PlatformInterviewModality;
   aiRequestId: string | null;
   interviewerMessage: string | null;
@@ -69,6 +74,13 @@ export interface InterviewTurnDto {
   userAnswerText: string | null;
   userAnswerTranscript: string | null;
   perQuestionScore: number | null;
+  depthSignal?: string | null;
+  signals?: unknown;
+  insight?: unknown;
+  currentThread?: string | null;
+  skillCanonical?: string | null;
+  questionBankItemId?: string | null;
+  questionBankKey?: string | null;
   strengths: string[] | unknown;
   improvements: string[] | unknown;
   askedAt: string;
@@ -159,7 +171,9 @@ export async function startInterview(
 export async function submitInterviewTurn(
   payload: SubmitInterviewTurnRequest,
 ): Promise<AnswerInterviewResponseDto> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<AnswerInterviewResponseDto>>(
+  const envelope = await unwrapEnvelope<
+    ApiEnvelope<AnswerInterviewResponseDto>
+  >(
     httpClient.post(API_ROUTES.INTERVIEW.TURN, payload),
     "Failed to submit interview answer.",
   );
@@ -171,7 +185,9 @@ export async function endInterview(
   liveTurns?: LiveInterviewTurnInput[],
 ): Promise<InterviewDetailResponseDto> {
   const payload = liveTurns ? { sessionId, liveTurns } : { sessionId };
-  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
+  const envelope = await unwrapEnvelope<
+    ApiEnvelope<InterviewDetailResponseDto>
+  >(
     httpClient.post(API_ROUTES.INTERVIEW.END, payload),
     "Failed to end interview.",
   );
@@ -192,15 +208,21 @@ export async function getInterviewHistory(
   return envelope.data;
 }
 
-export async function getInterviewDetail(id: string): Promise<InterviewDetailResponseDto> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<InterviewDetailResponseDto>>(
+export async function getInterviewDetail(
+  id: string,
+): Promise<InterviewDetailResponseDto> {
+  const envelope = await unwrapEnvelope<
+    ApiEnvelope<InterviewDetailResponseDto>
+  >(
     httpClient.get(API_ROUTES.INTERVIEW.DETAIL(id)),
     "Failed to load interview detail.",
   );
   return envelope.data;
 }
 
-export async function refreshRealtimeToken(id: string): Promise<RealtimeClientSecretDto> {
+export async function refreshRealtimeToken(
+  id: string,
+): Promise<RealtimeClientSecretDto> {
   const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeClientSecretDto>>(
     httpClient.post(API_ROUTES.INTERVIEW.REALTIME_TOKEN(id)),
     "Failed to refresh realtime token.",
@@ -227,14 +249,18 @@ async function normalizeQuestionAudioBlob(blob: Blob): Promise<Blob> {
 
   const text = await blob.text().catch(() => "");
   if (!text.trim()) {
-    throw new Error(`Question audio endpoint returned ${type} instead of playable audio.`);
+    throw new Error(
+      `Question audio endpoint returned ${type} instead of playable audio.`,
+    );
   }
 
   const parsed = parseJson(text);
   const serializedAudio = parsed ? readSerializedAudioBlob(parsed) : null;
   if (serializedAudio) return serializedAudio;
 
-  const backendMessage = parsed ? readMessage(parsed) : text.trim().slice(0, 300);
+  const backendMessage = parsed
+    ? readMessage(parsed)
+    : text.trim().slice(0, 300);
   throw new Error(
     backendMessage
       ? `Question audio endpoint returned ${type}: ${backendMessage}`
@@ -266,7 +292,9 @@ function readSerializedAudioBlob(value: unknown): Blob | null {
 
   const options = data.options;
   const audioType =
-    isRecord(options) && typeof options.type === "string" && options.type.startsWith("audio/")
+    isRecord(options) &&
+    typeof options.type === "string" &&
+    options.type.startsWith("audio/")
       ? options.type
       : null;
   if (!audioType) return null;
@@ -287,7 +315,9 @@ function readSerializedAudioBlob(value: unknown): Blob | null {
 function readSerializedBufferChunk(value: unknown): ArrayBuffer | null {
   if (!isRecord(value) || !Array.isArray(value.data)) return null;
   const bytes = value.data;
-  if (!bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+  if (
+    !bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)
+  ) {
     return null;
   }
   const buffer = new ArrayBuffer(bytes.length);

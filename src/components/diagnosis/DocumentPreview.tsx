@@ -378,7 +378,7 @@ export function DocumentPreview() {
                         </div>
                         <div className="space-y-4">
                           {doc.experience.map((exp, idx) => (
-                            <div key={idx} className="space-y-1">
+                            <div key={idx} id={`exp-${idx}`} className="space-y-1">
                               <div className="flex justify-between items-start">
                                 <div className="text-[13px] font-semibold text-slate-800">
                                   {exp.role} — {exp.org}

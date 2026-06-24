@@ -120,6 +120,7 @@ export function JdIntelligenceCard({
           return (
             <div
               key={`${dim.dimension}-${i}`}
+              id={`dim-${dim.dimension}`}
               className="flex flex-col gap-1.5 py-2.5 border-b border-[#F1F1EF] last:border-0"
             >
               {/* Row 1: icon + value + chips */}

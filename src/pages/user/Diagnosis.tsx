@@ -12,6 +12,7 @@ import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useCompanionStore } from "@/store/useCompanionStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -56,6 +57,12 @@ export default function Diagnosis() {
 
   const location = useLocation();
   const canUseApi = useHasApiSession();
+  const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
+
+  useEffect(() => {
+    setCompanionSuspended(isAnalyzing);
+    return () => setCompanionSuspended(false);
+  }, [isAnalyzing, setCompanionSuspended]);
 
   // Handle initialization from builder and mode parameter
   useEffect(() => {
@@ -301,7 +308,7 @@ export default function Diagnosis() {
     return (
       <Layout hideFooter>
         <Suspense fallback={<PageLoader />}>
-          <div className="h-[calc(100dvh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
+          <div id="cv-builder-anchor" className="h-[calc(100dvh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
             <CvBuilderHeader />
             <div className="flex-1 flex overflow-hidden">
               <div className="w-[45%] h-full border-r border-slate-200 bg-white flex overflow-hidden shrink-0">
@@ -329,7 +336,7 @@ export default function Diagnosis() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
+      <div id="diagnosis-root" className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
 
         {/* LOADING OVERLAY */}
         <AnimatePresence>

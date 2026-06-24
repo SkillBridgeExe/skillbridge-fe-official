@@ -4,7 +4,13 @@ import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -13,15 +19,20 @@ import {
   Bot,
   CheckCircle2,
   Clock,
+  Gauge,
   History,
+  ListChecks,
   Mic,
   RefreshCw,
   Shield,
   Sparkles,
+  Target,
   TrendingUp,
-  UserCheck,
 } from "lucide-react";
-import { formatDuration, toInterviewResultViewModel } from "./interview-view-model";
+import {
+  formatDuration,
+  toInterviewResultViewModel,
+} from "./interview-view-model";
 
 interface ResultsViewProps {
   result: InterviewDetailResponseDto | null;
@@ -31,7 +42,9 @@ interface ResultsViewProps {
 
 export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
   const { t } = useTranslation("common");
-  const [activeTab, setActiveTab] = useState<"strengths" | "improve">("strengths");
+  const [activeTab, setActiveTab] = useState<"strengths" | "improve">(
+    "strengths",
+  );
 
   if (!result) {
     return (
@@ -63,12 +76,27 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardContent className="p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
-            <ScoreDonut score={view.overallScore} label={t("interview.stats.overall")} />
+            <ScoreDonut
+              score={view.overallScore}
+              label={t("interview.stats.overall")}
+            />
 
             <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
-              <ScoreCard label={t("interview.results.semantic")} value={view.semanticScore} icon={BarChart3} />
-              <ScoreCard label={t("interview.results.llmScore")} value={view.llmScore} icon={Sparkles} />
-              <ScoreCard label={t("interview.results.communication")} value={view.communicationScore} icon={Mic} />
+              <ScoreCard
+                label={t("interview.results.semantic")}
+                value={view.semanticScore}
+                icon={BarChart3}
+              />
+              <ScoreCard
+                label={t("interview.results.llmScore")}
+                value={view.llmScore}
+                icon={Sparkles}
+              />
+              <ScoreCard
+                label={t("interview.results.communication")}
+                value={view.communicationScore}
+                icon={Mic}
+              />
             </div>
           </div>
 
@@ -78,9 +106,15 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             </Badge>
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              {t("interview.results.duration", { duration: formatDuration(effectiveDuration) })}
+              {t("interview.results.duration", {
+                duration: formatDuration(effectiveDuration),
+              })}
             </span>
-            <span>{t("interview.results.answeredQuestions", { count: view.questions.length })}</span>
+            <span>
+              {t("interview.results.answeredQuestions", {
+                count: view.questions.length,
+              })}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -93,7 +127,9 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                 <Bot className="h-4 w-4 text-slate-600" />
               </div>
               <div>
-                <CardTitle className="text-sm">{t("interview.results.summaryTitle")}</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("interview.results.summaryTitle")}
+                </CardTitle>
                 <CardDescription className="text-xs">
                   {t("interview.results.summaryDescription")}
                 </CardDescription>
@@ -109,7 +145,12 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
 
         <Card className="border-slate-200 bg-white shadow-sm md:col-span-3">
           <CardHeader className="border-b border-slate-100 pb-3">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "strengths" | "improve")}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) =>
+                setActiveTab(value as "strengths" | "improve")
+              }
+            >
               <TabsList>
                 <TabsTrigger value="strengths" className="gap-2">
                   <CheckCircle2 className="h-4 w-4" />
@@ -124,31 +165,36 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
           </CardHeader>
           <CardContent className="pt-4">
             <ul className="space-y-3">
-              {(activeTab === "strengths" ? strengths : improvements).length === 0 ? (
+              {(activeTab === "strengths" ? strengths : improvements).length ===
+              0 ? (
                 <li className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
                   {activeTab === "strengths"
                     ? t("interview.results.emptyStrengths")
                     : t("interview.results.emptyImprove")}
                 </li>
               ) : (
-                (activeTab === "strengths" ? strengths : improvements).map((item, index) => (
-                  <li
-                    key={`${activeTab}-${index}-${item}`}
-                    className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm"
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
-                        activeTab === "strengths"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-700",
-                      )}
+                (activeTab === "strengths" ? strengths : improvements).map(
+                  (item, index) => (
+                    <li
+                      key={`${activeTab}-${index}-${item}`}
+                      className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm"
                     >
-                      {index + 1}
-                    </span>
-                    <span className="leading-relaxed text-slate-700">{item}</span>
-                  </li>
-                ))
+                      <span
+                        className={cn(
+                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
+                          activeTab === "strengths"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700",
+                        )}
+                      >
+                        {index + 1}
+                      </span>
+                      <span className="leading-relaxed text-slate-700">
+                        {item}
+                      </span>
+                    </li>
+                  ),
+                )
               )}
             </ul>
           </CardContent>
@@ -173,21 +219,74 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <MetricPanel
-          title={t("interview.results.bodyLanguage")}
-          description={t("interview.results.bodyLanguageDescription")}
-          icon={UserCheck}
-          metrics={view.bodyLanguage}
-          empty={t("interview.results.bodyLanguageEmpty")}
+        <RubricPanel
+          title={t("interview.results.rubricBreakdown")}
+          description={t("interview.results.rubricBreakdownDescription")}
+          dimensions={view.rubricDimensions}
+          empty={t("interview.results.noMetrics")}
+          weightLabel={t("interview.results.weight")}
         />
+        <EvidencePanel
+          title={t("interview.results.confidenceEvidence")}
+          description={t("interview.results.confidenceEvidenceDescription")}
+          metrics={view.confidenceEvidence}
+          empty={t("interview.results.confidenceEvidenceEmpty")}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[15px]">{t("interview.results.recommendedNextSteps")}</CardTitle>
-            <CardDescription>{t("interview.results.recommendedNextStepsDescription")}</CardDescription>
+            <CardTitle className="text-[15px]">
+              {t("interview.results.recommendedNextSteps")}
+            </CardTitle>
+            <CardDescription>
+              {t("interview.results.recommendedNextStepsDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <TagList title={t("interview.results.recommendations")} items={view.recommendations} empty={t("interview.results.noItems")} />
-            <TagList title={t("interview.results.suggestedModules")} items={view.modules} empty={t("interview.results.noItems")} />
+            {view.coachingSummary && (
+              <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
+                {view.coachingSummary}
+              </p>
+            )}
+            <TagList
+              title={t("interview.results.recommendations")}
+              items={view.recommendations}
+              empty={t("interview.results.noItems")}
+            />
+            <TagList
+              title={t("interview.results.suggestedModules")}
+              items={view.modules}
+              empty={t("interview.results.noItems")}
+            />
+            <TagList
+              title={t("interview.results.coachingStrengths")}
+              items={view.coachingStrengths}
+              empty={t("interview.results.noItems")}
+            />
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-[15px]">
+              {t("interview.results.developmentPlan")}
+            </CardTitle>
+            <CardDescription>
+              {t("interview.results.developmentPlanDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <PriorityList
+              title={t("interview.results.coachingPriorities")}
+              items={view.coachingPriorities}
+              empty={t("interview.results.noItems")}
+            />
+            <PlanItemList
+              title={t("interview.results.devPlanItems")}
+              items={view.devPlanItems}
+              empty={t("interview.results.noItems")}
+            />
           </CardContent>
         </Card>
       </div>
@@ -198,12 +297,16 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white">
               <History className="h-4 w-4 text-slate-600" />
             </div>
-            <CardTitle className="text-[15px]">{t("interview.results.questionAnalysis")}</CardTitle>
+            <CardTitle className="text-[15px]">
+              {t("interview.results.questionAnalysis")}
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 p-0">
           {view.questions.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">{t("interview.results.noPersistedAnswers")}</div>
+            <div className="p-5 text-sm text-slate-500">
+              {t("interview.results.noPersistedAnswers")}
+            </div>
           ) : (
             view.questions.map((question, index) => (
               <div key={`${question.question}-${index}`} className="p-5">
@@ -212,9 +315,63 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                     <p className="text-sm font-bold text-slate-900">
                       {index + 1}. {question.question}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge
+                        variant={
+                          question.isCuratedQuestion ? "default" : "secondary"
+                        }
+                        className="rounded-full"
+                      >
+                        {question.isCuratedQuestion
+                          ? t("interview.results.curatedQuestion")
+                          : t("interview.results.fallbackQuestion")}
+                      </Badge>
+                      {question.topicPhase && (
+                        <Badge variant="outline" className="rounded-full">
+                          {t("interview.results.phase")}:{" "}
+                          {formatMetricLabel(question.topicPhase)}
+                        </Badge>
+                      )}
+                      {question.skillCanonical && (
+                        <Badge variant="outline" className="rounded-full">
+                          {t("interview.results.skill")}:{" "}
+                          {formatMetricLabel(question.skillCanonical)}
+                        </Badge>
+                      )}
+                      {question.depthSignal && (
+                        <Badge variant="outline" className="rounded-full">
+                          {t("interview.results.depthSignal")}:{" "}
+                          {formatMetricLabel(question.depthSignal)}
+                        </Badge>
+                      )}
+                      {question.questionBankKey && (
+                        <Badge variant="secondary" className="rounded-full">
+                          {t("interview.results.questionBankKey", {
+                            key: question.questionBankKey,
+                          })}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
                       {question.answer}
                     </p>
+                    {question.confidenceEvidence.length > 0 && (
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {question.confidenceEvidence.map((metric) => (
+                          <div
+                            key={`${question.question}-${metric.label}`}
+                            className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs"
+                          >
+                            <span className="font-bold text-slate-500">
+                              {metric.label}
+                            </span>
+                            <span className="ml-2 font-semibold text-slate-800">
+                              {metric.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="shrink-0 text-right">
                     <p
@@ -236,11 +393,121 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </CardContent>
       </Card>
 
-      <Button size="lg" className="w-full rounded-xl font-bold md:w-auto" onClick={onRetry}>
+      <Button
+        size="lg"
+        className="w-full rounded-xl font-bold md:w-auto"
+        onClick={onRetry}
+      >
         <RefreshCw className="mr-2 h-4 w-4" />
         {t("interview.history.startNew")}
       </Button>
     </div>
+  );
+}
+
+function RubricPanel({
+  title,
+  description,
+  dimensions,
+  empty,
+  weightLabel,
+}: {
+  title: string;
+  description: string;
+  dimensions: Array<{
+    dimension: string;
+    score: number;
+    band: string;
+    weight: number;
+  }>;
+  empty: string;
+  weightLabel: string;
+}) {
+  return (
+    <Card className="border-slate-200 bg-white shadow-sm">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+            <Gauge className="h-5 w-5 text-slate-600" />
+          </div>
+          <div>
+            <CardTitle className="text-[15px]">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {dimensions.length === 0 ? (
+          <p className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
+            {empty}
+          </p>
+        ) : (
+          dimensions.map((dimension) => (
+            <div key={dimension.dimension} className="space-y-1.5">
+              <MetricBar
+                label={formatMetricLabel(dimension.dimension)}
+                value={dimension.score}
+              />
+              <div className="flex justify-between text-[11px] font-semibold text-slate-500">
+                <span>{formatMetricLabel(dimension.band)}</span>
+                <span>
+                  {dimension.weight}% {weightLabel}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EvidencePanel({
+  title,
+  description,
+  metrics,
+  empty,
+}: {
+  title: string;
+  description: string;
+  metrics: Array<{ label: string; value: string }>;
+  empty: string;
+}) {
+  return (
+    <Card className="border-slate-200 bg-white shadow-sm">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+            <Target className="h-5 w-5 text-slate-600" />
+          </div>
+          <div>
+            <CardTitle className="text-[15px]">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {metrics.length === 0 ? (
+          <p className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500 sm:col-span-2">
+            {empty}
+          </p>
+        ) : (
+          metrics.map((metric) => (
+            <div
+              key={metric.label}
+              className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                {metric.label}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {metric.value}
+              </p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -249,7 +516,14 @@ function ScoreDonut({ score, label }: { score: number | null; label: string }) {
   return (
     <div className="relative h-36 w-36 shrink-0">
       <svg viewBox="0 0 120 120" className="h-36 w-36">
-        <circle cx="60" cy="60" r="52" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+        <circle
+          cx="60"
+          cy="60"
+          r="52"
+          fill="none"
+          stroke="#f1f5f9"
+          strokeWidth="8"
+        />
         <circle
           cx="60"
           cy="60"
@@ -288,7 +562,9 @@ function ScoreCard({
       <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white">
         <Icon className="h-4 w-4 text-slate-600" />
       </div>
-      <p className="text-xl font-black text-slate-900">{value == null ? "N/A" : `${value}%`}</p>
+      <p className="text-xl font-black text-slate-900">
+        {value == null ? "N/A" : `${value}%`}
+      </p>
       <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
         {label}
       </p>
@@ -330,7 +606,11 @@ function MetricPanel({
           </p>
         ) : (
           entries.map(([label, value]) => (
-            <MetricBar key={label} label={formatMetricLabel(label)} value={value} />
+            <MetricBar
+              key={label}
+              label={formatMetricLabel(label)}
+              value={value}
+            />
           ))
         )}
       </CardContent>
@@ -342,14 +622,24 @@ function MetricBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-slate-700">{label}</span>
-        <span className={cn("text-sm font-bold tabular-nums", scoreColor(value))}>{value}%</span>
+        <span className="text-[13px] font-semibold text-slate-700">
+          {label}
+        </span>
+        <span
+          className={cn("text-sm font-bold tabular-nums", scoreColor(value))}
+        >
+          {value}%
+        </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
         <div
           className={cn(
             "h-full rounded-full",
-            value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-red-500",
+            value >= 80
+              ? "bg-emerald-500"
+              : value >= 60
+                ? "bg-amber-500"
+                : "bg-red-500",
           )}
           style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
         />
@@ -358,10 +648,20 @@ function MetricBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function TagList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+function TagList({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: string[];
+  empty: string;
+}) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</p>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
       {items.length === 0 ? (
         <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
           {empty}
@@ -379,11 +679,108 @@ function TagList({ title, items, empty }: { title: string; items: string[]; empt
   );
 }
 
+function PriorityList({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: Array<{ track: string; title: string; why: string }>;
+  empty: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+          {empty}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={`${item.track}-${item.title}`}
+              className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+            >
+              <div className="mb-1 flex items-center gap-2">
+                <ListChecks className="h-3.5 w-3.5 text-primary" />
+                <p className="text-sm font-bold text-slate-800">{item.title}</p>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-500">
+                {item.why}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanItemList({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: Array<{
+    track: string;
+    title: string;
+    priority: number | null;
+    rationale: string;
+  }>;
+  empty: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+          {empty}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {items.slice(0, 4).map((item) => (
+            <div
+              key={`${item.track}-${item.title}`}
+              className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    {item.title}
+                  </p>
+                  {item.rationale && (
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                      {item.rationale}
+                    </p>
+                  )}
+                </div>
+                {item.priority != null && (
+                  <Badge variant="secondary" className="shrink-0 rounded-full">
+                    {Math.round(item.priority * 100)}%
+                  </Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function collectTurnItems(
   questions: Array<{ strengths: string[]; improvements: string[] }>,
   key: "strengths" | "improvements",
 ): string[] {
-  return Array.from(new Set(questions.flatMap((question) => question[key]))).slice(0, 6);
+  return Array.from(
+    new Set(questions.flatMap((question) => question[key])),
+  ).slice(0, 6);
 }
 
 function formatMetricLabel(value: string): string {

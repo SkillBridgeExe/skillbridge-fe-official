@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
+import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/types/companion";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -179,6 +180,27 @@ interface CvBuilderState {
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
 
+  // ── Companion state (mascot state machine) ──
+  mascotState: 'idle' | 'asking' | 'thinking' | 'presenting';
+  companionField: string | null;
+  companionSection: 'projects' | 'experience' | 'summary' | null;
+  companionTurn: CvAssistantTurn | null;
+  companionAnswers: AssistantAnswer[];
+  companionPatch: AssistantFieldPatch | null;
+  companionMessage: string | null;
+  companionReaskCount: number;
+
+  // Actions — Companion
+  setMascotState: (state: CvBuilderState['mascotState']) => void;
+  setCompanionField: (field: string | null, section: CvBuilderState['companionSection']) => void;
+  setCompanionTurn: (turn: CvAssistantTurn | null) => void;
+  addCompanionAnswer: (answer: AssistantAnswer) => void;
+  clearCompanionAnswers: () => void;
+  setCompanionPatch: (patch: AssistantFieldPatch | null) => void;
+  setCompanionMessage: (msg: string | null) => void;
+  incrementReask: () => void;
+  resetCompanion: () => void;
+
   // Computed
   getSectionStatuses: () => SectionMeta[];
   getCompletionPercent: () => number;
@@ -203,6 +225,15 @@ const initialState = {
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   seededFromDiagnosis: false,
   seedSourceCvId: null as string | null,
+  // Companion
+  mascotState: 'idle' as const,
+  companionField: null as string | null,
+  companionSection: null as 'projects' | 'experience' | 'summary' | null,
+  companionTurn: null as CvAssistantTurn | null,
+  companionAnswers: [] as AssistantAnswer[],
+  companionPatch: null as AssistantFieldPatch | null,
+  companionMessage: null as string | null,
+  companionReaskCount: 0,
 };
 
 /* ── Map ngược CanonicalCvDocument → builder store (inverse của mapStoreToCanonical) ──
@@ -420,5 +451,42 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     return Math.round((total / statuses.length) * 100);
   },
 
-  reset: () => set({ ...initialState, education: [emptyEducation()], experience: [emptyExperience()], projects: [emptyProject()] }),
+  reset: () => set({
+    ...initialState,
+    education: [emptyEducation()],
+    experience: [emptyExperience()],
+    projects: [emptyProject()],
+  }),
+
+  // ── Companion ──
+  setMascotState: (mascotState) => set({ mascotState }),
+  setCompanionField: (companionField, companionSection) => set({
+    companionField,
+    companionSection,
+    // Reset companion state when switching fields
+    mascotState: 'idle',
+    companionTurn: null,
+    companionAnswers: [],
+    companionPatch: null,
+    companionMessage: null,
+    companionReaskCount: 0,
+  }),
+  setCompanionTurn: (companionTurn) => set({ companionTurn }),
+  addCompanionAnswer: (answer) => set((s) => ({
+    companionAnswers: [...s.companionAnswers, answer],
+  })),
+  clearCompanionAnswers: () => set({ companionAnswers: [] }),
+  setCompanionPatch: (companionPatch) => set({ companionPatch }),
+  setCompanionMessage: (companionMessage) => set({ companionMessage }),
+  incrementReask: () => set((s) => ({ companionReaskCount: s.companionReaskCount + 1 })),
+  resetCompanion: () => set({
+    mascotState: 'idle',
+    companionField: null,
+    companionSection: null,
+    companionTurn: null,
+    companionAnswers: [],
+    companionPatch: null,
+    companionMessage: null,
+    companionReaskCount: 0,
+  }),
 }));

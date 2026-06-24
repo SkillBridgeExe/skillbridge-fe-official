@@ -123,6 +123,15 @@
     @apply border-border;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body[data-scroll-locked] {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+  }
+
   body {
     @apply bg-background text-foreground font-sans overflow-x-hidden w-full;
     background-image: radial-gradient(at 0% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),

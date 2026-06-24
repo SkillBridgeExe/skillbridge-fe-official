@@ -49,3 +49,7 @@ CUsers*
 *.dbml
 *.csv
 
+
+# Playwright MCP test artifacts (local browser-test screenshots/logs)
+.playwright-mcp/
+/*.png

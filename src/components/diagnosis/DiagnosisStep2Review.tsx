@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
@@ -16,11 +16,16 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useCompareJdMutation, useInterviewPlanQuery } from "@/hooks/use-diagnosis";
+import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
+import type { DiagnosisChatFocus } from "@/types/companion";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
+import { useCompanionStore } from "@/store/useCompanionStore";
+import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
+import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
+import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -97,6 +102,7 @@ function DimensionCard({
 
   return (
     <div
+      id={`dim-${dim.key}`}
       className={cn(CARD, "overflow-hidden border-l-4 animate-in fade-in duration-500", tone.rail)}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
     >
@@ -298,17 +304,101 @@ export function DiagnosisStep2Review() {
 
   const scoreLabel = t("review.heroTitle");
 
-  /* ── Distribute issues across dim cards ── */
+  /* ── Distribute issues across dim cards (shared helper = single source of
+     truth; the companion's commentary reuses dimensionIssueSlice so its tips are
+     byte-identical to these cards'). ── */
   const allIssues = reviewData?.issues ?? [];
   const issueGroups: CvIssue[][] = dimensions.length > 0
-    ? dimensions.map((_, i) => {
-        const perDim = Math.ceil(allIssues.length / dimensions.length);
-        return allIssues.slice(i * perDim, (i + 1) * perDim);
-      })
+    ? dimensions.map((_, i) => dimensionIssueSlice(reviewData, i))
     : [allIssues];
 
   const [rawOpen, setRawOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'audit' | 'skills' | 'market'>('audit');
+
+  /* ── Companion Pillar 1+2: anchored per-element issues (boundary = parse-done) ──
+     The detector layer runs off reviewData (completeness/parse-quality/listed-no-evidence)
+     plus jdMatch + the gap report when a JD has been compared. When real issues exist,
+     the diagnosis:issue context owns the bubble and the legacy review nudge gates off. */
+  const matchId = reviewData?.jdMatch?.matchId;
+  const gapReportQuery = useGapReportQuery(matchId, diagnosisLang);
+  // Fix D: wait for the gap-report query to settle before the first scan when it
+  // is enabled (a JD has been compared). Disabled (no matchId) → isLoading=false →
+  // a gap-less scan runs immediately (legitimate honest-empty for gap detectors).
+  const issuesReady = !!reviewData?.document && !gapReportQuery.isLoading;
+  // Auto-surfacing disabled (owner decision 06-23): this no longer registers/activates
+  // the diagnosis:issue context — kept mounted so the detectors stay wired for future
+  // chat grounding. The calm corner chat advisor below is the SOLE diagnosis context.
+  useElementIssuesCompanion(
+    { jdMatch: reviewData?.jdMatch ?? null, reviewData: reviewData ?? null, gapReport: gapReportQuery.data ?? null },
+    issuesReady,
+  );
+  // ── Companion: calm corner chat advisor (the ONLY diagnosis context now) ──
+  // Tab → chat focus so the advisor's opener + answers are context-relevant to the
+  // section in view. Switching tabs just swaps the opener text (same single context).
+  const chatFocus: DiagnosisChatFocus =
+    activeTab === "skills" ? "skills_analysis" : activeTab === "market" ? "market_careers" : "cv_audit";
+  // Reveal a cited card: `dim-*` anchors only live on the CV Audit tab, so if the
+  // element isn't mounted (user is on another tab), switch to 'audit' first, then
+  // scroll on the next tick. No-op-safe when the element truly doesn't exist.
+  const revealCard = useCallback((anchorId: string) => {
+    if (typeof document === "undefined") return;
+    const scrollTo = () =>
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const el = document.getElementById(anchorId);
+    if (!el && anchorId.startsWith("dim-")) {
+      setActiveTab("audit");
+      // Wait for the audit panel to mount the dim card, then scroll.
+      requestAnimationFrame(() => requestAnimationFrame(scrollTo));
+      return;
+    }
+    scrollTo();
+  }, []);
+  // Pass lastCvId so the advisor works on a CV-only scan (no JD match): when there's
+  // no matchId, the hook/service post to the CV-only route grounded in the CV review.
+  useDiagnosisChatCompanion(reviewData, chatFocus, revealCard, lastCvId);
+  // The chat advisor owns the bubble while it is registered → the legacy completeness
+  // nudge gates off whenever the chat context is live (single-active invariant).
+  const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
+
+  /* ── Companion: Step-2 review completeness nudge (#16) ── */
+  const completenessGap = pickTopCompletenessGap(reviewData?.document);
+  const summary = completenessSummary(reviewData?.document);
+
+  useEffect(() => {
+    const store = useCompanionStore.getState();
+    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
+    // diagnosis context — the legacy completeness nudge stays gated off whenever the
+    // chat advisor is live (single-active). Code retained for future reuse.
+    // Read chatLive FRESH from the store, not just the subscribed closure value: on
+    // the mount pass `chatContextActive` is still false (the chat hook registers its
+    // context in an effect that COMMITS AFTER this render), so trusting the closure
+    // would let this legacy nudge briefly activate — stealing activeId and then
+    // nulling it on cleanup, which leaves the chat bubble unreachable. The chat hook
+    // is declared above this effect, so its registration has already committed here.
+    const chatLive = chatContextActive || !!store.contexts["diagnosis:chat"];
+    if (!completenessGap || !reviewData?.document || chatLive) {
+      store.unregisterContext("diagnosis:review");
+      return;
+    }
+    store.registerContext({
+      id: "diagnosis:review",
+      priority: 10,
+      getTurn: () => ({
+        skill: "diagnosis_review",
+        props: {
+          message: t(`companion.review.gap.${completenessGap}`),
+          ctaLabel: t("companion.review.cta"),
+          onCta: () => {
+            useDiagnosisStore.getState().setStep("builder");
+            useCompanionStore.getState().dismissActive();
+          },
+        },
+      }),
+    });
+    store.activateContext("diagnosis:review");
+    return () => useCompanionStore.getState().unregisterContext("diagnosis:review");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completenessGap, summary.experiences, summary.skills, chatContextActive]);
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },

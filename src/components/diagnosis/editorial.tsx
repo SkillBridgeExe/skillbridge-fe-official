@@ -110,7 +110,7 @@ export const VerdictHero = memo(function VerdictHero({
   bandTooltip,
 }: {
   target: number;
-  label: string;
+  label: React.ReactNode;
   verdictMessage: string;
   isJdMode: boolean;
   rubricBand?: string | null;

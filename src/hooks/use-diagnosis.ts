@@ -14,6 +14,7 @@ import {
   loadCvFromHistory,
   reanalyzeCv,
   rewriteTailorBullet,
+  getNextSteps,
 } from "@/services/diagnosis.service";
 import {
   DEFAULT_ROADMAP_BUDGET,
@@ -198,5 +199,21 @@ export function useTailorRewriteMutation() {
       action: TailorAction;
     }) => rewriteTailorBullet({ cvId, matchId, text, action }),
     retry: false,
+  });
+}
+
+// ── Companion: next-steps ───────────────────────────────────────────
+
+/** Bước tiếp theo ưu tiên từ gap thật — query (deterministic, enabled khi có matchId). */
+export function useNextStepsQuery(matchId?: string | null, lang: "vi" | "en" = "vi") {
+  const canUseApi = useHasApiSession();
+
+  return useQuery({
+    queryKey: ["next-steps", matchId ?? "none", lang],
+    queryFn: () => getNextSteps(matchId!, lang),
+    enabled: Boolean(matchId) && canUseApi,
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 }

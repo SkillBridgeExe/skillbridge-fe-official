@@ -459,7 +459,6 @@ function SessionSidebar({ session, activeSectionId, onSelectSection, onToggle }:
   );
 }
 
-// ─── Video Content Panel ────────────────────────────
 function VideoContentPanel({
   session,
   activeSectionId,

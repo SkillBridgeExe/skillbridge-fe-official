@@ -1,9 +1,11 @@
-import { motion, type Transition, type TargetAndTransition } from "framer-motion";
+import { motion, useReducedMotion, type Transition, type TargetAndTransition } from "framer-motion";
 import { cn } from "@/lib/utils";
 import laptopPng from "@/assets/mascot/laptop.png";
 import lightbulbPng from "@/assets/mascot/lightbulb.png";
 import thumbsUpPng from "@/assets/mascot/thumbs-up.png";
 import heartsPng from "@/assets/mascot/hearts.png";
+import swimmingPng from "@/assets/mascot/Swimming.png";
+import thinkingPng from "@/assets/mascot/thinking.png";
 import { MascotVideo } from "./MascotVideo";
 
 /**
@@ -19,9 +21,19 @@ import { MascotVideo } from "./MascotVideo";
  * - tip           → lightbulb pose, gentle float + scale "aha".
  * - success       → thumbs-up pose, celebratory bounce.
  * - love          → hearts pose, heartbeat + sway.
+ * - swimming      → swimming pose, side-to-side undulation — shown while the user DRAGS the mascot.
  * - idle          → laptop pose, slow breathing sway (the default "alive" state).
  */
-export type MascotState = "idle" | "loading" | "tip" | "success" | "love" | "video_loading" | "video_laptop1";
+export type MascotState =
+  | "idle"
+  | "loading"
+  | "tip"
+  | "success"
+  | "love"
+  | "swimming"
+  | "thinking"
+  | "video_loading"
+  | "video_laptop1";
 
 const POSE: Record<MascotState, string> = {
   idle: laptopPng,
@@ -29,6 +41,8 @@ const POSE: Record<MascotState, string> = {
   tip: lightbulbPng,
   success: thumbsUpPng,
   love: heartsPng,
+  swimming: swimmingPng,
+  thinking: thinkingPng,
   video_loading: "", // Video doesn't use PNG pose
   video_laptop1: "", // Video doesn't use PNG pose
 };
@@ -59,6 +73,16 @@ const MOTION: Record<MascotState, { animate: TargetAndTransition; transition: Tr
     animate: { scale: [1, 1.06, 1, 1.05, 1], rotate: [-2, 2, -2] },
     transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
   },
+  // Side-to-side undulation + forward bob = "đang bơi" (while the user drags the mascot).
+  swimming: {
+    animate: { x: [0, -4, 4, 0], y: [0, -3, 0, -3, 0], rotate: [-6, 6, -6] },
+    transition: { duration: 0.7, repeat: Infinity, ease: "easeInOut" },
+  },
+  // Slow pondering tilt side-to-side + soft bob = "đang suy nghĩ" (AI is processing).
+  thinking: {
+    animate: { y: [0, -3, 0], rotate: [0, -5, 0, 5, 0] },
+    transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+  },
   // Video loading: video itself has animation, so we leave this empty.
   video_loading: {
     animate: {},
@@ -85,6 +109,7 @@ export function MascotSticker({
   className,
   interactive = true,
 }: MascotStickerProps) {
+  const prefersReducedMotion = useReducedMotion();
   // Tăng kích thước 1.3 lần riêng cho state 'love' để bù trừ khoảng trống thừa của file ảnh hearts.png
   const adjustedSize = state === "love" ? size * 1.3 : size;
 
@@ -95,16 +120,20 @@ export function MascotSticker({
     return <MascotVideo size={adjustedSize} className={className} type="laptop1" />;
   }
 
-  const { animate, transition } = MOTION[state];
+  const motionDef = MOTION[state];
+  // WCAG: respect prefers-reduced-motion — disable repeat-Infinity loops
+  const animate = prefersReducedMotion ? {} : motionDef.animate;
+  const transition = prefersReducedMotion ? {} : motionDef.transition;
 
   return (
     <motion.img
       src={POSE[state]}
       alt="SkillBridge mascot"
       draggable={false}
-      style={{ 
-        width: adjustedSize, 
-        height: "auto", 
+      style={{
+        width: adjustedSize,
+        aspectRatio: "1 / 1",
+        objectFit: "contain",
         transformOrigin: "bottom center",
         // Đặt lề âm để kéo chữ sát lại gần chú cá heo
         marginBottom: state === "love" ? -16 : 0

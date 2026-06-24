@@ -11,6 +11,7 @@ import AuthGuard from "@/components/layout/AuthGuard";
 import AuthBootstrap from "@/components/auth/AuthBootstrap";
 import PageLoader from "@/components/common/PageLoader";
 import { MascotOverlay } from "@/components/mascot/MascotOverlay";
+import { CompanionShell } from "@/components/companion/CompanionShell";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { QuotaUpgradeListener } from "@/components/billing/QuotaUpgradeListener";
@@ -37,6 +38,7 @@ const App = () => (
         <Sonner />
         <QuotaUpgradeListener />
         <MascotOverlay />
+        <CompanionShell />
         <AuthBootstrap />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
@@ -82,6 +84,7 @@ const App = () => (
               <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
               <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
               <Route path="/business/jobs" element={<AuthGuard requiredRole="business"><Pages.BusinessJobs /></AuthGuard>}/>
+              <Route path="/business/jobs/:jobId/edit" element={<AuthGuard requiredRole="business"><Pages.BusinessJobEdit /></AuthGuard>}/>
               <Route path="/business/top-candidates" element={<AuthGuard requiredRole="business"><Pages.TopCandidates /></AuthGuard>}/>
               <Route path="/business/applicants" element={<AuthGuard requiredRole="business"><Pages.BusinessApplicants /></AuthGuard>}/>
 
@@ -104,6 +107,8 @@ const App = () => (
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
                 <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
+                <Route path="reports" element={<Pages.AdminJobReports />} />
+                <Route path="business-profiles" element={<Pages.AdminBusinessProfiles />} />
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 
