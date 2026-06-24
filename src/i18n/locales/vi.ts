@@ -2274,6 +2274,12 @@ export default {
           "Làm sao cải thiện?",
         ],
         suggestDim: "Vì sao {{dim}} chưa cao?",
+        suggestionsByFocus: {
+          cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
+          skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],
+          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?"],
+          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
+        },
       },
     },
     skillsNudge: {

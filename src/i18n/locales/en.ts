@@ -2286,6 +2286,12 @@ export default {
           "How can I improve?",
         ],
         suggestDim: "Why is {{dim}} scored low?",
+        suggestionsByFocus: {
+          cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
+          skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],
+          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?"],
+          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?"],
+        },
       },
     },
     skillsNudge: {
