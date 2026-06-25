@@ -27,10 +27,14 @@ import {
   useReplaceJobSkillsMutation,
 } from "@/hooks/use-business-jobs";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessCompanyQuery } from "@/hooks/use-business-company";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { EmploymentType, ExperienceLevel, SalaryPeriod, WorkMode, JobLocationDto, JobSkillDto } from "@/types/jobs";
 import {
+  dateInputToEndOfDayIso,
   draftToBusinessJobForm,
   formToUpdateJobDraftRequest,
+  splitLines,
   type BusinessJobFormState,
 } from "./business-job-form";
 
@@ -38,6 +42,17 @@ const EMPLOYMENT_TYPES: EmploymentType[] = ["FULL_TIME", "PART_TIME", "INTERNSHI
 const EXPERIENCE_LEVELS: ExperienceLevel[] = ["INTERN", "FRESHER", "JUNIOR", "MIDDLE", "SENIOR", "LEAD"];
 const WORK_MODES: WorkMode[] = ["ONSITE", "HYBRID", "REMOTE"];
 const SALARY_PERIODS: SalaryPeriod[] = ["MONTH", "YEAR"];
+const ROLE_CODES = [
+  "frontend_developer",
+  "backend_developer",
+  "fullstack_developer",
+  "data_analyst",
+  "mobile_developer",
+  "devops_engineer",
+  "qa_tester",
+  "ai_ml_engineer",
+  "ai_app_engineer",
+] as const;
 
 function Field({ label, error, children, className = "" }: { label: string; error?: string; children: React.ReactNode; className?: string }) {
   return (
@@ -109,23 +124,40 @@ export default function BusinessJobEdit() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const detailQuery = useBusinessJobDetailQuery(jobId);
+  const companyQuery = useBusinessCompanyQuery();
   const updateMutation = useUpdateJobDraftMutation();
   const extractMutation = useExtractJobSkillsMutation();
   const publishMutation = usePublishJobMutation();
   const replaceSkillsMutation = useReplaceJobSkillsMutation();
   const [form, setForm] = useState<BusinessJobFormState | null>(null);
   const [editableSkills, setEditableSkills] = useState<JobSkillDto[]>([]);
+  const [formDirty, setFormDirty] = useState(false);
+  const [skillsDirty, setSkillsDirty] = useState(false);
 
-  const editableVersion = detailQuery.data?.draft ?? null;
+  const draftVersion = detailQuery.data?.draft ?? null;
   const displayVersion = detailQuery.data?.draft ?? detailQuery.data?.published ?? null;
-  const canEdit = !!editableVersion && !!form;
+  const baseVersion = draftVersion ?? detailQuery.data?.published ?? null;
+  const canEdit = Boolean(baseVersion && form && ["draft", "active"].includes(detailQuery.data?.job.status ?? ""));
   
   // Validation
   const salaryMinNum = form ? Number(form.salaryMin) : 0;
   const salaryMaxNum = form ? Number(form.salaryMax) : 0;
   const salaryError = !!form && !!form.salaryMin && !!form.salaryMax && salaryMinNum > salaryMaxNum;
   
-  const canSubmitDraft = canEdit && !!form.title.trim() && !salaryError;
+  const canSubmitDraft = canEdit && !!form?.title.trim() && !salaryError;
+  const publishReady = Boolean(
+    draftVersion &&
+      form &&
+      !formDirty &&
+      companyQuery.data?.profile.status === "VERIFIED" &&
+      form.roleCode &&
+      form.summary.trim() &&
+      splitLines(form.responsibilitiesText).length &&
+      splitLines(form.requirementsText).length &&
+      form.locations.length &&
+      draftVersion.skills.length &&
+      draftVersion.skillsConfirmedAt,
+  );
   const isSaving = updateMutation.isPending;
   const isPublishing = publishMutation.isPending;
   const isExtracting = extractMutation.isPending;
@@ -134,10 +166,12 @@ export default function BusinessJobEdit() {
     if (displayVersion) {
       setForm(draftToBusinessJobForm(displayVersion));
     }
-    if (editableVersion) {
-      setEditableSkills([...editableVersion.skills]);
+    if (draftVersion) {
+      setEditableSkills([...draftVersion.skills]);
     }
-  }, [displayVersion, editableVersion]);
+    setFormDirty(false);
+    setSkillsDirty(false);
+  }, [displayVersion, draftVersion]);
 
   const skillsSummary = useMemo(() => {
     const skills = displayVersion?.skills ?? [];
@@ -149,10 +183,12 @@ export default function BusinessJobEdit() {
     key: K,
     value: BusinessJobFormState[K],
   ) => {
+    setFormDirty(true);
     setForm((current) => (current ? { ...current, [key]: value } : current));
   };
 
   const handleAddLocation = () => {
+    setFormDirty(true);
     setForm(cur => cur ? {
       ...cur,
       locations: [...cur.locations, { cityCode: "", countryCode: "VN", addressLine: "", isPrimary: cur.locations.length === 0 }]
@@ -160,6 +196,7 @@ export default function BusinessJobEdit() {
   };
 
   const handleRemoveLocation = (index: number) => {
+    setFormDirty(true);
     setForm(cur => {
       if (!cur) return cur;
       const newLocs = [...cur.locations];
@@ -172,6 +209,7 @@ export default function BusinessJobEdit() {
   };
 
   const handleLocationChange = (index: number, key: keyof JobLocationDto, value: JobLocationDto[keyof JobLocationDto]) => {
+    setFormDirty(true);
     setForm(cur => {
       if (!cur) return cur;
       const newLocs = [...cur.locations];
@@ -189,41 +227,48 @@ export default function BusinessJobEdit() {
   };
 
   const handleSave = () => {
-    if (!jobId || !editableVersion || !form || salaryError) return;
+    if (!jobId || !baseVersion || !form || salaryError) return;
     updateMutation.mutate(
       {
         jobId,
-        body: formToUpdateJobDraftRequest(form, editableVersion.revision),
+        body: formToUpdateJobDraftRequest(form, baseVersion.revision),
       },
       {
         onSuccess: () => {
+          setFormDirty(false);
           toast({ title: "Draft saved", description: "Your job draft has been updated." });
         },
+        onError: (error) =>
+          toast({ variant: "destructive", title: "Save failed", description: getApiErrorMessage(error) }),
       },
     );
   };
 
   const handleExtractSkills = () => {
-    if (!jobId || !editableVersion) return;
+    if (!jobId || !draftVersion || formDirty) return;
     extractMutation.mutate(
-      { jobId, revision: editableVersion.revision },
+      { jobId, revision: draftVersion.revision },
       {
         onSuccess: () => {
           toast({ title: "Skills extracted", description: "Review the detected skills before publishing." });
         },
+        onError: (error) =>
+          toast({ variant: "destructive", title: "Extraction failed", description: getApiErrorMessage(error) }),
       },
     );
   };
 
   const handlePublish = () => {
-    if (!jobId || !editableVersion || salaryError) return;
+    if (!jobId || !draftVersion || !publishReady || salaryError) return;
     publishMutation.mutate(
-      { jobId, revision: editableVersion.revision },
+      { jobId, revision: draftVersion.revision },
       {
         onSuccess: () => {
           toast({ title: "Job published", description: "Your job is now visible to candidates." });
           navigate("/business/jobs");
         },
+        onError: (error) =>
+          toast({ variant: "destructive", title: "Publish failed", description: getApiErrorMessage(error) }),
       },
     );
   };
@@ -232,26 +277,31 @@ export default function BusinessJobEdit() {
     const newSkills = [...editableSkills];
     newSkills[index] = { ...newSkills[index], [key]: value };
     setEditableSkills(newSkills);
+    setSkillsDirty(true);
   };
 
   const handleRemoveSkill = (index: number) => {
     const newSkills = [...editableSkills];
     newSkills.splice(index, 1);
     setEditableSkills(newSkills);
+    setSkillsDirty(true);
   };
 
   const handleConfirmSkills = () => {
-    if (!jobId || !editableVersion) return;
+    if (!jobId || !draftVersion || editableSkills.length === 0) return;
     replaceSkillsMutation.mutate({
       jobId,
       body: {
-        expectedRevision: editableVersion.revision,
+        expectedRevision: draftVersion.revision,
         skills: editableSkills,
       }
     }, {
       onSuccess: () => {
+        setSkillsDirty(false);
         toast({ title: "Skills confirmed", description: "Your skill requirements have been saved." });
-      }
+      },
+      onError: (error) =>
+        toast({ variant: "destructive", title: "Skill update failed", description: getApiErrorMessage(error) }),
     });
   };
 
@@ -278,7 +328,7 @@ export default function BusinessJobEdit() {
             <button
               type="button"
               onClick={handleExtractSkills}
-              disabled={!canEdit || isExtracting || isSaving}
+              disabled={!draftVersion || formDirty || isExtracting || isSaving}
               className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isExtracting ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Sparkles size={16} className="text-amber-500" />}
@@ -287,7 +337,7 @@ export default function BusinessJobEdit() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={!canSubmitDraft || isSaving}
+              disabled={!canSubmitDraft || !formDirty || isSaving}
               className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSaving ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Save size={16} className="text-slate-400" />}
@@ -296,7 +346,7 @@ export default function BusinessJobEdit() {
             <button
               type="button"
               onClick={handlePublish}
-              disabled={!canSubmitDraft || isPublishing || isSaving}
+              disabled={!publishReady || skillsDirty || isPublishing || isSaving}
               className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPublishing ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Send size={16} className="text-slate-300" />}
@@ -332,9 +382,10 @@ export default function BusinessJobEdit() {
           <div className="grid gap-8 lg:grid-cols-[1fr_300px] items-start">
             <div className="space-y-8">
               
-              {!editableVersion && (
+              {!draftVersion && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  This job only has a published version. Draft editing is not available.
+                  This job is currently published. Your first save creates a new draft while the
+                  live version remains unchanged.
                 </div>
               )}
 
@@ -354,12 +405,18 @@ export default function BusinessJobEdit() {
                     />
                   </Field>
                   <Field label="Role Code">
-                    <TextInput
+                    <SelectInput
                       value={form.roleCode}
                       disabled={!canEdit}
-                      placeholder="e.g. frontend_engineer"
                       onChange={(e) => setField("roleCode", e.target.value)}
-                    />
+                    >
+                      <option value="">Select a role</option>
+                      {ROLE_CODES.map((roleCode) => (
+                        <option key={roleCode} value={roleCode}>
+                          {roleCode.replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </SelectInput>
                   </Field>
                   <Field label="Openings">
                     <TextInput
@@ -448,7 +505,7 @@ export default function BusinessJobEdit() {
                       disabled={!canEdit}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setField("applicationDeadline", val ? `${val}T23:59:59Z` : "");
+                        setField("applicationDeadline", dateInputToEndOfDayIso(val));
                       }}
                     />
                   </Field>
@@ -667,7 +724,7 @@ export default function BusinessJobEdit() {
                     <Star size={16} className="text-slate-400" />
                     <h2 className="text-base font-semibold text-slate-900">Extracted Skills</h2>
                   </div>
-                  {editableVersion?.skillsConfirmedAt && (
+                  {draftVersion?.skillsConfirmedAt && !skillsDirty && (
                     <div className="flex items-center gap-1 text-[13px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                       <ShieldCheck size={14} /> Confirmed
                     </div>
@@ -724,7 +781,13 @@ export default function BusinessJobEdit() {
                     <div className="pt-2">
                       <button
                         type="button"
-                        disabled={!canEdit || replaceSkillsMutation.isPending}
+                        disabled={
+                          !canEdit ||
+                          !draftVersion ||
+                          !skillsDirty ||
+                          editableSkills.length === 0 ||
+                          replaceSkillsMutation.isPending
+                        }
                         onClick={handleConfirmSkills}
                         className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
