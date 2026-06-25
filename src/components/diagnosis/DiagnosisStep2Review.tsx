@@ -337,21 +337,14 @@ export function DiagnosisStep2Review() {
   // section in view. Switching tabs just swaps the opener text (same single context).
   const chatFocus: DiagnosisChatFocus =
     activeTab === "skills" ? "skills_analysis" : activeTab === "market" ? "market_careers" : "cv_audit";
-  // Reveal a cited card: `dim-*` anchors only live on the CV Audit tab, so if the
-  // element isn't mounted (user is on another tab), switch to 'audit' first, then
-  // scroll on the next tick. No-op-safe when the element truly doesn't exist.
+  // Reveal a cited card — but NEVER auto-switch tabs. Only scroll to the card if it is
+  // already mounted on the CURRENT tab. Force-switching tabs on a citation yanks the user
+  // out of the section they're reading (e.g. asking a Market question and being teleported
+  // to CV Audit because the answer cited a dimension) — disorienting and off-topic. If the
+  // cited card lives on another tab, we simply don't scroll; the answer text still names it.
   const revealCard = useCallback((anchorId: string) => {
     if (typeof document === "undefined") return;
-    const scrollTo = () =>
-      document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    const el = document.getElementById(anchorId);
-    if (!el && anchorId.startsWith("dim-")) {
-      setActiveTab("audit");
-      // Wait for the audit panel to mount the dim card, then scroll.
-      requestAnimationFrame(() => requestAnimationFrame(scrollTo));
-      return;
-    }
-    scrollTo();
+    document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
   // Pass lastCvId so the advisor works on a CV-only scan (no JD match): when there's
   // no matchId, the hook/service post to the CV-only route grounded in the CV review.
