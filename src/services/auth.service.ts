@@ -16,6 +16,8 @@ import {
   type ResendVerificationEmailResponse,
 } from "@/api/auth/resendVerificationEmail";
 import { logoutApi } from "@/api/auth/logout";
+import { forgotPasswordApi } from "@/api/auth/forgotPassword";
+import { resetPasswordApi } from "@/api/auth/resetPassword";
 import type { AuthUserDto } from "@/api/auth/envelope";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
 import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
@@ -107,6 +109,14 @@ export function resendVerificationEmail(
   email: string,
 ): Promise<ResendVerificationEmailResponse> {
   return resendVerificationEmailApi({ email });
+}
+
+export function forgotPassword(email: string) {
+  return forgotPasswordApi({ email: email.trim().toLowerCase() });
+}
+
+export function resetPassword(token: string, newPassword: string) {
+  return resetPasswordApi({ token, newPassword });
 }
 
 /** Best-effort logout phía BE (xoá refresh cookie) + luôn xoá session local. */

@@ -1,6 +1,6 @@
 // ─── Business company onboarding APIs ───────────────────────────────
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
-import { httpClient } from "@/api/core/http-client";
+import { httpClient, type AuthAxiosRequestConfig } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import type {
   BusinessCompanyAggregate, BusinessProfileDto,
@@ -39,7 +39,10 @@ export async function sendWorkEmailVerificationApi(): Promise<{ accepted: true }
 // §6.3 Verify work email
 export async function verifyWorkEmailApi(token: string): Promise<{ verified: true }> {
   const envelope = await unwrapEnvelope<ApiEnvelope<{ verified: true }>>(
-    httpClient.post(API_ROUTES.BUSINESS_COMPANY.VERIFY, { token }),
+    httpClient.post(API_ROUTES.BUSINESS_COMPANY.VERIFY, { token }, {
+      skipAuth: true,
+      skipAuthRefresh: true,
+    } as AuthAxiosRequestConfig),
     "Failed to verify work email.",
   );
   return envelope.data;
@@ -56,10 +59,17 @@ export async function uploadCompanyMediaApi(
     ? API_ROUTES.BUSINESS_COMPANY.LOGO
     : API_ROUTES.BUSINESS_COMPANY.COVER;
   const envelope = await unwrapEnvelope<ApiEnvelope<CompanyMediaUploadResponse>>(
-    httpClient.post(url, formData),
+    httpClient.post(url, formData, { headers: { "Content-Type": "multipart/form-data" } }),
     `Failed to upload company ${kind}.`,
   );
   return envelope.data;
+}
+
+export async function downloadCompanyMediaApi(kind: "logo" | "cover"): Promise<Blob> {
+  const url =
+    kind === "logo" ? API_ROUTES.BUSINESS_COMPANY.LOGO : API_ROUTES.BUSINESS_COMPANY.COVER;
+  const response = await httpClient.get<Blob>(url, { responseType: "blob" });
+  return response.data;
 }
 
 // §6.5 Submit for review

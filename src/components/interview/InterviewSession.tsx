@@ -25,6 +25,7 @@ import {
 import { type ChatMessage, type InterviewMode } from "./types";
 import {
   getInterviewModeLabelKey,
+  getRealtimeMicStatusKey,
   hasVisibleInterviewQuestionMetadata,
   type InterviewQuestionBankSourceKind,
 } from "./interview-view-model";
@@ -104,6 +105,12 @@ export function InterviewSession({
   const isVoiceConnected = isLiveConnected && !isVoiceFallback;
   const isLiveRealtime = interviewMode === "realtime" && isVoiceConnected;
   const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
+  const realtimeMicStatusKey = getRealtimeMicStatusKey({
+    isLiveRealtime,
+    isLoading,
+    isInterviewerSpeaking,
+    isMicActive,
+  });
   const modeLabelKey = getInterviewModeLabelKey({
     interviewMode,
     isLiveConnected: isVoiceConnected,
@@ -428,7 +435,7 @@ export function InterviewSession({
                 }
                 title={
                   isLiveConnected
-                    ? t("interview.session.toggleMicrophone")
+                    ? t("interview.session.pauseResumeMicrophone")
                     : t("interview.session.reconnectVoice")
                 }
               >
@@ -508,15 +515,17 @@ export function InterviewSession({
           ) : isLiveRealtime ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-2">
-                {isMicActive ? (
+                {realtimeMicStatusKey === "listening" ? (
                   <Mic className="h-4 w-4 text-emerald-600" />
+                ) : realtimeMicStatusKey === "interviewerSpeaking" ? (
+                  <Volume2 className="h-4 w-4 text-amber-600" />
+                ) : realtimeMicStatusKey === "submitting" ? (
+                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
                 ) : (
                   <MicOff className="h-4 w-4 text-slate-400" />
                 )}
                 <span>
-                  {isMicActive
-                    ? t("interview.session.liveMicOn")
-                    : t("interview.session.liveMicMuted")}
+                  {t(`interview.session.realtimeMic.${realtimeMicStatusKey}`)}
                 </span>
               </div>
             </div>

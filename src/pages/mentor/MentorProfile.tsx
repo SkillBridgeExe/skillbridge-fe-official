@@ -8,10 +8,16 @@ import Layout from "@/components/layout/Layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMentorProfile, useMentorSlots } from "@/hooks/use-mentors";
 import { useCreateBooking } from "@/hooks/use-mentor-bookings";
 import { useToast } from "@/hooks/use-toast";
+import {
+  defaultMentorDateRange,
+  mentorDateRangeToIso,
+  validateMentorDateRange,
+} from "@/lib/mentor-date-range";
 
 export default function MentorProfile() {
   const { mentorSlug } = useParams<{ mentorSlug: string }>();
@@ -24,17 +30,16 @@ export default function MentorProfile() {
   const createBookingMutation = useCreateBooking();
   
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  
-  // Fetch next 14 days of slots
-  const { fromDate, toDate } = useMemo(() => {
-    const now = new Date();
-    return {
-      fromDate: now.toISOString(),
-      toDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString()
-    };
-  }, []);
-  
-  const slotsQuery = useMentorSlots(mentorSlug, { from: fromDate, to: toDate });
+  const [dateRange, setDateRange] = useState(defaultMentorDateRange);
+  const rangeError = validateMentorDateRange(dateRange.fromDate, dateRange.toDate);
+  const slotQueryRange = useMemo(
+    () =>
+      rangeError
+        ? { from: new Date().toISOString(), to: new Date().toISOString() }
+        : mentorDateRangeToIso(dateRange.fromDate, dateRange.toDate),
+    [dateRange.fromDate, dateRange.toDate, rangeError],
+  );
+  const slotsQuery = useMentorSlots(mentorSlug, slotQueryRange, !rangeError);
   
   const handleBookSession = async () => {
     if (!selectedSlotId || !mentorSlug) return;
@@ -184,9 +189,36 @@ export default function MentorProfile() {
 
               {/* Slot Picker */}
               <div className="border-t border-slate-100 pt-5 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{t("mentor.profile.availableSlots", "Lịch trống (14 ngày tới)")}</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  {t("mentor.profile.availableSlots", "Lịch trống")}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={dateRange.fromDate}
+                    onChange={(event) => {
+                      setSelectedSlotId(null);
+                      setDateRange((current) => ({ ...current, fromDate: event.target.value }));
+                    }}
+                    className="h-10 rounded-xl text-xs"
+                    aria-label="Từ ngày"
+                  />
+                  <Input
+                    type="date"
+                    value={dateRange.toDate}
+                    onChange={(event) => {
+                      setSelectedSlotId(null);
+                      setDateRange((current) => ({ ...current, toDate: event.target.value }));
+                    }}
+                    className="h-10 rounded-xl text-xs"
+                    aria-label="Đến ngày"
+                  />
+                </div>
+                {rangeError ? <p className="mt-2 text-xs text-red-600">{rangeError}</p> : null}
                 <div className="mt-3 flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
-                  {slotsQuery.isLoading ? (
+                  {slotsQuery.isError ? (
+                    <p className="text-sm text-red-600">Không thể tải lịch trống.</p>
+                  ) : slotsQuery.isLoading ? (
                     <Skeleton className="h-12 w-full rounded-xl" />
                   ) : slotsQuery.data?.filter(s => s.status === "OPEN").length ? (
                     slotsQuery.data.filter(s => s.status === "OPEN").map(slot => (

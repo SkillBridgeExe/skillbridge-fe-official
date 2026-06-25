@@ -112,15 +112,6 @@ export class OpenAIRealtimeSession {
     });
   }
 
-  startLiveInterview(): void {
-    this.send({
-      type: "response.create",
-      response: {
-        output_modalities: ["audio"],
-      },
-    });
-  }
-
   requestLiveInterviewClosing(language: "vi" | "en"): void {
     this.send({
       type: "response.create",

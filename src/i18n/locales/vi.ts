@@ -929,6 +929,37 @@ export default {
         savedJd: "JD đã lưu",
         noSavedMatch:
           "Chưa có JD match đã lưu. Phỏng vấn vẫn có thể dùng CV + vai trò.",
+        roleOnlyStillAvailable:
+          "Bạn vẫn có thể bắt đầu phỏng vấn chỉ theo vai trò từ bộ câu hỏi.",
+        uploadCvTitle: "Upload CV để cá nhân hóa tốt hơn",
+        uploadCvDescription:
+          "Thêm CV tại đây nếu bạn muốn câu hỏi bám vào dự án và kinh nghiệm thật.",
+        uploadCvCta: "Upload CV",
+        cvConsentLabel:
+          "Tôi đồng ý để SkillBridge xử lý CV này nhằm cá nhân hóa phỏng vấn.",
+        uploadAndUseCv: "Upload và dùng CV này",
+        jdRequiresCv: "Upload hoặc chọn CV trước khi thêm ngữ cảnh JD.",
+        addJdTitle: "Thêm ngữ cảnh JD",
+        addJdDescription:
+          "Dán hoặc upload JD để câu hỏi bám sát yêu cầu vai trò.",
+        addJdContext: "Thêm JD",
+        jdPaste: "Dán text",
+        jdUpload: "Upload file",
+        jdPastePlaceholder:
+          "Dán JD tại đây. Nên có trách nhiệm, kỹ năng yêu cầu và seniority nếu có.",
+        chooseJdFile: "Chọn file JD",
+        jdFileHint: "Hỗ trợ: TXT, PDF, DOCX theo giới hạn backend.",
+        createJdMatch: "Tạo match CV/JD",
+        uploadCvSuccessTitle: "CV đã sẵn sàng",
+        uploadCvSuccessDescription:
+          "CV vừa upload đã được chọn cho buổi phỏng vấn này.",
+        uploadCvFailedTitle: "Upload CV thất bại",
+        uploadCvFailed: "Không thể upload và phân tích CV này.",
+        createJdMatchSuccessTitle: "JD context đã sẵn sàng",
+        createJdMatchSuccessDescription:
+          "Match CV/JD mới đã được chọn cho buổi phỏng vấn này.",
+        createJdMatchFailedTitle: "Match JD thất bại",
+        createJdMatchFailed: "Không thể tạo match CV/JD.",
         targetRole: "Vai trò mục tiêu",
         language: "Ngôn ngữ",
         criteriaTitle: "Mục tiêu và tiêu chí chấm",
@@ -1037,11 +1068,19 @@ export default {
         transcriptSubtitle: "Gửi từng câu trả lời một",
         liveTranscriptSubtitle: "Transcript tự động",
         toggleMicrophone: "Bấm mic khi bạn trả lời",
+        pauseResumeMicrophone: "Tạm dừng hoặc tiếp tục nghe tự động",
         reconnectVoice: "Kết nối lại giọng nói",
         generatingNextQuestion: "Đang tạo câu hỏi tiếp theo...",
         viewResults: "Xem kết quả",
         liveMicOn: "Mic live đang bật",
         liveMicMuted: "Mic live đang tắt",
+        realtimeMic: {
+          manual: "Dùng text fallback để trả lời.",
+          interviewerSpeaking: "Interviewer đang nói. Mic tạm dừng nghe.",
+          submitting: "Đang gửi câu trả lời...",
+          listening: "Đang tự động nghe. Bạn có thể trả lời ngay.",
+          paused: "Đã tạm dừng nghe. Bấm mic để tiếp tục.",
+        },
         spokenPlaceholder:
           "Bấm mic khi bạn nói; transcript sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
         textPlaceholder:

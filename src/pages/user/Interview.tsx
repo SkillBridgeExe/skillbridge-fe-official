@@ -41,12 +41,14 @@ import {
 import {
   useCvListForInterview,
   useCvMatchesForInterview,
+  useCreateCvMatchForInterview,
   useEndInterview,
   useInterviewDetail,
   useInterviewHistory,
   useRefreshRealtimeToken,
   useStartInterview,
   useSubmitInterviewTurn,
+  useUploadCvForInterview,
 } from "@/hooks/use-interview";
 import { ResultsView } from "@/components/interview/ResultsView";
 import { InterviewHistoryDetailView } from "@/components/interview/InterviewHistoryDetailView";
@@ -55,6 +57,7 @@ import { InterviewSetup } from "@/components/interview/InterviewSetup";
 import { InterviewSession } from "@/components/interview/InterviewSession";
 import {
   AVAILABLE_TARGET_ROLES,
+  DEFAULT_INTERVIEW_MODE,
   STEP_ICONS,
   type ChatMessage,
   type InterviewMode,
@@ -68,8 +71,10 @@ import {
   buildInterviewInitialMessages,
   buildInterviewNextMessages,
   buildInterviewStartRequest,
+  buildServerOwnedRealtimeTurnRequest,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
+  createQuestionAudioRequestGuard,
   formatDuration,
   getInterviewEndIntent,
   getInterviewEndOutcome,
@@ -83,6 +88,7 @@ import {
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
   shouldRequestQuestionAudio,
+  speakOfficialRealtimeQuestion,
   takeRecentInterviewSessions,
   writeInterviewVoicePreference,
   type InterviewQuestionBankSourceKind,
@@ -136,7 +142,7 @@ export default function Interview() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState(AVAILABLE_TARGET_ROLES[0].value);
   const [selectedLanguage, setSelectedLanguage] = useState<"vi" | "en">("vi");
-  const [interviewMode, setInterviewMode] = useState<InterviewMode>("guided");
+  const [interviewMode, setInterviewMode] = useState<InterviewMode>(DEFAULT_INTERVIEW_MODE);
   const [interviewType, setInterviewType] = useState<InterviewType>("technical");
   const [voicePreference, setVoicePreference] = useState<InterviewVoicePreference>(() =>
     readInterviewVoicePreference(typeof window === "undefined" ? null : window.localStorage),
@@ -168,14 +174,18 @@ export default function Interview() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const liveSessionRef = useRef<OpenAIRealtimeSession | null>(null);
+  const activeSessionRef = useRef<InterviewSessionDto | null>(null);
+  const currentQuestionRef = useRef("");
   const questionAudioRef = useRef<HTMLAudioElement | null>(null);
   const questionAudioUrlRef = useRef<string | null>(null);
+  const questionAudioGuardRef = useRef(createQuestionAudioRequestGuard());
   const acceptsUserSpeechRef = useRef(false);
   const questionStartedAtRef = useRef<Date | null>(null);
   const liveAiMessageIdRef = useRef<string | null>(null);
   const liveQuestionBufferRef = useRef("");
   const liveLastQuestionRef = useRef("");
-  const liveTurnOrderRef = useRef(1);
+  const isRealtimeTurnSubmittingRef = useRef(false);
+  const submitRealtimeTranscriptRef = useRef<(transcript: string) => void>(() => undefined);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
   const liveClosingRequestedRef = useRef(false);
@@ -192,9 +202,19 @@ export default function Interview() {
   const cvListQuery = useCvListForInterview(canUseApi);
   const cvMatchesQuery = useCvMatchesForInterview(selectedCvId, canUseApi && Boolean(selectedCvId));
   const startInterviewMutation = useStartInterview();
+  const uploadCvForInterviewMutation = useUploadCvForInterview();
+  const createCvMatchForInterviewMutation = useCreateCvMatchForInterview();
   const submitTurnMutation = useSubmitInterviewTurn();
   const endInterviewMutation = useEndInterview();
   const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
+
+  useEffect(() => {
+    activeSessionRef.current = activeSession;
+  }, [activeSession]);
+
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion;
+  }, [currentQuestion]);
 
   const cvItems = cvListQuery.data?.items ?? [];
   const matchItems = cvMatchesQuery.data?.items ?? [];
@@ -305,46 +325,6 @@ export default function Interview() {
     });
   }, []);
 
-  const appendLiveUserTranscript = useCallback(
-    (transcript: string) => {
-      const normalized = transcript.trim().normalize("NFC");
-      if (!normalized) return;
-
-      const now = new Date();
-      const question =
-        liveLastQuestionRef.current.trim() ||
-        liveQuestionBufferRef.current.trim() ||
-        currentQuestion.trim() ||
-        "Live interviewer question";
-      const durationSeconds = questionStartedAtRef.current
-        ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
-        : undefined;
-      const turnOrder = liveTurnOrderRef.current;
-      liveTurnOrderRef.current += 1;
-
-      setChatHistory((current) => [
-        ...current,
-        { id: `live-user-${turnOrder}`, role: "user", content: normalized, timestamp: now },
-      ]);
-      setLiveReviewTurns((current) => [
-        ...current,
-        {
-          id: `live-turn-${turnOrder}`,
-          turnOrder,
-          interviewerQuestion: question,
-          userAnswerText: normalized,
-          userAnswerTranscript: normalized,
-          durationSeconds,
-          warnings: liveWarningsFor(question, normalized),
-        },
-      ]);
-
-      liveAiMessageIdRef.current = null;
-      liveQuestionBufferRef.current = "";
-      questionStartedAtRef.current = now;
-    },
-    [currentQuestion, liveWarningsFor],
-  );
   const dateLocale = i18n.language?.startsWith("vi") ? "vi-VN" : "en-US";
   const roleLabel = useCallback(
     (value: string): string =>
@@ -385,6 +365,7 @@ export default function Interview() {
   }, []);
 
   const stopQuestionAudio = useCallback(() => {
+    questionAudioGuardRef.current.invalidate();
     if (questionAudioRef.current) {
       questionAudioRef.current.pause();
       questionAudioRef.current.src = "";
@@ -477,10 +458,10 @@ export default function Interview() {
         switch (event.type) {
           case "connected":
             setIsLiveConnected(true);
-            setIsMicActive(liveConversation);
+            setIsMicActive(false);
             setIsVoiceFallback(false);
             setVoiceFallbackReason(null);
-            acceptsUserSpeechRef.current = liveConversation;
+            acceptsUserSpeechRef.current = false;
             break;
           case "disconnected":
             setIsLiveConnected(false);
@@ -490,68 +471,77 @@ export default function Interview() {
             const transcript = event.data?.trim();
             if (!transcript) break;
             if (liveConversation) {
-              appendLiveUserTranscript(transcript);
+              if (acceptsUserSpeechRef.current) {
+                submitRealtimeTranscriptRef.current(transcript);
+              }
             } else if (acceptsUserSpeechRef.current) {
               setUserAnswer((current) => (current.trim() ? `${current.trim()}\n${transcript}` : transcript));
             }
             break;
           }
           case "ai_speaking":
-            if (!liveConversation) {
-              acceptsUserSpeechRef.current = false;
-              liveSessionRef.current?.setMicEnabled(false);
-              setIsMicActive(false);
-            }
+            acceptsUserSpeechRef.current = false;
+            liveSessionRef.current?.setMicEnabled(false);
+            setIsMicActive(false);
             setIsAiSpeaking(true);
             break;
           case "ai_stopped":
             setIsAiSpeaking(false);
             if (liveConversation) {
-              liveLastQuestionRef.current =
-                liveQuestionBufferRef.current.trim() || liveLastQuestionRef.current;
-              if (liveLastQuestionRef.current) setCurrentQuestion(liveLastQuestionRef.current);
               questionStartedAtRef.current = new Date();
+              acceptsUserSpeechRef.current = true;
+              liveSessionRef.current?.setMicEnabled(true);
+              setIsMicActive(true);
             }
             break;
           case "error":
             setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
             break;
           case "ai_transcript": {
-            if (liveConversation && event.data) appendLiveAssistantTranscript(event.data);
+            if (!liveConversation && event.data) appendLiveAssistantTranscript(event.data);
             break;
           }
         }
       });
 
-      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: liveConversation });
-      realtimeSession.setMicEnabled(liveConversation);
-      acceptsUserSpeechRef.current = liveConversation;
-      setIsMicActive(liveConversation);
+      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: false });
+      realtimeSession.setMicEnabled(false);
+      acceptsUserSpeechRef.current = false;
+      setIsMicActive(false);
     },
-    [appendLiveAssistantTranscript, appendLiveUserTranscript, setVoiceFallback, t],
+    [appendLiveAssistantTranscript, setVoiceFallback, t],
   );
 
   const playQuestionAudio = useCallback(
     async (sessionId: string) => {
       stopQuestionAudio();
+      const requestId = questionAudioGuardRef.current.next();
       setQuestionAudioError(null);
       setIsQuestionAudioPlaying(true);
 
       try {
         const blob = await getInterviewQuestionAudio(sessionId);
+        if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
         const url = URL.createObjectURL(blob);
+        if (!questionAudioGuardRef.current.isCurrent(requestId)) {
+          URL.revokeObjectURL(url);
+          return;
+        }
         const audio = new Audio(url);
         questionAudioUrlRef.current = url;
         questionAudioRef.current = audio;
         audio.onended = () => {
+          if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
           setIsQuestionAudioPlaying(false);
         };
         audio.onerror = () => {
+          if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
           setIsQuestionAudioPlaying(false);
           setQuestionAudioError(t("interview.errors.questionAudioPlayFailed"));
         };
         await audio.play();
       } catch (error) {
+        if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
         setIsQuestionAudioPlaying(false);
         const fallback = t("interview.errors.questionAudioPlayFailed");
         setQuestionAudioError(
@@ -570,6 +560,9 @@ export default function Interview() {
     disconnectRealtime();
     stopMedia();
     stopQuestionAudio();
+    activeSessionRef.current = null;
+    currentQuestionRef.current = "";
+    isRealtimeTurnSubmittingRef.current = false;
     setActiveSession(null);
     setResultDetail(null);
     setSelectedHistorySessionId(null);
@@ -597,7 +590,6 @@ export default function Interview() {
     liveAiMessageIdRef.current = null;
     liveQuestionBufferRef.current = "";
     liveLastQuestionRef.current = "";
-    liveTurnOrderRef.current = 1;
   }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
 
   const openHistoryDetail = useCallback(
@@ -630,6 +622,92 @@ export default function Interview() {
     setSidebarOpen(true);
   }, [phase]);
 
+  const uploadCvForInterview = useCallback(
+    async (input: {
+      file: File;
+      targetRole?: string;
+      title?: string;
+      consentAccepted: boolean;
+    }) => {
+      if (!canUseApi) {
+        setApiError(t("interview.errors.signInRequired"));
+        return;
+      }
+
+      try {
+        setApiError(null);
+        const cv = await uploadCvForInterviewMutation.mutateAsync(input);
+        setSelectedCvId(cv.id);
+        setSelectedMatchId(null);
+        await cvListQuery.refetch();
+        toast({
+          title: t("interview.setup.uploadCvSuccessTitle"),
+          description: t("interview.setup.uploadCvSuccessDescription"),
+        });
+      } catch (error) {
+        const message = getApiErrorMessage(
+          error,
+          t("interview.setup.uploadCvFailed"),
+        );
+        setApiError(message);
+        toast({
+          title: t("interview.setup.uploadCvFailedTitle"),
+          description: message,
+          variant: "destructive",
+        });
+      }
+    },
+    [canUseApi, cvListQuery, t, toast, uploadCvForInterviewMutation],
+  );
+
+  const createCvMatchForInterview = useCallback(
+    async (
+      input:
+        | {
+            kind: "paste";
+            cvId: string;
+            jdText: string;
+            title?: string;
+            targetRole?: string;
+          }
+        | {
+            kind: "file";
+            cvId: string;
+            file: File;
+            title?: string;
+            targetRole?: string;
+          },
+    ) => {
+      if (!canUseApi) {
+        setApiError(t("interview.errors.signInRequired"));
+        return;
+      }
+
+      try {
+        setApiError(null);
+        const match = await createCvMatchForInterviewMutation.mutateAsync(input);
+        setSelectedMatchId(match.id);
+        await cvMatchesQuery.refetch();
+        toast({
+          title: t("interview.setup.createJdMatchSuccessTitle"),
+          description: t("interview.setup.createJdMatchSuccessDescription"),
+        });
+      } catch (error) {
+        const message = getApiErrorMessage(
+          error,
+          t("interview.setup.createJdMatchFailed"),
+        );
+        setApiError(message);
+        toast({
+          title: t("interview.setup.createJdMatchFailedTitle"),
+          description: message,
+          variant: "destructive",
+        });
+      }
+    },
+    [canUseApi, createCvMatchForInterviewMutation, cvMatchesQuery, t, toast],
+  );
+
   const startNewInterviewFromHistory = useCallback(() => {
     resetInterviewState();
     setWorkspaceTab("practice");
@@ -661,28 +739,25 @@ export default function Interview() {
         }),
       });
 
-      const initialMessages =
-        interviewMode === "realtime"
-          ? []
-          : buildInterviewInitialMessages(started.firstMessage, started.firstQuestion).map(
-              (content) => ({ role: "ai" as const, content, timestamp: new Date() }),
-            );
+      const initialMessages = buildInterviewInitialMessages(started.firstMessage, started.firstQuestion).map(
+        (content) => ({ role: "ai" as const, content, timestamp: new Date() }),
+      );
 
+      activeSessionRef.current = started;
+      currentQuestionRef.current = started.firstQuestion;
       setActiveSession(started);
-      setCurrentQuestion(interviewMode === "realtime" ? "" : started.firstQuestion);
+      setCurrentQuestion(started.firstQuestion);
       setCurrentQuestionMeta(
-        interviewMode === "realtime"
-          ? null
-          : questionMetadataFromTurn(
-              { topicPhase: started.phase, skillCanonical: null, currentThread: null, questionBankKey: null },
-              started.targetRole,
-            ),
+        questionMetadataFromTurn(
+          { topicPhase: started.phase, skillCanonical: null, currentThread: null, questionBankKey: null },
+          started.targetRole,
+        ),
       );
       setSecondsRemaining(secondsRemainingFromExpiry(started.expiresAt) || started.maxDurationSeconds);
       setChatHistory(initialMessages);
       setPhase("interviewing");
       setSidebarOpen(false);
-      questionStartedAtRef.current = new Date();
+      questionStartedAtRef.current = interviewMode === "realtime" ? null : new Date();
 
       const stream = await requestSessionMedia();
       let realtimeConnected = false;
@@ -715,10 +790,10 @@ export default function Interview() {
       }
 
       if (interviewMode === "realtime" && realtimeConnected) {
-        acceptsUserSpeechRef.current = true;
-        liveSessionRef.current?.setMicEnabled(true);
-        setIsMicActive(true);
-        liveSessionRef.current?.startLiveInterview();
+        acceptsUserSpeechRef.current = false;
+        liveSessionRef.current?.setMicEnabled(false);
+        setIsMicActive(false);
+        speakOfficialRealtimeQuestion(liveSessionRef.current, started.firstQuestion, selectedLanguage);
       } else if (shouldRequestQuestionAudio(interviewMode)) {
         void playQuestionAudio(started.id);
       }
@@ -798,6 +873,90 @@ export default function Interview() {
     ],
   );
 
+  const submitRealtimeTranscript = useCallback(
+    async (transcript: string) => {
+      if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
+
+      const session = activeSessionRef.current;
+      const now = new Date();
+      const durationSeconds = questionStartedAtRef.current
+        ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
+        : undefined;
+      const payload = session
+        ? buildServerOwnedRealtimeTurnRequest({
+            sessionId: session.id,
+            transcript,
+            durationSeconds,
+          })
+        : null;
+      if (!payload) return;
+
+      isRealtimeTurnSubmittingRef.current = true;
+      stopQuestionAudio();
+      acceptsUserSpeechRef.current = false;
+      liveSessionRef.current?.setMicEnabled(false);
+      setIsMicActive(false);
+      setChatHistory((current) => [
+        ...current,
+        { id: `live-user-${Date.now()}`, role: "user", content: payload.userAnswer, timestamp: now },
+      ]);
+      setIsLoading(true);
+      setApiError(null);
+
+      try {
+        const response = await submitTurnMutation.mutateAsync(payload);
+        activeSessionRef.current = response.session;
+        setActiveSession(response.session);
+
+        const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
+        currentQuestionRef.current = nextQuestion;
+        if (nextQuestion) {
+          setCurrentQuestion(nextQuestion);
+          setCurrentQuestionMeta(
+            response.nextTurn
+              ? questionMetadataFromTurn(response.nextTurn, response.session.targetRole)
+              : questionMetadataFromTurn(null, response.session.targetRole),
+          );
+        } else {
+          setCurrentQuestionMeta(null);
+        }
+
+        const nextMessages = buildInterviewNextMessages(nextQuestion).map((content) => ({
+          role: "ai" as const,
+          content,
+          timestamp: new Date(),
+        }));
+        if (nextMessages.length > 0) {
+          setChatHistory((current) => [...current, ...nextMessages]);
+        }
+
+        if (response.finished) {
+          setInterviewFinished(true);
+          await finishInterview("finished");
+          return;
+        }
+
+        questionStartedAtRef.current = null;
+        acceptsUserSpeechRef.current = false;
+        liveSessionRef.current?.setMicEnabled(false);
+        setIsMicActive(false);
+        speakOfficialRealtimeQuestion(liveSessionRef.current, nextQuestion, selectedLanguage);
+      } catch (error) {
+        setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
+        acceptsUserSpeechRef.current = true;
+        liveSessionRef.current?.setMicEnabled(true);
+        setIsMicActive(true);
+      } finally {
+        setIsLoading(false);
+        isRealtimeTurnSubmittingRef.current = false;
+      }
+    },
+    [finishInterview, selectedLanguage, stopQuestionAudio, submitTurnMutation, t],
+  );
+  submitRealtimeTranscriptRef.current = (transcript: string) => {
+    void submitRealtimeTranscript(transcript);
+  };
+
   const handleSubmitAnswer = async () => {
     if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
     const answer = userAnswer.trim();
@@ -812,6 +971,7 @@ export default function Interview() {
       ...current,
       { role: "user", content: answer, timestamp: now },
     ]);
+    stopQuestionAudio();
     acceptsUserSpeechRef.current = false;
     liveSessionRef.current?.setMicEnabled(false);
     setIsMicActive(false);
@@ -828,8 +988,10 @@ export default function Interview() {
         durationSeconds,
       });
 
+      activeSessionRef.current = response.session;
       setActiveSession(response.session);
       const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
+      currentQuestionRef.current = nextQuestion;
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
         setCurrentQuestionMeta(
@@ -910,7 +1072,7 @@ export default function Interview() {
   ]);
 
   const toggleLiveMic = async () => {
-    if ((interviewMode !== "realtime" && (isAiSpeaking || isQuestionAudioPlaying)) || isLoading) {
+    if (isAiSpeaking || isQuestionAudioPlaying || isLoading) {
       return;
     }
 
@@ -925,7 +1087,7 @@ export default function Interview() {
 
     const next = !isMicActive;
     liveSessionRef.current.setMicEnabled(next);
-    if (next) acceptsUserSpeechRef.current = true;
+    acceptsUserSpeechRef.current = next;
     setIsMicActive(next);
   };
 
@@ -990,10 +1152,7 @@ export default function Interview() {
       }
       if (remaining === 0 && !autoEndRef.current) {
         autoEndRef.current = true;
-        void finishInterview(
-          "timer",
-          interviewMode === "realtime" && !isVoiceFallback ? liveTurnInputs : undefined,
-        );
+        void finishInterview("timer");
       }
     };
 
@@ -1006,7 +1165,6 @@ export default function Interview() {
     interviewMode,
     isLiveConnected,
     isVoiceFallback,
-    liveTurnInputs,
     phase,
     selectedLanguage,
   ]);
@@ -1256,6 +1414,14 @@ export default function Interview() {
                 setSelectedVoice={setSelectedVoice}
                 speechSpeed={voicePreference.speechSpeed}
                 setSpeechSpeed={setSpeechSpeed}
+                onUploadCvForInterview={(input) => {
+                  void uploadCvForInterview(input);
+                }}
+                isUploadingCv={uploadCvForInterviewMutation.isPending}
+                onCreateCvMatchForInterview={(input) => {
+                  void createCvMatchForInterview(input);
+                }}
+                isCreatingCvMatch={createCvMatchForInterviewMutation.isPending}
               />
               {apiError && (
                 <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -1366,14 +1532,7 @@ export default function Interview() {
               disabled={isEnding}
               onClick={() => {
                 setIsEndDialogOpen(false);
-                if (interviewMode === "realtime" && !isVoiceFallback && liveReviewTurns.length > 0) {
-                  setIsLiveReviewOpen(true);
-                  return;
-                }
-                void finishInterview(
-                  "manual",
-                  interviewMode === "realtime" && !isVoiceFallback ? [] : undefined,
-                );
+                void finishInterview("manual");
               }}
             >
               {t(
