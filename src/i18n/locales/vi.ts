@@ -910,6 +910,41 @@ export default {
           "Phiên này chưa hoàn tất hoặc chưa có điểm tổng. Hãy quay lại danh sách để chọn phiên khác.",
       },
       setup: {
+        progressive: {
+          goalAndContext: "Mục tiêu & Ngữ cảnh",
+          dataSource: "Nguồn dữ liệu câu hỏi",
+          roleOnly: {
+            title: "Chỉ dùng Vai trò",
+            desc: "Phỏng vấn ngẫu nhiên theo bộ câu hỏi chuẩn."
+          },
+          cv: {
+            title: "Dùng CV của tôi",
+            desc: "Cá nhân hóa câu hỏi dựa trên kinh nghiệm thực tế."
+          },
+          match: {
+            title: "Phân tích JD",
+            desc: "Mô phỏng phỏng vấn sát với yêu cầu tuyển dụng."
+          },
+          cvPlaceholder: "Chọn một CV đã lưu...",
+          cvSelectEmpty: "--- Chọn CV ---",
+          uploadNewCv: "Tải lên CV mới",
+          cvUploadHint: "PDF, PNG, JPG (Max 5MB)",
+          chooseFile: "Chọn file",
+          uploadAndUse: "Tải lên & Sử dụng",
+          requireCvFirst: "Vui lòng chọn hoặc tải lên CV ở bước 1 trước.",
+          matchPlaceholder: "Chọn một JD Match đã lưu...",
+          matchSelectEmpty: "--- Chọn JD Match ---",
+          addNewJd: "Thêm JD mới",
+          addJdButton: "Thêm JD",
+          enterJd: "Nhập JD",
+          pasteText: "Dán văn bản",
+          uploadFileText: "Tải file lên",
+          analyzeJdButton: "Phân tích JD",
+          modeAndVoice: "Chế độ & Giọng nói",
+          voiceLabel: "Giọng AI",
+          speedLabel: "Tốc độ",
+          criteriaIntro: "Phỏng vấn {{type}} cho {{role}}. AI sẽ đánh giá qua 5 tiêu chí:"
+        },
         subtitle:
           "Chọn ngữ cảnh, chọn chế độ giọng nói và chỉ chuyển sang text khi microphone hoặc realtime gặp lỗi.",
         type: {
@@ -1010,6 +1045,9 @@ export default {
             description:
               "Chỉ dùng transcript để chấm điểm; không lưu file ghi âm.",
           },
+          dialogDesc: "Hãy chắc chắn bạn đã hiểu rõ các quy tắc sau để có một buổi phỏng vấn tốt nhất.",
+          dialogCancel: "Hủy",
+          dialogConfirm: "Tôi đã hiểu, Bắt đầu ngay",
         },
         modes: {
           guided: {

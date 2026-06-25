@@ -913,6 +913,41 @@ export default {
           "This interview is not completed yet or does not have an overall score. Choose another session from the list.",
       },
       setup: {
+        progressive: {
+          goalAndContext: "Goal & Context",
+          dataSource: "Question Data Source",
+          roleOnly: {
+            title: "Role Only",
+            desc: "Random questions from the standard question bank."
+          },
+          cv: {
+            title: "Use My CV",
+            desc: "Personalize questions based on actual experience."
+          },
+          match: {
+            title: "JD Analysis",
+            desc: "Mock interview closely following job requirements."
+          },
+          cvPlaceholder: "Select a saved CV...",
+          cvSelectEmpty: "--- Select CV ---",
+          uploadNewCv: "Upload new CV",
+          cvUploadHint: "PDF, PNG, JPG (Max 5MB)",
+          chooseFile: "Choose file",
+          uploadAndUse: "Upload & Use",
+          requireCvFirst: "Please select or upload a CV in step 1 first.",
+          matchPlaceholder: "Select a saved JD Match...",
+          matchSelectEmpty: "--- Select JD Match ---",
+          addNewJd: "Add new JD",
+          addJdButton: "Add JD",
+          enterJd: "Enter JD",
+          pasteText: "Paste text",
+          uploadFileText: "Upload file",
+          analyzeJdButton: "Analyze JD",
+          modeAndVoice: "Mode & Voice",
+          voiceLabel: "AI Voice",
+          speedLabel: "Speed",
+          criteriaIntro: "{{type}} interview for {{role}}. AI will evaluate 5 criteria:"
+        },
         subtitle:
           "Choose context, pick a voice mode, and fall back to text only if microphone or realtime fails.",
         type: {
@@ -1013,6 +1048,9 @@ export default {
             description:
               "Only the transcript is used for scoring; recordings are not stored.",
           },
+          dialogDesc: "Please ensure you understand these guidelines for the best interview experience.",
+          dialogCancel: "Cancel",
+          dialogConfirm: "Got it, start now",
         },
         modes: {
           guided: {
