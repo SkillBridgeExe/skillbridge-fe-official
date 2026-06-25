@@ -3,6 +3,7 @@ import type {
   InterviewFeedback,
   PlatformInterviewType,
   StartInterviewRequest,
+  SubmitInterviewTurnRequest,
 } from "@/api/interview-api";
 import {
   DEFAULT_INTERVIEW_SPEECH_SPEED,
@@ -131,6 +132,20 @@ export type InterviewModeLabelKey =
   | "textFallback"
   | "liveRealtime"
   | "guidedVoice";
+
+export type RealtimeMicStatusKey =
+  | "manual"
+  | "interviewerSpeaking"
+  | "submitting"
+  | "listening"
+  | "paused";
+
+interface RealtimeMicStatusOptions {
+  isLiveRealtime: boolean;
+  isLoading: boolean;
+  isInterviewerSpeaking: boolean;
+  isMicActive: boolean;
+}
 export type InterviewEndIntent = "cancel" | "score";
 export type InterviewEndOutcome = "cancelled" | "scored";
 export type LiveTranscriptWarning = "cjk" | "promptLeak";
@@ -138,6 +153,22 @@ export type LiveTranscriptWarning = "cjk" | "promptLeak";
 export interface InterviewVoicePreference {
   voice: InterviewVoice;
   speechSpeed: InterviewSpeechSpeed;
+}
+
+export interface RealtimeOfficialQuestionSpeaker {
+  speakOfficialQuestion(question: string, language: "vi" | "en"): void;
+}
+
+export interface ServerOwnedRealtimeTurnInput {
+  sessionId: string;
+  transcript: string;
+  durationSeconds?: number;
+}
+
+export interface QuestionAudioRequestGuard {
+  next(): number;
+  invalidate(): void;
+  isCurrent(requestId: number): boolean;
 }
 
 export function getInterviewEndIntent(
@@ -247,6 +278,47 @@ export function buildInterviewStartRequest({
     interviewType: toBackendInterviewType(interviewType),
     voice,
     speechSpeed,
+  };
+}
+
+export function speakOfficialRealtimeQuestion(
+  session: RealtimeOfficialQuestionSpeaker | null | undefined,
+  question: string | null | undefined,
+  language: "vi" | "en",
+): boolean {
+  const trimmed = question?.trim().normalize("NFC");
+  if (!session || !trimmed) return false;
+  session.speakOfficialQuestion(trimmed, language);
+  return true;
+}
+
+export function buildServerOwnedRealtimeTurnRequest({
+  sessionId,
+  transcript,
+  durationSeconds,
+}: ServerOwnedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
+  const normalized = transcript.trim().normalize("NFC");
+  if (!normalized) return null;
+  return {
+    sessionId,
+    userAnswer: normalized,
+    userTranscript: normalized,
+    modality: "AUDIO",
+    durationSeconds,
+  };
+}
+
+export function createQuestionAudioRequestGuard(): QuestionAudioRequestGuard {
+  let currentRequestId = 0;
+  return {
+    next: () => {
+      currentRequestId += 1;
+      return currentRequestId;
+    },
+    invalidate: () => {
+      currentRequestId += 1;
+    },
+    isCurrent: (requestId: number) => requestId === currentRequestId,
   };
 }
 
@@ -439,6 +511,18 @@ export function getInterviewModeLabelKey({
   }
 
   return "guidedVoice";
+}
+
+export function getRealtimeMicStatusKey({
+  isLiveRealtime,
+  isLoading,
+  isInterviewerSpeaking,
+  isMicActive,
+}: RealtimeMicStatusOptions): RealtimeMicStatusKey {
+  if (!isLiveRealtime) return "manual";
+  if (isInterviewerSpeaking) return "interviewerSpeaking";
+  if (isLoading) return "submitting";
+  return isMicActive ? "listening" : "paused";
 }
 
 interface RealtimeTokenFallbackOptions {

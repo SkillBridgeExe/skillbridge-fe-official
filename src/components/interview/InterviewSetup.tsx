@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { CvListItemDto, CvMatchDto } from "@shared/api";
 import {
   Camera,
@@ -5,19 +6,24 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
+  FileUp,
   ListChecks,
   Mic,
   Play,
   Radio,
   RefreshCw,
   ShieldCheck,
+  Type,
+  Upload,
   Video,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { INTERVIEW_SETUP_TIPS } from "@/constants/interview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -27,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +48,29 @@ import {
   type InterviewVoice,
 } from "./types";
 import { getInterviewQuestionBankSourceKind } from "./interview-view-model";
+
+interface InterviewCvUploadInput {
+  file: File;
+  targetRole?: string;
+  title?: string;
+  consentAccepted: boolean;
+}
+
+type InterviewJdMatchInput =
+  | {
+      kind: "paste";
+      cvId: string;
+      jdText: string;
+      title?: string;
+      targetRole?: string;
+    }
+  | {
+      kind: "file";
+      cvId: string;
+      file: File;
+      title?: string;
+      targetRole?: string;
+    };
 
 interface InterviewSetupProps {
   tipsExpanded: boolean;
@@ -67,6 +97,10 @@ interface InterviewSetupProps {
   setSelectedVoice: (v: InterviewVoice) => void;
   speechSpeed: InterviewSpeechSpeed;
   setSpeechSpeed: (v: InterviewSpeechSpeed) => void;
+  onUploadCvForInterview: (input: InterviewCvUploadInput) => void;
+  isUploadingCv: boolean;
+  onCreateCvMatchForInterview: (input: InterviewJdMatchInput) => void;
+  isCreatingCvMatch: boolean;
 }
 
 export function InterviewSetup({
@@ -94,8 +128,20 @@ export function InterviewSetup({
   setSelectedVoice,
   speechSpeed,
   setSpeechSpeed,
+  onUploadCvForInterview,
+  isUploadingCv,
+  onCreateCvMatchForInterview,
+  isCreatingCvMatch,
 }: InterviewSetupProps) {
   const { t, i18n } = useTranslation("common");
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const jdFileInputRef = useRef<HTMLInputElement>(null);
+  const [cvUploadFile, setCvUploadFile] = useState<File | null>(null);
+  const [cvConsentAccepted, setCvConsentAccepted] = useState(false);
+  const [showJdComposer, setShowJdComposer] = useState(false);
+  const [jdInputMode, setJdInputMode] = useState<"paste" | "file">("paste");
+  const [jdText, setJdText] = useState("");
+  const [jdFile, setJdFile] = useState<File | null>(null);
   const selectedCv = cvItems.find((cv) => cv.id === selectedCvId);
   const dateLocale = i18n.language?.startsWith("vi") ? "vi-VN" : "en-US";
   const formatDate = (value: string | null | undefined): string => {
@@ -122,6 +168,39 @@ export function InterviewSetup({
     "evidenceCredibility",
     "roleFit",
   ] as const;
+  const canUploadCv = Boolean(cvUploadFile && cvConsentAccepted && targetRole);
+  const canCreateJdMatch =
+    Boolean(selectedCvId) &&
+    (jdInputMode === "paste" ? Boolean(jdText.trim()) : Boolean(jdFile));
+  const submitCvUpload = () => {
+    if (!cvUploadFile || !canUploadCv) return;
+    onUploadCvForInterview({
+      file: cvUploadFile,
+      title: cvUploadFile.name,
+      targetRole,
+      consentAccepted: cvConsentAccepted,
+    });
+  };
+  const submitJdMatch = () => {
+    if (!selectedCvId || !canCreateJdMatch) return;
+    if (jdInputMode === "file" && jdFile) {
+      onCreateCvMatchForInterview({
+        kind: "file",
+        cvId: selectedCvId,
+        file: jdFile,
+        title: jdFile.name,
+        targetRole,
+      });
+      return;
+    }
+
+    onCreateCvMatchForInterview({
+      kind: "paste",
+      cvId: selectedCvId,
+      jdText: jdText.trim(),
+      targetRole,
+    });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -163,7 +242,8 @@ export function InterviewSetup({
                 {t("interview.setup.contextTitle")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   {t("interview.setup.cvLabel")}
@@ -176,6 +256,7 @@ export function InterviewSetup({
                     onValueChange={(value) => {
                       setSelectedCvId(value === "none" ? null : value);
                       setSelectedMatchId(null);
+                      setShowJdComposer(false);
                     }}
                   >
                     <SelectTrigger>
@@ -197,7 +278,7 @@ export function InterviewSetup({
                     </SelectContent>
                   </Select>
                 )}
-                {selectedCv && (
+                {selectedCv ? (
                   <p className="text-xs text-slate-500">
                     {t("interview.setup.uploadedAt", {
                       date: formatDate(selectedCv.createdAt),
@@ -205,6 +286,10 @@ export function InterviewSetup({
                     {selectedCv.targetRole
                       ? ` · ${roleLabel(selectedCv.targetRole)}`
                       : ""}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    {t("interview.setup.roleOnlyStillAvailable")}
                   </p>
                 )}
               </div>
@@ -258,7 +343,193 @@ export function InterviewSetup({
                     </p>
                   )}
               </div>
+              </div>
 
+              {!selectedCvId && (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {t("interview.setup.uploadCvTitle")}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                        {t("interview.setup.uploadCvDescription")}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 rounded-xl font-bold"
+                      onClick={() => cvInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {t("interview.setup.uploadCvCta")}
+                    </Button>
+                  </div>
+                  <input
+                    ref={cvInputRef}
+                    className="hidden"
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                    onChange={(event) =>
+                      setCvUploadFile(event.target.files?.[0] ?? null)
+                    }
+                  />
+                  {cvUploadFile && (
+                    <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-900">
+                            {cvUploadFile.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {(cvUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => setCvUploadFile(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <label className="flex items-start gap-2 text-xs text-slate-600">
+                        <Checkbox
+                          checked={cvConsentAccepted}
+                          onCheckedChange={(checked) =>
+                            setCvConsentAccepted(checked === true)
+                          }
+                          className="mt-0.5"
+                        />
+                        <span>{t("interview.setup.cvConsentLabel")}</span>
+                      </label>
+                      <Button
+                        type="button"
+                        className="w-full rounded-xl font-bold"
+                        disabled={!canUploadCv || isUploadingCv}
+                        onClick={submitCvUpload}
+                      >
+                        {isUploadingCv ? (
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        {t("interview.setup.uploadAndUseCv")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!selectedCvId ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+                  {t("interview.setup.jdRequiresCv")}
+                </div>
+              ) : !isMatchesLoading && matchItems.length === 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {t("interview.setup.addJdTitle")}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                        {t("interview.setup.addJdDescription")}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 rounded-xl font-bold"
+                      onClick={() => setShowJdComposer((value) => !value)}
+                    >
+                      <FileUp className="mr-2 h-4 w-4" />
+                      {t("interview.setup.addJdContext")}
+                    </Button>
+                  </div>
+
+                  {showJdComposer && (
+                    <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
+                      <ToggleGroup
+                        type="single"
+                        value={jdInputMode}
+                        onValueChange={(value) =>
+                          value && setJdInputMode(value as "paste" | "file")
+                        }
+                        className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1"
+                      >
+                        <ToggleGroupItem
+                          value="paste"
+                          className="h-8 rounded-md text-xs font-bold data-[state=on]:bg-white"
+                        >
+                          <Type className="mr-1.5 h-3.5 w-3.5" />
+                          {t("interview.setup.jdPaste")}
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                          value="file"
+                          className="h-8 rounded-md text-xs font-bold data-[state=on]:bg-white"
+                        >
+                          <FileUp className="mr-1.5 h-3.5 w-3.5" />
+                          {t("interview.setup.jdUpload")}
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+
+                      {jdInputMode === "paste" ? (
+                        <Textarea
+                          value={jdText}
+                          onChange={(event) => setJdText(event.target.value)}
+                          className="min-h-[120px] resize-none rounded-xl bg-slate-50"
+                          placeholder={t("interview.setup.jdPastePlaceholder")}
+                        />
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            ref={jdFileInputRef}
+                            className="hidden"
+                            type="file"
+                            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                            onChange={(event) =>
+                              setJdFile(event.target.files?.[0] ?? null)
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full rounded-xl font-bold"
+                            onClick={() => jdFileInputRef.current?.click()}
+                          >
+                            <FileUp className="mr-2 h-4 w-4" />
+                            {jdFile
+                              ? jdFile.name
+                              : t("interview.setup.chooseJdFile")}
+                          </Button>
+                          <p className="text-xs text-slate-500">
+                            {t("interview.setup.jdFileHint")}
+                          </p>
+                        </div>
+                      )}
+
+                      <Button
+                        type="button"
+                        className="w-full rounded-xl font-bold"
+                        disabled={!canCreateJdMatch || isCreatingCvMatch}
+                        onClick={submitJdMatch}
+                      >
+                        {isCreatingCvMatch ? (
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileUp className="mr-2 h-4 w-4" />
+                        )}
+                        {t("interview.setup.createJdMatch")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -314,8 +585,43 @@ export function InterviewSetup({
                   ))}
                 </ToggleGroup>
               </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                <Badge
+                  variant={
+                    questionBankSourceKind === "curated"
+                      ? "default"
+                      : "secondary"
+                  }
+                  className="rounded-full"
+                >
+                  <Database className="mr-1.5 h-3.5 w-3.5" />
+                  {t(`interview.setup.questionBank.${questionBankSourceKind}`)}
+                </Badge>
+                <Badge variant="outline" className="rounded-full">
+                  <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+                  {t("interview.setup.privacyScoringTitle")}
+                </Badge>
+              </div>
             </CardContent>
           </Card>
+
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 shadow-xl border border-slate-800">
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-300 space-y-5">
+              <div className="relative w-24 h-24 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.15)]">
+                <Camera className="w-10 h-10 text-blue-400/80" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-white">
+                  {t("interview.setup.cameraTitle")}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {t("interview.setup.cameraDescription")}
+                </p>
+              </div>
+            </div>
+          </div>
 
           <Card className="border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
@@ -381,22 +687,6 @@ export function InterviewSetup({
               </div>
             </CardContent>
           </Card>
-
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 shadow-xl border border-slate-800">
-            <div className="w-full h-full flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-300 space-y-5">
-              <div className="relative w-24 h-24 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.15)]">
-                <Camera className="w-10 h-10 text-blue-400/80" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-white">
-                  {t("interview.setup.cameraTitle")}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {t("interview.setup.cameraDescription")}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <Card className="border-slate-200 shadow-sm">

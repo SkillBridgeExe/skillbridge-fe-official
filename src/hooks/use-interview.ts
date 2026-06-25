@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { uploadCvApi, type UploadCvInput } from "@/api/cv/upload";
 import { getCvListApi } from "@/api/cv/list";
-import { getCvMatchesApi } from "@/api/cv/match";
+import {
+  getCvMatchesApi,
+  matchCvWithJdApi,
+  matchCvWithJdFileApi,
+  type MatchCvWithJdFileInput,
+  type MatchCvWithJdInput,
+} from "@/api/cv/match";
 import { QUERY_KEYS } from "@/constants/app";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import {
@@ -18,6 +25,10 @@ interface EndInterviewMutationInput {
   sessionId: string;
   liveTurns?: LiveInterviewTurnInput[];
 }
+
+export type CreateCvMatchForInterviewInput =
+  | ({ kind: "paste"; cvId: string } & MatchCvWithJdInput)
+  | ({ kind: "file"; cvId: string } & MatchCvWithJdFileInput);
 
 function shouldRetryInterviewHistory(failureCount: number, error: unknown): boolean {
   if (failureCount >= 1) return false;
@@ -80,6 +91,38 @@ export function useCvMatchesForInterview(cvId: string | null, enabled: boolean) 
 export function useStartInterview() {
   return useMutation({
     mutationFn: startInterview,
+  });
+}
+
+export function useUploadCvForInterview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UploadCvInput) => uploadCvApi(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.INTERVIEW_CVS });
+    },
+  });
+}
+
+export function useCreateCvMatchForInterview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateCvMatchForInterviewInput) => {
+      if (input.kind === "file") {
+        const { cvId, kind: _kind, ...payload } = input;
+        return matchCvWithJdFileApi(cvId, payload);
+      }
+
+      const { cvId, kind: _kind, ...payload } = input;
+      return matchCvWithJdApi(cvId, payload);
+    },
+    onSuccess: (_match, input) => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.INTERVIEW_CV_MATCHES(input.cvId),
+      });
+    },
   });
 }
 

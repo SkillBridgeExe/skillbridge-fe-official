@@ -116,18 +116,23 @@ export function useUpdateAdminMentorStatus() {
 
 // ── Slot hooks ─────────────────────────────────────────────────────────────
 
-export function useMentorSlots(slug: string | undefined, query: ListMentorSlotsQuery) {
+export function useMentorSlots(
+  slug: string | undefined,
+  query: ListMentorSlotsQuery,
+  enabled = true,
+) {
   return useQuery({
     queryKey: QUERY_KEYS.MENTOR_SLOTS(slug ?? "", query),
     queryFn: () => getMentorSlots(slug!, query),
-    enabled: Boolean(slug),
+    enabled: Boolean(slug) && enabled,
   });
 }
 
-export function useMyMentorSlots(query: ListMentorSlotsQuery) {
+export function useMyMentorSlots(query: ListMentorSlotsQuery, enabled = true) {
   return useQuery({
     queryKey: QUERY_KEYS.MY_MENTOR_SLOTS(query),
     queryFn: () => getMyMentorSlots(query),
+    enabled,
   });
 }
 

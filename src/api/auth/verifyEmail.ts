@@ -6,7 +6,7 @@ export interface VerifyEmailRequest {
   token: string;
 }
 
-export type VerifyEmailResponse = ApiEnvelope<null>;
+export type VerifyEmailResponse = ApiEnvelope<{ verified: true }>;
 
 export const verifyEmailApi = (payload: VerifyEmailRequest): Promise<VerifyEmailResponse> =>
   unwrapEnvelope(

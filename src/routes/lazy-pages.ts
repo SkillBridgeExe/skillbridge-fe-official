@@ -11,6 +11,8 @@ export const NotFound = lazy(() => import("@/pages/public/NotFound"));
 
 export const Register = lazy(() => import("@/pages/auth/Register"));
 export const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
+export const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
+export const ResetPassword = lazy(() => import("@/pages/auth/ResetPassword"));
 
 export const Dashboard = lazy(() => import("@/pages/user/Dashboard"));
 export const UserProfile = lazy(() => import("@/pages/user/Profile"));
@@ -30,6 +32,7 @@ export const Testimonials = lazy(() => import("@/pages/user/Testimonials"));
 
 export const BusinessDashboard = lazy(() => import("@/pages/business/BusinessDashboard"));
 export const BusinessProfile = lazy(() => import("@/pages/business/BusinessProfile"));
+export const BusinessVerifyEmail = lazy(() => import("@/pages/business/BusinessVerifyEmail"));
 export const BusinessJobs = lazy(() => import("@/pages/business/BusinessJobs"));
 export const BusinessJobEdit = lazy(() => import("@/pages/business/BusinessJobEdit"));
 export const TopCandidates = lazy(() => import("@/pages/business/TopCandidates"));

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { JobVersionDto } from "@/types/jobs";
 import {
+  dateInputToEndOfDayIso,
   draftToBusinessJobForm,
   formToUpdateJobDraftRequest,
   splitLines,
@@ -76,19 +77,41 @@ describe("business job form mapping", () => {
       expectedRevision: 7,
       title: "Frontend Fresher",
       openingsCount: 3,
-      salaryMin: undefined,
+      salaryMin: null,
       salaryMax: 7000000,
       requirements: ["React", "TypeScript"],
       locations: [{ cityCode: "SGN", countryCode: "VN", addressLine: "Q1", isPrimary: true }],
     });
   });
 
-  it("handles empty locations array in update request", () => {
+  it("sends empty arrays and nulls so existing draft values can be cleared", () => {
     const form = draftToBusinessJobForm(baseDraft);
-    form.locations = []; // Empty locations should not be sent or should be undefined
+    form.locations = [];
+    form.roleCode = "";
+    form.applicationDeadline = "";
+    form.summary = "";
 
     const request = formToUpdateJobDraftRequest(form, baseDraft.revision);
 
-    expect(request.locations).toBeUndefined();
+    expect(request).toMatchObject({
+      locations: [],
+      roleCode: null,
+      applicationDeadline: null,
+      summary: null,
+    });
+  });
+
+  it("converts a selected deadline to the local end of day", () => {
+    const result = new Date(dateInputToEndOfDayIso("2026-07-01"));
+
+    expect(result.getFullYear()).toBe(2026);
+    expect(result.getMonth()).toBe(6);
+    expect(result.getDate()).toBe(1);
+    expect(result.getHours()).toBe(23);
+    expect(result.getMinutes()).toBe(59);
+  });
+
+  it("keeps a cleared deadline empty", () => {
+    expect(dateInputToEndOfDayIso("")).toBe("");
   });
 });

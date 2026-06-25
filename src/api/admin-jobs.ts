@@ -31,6 +31,18 @@ export async function getAdminBusinessProfileApi(
   return envelope.data;
 }
 
+export async function downloadAdminBusinessMediaApi(
+  profileId: string,
+  kind: "logo" | "cover",
+): Promise<Blob> {
+  const url =
+    kind === "logo"
+      ? API_ROUTES.ADMIN_BUSINESS.PROFILE_LOGO(profileId)
+      : API_ROUTES.ADMIN_BUSINESS.PROFILE_COVER(profileId);
+  const response = await httpClient.get<Blob>(url, { responseType: "blob" });
+  return response.data;
+}
+
 // §9.1 Review business profile
 export async function reviewBusinessProfileApi(
   profileId: string,
