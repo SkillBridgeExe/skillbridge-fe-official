@@ -137,7 +137,6 @@ export default function Interview() {
   const [phase, setPhase] = useState<InterviewPhase>("setup");
   const [workspaceTab, setWorkspaceTab] = useState<InterviewWorkspaceTab>("practice");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [tipsExpanded, setTipsExpanded] = useState(true);
   const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState(AVAILABLE_TARGET_ROLES[0].value);
@@ -1390,8 +1389,6 @@ export default function Interview() {
           <main className="custom-scrollbar relative flex-1 overflow-y-auto bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
               <InterviewSetup
-                tipsExpanded={tipsExpanded}
-                setTipsExpanded={setTipsExpanded}
                 onStart={startInterview}
                 isLoading={isLoading}
                 cvItems={cvItems}

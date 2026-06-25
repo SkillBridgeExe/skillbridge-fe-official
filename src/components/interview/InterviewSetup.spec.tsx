@@ -23,8 +23,6 @@ function renderSetup(
 ) {
   return render(
     <InterviewSetup
-      tipsExpanded={false}
-      setTipsExpanded={vi.fn()}
       onStart={vi.fn()}
       isLoading={false}
       cvItems={[]}
