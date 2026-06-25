@@ -509,7 +509,14 @@ export function LoginDialog({
                       <div>
                         <div className="mb-1.5 flex items-center justify-between">
                           <Label className="text-sm font-semibold text-slate-700">{t("auth.password")}</Label>
-                          <button type="button" className="text-xs font-semibold text-[#00AEEF] hover:underline">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onOpenChange(false);
+                              navigate("/forgot-password");
+                            }}
+                            className="text-xs font-semibold text-[#00AEEF] hover:underline"
+                          >
                             {t("auth.forgotPassword")}
                           </button>
                         </div>

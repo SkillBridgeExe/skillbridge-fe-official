@@ -14,7 +14,7 @@ import {
   setAccessToken,
 } from "@/services/auth-token.service";
 
-interface AuthAxiosRequestConfig extends AxiosRequestConfig {
+export interface AuthAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
   skipAuth?: boolean;
   skipAuthRefresh?: boolean;
@@ -66,6 +66,11 @@ const AUTH_REFRESH_EXCLUDED_URLS = new Set<string>([
   API_ROUTES.AUTH.GOOGLE,
   API_ROUTES.AUTH.REFRESH,
   API_ROUTES.AUTH.LOGOUT,
+  API_ROUTES.AUTH.VERIFY_EMAIL,
+  API_ROUTES.AUTH.RESEND_VERIFICATION,
+  API_ROUTES.AUTH.FORGOT_PASSWORD,
+  API_ROUTES.AUTH.RESET_PASSWORD,
+  API_ROUTES.BUSINESS_COMPANY.VERIFY,
 ]);
 
 let refreshPromise: Promise<RefreshPayload> | null = null;
