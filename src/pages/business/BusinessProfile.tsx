@@ -1,27 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Image,
+  Loader2,
+  Mail,
+  Save,
+  Send,
+  Upload,
+} from "lucide-react";
 import BusinessLayout from "./BusinessLayout";
 import {
-  Building2,
-  Globe,
-  MapPin,
-  Phone,
-  Mail,
-  Upload,
-  Save,
-  CheckCircle,
-  AlertCircle,
-  Send,
-  Loader2,
-} from "lucide-react";
-import {
+  useBusinessCompanyMediaQuery,
   useBusinessCompanyQuery,
-  useUpdateBusinessCompanyMutation,
+  useSendWorkEmailVerificationMutation,
   useSubmitBusinessProfileMutation,
+  useUpdateBusinessCompanyMutation,
   useUploadCompanyMediaMutation,
 } from "@/hooks/use-business-company";
-import type { CompanySize } from "@/types/jobs";
+import { useBlobUrl } from "@/hooks/use-blob-url";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
+import type { CompanySize, UpdateBusinessCompanyRequest } from "@/types/jobs";
+
+const COMPANY_SIZES: Array<{ label: string; value: CompanySize }> = [
+  { label: "1-10 employees", value: "1_10" },
+  { label: "11-50 employees", value: "11_50" },
+  { label: "51-100 employees", value: "51_100" },
+  { label: "101-300 employees", value: "101_300" },
+  { label: "301-500 employees", value: "301_500" },
+  { label: "501-1000 employees", value: "501_1000" },
+  { label: "1000+ employees", value: "1000_PLUS" },
+];
 
 const INDUSTRIES = [
   "Information Technology",
@@ -36,144 +47,194 @@ const INDUSTRIES = [
   "Other",
 ];
 
-const COMPANY_SIZES = [
-  { label: "1-10 employees", value: "1_10" },
-  { label: "11-50 employees", value: "11_50" },
-  { label: "51-100 employees", value: "51_100" },
-  { label: "101-300 employees", value: "101_300" },
-  { label: "301-500 employees", value: "301_500" },
-  { label: "501-1000 employees", value: "501_1000" },
-  { label: "1000+ employees", value: "1000_PLUS" },
-];
+const MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+const INPUT_CLASS =
+  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-50 disabled:text-slate-500";
+
+type CompanyForm = {
+  companyName: string;
+  industryCode: string;
+  companySize: CompanySize | "";
+  website: string;
+  headquartersAddress: string;
+  contactName: string;
+  contactPhone: string;
+  workEmail: string;
+  shortDescription: string;
+  description: string;
+};
+
+const EMPTY_FORM: CompanyForm = {
+  companyName: "",
+  industryCode: "",
+  companySize: "",
+  website: "",
+  headquartersAddress: "",
+  contactName: "",
+  contactPhone: "",
+  workEmail: "",
+  shortDescription: "",
+  description: "",
+};
+
+function companyForm(
+  aggregate: ReturnType<typeof useBusinessCompanyQuery>["data"],
+): CompanyForm {
+  if (!aggregate) return EMPTY_FORM;
+  return {
+    companyName: aggregate.company.name ?? "",
+    industryCode: aggregate.company.industryCode ?? "",
+    companySize: aggregate.company.companySize ?? "",
+    website: aggregate.company.website ?? "",
+    headquartersAddress: aggregate.company.headquartersAddress ?? "",
+    contactName: aggregate.profile.contactName ?? "",
+    contactPhone: aggregate.profile.contactPhone ?? "",
+    workEmail: aggregate.profile.workEmail ?? "",
+    shortDescription: aggregate.company.shortDescription ?? "",
+    description: aggregate.company.description ?? "",
+  };
+}
+
+function nullable(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toUpdateRequest(form: CompanyForm): UpdateBusinessCompanyRequest {
+  return {
+    companyName: form.companyName.trim(),
+    industryCode: nullable(form.industryCode),
+    companySize: form.companySize || null,
+    website: nullable(form.website),
+    headquartersAddress: nullable(form.headquartersAddress),
+    contactName: nullable(form.contactName),
+    contactPhone: nullable(form.contactPhone),
+    workEmail: nullable(form.workEmail),
+    shortDescription: nullable(form.shortDescription),
+    description: nullable(form.description),
+  };
+}
 
 export default function BusinessProfile() {
   const { toast } = useToast();
-  const { data: aggregate, isLoading, isError } = useBusinessCompanyQuery();
-  const updateMutation = useUpdateBusinessCompanyMutation();
-  const submitMutation = useSubmitBusinessProfileMutation();
-  const uploadMutation = useUploadCompanyMediaMutation();
+  const companyQuery = useBusinessCompanyQuery();
+  const updateCompany = useUpdateBusinessCompanyMutation();
+  const submitProfile = useSubmitBusinessProfileMutation();
+  const sendVerification = useSendWorkEmailVerificationMutation();
+  const uploadMedia = useUploadCompanyMediaMutation();
+  const [form, setForm] = useState<CompanyForm>(EMPTY_FORM);
 
-  const [form, setForm] = useState<{
-    companyName: string;
-    industryCode: string;
-    companySize: CompanySize | "";
-    website: string;
-    headquartersAddress: string;
-    contactPhone: string;
-    workEmail: string;
-    description: string;
-  }>({
-    companyName: "",
-    industryCode: "",
-    companySize: "",
-    website: "",
-    headquartersAddress: "",
-    contactPhone: "",
-    workEmail: "",
-    description: "",
-  });
+  const aggregate = companyQuery.data;
+  const profile = aggregate?.profile;
+  const company = aggregate?.company;
+  const status = profile?.status ?? "DRAFT";
+  const isReadOnly = status === "PENDING_REVIEW" || status === "SUSPENDED";
+  const logoQuery = useBusinessCompanyMediaQuery("logo", Boolean(company?.logoUrl));
+  const coverQuery = useBusinessCompanyMediaQuery("cover", Boolean(company?.coverUrl));
+  const logoUrl = useBlobUrl(logoQuery.data);
+  const coverUrl = useBlobUrl(coverQuery.data);
+  const savedForm = useMemo(() => companyForm(aggregate), [aggregate]);
+  const isDirty = (Object.keys(form) as Array<keyof CompanyForm>).some(
+    (key) => form[key] !== savedForm[key],
+  );
 
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
-  // Initialize form from API
   useEffect(() => {
-    if (aggregate?.company) {
-      const c = aggregate.company;
-      const p = aggregate.profile;
-      setForm({
-        companyName: c.name || "",
-        industryCode: c.industryCode || "",
-        companySize: c.companySize || "",
-        website: c.website || "",
-        headquartersAddress: c.headquartersAddress || "",
-        contactPhone: p.contactPhone || "",
-        workEmail: p.workEmail || "",
-        description: c.description || "",
-      });
+    setForm(savedForm);
+  }, [savedForm]);
+
+  const requiredComplete = useMemo(
+    () =>
+      [
+        form.companyName,
+        form.industryCode,
+        form.website,
+        form.contactName,
+        form.workEmail,
+        form.shortDescription,
+      ].every((value) => value.trim().length > 0),
+    [form],
+  );
+  const canSubmit =
+    requiredComplete && Boolean(profile?.workEmailVerifiedAt) && !isReadOnly && !isDirty;
+
+  const setField = <K extends keyof CompanyForm>(field: K, value: CompanyForm[K]) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!form.companyName.trim()) {
+      toast({ variant: "destructive", title: "Company name is required" });
+      return;
     }
-  }, [aggregate]);
-
-  const completion = useMemo(() => {
-    const fields = [
-      form.companyName,
-      form.industryCode,
-      form.companySize,
-      form.website,
-      form.headquartersAddress,
-      form.workEmail,
-      form.description,
-    ];
-    const filled = fields.filter((value) => value && value.trim().length > 0).length;
-    return Math.round((filled / fields.length) * 100);
-  }, [form]);
-
-  const handleChange = (field: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = () => {
-    updateMutation.mutate(
-      {
-        companyName: form.companyName,
-        industryCode: form.industryCode,
-        companySize: form.companySize || undefined,
-        website: form.website,
-        headquartersAddress: form.headquartersAddress,
-        contactPhone: form.contactPhone,
-        workEmail: form.workEmail,
-        description: form.description,
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Draft saved", description: "Your company profile has been updated." });
-        },
-        onError: (error) => {
-          toast({
-            variant: "destructive",
-            title: "Save failed",
-            description: getApiErrorMessage(error, "Could not update the company profile."),
-          });
-        },
-      },
-    );
-  };
-
-  const handleSubmitReview = () => {
-    if (window.confirm("Submit profile for review? You will not be able to edit during review.")) {
-      submitMutation.mutate(undefined, {
-        onSuccess: () => {
-          toast({ title: "Submitted for review", description: "Admins can now verify your company profile." });
-        },
-        onError: (error) => {
-          toast({
-            variant: "destructive",
-            title: "Submit failed",
-            description: getApiErrorMessage(error, "Could not submit this profile for review."),
-          });
-        },
-      });
-    }
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingLogo(true);
     try {
-      await uploadMutation.mutateAsync({ kind: "logo", file });
-      toast({ title: "Logo uploaded", description: "Your public company profile preview has been refreshed." });
+      await updateCompany.mutateAsync(toUpdateRequest(form));
+      toast({ title: "Draft saved", description: "Company information has been updated." });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description: getApiErrorMessage(error, "Could not update the company profile."),
+      });
+    }
+  };
+
+  const handleSendVerification = async () => {
+    try {
+      await sendVerification.mutateAsync();
+      toast({
+        title: "Verification email sent",
+        description: "Open the link in your work inbox. The link works without an active session.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not send verification",
+        description: getApiErrorMessage(error),
+      });
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await submitProfile.mutateAsync();
+      toast({ title: "Submitted for review" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Submit failed",
+        description: getApiErrorMessage(error),
+      });
+    }
+  };
+
+  const handleMedia = async (kind: "logo" | "cover", file: File | undefined) => {
+    if (!file) return;
+    if (!MEDIA_TYPES.has(file.type) || file.size > MEDIA_MAX_BYTES) {
+      toast({
+        variant: "destructive",
+        title: "Invalid image",
+        description: "Use PNG, JPEG, or WEBP up to 5 MB.",
+      });
+      return;
+    }
+    if (!aggregate) {
+      toast({ title: "Save the company draft before uploading media." });
+      return;
+    }
+    try {
+      await uploadMedia.mutateAsync({ kind, file });
+      toast({ title: `${kind === "logo" ? "Logo" : "Cover"} uploaded` });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Upload failed",
-        description: getApiErrorMessage(error, "Could not upload the company logo."),
+        description: getApiErrorMessage(error),
       });
-    } finally {
-      setUploadingLogo(false);
     }
   };
 
-  if (isLoading) {
+  if (companyQuery.isLoading) {
     return (
       <BusinessLayout title="Company Profile" subtitle="Loading your profile...">
         <div className="flex justify-center py-20">
@@ -183,285 +244,295 @@ export default function BusinessProfile() {
     );
   }
 
-  if (isError) {
-    return (
-      <BusinessLayout title="Company Profile" subtitle="Error loading profile">
-        <div className="bg-red-50 text-red-600 p-5 rounded-xl border border-red-100 flex items-center gap-3">
-          <AlertCircle size={20} />
-          Failed to load business profile. Please refresh the page.
-        </div>
-      </BusinessLayout>
-    );
-  }
-
-  const profile = aggregate?.profile;
-  const company = aggregate?.company;
-  const status = profile?.status || "DRAFT";
-  const isReadOnly = status === "PENDING_REVIEW" || status === "VERIFIED";
-
   return (
     <BusinessLayout
       title="Company Profile"
       subtitle="Keep your company identity clear and consistent for applicants."
     >
-      <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-6">
-        <div className="space-y-5">
-          {status === "PENDING_REVIEW" && (
-            <div className="bg-amber-50 rounded-xl border border-amber-200 p-5 flex items-start gap-4">
-              <Loader2 className="animate-spin text-amber-500 mt-0.5" size={20} />
-              <div>
-                <h3 className="font-semibold text-amber-900">Profile Under Review</h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  Your profile is currently being reviewed by administrators. Editing is disabled until the review is complete.
-                </p>
-              </div>
-            </div>
-          )}
+      <div className="mx-auto max-w-5xl space-y-5">
+        <ProfileStatus status={status} reason={profile?.rejectionReason ?? profile?.suspensionReason} />
 
-          {status === "VERIFIED" && (
-            <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5 flex items-start gap-4">
-              <CheckCircle className="text-emerald-500 mt-0.5" size={20} />
-              <div>
-                <h3 className="font-semibold text-emerald-900">Profile Verified</h3>
-                <p className="text-sm text-emerald-700 mt-1">
-                  Your company profile is verified and visible to candidates.
-                </p>
-              </div>
-            </div>
-          )}
+        {status === "VERIFIED" ? (
+          <Notice>
+            You can edit this verified profile. Changing the company name, website, or work email
+            sends the identity back to draft review; content and media updates keep verification.
+          </Notice>
+        ) : null}
 
-          {status === "REJECTED" && (
-            <div className="bg-red-50 rounded-xl border border-red-200 p-5 flex items-start gap-4">
-              <AlertCircle className="text-red-500 mt-0.5" size={20} />
-              <div>
-                <h3 className="font-semibold text-red-900">Profile Rejected</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  {profile?.rejectionReason || "Please update your information and resubmit."}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Logo upload */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold text-slate-900 mb-1">Company Logo</h2>
-            <p className="text-xs text-slate-500">A clear logo improves trust and recognition.</p>
-            <div className="flex items-center gap-5 mt-4">
-              <div className="w-20 h-20 rounded-xl bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
-                {company?.logoObjectKey ? (
-                  <img src={company.logoObjectKey} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 size={28} className="text-slate-300" />
-                )}
-              </div>
-              <div>
-                <label className={`cursor-pointer inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition-colors ${
-                  isReadOnly || uploadingLogo ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200"
-                }`}>
-                  {uploadingLogo ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                  {uploadingLogo ? "Uploading..." : "Upload Logo"}
-                  <input type="file" accept="image/*" className="hidden" disabled={isReadOnly || uploadingLogo} onChange={handleLogoUpload} />
-                </label>
-                <p className="text-xs text-slate-400 mt-2">PNG or JPG, max 2MB. Recommended 200x200</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Basic info */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Basic Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Company Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. TechViet Co., Ltd."
-                  value={form.companyName}
-                  disabled={isReadOnly}
-                  onChange={(e) => handleChange("companyName", e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Industry</label>
-                  <select
-                    value={form.industryCode}
-                    disabled={isReadOnly}
-                    onChange={(e) => handleChange("industryCode", e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all bg-white disabled:bg-slate-50 disabled:text-slate-500"
-                  >
-                    <option value="">Select industry</option>
-                    {INDUSTRIES.map((i) => (
-                      <option key={i} value={i}>{i}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Company Size</label>
-                  <select
-                    value={form.companySize}
-                    disabled={isReadOnly}
-                    onChange={(e) => handleChange("companySize", e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all bg-white disabled:bg-slate-50 disabled:text-slate-500"
-                  >
-                    <option value="">Number of employees</option>
-                    {COMPANY_SIZES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Company Description</label>
-                <textarea
-                  rows={4}
-                  placeholder="Brief introduction about your company, culture, products or services..."
-                  value={form.description}
-                  disabled={isReadOnly}
-                  onChange={(e) => handleChange("description", e.target.value.slice(0, 500))}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all resize-none disabled:bg-slate-50 disabled:text-slate-500"
-                />
-                <p className="text-xs text-slate-400 mt-1">{form.description.length}/500 characters</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Contact Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  <Globe size={14} className="inline mr-1" />
-                  Website
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://techviet.com"
-                  value={form.website}
-                  disabled={isReadOnly}
-                  onChange={(e) => handleChange("website", e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    <Phone size={14} className="inline mr-1" />
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+84 901 234 567"
-                    value={form.contactPhone}
-                    disabled={isReadOnly}
-                    onChange={(e) => handleChange("contactPhone", e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    <Mail size={14} className="inline mr-1" />
-                    Work Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="hr@techviet.com"
-                    value={form.workEmail}
-                    disabled={isReadOnly}
-                    onChange={(e) => handleChange("workEmail", e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  <MapPin size={14} className="inline mr-1" />
-                  Headquarters Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="123 Tech Street, District 7, Ho Chi Minh City"
-                  value={form.headquartersAddress}
-                  disabled={isReadOnly}
-                  onChange={(e) => handleChange("headquartersAddress", e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          {!isReadOnly && (
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleSave}
-                disabled={updateMutation.isPending}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Save Draft
-              </button>
-              <button
-                onClick={handleSubmitReview}
-                disabled={submitMutation.isPending || completion < 100}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium bg-sky-500 hover:bg-sky-600 text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title={completion < 100 ? "Complete profile to submit" : ""}
-              >
-                {submitMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                Submit for Review
-              </button>
-            </div>
-          )}
+        <div className="grid gap-5 lg:grid-cols-2">
+          <MediaCard
+            title="Company logo"
+            kind="logo"
+            imageUrl={logoUrl}
+            disabled={isReadOnly || uploadMedia.isPending}
+            onFile={(file) => void handleMedia("logo", file)}
+          />
+          <MediaCard
+            title="Company cover"
+            kind="cover"
+            imageUrl={coverUrl}
+            disabled={isReadOnly || uploadMedia.isPending}
+            onFile={(file) => void handleMedia("cover", file)}
+          />
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-900">Profile Completion</h3>
-            <div className="h-2 mt-3 rounded-full bg-slate-100 overflow-hidden">
-              <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${completion}%` }} />
-            </div>
-            <p className="text-xs text-slate-500 mt-2">{completion}% completed</p>
-
-            <div className="mt-4 space-y-2 text-xs text-slate-600">
-              <p className="flex items-center gap-2">
-                <CheckCircle size={14} className={form.companyName ? "text-emerald-500" : "text-slate-300"} />
-                Company Name
-              </p>
-              <p className="flex items-center gap-2">
-                <CheckCircle size={14} className={form.description ? "text-emerald-500" : "text-slate-300"} />
-                Company Description
-              </p>
-              <p className="flex items-center gap-2">
-                <CheckCircle size={14} className={form.website ? "text-emerald-500" : "text-slate-300"} />
-                Website
-              </p>
-              <p className="flex items-center gap-2">
-                <CheckCircle size={14} className={form.workEmail ? "text-emerald-500" : "text-slate-300"} />
-                Work Email
-              </p>
-            </div>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="font-bold text-slate-950">Company information</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <Field label="Company name *">
+              <input
+                value={form.companyName}
+                disabled={isReadOnly}
+                onChange={(event) => setField("companyName", event.target.value)}
+                className={INPUT_CLASS}
+              />
+            </Field>
+            <Field label="Industry *">
+              <select
+                value={form.industryCode}
+                disabled={isReadOnly}
+                onChange={(event) => setField("industryCode", event.target.value)}
+                className={INPUT_CLASS}
+              >
+                <option value="">Select industry</option>
+                {INDUSTRIES.map((industry) => (
+                  <option key={industry}>{industry}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Company size">
+              <select
+                value={form.companySize}
+                disabled={isReadOnly}
+                onChange={(event) => setField("companySize", event.target.value as CompanySize | "")}
+                className={INPUT_CLASS}
+              >
+                <option value="">Select size</option>
+                {COMPANY_SIZES.map((size) => (
+                  <option key={size.value} value={size.value}>
+                    {size.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Website *">
+              <input
+                type="url"
+                value={form.website}
+                disabled={isReadOnly}
+                onChange={(event) => setField("website", event.target.value)}
+                className={INPUT_CLASS}
+                placeholder="https://company.vn"
+              />
+            </Field>
+            <Field label="Contact name *">
+              <input
+                value={form.contactName}
+                disabled={isReadOnly}
+                onChange={(event) => setField("contactName", event.target.value)}
+                className={INPUT_CLASS}
+              />
+            </Field>
+            <Field label="Contact phone">
+              <input
+                value={form.contactPhone}
+                disabled={isReadOnly}
+                onChange={(event) => setField("contactPhone", event.target.value)}
+                className={INPUT_CLASS}
+              />
+            </Field>
+            <Field label="Headquarters" className="sm:col-span-2">
+              <input
+                value={form.headquartersAddress}
+                disabled={isReadOnly}
+                onChange={(event) => setField("headquartersAddress", event.target.value)}
+                className={INPUT_CLASS}
+              />
+            </Field>
+            <Field label="Short description *" className="sm:col-span-2">
+              <textarea
+                value={form.shortDescription}
+                disabled={isReadOnly}
+                maxLength={500}
+                onChange={(event) => setField("shortDescription", event.target.value)}
+                className={`${INPUT_CLASS} min-h-24 resize-y py-3`}
+              />
+            </Field>
+            <Field label="Full description" className="sm:col-span-2">
+              <textarea
+                value={form.description}
+                disabled={isReadOnly}
+                onChange={(event) => setField("description", event.target.value)}
+                className={`${INPUT_CLASS} min-h-36 resize-y py-3`}
+              />
+            </Field>
           </div>
+        </section>
 
-          <div className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-xl border border-sky-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-900">Public Preview</h3>
-            <div className="mt-3 bg-white rounded-lg border border-sky-100 p-4">
-              <p className="text-sm font-semibold text-slate-900">{form.companyName || "Your Company Name"}</p>
-              <p className="text-xs text-slate-500 mt-1">{form.industryCode || "Industry"}</p>
-              <p className="text-xs text-slate-500 mt-2 line-clamp-3">
-                {form.description || "Your company description will appear here for candidates."}
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-slate-950">Work email verification</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                The email domain must match the company website.
               </p>
             </div>
+            {profile?.workEmailVerifiedAt ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" /> Verified
+              </span>
+            ) : null}
           </div>
-        </div>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="email"
+                value={form.workEmail}
+                disabled={isReadOnly}
+                onChange={(event) => setField("workEmail", event.target.value)}
+                className={`${INPUT_CLASS} pl-11`}
+                placeholder="hr@company.vn"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={!aggregate || isReadOnly || isDirty || sendVerification.isPending}
+              onClick={() => void handleSendVerification()}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-bold text-sky-700 disabled:opacity-50"
+            >
+              {sendVerification.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Send verification
+            </button>
+          </div>
+          {!profile?.workEmailVerifiedAt ? (
+            <p className="mt-3 text-xs text-amber-700">
+              Save all profile changes before requesting a verification link.
+            </p>
+          ) : null}
+        </section>
+
+        {!isReadOnly ? (
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={!isDirty || updateCompany.isPending}
+              className="inline-flex h-11 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 disabled:opacity-50"
+            >
+              {updateCompany.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save draft
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={!canSubmit || submitProfile.isPending}
+              className="inline-flex h-11 items-center rounded-xl bg-sky-600 px-5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {submitProfile.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Submit for review
+            </button>
+          </div>
+        ) : null}
       </div>
     </BusinessLayout>
+  );
+}
+
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={`text-sm font-semibold text-slate-700 ${className}`}>
+      {label}
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
+
+function MediaCard({
+  title,
+  kind,
+  imageUrl,
+  disabled,
+  onFile,
+}: {
+  title: string;
+  kind: "logo" | "cover";
+  imageUrl: string | null;
+  disabled: boolean;
+  onFile: (file: File | undefined) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="font-bold text-slate-950">{title}</h2>
+      <div
+        className={`mt-4 overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 ${
+          kind === "logo" ? "h-32" : "h-40"
+        }`}
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt={title} className="h-full w-full object-contain" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-slate-300">
+            {kind === "logo" ? <Building2 size={36} /> : <Image size={36} />}
+          </div>
+        )}
+      </div>
+      <label className="mt-4 inline-flex cursor-pointer items-center rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-700">
+        <Upload className="mr-2 h-4 w-4" />
+        Upload {kind}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          disabled={disabled}
+          className="hidden"
+          onChange={(event) => {
+            onFile(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+      </label>
+      <p className="mt-2 text-xs text-slate-400">PNG, JPEG, or WEBP up to 5 MB.</p>
+    </section>
+  );
+}
+
+function Notice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+      <p>{children}</p>
+    </div>
+  );
+}
+
+function ProfileStatus({ status, reason }: { status: string; reason?: string | null }) {
+  if (status === "DRAFT") return null;
+  const styles =
+    status === "VERIFIED"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : status === "REJECTED" || status === "SUSPENDED"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-amber-200 bg-amber-50 text-amber-800";
+  return (
+    <div className={`rounded-2xl border p-4 text-sm ${styles}`}>
+      <strong>{status.replace(/_/g, " ")}</strong>
+      {reason ? <p className="mt-1">{reason}</p> : null}
+    </div>
   );
 }
