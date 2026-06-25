@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { InterviewSetup } from "./InterviewSetup";
 import { DEFAULT_INTERVIEW_VOICE } from "./types";
@@ -55,37 +55,52 @@ function renderSetup(
 }
 
 describe("InterviewSetup", () => {
-  it("shows an inline CV upload CTA while role-only interview remains available", () => {
+  it("renders progressive context choice cards with three options", () => {
     renderSetup();
 
+    // All three progressive context cards should be visible
     expect(
-      screen.getByRole("button", { name: "interview.setup.uploadCvCta" }),
+      screen.getByText("interview.setup.progressive.roleOnly.title"),
     ).toBeInTheDocument();
-    expect(screen.getByText("interview.setup.roleOnlyStillAvailable")).toBeInTheDocument();
+    expect(
+      screen.getByText("interview.setup.progressive.cv.title"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("interview.setup.progressive.match.title"),
+    ).toBeInTheDocument();
   });
 
-  it("locks JD upload until a CV is selected", () => {
+  it("shows CV selection UI when the CV context card is clicked", () => {
     renderSetup();
 
-    expect(screen.getByText("interview.setup.jdRequiresCv")).toBeInTheDocument();
+    // Default is role-only — CV form should not be visible
+    expect(
+      screen.queryByText("interview.setup.progressive.uploadNewCv"),
+    ).not.toBeInTheDocument();
+
+    // Click the CV card to switch context
+    fireEvent.click(
+      screen.getByText("interview.setup.progressive.cv.title"),
+    );
+
+    // Now the CV upload area should appear
+    expect(
+      screen.getByText("interview.setup.progressive.uploadNewCv"),
+    ).toBeInTheDocument();
   });
 
-  it("shows Add JD context when a selected CV has no saved matches", () => {
-    renderSetup({
-      cvItems: [
-        {
-          id: "cv-1",
-          title: "Frontend CV",
-          originalFileName: "frontend.pdf",
-          targetRole: "frontend_developer",
-          createdAt: "2026-06-12T10:00:00.000Z",
-        } as never,
-      ],
-      selectedCvId: "cv-1",
-    });
+  it("shows start button and opens tips dialog on click", () => {
+    renderSetup();
 
+    const startBtn = screen.getByRole("button", {
+      name: "interview.setup.startLiveRealtime",
+    });
+    expect(startBtn).toBeInTheDocument();
+
+    // Click should open the tips confirmation dialog
+    fireEvent.click(startBtn);
     expect(
-      screen.getByRole("button", { name: "interview.setup.addJdContext" }),
+      screen.getByText("interview.setup.tips.dialogConfirm"),
     ).toBeInTheDocument();
   });
 });
