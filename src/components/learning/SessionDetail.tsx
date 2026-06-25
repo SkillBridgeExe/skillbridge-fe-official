@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1336,7 +1335,6 @@ interface SessionDetailProps {
 
 export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [activeSectionId, setActiveSectionId] = useState(session.sections[0]?.id ?? "");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
