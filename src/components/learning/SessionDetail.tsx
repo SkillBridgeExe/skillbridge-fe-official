@@ -28,8 +28,10 @@ import {
   Terminal,
   AlertCircle,
   ExternalLink,
+  Plus,
+  Trash,
 } from "lucide-react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
@@ -39,7 +41,7 @@ import {
   saveLearningSessionProgress,
 } from "@/services/learning-roadmap.service";
 import { buildInternalResourceTask } from "./internal-resource-content";
-import { getActiveSessionResource, getSupplementalSessionResources } from "./session-content";
+import { getActiveSessionResource } from "./session-content";
 import { getNextLearningSectionId, selectLearningSection } from "./session-navigation";
 import {
   applyProgressToSession,
@@ -49,6 +51,8 @@ import {
   toggleChecklistItem,
   readStoredSessionProgress,
   writeStoredSessionProgress,
+  toggleSavedCourse,
+  isSectionComplete,
   type SessionProgressState,
 } from "./session-progress";
 
@@ -106,6 +110,17 @@ type RecommendedCourse = NonNullable<LearningSession["recommendedCourses"]>[numb
 
 function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   const { t } = useTranslation("common");
+
+  const getScoreBadgeClass = (key: string) => {
+    if (key.includes("matchScore")) {
+      return "border-emerald-100 bg-emerald-50 text-emerald-700 font-semibold";
+    }
+    if (key.includes("qualityScore")) {
+      return "border-violet-100 bg-violet-50 text-violet-700 font-semibold";
+    }
+    return "border-sky-100 bg-sky-50 text-sky-700 font-semibold";
+  };
+
   const scores = [
     ["learning.common.matchScore", displayScore(resource.matchScore)],
     ["learning.common.qualityScore", displayScore(resource.qualityScore)],
@@ -113,27 +128,27 @@ function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   ].filter((item): item is [string, string] => Boolean(item[1]));
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
+    <div className="flex flex-wrap gap-2 items-center">
+      <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium capitalize">
         {resource.platform ?? resource.type}
       </Badge>
       {resource.duration && (
-        <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-          <Clock className="mr-1 h-3 w-3" /> {resource.duration}
+        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium">
+          <Clock className="mr-1 h-3 w-3 text-slate-400" /> {resource.duration}
         </Badge>
       )}
       {resource.outcomeType && (
-        <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-          {resource.outcomeType}
+        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium">
+          {fallbackOutcomeLabel(resource.outcomeType)}
         </Badge>
       )}
       {resource.lowConfidence && (
-        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-xs text-amber-700">
+        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-xs text-amber-700 font-medium">
           {t("learning.common.pendingSource")}
         </Badge>
       )}
       {scores.map(([labelKey, score]) => (
-        <Badge key={labelKey} variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
+        <Badge key={labelKey} variant="outline" className={cn("text-xs", getScoreBadgeClass(labelKey))}>
           {t(labelKey, { score })}
         </Badge>
       ))}
@@ -141,7 +156,17 @@ function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   );
 }
 
-function ResourceCard({ resource, primary = false }: { resource: SessionResource; primary?: boolean }) {
+function ResourceCard({
+  resource,
+  primary = false,
+  onToggleSaveCourse,
+  progress,
+}: {
+  resource: SessionResource;
+  primary?: boolean;
+  onToggleSaveCourse?: (courseId: string) => void;
+  progress?: SessionProgressState;
+}) {
   const { t } = useTranslation("common");
   const outcomeTypeKey = resource.outcomeType?.replace(/-/g, "_") || "practice";
   const outcomeLabel = t(`learning.internal.outcomeType.${outcomeTypeKey}`, {
@@ -183,28 +208,53 @@ function ResourceCard({ resource, primary = false }: { resource: SessionResource
     },
   });
 
+  const getBorderAccent = (type: string) => {
+    switch (type) {
+      case "course": return "border-l-4 border-l-emerald-500";
+      case "video": return "border-l-4 border-l-rose-500";
+      case "mini_project":
+      case "exercise": return "border-l-4 border-l-indigo-500";
+      case "official_doc": return "border-l-4 border-l-amber-500";
+      default: return "border-l-4 border-l-slate-400";
+    }
+  };
+
   return (
     <div className={cn(
-      "rounded-xl border p-4",
-      primary ? "border-primary/20 bg-primary/[0.03]" : "border-slate-200 bg-white",
+      "rounded-xl border p-4 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5 bg-gradient-to-br from-white to-slate-50/40",
+      getBorderAccent(resource.type),
+      primary ? "border-primary/20 bg-primary/[0.02]" : "border-slate-200 bg-white",
     )}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-2">
-          <h3 className="text-base font-bold text-slate-900">{resource.title}</h3>
+          <h3 className="text-base font-bold text-slate-900 leading-snug">{resource.title}</h3>
           <ResourceMetaBadges resource={resource} />
         </div>
         {resource.isInternal ? (
           <Badge className="w-fit bg-primary/10 text-primary">{internalTask?.label ?? t("learning.common.internal")}</Badge>
-        ) : resource.url ? (
-          <a
-            href={resource.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-primary/30 hover:text-primary"
-          >
-            {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        ) : null}
+        ) : (
+          <div className="flex gap-2 shrink-0">
+            {progress?.savedCourseIds?.includes(resource.id) && onToggleSaveCourse && (
+              <button
+                type="button"
+                onClick={() => onToggleSaveCourse(resource.id)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50/50 px-3 py-2 text-xs font-bold text-red-600 shadow-sm hover:shadow hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-95 cursor-pointer"
+              >
+                <Trash className="w-3.5 h-3.5" /> {t("learning.common.unsave")}
+              </button>
+            )}
+            {resource.url ? (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:shadow hover:bg-slate-50 hover:border-slate-300 hover:text-primary transition-all duration-200 active:scale-95"
+              >
+                {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+          </div>
+        )}
       </div>
       {internalTask && (
         <div className="mt-4 rounded-lg border border-primary/15 bg-white/80 p-3 text-sm text-slate-700">
@@ -231,54 +281,72 @@ function ResourceCard({ resource, primary = false }: { resource: SessionResource
   );
 }
 
-function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
+function RecommendedCourseCard({
+  course,
+  rank,
+  onToggleSaveCourse,
+}: {
+  course: RecommendedCourse;
+  rank?: number;
+  onToggleSaveCourse?: (courseId: string) => void;
+}) {
   const { t } = useTranslation("common");
   const matchScore = displayScore(course.matchScore);
 
+  const getRankBadgeColor = (r: number) => {
+    if (r === 1) return "bg-orange-500 text-white shadow-sm shadow-orange-500/20";
+    if (r === 2) return "bg-amber-500 text-white shadow-sm shadow-amber-500/20";
+    if (r === 3) return "bg-yellow-500 text-white shadow-sm shadow-yellow-500/20";
+    return "bg-slate-100 text-slate-500";
+  };
+
+  const isTopRank = rank !== undefined && rank <= 3;
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-2">
-          <h3 className="text-base font-bold text-slate-900">{course.title}</h3>
-          <div className="flex flex-wrap gap-2">
-            {course.provider && (
-              <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-                {course.provider}
-              </Badge>
-            )}
-            {course.duration && (
-              <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-                <Clock className="mr-1 h-3 w-3" /> {course.duration}
-              </Badge>
-            )}
-            {course.language && (
-              <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-                {course.language.toUpperCase()}
-              </Badge>
-            )}
-            {course.difficulty && (
-              <Badge variant="outline" className="border-slate-200 bg-white text-xs text-slate-600">
-                {course.difficulty}
-              </Badge>
-            )}
-            {typeof course.isFree === "boolean" && (
-              <Badge variant="outline" className={cn(
-                "text-xs",
-                course.isFree ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600",
-              )}>
-                {course.isFree ? t("learning.common.free") : t("learning.common.paid")}
-              </Badge>
-            )}
-            {matchScore && (
-              course.matchBreakdown ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-xs text-emerald-700 font-semibold cursor-help hover:bg-emerald-100 transition-colors">
+    <div className={cn(
+      "flex items-start gap-2.5 transition-all duration-200",
+      isTopRank 
+        ? "bg-slate-50 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl p-2.5" 
+        : "p-2.5 border-b border-slate-100 hover:bg-slate-50/50"
+    )}>
+      {rank !== undefined && (
+        <div className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold mt-0.5 font-poppins",
+          getRankBadgeColor(rank)
+        )}>
+          {rank}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h4 className="text-[13px] font-semibold text-slate-800 leading-snug hover:text-primary transition-colors">
+          {course.url ? (
+            <a href={course.url} target="_blank" rel="noreferrer">
+              {course.title}
+            </a>
+          ) : (
+            course.title
+          )}
+        </h4>
+        <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-slate-500 font-medium">
+          {course.provider && <span>{course.provider}</span>}
+          {course.duration && (
+            <>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {course.duration}</span>
+            </>
+          )}
+          {matchScore && (
+            <>
+              <span className="text-slate-300">•</span>
+              {course.matchBreakdown ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <span className="text-emerald-600 font-bold cursor-pointer hover:underline">
                       {t("learning.common.matchScore", { score: matchScore })}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 font-poppins">
                       {t("learning.common.matchBreakdown.title")}
                     </p>
                     <div className="space-y-2.5">
@@ -292,9 +360,8 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
                         const percent = (points / max) * 100;
                         return (
                           <div key={labelKey} className="space-y-1">
-                            <div className="flex justify-between text-xs font-medium">
-                              <span className="text-slate-600">{t(labelKey)}</span>
-                              <span className="font-semibold text-slate-900">+{points} pt</span>
+                            <div className="text-xs font-semibold text-slate-700">
+                              {t(labelKey, { points })}
                             </div>
                             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
@@ -306,24 +373,37 @@ function RecommendedCourseCard({ course }: { course: RecommendedCourse }) {
                     <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-900">
                       <span>{t("learning.common.matchBreakdown.total", { score: matchScore })}</span>
                     </div>
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               ) : (
-                <Badge variant="outline" className="border-blue-100 bg-blue-50 text-xs text-blue-700">
+                <span className="text-emerald-600 font-bold">
                   {t("learning.common.matchScore", { score: matchScore })}
-                </Badge>
-              )
-            )}
-          </div>
+                </span>
+              )}
+            </>
+          )}
         </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 self-center">
+        {onToggleSaveCourse && (
+          <button
+            type="button"
+            onClick={() => onToggleSaveCourse(course.id)}
+            title={t("learning.common.save")}
+            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        )}
         {course.url && (
           <a
             href={course.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-primary/30 hover:text-primary"
+            title={t("learning.common.openCourse")}
+            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
           >
-            {t("learning.common.openCourse")} <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="w-4 h-4" />
           </a>
         )}
       </div>
@@ -356,9 +436,16 @@ interface SidebarProps {
   activeSectionId: string;
   onSelectSection: (id: string) => void;
   onToggle: () => void;
+  showValidationErrors?: boolean;
 }
 
-function SessionSidebar({ session, activeSectionId, onSelectSection, onToggle }: SidebarProps) {
+function SessionSidebar({
+  session,
+  activeSectionId,
+  onSelectSection,
+  onToggle,
+  showValidationErrors = false,
+}: SidebarProps) {
   const { t } = useTranslation("common");
   const completedCount = session.sections.filter(s => s.completed).length;
   const progress = session.sections.length > 0 ? (completedCount / session.sections.length) * 100 : 0;
@@ -373,7 +460,7 @@ function SessionSidebar({ session, activeSectionId, onSelectSection, onToggle }:
   };
 
   return (
-    <aside className="w-72 flex-shrink-0 border-r border-slate-100 bg-slate-50/60 overflow-y-auto">
+    <aside className="absolute top-0 left-0 z-30 w-72 h-full border-r border-slate-200 bg-white shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-left duration-300">
       {/* Toggle + Module info header */}
       <div className="p-5 border-b border-slate-100 sticky top-0 bg-slate-50/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between mb-3">
@@ -410,20 +497,29 @@ function SessionSidebar({ session, activeSectionId, onSelectSection, onToggle }:
       <nav className="p-3 space-y-1">
         {session.sections.map(section => {
           const isActive = section.id === activeSectionId;
+          const isSectionIncomplete = !section.completed;
+          const shouldHighlightSection = showValidationErrors && isSectionIncomplete;
           return (
             <button
               key={section.id}
-              onClick={() => onSelectSection(section.id)}
+              onClick={() => selectLearningSection(section.id, onSelectSection)}
               className={cn(
-                "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all",
-                isActive ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white hover:shadow-sm"
+                "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
+                isActive
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : shouldHighlightSection
+                  ? "bg-red-50/50 border-red-200 text-red-700 hover:bg-red-100/50"
+                  : "text-slate-700 border-transparent hover:bg-white hover:shadow-sm"
               )}
             >
               <span className="mt-0.5 flex-shrink-0">
-                {section.completed
-                  ? <CheckCircle2 className={cn("w-4 h-4", isActive ? "text-white" : "text-emerald-500")} />
-                  : <Circle className={cn("w-4 h-4", isActive ? "text-white/60" : "text-slate-300")} />
-                }
+                {section.completed ? (
+                  <CheckCircle2 className={cn("w-4 h-4", isActive ? "text-white" : "text-emerald-500")} />
+                ) : shouldHighlightSection ? (
+                  <AlertCircle className="w-4 h-4 text-red-500 animate-pulse" />
+                ) : (
+                  <Circle className={cn("w-4 h-4", isActive ? "text-white/60" : "text-slate-300")} />
+                )}
               </span>
               <div className="flex-1 min-w-0">
                 <p className={cn("text-sm font-medium leading-snug", isActive ? "text-white" : "text-slate-800")}>
@@ -464,11 +560,13 @@ function VideoContentPanel({
   activeSectionId,
   progress,
   onToggleChecklistItem,
+  showValidationErrors = false,
 }: {
   session: LearningSession;
   activeSectionId?: string;
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
+  showValidationErrors?: boolean;
 }) {
   const { t } = useTranslation("common");
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
@@ -484,6 +582,10 @@ function VideoContentPanel({
 
   const quiz = buildQuiz(session);
   const correctCount = quiz.reduce((acc, q, i) => acc + (quizAnswers[i] === q.correct ? 1 : 0), 0);
+
+  // Determine if this active section is uncompleted
+  const isSectionUncompleted = activeSectionId ? !isSectionComplete(session, progress, activeSectionId) : false;
+  const shouldHighlight = showValidationErrors && isSectionUncompleted;
 
   return (
     <div className="space-y-6">
@@ -532,6 +634,8 @@ function VideoContentPanel({
               "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0 self-start",
               (progress.checkedChecklistItems[activeSectionId] ?? []).includes("__completed")
                 ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                : shouldHighlight
+                ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100 animate-pulse"
                 : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
             )}
           >
@@ -542,7 +646,11 @@ function VideoContentPanel({
               </>
             ) : (
               <>
-                <Circle className="h-4 w-4 shrink-0 text-slate-400" />
+                {shouldHighlight ? (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500 animate-bounce" />
+                ) : (
+                  <Circle className="h-4 w-4 shrink-0 text-slate-400" />
+                )}
                 <span>{t("learning.session.markComplete")}</span>
               </>
             )}
@@ -733,6 +841,8 @@ function DocContentPanel({
   progress,
   onToggleChecklistItem,
   onExerciseProofChange,
+  onToggleSaveCourse,
+  showValidationErrors = false,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -740,18 +850,44 @@ function DocContentPanel({
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
+  onToggleSaveCourse: (courseId: string) => void;
+  showValidationErrors?: boolean;
 }) {
   const { t } = useTranslation("common");
+  const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => setCurrentPage(1), [activeSectionId]);
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const activeResource = getActiveSessionResource(session, activeSection?.id ?? activeSectionId);
-  const supplementalResources = getSupplementalSessionResources(session, activeSection?.id ?? activeSectionId);
-  const visibleRecommendedCourses = activeResource ? [] : (session.recommendedCourses ?? []);
+  
+  const convertedSavedCourses = (session.recommendedCourses ?? [])
+    .filter((c) => progress.savedCourseIds?.includes(c.id))
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      url: c.url,
+      platform: c.provider,
+      duration: c.duration,
+      isFree: c.isFree,
+      type: "course" as const,
+      matchScore: c.matchScore,
+    }));
+  const allSupplementalResources = convertedSavedCourses;
+
+  const visibleRecommendedCourses = (session.recommendedCourses ?? []).filter((c) => !progress.savedCourseIds?.includes(c.id));
   const nextSectionId = getNextLearningSectionId(session.sections, activeSection?.id ?? activeSectionId);
   const nextSection = session.sections.find((section) => section.id === nextSectionId);
 
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.ceil(visibleRecommendedCourses.length / ITEMS_PER_PAGE);
+  const effectivePage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
+  const paginatedCourses = visibleRecommendedCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   return (
-    <div className="space-y-6">
-      {/* Doc Header */}
+    <div className="relative w-full">
+      {/* Left Column (Main Content) */}
+      <div className="w-full space-y-6">
+        {/* Doc Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">{t("learning.session.documentation")}</Badge>
@@ -815,67 +951,104 @@ function DocContentPanel({
             count: activeSection?.exercises ?? 0,
           })}
         </p>
-        {session.sections.map((sec, i) => (
-          <div key={sec.id} id={`section-${sec.id}`} className="scroll-mt-6">
-            <h3>{i + 1}. {sec.title}</h3>
-            {sec.body ? (
-              <p>{sec.body}</p>
-            ) : (
-              <p>
-                {t("learning.session.type")}: <strong>{sec.type}</strong>{" - "}
-                {t("learning.common.exercises", { count: sec.exercises })}
-                {sec.completed ? ` - ${t("learning.status.completed")}` : ""}
-              </p>
-            )}
-            {sec.checklist?.length ? (
-              <ul className="mt-3 space-y-2">
-                {sec.checklist.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes(item)}
-                      onClick={() => onToggleChecklistItem(sec.id, item)}
-                      className="flex w-full items-start gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-emerald-50"
-                    >
-                      {(progress.checkedChecklistItems[sec.id] ?? []).includes(item) ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                      ) : (
-                        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
-                      )}
-                      <span>{item}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-3 flex">
-                <button
-                  type="button"
-                  aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")}
-                  onClick={() => onToggleChecklistItem(sec.id, "__completed")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
-                    (progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  )}
-                >
-                  {(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed") ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                      <span>{t("learning.session.done")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Circle className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span>{t("learning.session.markComplete")}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+        {session.sections.map((sec, i) => {
+          const isSectionIncomplete = !isSectionComplete(session, progress, sec.id);
+          const shouldHighlightSection = showValidationErrors && isSectionIncomplete;
+          return (
+            <div
+              key={sec.id}
+              id={`section-${sec.id}`}
+              className={cn(
+                "scroll-mt-6 p-4 rounded-2xl border transition-all duration-300",
+                shouldHighlightSection
+                  ? "border-red-400 bg-red-50/20 shadow-sm"
+                  : "border-transparent"
+              )}
+            >
+              <h3 className={cn(shouldHighlightSection ? "text-red-900" : "")}>{i + 1}. {sec.title}</h3>
+              {shouldHighlightSection && (
+                <p className="text-xs font-semibold text-red-500 flex items-center gap-1 mt-1 mb-2 animate-pulse">
+                  <AlertCircle className="w-3.5 h-3.5" /> Chưa hoàn thành nội dung tự học này
+                </p>
+              )}
+              {sec.body ? (
+                <p>{sec.body}</p>
+              ) : (
+                <p>
+                  {t("learning.session.type")}: <strong>{sec.type}</strong>{" - "}
+                  {t("learning.common.exercises", { count: sec.exercises })}
+                  {sec.completed ? ` - ${t("learning.status.completed")}` : ""}
+                </p>
+              )}
+              {sec.checklist?.length ? (
+                <ul className="mt-3 space-y-2">
+                  {sec.checklist.map((item) => {
+                    const isItemUnchecked = !(progress.checkedChecklistItems[sec.id] ?? []).includes(item);
+                    const shouldHighlightItem = showValidationErrors && isItemUnchecked;
+                    return (
+                      <li key={item} className="flex gap-2">
+                        <button
+                          type="button"
+                          aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes(item)}
+                          onClick={() => onToggleChecklistItem(sec.id, item)}
+                          className={cn(
+                            "flex w-full items-start gap-2 rounded-lg px-2 py-1 text-left transition-colors border",
+                            (progress.checkedChecklistItems[sec.id] ?? []).includes(item)
+                              ? "hover:bg-emerald-50 border-transparent"
+                              : shouldHighlightItem
+                              ? "bg-red-50 border-red-200 hover:bg-red-100/50"
+                              : "hover:bg-emerald-50 border-transparent"
+                          )}
+                        >
+                          {(progress.checkedChecklistItems[sec.id] ?? []).includes(item) ? (
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          ) : shouldHighlightItem ? (
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500 animate-pulse" />
+                          ) : (
+                            <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                          )}
+                          <span className={cn(shouldHighlightItem ? "text-red-900 font-medium" : "")}>{item}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="mt-3 flex">
+                  <button
+                    type="button"
+                    aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")}
+                    onClick={() => onToggleChecklistItem(sec.id, "__completed")}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+                      (progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                        : shouldHighlightSection
+                        ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    {(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed") ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                        <span>{t("learning.session.done")}</span>
+                      </>
+                    ) : (
+                      <>
+                        {shouldHighlightSection ? (
+                          <AlertCircle className="h-4 w-4 shrink-0 text-red-500 animate-bounce" />
+                        ) : (
+                          <Circle className="h-4 w-4 shrink-0 text-slate-400" />
+                        )}
+                        <span>{t("learning.session.markComplete")}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Code blocks rendered separately */}
         <div className="hidden rounded-xl overflow-hidden my-6 shadow-sm border border-slate-200">
@@ -902,41 +1075,63 @@ function DocContentPanel({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {t("learning.session.practiceTasks")}
           </p>
-          {session.lessonContent.exercises.map((exercise) => (
-            <div key={exercise.id} className="rounded-xl border border-slate-200 bg-white p-4">
-              <h3 className="text-base font-bold text-slate-900">{exercise.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{exercise.prompt}</p>
-              {exercise.acceptanceCriteria.length ? (
-                <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    {t("learning.session.acceptanceCriteria")}
+          {session.lessonContent.exercises.map((exercise) => {
+            const isExerciseIncomplete = !progress.exerciseProofs[exercise.id]?.trim();
+            const shouldHighlightExercise = showValidationErrors && isExerciseIncomplete;
+            return (
+              <div
+                key={exercise.id}
+                className={cn(
+                  "rounded-xl border transition-all duration-300 p-4",
+                  shouldHighlightExercise
+                    ? "border-red-400 bg-red-50/20 shadow-sm"
+                    : "border-slate-200 bg-white"
+                )}
+              >
+                <h3 className={cn("text-base font-bold", shouldHighlightExercise ? "text-red-900" : "text-slate-900")}>{exercise.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{exercise.prompt}</p>
+                {shouldHighlightExercise && (
+                  <p className="text-xs font-semibold text-red-500 flex items-center gap-1 mt-2 mb-1 animate-pulse">
+                    <AlertCircle className="w-3.5 h-3.5" /> Vui lòng dán minh chứng hoàn thành bài tập này
                   </p>
-                  <ul className="mt-2 space-y-1.5">
-                    {exercise.acceptanceCriteria.map((criterion) => (
-                      <li key={criterion} className="flex gap-2 text-sm text-slate-600">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                        <span>{criterion}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              <p className="mt-3 text-sm text-slate-500">
-                <strong className="text-slate-700">{t("learning.session.proofLabel")}:</strong> {exercise.proofOfCompletion}
-              </p>
-              <label className="mt-3 block">
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  {t("learning.session.proofInputLabel")}
-                </span>
-                <textarea
-                  value={progress.exerciseProofs[exercise.id] ?? ""}
-                  onChange={(event) => onExerciseProofChange(exercise.id, event.target.value)}
-                  placeholder={t("learning.session.proofInputPlaceholder")}
-                  className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-                />
-              </label>
-            </div>
-          ))}
+                )}
+                {exercise.acceptanceCriteria.length ? (
+                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                      {t("learning.session.acceptanceCriteria")}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {exercise.acceptanceCriteria.map((criterion) => (
+                        <li key={criterion} className="flex gap-2 text-sm text-slate-600">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          <span>{criterion}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <p className="mt-3 text-sm text-slate-500">
+                  <strong className="text-slate-700">{t("learning.session.proofLabel")}:</strong> {exercise.proofOfCompletion}
+                </p>
+                <label className="mt-3 block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    {t("learning.session.proofInputLabel")}
+                  </span>
+                  <textarea
+                    value={progress.exerciseProofs[exercise.id] ?? ""}
+                    onChange={(event) => onExerciseProofChange(exercise.id, event.target.value)}
+                    placeholder={t("learning.session.proofInputPlaceholder")}
+                    className={cn(
+                      "mt-2 min-h-24 w-full resize-y rounded-lg border px-3 py-2 text-sm leading-6 outline-none transition-colors placeholder:text-slate-400 focus:ring-2",
+                      shouldHighlightExercise
+                        ? "border-red-300 bg-red-50/10 focus:border-red-400 focus:ring-red-100 text-red-900 placeholder:text-red-300"
+                        : "border-slate-200 bg-white text-slate-700 focus:border-primary/40 focus:ring-primary/10"
+                    )}
+                  />
+                </label>
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
@@ -945,51 +1140,28 @@ function DocContentPanel({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {t("learning.session.lessonContent")}
           </p>
-          <ResourceCard resource={activeResource} primary />
+          <ResourceCard resource={activeResource} primary progress={progress} onToggleSaveCourse={onToggleSaveCourse} />
         </div>
       )}
 
-      {(!activeResource || supplementalResources.length > 0) && (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            {t("learning.chat.status")}
-          </p>
-          <Badge variant="outline" className="border-slate-200 text-xs text-slate-500">
-            {supplementalResources.length}
-          </Badge>
-        </div>
-        {supplementalResources.length > 0 ? (
+      {allSupplementalResources.length > 0 && (
+        <div className="space-y-4 mt-6">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <h4 className="font-poppins font-bold text-slate-800 text-xs tracking-wider uppercase">
+              {t("learning.session.savedCourses")}
+            </h4>
+            <span className="ml-1 h-5 min-w-5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center">
+              {allSupplementalResources.length}
+            </span>
+          </div>
           <div className="space-y-3">
-            {supplementalResources.map((resource) => (
-              <ResourceCard key={resource.id} resource={resource} />
+            {allSupplementalResources.map((resource) => (
+              <ResourceCard key={resource.id} resource={resource} progress={progress} onToggleSaveCourse={onToggleSaveCourse} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            {t("learning.session.emptyResources")}
-          </div>
-        )}
-      </div>
+        </div>
       )}
-
-      {visibleRecommendedCourses.length ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              {t("learning.session.recommendedCourses")}
-            </p>
-            <Badge variant="outline" className="border-slate-200 text-xs text-slate-500">
-              {visibleRecommendedCourses.length}
-            </Badge>
-          </div>
-          <div className="space-y-3">
-            {visibleRecommendedCourses.map((course) => (
-              <RecommendedCourseCard key={course.id} course={course} />
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       {session.resources.length > 0 && (
         <>
@@ -1034,6 +1206,58 @@ function DocContentPanel({
           {t("learning.session.continue")} <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
       </div>
+      </div>
+
+      {/* Right Column (Recommended Courses Only) */}
+      <div className="w-full xl:absolute xl:top-[90px] xl:left-[calc(100%+48px)] xl:w-[280px] 2xl:left-[calc(100%+64px)] 2xl:w-[320px] shrink-0 space-y-4 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm mt-8 xl:mt-0">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+          <GraduationCap className="w-5 h-5 text-primary shrink-0" />
+          <h4 className="font-poppins font-bold text-slate-800 text-sm tracking-wider uppercase">
+            {t("learning.session.recommendedCourses")}
+          </h4>
+          <span className="ml-auto h-5 min-w-5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center">
+            {visibleRecommendedCourses.length}
+          </span>
+        </div>
+
+        {visibleRecommendedCourses.length ? (
+          <div className="space-y-1">
+            {paginatedCourses.map((course, idx) => (
+              <RecommendedCourseCard key={course.id} course={course} rank={startIndex + idx + 1} onToggleSaveCourse={onToggleSaveCourse} />
+            ))}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-5 pt-3 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={effectivePage === 1}
+                  className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-semibold text-slate-500">
+                  {t("learning.common.pageOf", { current: effectivePage, total: totalPages, defaultValue: `Trang ${effectivePage} / ${totalPages}` })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={effectivePage === totalPages}
+                  className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 text-center py-6">
+            {t("learning.session.noRecommendedCourses", { defaultValue: "Chưa có khóa học đề xuất" })}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1046,6 +1270,8 @@ function MainContentPanel({
   progress,
   onToggleChecklistItem,
   onExerciseProofChange,
+  onToggleSaveCourse,
+  showValidationErrors = false,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -1053,6 +1279,8 @@ function MainContentPanel({
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
+  onToggleSaveCourse: (courseId: string) => void;
+  showValidationErrors?: boolean;
 }) {
   const { t } = useTranslation("common");
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
@@ -1064,7 +1292,7 @@ function MainContentPanel({
 
   return (
     <main className="flex-1 overflow-y-auto min-w-0">
-      <div className="max-w-5xl mx-auto px-6 lg:px-10 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 lg:px-10 py-6 space-y-6 relative">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span>{t("learning.common.week", { number: session.moduleId.replace("demo-", "") })}</span>
@@ -1081,6 +1309,7 @@ function MainContentPanel({
             activeSectionId={activeSectionId}
             progress={progress}
             onToggleChecklistItem={onToggleChecklistItem}
+            showValidationErrors={showValidationErrors}
           />
         ) : (
           <DocContentPanel
@@ -1090,6 +1319,8 @@ function MainContentPanel({
             progress={progress}
             onToggleChecklistItem={onToggleChecklistItem}
             onExerciseProofChange={onExerciseProofChange}
+            onToggleSaveCourse={onToggleSaveCourse}
+            showValidationErrors={showValidationErrors}
           />
         )}
       </div>
@@ -1109,6 +1340,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isCompleted, setIsCompleted] = useState(session.status === "completed");
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [progress, setProgress] = useState<SessionProgressState>(() =>
     createInitialSessionProgress(session, readStoredSessionProgress(session.id)),
   );
@@ -1178,10 +1410,31 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const currentIdx = ALL_SESSIONS.findIndex(s => s.id === session.id);
 
-  // ✅ Mark complete + unlock next session in store
-  const { weekPlans, setWeekPlans, isAIGenerated } = useRoadmapStore();
+  const { weekPlans, setWeekPlans } = useRoadmapStore();
   const handleComplete = () => {
-    if (!canMarkComplete) return;
+    // Validate that all sections are completed
+    const incompleteSections = session.sections.filter(
+      (sec) => !isSectionComplete(session, progress, sec.id)
+    );
+    const exercises = session.lessonContent?.exercises ?? [];
+    const incompleteExercises = exercises.filter(
+      (ex) => !progress.exerciseProofs[ex.id]?.trim()
+    );
+
+    if (incompleteSections.length > 0 || incompleteExercises.length > 0) {
+      setShowValidationErrors(true);
+      
+      // Optionally scroll to the first uncompleted section
+      if (incompleteSections.length > 0) {
+        const firstIncompleteId = incompleteSections[0].id;
+        const element = document.getElementById(`section-${firstIncompleteId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      return;
+    }
+
     setIsCompleted(true);
 
     const updatedProgress = {
@@ -1228,6 +1481,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
     setProgress((current) => setExerciseProof(current, exerciseId, proof));
   };
 
+  const handleToggleSaveCourse = (courseId: string) => {
+    locallyChangedProgressRef.current = true;
+    setProgress((current) => toggleSavedCourse(current, courseId));
+  };
+
   // Pass handleComplete down to content panels via context or prop
 
   return (
@@ -1266,8 +1524,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
             <Button
               size="sm"
               onClick={handleComplete}
-              disabled={!canMarkComplete}
-              className="rounded-xl gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              className="rounded-xl gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span className="hidden sm:inline">{t("learning.session.markComplete")}</span>
@@ -1307,6 +1564,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
               activeSectionId={activeSectionId}
               onSelectSection={setActiveSectionId}
               onToggle={() => setIsSidebarOpen(false)}
+              showValidationErrors={showValidationErrors}
             />
           )}
 
@@ -1318,6 +1576,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
             progress={progress}
             onToggleChecklistItem={handleToggleChecklistItem}
             onExerciseProofChange={handleExerciseProofChange}
+            onToggleSaveCourse={handleToggleSaveCourse}
+            showValidationErrors={showValidationErrors}
           />
 
           {/* Right AI Chat Panel — sticky */}

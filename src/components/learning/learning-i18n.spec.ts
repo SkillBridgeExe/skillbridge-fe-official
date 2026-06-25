@@ -15,6 +15,7 @@ describe("learning roadmap i18n keys", () => {
       expect(locale.common.learning.common.openCourse).toBeTruthy();
       expect(locale.common.learning.session.practiceTasks).toBeTruthy();
       expect(locale.common.learning.session.emptyResources).toBeTruthy();
+      expect(locale.common.learning.session.savedCourses).toBeTruthy();
       expect(locale.common.learning.internal.label).toBeTruthy();
       expect(locale.common.learning.internal.defaultDescription).toBeTruthy();
     }

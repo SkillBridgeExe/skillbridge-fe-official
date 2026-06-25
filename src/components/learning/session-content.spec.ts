@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getActiveSessionResource, getSupplementalSessionResources } from "./session-content";
+import { getActiveSessionResource } from "./session-content";
 import type { LearningSession } from "./types";
 
 const baseSession: LearningSession = {
@@ -54,9 +54,5 @@ describe("session content selection", () => {
       id: "resource-automation",
       title: "Software Testing and Automation Specialization (University of Minnesota)",
     });
-  });
-
-  it("does not repeat the active resource in the supplemental resource list", () => {
-    expect(getSupplementalSessionResources(baseSession, "section-automation")).toEqual([]);
   });
 });

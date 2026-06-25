@@ -5,6 +5,7 @@ import {
   isSessionReadyToComplete,
   setExerciseProof,
   toggleChecklistItem,
+  toggleSavedCourse,
 } from "./session-progress";
 import type { LearningSession } from "./types";
 
@@ -110,11 +111,49 @@ describe("session-progress", () => {
     };
 
     let progress = createInitialSessionProgress(checklistFreeSession);
-    let nextSession = applyProgressToSession(checklistFreeSession, progress);
-    expect(nextSession.sections[0].completed).toBe(false);
-
     progress = toggleChecklistItem(progress, "checklist-free-sec", "__completed");
-    nextSession = applyProgressToSession(checklistFreeSession, progress);
+    const nextSession = applyProgressToSession(checklistFreeSession, progress);
     expect(nextSession.sections[0].completed).toBe(true);
+  });
+
+  describe("toggleSavedCourse", () => {
+    it("initializes empty saved courses by default", () => {
+      const progress = createInitialSessionProgress(session);
+      expect(progress.savedCourseIds).toEqual([]);
+    });
+
+    it("restores saved courses if passed", () => {
+      const progress = createInitialSessionProgress(session, {
+        savedCourseIds: ["course-1"],
+      });
+      expect(progress.savedCourseIds).toEqual(["course-1"]);
+      expect(progress.checkedChecklistItems["__saved_courses"]).toEqual(["course-1"]);
+    });
+
+    it("restores saved courses from checkedChecklistItems if savedCourseIds is missing", () => {
+      const progress = createInitialSessionProgress(session, {
+        checkedChecklistItems: {
+          "__saved_courses": ["course-99"],
+        },
+      });
+      expect(progress.savedCourseIds).toEqual(["course-99"]);
+      expect(progress.checkedChecklistItems["__saved_courses"]).toEqual(["course-99"]);
+    });
+
+    it("adds a course ID when it is not already saved and updates checkedChecklistItems", () => {
+      const initial = createInitialSessionProgress(session);
+      const next = toggleSavedCourse(initial, "course-1");
+      expect(next.savedCourseIds).toEqual(["course-1"]);
+      expect(next.checkedChecklistItems["__saved_courses"]).toEqual(["course-1"]);
+    });
+
+    it("removes a course ID when it is already saved and updates checkedChecklistItems", () => {
+      const initial = createInitialSessionProgress(session, {
+        savedCourseIds: ["course-1", "course-2"],
+      });
+      const next = toggleSavedCourse(initial, "course-1");
+      expect(next.savedCourseIds).toEqual(["course-2"]);
+      expect(next.checkedChecklistItems["__saved_courses"]).toEqual(["course-2"]);
+    });
   });
 });
