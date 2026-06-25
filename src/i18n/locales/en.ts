@@ -296,6 +296,7 @@ export default {
         proofInputLabel: "Proof / note / link",
         proofInputPlaceholder: "Paste a transcript, link, screenshot note, or completion evidence...",
         emptyResources: "BE has not mapped learning resources for this skill yet. Add resources to the catalog or regenerate the roadmap after BE is updated.",
+        savedCourses: "Saved courses",
         recommendedCourses: "Recommended courses",
         proTip: "Pro Tip",
         proTipBody: "Start with the highest-match resource, then keep the proof of completion with your portfolio notes.",

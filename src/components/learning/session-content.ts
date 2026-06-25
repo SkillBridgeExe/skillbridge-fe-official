@@ -27,12 +27,3 @@ export function getActiveSessionResource(
 
   return undefined;
 }
-
-export function getSupplementalSessionResources(
-  session: LearningSession,
-  activeSectionId: string,
-): SessionResource[] {
-  const activeResource = getActiveSessionResource(session, activeSectionId);
-  if (activeResource) return [];
-  return session.resources;
-}

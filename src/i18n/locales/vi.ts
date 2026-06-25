@@ -297,6 +297,7 @@ export default {
         proofInputLabel: "Minh chứng / ghi chú / liên kết",
         proofInputPlaceholder: "Dán transcript, liên kết, ghi chú ảnh chụp màn hình hoặc bằng chứng hoàn thành...",
         emptyResources: "BE chưa map được tài nguyên học tập cho kỹ năng này. Hãy bổ sung resource vào catalog hoặc tạo lại roadmap sau khi BE được cập nhật.",
+        savedCourses: "Khóa học đã lưu",
         recommendedCourses: "Khóa học đề xuất",
         proTip: "Mẹo nhỏ",
         proTipBody: "Bắt đầu với tài nguyên có điểm khớp cao nhất, rồi lưu minh chứng hoàn thành vào ghi chú portfolio.",

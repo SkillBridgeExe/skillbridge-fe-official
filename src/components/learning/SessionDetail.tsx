@@ -822,6 +822,7 @@ function DocContentPanel({
 }) {
   const { t } = useTranslation("common");
   const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => setCurrentPage(1), [activeSectionId]);
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const activeResource = getActiveSessionResource(session, activeSection?.id ?? activeSectionId);
   
@@ -1056,7 +1057,7 @@ function DocContentPanel({
         <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
           <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
           <h4 className="font-poppins font-bold text-slate-800 text-xs tracking-wider uppercase">
-            {t("learning.chat.status")}
+            {t("learning.session.savedCourses")}
           </h4>
           <span className="ml-1 h-5 min-w-5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center">
             {allSupplementalResources.length}
