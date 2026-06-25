@@ -133,7 +133,7 @@ export function AIChatPanel({ sessionId, onClose }: { sessionId?: string; onClos
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-l border-slate-200 w-80 lg:w-96 flex-shrink-0 animate-in slide-in-from-right-4 duration-300">
+    <div className="absolute top-0 right-0 z-30 flex flex-col h-full bg-slate-50 border-l border-slate-200 w-80 lg:w-96 shadow-2xl animate-in slide-in-from-right-4 duration-300">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white shadow-sm z-10">
         <div className="flex items-center gap-3">

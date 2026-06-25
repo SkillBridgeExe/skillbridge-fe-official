@@ -567,7 +567,7 @@ export function OverviewView() {
             onMouseUp={handleMouseLeaveOrUp}
             onMouseMove={handleMouseMove}
             className={cn(
-              "flex items-center gap-4 overflow-x-auto pb-6 pt-2 custom-scrollbar px-2 -mx-2 relative z-10 scroll-smooth",
+              "flex items-center gap-4 overflow-x-auto py-6 custom-scrollbar px-2 -mx-2 relative z-10 scroll-smooth",
               isDragging ? "cursor-grabbing select-none" : "cursor-grab"
             )}
           >
@@ -653,10 +653,10 @@ export function OverviewView() {
 
                   {/* Dynamic Connector */}
                   {idx < roadmapModules.length - 1 && (
-                    <div className="flex flex-col items-center justify-center w-8 md:w-12 h-full relative z-0">
+                    <div className="flex items-center justify-center w-8 md:w-12 relative z-0">
                        <div className={cn(
-                          "w-full h-[3px] rounded-full transition-colors duration-500",
-                          isCompleted ? "bg-emerald-200" : "bg-slate-100"
+                          "w-full h-1 rounded-full transition-colors duration-500",
+                          isCompleted ? "bg-emerald-400" : "bg-slate-100"
                        )} />
                        {/* Animated dot on active path */}
                        {isCompleted && roadmapModules[idx+1]?.status === "in-progress" && (

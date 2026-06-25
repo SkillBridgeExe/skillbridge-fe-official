@@ -23,8 +23,11 @@ export function selectLearningSection(
   doc: SectionDocument | undefined = typeof document !== "undefined" ? document : undefined,
 ) {
   onSelectSection(sectionId);
-  doc?.getElementById(`section-${sectionId}`)?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+  const element = doc?.getElementById(`section-${sectionId}`);
+  if (element && typeof element.scrollIntoView === "function") {
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
 }
