@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyMentorProfile, useMyMentorSlots, useCreateMentorSlot, useDeleteMentorSlot } from "@/hooks/use-mentors";
 import { useToast } from "@/hooks/use-toast";
+import {
+  defaultMentorDateRange,
+  mentorDateRangeToIso,
+  validateMentorDateRange,
+} from "@/lib/mentor-date-range";
 
 const SLOT_STATUS_STYLES: Record<string, string> = {
   OPEN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
@@ -21,16 +26,17 @@ export default function MentorAvailability() {
   const profileQuery = useMyMentorProfile();
   const profile = profileQuery.data;
 
-  // Default date range: from now to 30 days out — stable across re-renders
-  const { defaultFrom, defaultTo } = useMemo(() => {
-    const now = new Date();
-    return {
-      defaultFrom: now.toISOString(),
-      defaultTo: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-  }, []);
+  const [dateRange, setDateRange] = useState(defaultMentorDateRange);
+  const rangeError = validateMentorDateRange(dateRange.fromDate, dateRange.toDate);
+  const slotQueryRange = useMemo(
+    () =>
+      rangeError
+        ? { from: new Date().toISOString(), to: new Date().toISOString() }
+        : mentorDateRangeToIso(dateRange.fromDate, dateRange.toDate),
+    [dateRange.fromDate, dateRange.toDate, rangeError],
+  );
 
-  const slotsQuery = useMyMentorSlots({ from: defaultFrom, to: defaultTo });
+  const slotsQuery = useMyMentorSlots(slotQueryRange, !rangeError);
   const createSlot = useCreateMentorSlot();
   const deleteSlot = useDeleteMentorSlot();
 
@@ -161,6 +167,34 @@ export default function MentorAvailability() {
         </section>
       )}
 
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            Từ ngày
+            <Input
+              type="date"
+              value={dateRange.fromDate}
+              onChange={(event) =>
+                setDateRange((current) => ({ ...current, fromDate: event.target.value }))
+              }
+              className="mt-1 h-11 rounded-xl"
+            />
+          </label>
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            Đến ngày
+            <Input
+              type="date"
+              value={dateRange.toDate}
+              onChange={(event) =>
+                setDateRange((current) => ({ ...current, toDate: event.target.value }))
+              }
+              className="mt-1 h-11 rounded-xl"
+            />
+          </label>
+        </div>
+        {rangeError ? <p className="mt-3 text-sm text-red-600">{rangeError}</p> : null}
+      </section>
+
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
           <h2 className="flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
@@ -172,7 +206,9 @@ export default function MentorAvailability() {
           </h2>
         </div>
 
-        {slotsQuery.isLoading ? (
+        {slotsQuery.isError ? (
+          <div className="p-6 text-sm text-red-600">Không thể tải lịch. Vui lòng thử lại.</div>
+        ) : slotsQuery.isLoading ? (
           <div className="space-y-3 p-5 sm:p-6">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
           </div>

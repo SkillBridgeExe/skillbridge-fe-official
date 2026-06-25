@@ -68,7 +68,16 @@ function syncAuthUser(profile: UserProfileDto | null | undefined) {
   if (!profile) return;
   const displayName = profile.displayName;
   const email = profile.email;
-  const avatarUrl = getAuthAvatarUrl(profile.avatarUrl);
+  let avatarUrl = getAuthAvatarUrl(profile.avatarUrl);
+
+  // Public GCS URLs reuse the same path after every re-upload — the URL never
+  // changes, so the browser serves a stale cached copy indefinitely. Append a
+  // version timestamp on every profile sync so the browser always fetches the
+  // current file. Protected paths (/api/user/avatar) are always freshly
+  // downloaded as a blob and are not affected by this.
+  if (avatarUrl && avatarUrl.startsWith("http")) {
+    avatarUrl = `${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  }
 
   useAuthStore.getState().updateAuthUser({
     ...(displayName ? { name: displayName } : {}),
@@ -182,8 +191,11 @@ export async function uploadMyAvatar(file: File): Promise<string | null> {
     }
     const safeAvatarUrl = getSafeAvatarUrl(result?.avatarUrl);
     if (safeAvatarUrl) {
-      setAuthAvatar(safeAvatarUrl);
-      return safeAvatarUrl;
+      // Append a version param so the browser treats this as a new URL and
+      // skips the cached copy of the previous avatar at the same GCS path.
+      const busted = `${safeAvatarUrl}?v=${Date.now()}`;
+      setAuthAvatar(busted);
+      return busted;
     }
     setAuthAvatar(undefined);
     return null;

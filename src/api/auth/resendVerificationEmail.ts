@@ -6,7 +6,7 @@ export interface ResendVerificationEmailRequest {
   email: string;
 }
 
-export type ResendVerificationEmailResponse = ApiEnvelope<null>;
+export type ResendVerificationEmailResponse = ApiEnvelope<{ accepted: true }>;
 
 export const resendVerificationEmailApi = (
   payload: ResendVerificationEmailRequest,

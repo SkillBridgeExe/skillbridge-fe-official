@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getLoginErrorDescription, login } from "./auth.service";
+import {
+  forgotPassword,
+  getLoginErrorDescription,
+  login,
+  resetPassword,
+} from "./auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ApiError } from "@/lib/api-error";
 
@@ -9,6 +14,14 @@ vi.mock("@/api/auth/login", () => ({
 
 vi.mock("@/api/auth/google", () => ({
   googleLoginApi: vi.fn(),
+}));
+
+vi.mock("@/api/auth/forgotPassword", () => ({
+  forgotPasswordApi: vi.fn(),
+}));
+
+vi.mock("@/api/auth/resetPassword", () => ({
+  resetPasswordApi: vi.fn(),
 }));
 
 const user = {
@@ -77,5 +90,36 @@ describe("auth service session persistence", () => {
     );
 
     expect(message).toBe("Could not sign in. Please try again.");
+  });
+
+  it("normalizes forgot-password email before calling the API", async () => {
+    const { forgotPasswordApi } = await import("@/api/auth/forgotPassword");
+    vi.mocked(forgotPasswordApi).mockResolvedValue({
+      success: true,
+      message: "",
+      data: { accepted: true },
+      errors: null,
+    });
+
+    await forgotPassword("  User@Example.com ");
+
+    expect(forgotPasswordApi).toHaveBeenCalledWith({ email: "user@example.com" });
+  });
+
+  it("passes the reset token and new password to the API", async () => {
+    const { resetPasswordApi } = await import("@/api/auth/resetPassword");
+    vi.mocked(resetPasswordApi).mockResolvedValue({
+      success: true,
+      message: "",
+      data: { reset: true },
+      errors: null,
+    });
+
+    await resetPassword("token", "NewStrongPass123");
+
+    expect(resetPasswordApi).toHaveBeenCalledWith({
+      token: "token",
+      newPassword: "NewStrongPass123",
+    });
   });
 });

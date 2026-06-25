@@ -52,11 +52,11 @@ function numberString(value: string | number | null | undefined): string {
   return String(value);
 }
 
-function optionalNumber(value: string): number | undefined {
+function nullableNumber(value: string): number | null {
   const trimmed = value.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) return null;
   const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function draftToBusinessJobForm(draft: JobVersionDto): BusinessJobFormState {
@@ -89,9 +89,9 @@ export function draftToBusinessJobForm(draft: JobVersionDto): BusinessJobFormSta
   };
 }
 
-function optionalString(value: string): string | undefined {
+function nullableStringInput(value: string): string | null {
   const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed ? trimmed : null;
 }
 
 export function formToUpdateJobDraftRequest(
@@ -101,29 +101,35 @@ export function formToUpdateJobDraftRequest(
   return {
     expectedRevision,
     title: form.title.trim(),
-    roleCode: optionalString(form.roleCode),
-    employmentType: form.employmentType || undefined,
-    experienceLevel: form.experienceLevel || undefined,
-    minYearsExperience: optionalNumber(form.minYearsExperience),
-    maxYearsExperience: optionalNumber(form.maxYearsExperience),
-    workMode: form.workMode || undefined,
-    openingsCount: optionalNumber(form.openingsCount),
-    salaryMin: optionalNumber(form.salaryMin),
-    salaryMax: optionalNumber(form.salaryMax),
+    roleCode: nullableStringInput(form.roleCode),
+    employmentType: form.employmentType || null,
+    experienceLevel: form.experienceLevel || null,
+    minYearsExperience: nullableNumber(form.minYearsExperience),
+    maxYearsExperience: nullableNumber(form.maxYearsExperience),
+    workMode: form.workMode || null,
+    openingsCount: nullableNumber(form.openingsCount) ?? 1,
+    salaryMin: nullableNumber(form.salaryMin),
+    salaryMax: nullableNumber(form.salaryMax),
     currency: form.currency.trim() || "VND",
-    salaryPeriod: form.salaryPeriod || undefined,
+    salaryPeriod: form.salaryPeriod || null,
     salaryVisible: form.salaryVisible,
     salaryNegotiable: form.salaryNegotiable,
-    educationLevel: optionalString(form.educationLevel),
-    languageCode: optionalString(form.languageCode),
-    applicationDeadline: optionalString(form.applicationDeadline),
-    summary: optionalString(form.summary),
-    locations: form.locations.length > 0 ? form.locations : undefined,
+    educationLevel: nullableStringInput(form.educationLevel),
+    languageCode: nullableStringInput(form.languageCode),
+    applicationDeadline: nullableStringInput(form.applicationDeadline),
+    summary: nullableStringInput(form.summary),
+    locations: form.locations,
     responsibilities: splitLines(form.responsibilitiesText),
     requirements: splitLines(form.requirementsText),
     niceToHave: splitLines(form.niceToHaveText),
     benefits: splitLines(form.benefitsText),
     interviewProcess: splitLines(form.interviewProcessText),
-    workingTime: optionalString(form.workingTime),
+    workingTime: nullableStringInput(form.workingTime),
   };
+}
+
+export function dateInputToEndOfDayIso(value: string): string {
+  if (!value) return "";
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999).toISOString();
 }
