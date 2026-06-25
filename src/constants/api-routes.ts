@@ -14,6 +14,8 @@ export const API_ROUTES = {
     REGISTER: `${API}/auth/register`,
     VERIFY_EMAIL: `${API}/auth/verify-email`,
     RESEND_VERIFICATION: `${API}/auth/resend-verification-email`,
+    FORGOT_PASSWORD: `${API}/auth/forgot-password`,
+    RESET_PASSWORD: `${API}/auth/reset-password`,
     LOGIN: `${API}/auth/login`,
     GOOGLE: `${API}/auth/google`,
     REFRESH: `${API}/auth/refresh`,
@@ -253,6 +255,8 @@ export const API_ROUTES = {
     PROFILES: `${API}/admin/business-profiles`,
     PROFILE: (id: string) => `${API}/admin/business-profiles/${id}`,
     PROFILE_STATUS: (id: string) => `${API}/admin/business-profiles/${id}/status`,
+    PROFILE_LOGO: (id: string) => `${API}/admin/business-profiles/${id}/logo`,
+    PROFILE_COVER: (id: string) => `${API}/admin/business-profiles/${id}/cover`,
   },
 
   ADMIN_JOBS: {

@@ -75,7 +75,11 @@ export function useUpdateJobDraftMutation() {
   return useMutation({
     mutationFn: ({ jobId, body }: { jobId: string; body: UpdateJobDraftRequest }) =>
       updateJobDraftApi(jobId, body),
-    onSuccess: (_data, vars) => {
+    onSuccess: (draft, vars) => {
+      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
+        if (!current || typeof current !== "object") return current;
+        return { ...current, draft };
+      });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
     },
@@ -87,7 +91,11 @@ export function useExtractJobSkillsMutation() {
   return useMutation({
     mutationFn: ({ jobId, revision }: { jobId: string; revision: number }) =>
       extractJobSkillsApi(jobId, revision),
-    onSuccess: (_data, vars) => {
+    onSuccess: (draft, vars) => {
+      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
+        if (!current || typeof current !== "object") return current;
+        return { ...current, draft };
+      });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
     },
   });
@@ -98,7 +106,11 @@ export function useReplaceJobSkillsMutation() {
   return useMutation({
     mutationFn: ({ jobId, body }: { jobId: string; body: ReplaceDraftSkillsRequest }) =>
       replaceJobSkillsApi(jobId, body),
-    onSuccess: (_data, vars) => {
+    onSuccess: (draft, vars) => {
+      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
+        if (!current || typeof current !== "object") return current;
+        return { ...current, draft };
+      });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
     },
   });

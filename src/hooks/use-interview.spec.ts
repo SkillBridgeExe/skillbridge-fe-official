@@ -5,9 +5,11 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 import {
   useCvListForInterview,
   useCvMatchesForInterview,
+  useCreateCvMatchForInterview,
   useEndInterview,
   useInterviewDetail,
   useInterviewHistory,
+  useUploadCvForInterview,
 } from "./use-interview";
 
 const { mockInvalidateQueries, mockSetQueryData } = vi.hoisted(() => ({
@@ -39,6 +41,12 @@ vi.mock("@/api/cv/list", () => ({
 
 vi.mock("@/api/cv/match", () => ({
   getCvMatchesApi: vi.fn(),
+  matchCvWithJdApi: vi.fn(),
+  matchCvWithJdFileApi: vi.fn(),
+}));
+
+vi.mock("@/api/cv/upload", () => ({
+  uploadCvApi: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-api-session", () => ({
@@ -179,6 +187,67 @@ describe("use-interview query gating", () => {
     expect(mockInvalidateQueries).toHaveBeenCalledTimes(1);
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: QUERY_KEYS.INTERVIEW_HISTORY,
+    });
+  });
+
+  it("invalidates interview CV choices after uploading a CV in setup", () => {
+    useUploadCvForInterview();
+
+    const mutationCalls = vi.mocked(useMutation).mock.calls;
+    const options = mutationCalls[mutationCalls.length - 1]?.[0] as {
+      onSuccess?: (cv: { id: string }) => void;
+    };
+    options.onSuccess?.({ id: "cv-1" });
+
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: QUERY_KEYS.INTERVIEW_CVS,
+    });
+  });
+
+  it("routes pasted and uploaded JD match requests through the same interview mutation", async () => {
+    const { matchCvWithJdApi, matchCvWithJdFileApi } = await import("@/api/cv/match");
+    vi.mocked(matchCvWithJdApi).mockResolvedValueOnce({ id: "match-paste" } as never);
+    vi.mocked(matchCvWithJdFileApi).mockResolvedValueOnce({ id: "match-file" } as never);
+
+    useCreateCvMatchForInterview();
+
+    const mutationCalls = vi.mocked(useMutation).mock.calls;
+    const options = mutationCalls[mutationCalls.length - 1]?.[0] as {
+      mutationFn: (input: unknown) => Promise<unknown>;
+      onSuccess?: (match: { id: string }, input: { cvId: string }) => void;
+    };
+    const file = new File(["JD"], "jd.txt", { type: "text/plain" });
+
+    await expect(
+      options.mutationFn({
+        kind: "paste",
+        cvId: "cv-1",
+        jdText: "Need React and TypeScript.",
+        targetRole: "frontend_developer",
+      }),
+    ).resolves.toEqual({ id: "match-paste" });
+    await expect(
+      options.mutationFn({
+        kind: "file",
+        cvId: "cv-1",
+        file,
+        title: "JD",
+        targetRole: "frontend_developer",
+      }),
+    ).resolves.toEqual({ id: "match-file" });
+    options.onSuccess?.({ id: "match-file" }, { cvId: "cv-1" });
+
+    expect(matchCvWithJdApi).toHaveBeenCalledWith("cv-1", {
+      jdText: "Need React and TypeScript.",
+      targetRole: "frontend_developer",
+    });
+    expect(matchCvWithJdFileApi).toHaveBeenCalledWith("cv-1", {
+      file,
+      title: "JD",
+      targetRole: "frontend_developer",
+    });
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: QUERY_KEYS.INTERVIEW_CV_MATCHES("cv-1"),
     });
   });
 });

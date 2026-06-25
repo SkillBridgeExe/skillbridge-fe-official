@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAdminBusinessProfilesApi, getAdminBusinessProfileApi,
+  downloadAdminBusinessMediaApi,
   reviewBusinessProfileApi, getAdminJobReportsApi,
   resolveJobReportApi, getAdminJobApi, removeAdminJobApi,
 } from "@/api/admin-jobs";
@@ -12,6 +13,8 @@ import type {
 const keys = {
   profiles: (q: AdminBusinessProfilesQuery) => ["adminBusinessProfiles", q] as const,
   profileDetail: (id: string) => ["adminBusinessProfile", id] as const,
+  profileMedia: (id: string, kind: "logo" | "cover") =>
+    ["adminBusinessProfileMedia", id, kind] as const,
   reports: (q: AdminJobReportsQuery) => ["adminJobReports", q] as const,
   jobDetail: (id: string) => ["adminJobDetail", id] as const,
 };
@@ -28,6 +31,18 @@ export function useAdminBusinessProfileDetailQuery(profileId: string | undefined
     queryKey: keys.profileDetail(profileId ?? ""),
     queryFn: () => getAdminBusinessProfileApi(profileId!),
     enabled: !!profileId,
+  });
+}
+
+export function useAdminBusinessProfileMediaQuery(
+  profileId: string,
+  kind: "logo" | "cover",
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: keys.profileMedia(profileId, kind),
+    queryFn: () => downloadAdminBusinessMediaApi(profileId, kind),
+    enabled,
   });
 }
 

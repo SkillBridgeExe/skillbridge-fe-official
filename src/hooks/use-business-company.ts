@@ -4,6 +4,7 @@ import {
   getBusinessCompanyApi, updateBusinessCompanyApi,
   sendWorkEmailVerificationApi, verifyWorkEmailApi,
   uploadCompanyMediaApi, submitBusinessProfileApi,
+  downloadCompanyMediaApi,
 } from "@/api/business-company";
 import type { UpdateBusinessCompanyRequest } from "@/types/jobs";
 
@@ -24,6 +25,7 @@ export function useUpdateBusinessCompanyMutation() {
     mutationFn: (body: UpdateBusinessCompanyRequest) => updateBusinessCompanyApi(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
+      qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
     },
   });
 }
@@ -40,6 +42,7 @@ export function useVerifyWorkEmailMutation() {
     mutationFn: (token: string) => verifyWorkEmailApi(token),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
+      qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
     },
   });
 }
@@ -51,7 +54,16 @@ export function useUploadCompanyMediaMutation() {
       uploadCompanyMediaApi(kind, file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
+      qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
     },
+  });
+}
+
+export function useBusinessCompanyMediaQuery(kind: "logo" | "cover", enabled: boolean) {
+  return useQuery({
+    queryKey: ["businessCompanyMedia", kind],
+    queryFn: () => downloadCompanyMediaApi(kind),
+    enabled,
   });
 }
 

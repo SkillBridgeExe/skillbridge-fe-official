@@ -293,8 +293,8 @@ export interface CompanyEntityDto {
   slug: string;
   canonicalCompanyId: UUID | null;
   website: string | null;
-  logoObjectKey: string | null;
-  coverObjectKey: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
   linkedinUrl: string | null;
   industryCode: string | null;
   companyType: CompanyType | null;
@@ -468,21 +468,21 @@ export interface ReportJobRequest {
 
 export interface UpdateBusinessCompanyRequest {
   companyName?: string;
-  website?: string;
-  workEmail?: string;
-  contactName?: string;
-  contactPhone?: string;
-  linkedinUrl?: string;
-  industryCode?: string;
-  companyType?: CompanyType;
-  companySize?: CompanySize;
-  foundedYear?: number;
+  website?: string | null;
+  workEmail?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  linkedinUrl?: string | null;
+  industryCode?: string | null;
+  companyType?: CompanyType | null;
+  companySize?: CompanySize | null;
+  foundedYear?: number | null;
   countryCode?: string;
-  headquartersCityCode?: string;
-  headquartersAddress?: string;
-  shortDescription?: string;
-  description?: string;
-  cultureDescription?: string;
+  headquartersCityCode?: string | null;
+  headquartersAddress?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  cultureDescription?: string | null;
   benefits?: string[];
 }
 
@@ -494,29 +494,29 @@ export interface CreateJobDraftRequest {
 export interface UpdateJobDraftRequest {
   expectedRevision: number;
   title?: string;
-  roleCode?: string;
-  employmentType?: EmploymentType;
-  experienceLevel?: ExperienceLevel;
-  minYearsExperience?: number;
-  maxYearsExperience?: number;
-  workMode?: WorkMode;
+  roleCode?: string | null;
+  employmentType?: EmploymentType | null;
+  experienceLevel?: ExperienceLevel | null;
+  minYearsExperience?: number | null;
+  maxYearsExperience?: number | null;
+  workMode?: WorkMode | null;
   openingsCount?: number;
-  salaryMin?: number;
-  salaryMax?: number;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
   currency?: string;
-  salaryPeriod?: SalaryPeriod;
+  salaryPeriod?: SalaryPeriod | null;
   salaryVisible?: boolean;
   salaryNegotiable?: boolean;
-  educationLevel?: string;
-  languageCode?: string;
-  applicationDeadline?: ISODateTime;
-  summary?: string;
+  educationLevel?: string | null;
+  languageCode?: string | null;
+  applicationDeadline?: ISODateTime | null;
+  summary?: string | null;
   responsibilities?: string[];
   requirements?: string[];
   niceToHave?: string[];
   benefits?: string[];
   interviewProcess?: string[];
-  workingTime?: string;
+  workingTime?: string | null;
   locations?: JobLocationDto[];
 }
 

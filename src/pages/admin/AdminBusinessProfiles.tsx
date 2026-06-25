@@ -12,8 +12,10 @@ import {
 import {
   useAdminBusinessProfilesQuery,
   useAdminBusinessProfileDetailQuery,
+  useAdminBusinessProfileMediaQuery,
   useReviewBusinessProfileMutation,
 } from "@/hooks/use-admin-jobs";
+import { useBlobUrl } from "@/hooks/use-blob-url";
 import type { BusinessProfileDto, BusinessProfileStatus, AdminBusinessProfilesQuery } from "@/types/jobs";
 
 function StatusBadge({ status }: { status: BusinessProfileStatus }) {
@@ -38,6 +40,17 @@ function StatusBadge({ status }: { status: BusinessProfileStatus }) {
       {labels[status]}
     </span>
   );
+}
+
+function CompanyLogo({ profileId, enabled }: { profileId: string; enabled: boolean }) {
+  const logoQuery = useAdminBusinessProfileMediaQuery(profileId, "logo", enabled);
+  const logoUrl = useBlobUrl(logoQuery.data);
+
+  if (!logoUrl) {
+    return <Building2 size={32} className="text-slate-300" />;
+  }
+
+  return <img src={logoUrl} alt="Company logo" className="h-full w-full object-cover" />;
 }
 
 function ReviewModal({ profileId, onClose }: { profileId: string; onClose: () => void }) {
@@ -129,11 +142,7 @@ function ReviewModal({ profileId, onClose }: { profileId: string; onClose: () =>
           {/* Header Info */}
           <div className="flex items-start gap-5">
             <div className="w-24 h-24 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
-              {company.logoObjectKey ? (
-                <img src={company.logoObjectKey} alt="Logo" className="w-full h-full object-cover" />
-              ) : (
-                <Building2 size={32} className="text-slate-300" />
-              )}
+              <CompanyLogo profileId={profile.id} enabled={Boolean(company.logoUrl)} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
