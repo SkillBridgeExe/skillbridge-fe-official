@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import type { TFunction } from "i18next";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,9 @@ export default function BillingCheckoutStatus() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   const pollingStartedAtRef = useRef<number | null>(null);
+  const capturedPaidOrderRef = useRef<string | null>(null);
   const payOSControllerRef = useRef<PayOSController | null>(null);
   const hasApiSession = useHasApiSession();
   const [embedState, setEmbedState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -153,6 +156,25 @@ export default function BillingCheckoutStatus() {
   useEffect(() => {
     if (order?.status === "PAID") applyPaidInvalidation();
   }, [applyPaidInvalidation, order?.status]);
+
+  useEffect(() => {
+    if (!order || order.status !== "PAID") return;
+
+    const capturedKey = String(order.orderCode);
+    if (capturedPaidOrderRef.current === capturedKey) return;
+
+    capturedPaidOrderRef.current = capturedKey;
+    posthog?.capture("subscription_payment_paid", {
+      order_id: order.orderId,
+      order_code: order.orderCode,
+      amount_vnd: order.amountVnd,
+      currency: order.currency,
+      purpose: order.purpose,
+      target_type: order.targetType,
+      target_id: order.targetId,
+      paid_at: order.paidAt,
+    });
+  }, [order, posthog]);
 
   useEffect(() => {
     if (!hasPayOSReturnQuery || !orderCode) return;

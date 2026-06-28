@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { usePostHog } from "@posthog/react";
 import Layout from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import {
@@ -362,6 +363,7 @@ export default function Jobs() {
   const glowRef = useRef<HTMLDivElement>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { toast } = useToast();
+  const posthog = usePostHog();
 
   // Build query — arrays serialized as comma-separated for backend contract
   const apiQuery: PublicJobsQuery = useMemo(() => ({
@@ -420,6 +422,7 @@ export default function Jobs() {
     if (savedJobIds.has(id)) {
       unsaveMutation.mutate(id);
     } else {
+      posthog?.capture("job_saved", { job_id: id });
       saveMutation.mutate(id);
     }
   };

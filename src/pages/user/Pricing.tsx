@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import Layout from "@/components/layout/Layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export default function Pricing() {
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hasApiSession = useHasApiSession();
+  const posthog = usePostHog();
 
   const plansQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_PLANS,
@@ -53,7 +55,13 @@ export default function Pricing() {
   const checkoutMutation = useMutation({
     mutationFn: (planCode: string) =>
       createCheckout({ purpose: "SUBSCRIPTION", planCode }),
-    onSuccess: (checkout) => {
+    onSuccess: (checkout, planCode) => {
+      posthog?.capture("checkout_created", {
+        plan_code: planCode,
+        order_id: checkout.orderId,
+        order_code: checkout.orderCode,
+        status: checkout.status,
+      });
       navigate(`/billing/checkout/${checkout.orderCode}`);
     },
     onError: (error) => {
@@ -93,6 +101,7 @@ export default function Pricing() {
       return;
     }
 
+    posthog?.capture("checkout_initiated", { plan_code: planCode });
     checkoutMutation.mutate(planCode);
   };
 

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, LayoutDashboard, Shield, Building2, Users, ChevronDown, UserCircle, Sparkles } from "lucide-react";
+import { usePostHog } from "@posthog/react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { logout as logoutSession } from "@/services/auth.service";
 import { useTranslation } from "react-i18next";
@@ -75,6 +76,7 @@ export default function Navbar() {
   const { isAuthenticated, currentUser } = useAuthStore();
   const hasApiSession = useHasApiSession();
   const { t, i18n } = useTranslation("common");
+  const posthog = usePostHog();
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -101,6 +103,8 @@ export default function Navbar() {
   });
 
   const handleLogout = () => {
+    posthog?.capture("user_logged_out", { role: currentUser?.role });
+    posthog?.reset();
     void logoutSession();
     navigate("/");
   };

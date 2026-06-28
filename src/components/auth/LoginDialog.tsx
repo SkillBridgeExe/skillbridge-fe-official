@@ -20,9 +20,10 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePostHog } from "@posthog/react";
 import { useToast } from "@/hooks/use-toast";
 import { useMascotSuccess } from "@/hooks/useMascot";
-import { type UserRole } from "@/store/useAuthStore";
+import { useAuthStore, type UserRole } from "@/store/useAuthStore";
 import {
   dashboardPathFor,
   getLoginErrorDescription,
@@ -71,6 +72,7 @@ export function LoginDialog({
   const { toast } = useToast();
   const { celebrate } = useMascotSuccess();
   const { t } = useTranslation("common");
+  const posthog = usePostHog();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -135,6 +137,10 @@ export function LoginDialog({
 
       const nameToDisplay = displayName || userRole;
 
+      const loggedInUser = useAuthStore.getState().currentUser;
+      if (source === "api" && loggedInUser) posthog?.identify(loggedInUser.id, { role: userRole });
+      posthog?.capture("user_logged_in", { method: "email", role: userRole, source });
+
       celebrate(
         source === "mock"
           ? t("auth.toast.loginDemoSuccess", { role: nameToDisplay })
@@ -193,6 +199,8 @@ export function LoginDialog({
         role: role.toUpperCase(),
       });
 
+      posthog?.capture("user_registered", { role, source: "auth_dialog" });
+
       celebrate(t("auth.toast.registerSuccess"));
       setRegisterSuccess(true);
       setCountdown(60);
@@ -231,8 +239,12 @@ export function LoginDialog({
       }
 
       setLoading(true);
-      const { role: userRole, displayName } = await loginWithGoogle(credentialResponse.credential);
+      const { role: userRole, source, displayName } = await loginWithGoogle(credentialResponse.credential);
       const nameToDisplay = displayName || userRole;
+
+      const authedUser = useAuthStore.getState().currentUser;
+      if (source === "api" && authedUser) posthog?.identify(authedUser.id, { role: userRole });
+      posthog?.capture("user_logged_in", { method: "google", role: userRole, source });
 
       celebrate(t("auth.toast.googleSuccess", { role: nameToDisplay }));
       onOpenChange(false);

@@ -5,6 +5,16 @@ import "@/lib/version"; // W28: log version stamp to console on boot
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import posthog from "posthog-js";
+import { PostHogErrorBoundary, PostHogProvider } from "@posthog/react";
+import { POSTHOG_HOST, POSTHOG_PROJECT_TOKEN } from "@/lib/runtime-config";
+
+if (POSTHOG_PROJECT_TOKEN) {
+  posthog.init(POSTHOG_PROJECT_TOKEN, {
+    api_host: POSTHOG_HOST || "https://us.i.posthog.com",
+    defaults: "2026-01-30",
+  });
+}
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGuard from "@/components/layout/AuthGuard";
@@ -31,6 +41,7 @@ function AdminFallback() {
 }
 
 const App = () => (
+  <PostHogProvider client={posthog}>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="skillbridge-ui-theme">
       <TooltipProvider>
@@ -40,11 +51,12 @@ const App = () => (
         <MascotOverlay />
         <CompanionShell />
         <AuthBootstrap />
+        <PostHogErrorBoundary>
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Pages.Index />} />
-              <Route path="/register" element={<Pages.Register />} />
+              <Route path="/register" element={<Navigate to="/?auth=register" replace />} />
               <Route path="/about" element={<Pages.About />} />
               <Route path="/success" element={<Pages.SuccessStats />} />
               <Route path="/testimonials" element={<Pages.Testimonials />} />
@@ -119,9 +131,11 @@ const App = () => (
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </PostHogErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
+  </PostHogProvider>
 );
 
 const w = window as unknown as { _reactRoot?: ReturnType<typeof createRoot> };
