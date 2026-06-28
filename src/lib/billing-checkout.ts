@@ -25,6 +25,10 @@ export interface PublicCheckoutSummaryItem {
   value: string;
 }
 
+export interface BillingCheckoutNavigationTarget {
+  orderCode?: string | number | null;
+}
+
 const BILLING_ORDER_STATUS_META: Record<BillingOrderStatus, BillingOrderStatusMeta> = {
   PENDING: {
     label: "Pending",
@@ -100,6 +104,16 @@ export function parsePayOSReturnParams(params: URLSearchParams): PayOSReturnPara
 
 export function buildBillingCheckoutReturnUrl(origin: string) {
   return `${origin.replace(/\/+$/, "")}/billing/checkout`;
+}
+
+export function getBillingCheckoutPath(checkout: BillingCheckoutNavigationTarget | null | undefined) {
+  const orderCode = checkout?.orderCode;
+  if (orderCode === null || orderCode === undefined) return null;
+
+  const normalizedOrderCode = String(orderCode).trim();
+  if (!normalizedOrderCode) return null;
+
+  return `/billing/checkout/${encodeURIComponent(normalizedOrderCode)}`;
 }
 
 export function getPublicCheckoutSummaryItems(

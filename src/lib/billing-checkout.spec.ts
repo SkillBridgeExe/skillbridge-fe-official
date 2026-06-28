@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { OrderStatusResponseDto } from "@/api/billing";
 import {
   buildBillingCheckoutReturnUrl,
+  getBillingCheckoutPath,
   getBillingCheckoutSurfaceState,
   getBillingOrderStatusMeta,
   getPublicCheckoutSummaryItems,
@@ -53,6 +54,33 @@ describe("billing checkout helpers", () => {
     expect(buildBillingCheckoutReturnUrl("https://app.skillbridge.vn/")).toBe(
       "https://app.skillbridge.vn/billing/checkout",
     );
+  });
+
+  it("builds the internal checkout path from a numeric order code", () => {
+    expect(getBillingCheckoutPath({ orderCode: 1781624341196493 })).toBe(
+      "/billing/checkout/1781624341196493",
+    );
+  });
+
+  it("encodes string order codes for the internal checkout path", () => {
+    expect(getBillingCheckoutPath({ orderCode: "mentor order/1" })).toBe(
+      "/billing/checkout/mentor%20order%2F1",
+    );
+  });
+
+  it("returns null when checkout has no order code", () => {
+    expect(getBillingCheckoutPath(null)).toBeNull();
+    expect(getBillingCheckoutPath({ orderCode: null })).toBeNull();
+    expect(getBillingCheckoutPath({ orderCode: "" })).toBeNull();
+  });
+
+  it("does not prefer external checkout URLs when an order code exists", () => {
+    const checkout = {
+      orderCode: 803347,
+      checkoutUrl: "https://pay.payos.vn/web/external",
+    };
+
+    expect(getBillingCheckoutPath(checkout)).toBe("/billing/checkout/803347");
   });
 
   it("renders the embedded payOS checkout only while the order is pending", () => {

@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-mentor-bookings";
 import { useToast } from "@/hooks/use-toast";
 import { formatVnd } from "@/components/ecosystem/MentorCard";
+import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import type { MentorBookingDto } from "@/services/mentor-bookings.service";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -92,11 +93,17 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
   const handlePayRemaining = async () => {
     try {
       const checkout = await payRemaining.mutateAsync(booking.id);
-      if (checkout.checkoutUrl) {
-        window.location.href = checkout.checkoutUrl;
-      } else if (checkout.orderCode) {
-        navigate(`/billing/checkout/${checkout.orderCode}`);
+      const checkoutPath = getBillingCheckoutPath(checkout);
+      if (!checkoutPath) {
+        toast({
+          title: t("mentor.billing.payFailed", "Payment error"),
+          description: t("mentor.billing.checkoutUnavailable", "Checkout is not available for this booking yet."),
+          variant: "destructive",
+        });
+        return;
       }
+
+      navigate(checkoutPath);
     } catch (error) {
       toast({
         title: t("mentor.billing.payFailed", "Lỗi thanh toán"),

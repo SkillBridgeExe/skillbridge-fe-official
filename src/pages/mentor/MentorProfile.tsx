@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMentorProfile, useMentorSlots } from "@/hooks/use-mentors";
 import { useCreateBooking } from "@/hooks/use-mentor-bookings";
 import { useToast } from "@/hooks/use-toast";
+import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import {
   defaultMentorDateRange,
   mentorDateRangeToIso,
@@ -48,14 +49,19 @@ export default function MentorProfile() {
         mentorProfileId: mentor.id,
         slotId: selectedSlotId,
       });
-      if (result.checkout?.checkoutUrl) {
-        window.location.href = result.checkout.checkoutUrl;
-      } else if (result.checkout?.orderCode) {
-        navigate(`/billing/checkout/${result.checkout.orderCode}`);
-      } else {
-        toast({ title: t("mentor.profile.bookSuccess", "Booking created successfully") });
-        navigate("/billing/mentor");
+
+      const checkoutPath = getBillingCheckoutPath(result.checkout);
+      if (checkoutPath) {
+        navigate(checkoutPath);
+        return;
       }
+
+      toast({
+        title: t("common.error", "Error"),
+        description: t("mentor.profile.checkoutUnavailable", "Booking was created, but checkout is not available yet."),
+        variant: "destructive",
+      });
+      navigate("/billing/mentor");
     } catch (error) {
       toast({
         title: t("common.error", "Error"),

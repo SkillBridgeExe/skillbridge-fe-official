@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QUERY_KEYS } from "@/constants/app";
 import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import { cn } from "@/lib/utils";
 import {
   createCheckout,
@@ -62,7 +63,17 @@ export default function Pricing() {
         order_code: checkout.orderCode,
         status: checkout.status,
       });
-      navigate(`/billing/checkout/${checkout.orderCode}`);
+      const checkoutPath = getBillingCheckoutPath(checkout);
+      if (!checkoutPath) {
+        toast({
+          title: t("billing.pricing.checkoutFailedTitle"),
+          description: t("billing.checkout.linkUnavailableDesc"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      navigate(checkoutPath);
     },
     onError: (error, planCode) => {
       posthog?.capture("checkout_failed", {
