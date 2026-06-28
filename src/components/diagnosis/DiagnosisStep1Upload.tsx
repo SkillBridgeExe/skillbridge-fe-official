@@ -34,6 +34,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
 import { ActionRail } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import {
+  buildCvUploadedEventProperties,
+  createCvUploadId,
+  getCvUploadScanProperties,
+  type CvUploadInputMethod,
+} from "@/lib/cv-analytics";
 
 /**
  * "Còn x/y lượt chấm" từ GET /api/me/entitlements (BE #49) — số thật theo plan,
@@ -103,6 +109,7 @@ export function DiagnosisStep1Upload() {
   const [isDragging, setIsDragging] = React.useState(false);
   const [fileError, setFileError] = React.useState<string | null>(null);
   const [showJd, setShowJd] = React.useState(false);
+  const [cvUploadId, setCvUploadId] = React.useState<string | null>(null);
 
   // Lịch sử W7: list khi mở Sheet; mở lại 1 CV = đọc review đã lưu (không tốn quota).
   const [historyOpen, setHistoryOpen] = React.useState(false);
@@ -161,7 +168,10 @@ export function DiagnosisStep1Upload() {
     });
   };
 
-  const validateAndSetFile = (file: File | undefined) => {
+  const validateAndSetFile = (
+    file: File | undefined,
+    inputMethod: CvUploadInputMethod,
+  ) => {
     if (!file) return;
     setFileError(null);
     const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
@@ -177,7 +187,20 @@ export function DiagnosisStep1Upload() {
     }
 
     if (validTypes.includes(file.type) || validExts.includes(ext ?? "")) {
+      const nextCvUploadId = createCvUploadId();
       setCvFile(file);
+      setCvUploadId(nextCvUploadId);
+      posthog?.capture(
+        "cv_uploaded",
+        buildCvUploadedEventProperties({
+          cvUploadId: nextCvUploadId,
+          file,
+          inputMethod,
+          targetRole,
+          jobDescription,
+          consentAccepted,
+        }),
+      );
       toast({ title: t("upload.toastUploadedTitle"), description: file.name });
     } else {
       const errMsg = t("upload.toastInvalidDesc");
@@ -188,14 +211,14 @@ export function DiagnosisStep1Upload() {
 
   const handleCVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    validateAndSetFile(file);
+    validateAndSetFile(file, "file_picker");
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    validateAndSetFile(file);
+    validateAndSetFile(file, "drag_drop");
   };
 
   const analyzeCvOnly = async () => {
@@ -207,6 +230,7 @@ export function DiagnosisStep1Upload() {
       cv_source: cvSource,
       target_role: targetRole,
       ...(isFromBuilder && builderCvId ? { source_cv_id: builderCvId } : {}),
+      ...getCvUploadScanProperties(cvSource, cvUploadId),
     };
     posthog?.capture("cv_scan_started", scanProperties);
 
@@ -266,6 +290,7 @@ export function DiagnosisStep1Upload() {
       cv_source: cvSource,
       target_role: targetRole,
       ...(isFromBuilder && builderCvId ? { source_cv_id: builderCvId } : {}),
+      ...getCvUploadScanProperties(cvSource, cvUploadId),
     };
     posthog?.capture("cv_scan_started", scanProperties);
 
@@ -368,7 +393,11 @@ export function DiagnosisStep1Upload() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { clearBuilderState(); setCvFile(null); }}
+                  onClick={() => {
+                    clearBuilderState();
+                    setCvFile(null);
+                    setCvUploadId(null);
+                  }}
                   className="absolute right-4 text-slate-400 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-red-50"
                   title={t("upload.removeCv")}
                 >
@@ -388,7 +417,10 @@ export function DiagnosisStep1Upload() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setCvFile(null)}
+                  onClick={() => {
+                    setCvFile(null);
+                    setCvUploadId(null);
+                  }}
                   className="absolute right-4 text-slate-400 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-red-50"
                   title={t("upload.removeCv")}
                 >
