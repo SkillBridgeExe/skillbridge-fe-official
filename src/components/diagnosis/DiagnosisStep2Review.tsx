@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
@@ -17,7 +18,7 @@ import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
@@ -201,6 +202,7 @@ export function DiagnosisStep2Review() {
   } = useDiagnosisStore();
 
   const { toast } = useToast();
+  const posthog = usePostHog();
   const compareJdMutation = useCompareJdMutation();
   const diagnosisLang = i18n.language?.startsWith("vi") ? "vi" : "en";
 
@@ -214,6 +216,14 @@ export function DiagnosisStep2Review() {
       return;
     }
     if (!jobDescription.trim()) { return toast({ title: t("review.toastMissingJdTitle"), description: t("review.toastMissingJdDesc"), variant: "destructive" }); }
+
+    const scanProperties = {
+      mode: "cv_jd",
+      cv_source: "existing_review",
+      cv_id: lastCvId,
+      target_role: targetRole,
+    };
+    posthog?.capture("cv_scan_started", scanProperties);
 
     const previousReviewData = reviewData;
     setShowJdInput(false);
@@ -230,6 +240,11 @@ export function DiagnosisStep2Review() {
         jdText: jobDescription.trim(),
         targetRole,
       });
+      posthog?.capture("cv_scan_completed", {
+        ...scanProperties,
+        match_id: jdMatch.matchId,
+        match_score: jdMatch.matchScore,
+      });
       setReviewData(previousReviewData ? { ...previousReviewData, jdMatch } : null);
       setHasActivatedJdMode(true);
       setApiError(null);
@@ -242,6 +257,10 @@ export function DiagnosisStep2Review() {
           : gateCode === "CV_CONTENT_INSUFFICIENT"
             ? t("aiGate.cvUnreadable")
             : getApiErrorMessage(error, "Failed to compare CV with job description.");
+      posthog?.capture("cv_scan_failed", {
+        ...scanProperties,
+        error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",
+      });
       setHasActivatedJdMode(false);
       setReviewData(previousReviewData ?? null);
       setApiError(message);

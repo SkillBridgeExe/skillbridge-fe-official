@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mapStoreToCanonical,
   pickSectionContent,
+  resolveCvBuilderSavedSource,
   shouldHydrateServerDraft,
   shouldSaveClientSnapshotAfterDraftCreate,
   type BuilderSnapshot,
@@ -180,5 +181,34 @@ describe("draft creation race policy", () => {
         snapshotChangedWhileCreating: false,
       }),
     ).toBe(true);
+  });
+});
+
+describe("resolveCvBuilderSavedSource", () => {
+  it("keeps diagnosis as the highest-priority builder save source", () => {
+    expect(
+      resolveCvBuilderSavedSource({
+        seededFromDiagnosis: true,
+        seedSourceCvId: "uploaded-cv-1",
+      }),
+    ).toBe("diagnosis");
+  });
+
+  it("uses uploaded_cv when the builder is seeded from an uploaded CV outside diagnosis", () => {
+    expect(
+      resolveCvBuilderSavedSource({
+        seededFromDiagnosis: false,
+        seedSourceCvId: "uploaded-cv-1",
+      }),
+    ).toBe("uploaded_cv");
+  });
+
+  it("defaults to builder for blank builder sessions", () => {
+    expect(
+      resolveCvBuilderSavedSource({
+        seededFromDiagnosis: false,
+        seedSourceCvId: null,
+      }),
+    ).toBe("builder");
   });
 });

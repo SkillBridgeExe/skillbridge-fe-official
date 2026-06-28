@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
@@ -16,9 +17,11 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
 import {
+  resolveCvBuilderSavedSource,
   shouldHydrateServerDraft,
   shouldSaveClientSnapshotAfterDraftCreate,
   type BuilderSnapshot,
+  type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
 
 const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
@@ -58,6 +61,7 @@ export default function Diagnosis() {
   const location = useLocation();
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
+  const posthog = usePostHog();
 
   useEffect(() => {
     setCompanionSuspended(isAnalyzing);
@@ -106,6 +110,8 @@ export default function Diagnosis() {
   const ensureDraftMutation = useEnsureBuilderDraftMutation();
   const saveDraftMutation = useSaveBuilderDraftMutation();
   const { toast } = useToast();
+  const builderSaveCapturedRef = useRef(false);
+  const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
   const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
     fullName: state.fullName,
@@ -128,6 +134,18 @@ export default function Diagnosis() {
     cvLanguage: state.cvLanguage,
   });
 
+  const captureCvBuilderSaved = useCallback((state: ReturnType<typeof useCvBuilderStore.getState>) => {
+    if (builderSaveCapturedRef.current || !state.draftId) return;
+
+    builderSaveCapturedRef.current = true;
+    posthog?.capture("cv_builder_saved", {
+      draft_id: state.draftId,
+      source: builderSaveSourceRef.current ?? resolveCvBuilderSavedSource(state),
+      section_count: state.getSectionStatuses().length,
+      completion_percent: state.getCompletionPercent(),
+    });
+  }, [posthog]);
+
   // W22-A fix: gate draft creation with a ref so it only attempts ONCE per builder entry.
   // A permanent 402 (quota exhausted) must NOT retry — fall back to local mode instead of looping.
   const draftAttemptRef = useRef(false);
@@ -135,6 +153,8 @@ export default function Diagnosis() {
   useEffect(() => {
     if (step !== "builder") {
       draftAttemptRef.current = false; // allow a fresh attempt next time the builder opens
+      builderSaveCapturedRef.current = false;
+      builderSaveSourceRef.current = null;
       return;
     }
 
@@ -143,12 +163,15 @@ export default function Diagnosis() {
       return;
     }
 
-    const currentDraftId = useCvBuilderStore.getState().draftId;
+    const builderEntryState = useCvBuilderStore.getState();
+    builderSaveSourceRef.current ??= resolveCvBuilderSavedSource(builderEntryState);
+    const currentDraftId = builderEntryState.draftId;
     // Attempt server-draft creation AT MOST ONCE per builder entry. A permanent 402
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
       const builderSeed = useCvBuilderStore.getState();
+      builderSaveSourceRef.current = resolveCvBuilderSavedSource(builderSeed);
       const snapshotAtDraftRequest = getBuilderSnapshot(builderSeed);
       ensureDraftMutation.mutate(
         {
@@ -182,6 +205,7 @@ export default function Diagnosis() {
               useAutosaveStore.getState().setSaveStatus("saved");
               const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
               useAutosaveStore.getState().setLastSavedTime(timeStr);
+              captureCvBuilderSaved(useCvBuilderStore.getState());
             };
 
             // The backend normally returns a cloned or blank canonical document.
@@ -262,6 +286,7 @@ export default function Diagnosis() {
         useAutosaveStore.getState().setSaveStatus("saved");
         const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
         useAutosaveStore.getState().setLastSavedTime(timeStr);
+        captureCvBuilderSaved(useCvBuilderStore.getState());
       } catch (error) {
         useAutosaveStore.getState().setSaveStatus("error");
         throw error;

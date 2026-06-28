@@ -13,6 +13,8 @@ interface AppConfig {
   API_URL?: string;
   GOOGLE_CLIENT_ID?: string;
   PAYOS_RETURN_URL?: string;
+  POSTHOG_PROJECT_TOKEN?: string;
+  POSTHOG_HOST?: string;
   ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
   ENABLE_GITHUB_EVIDENCE?: string | boolean;
   APP_VERSION?: string;
@@ -38,6 +40,13 @@ export const API_URL: string =
 /** Exact payOS return URL used by the backend when creating embedded checkout links. */
 export const PAYOS_RETURN_URL: string =
   runtime.PAYOS_RETURN_URL || import.meta.env.VITE_PAYOS_RETURN_URL || "";
+
+/** PostHog public project token and ingest host. Tokens here are public, not secrets. */
+export const POSTHOG_PROJECT_TOKEN: string =
+  runtime.POSTHOG_PROJECT_TOKEN ?? import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN ?? "";
+
+export const POSTHOG_HOST: string =
+  runtime.POSTHOG_HOST ?? import.meta.env.VITE_PUBLIC_POSTHOG_HOST ?? "";
 
 function isEnabled(value: string | boolean | undefined): boolean {
   return value === true || value === "true" || value === "1";

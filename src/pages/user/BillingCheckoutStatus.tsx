@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import type { TFunction } from "i18next";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
   parsePayOSReturnParams,
+  shouldCaptureSubscriptionPaymentPaid,
 } from "@/lib/billing-checkout";
 import { loadPayOSCheckoutScript, type PayOSController } from "@/lib/payos-checkout-script";
 import { formatVnd, StatusBadge } from "@/lib/billing-ui";
@@ -36,6 +38,7 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 const ORDER_POLL_INTERVAL_MS = 2500;
 const ORDER_POLL_TIMEOUT_MS = 120_000;
 const PAYOS_QUERY_KEYS = ["code", "id", "cancel", "status", "orderCode"] as const;
+const FAILED_BILLING_ORDER_STATUSES = new Set(["CANCELLED", "EXPIRED", "FAILED"]);
 
 export default function BillingCheckoutStatus() {
   const { t } = useTranslation("common");
@@ -43,7 +46,10 @@ export default function BillingCheckoutStatus() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   const pollingStartedAtRef = useRef<number | null>(null);
+  const capturedPaidOrderRef = useRef<string | null>(null);
+  const capturedFailedOrderRef = useRef<string | null>(null);
   const payOSControllerRef = useRef<PayOSController | null>(null);
   const hasApiSession = useHasApiSession();
   const [embedState, setEmbedState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -153,6 +159,40 @@ export default function BillingCheckoutStatus() {
   useEffect(() => {
     if (order?.status === "PAID") applyPaidInvalidation();
   }, [applyPaidInvalidation, order?.status]);
+
+  useEffect(() => {
+    if (!shouldCaptureSubscriptionPaymentPaid(order)) return;
+
+    const capturedKey = String(order.orderCode);
+    if (capturedPaidOrderRef.current === capturedKey) return;
+
+    capturedPaidOrderRef.current = capturedKey;
+    posthog?.capture("subscription_payment_paid", {
+      order_id: order.orderId,
+      order_code: order.orderCode,
+      amount_vnd: order.amountVnd,
+      currency: order.currency,
+      purpose: order.purpose,
+      target_type: order.targetType,
+      target_id: order.targetId,
+      paid_at: order.paidAt,
+    });
+  }, [order, posthog]);
+
+  useEffect(() => {
+    if (!order || !FAILED_BILLING_ORDER_STATUSES.has(order.status)) return;
+
+    const capturedKey = String(order.orderCode);
+    if (capturedFailedOrderRef.current === capturedKey) return;
+
+    capturedFailedOrderRef.current = capturedKey;
+    posthog?.capture("checkout_failed", {
+      order_id: order.orderId,
+      order_code: order.orderCode,
+      status: order.status,
+      error_code: order.status.toLowerCase(),
+    });
+  }, [order, posthog]);
 
   useEffect(() => {
     if (!hasPayOSReturnQuery || !orderCode) return;

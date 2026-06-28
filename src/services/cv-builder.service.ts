@@ -89,6 +89,20 @@ export function shouldSaveClientSnapshotAfterDraftCreate({
   return snapshotChangedWhileCreating || (!hasServerDocument && seededFromDiagnosis);
 }
 
+export type CvBuilderSavedSource = "diagnosis" | "uploaded_cv" | "builder";
+
+export function resolveCvBuilderSavedSource({
+  seededFromDiagnosis,
+  seedSourceCvId,
+}: {
+  seededFromDiagnosis: boolean;
+  seedSourceCvId?: string | null;
+}): CvBuilderSavedSource {
+  if (seededFromDiagnosis) return "diagnosis";
+  if (seedSourceCvId) return "uploaded_cv";
+  return "builder";
+}
+
 // ── Helpers (đổi format thuần, không thêm nội dung) ─────────────────
 
 /** Tách textarea nhiều dòng thành bullets sạch. */

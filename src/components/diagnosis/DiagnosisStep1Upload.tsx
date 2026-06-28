@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { usePostHog } from "@posthog/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,7 @@ import {
   useCvHistoryQuery,
   useLoadCvFromHistoryMutation,
 } from "@/hooks/use-diagnosis";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
@@ -95,6 +96,7 @@ export function DiagnosisStep1Upload() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hasApiSession = useHasApiSession();
   const { toast } = useToast();
+  const posthog = usePostHog();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const analyzeCvWithJdMutation = useAnalyzeCvWithJdMutation();
 
@@ -111,6 +113,7 @@ export function DiagnosisStep1Upload() {
     : null;
 
   const hasUsableCv = Boolean(cvFile) || (isFromBuilder && Boolean(builderCvId));
+  const cvSource = isFromBuilder ? "builder" : "upload";
 
   /* ── Companion: Step-1 upload guide (#16) ── */
   useEffect(() => {
@@ -199,6 +202,14 @@ export function DiagnosisStep1Upload() {
     if (!hasUsableCv) { return toast({ title: t("upload.toastMissingCvTitle"), description: t("upload.toastMissingCvDesc"), variant: "destructive" }); }
     if (!targetRole) { return toast({ title: t("upload.toastMissingRoleTitle"), description: t("upload.toastMissingRoleDesc"), variant: "destructive" }); }
 
+    const scanProperties = {
+      mode: "cv_only",
+      cv_source: cvSource,
+      target_role: targetRole,
+      ...(isFromBuilder && builderCvId ? { source_cv_id: builderCvId } : {}),
+    };
+    posthog?.capture("cv_scan_started", scanProperties);
+
     setHasActivatedJdMode(false);
     setAnalysisMode("cv-only");
     setApiError(null);
@@ -213,6 +224,11 @@ export function DiagnosisStep1Upload() {
         ? { builderCvId, targetRole, consentAccepted }
         : { file: cvFile!, targetRole, consentAccepted };
       const { cvId, review } = await analyzeCvMutation.mutateAsync(payload);
+      posthog?.capture("cv_scan_completed", {
+        ...scanProperties,
+        cv_id: cvId,
+        overall_score: review.overallScore,
+      });
       setLastCvId(cvId);
       setReviewData(review);
       setStep("cv-review");
@@ -222,6 +238,10 @@ export function DiagnosisStep1Upload() {
         gateCode === "CV_CONTENT_INSUFFICIENT"
           ? t("aiGate.cvUnreadable")
           : getApiErrorMessage(error, t("upload.errorAnalyze"));
+      posthog?.capture("cv_scan_failed", {
+        ...scanProperties,
+        error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",
+      });
       setApiError(message);
       toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });
     } finally {
@@ -241,6 +261,14 @@ export function DiagnosisStep1Upload() {
       return toast({ title: t("upload.toastMissingJdTitle"), description: t("upload.toastMissingJdDesc"), variant: "destructive" });
     }
 
+    const scanProperties = {
+      mode: "cv_jd",
+      cv_source: cvSource,
+      target_role: targetRole,
+      ...(isFromBuilder && builderCvId ? { source_cv_id: builderCvId } : {}),
+    };
+    posthog?.capture("cv_scan_started", scanProperties);
+
     setAnalysisMode("cv-jd");
     setApiError(null);
     setReviewData(null);
@@ -254,6 +282,13 @@ export function DiagnosisStep1Upload() {
         ? { builderCvId, targetRole, jdText: jobDescription.trim(), consentAccepted }
         : { file: cvFile!, targetRole, jdText: jobDescription.trim(), consentAccepted };
       const { cvId, review } = await analyzeCvWithJdMutation.mutateAsync(payload);
+      posthog?.capture("cv_scan_completed", {
+        ...scanProperties,
+        cv_id: cvId,
+        match_id: review.jdMatch?.matchId,
+        overall_score: review.overallScore,
+        match_score: review.jdMatch?.matchScore,
+      });
       setLastCvId(cvId);
       setReviewData(review);
       setHasActivatedJdMode(true);
@@ -266,6 +301,10 @@ export function DiagnosisStep1Upload() {
           : gateCode === "JD_CONTENT_INSUFFICIENT"
             ? t("aiGate.jdThin")
             : getApiErrorMessage(error, t("upload.errorCompare"));
+      posthog?.capture("cv_scan_failed", {
+        ...scanProperties,
+        error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",
+      });
       setHasActivatedJdMode(false);
       setApiError(message);
       toast({ title: t("upload.toastAnalysisFailedTitle"), description: message, variant: "destructive" });

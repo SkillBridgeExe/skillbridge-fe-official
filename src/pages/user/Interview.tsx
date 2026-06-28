@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import {
   Award,
   BarChart3,
@@ -134,6 +135,7 @@ function questionMetadataFromTurn(
 export default function Interview() {
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
+  const posthog = usePostHog();
   const [phase, setPhase] = useState<InterviewPhase>("setup");
   const [workspaceTab, setWorkspaceTab] = useState<InterviewWorkspaceTab>("practice");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -756,6 +758,7 @@ export default function Interview() {
       setChatHistory(initialMessages);
       setPhase("interviewing");
       setSidebarOpen(false);
+      posthog?.capture("interview_started", { mode: interviewMode, type: interviewType, target_role: targetRole });
       questionStartedAtRef.current = interviewMode === "realtime" ? null : new Date();
 
       const stream = await requestSessionMedia();
@@ -825,8 +828,9 @@ export default function Interview() {
       setInterviewFinished(true);
       setPhase("results");
       setSidebarOpen(true);
+      posthog?.capture("interview_completed", { session_id: detail.id, score: detail.overallScore });
     },
-    [resetInterviewState, t, toast],
+    [posthog, resetInterviewState, t, toast],
   );
 
   const finishInterview = useCallback(

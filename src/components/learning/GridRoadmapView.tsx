@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const statusConfig = {
 export function GridRoadmapView() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const weeks = useActiveWeekPlans();
 
   return (
@@ -71,7 +73,11 @@ export function GridRoadmapView() {
               return (
                 <Card
                   key={session.id}
-                  onClick={() => !isLocked && navigate(`/learning/session/${session.id}`)}
+                  onClick={() => {
+                    if (isLocked) return;
+                    posthog?.capture("learning_session_started", { session_id: session.id, skill: session.skill, status: session.status });
+                    navigate(`/learning/session/${session.id}`);
+                  }}
                   className={cn(
                     "border transition-all cursor-pointer group rounded-2xl overflow-hidden",
                     isLocked ? "opacity-50 cursor-not-allowed border-slate-100" : "hover:shadow-lg hover:-translate-y-1 border-slate-200",

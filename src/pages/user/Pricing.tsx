@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import Layout from "@/components/layout/Layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QUERY_KEYS } from "@/constants/app";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import { cn } from "@/lib/utils";
 import {
   createCheckout,
@@ -38,6 +40,7 @@ export default function Pricing() {
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hasApiSession = useHasApiSession();
+  const posthog = usePostHog();
 
   const plansQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_PLANS,
@@ -53,10 +56,31 @@ export default function Pricing() {
   const checkoutMutation = useMutation({
     mutationFn: (planCode: string) =>
       createCheckout({ purpose: "SUBSCRIPTION", planCode }),
-    onSuccess: (checkout) => {
-      navigate(`/billing/checkout/${checkout.orderCode}`);
+    onSuccess: (checkout, planCode) => {
+      posthog?.capture("checkout_created", {
+        plan_code: planCode,
+        order_id: checkout.orderId,
+        order_code: checkout.orderCode,
+        status: checkout.status,
+      });
+      const checkoutPath = getBillingCheckoutPath(checkout);
+      if (!checkoutPath) {
+        toast({
+          title: t("billing.pricing.checkoutFailedTitle"),
+          description: t("billing.checkout.linkUnavailableDesc"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      navigate(checkoutPath);
     },
-    onError: (error) => {
+    onError: (error, planCode) => {
+      posthog?.capture("checkout_failed", {
+        plan_code: planCode,
+        status: "create_failed",
+        error_code: getApiErrorCode(error) ?? "unknown",
+      });
       toast({
         title: t("billing.pricing.checkoutFailedTitle"),
         description: getApiErrorMessage(error),
@@ -93,6 +117,7 @@ export default function Pricing() {
       return;
     }
 
+    posthog?.capture("checkout_initiated", { plan_code: planCode });
     checkoutMutation.mutate(planCode);
   };
 
