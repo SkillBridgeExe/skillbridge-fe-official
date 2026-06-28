@@ -25,6 +25,7 @@ import {
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
   parsePayOSReturnParams,
+  shouldCaptureSubscriptionPaymentPaid,
 } from "@/lib/billing-checkout";
 import { loadPayOSCheckoutScript, type PayOSController } from "@/lib/payos-checkout-script";
 import { formatVnd, StatusBadge } from "@/lib/billing-ui";
@@ -160,7 +161,7 @@ export default function BillingCheckoutStatus() {
   }, [applyPaidInvalidation, order?.status]);
 
   useEffect(() => {
-    if (!order || order.status !== "PAID") return;
+    if (!shouldCaptureSubscriptionPaymentPaid(order)) return;
 
     const capturedKey = String(order.orderCode);
     if (capturedPaidOrderRef.current === capturedKey) return;

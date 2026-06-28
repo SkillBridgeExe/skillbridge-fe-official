@@ -1337,26 +1337,42 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const [activeSectionId, setActiveSectionId] = useState(session.sections[0]?.id ?? "");
+  const initialSectionId = session.sections[0]?.id ?? "";
+  const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(session.status === "completed");
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [progress, setProgress] = useState<SessionProgressState>(() =>
     createInitialSessionProgress(session, readStoredSessionProgress(session.id)),
   );
+  const [progressSessionId, setProgressSessionId] = useState(session.id);
   const progressRef = useRef(progress);
   const progressHydratedRef = useRef(false);
   const locallyChangedProgressRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
+
+  const progressBelongsToCurrentSession = progressSessionId === session.id;
+  const visibleProgress = progressBelongsToCurrentSession
+    ? progress
+    : createInitialSessionProgress(session, readStoredSessionProgress(session.id));
+  const isCompleted =
+    session.status === "completed" ||
+    (progressBelongsToCurrentSession &&
+      (progress.checkedChecklistItems["__session"]?.includes("completed") ?? false));
 
   useEffect(() => {
     progressRef.current = progress;
   }, [progress]);
 
   useEffect(() => {
+    setActiveSectionId(initialSectionId);
+    setShowValidationErrors(false);
+  }, [initialSectionId, session.id]);
+
+  useEffect(() => {
     const localProgress = createInitialSessionProgress(session, readStoredSessionProgress(session.id));
     setProgress(localProgress);
+    setProgressSessionId(session.id);
     progressRef.current = localProgress;
     progressHydratedRef.current = false;
     locallyChangedProgressRef.current = false;
@@ -1372,6 +1388,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
         if (!isActive || locallyChangedProgressRef.current) return;
         const hydrated = createInitialSessionProgress(session, remoteProgress);
         setProgress(hydrated);
+        setProgressSessionId(session.id);
         progressRef.current = hydrated;
       })
       .catch(() => {
@@ -1392,6 +1409,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   }, [session]);
 
   useEffect(() => {
+    if (!progressBelongsToCurrentSession) return;
     writeStoredSessionProgress(session.id, progress);
     if (!hasApiAuthSession() || !progressHydratedRef.current) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
@@ -1401,9 +1419,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
-  }, [session.id, progress]);
+  }, [progress, progressBelongsToCurrentSession, session.id]);
 
-  const displaySession = applyProgressToSession(session, progress);
+  const displaySession = applyProgressToSession(session, visibleProgress);
 
   const weeks = useActiveWeekPlans();
   const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
@@ -1416,11 +1434,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
     // Validate that all sections are completed
     const incompleteSections = session.sections.filter(
-      (sec) => !isSectionComplete(session, progress, sec.id)
+      (sec) => !isSectionComplete(session, visibleProgress, sec.id)
     );
     const exercises = session.lessonContent?.exercises ?? [];
     const incompleteExercises = exercises.filter(
-      (ex) => !progress.exerciseProofs[ex.id]?.trim()
+      (ex) => !visibleProgress.exerciseProofs[ex.id]?.trim()
     );
 
     if (incompleteSections.length > 0 || incompleteExercises.length > 0) {
@@ -1437,15 +1455,15 @@ export function SessionDetail({ session }: SessionDetailProps) {
       return;
     }
 
-    setIsCompleted(true);
-
     const updatedProgress = {
-      ...progress,
+      ...visibleProgress,
       checkedChecklistItems: {
-        ...progress.checkedChecklistItems,
+        ...visibleProgress.checkedChecklistItems,
         "__session": ["completed"],
       },
     };
+    locallyChangedProgressRef.current = true;
+    setProgressSessionId(session.id);
     setProgress(updatedProgress);
     writeStoredSessionProgress(session.id, updatedProgress);
     if (hasApiAuthSession()) {
@@ -1481,17 +1499,26 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const handleToggleChecklistItem = (sectionId: string, item: string) => {
     locallyChangedProgressRef.current = true;
-    setProgress((current) => toggleChecklistItem(current, sectionId, item));
+    setProgressSessionId(session.id);
+    setProgress((current) =>
+      toggleChecklistItem(progressBelongsToCurrentSession ? current : visibleProgress, sectionId, item),
+    );
   };
 
   const handleExerciseProofChange = (exerciseId: string, proof: string) => {
     locallyChangedProgressRef.current = true;
-    setProgress((current) => setExerciseProof(current, exerciseId, proof));
+    setProgressSessionId(session.id);
+    setProgress((current) =>
+      setExerciseProof(progressBelongsToCurrentSession ? current : visibleProgress, exerciseId, proof),
+    );
   };
 
   const handleToggleSaveCourse = (courseId: string) => {
     locallyChangedProgressRef.current = true;
-    setProgress((current) => toggleSavedCourse(current, courseId));
+    setProgressSessionId(session.id);
+    setProgress((current) =>
+      toggleSavedCourse(progressBelongsToCurrentSession ? current : visibleProgress, courseId),
+    );
   };
 
   // Pass handleComplete down to content panels via context or prop
@@ -1581,7 +1608,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
             session={displaySession}
             activeSectionId={activeSectionId}
             onSelectSection={setActiveSectionId}
-            progress={progress}
+            progress={visibleProgress}
             onToggleChecklistItem={handleToggleChecklistItem}
             onExerciseProofChange={handleExerciseProofChange}
             onToggleSaveCourse={handleToggleSaveCourse}

@@ -17,9 +17,11 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useToast } from "@/hooks/use-toast";
 import {
+  resolveCvBuilderSavedSource,
   shouldHydrateServerDraft,
   shouldSaveClientSnapshotAfterDraftCreate,
   type BuilderSnapshot,
+  type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
 
 const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
@@ -109,6 +111,7 @@ export default function Diagnosis() {
   const saveDraftMutation = useSaveBuilderDraftMutation();
   const { toast } = useToast();
   const builderSaveCapturedRef = useRef(false);
+  const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
   const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
     fullName: state.fullName,
@@ -137,11 +140,7 @@ export default function Diagnosis() {
     builderSaveCapturedRef.current = true;
     posthog?.capture("cv_builder_saved", {
       draft_id: state.draftId,
-      source: state.seededFromDiagnosis
-        ? "diagnosis"
-        : state.seedSourceCvId
-          ? "uploaded_cv"
-          : "builder",
+      source: builderSaveSourceRef.current ?? resolveCvBuilderSavedSource(state),
       section_count: state.getSectionStatuses().length,
       completion_percent: state.getCompletionPercent(),
     });
@@ -155,6 +154,7 @@ export default function Diagnosis() {
     if (step !== "builder") {
       draftAttemptRef.current = false; // allow a fresh attempt next time the builder opens
       builderSaveCapturedRef.current = false;
+      builderSaveSourceRef.current = null;
       return;
     }
 
@@ -163,12 +163,15 @@ export default function Diagnosis() {
       return;
     }
 
-    const currentDraftId = useCvBuilderStore.getState().draftId;
+    const builderEntryState = useCvBuilderStore.getState();
+    builderSaveSourceRef.current ??= resolveCvBuilderSavedSource(builderEntryState);
+    const currentDraftId = builderEntryState.draftId;
     // Attempt server-draft creation AT MOST ONCE per builder entry. A permanent 402
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
       const builderSeed = useCvBuilderStore.getState();
+      builderSaveSourceRef.current = resolveCvBuilderSavedSource(builderSeed);
       const snapshotAtDraftRequest = getBuilderSnapshot(builderSeed);
       ensureDraftMutation.mutate(
         {

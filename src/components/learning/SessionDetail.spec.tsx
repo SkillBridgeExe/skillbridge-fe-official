@@ -130,4 +130,25 @@ describe("SessionDetail", () => {
     expect(screen.getByText("Course 1")).toBeInTheDocument();
     expect(screen.queryByText("Course 9")).not.toBeInTheDocument();
   });
+
+  it("shows the complete button after switching from a completed session to an in-progress session", () => {
+    const completedSession: LearningSession = {
+      ...session,
+      id: "session-completed",
+      status: "completed",
+    };
+    const inProgressSession: LearningSession = {
+      ...session,
+      id: "session-in-progress",
+      status: "in-progress",
+    };
+
+    const { rerender } = render(<SessionDetail session={completedSession} />);
+
+    expect(screen.getByText("Done")).toBeInTheDocument();
+
+    rerender(<SessionDetail session={inProgressSession} />);
+
+    expect(screen.queryByText("Done")).not.toBeInTheDocument();
+  });
 });

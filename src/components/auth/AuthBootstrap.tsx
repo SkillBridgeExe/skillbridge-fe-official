@@ -8,12 +8,16 @@ export default function AuthBootstrap() {
 
   useEffect(() => {
     const bootstrap = () => {
-      void bootstrapAuthSession().then(() => {
-        const { authSource, currentUser } = useAuthStore.getState();
-        if (authSource === "api" && currentUser) {
-          posthog?.identify(currentUser.id, { role: currentUser.role });
-        }
-      });
+      void bootstrapAuthSession()
+        .then(() => {
+          const { authSource, currentUser } = useAuthStore.getState();
+          if (authSource === "api" && currentUser) {
+            posthog?.identify(currentUser.id, { role: currentUser.role });
+          }
+        })
+        .catch((error) => {
+          console.warn("Failed to bootstrap auth session", error);
+        });
     };
 
     if (useAuthStore.persist.hasHydrated()) {

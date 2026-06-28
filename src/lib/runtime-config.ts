@@ -43,10 +43,10 @@ export const PAYOS_RETURN_URL: string =
 
 /** PostHog public project token and ingest host. Tokens here are public, not secrets. */
 export const POSTHOG_PROJECT_TOKEN: string =
-  runtime.POSTHOG_PROJECT_TOKEN || import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || "";
+  runtime.POSTHOG_PROJECT_TOKEN ?? import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN ?? "";
 
 export const POSTHOG_HOST: string =
-  runtime.POSTHOG_HOST || import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
+  runtime.POSTHOG_HOST ?? import.meta.env.VITE_PUBLIC_POSTHOG_HOST ?? "";
 
 function isEnabled(value: string | boolean | undefined): boolean {
   return value === true || value === "true" || value === "1";

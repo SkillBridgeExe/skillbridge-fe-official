@@ -79,6 +79,12 @@ export function isTerminalBillingOrderStatus(status: BillingOrderStatus | string
   return getBillingOrderStatusMeta(status).terminal;
 }
 
+export function shouldCaptureSubscriptionPaymentPaid(
+  order: OrderStatusResponseDto | null | undefined,
+): order is OrderStatusResponseDto & { status: "PAID"; purpose: "SUBSCRIPTION" } {
+  return order?.status === "PAID" && order.purpose === "SUBSCRIPTION";
+}
+
 export function getBillingCheckoutSurfaceState(
   status: BillingOrderStatus | string | null | undefined,
   checkoutUrl: string | null | undefined,
