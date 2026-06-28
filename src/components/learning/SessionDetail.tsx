@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +47,6 @@ import { getNextLearningSectionId, selectLearningSection } from "./session-navig
 import {
   applyProgressToSession,
   createInitialSessionProgress,
-  isSessionReadyToComplete,
   setExerciseProof,
   toggleChecklistItem,
   readStoredSessionProgress,
@@ -1336,6 +1336,7 @@ interface SessionDetailProps {
 export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const [activeSectionId, setActiveSectionId] = useState(session.sections[0]?.id ?? "");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -1403,7 +1404,6 @@ export function SessionDetail({ session }: SessionDetailProps) {
   }, [session.id, progress]);
 
   const displaySession = applyProgressToSession(session, progress);
-  const canMarkComplete = !session.lessonContent || isSessionReadyToComplete(session, progress);
 
   const weeks = useActiveWeekPlans();
   const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
@@ -1412,6 +1412,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const { weekPlans, setWeekPlans } = useRoadmapStore();
   const handleComplete = () => {
+    if (isCompleted) return;
+
     // Validate that all sections are completed
     const incompleteSections = session.sections.filter(
       (sec) => !isSectionComplete(session, progress, sec.id)
@@ -1462,6 +1464,12 @@ export function SessionDetail({ session }: SessionDetailProps) {
       }));
       setWeekPlans(updated);
     }
+
+    posthog?.capture("learning_session_completed", {
+      session_id: session.id,
+      skill: session.skill,
+      completion_percent: 100,
+    });
 
     const next = ALL_SESSIONS[currentIdx + 1];
     setTimeout(() => next ? navigate(`/learning/session/${next.id}`) : navigate("/learning"), 800);

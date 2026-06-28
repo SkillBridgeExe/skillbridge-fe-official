@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QUERY_KEYS } from "@/constants/app";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import {
   createCheckout,
@@ -64,7 +64,12 @@ export default function Pricing() {
       });
       navigate(`/billing/checkout/${checkout.orderCode}`);
     },
-    onError: (error) => {
+    onError: (error, planCode) => {
+      posthog?.capture("checkout_failed", {
+        plan_code: planCode,
+        status: "create_failed",
+        error_code: getApiErrorCode(error) ?? "unknown",
+      });
       toast({
         title: t("billing.pricing.checkoutFailedTitle"),
         description: getApiErrorMessage(error),

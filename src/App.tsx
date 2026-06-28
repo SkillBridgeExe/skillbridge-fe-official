@@ -13,6 +13,14 @@ if (POSTHOG_PROJECT_TOKEN) {
   posthog.init(POSTHOG_PROJECT_TOKEN, {
     api_host: POSTHOG_HOST || "https://us.i.posthog.com",
     defaults: "2026-01-30",
+    autocapture: true,
+    capture_pageview: "history_change",
+    disable_session_recording: false,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: "*",
+      compress_events: true,
+    },
   });
 }
 import { QueryClientProvider } from "@tanstack/react-query";

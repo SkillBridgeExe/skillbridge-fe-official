@@ -37,6 +37,7 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 const ORDER_POLL_INTERVAL_MS = 2500;
 const ORDER_POLL_TIMEOUT_MS = 120_000;
 const PAYOS_QUERY_KEYS = ["code", "id", "cancel", "status", "orderCode"] as const;
+const FAILED_BILLING_ORDER_STATUSES = new Set(["CANCELLED", "EXPIRED", "FAILED"]);
 
 export default function BillingCheckoutStatus() {
   const { t } = useTranslation("common");
@@ -47,6 +48,7 @@ export default function BillingCheckoutStatus() {
   const posthog = usePostHog();
   const pollingStartedAtRef = useRef<number | null>(null);
   const capturedPaidOrderRef = useRef<string | null>(null);
+  const capturedFailedOrderRef = useRef<string | null>(null);
   const payOSControllerRef = useRef<PayOSController | null>(null);
   const hasApiSession = useHasApiSession();
   const [embedState, setEmbedState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -173,6 +175,21 @@ export default function BillingCheckoutStatus() {
       target_type: order.targetType,
       target_id: order.targetId,
       paid_at: order.paidAt,
+    });
+  }, [order, posthog]);
+
+  useEffect(() => {
+    if (!order || !FAILED_BILLING_ORDER_STATUSES.has(order.status)) return;
+
+    const capturedKey = String(order.orderCode);
+    if (capturedFailedOrderRef.current === capturedKey) return;
+
+    capturedFailedOrderRef.current = capturedKey;
+    posthog?.capture("checkout_failed", {
+      order_id: order.orderId,
+      order_code: order.orderCode,
+      status: order.status,
+      error_code: order.status.toLowerCase(),
     });
   }, [order, posthog]);
 
