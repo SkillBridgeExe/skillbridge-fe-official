@@ -123,8 +123,11 @@ export const API_ROUTES = {
 
   ADMIN_BILLING: {
     PLANS: `${API}/admin/billing/plans`,
+    FEATURES: `${API}/admin/billing/features`,
     PLAN: (code: string) => `${API}/admin/billing/plans/${code}`,
     PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,
+    PLAN_FEATURE: (code: string, featureKey: string) =>
+      `${API}/admin/billing/plans/${code}/features/${featureKey}`,
     ORDERS: `${API}/admin/billing/orders`,
     SUBSCRIPTIONS: `${API}/admin/billing/subscriptions`,
     MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,

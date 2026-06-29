@@ -53,3 +53,9 @@ export function getPricingFeatureSummary(
     hiddenFeatureCount: Math.max(0, list.length - visibleFeatures.length),
   };
 }
+
+export function getVisiblePricingPlans(plans: BillingPlanDto[] | undefined) {
+  return (plans ?? []).filter(
+    (plan) => plan.category === "SUBSCRIPTION" && plan.isActive !== false,
+  );
+}

@@ -32,6 +32,7 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 import {
   getPricingFeatureSummary,
   getPricingPlanPresentation,
+  getVisiblePricingPlans,
 } from "./pricing-view-model";
 
 export default function Pricing() {
@@ -89,7 +90,7 @@ export default function Pricing() {
     },
   });
 
-  const plans = plansQuery.data ?? [];
+  const plans = getVisiblePricingPlans(plansQuery.data);
   const currentPlanCode = subscriptionQuery.data?.planCode?.toLowerCase();
 
   const handlePlanAction = (
@@ -154,7 +155,7 @@ export default function Pricing() {
             onAction={() => void plansQuery.refetch()}
           />
         ) : (
-          <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => {
               const presentation = getPricingPlanPresentation(
                 plan,
@@ -357,8 +358,8 @@ function PricingState({
 
 function PricingSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, index) => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
         <Card key={index} className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="space-y-3 p-5 pb-4">
             <Skeleton className="h-6 w-28" />
