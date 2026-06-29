@@ -8,13 +8,31 @@ import {
   Loader2,
   AlertTriangle,
   FileText,
-  Trash2
+  Trash2,
 } from "lucide-react";
-import { useAdminJobReportsQuery, useRemoveAdminJobMutation, useResolveJobReportMutation } from "@/hooks/use-admin-jobs";
+import {
+  useAdminJobReportsQuery,
+  useRemoveAdminJobMutation,
+  useResolveJobReportMutation,
+} from "@/hooks/use-admin-jobs";
 import type { JobReportDto } from "@/types/jobs";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { getApiErrorMessage } from "@/lib/api-error";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,10 +44,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  OPEN: { label: "Open", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
-  DISMISSED: { label: "Dismissed", color: "text-slate-700", bg: "bg-slate-50 border-slate-200" },
-  ACTIONED: { label: "Actioned", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  OPEN: {
+    label: "Open",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200",
+  },
+  DISMISSED: {
+    label: "Dismissed",
+    color: "text-slate-700",
+    bg: "bg-slate-50 border-slate-200",
+  },
+  ACTIONED: {
+    label: "Actioned",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200",
+  },
 };
 
 const REASON_CONFIG: Record<string, string> = {
@@ -42,10 +75,16 @@ const REASON_CONFIG: Record<string, string> = {
 
 export default function AdminJobReports() {
   const { toast } = useToast();
-  const [filterStatus, setFilterStatus] = useState<"OPEN" | "DISMISSED" | "ACTIONED" | "ALL">("OPEN");
+  const [filterStatus, setFilterStatus] = useState<
+    "OPEN" | "DISMISSED" | "ACTIONED" | "ALL"
+  >("OPEN");
   const [page, setPage] = useState(1);
-  const [selectedReport, setSelectedReport] = useState<JobReportDto | null>(null);
-  const [pendingResolution, setPendingResolution] = useState<"DISMISSED" | "ACTIONED" | "REMOVE_AND_ACTION" | null>(null);
+  const [selectedReport, setSelectedReport] = useState<JobReportDto | null>(
+    null,
+  );
+  const [pendingResolution, setPendingResolution] = useState<
+    "DISMISSED" | "ACTIONED" | "REMOVE_AND_ACTION" | null
+  >(null);
   const [resolutionNote, setResolutionNote] = useState("");
 
   const searchQuery = "";
@@ -66,7 +105,8 @@ export default function AdminJobReports() {
     if (!canResolve) return;
 
     const note = resolutionNote.trim();
-    const finalStatus = pendingResolution === "DISMISSED" ? "DISMISSED" : "ACTIONED";
+    const finalStatus =
+      pendingResolution === "DISMISSED" ? "DISMISSED" : "ACTIONED";
 
     try {
       if (pendingResolution === "REMOVE_AND_ACTION") {
@@ -82,7 +122,10 @@ export default function AdminJobReports() {
       });
 
       toast({
-        title: pendingResolution === "REMOVE_AND_ACTION" ? "Job removed" : "Report resolved",
+        title:
+          pendingResolution === "REMOVE_AND_ACTION"
+            ? "Job removed"
+            : "Report resolved",
         description:
           pendingResolution === "REMOVE_AND_ACTION"
             ? "The job was removed and the report was marked as actioned."
@@ -95,7 +138,10 @@ export default function AdminJobReports() {
       toast({
         variant: "destructive",
         title: "Action Failed",
-        description: getApiErrorMessage(err, "Could not complete moderation action."),
+        description: getApiErrorMessage(
+          err,
+          "Could not complete moderation action.",
+        ),
       });
     }
   };
@@ -108,34 +154,43 @@ export default function AdminJobReports() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Job Reports</h1>
-          <p className="text-sm text-slate-500 mt-1">Review and moderate community job reports.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            Job Reports
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Review and moderate community job reports.
+          </p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
           <div className="flex gap-2">
-            {(["OPEN", "DISMISSED", "ACTIONED", "ALL"] as const).map((status) => (
-              <button
-                key={status}
-                onClick={() => {
-                  setFilterStatus(status);
-                  setPage(1);
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border ${
-                  filterStatus === status
-                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                {status}
-              </button>
-            ))}
+            {(["OPEN", "DISMISSED", "ACTIONED", "ALL"] as const).map(
+              (status) => (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setFilterStatus(status);
+                    setPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border ${
+                    filterStatus === status
+                      ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {status}
+                </button>
+              ),
+            )}
           </div>
-          
+
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
               value={searchQuery}
@@ -155,55 +210,77 @@ export default function AdminJobReports() {
         ) : reports.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center text-slate-400">
             <Flag size={48} className="mb-4 text-slate-200" />
-            <p className="text-base font-semibold text-slate-600">No reports found</p>
+            <p className="text-base font-semibold text-slate-600">
+              No reports found
+            </p>
             <p className="text-sm mt-1 text-center max-w-sm">
               We couldn't find any job reports matching your criteria.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-3">Report ID</th>
-                  <th className="px-6 py-3">Reason</th>
-                  <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
+            <Table className="w-full text-left text-sm whitespace-nowrap">
+              <TableHeader className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                <TableRow>
+                  <TableHead className="px-6 py-3">Report ID</TableHead>
+                  <TableHead className="px-6 py-3">Reason</TableHead>
+                  <TableHead className="px-6 py-3">Date</TableHead>
+                  <TableHead className="px-6 py-3">Status</TableHead>
+                  <TableHead className="px-6 py-3 text-right">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 text-slate-600">
                 {reports.map((report) => {
                   const statusInfo = STATUS_CONFIG[report.status];
                   return (
-                    <tr key={report.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4">
+                    <TableRow
+                      key={report.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
+                      <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${report.status === 'OPEN' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                          <div
+                            className={`p-2 rounded-lg ${report.status === "OPEN" ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"}`}
+                          >
                             <AlertTriangle size={16} />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-900 truncate max-w-[120px]" title={report.id}>
+                            <p
+                              className="font-semibold text-slate-900 truncate max-w-[120px]"
+                              title={report.id}
+                            >
                               {report.id.slice(0, 8)}...
                             </p>
-                            <a href={`/jobs/${report.jobId}`} target="_blank" rel="noreferrer" className="text-xs text-sky-600 hover:underline">
+                            <a
+                              href={`/jobs/${report.jobId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-sky-600 hover:underline"
+                            >
                               View Job
                             </a>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-900">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 font-medium text-slate-900">
                         {REASON_CONFIG[report.reasonCode] || report.reasonCode}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">
-                        {format(new Date(report.createdAt), "MMM d, yyyy HH:mm")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.color}`}>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-slate-500">
+                        {format(
+                          new Date(report.createdAt),
+                          "MMM d, yyyy HH:mm",
+                        )}
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.color}`}
+                        >
                           {statusInfo.label}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedReport(report)}
                           className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors"
@@ -211,12 +288,12 @@ export default function AdminJobReports() {
                           <FileText size={14} className="mr-1.5" />
                           Review
                         </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
@@ -224,7 +301,8 @@ export default function AdminJobReports() {
         {totalPages > 1 && (
           <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
             <p>
-              Page <span className="font-semibold text-slate-900">{page}</span> of{" "}
+              Page <span className="font-semibold text-slate-900">{page}</span>{" "}
+              of{" "}
               <span className="font-semibold text-slate-900">{totalPages}</span>
             </p>
             <div className="flex items-center gap-2">
@@ -248,7 +326,10 @@ export default function AdminJobReports() {
       </div>
 
       {/* Review Dialog */}
-      <Dialog open={!!selectedReport} onOpenChange={(open) => !open && setSelectedReport(null)}>
+      <Dialog
+        open={!!selectedReport}
+        onOpenChange={(open) => !open && setSelectedReport(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-bold">
@@ -262,24 +343,37 @@ export default function AdminJobReports() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <p className="text-slate-500 text-xs mb-1">Reason</p>
-                  <p className="font-semibold text-slate-900">{REASON_CONFIG[selectedReport.reasonCode] || selectedReport.reasonCode}</p>
+                  <p className="font-semibold text-slate-900">
+                    {REASON_CONFIG[selectedReport.reasonCode] ||
+                      selectedReport.reasonCode}
+                  </p>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <p className="text-slate-500 text-xs mb-1">Status</p>
-                  <p className="font-semibold text-slate-900">{STATUS_CONFIG[selectedReport.status]?.label}</p>
+                  <p className="font-semibold text-slate-900">
+                    {STATUS_CONFIG[selectedReport.status]?.label}
+                  </p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-900 mb-2">Details provided</p>
+                <p className="text-sm font-semibold text-slate-900 mb-2">
+                  Details provided
+                </p>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap min-h-[80px]">
-                  {selectedReport.details || <span className="text-slate-400 italic">No additional details provided.</span>}
+                  {selectedReport.details || (
+                    <span className="text-slate-400 italic">
+                      No additional details provided.
+                    </span>
+                  )}
                 </div>
               </div>
 
               {selectedReport.status === "OPEN" && (
                 <div>
-                  <p className="text-sm font-semibold text-slate-900 mb-2">Resolution Note (Internal)</p>
+                  <p className="text-sm font-semibold text-slate-900 mb-2">
+                    Resolution Note (Internal)
+                  </p>
                   <textarea
                     value={resolutionNote}
                     onChange={(e) => setResolutionNote(e.target.value)}
@@ -287,19 +381,25 @@ export default function AdminJobReports() {
                     className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 min-h-[80px] bg-white"
                   />
                   {!canResolve && (
-                    <p className="mt-1 text-xs text-red-500">A resolution note is required before dismissing or actioning a report.</p>
+                    <p className="mt-1 text-xs text-red-500">
+                      A resolution note is required before dismissing or
+                      actioning a report.
+                    </p>
                   )}
                 </div>
               )}
-              
-              {selectedReport.status !== "OPEN" && selectedReport.resolutionNote && (
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 mb-2">Resolution Note</p>
-                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 text-sm text-emerald-800 whitespace-pre-wrap">
-                    {selectedReport.resolutionNote}
+
+              {selectedReport.status !== "OPEN" &&
+                selectedReport.resolutionNote && (
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 mb-2">
+                      Resolution Note
+                    </p>
+                    <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 text-sm text-emerald-800 whitespace-pre-wrap">
+                      {selectedReport.resolutionNote}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           )}
 
@@ -342,7 +442,10 @@ export default function AdminJobReports() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={Boolean(pendingResolution)} onOpenChange={(open) => !open && setPendingResolution(null)}>
+      <AlertDialog
+        open={Boolean(pendingResolution)}
+        onOpenChange={(open) => !open && setPendingResolution(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -359,14 +462,20 @@ export default function AdminJobReports() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isModerating}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isModerating}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={isModerating || !canResolve}
               onClick={(event) => {
                 event.preventDefault();
                 handleResolve();
               }}
-              className={pendingResolution !== "DISMISSED" ? "bg-red-600 text-white hover:bg-red-700" : undefined}
+              className={
+                pendingResolution !== "DISMISSED"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : undefined
+              }
             >
               {isModerating ? "Resolving..." : "Confirm"}
             </AlertDialogAction>

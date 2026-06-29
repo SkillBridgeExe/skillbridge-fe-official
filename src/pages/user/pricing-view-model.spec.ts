@@ -3,6 +3,7 @@ import type { BillingPlanDto } from "@/services/billing.service";
 import {
   getPricingFeatureSummary,
   getPricingPlanPresentation,
+  getVisiblePricingPlans,
 } from "./pricing-view-model";
 
 function makePlan(overrides: Partial<BillingPlanDto>): BillingPlanDto {
@@ -70,5 +71,15 @@ describe("pricing view model", () => {
       ["cv_upload", "cv_review", "cv_builder_create", "cv_jd_match"],
     );
     expect(result.hiddenFeatureCount).toBe(2);
+  });
+
+  it("keeps public pricing focused on active subscription plans", () => {
+    const result = getVisiblePricingPlans([
+      makePlan({ code: "FREE", category: "SUBSCRIPTION", isActive: true }),
+      makePlan({ code: "MENTOR_60", category: "MENTOR_PACKAGE", interval: "ONE_TIME", isActive: true }),
+      makePlan({ code: "OLD_PRO", category: "SUBSCRIPTION", isActive: false }),
+    ]);
+
+    expect(result.map((plan) => plan.code)).toEqual(["FREE"]);
   });
 });

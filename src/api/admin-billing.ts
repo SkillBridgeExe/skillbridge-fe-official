@@ -16,6 +16,14 @@ export interface AdminPlanFeatureInput {
   period: string;
 }
 
+export interface AdminBillingFeatureCatalogDto {
+  featureKey: string;
+  label: string;
+  description?: string | null;
+  allowedPeriods: string[];
+  recommendedLimits?: Record<string, number> | null;
+}
+
 export interface CreateAdminBillingPlanDto {
   code: string;
   name: string;
@@ -35,6 +43,8 @@ export type UpdateAdminBillingPlanDto = Partial<Omit<CreateAdminBillingPlanDto, 
 export interface ReplaceAdminPlanFeaturesDto {
   features: AdminPlanFeatureInput[];
 }
+
+export type UpdateAdminPlanFeatureDto = Omit<AdminPlanFeatureInput, "featureKey">;
 
 export interface PaginationQuery {
   page?: number;
@@ -94,6 +104,14 @@ export async function getAdminBillingPlansApi(includeInactive: boolean): Promise
   return envelope.data ?? [];
 }
 
+export async function getAdminBillingFeaturesApi(): Promise<AdminBillingFeatureCatalogDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AdminBillingFeatureCatalogDto[]>>(
+    httpClient.get(API_ROUTES.ADMIN_BILLING.FEATURES),
+    "Failed to load billing feature catalog.",
+  );
+  return envelope.data ?? [];
+}
+
 export async function createAdminBillingPlanApi(payload: CreateAdminBillingPlanDto): Promise<BillingPlanDto> {
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto>>(
     httpClient.post(API_ROUTES.ADMIN_BILLING.PLANS, payload),
@@ -119,6 +137,18 @@ export async function replaceAdminPlanFeaturesApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto>>(
     httpClient.put(API_ROUTES.ADMIN_BILLING.PLAN_FEATURES(code), payload),
     "Failed to update plan features.",
+  );
+  return envelope.data;
+}
+
+export async function updateAdminPlanFeatureApi(
+  code: string,
+  featureKey: string,
+  payload: UpdateAdminPlanFeatureDto,
+): Promise<BillingPlanDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto>>(
+    httpClient.patch(API_ROUTES.ADMIN_BILLING.PLAN_FEATURE(code, featureKey), payload),
+    "Failed to update plan feature.",
   );
   return envelope.data;
 }
