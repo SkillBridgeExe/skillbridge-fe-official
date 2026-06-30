@@ -15,6 +15,7 @@ interface AppConfig {
   PAYOS_RETURN_URL?: string;
   ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
   ENABLE_GITHUB_EVIDENCE?: string | boolean;
+  ENABLE_STORY_CAREER_TARGET?: string | boolean;
   APP_VERSION?: string;
   GIT_SHA?: string;
   BUILD_TIME?: string;
@@ -53,4 +54,12 @@ export const ENABLE_DIAGNOSIS_ADDONS = isEnabled(
 
 export const ENABLE_GITHUB_EVIDENCE = isEnabled(
   runtime.ENABLE_GITHUB_EVIDENCE || import.meta.env.VITE_ENABLE_GITHUB_EVIDENCE,
+);
+
+/**
+ * Story → Career Target (cold-start role inference, slice 1c). OFF by default until the
+ * `POST /api/cvs/:id/builder/story` endpoint (1b, Khoa's lane) is live — older BE returns 404.
+ */
+export const ENABLE_STORY_CAREER_TARGET = isEnabled(
+  runtime.ENABLE_STORY_CAREER_TARGET || import.meta.env.VITE_ENABLE_STORY_CAREER_TARGET,
 );

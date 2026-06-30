@@ -663,6 +663,41 @@ export interface UpdateBuilderDraftInput {
   language?: "vi" | "en";
 }
 
+// ── Story → Career Target (cold-start role inference, slice 1) ─────────────
+// POST /api/cvs/:id/builder/story — 1 free story → suggested role. The engine is the
+// skillbridge-ai deterministic role-inference (weighted skill coverage over the role rubric,
+// NO LLM, no quota): same input → same output. 1b endpoint = Khoa; this is the wire contract.
+export interface CareerTargetFromStoryRequest {
+  /** Free narrative of what the user has done (no form, no role needed). */
+  story: string;
+  /** UI language for display names; defaults 'vi'. */
+  language?: "vi" | "en";
+}
+
+export interface CareerTargetCandidate {
+  role_code: string;
+  /** Human label (BE rubric display_name in the requested language). */
+  display_name: string;
+  /** Weighted coverage 0..1 of this role's profile. */
+  score: number;
+}
+
+export interface CareerTargetFromStoryResponse {
+  /** Inferred role_code, or null when the engine abstains (too weak / ambiguous). */
+  role_code: string | null;
+  /** Human label for role_code; null when abstaining. */
+  display_name: string | null;
+  /** Weighted coverage 0..1 of the winning role. */
+  confidence: number;
+  /** Canonical skills the story matched for the winning role. */
+  matched_skills: string[];
+  /** Ranked roles (top first) — surfaced so the user can pick when ambiguous. */
+  candidates: CareerTargetCandidate[];
+  /** true → ask the user instead of guessing (UI shows a coaching prompt, no auto-fill). */
+  needs_user_input: boolean;
+  reason: "ok" | "too_weak" | "ambiguous" | "no_roles";
+}
+
 // ── Skill trends (GET /api/trends/skills[/gap/:cvId]) ──────────────────────
 
 export interface SkillDemandRow {

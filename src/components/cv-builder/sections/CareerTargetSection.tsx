@@ -4,9 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCvBuilderStore, CareerLevel } from "@/store/useCvBuilderStore";
 import { useTranslation } from "react-i18next";
 import { checkRolePosition, isGibberish } from "@/lib/input-quality";
+import { ENABLE_STORY_CAREER_TARGET } from "@/lib/runtime-config";
+import { CareerTargetFromStory } from "./CareerTargetFromStory";
 
 export function CareerTargetSection() {
-  const { targetPosition, careerLevel, industry, setCareerTarget } = useCvBuilderStore();
+  const { targetPosition, careerLevel, industry, draftId, setCareerTarget } = useCvBuilderStore();
   const { t } = useTranslation("diagnosis");
 
   // Deterministic, warn-only quality hints (anti-fab: only when CLEARLY off).
@@ -15,6 +17,12 @@ export function CareerTargetSection() {
 
   return (
     <div className="space-y-4 p-4">
+      {ENABLE_STORY_CAREER_TARGET && (
+        <CareerTargetFromStory
+          draftId={draftId}
+          onApply={(roleLabel) => setCareerTarget("targetPosition", roleLabel)}
+        />
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
           <Label htmlFor="targetPosition">{t("builder.fields.targetPosition")} *</Label>
