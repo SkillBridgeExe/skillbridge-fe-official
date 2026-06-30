@@ -4,6 +4,8 @@ import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { AiGateError, extractAiGateCode } from "@/lib/ai-input-gate";
 import type {
+  CareerTargetFromStoryRequest,
+  CareerTargetFromStoryResponse,
   CreateBuilderDraftInput,
   CvDto,
   EvaluateSectionRequest,
@@ -89,6 +91,21 @@ export async function rewriteFieldApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<RewriteResponse>>(
     request,
     "Failed to generate a suggestion.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/story — Story → Career Target (deterministic role inference).
+ * NO LLM, no quota; nới timeout nhẹ cho cold-start Cloud Run.
+ */
+export async function inferCareerTargetFromStoryApi(
+  draftId: string,
+  input: CareerTargetFromStoryRequest,
+): Promise<CareerTargetFromStoryResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CareerTargetFromStoryResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_STORY(draftId), input, { timeout: 30_000 }),
+    "Failed to infer a career target from the story.",
   );
   return envelope.data;
 }

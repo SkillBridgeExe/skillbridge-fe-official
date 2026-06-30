@@ -12,6 +12,7 @@
 import {
   createBuilderDraftApi,
   evaluateSectionApi,
+  inferCareerTargetFromStoryApi,
   renderBuilderPdfApi,
   rewriteFieldApi,
   updateBuilderDraftApi,
@@ -41,6 +42,8 @@ import type {
   BuilderSection,
   BuilderSectionContent,
   CanonicalCvDocument,
+  CareerTargetFromStoryRequest,
+  CareerTargetFromStoryResponse,
   CvDto,
   EvaluateSectionResponse,
   RewriteRequest,
@@ -310,6 +313,18 @@ export async function rewriteField(
 ): Promise<RewriteResponse> {
   requireSession();
   return rewriteFieldApi(draftId, input);
+}
+
+/**
+ * Story → Career Target (cold-start): 1 đoạn kể tự do → vai trò gợi ý.
+ * Deterministic phía BE (weighted skill coverage, KHÔNG LLM, KHÔNG quota). Slice 1c.
+ */
+export async function inferCareerTargetFromStory(
+  draftId: string,
+  input: CareerTargetFromStoryRequest,
+): Promise<CareerTargetFromStoryResponse> {
+  requireSession();
+  return inferCareerTargetFromStoryApi(draftId, input);
 }
 
 /** Render PDF của draft — trả Blob để UI tải xuống. */
