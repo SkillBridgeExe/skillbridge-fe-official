@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Trash2, Sparkles, RotateCcw } from "lucide-react";
+import { Plus, Sparkles, RotateCcw, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -162,11 +162,11 @@ export function ProjectsSection() {
               )}
               <Button
                 variant="ghost" size="icon"
-                className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 onClick={() => removeProject(proj.id)} disabled={projects.length === 1}
                 aria-label={`${t("builder.remove")} ${t("builder.entry.project")} ${index + 1}`}
               >
-                <Trash2 className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
