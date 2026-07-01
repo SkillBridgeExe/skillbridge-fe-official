@@ -136,6 +136,10 @@ export function CvProjectIntakeSkill({
         onSuccess: (res) => {
           setMascotState("idle");
           if (!res.project || res.degraded) {
+            // Honest dead-end guard: keep the response so the intake-phase banner
+            // can say WHY nothing filled (degraded vs. nothing grounded) instead of
+            // silently returning to the textarea.
+            setExtracted(res);
             setPhase("intake");
             return;
           }
@@ -191,11 +195,15 @@ export function CvProjectIntakeSkill({
           className="min-h-[100px] text-sm resize-none border-[#EAEAEA] focus:border-primary/40"
           rows={4}
         />
-        {extracted && extracted.degraded && (
+        {extracted && (extracted.degraded || !extracted.project) && (
           <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded p-2">
-            {t("companion.projectIntake.degraded", {
-              defaultValue: "Chưa trích xuất được thông tin dự án — bạn hãy kể rõ hơn nhé.",
-            })}
+            {extracted.degraded
+              ? t("companion.projectIntake.degraded", {
+                  defaultValue: "Chưa trích xuất được thông tin dự án — bạn hãy kể rõ hơn nhé.",
+                })
+              : t("companion.projectIntake.notFound", {
+                  defaultValue: "Chưa trích được dự án nào từ chuyện kể — bạn kể rõ hơn (tên, công nghệ, vai trò) nhé.",
+                })}
           </p>
         )}
         <Button

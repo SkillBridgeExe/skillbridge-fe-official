@@ -2297,7 +2297,7 @@ export default {
         ctaBuilder: "Bổ sung bằng chứng",
       },
       intake: {
-        trigger: "✨ Trợ lý điền nhanh",
+        trigger: "Trợ lý điền nhanh",
         prompt:
           "Kể cho tôi nghe về kinh nghiệm này (công ty, vị trí, thời gian, bạn làm gì, kết quả)…",
         placeholder:
@@ -2316,11 +2316,12 @@ export default {
         coachStuck: "Chưa biết viết gì? Kể tôi nghe",
       },
       projectIntake: {
-        trigger: "✨ kể chuyện về dự án này",
+        trigger: "kể chuyện về dự án này",
         prompt: "Kể cho tôi nghe về dự án này (tên, vai trò, công nghệ, mô tả, link)…",
         placeholder: "Ví dụ: Mình làm dự án Shop Online bằng React và Node.js, nhóm 4 người, link github.com/me/shop...",
         multipleDetected: "Phát hiện nhiều dự án, đã điền dự án đầu tiên — hãy tách phần còn lại thủ công.",
         degraded: "Chưa trích xuất được thông tin dự án — bạn hãy kể rõ hơn nhé.",
+        notFound: "Chưa trích được dự án nào từ chuyện kể — bạn kể rõ hơn (tên, công nghệ, vai trò) nhé.",
       },
       // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
       // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;

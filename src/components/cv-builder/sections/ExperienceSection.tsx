@@ -268,7 +268,7 @@ export function ExperienceSection() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
                   onClick={() => {
                     const id = `cvbuilder:intake:experience[${index}]`;
                     useCompanionStore.getState().registerContext({
@@ -300,7 +300,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.trigger", { defaultValue: "✨ Trợ lý điền nhanh" })}</span>
+                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Trợ lý điền nhanh" })}</span>
                 </Button>
               )}
               <Button

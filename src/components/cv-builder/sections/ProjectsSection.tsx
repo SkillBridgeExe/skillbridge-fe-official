@@ -126,7 +126,7 @@ export function ProjectsSection() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
                   onClick={() => {
                     const id = `cvbuilder:intake:projects[${index}]`;
                     useCompanionStore.getState().registerContext({
@@ -157,7 +157,7 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.projectIntake.trigger", { defaultValue: "✨ kể chuyện về dự án này" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "kể chuyện về dự án này" })}</span>
                 </Button>
               )}
               <Button

@@ -2308,7 +2308,7 @@ export default {
         ctaBuilder: "Add evidence",
       },
       intake: {
-        trigger: "✨ Quick fill assistant",
+        trigger: "Quick fill assistant",
         prompt:
           "Tell me about this experience (company, role, timeline, what you did, results)…",
         placeholder:
@@ -2327,11 +2327,12 @@ export default {
         coachStuck: "Not sure what to write? Tell me about it",
       },
       projectIntake: {
-        trigger: "✨ tell a story about this project",
+        trigger: "tell a story about this project",
         prompt: "Tell me about this project (name, role, technologies, description, link)…",
         placeholder: "Example: I built an Online Shop using React and Node.js, team of 4, github.com/me/shop link...",
         multipleDetected: "Multiple projects detected. Filled the first one — split the rest manually.",
         degraded: "Could not extract project information. Please provide more details.",
+        notFound: "Couldn't identify a project from your story — add more detail (name, tech, role).",
       },
       // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
       // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
