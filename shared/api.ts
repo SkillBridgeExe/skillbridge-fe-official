@@ -698,6 +698,52 @@ export interface CareerTargetFromStoryResponse {
   reason: "ok" | "too_weak" | "ambiguous" | "no_roles";
 }
 
+// ── Story → CV Extract (slice-2, POST /api/cvs/:id/builder/story/extract) ──
+// User's free story → extracted projects + certifications (deterministic, no LLM).
+export interface StoryExtractRequest {
+  story: string;
+  language?: "vi" | "en";
+}
+
+export interface StoryExtractedProject {
+  name: string;
+  role: string | null;
+  tech: string[];
+  bullets: string[];
+  link: string | null;
+  /** Fields the engine could not find in the story — UI should prompt user to fill. */
+  missing_fields: string[];
+}
+
+export interface StoryExtractedCertification {
+  name: string;
+  issuer: string | null;
+  date: string | null;
+}
+
+export interface StoryExtractResponse {
+  projects: StoryExtractedProject[];
+  certifications: StoryExtractedCertification[];
+}
+
+// ── Story → CV Apply Preview (slice-3, POST /api/cvs/:id/builder/story/apply-preview) ──
+// Merge selected extract items into current CV doc (BE handles dedup by normalized name).
+// Does NOT persist — FE must PUT the merged doc via autosave route.
+export interface StoryApplyPreviewRequest {
+  doc: CanonicalCvDocument;
+  selected: {
+    role_code?: string;
+    projects: StoryExtractedProject[];
+    certifications: StoryExtractedCertification[];
+  };
+}
+
+export interface StoryApplyPreviewResponse {
+  doc: CanonicalCvDocument;
+  applied: { projects: number; certifications: number };
+  skipped_duplicates: string[];
+}
+
 // ── Skill trends (GET /api/trends/skills[/gap/:cvId]) ──────────────────────
 
 export interface SkillDemandRow {

@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
-import { inferCareerTargetFromStory } from "@/services/cv-builder.service";
-import type { CareerTargetFromStoryResponse } from "@shared/api";
+import { inferCareerTargetFromStory, storyExtract } from "@/services/cv-builder.service";
+import type { CareerTargetFromStoryResponse, StoryExtractResponse } from "@shared/api";
+import { StoryReviewPanel } from "./StoryReviewPanel";
+import { Loader2 } from "lucide-react";
 
 // A few words minimum — below this the deterministic engine abstains anyway, so don't even call.
 const MIN_STORY_LEN = 20;
@@ -21,6 +23,9 @@ interface CareerTargetFromStoryProps {
  * role-inference (NO LLM, no quota) suggests a role they can apply. Abstains honestly (coaching
  * prompt, never auto-fill) when the story is too weak or ambiguous. Mounted behind
  * ENABLE_STORY_CAREER_TARGET until the 1b endpoint ships.
+ *
+ * W32: After slice-1 succeeds with a valid role, user can "Extract" (slice-2) to pull
+ * projects + certifications, then review/apply them via StoryReviewPanel.
  */
 export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStoryProps) {
   const { t } = useTranslation("diagnosis");
@@ -28,12 +33,18 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<CareerTargetFromStoryResponse | null>(null);
 
+  // W32: extract state
+  const [extractStatus, setExtractStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [extractResult, setExtractResult] = useState<StoryExtractResponse | null>(null);
+
   const canInfer = !!draftId && story.trim().length >= MIN_STORY_LEN && status !== "loading";
 
   async function handleInfer() {
     if (!draftId) return;
     setStatus("loading");
     setResult(null);
+    setExtractResult(null);
+    setExtractStatus("idle");
     try {
       const res = await inferCareerTargetFromStory(draftId, { story: story.trim() });
       setResult(res);
@@ -43,11 +54,26 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
     }
   }
 
+  // W32: extract projects + certs from story
+  async function handleExtract() {
+    if (!draftId) return;
+    setExtractStatus("loading");
+    try {
+      const res = await storyExtract(draftId, { story: story.trim() });
+      setExtractResult(res);
+      setExtractStatus("done");
+    } catch {
+      setExtractStatus("error");
+    }
+  }
+
   const role = result?.display_name ?? null;
   const abstained = !!result && (result.needs_user_input || !role);
+  const showExtractBtn = status === "done" && result && !abstained && role;
+  const showReviewPanel = extractStatus === "done" && extractResult && result;
 
   return (
-    <div className="space-y-2 rounded-md border border-dashed p-3">
+    <div className="space-y-3 rounded-md border border-dashed p-3">
       <Label htmlFor="careerStory" className="text-sm font-medium">
         {t("builder.story.title")}
       </Label>
@@ -74,7 +100,7 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
           </p>
         ) : (
           role && (
-            <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
+            <div className="space-y-2 rounded-md bg-muted/40 p-2">
               <p className="text-sm">
                 <span className="font-medium">{t("builder.story.resultTitle")}:</span> {role}
               </p>
@@ -86,12 +112,52 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
                   {t("builder.story.matched", { skills: result.matched_skills.join(", ") })}
                 </p>
               )}
-              <Button type="button" size="sm" variant="secondary" onClick={() => onApply(role)}>
-                {t("builder.story.apply")}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="secondary" onClick={() => onApply(role)}>
+                  {t("builder.story.apply")}
+                </Button>
+                {/* W32: Extract button */}
+                {showExtractBtn && extractStatus !== "done" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExtract}
+                    disabled={extractStatus === "loading"}
+                  >
+                    {extractStatus === "loading" ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        {t("builder.storyReview.extracting")}
+                      </>
+                    ) : (
+                      t("builder.storyReview.extractBtn")
+                    )}
+                  </Button>
+                )}
+              </div>
+              {extractStatus === "error" && (
+                <p className="text-xs text-red-600">{t("builder.storyReview.extractError")}</p>
+              )}
             </div>
           )
         ))}
+
+      {/* W32: Review panel after extract */}
+      {showReviewPanel && (
+        <StoryReviewPanel
+          draftId={draftId!}
+          careerTarget={result}
+          extractResult={extractResult}
+          onApplied={() => {
+            setExtractStatus("idle");
+            setExtractResult(null);
+            setStatus("idle");
+            setResult(null);
+            setStory("");
+          }}
+        />
+      )}
     </div>
   );
 }

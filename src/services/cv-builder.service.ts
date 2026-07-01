@@ -15,6 +15,8 @@ import {
   inferCareerTargetFromStoryApi,
   renderBuilderPdfApi,
   rewriteFieldApi,
+  storyExtractApi,
+  storyApplyPreviewApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
   assistantRewriteApi,
@@ -48,6 +50,10 @@ import type {
   EvaluateSectionResponse,
   RewriteRequest,
   RewriteResponse,
+  StoryApplyPreviewRequest,
+  StoryApplyPreviewResponse,
+  StoryExtractRequest,
+  StoryExtractResponse,
 } from "@shared/api";
 
 // ── Snapshot của builder store (subset service cần) ────────────────
@@ -325,6 +331,30 @@ export async function inferCareerTargetFromStory(
 ): Promise<CareerTargetFromStoryResponse> {
   requireSession();
   return inferCareerTargetFromStoryApi(draftId, input);
+}
+
+/**
+ * Story → Extract projects + certifications (slice 2).
+ * Deterministic (NO LLM, no quota).
+ */
+export async function storyExtract(
+  draftId: string,
+  input: StoryExtractRequest,
+): Promise<StoryExtractResponse> {
+  requireSession();
+  return storyExtractApi(draftId, input);
+}
+
+/**
+ * Story → Apply Preview (slice 3): merge selected items into CV doc.
+ * Does NOT persist — FE must PUT the merged doc via autosave.
+ */
+export async function storyApplyPreview(
+  draftId: string,
+  input: StoryApplyPreviewRequest,
+): Promise<StoryApplyPreviewResponse> {
+  requireSession();
+  return storyApplyPreviewApi(draftId, input);
 }
 
 /** Render PDF của draft — trả Blob để UI tải xuống. */
