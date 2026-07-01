@@ -121,7 +121,11 @@ export function StoryReviewPanel({
 
       const selectedProjects = projects
         .filter((p) => p.selected)
-        .map(({ selected: _s, editingName: _en, editingBullets: _eb, ...rest }) => rest);
+        .map(({ selected: _s, editingName: _en, editingBullets: _eb, ...rest }) => ({
+          ...rest,
+          // Drop empty bullets (e.g. a trailing newline from the textarea) — never send blanks.
+          bullets: rest.bullets.map((b) => b.trim()).filter((b) => b.length > 0),
+        }));
       const selectedCerts = certs
         .filter((c) => c.selected)
         .map(({ selected: _s, editingName: _en, ...rest }) => rest);
@@ -146,19 +150,20 @@ export function StoryReviewPanel({
         });
       }
 
-      // Apply role to store if selected
-      if (roleSelected && careerTarget.display_name) {
-        store.setCareerTarget("targetPosition", careerTarget.display_name);
-      }
-
-      // Hydrate store from merged doc
-      store.hydrateFromCanonical(result.doc);
-
-      // PUT autosave
+      // Persist the merged doc FIRST — apply-preview does not persist. Doing the store mutation
+      // only after this succeeds keeps apply atomic (a failed PUT leaves nothing half-applied).
       await updateBuilderDraftApi(draftId, {
         parsedJson: result.doc,
         targetRole: roleSelected ? (careerTarget.role_code ?? undefined) : undefined,
       });
+
+      // Reflect the merged doc in the form, preserving the active draft session. preserveDraft
+      // keeps draftId — nulling it (the default seed behavior) would break every draftId-gated
+      // builder action (save/evaluate/rewrite/PDF) for the rest of the session.
+      store.hydrateFromCanonical(result.doc, { preserveDraft: true });
+      if (roleSelected && careerTarget.display_name) {
+        store.setCareerTarget("targetPosition", careerTarget.display_name);
+      }
 
       toast({
         title: t("builder.storyReview.appliedSuccess"),
@@ -226,6 +231,14 @@ export function StoryReviewPanel({
           </p>
         )}
       </div>
+
+      {/* Honest degraded notice — some parts could not be extracted; never fabricated. */}
+      {extractResult.degraded && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {t("builder.storyReview.degradedNotice")}
+        </div>
+      )}
 
       {/* ── Section 2: Projects ── */}
       <div className="rounded-md border border-slate-100 p-3 space-y-2">
@@ -312,6 +325,18 @@ export function StoryReviewPanel({
                           </Badge>
                         ))}
                       </div>
+                    )}
+
+                    {/* Link */}
+                    {proj.link && (
+                      <a
+                        href={proj.link.startsWith("http") ? proj.link : `https://${proj.link}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-xs text-primary underline"
+                      >
+                        {proj.link}
+                      </a>
                     )}
 
                     {/* Bullets */}

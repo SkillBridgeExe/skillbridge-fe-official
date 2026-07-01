@@ -2184,6 +2184,8 @@ export default {
         careerTitle: "Vai trò mục tiêu",
         projectsTitle: "Dự án",
         certsTitle: "Chứng chỉ",
+        degradedNotice:
+          "Một số phần chưa trích xuất được từ câu chuyện — hãy kiểm tra và tự bổ sung.",
         noProjects: "Không tìm thấy dự án nào trong câu chuyện.",
         noCerts: "Không tìm thấy chứng chỉ nào trong câu chuyện.",
         roleCoaching: "Câu chuyện chưa đủ rõ để chọn vai trò — hãy kể thêm chi tiết.",

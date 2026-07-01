@@ -49,6 +49,30 @@ describe("useCvBuilderStore.hydrateFromCanonical", () => {
     });
   });
 
+  it("preserveDraft keeps the active draft session (draftId) while the default resets it", () => {
+    const doc: CanonicalCvDocument = {
+      language: "en",
+      contact: { name: null, email: null, phone: null, location: null, links: [] },
+      summary: "",
+      education: [],
+      experience: [],
+      projects: [],
+      skills: { technical: [], soft: [], languages: [], tools: [] },
+      certifications: [],
+      activities: [],
+    };
+
+    // Default (fresh Diagnosis seed) resets the draft.
+    useCvBuilderStore.setState({ draftId: "draft-1" });
+    useCvBuilderStore.getState().hydrateFromCanonical(doc);
+    expect(useCvBuilderStore.getState().draftId).toBeNull();
+
+    // Story apply into an active draft must NOT null draftId (else the builder breaks post-apply).
+    useCvBuilderStore.setState({ draftId: "draft-2" });
+    useCvBuilderStore.getState().hydrateFromCanonical(doc, { preserveDraft: true });
+    expect(useCvBuilderStore.getState().draftId).toBe("draft-2");
+  });
+
   it("tracks the source CV separately until the server draft is created", () => {
     useCvBuilderStore.getState().setSeedSourceCvId("uploaded-cv-1");
 

@@ -2195,6 +2195,8 @@ export default {
         careerTitle: "Target Role",
         projectsTitle: "Projects",
         certsTitle: "Certifications",
+        degradedNotice:
+          "Some parts couldn't be extracted from your story — please review and fill them in.",
         noProjects: "No projects found in your story.",
         noCerts: "No certifications found in your story.",
         roleCoaching: "Your story isn't detailed enough to select a role — please add more specifics.",

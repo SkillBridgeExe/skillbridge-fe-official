@@ -724,6 +724,9 @@ export interface StoryExtractedCertification {
 export interface StoryExtractResponse {
   projects: StoryExtractedProject[];
   certifications: StoryExtractedCertification[];
+  /** true when the LLM project extraction degraded (call/parse failure). Certs still returned;
+   *  the UI must show an honest "some parts couldn't be extracted" note, never fabricate. */
+  degraded: boolean;
 }
 
 // ── Story → CV Apply Preview (slice-3, POST /api/cvs/:id/builder/story/apply-preview) ──
