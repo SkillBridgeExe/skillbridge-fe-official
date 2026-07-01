@@ -15,6 +15,10 @@ import {
   inferCareerTargetFromStoryApi,
   renderBuilderPdfApi,
   rewriteFieldApi,
+  storyExtractApi,
+  storyApplyPreviewApi,
+  computeStoryReadinessApi,
+  intakeProjectFromStoryApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
   assistantRewriteApi,
@@ -48,6 +52,14 @@ import type {
   EvaluateSectionResponse,
   RewriteRequest,
   RewriteResponse,
+  StoryApplyPreviewRequest,
+  StoryApplyPreviewResponse,
+  StoryExtractRequest,
+  StoryExtractResponse,
+  StoryReadinessRequest,
+  StoryReadinessResponse,
+  ProjectIntakeRequest,
+  ProjectIntakeResponse,
 } from "@shared/api";
 
 // ── Snapshot của builder store (subset service cần) ────────────────
@@ -325,6 +337,54 @@ export async function inferCareerTargetFromStory(
 ): Promise<CareerTargetFromStoryResponse> {
   requireSession();
   return inferCareerTargetFromStoryApi(draftId, input);
+}
+
+/**
+ * Story → Extract projects + certifications (slice 2).
+ * Deterministic (NO LLM, no quota).
+ */
+export async function storyExtract(
+  draftId: string,
+  input: StoryExtractRequest,
+): Promise<StoryExtractResponse> {
+  requireSession();
+  return storyExtractApi(draftId, input);
+}
+
+/**
+ * Story → Apply Preview (slice 3): merge selected items into CV doc.
+ * Does NOT persist — FE must PUT the merged doc via autosave.
+ */
+export async function storyApplyPreview(
+  draftId: string,
+  input: StoryApplyPreviewRequest,
+): Promise<StoryApplyPreviewResponse> {
+  requireSession();
+  return storyApplyPreviewApi(draftId, input);
+}
+
+/**
+ * Story → Compute Readiness & Gap (slice 4).
+ * Deterministic (NO LLM, no quota).
+ */
+export async function computeStoryReadiness(
+  draftId: string,
+  input: StoryReadinessRequest,
+): Promise<StoryReadinessResponse> {
+  requireSession();
+  return computeStoryReadinessApi(draftId, input);
+}
+
+/**
+ * Story → Project Intake (W34).
+ * Anti-fabrication.
+ */
+export async function intakeProjectFromStory(
+  draftId: string,
+  input: ProjectIntakeRequest,
+): Promise<ProjectIntakeResponse> {
+  requireSession();
+  return intakeProjectFromStoryApi(draftId, input);
 }
 
 /** Render PDF của draft — trả Blob để UI tải xuống. */

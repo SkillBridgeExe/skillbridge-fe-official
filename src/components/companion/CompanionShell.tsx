@@ -33,6 +33,7 @@ import { useCompanionStore, bubbleVisible } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
+import { CvProjectIntakeSkill } from "./skills/CvProjectIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
 import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
@@ -388,6 +389,23 @@ export function CompanionShell() {
                     | "degraded" | "needs_detail" | "gate" | undefined}
                   coachGap={turn.props.coachGap as string | null | undefined}
                   seedNarrative={turn.props.seedNarrative as string | undefined}
+                  onApply={(fields) => {
+                    (turn.props.onApply as (f: Record<string, string>) => void)(fields);
+                    setShowSuccess(true);
+                  }}
+                />
+              )}
+
+              {/* ── cv_project_intake ── */}
+              {turn?.skill === "cv_project_intake" && (
+                <CvProjectIntakeSkill
+                  key={`project-intake-${turn.props.entryIndex}`}
+                  draftId={(turn.props.draftId as string) ?? draftId ?? ""}
+                  entryIndex={turn.props.entryIndex as number}
+                  currentEntry={turn.props.currentEntry as {
+                    name: string; role: string; tools: string;
+                    link: string; description: string;
+                  }}
                   onApply={(fields) => {
                     (turn.props.onApply as (f: Record<string, string>) => void)(fields);
                     setShowSuccess(true);

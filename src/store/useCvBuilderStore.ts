@@ -179,7 +179,7 @@ interface CvBuilderState {
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
-  hydrateFromCanonical: (doc: CanonicalCvDocument) => void;
+  hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean }) => void;
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
 
@@ -401,7 +401,23 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     }),
 
   // Seed từ CV đã chẩn đoán
-  hydrateFromCanonical: (doc) => set(canonicalToBuilderState(doc)),
+  hydrateFromCanonical: (doc, opts) =>
+    set((state) => {
+      const next = canonicalToBuilderState(doc);
+      // preserveDraft: reflect new canonical content in the form WITHOUT resetting the active
+      // editing session. The default (fresh Diagnosis seed) nulls draftId — doing that inside an
+      // active draft would break every draftId-gated builder action (save/evaluate/rewrite/PDF).
+      return opts?.preserveDraft
+        ? {
+            ...next,
+            draftId: state.draftId,
+            activeSection: state.activeSection,
+            sectionEvaluations: state.sectionEvaluations,
+            seededFromDiagnosis: state.seededFromDiagnosis,
+            seedSourceCvId: state.seedSourceCvId,
+          }
+        : next;
+    }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
   setTemplate: (template) => set({ template }),

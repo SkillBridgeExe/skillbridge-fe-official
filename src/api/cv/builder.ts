@@ -12,6 +12,14 @@ import type {
   EvaluateSectionResponse,
   RewriteRequest,
   RewriteResponse,
+  StoryApplyPreviewRequest,
+  StoryApplyPreviewResponse,
+  StoryExtractRequest,
+  StoryExtractResponse,
+  StoryReadinessRequest,
+  StoryReadinessResponse,
+  ProjectIntakeRequest,
+  ProjectIntakeResponse,
   UpdateBuilderDraftInput,
 } from "@shared/api";
 import type {
@@ -106,6 +114,66 @@ export async function inferCareerTargetFromStoryApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<CareerTargetFromStoryResponse>>(
     httpClient.post(API_ROUTES.CV.BUILDER_STORY(draftId), input, { timeout: 30_000 }),
     "Failed to infer a career target from the story.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/story/extract — Story → extract projects + certifications.
+ * Deterministic (NO LLM, no quota).
+ */
+export async function storyExtractApi(
+  draftId: string,
+  input: StoryExtractRequest,
+): Promise<StoryExtractResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<StoryExtractResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_STORY_EXTRACT(draftId), input, { timeout: 30_000 }),
+    "Failed to extract projects from the story.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/story/apply-preview — merge selected items into CV doc.
+ * Does NOT persist — FE must PUT the merged doc via autosave route.
+ */
+export async function storyApplyPreviewApi(
+  draftId: string,
+  input: StoryApplyPreviewRequest,
+): Promise<StoryApplyPreviewResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<StoryApplyPreviewResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_STORY_APPLY(draftId), input, { timeout: 30_000 }),
+    "Failed to preview story apply.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/story/readiness — Compute Story -> CV readiness and gaps.
+ * Deterministic (NO LLM, no quota).
+ */
+export async function computeStoryReadinessApi(
+  draftId: string,
+  input: StoryReadinessRequest,
+): Promise<StoryReadinessResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<StoryReadinessResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_STORY_READINESS(draftId), input, { timeout: 30_000 }),
+    "Failed to compute story readiness.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/project/intake — Project intake from story.
+ * Anti-fabrication.
+ */
+export async function intakeProjectFromStoryApi(
+  draftId: string,
+  input: ProjectIntakeRequest,
+): Promise<ProjectIntakeResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<ProjectIntakeResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_PROJECT_INTAKE(draftId), input, { timeout: 30_000 }),
+    "Failed to extract project fields from the story.",
   );
   return envelope.data;
 }
