@@ -18,6 +18,7 @@ import {
   storyExtractApi,
   storyApplyPreviewApi,
   computeStoryReadinessApi,
+  intakeProjectFromStoryApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
   assistantRewriteApi,
@@ -57,6 +58,8 @@ import type {
   StoryExtractResponse,
   StoryReadinessRequest,
   StoryReadinessResponse,
+  ProjectIntakeRequest,
+  ProjectIntakeResponse,
 } from "@shared/api";
 
 // ── Snapshot của builder store (subset service cần) ────────────────
@@ -370,6 +373,18 @@ export async function computeStoryReadiness(
 ): Promise<StoryReadinessResponse> {
   requireSession();
   return computeStoryReadinessApi(draftId, input);
+}
+
+/**
+ * Story → Project Intake (W34).
+ * Anti-fabrication.
+ */
+export async function intakeProjectFromStory(
+  draftId: string,
+  input: ProjectIntakeRequest,
+): Promise<ProjectIntakeResponse> {
+  requireSession();
+  return intakeProjectFromStoryApi(draftId, input);
 }
 
 /** Render PDF của draft — trả Blob để UI tải xuống. */

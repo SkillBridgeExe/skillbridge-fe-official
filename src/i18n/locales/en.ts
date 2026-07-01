@@ -2326,6 +2326,13 @@ export default {
         close: "Close",
         coachStuck: "Not sure what to write? Tell me about it",
       },
+      projectIntake: {
+        trigger: "✨ tell a story about this project",
+        prompt: "Tell me about this project (name, role, technologies, description, link)…",
+        placeholder: "Example: I built an Online Shop using React and Node.js, team of 4, github.com/me/shop link...",
+        multipleDetected: "Multiple projects detected. Filled the first one — split the rest manually.",
+        degraded: "Could not extract project information. Please provide more details.",
+      },
       // Pillar 3 (no-dead-end) coaching funnel — deterministic, anti-fab.
       // promptKey / option labelKey from coach-flow.ts. Encouraging + honest;
       // CHOICE options are CATEGORIES (route the next question), never specifics.

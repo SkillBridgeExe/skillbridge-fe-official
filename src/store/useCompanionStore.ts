@@ -9,6 +9,7 @@ import type { ElementIssue } from "@/components/companion/skills/element-issues"
 export type CompanionSkill =
   | "cv_builder"
   | "cv_intake"
+  | "cv_project_intake"
   | "diagnosis_results"
   | "diagnosis_proveit"
   | "diagnosis_review"

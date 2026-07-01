@@ -768,6 +768,28 @@ export interface StoryReadinessResponse {
   role_has_rubric: boolean;
 }
 
+// ── Story → Project Intake (W34, POST /api/cvs/:id/builder/project/intake) ──
+export interface ProjectIntakeProject {
+  name: string;
+  role: string | null;
+  tech: string[];
+  bullets: string[];
+  link: string | null;
+  found_fields: string[];
+  missing_fields: string[];
+}
+
+export interface ProjectIntakeRequest {
+  story: string;
+  language?: "vi" | "en";
+}
+
+export interface ProjectIntakeResponse {
+  project: ProjectIntakeProject | null;
+  degraded: boolean;
+  multiple_detected: boolean;
+}
+
 // ── Skill trends (GET /api/trends/skills[/gap/:cvId]) ──────────────────────
 
 export interface SkillDemandRow {

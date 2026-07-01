@@ -18,6 +18,8 @@ import type {
   StoryExtractResponse,
   StoryReadinessRequest,
   StoryReadinessResponse,
+  ProjectIntakeRequest,
+  ProjectIntakeResponse,
   UpdateBuilderDraftInput,
 } from "@shared/api";
 import type {
@@ -157,6 +159,21 @@ export async function computeStoryReadinessApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<StoryReadinessResponse>>(
     httpClient.post(API_ROUTES.CV.BUILDER_STORY_READINESS(draftId), input, { timeout: 30_000 }),
     "Failed to compute story readiness.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/project/intake — Project intake from story.
+ * Anti-fabrication.
+ */
+export async function intakeProjectFromStoryApi(
+  draftId: string,
+  input: ProjectIntakeRequest,
+): Promise<ProjectIntakeResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<ProjectIntakeResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_PROJECT_INTAKE(draftId), input, { timeout: 30_000 }),
+    "Failed to extract project fields from the story.",
   );
   return envelope.data;
 }
