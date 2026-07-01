@@ -747,6 +747,27 @@ export interface StoryApplyPreviewResponse {
   skipped_duplicates: string[];
 }
 
+// ── Story → CV Readiness & Gap (slice-4, POST /api/cvs/:id/builder/story/readiness) ──
+export interface StoryReadinessRequest {
+  role_code: string;
+  band?: "intern" | "fresher" | "mid" | string;
+}
+
+export interface StoryReadinessResponse {
+  readiness: number;
+  band: "starting" | "building" | "ready";
+  overall_score: number;
+  required_coverage: number;
+  matched_count: number;
+  missing_count: number;
+  gap_items: GapItem[];
+  roadmap_pointer: {
+    route: string;
+    payload: Record<string, any>;
+  } | null;
+  role_has_rubric: boolean;
+}
+
 // ── Skill trends (GET /api/trends/skills[/gap/:cvId]) ──────────────────────
 
 export interface SkillDemandRow {

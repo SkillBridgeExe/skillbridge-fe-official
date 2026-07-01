@@ -17,6 +17,7 @@ import {
   rewriteFieldApi,
   storyExtractApi,
   storyApplyPreviewApi,
+  computeStoryReadinessApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
   assistantRewriteApi,
@@ -54,6 +55,8 @@ import type {
   StoryApplyPreviewResponse,
   StoryExtractRequest,
   StoryExtractResponse,
+  StoryReadinessRequest,
+  StoryReadinessResponse,
 } from "@shared/api";
 
 // ── Snapshot của builder store (subset service cần) ────────────────
@@ -355,6 +358,18 @@ export async function storyApplyPreview(
 ): Promise<StoryApplyPreviewResponse> {
   requireSession();
   return storyApplyPreviewApi(draftId, input);
+}
+
+/**
+ * Story → Compute Readiness & Gap (slice 4).
+ * Deterministic (NO LLM, no quota).
+ */
+export async function computeStoryReadiness(
+  draftId: string,
+  input: StoryReadinessRequest,
+): Promise<StoryReadinessResponse> {
+  requireSession();
+  return computeStoryReadinessApi(draftId, input);
 }
 
 /** Render PDF của draft — trả Blob để UI tải xuống. */

@@ -47,7 +47,7 @@ interface StoryReviewPanelProps {
   /** Slice-2 result (extracted projects + certifications). */
   extractResult: StoryExtractResponse;
   /** Called when apply is complete — parent can refresh/close. */
-  onApplied: () => void;
+  onApplied: (appliedRoleCode?: string) => void;
 }
 
 export function StoryReviewPanel({
@@ -173,7 +173,7 @@ export function StoryReviewPanel({
         }),
       });
 
-      onApplied();
+      onApplied(roleSelected ? (careerTarget.role_code ?? undefined) : undefined);
     } catch {
       toast({
         title: t("builder.storyReview.applyError"),

@@ -52,6 +52,7 @@ export const API_ROUTES = {
     BUILDER_STORY: (id: string) => `${API}/cvs/${id}/builder/story`,
     BUILDER_STORY_EXTRACT: (id: string) => `${API}/cvs/${id}/builder/story/extract`,
     BUILDER_STORY_APPLY: (id: string) => `${API}/cvs/${id}/builder/story/apply-preview`,
+    BUILDER_STORY_READINESS: (id: string) => `${API}/cvs/${id}/builder/story/readiness`,
     RENDER_PDF: (id: string) => `${API}/cvs/${id}/render-pdf`,
     // Companion / CV Assistant (PR #126)
     ASSISTANT_ANALYZE: (id: string) => `${API}/cvs/${id}/builder/assistant/analyze`,

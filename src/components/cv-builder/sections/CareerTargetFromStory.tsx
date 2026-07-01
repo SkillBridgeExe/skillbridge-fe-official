@@ -3,9 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "react-i18next";
-import { inferCareerTargetFromStory, storyExtract } from "@/services/cv-builder.service";
-import type { CareerTargetFromStoryResponse, StoryExtractResponse } from "@shared/api";
+import {
+  inferCareerTargetFromStory,
+  storyExtract,
+  computeStoryReadiness,
+} from "@/services/cv-builder.service";
+import type {
+  CareerTargetFromStoryResponse,
+  StoryExtractResponse,
+  StoryReadinessResponse,
+} from "@shared/api";
 import { StoryReviewPanel } from "./StoryReviewPanel";
+import { StoryReadinessPanel } from "./StoryReadinessPanel";
 import { Loader2 } from "lucide-react";
 
 // A few words minimum — below this the deterministic engine abstains anyway, so don't even call.
@@ -24,8 +33,10 @@ interface CareerTargetFromStoryProps {
  * prompt, never auto-fill) when the story is too weak or ambiguous. Mounted behind
  * ENABLE_STORY_CAREER_TARGET until the 1b endpoint ships.
  *
- * W32: After slice-1 succeeds with a valid role, user can "Extract" (slice-2) to pull
- * projects + certifications, then review/apply them via StoryReviewPanel.
+ * W32: After slice-1 succeeds, user can "Extract" (slice-2) to pull projects + certifications,
+ * then review/apply them via StoryReviewPanel.
+ *
+ * W33: After apply is complete, computes and displays CV readiness & gap via StoryReadinessPanel.
  */
 export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStoryProps) {
   const { t } = useTranslation("diagnosis");
@@ -37,6 +48,10 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
   const [extractStatus, setExtractStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [extractResult, setExtractResult] = useState<StoryExtractResponse | null>(null);
 
+  // W33: readiness & gap state
+  const [readinessStatus, setReadinessStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [readinessResult, setReadinessResult] = useState<StoryReadinessResponse | null>(null);
+
   const canInfer = !!draftId && story.trim().length >= MIN_STORY_LEN && status !== "loading";
 
   async function handleInfer() {
@@ -45,6 +60,8 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
     setResult(null);
     setExtractResult(null);
     setExtractStatus("idle");
+    setReadinessStatus("idle");
+    setReadinessResult(null);
     try {
       const res = await inferCareerTargetFromStory(draftId, { story: story.trim() });
       setResult(res);
@@ -74,33 +91,41 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
 
   return (
     <div className="space-y-3 rounded-md border border-dashed p-3">
-      <Label htmlFor="careerStory" className="text-sm font-medium">
-        {t("builder.story.title")}
-      </Label>
-      <p className="text-xs text-muted-foreground">{t("builder.story.help")}</p>
-      <Textarea
-        id="careerStory"
-        rows={4}
-        value={story}
-        onChange={(e) => setStory(e.target.value)}
-        placeholder={t("builder.story.placeholder")}
-      />
-      {!draftId && <p className="text-xs text-amber-600">{t("builder.story.needDraft")}</p>}
-      <Button type="button" size="sm" onClick={handleInfer} disabled={!canInfer}>
-        {status === "loading" ? t("builder.story.inferring") : t("builder.story.infer")}
-      </Button>
+      {/* ── Standard free narrative input ── */}
+      {readinessStatus === "idle" && (
+        <>
+          <Label htmlFor="careerStory" className="text-sm font-medium">
+            {t("builder.story.title")}
+          </Label>
+          <p className="text-xs text-muted-foreground">{t("builder.story.help")}</p>
+          <Textarea
+            id="careerStory"
+            rows={4}
+            value={story}
+            onChange={(e) => setStory(e.target.value)}
+            placeholder={t("builder.story.placeholder")}
+          />
+          {!draftId && <p className="text-xs text-amber-600">{t("builder.story.needDraft")}</p>}
+          <Button type="button" size="sm" onClick={handleInfer} disabled={!canInfer}>
+            {status === "loading" ? t("builder.story.inferring") : t("builder.story.infer")}
+          </Button>
+        </>
+      )}
 
-      {status === "error" && <p className="text-xs text-red-600">{t("builder.story.error")}</p>}
+      {status === "error" && readinessStatus === "idle" && (
+        <p className="text-xs text-red-600">{t("builder.story.error")}</p>
+      )}
 
       {status === "done" &&
         result &&
+        readinessStatus === "idle" &&
         (abstained ? (
           <p className="text-xs text-amber-600">
             {t(result.reason === "ambiguous" ? "builder.story.ambiguous" : "builder.story.needsInput")}
           </p>
         ) : (
           role && (
-            <div className="space-y-2 rounded-md bg-muted/40 p-2">
+            <div className="space-y-2 rounded-md bg-muted/40 p-2 animate-in fade-in-50 duration-200">
               <p className="text-sm">
                 <span className="font-medium">{t("builder.story.resultTitle")}:</span> {role}
               </p>
@@ -144,14 +169,77 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
         ))}
 
       {/* W32: Review panel after extract */}
-      {showReviewPanel && (
+      {showReviewPanel && readinessStatus === "idle" && (
         <StoryReviewPanel
           draftId={draftId!}
           careerTarget={result}
           extractResult={extractResult}
-          onApplied={() => {
+          onApplied={async (appliedRoleCode) => {
+            // Clear extract view
             setExtractStatus("idle");
             setExtractResult(null);
+
+            // Determine role code to check readiness
+            const roleCodeToCompute = appliedRoleCode || result?.role_code;
+            if (!roleCodeToCompute || !draftId) {
+              // Fallback reset
+              setStatus("idle");
+              setResult(null);
+              setStory("");
+              return;
+            }
+
+            // W33: Trigger readiness calculation after apply saves draft to DB
+            setReadinessStatus("loading");
+            try {
+              const res = await computeStoryReadiness(draftId, { role_code: roleCodeToCompute });
+              setReadinessResult(res);
+              setReadinessStatus("done");
+            } catch {
+              setReadinessStatus("error");
+            }
+          }}
+        />
+      )}
+
+      {/* W33: Readiness states */}
+      {readinessStatus === "loading" && (
+        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-slate-50/50 space-y-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-xs text-slate-500 font-medium">
+            {t("builder.storyReadiness.loading", { defaultValue: "Đang tính toán mức độ sẵn sàng..." })}
+          </span>
+        </div>
+      )}
+
+      {readinessStatus === "error" && (
+        <div className="p-5 border border-rose-100 rounded-lg bg-rose-50/20 text-center space-y-3">
+          <p className="text-xs text-rose-700 font-medium">
+            {t("builder.storyReadiness.error", { defaultValue: "Không thể tính toán mức độ sẵn sàng lúc này." })}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs"
+            onClick={() => {
+              setReadinessStatus("idle");
+              setReadinessResult(null);
+              setStatus("idle");
+              setResult(null);
+              setStory("");
+            }}
+          >
+            {t("builder.storyReadiness.retryBtn", { defaultValue: "Quay lại" })}
+          </Button>
+        </div>
+      )}
+
+      {readinessStatus === "done" && readinessResult && (
+        <StoryReadinessPanel
+          data={readinessResult}
+          onClose={() => {
+            setReadinessStatus("idle");
+            setReadinessResult(null);
             setStatus("idle");
             setResult(null);
             setStory("");

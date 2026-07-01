@@ -16,6 +16,8 @@ import type {
   StoryApplyPreviewResponse,
   StoryExtractRequest,
   StoryExtractResponse,
+  StoryReadinessRequest,
+  StoryReadinessResponse,
   UpdateBuilderDraftInput,
 } from "@shared/api";
 import type {
@@ -140,6 +142,21 @@ export async function storyApplyPreviewApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<StoryApplyPreviewResponse>>(
     httpClient.post(API_ROUTES.CV.BUILDER_STORY_APPLY(draftId), input, { timeout: 30_000 }),
     "Failed to preview story apply.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/story/readiness — Compute Story -> CV readiness and gaps.
+ * Deterministic (NO LLM, no quota).
+ */
+export async function computeStoryReadinessApi(
+  draftId: string,
+  input: StoryReadinessRequest,
+): Promise<StoryReadinessResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<StoryReadinessResponse>>(
+    httpClient.post(API_ROUTES.CV.BUILDER_STORY_READINESS(draftId), input, { timeout: 30_000 }),
+    "Failed to compute story readiness.",
   );
   return envelope.data;
 }
