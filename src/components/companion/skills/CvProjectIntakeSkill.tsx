@@ -14,15 +14,12 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useProjectIntakeMutation } from "@/hooks/use-cv-builder";
 import { useTranslation } from "react-i18next";
 import { assistantLocales } from "./assistant-locale";
-import type { ProjectIntakeProject, ProjectIntakeResponse } from "@shared/api";
-
-export interface CurrentProjectEntry {
-  name: string;
-  role: string;
-  tools: string;
-  link: string;
-  description: string;
-}
+import type { ProjectIntakeResponse } from "@shared/api";
+import {
+  computeProjectIntakeFields,
+  type CurrentProjectEntry,
+  type ProjectIntakeFieldDiff,
+} from "./cv-project-intake-apply";
 
 export interface CvProjectIntakeSkillProps {
   draftId: string;
@@ -32,71 +29,6 @@ export interface CvProjectIntakeSkillProps {
 }
 
 type Phase = "intake" | "thinking" | "preview";
-
-interface ProjectIntakeFieldDiff {
-  field: string;
-  label: string;
-  before: string;
-  after: string;
-  autoApply: boolean;
-}
-
-function computeProjectIntakeFields(
-  project: ProjectIntakeProject,
-  current: CurrentProjectEntry,
-  locale: "vi" | "en" = "vi",
-): ProjectIntakeFieldDiff[] {
-  const diffs: ProjectIntakeFieldDiff[] = [];
-  const fields = [
-    {
-      key: "name",
-      label: { vi: "Tên dự án", en: "Project name" },
-      before: current.name,
-      after: project.name,
-      found: project.found_fields.includes("name"),
-    },
-    {
-      key: "role",
-      label: { vi: "Vai trò", en: "Role" },
-      before: current.role,
-      after: project.role ?? "",
-      found: project.found_fields.includes("role"),
-    },
-    {
-      key: "tools",
-      label: { vi: "Công nghệ", en: "Technologies" },
-      before: current.tools,
-      after: (project.tech ?? []).join(", "),
-      found: project.found_fields.includes("tech"),
-    },
-    {
-      key: "link",
-      label: { vi: "Liên kết", en: "Project link" },
-      before: current.link,
-      after: project.link ?? "",
-      found: project.found_fields.includes("link"),
-    },
-    {
-      key: "description",
-      label: { vi: "Mô tả dự án", en: "Project description" },
-      before: current.description,
-      after: (project.bullets ?? []).map((b) => `- ${b}`).join("\n"),
-      found: project.found_fields.includes("bullets"),
-    },
-  ];
-
-  for (const f of fields) {
-    if (!f.found || !f.after.trim()) continue;
-    diffs.push({
-      field: f.key,
-      label: f.label[locale],
-      before: f.before.trim(),
-      after: f.after.trim(),
-      autoApply: !f.before.trim(),
-    });
-  }
-  return diffs;
-}
 
 export function CvProjectIntakeSkill({
   draftId,
@@ -139,6 +71,9 @@ export function CvProjectIntakeSkill({
             // Honest dead-end guard: keep the response so the intake-phase banner
             // can say WHY nothing filled (degraded vs. nothing grounded) instead of
             // silently returning to the textarea.
+            // ponytail: light no-dead-end = honest banner + editable narrative + re-run,
+            // not the full openIntakeCoach funnel (that's Experience-field specific).
+            // Upgrade to a project coach funnel only if users actually get stuck here.
             setExtracted(res);
             setPhase("intake");
             return;
