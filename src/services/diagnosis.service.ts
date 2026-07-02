@@ -150,10 +150,42 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
         suggestion: issue.hint ?? "",
       })),
     ),
-    // BE R1 không trả rewrite tĩnh/strengths — rewrite là tương tác builder (W5);
-    // strengths sẽ lấy từ rationale khi W3 redesign. Mảng rỗng → UI ẩn khối.
-    rewriteSuggestions: [],
-    strengths: [],
+    strengths: (() => {
+      const strengthsList: string[] = [];
+      // 1. ATS rule checks that pass
+      if (review.ats_check?.rules) {
+        review.ats_check.rules.forEach((rule) => {
+          if (rule.status === "pass" && rule.label) {
+            strengthsList.push(rule.label);
+          }
+        });
+      }
+      // 2. High score dimensions (score20 >= 16 out of 20, which is >= 80%)
+      const DIM_LABELS: Record<string, { vi: string; en: string }> = {
+        action_verbs: { vi: "Sử dụng động từ hành động hiệu quả", en: "Effective use of action verbs" },
+        skills_relevance: { vi: "Mức độ phù hợp của kỹ năng cao", en: "High relevance of skills" },
+        experience: { vi: "Kinh nghiệm làm việc phong phú", en: "Strong work experience" },
+        education: { vi: "Nền tảng học vấn vững chắc", en: "Solid education background" },
+      };
+      const cvLanguage = dto.language === "vi" ? "vi" : "en";
+      if (review.llm_score_dimensions) {
+        (
+          ["action_verbs", "skills_relevance", "experience", "education"] as const
+        ).forEach((key) => {
+          const score = review.llm_score_dimensions[key];
+          if (score >= 16) {
+            const label = DIM_LABELS[key]?.[cvLanguage] ?? key;
+            const rationale = review.rationale?.[key];
+            if (rationale) {
+              strengthsList.push(`${label}: ${rationale}`);
+            } else {
+              strengthsList.push(label);
+            }
+          }
+        });
+      }
+      return strengthsList;
+    })(),
     actionPlan: review.top_summary?.prioritized_actions ?? [],
     parsedCv: {
       name: review.ats_extracted?.name ?? undefined,
@@ -228,7 +260,6 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
       .map((skill) => skill.display_name || skill.canonical_name),
     required_coverage: parsed?.required_coverage ?? null,
     scoring_breakdown: parsed?.scoring_breakdown ?? null,
-    experience_fit: parsed?.experience_fit ?? null,
     inferred_skills: parsed?.inferred_skills ?? [],
     // W17: thước chấm — null = JD path (thước của JD dán), non-null = rubric band.
     rubric_band: parsed?.rubric_band ?? null,

@@ -63,7 +63,6 @@ const review = (over: Partial<CvReviewData>): CvReviewData =>
     overallScore: 70,
     breakdown: {},
     issues: [],
-    rewriteSuggestions: [],
     strengths: [],
     actionPlan: [],
     parsedCv: {},

@@ -144,7 +144,13 @@ export function StoryReviewPanel({
         toast({
           title: t("builder.storyReview.skippedTitle"),
           description: result.skipped_duplicates
-            .map((name) => t("builder.storyReview.skippedItem", { name }))
+            .map((item) => {
+              const typeLabel = item.section === "projects"
+                ? t("builder.entry.project")
+                : t("builder.entry.certification", { defaultValue: "chứng chỉ" });
+              const nameWithSection = `${item.name} (${typeLabel.toLowerCase()})`;
+              return t("builder.storyReview.skippedItem", { name: nameWithSection });
+            })
             .join(", "),
           variant: "default",
         });

@@ -8,6 +8,7 @@ import { useGapReportQuery } from "@/hooks/use-diagnosis";
 import type { GapReportDto } from "@shared/api";
 import { JdIntelligenceCard } from "./JdIntelligenceCard";
 import { SectionRule } from "./editorial";
+import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 
 const GAP_TYPE_ICON: Record<string, React.ReactNode> = {
   hard_skill: <Code className="w-3.5 h-3.5" />,
@@ -60,6 +61,10 @@ export function GapReportCard({ matchId }: { matchId: string }) {
     isLoading: boolean;
     isError: boolean;
   };
+
+  if (!ENABLE_DIAGNOSIS_ADDONS) {
+    return null;
+  }
 
   if (isLoading) {
     return (

@@ -153,12 +153,6 @@ function MatchNarrative({
         </p>
         <p className="text-[12px] text-[#787774] leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
       </div>
-      {jdMatch.experience_fit?.status && jdMatch.experience_fit.status !== "unknown" && (
-        <p className="text-xs font-medium text-[#787774]">
-          {t(`matchDepth.fit.${jdMatch.experience_fit.status}`)}
-          {jdMatch.experience_fit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
-        </p>
-      )}
       {breakdown.cap_applied && (
         <p className="text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
       )}
@@ -394,9 +388,6 @@ export function DiagnosisStep3Results() {
   const coverage = jdMatch?.required_coverage != null
     ? Math.round(jdMatch.required_coverage * 100)
     : undefined;
-  const expFitLabel = jdMatch?.experience_fit?.status && jdMatch.experience_fit.status !== "unknown"
-    ? t(`matchDepth.fit.${jdMatch.experience_fit.status}`)
-    : null;
   const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
 
   /* ── Kicker text ── */
@@ -456,7 +447,6 @@ export function DiagnosisStep3Results() {
               partial={partialCount}
               missing={missingCount}
               coverage={coverage}
-              expFitLabel={expFitLabel}
               capApplied={capApplied}
             />
           </div>

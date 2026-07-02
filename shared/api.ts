@@ -27,12 +27,7 @@ export interface CvIssue {
   suggestion: string;
 }
 
-export interface CvRewriteSuggestion {
-  section: string;
-  original: string;
-  improved: string;
-  reason: string;
-}
+
 
 export interface ParsedCvSummary {
   name?: string;
@@ -98,11 +93,10 @@ export interface MatchPartialSkill {
 }
 
 export interface ExperienceFit {
-  status: "fits" | "stretch" | "overqualified" | "unknown";
-  required_years_min: number | null;
-  required_years_max: number | null;
-  cv_years: number | null;
-  confidence?: "high" | "estimated" | "low" | null;
+  cv_seniority: string;
+  job_level: string;
+  verdict: "fits" | "stretch" | "over_qualified" | "unknown";
+  confidence: "low" | "medium" | "high";
 }
 
 export interface InferredSkill {
@@ -165,7 +159,6 @@ export interface CvReviewData {
    *  experience/projects bullets + W3d highlight evidence_text trong bullets. */
   document?: CanonicalCvDocument;
   issues: CvIssue[];
-  rewriteSuggestions: CvRewriteSuggestion[];
   strengths: string[];
   actionPlan: string[];
   parsedCv: ParsedCvSummary;
@@ -296,6 +289,17 @@ export interface BeReviewSection {
   issues: Array<{ severity: BeIssueSeverity; text: string; hint?: string }>;
 }
 
+export interface BulletFeedbackItem {
+  text: string;
+  section: "experience" | "projects" | "activities";
+  verbFirst: boolean;
+  quantified: boolean;
+  weakOpener: boolean;
+  firstPerson: boolean;
+  fillerCount: number;
+  tips: string[];
+}
+
 /** Kết quả chấm CV của BE — nằm trong `CvDto.review` (POST /api/cvs trả ĐỒNG BỘ). */
 export interface CvReviewParsedResponse {
   language: string;
@@ -320,6 +324,8 @@ export interface CvReviewParsedResponse {
     education: string;
   };
   sections: BeReviewSection[];
+  bullet_feedback?: BulletFeedbackItem[];
+  buzzwords_detected?: string[];
   ats_extracted: {
     name: string | null;
     email: string | null;
@@ -431,7 +437,7 @@ export interface CvJdMatchParsedResponse {
   scoring_breakdown: ScoringBreakdown;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
   target_role: string | null;
-  experience_fit?: ExperienceFit | null;
+  keyword_frequency?: Record<string, number>;
   inferred_skills?: InferredSkill[];
   /** BE #54/#56: non-null CHỈ khi requirements_source = role_rubric (JD path không band). */
   rubric_band?: RubricBand | null;
@@ -744,7 +750,7 @@ export interface StoryApplyPreviewRequest {
 export interface StoryApplyPreviewResponse {
   doc: CanonicalCvDocument;
   applied: { projects: number; certifications: number };
-  skipped_duplicates: string[];
+  skipped_duplicates: Array<{ section: "projects" | "certifications"; name: string }>;
 }
 
 // ── Story → CV Readiness & Gap (slice-4, POST /api/cvs/:id/builder/story/readiness) ──
@@ -1132,6 +1138,7 @@ export interface GapReportDto {
   recommended_actions: TailorActionDto[];
   market_trend_gaps: ImpliedSkillDto[] | null;
   jd_market_position: JdMarketPositionDto;
+  market?: { available: true; role_code: string; period: string } | { available: false; reason: string };
   generated_with_ledger?: boolean;
   /** cv_jd_match_v2: JD non-skill disclosure (seniority/language/education/domain/work_mode). */
   jd_intelligence?: JdIntelligenceBlock | null;

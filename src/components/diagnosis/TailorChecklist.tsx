@@ -16,6 +16,9 @@ import { cn } from "@/lib/utils";
 import { useGapReportQuery, useTailorRewriteMutation } from "@/hooks/use-diagnosis";
 import type { CanonicalCvDocument, TailorAction, TailorActionType } from "@shared/api";
 import { JdMarketPosition } from "./JdMarketPosition";
+import { useQueryClient } from "@tanstack/react-query";
+import { ToastAction } from "@/components/ui/toast";
+import { getApiErrorCode } from "@/lib/api-error";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -186,6 +189,7 @@ function TailorRewriteDialog({
 }) {
   const { t } = useTranslation("diagnosis");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const rewriteMutation = useTailorRewriteMutation();
   const candidates = useMemo(() => findAnchorBullets(document, action.anchor?.ref), [document, action.anchor?.ref]);
   // PR4: BE-resolved exact bullet wins over the FE's anchor guess; fall back to the guess when absent.
@@ -257,8 +261,44 @@ function TailorRewriteDialog({
                 {
                   // BE may reject (NO_ANCHOR / TEXT_NOT_IN_CV / ACTION_NOT_FOUND / quota / auth) —
                   // surface a friendly reason instead of silently doing nothing.
-                  onError: () =>
-                    toast({ title: t("tailor.rewriteError"), variant: "destructive" }),
+                  onError: (err: any) => {
+                    const code = err?.code ?? err?.errorCode ?? getApiErrorCode(err);
+                    if (code === "MATCH_TOO_OLD") {
+                      toast({
+                        title: t("tailor.errors.matchTooOldTitle", { defaultValue: "Kết quả so khớp cũ" }),
+                        description: t("tailor.errors.matchTooOldDesc", { defaultValue: "Kết quả so khớp đã cũ, hãy chạy lại so khớp JD" }),
+                        variant: "destructive",
+                        action: (
+                          <ToastAction
+                            altText="Chuyển tới"
+                            onClick={() => {
+                              const el = window.document.getElementById("cv-jd-match") || window.document.getElementById("diagnosis-match-section") || window.document.getElementById("diagnosis-jd-upload");
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth" });
+                              }
+                            }}
+                          >
+                            {t("tailor.errors.gotoMatch", { defaultValue: "Chuyển tới" })}
+                          </ToastAction>
+                        ),
+                      });
+                    } else if (code === "ACTION_NOT_FOUND" || code === "ACTION_NOT_REWRITABLE") {
+                      toast({
+                        title: t("tailor.errors.actionInvalidTitle", { defaultValue: "Gợi ý hết hiệu lực" }),
+                        description: t("tailor.errors.actionInvalidDesc", { defaultValue: "Gợi ý này không còn hợp lệ, đang tải lại checklist..." }),
+                        variant: "destructive",
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["gapReport", matchId] });
+                    } else if (code === "NO_ANCHOR" || code === "TEXT_NOT_IN_CV") {
+                      toast({
+                        title: t("tailor.errors.textNotInCvTitle", { defaultValue: "Mất dấu gợi ý" }),
+                        description: t("tailor.errors.textNotInCvDesc", { defaultValue: "Nội dung CV đã thay đổi so với lúc chấm hoặc gợi ý không khớp." }),
+                        variant: "destructive",
+                      });
+                    } else {
+                      toast({ title: t("tailor.rewriteError"), variant: "destructive" });
+                    }
+                  },
                 },
               )
             }

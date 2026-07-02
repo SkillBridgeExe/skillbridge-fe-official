@@ -39,10 +39,10 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
   const missing = job.missing_skills ?? [];
   const partial = job.partial_skills ?? [];
   const breakdown = job.scoring_breakdown;
-  const experienceFit = job.experience_fit?.status && job.experience_fit.status !== "unknown" ? job.experience_fit : null;
-  const fitClass = experienceFit?.status === "fits"
+  const experienceFit = job.experience_fit?.verdict && job.experience_fit.verdict !== "unknown" ? job.experience_fit : null;
+  const fitClass = experienceFit?.verdict === "fits"
     ? "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]"
-    : experienceFit?.status === "stretch"
+    : experienceFit?.verdict === "stretch"
       ? "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]"
       : "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
   const body = (
@@ -66,7 +66,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
       )}
       {experienceFit && !demoted && (
         <span className={cn("inline-flex mt-2 rounded border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
-          {t(`matchDepth.fit.${experienceFit.status}`)}
+          {t(`matchDepth.fit.${experienceFit.verdict}`)}
           {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
         </span>
       )}
