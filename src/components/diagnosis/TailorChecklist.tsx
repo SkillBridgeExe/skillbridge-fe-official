@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ToastAction } from "@/components/ui/toast";
 import { getApiErrorCode } from "@/lib/api-error";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { OPEN_TAILOR_REWRITE_EVENT, type OpenTailorRewriteEventDetail } from "@/components/companion/skills/chat-action-events";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -43,6 +44,7 @@ export function TailorChecklist({
   const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
   const { data, isLoading, isError } = useGapReportQuery(matchId, lang);
   const [activeAction, setActiveAction] = useState<TailorAction | null>(null);
+  const actions = useMemo(() => data?.recommended_actions ?? [], [data?.recommended_actions]);
 
   // Reset any open rewrite dialog when the match changes — never carry an action from a previous
   // report onto a new match (it would submit a stale action_id against the wrong match_id).
@@ -50,9 +52,25 @@ export function TailorChecklist({
     setActiveAction(null);
   }, [matchId]);
 
+  useEffect(() => {
+    const openRewrite = (event: Event) => {
+      const detail = (event as CustomEvent<OpenTailorRewriteEventDetail>).detail;
+      if (!detail?.actionId) return;
+      const action = actions.find((item) => item.action_id === detail.actionId);
+      const canRewrite =
+        Boolean(cvId) &&
+        action?.rewrite_eligible &&
+        (action.action_type === "emphasize" ||
+          (action.action_type === "deepen_wording" && Boolean(action.before)));
+      if (action && canRewrite) setActiveAction(action);
+    };
+
+    window.addEventListener(OPEN_TAILOR_REWRITE_EVENT, openRewrite);
+    return () => window.removeEventListener(OPEN_TAILOR_REWRITE_EVENT, openRewrite);
+  }, [actions, cvId]);
+
   if (!matchId || isError) return null;
 
-  const actions = data?.recommended_actions ?? [];
   if (!isLoading && actions.length === 0) return null;
 
   return (
@@ -266,8 +284,11 @@ function TailorRewriteDialog({
                 {
                   // BE may reject (NO_ANCHOR / TEXT_NOT_IN_CV / ACTION_NOT_FOUND / quota / auth) —
                   // surface a friendly reason instead of silently doing nothing.
-                  onError: (err: any) => {
-                    const code = err?.code ?? err?.errorCode ?? getApiErrorCode(err);
+                  onError: (err: unknown) => {
+                    const errorObject = typeof err === "object" && err !== null
+                      ? (err as { code?: string; errorCode?: string })
+                      : {};
+                    const code = errorObject.code ?? errorObject.errorCode ?? getApiErrorCode(err);
                     if (code === "MATCH_TOO_OLD") {
                       toast({
                         title: t("tailor.errors.matchTooOldTitle", { defaultValue: "Kết quả so khớp cũ" }),

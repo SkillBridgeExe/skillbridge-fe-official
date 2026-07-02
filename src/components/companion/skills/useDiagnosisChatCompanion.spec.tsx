@@ -7,6 +7,7 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
 
@@ -301,6 +302,52 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
     const onCancelAction = turn?.props.onCancelAction as () => void;
     onCancelAction();
     expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+  });
+
+  it("confirms rewrite and roadmap actions through page-level events", () => {
+    const qc = new QueryClient();
+    const reveal = vi.fn();
+    const tailorHandler = vi.fn();
+    const roadmapHandler = vi.fn();
+    window.addEventListener(OPEN_TAILOR_REWRITE_EVENT, tailorHandler);
+    window.addEventListener(OPEN_ROADMAP_WIZARD_EVENT, roadmapHandler);
+
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", reveal, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "rewrite" | "roadmap";
+      labelKey: string;
+      rewrite?: { action: { action_id: string } };
+    }) => void;
+    const onConfirmAction = turn?.props.onConfirmAction as () => void;
+
+    onAction({
+      kind: "rewrite",
+      labelKey: "companion.chat.chipRewriteHere",
+      rewrite: { action: { action_id: "deepen:react" } },
+    });
+    onConfirmAction();
+    expect(reveal).toHaveBeenCalledWith("tailor-deepen:react");
+    expect(tailorHandler).toHaveBeenCalledTimes(1);
+    expect((tailorHandler.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({ actionId: "deepen:react" });
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+
+    onAction({ kind: "roadmap", labelKey: "companion.chat.chipRoadmap" });
+    onConfirmAction();
+    expect(reveal).toHaveBeenCalledWith("roadmap-anchor");
+    expect(roadmapHandler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(OPEN_TAILOR_REWRITE_EVENT, tailorHandler);
+    window.removeEventListener(OPEN_ROADMAP_WIZARD_EVENT, roadmapHandler);
   });
 
   it("turns the prove-it suggestion into local coach messages without calling the chat API", () => {

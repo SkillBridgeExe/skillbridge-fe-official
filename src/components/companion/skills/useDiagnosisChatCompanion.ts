@@ -36,6 +36,7 @@ import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData, EvidenceItem, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 import type { ChatActionChip } from "./chat-action-chips";
+import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
 
@@ -392,10 +393,26 @@ export function useDiagnosisChatCompanion(
   );
 
   const onConfirmAction = useCallback(() => {
-    // MF6 executes rewrite/roadmap/copy. Until then this is an explicit no-op that
-    // closes the confirmation affordance rather than spending quota accidentally.
+    const pending = useCompanionStore.getState().chatPendingAction;
+    if (!pending) return;
+
+    if (pending.kind === "rewrite") {
+      const actionId = pending.rewrite?.action.action_id;
+      if (actionId) {
+        jumpToAnchor(`tailor-${actionId}`);
+        window.dispatchEvent(
+          new CustomEvent(OPEN_TAILOR_REWRITE_EVENT, { detail: { actionId } }),
+        );
+      }
+    } else if (pending.kind === "roadmap") {
+      jumpToAnchor("roadmap-anchor");
+      window.dispatchEvent(new CustomEvent(OPEN_ROADMAP_WIZARD_EVENT));
+    } else if (pending.kind === "copy" && pending.copyText && navigator.clipboard) {
+      void navigator.clipboard.writeText(pending.copyText);
+    }
+
     useCompanionStore.getState().setChatPendingAction(null);
-  }, []);
+  }, [jumpToAnchor]);
 
   const onCancelAction = useCallback(() => {
     useCompanionStore.getState().setChatPendingAction(null);
