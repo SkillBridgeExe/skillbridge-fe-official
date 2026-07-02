@@ -21,13 +21,14 @@ import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
+import { ProgressBanner } from "./ProgressBanner";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
-import { useNextStepsQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
+import { useNextStepsQuery, useGapReportQuery, useMatchProgressQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
-import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
+import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
@@ -292,9 +293,26 @@ export function DiagnosisStep3Results() {
     if (typeof document === "undefined") return;
     document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
+  // Progress vs last scan (deterministic, no LLM) — feeds both the ProgressBanner
+  // and the chat companion's progress-aware chip below.
+  const progressQuery = useMatchProgressQuery(jdMatch?.matchId);
   // matchId already works here; pass lastCvId too so the advisor still chats on a
   // CV-only result view (no JD compared) via the CV-only route.
-  useDiagnosisChatCompanion(reviewData, "gap_results", revealCard, lastCvId);
+  const chat = useDiagnosisChatCompanion(
+    reviewData,
+    "gap_results",
+    revealCard,
+    lastCvId,
+    progressQuery.data ?? null,
+  );
+  // ProgressBanner "Giải thích thêm" — hand off to the chat advisor: prefill + send
+  // the same grounded question the chip offers, and open the chat bubble.
+  const explainProgress = useCallback(() => {
+    chat.sendQuestion(t("companion.chat.progressChip"));
+    useCompanionStore.getState().activateContext(CHAT_CONTEXT_ID);
+    // Force bubble open even if dismissed (cf. CompanionShell.handleDolphinClick)
+    useCompanionStore.setState({ bubbleOpen: true });
+  }, [chat, t]);
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
@@ -468,6 +486,12 @@ export function DiagnosisStep3Results() {
       </div>
 
       <SectionRule />
+
+      {isJdMode && (
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 1 — Đọc vị: Radar + Narrative

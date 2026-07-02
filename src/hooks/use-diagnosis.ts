@@ -15,6 +15,7 @@ import {
   reanalyzeCv,
   rewriteTailorBullet,
   getNextSteps,
+  getMatchProgress,
 } from "@/services/diagnosis.service";
 import {
   DEFAULT_ROADMAP_BUDGET,
@@ -211,6 +212,19 @@ export function useNextStepsQuery(matchId?: string | null, lang: "vi" | "en" = "
   return useQuery({
     queryKey: ["next-steps", matchId ?? "none", lang],
     queryFn: () => getNextSteps(matchId!, lang),
+    enabled: Boolean(matchId) && canUseApi,
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Match progress report — query (deterministic, enabled khi có matchId). */
+export function useMatchProgressQuery(matchId?: string | null) {
+  const canUseApi = useHasApiSession();
+  return useQuery({
+    queryKey: ["match-progress", matchId ?? "none"],
+    queryFn: () => getMatchProgress(matchId!),
     enabled: Boolean(matchId) && canUseApi,
     staleTime: 5 * 60_000,
     retry: false,

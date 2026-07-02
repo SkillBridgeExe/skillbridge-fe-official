@@ -1259,3 +1259,30 @@ export interface GapItem {
   confidence: number;
   recommended_next_action: string;
 }
+
+export interface GapTransitionDto {
+  canonical_name: string;
+  display_name: string;
+  prev_status: GapCvStatus | null;
+  curr_status: GapCvStatus;
+  kind: 'closed' | 'improved' | 'worsened' | 'new' | 'unchanged';
+  prev_severity: number | null;
+  curr_severity: number;
+}
+
+export interface ProgressReportDto {
+  baseline: boolean;
+  prev_count: number;
+  curr_count: number;
+  gaps_closed: string[];
+  gaps_worsened: string[];
+  avg_severity_delta: number;
+  prev_score: number | null;
+  curr_score: number | null;
+  transitions: GapTransitionDto[];
+  dimension_changes: Array<{ dimension: string; prev_verdict: string; curr_verdict: string; changed: boolean }>;
+  evidence_recognized: string[];
+  strengths_kept: string[];
+  required_coverage_delta: number | null;
+  template_changed: boolean;
+}

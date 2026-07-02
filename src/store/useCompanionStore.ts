@@ -35,6 +35,8 @@ export interface CompanionChatMessage {
   errorKind?: "retry" | "limit";
   /** The user question that produced this assistant slot (so retry heals THIS row in place). */
   question?: string;
+  /** Deep-link chips (F4) built from the cited gap — honest-empty: absent/[] on a join miss. */
+  actions?: Array<{ labelKey: string; anchorId: string }>;
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -132,8 +134,9 @@ interface CompanionState {
    */
   failLastAssistant: (kind?: "retry" | "limit") => void;
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
-   *  concurrent send appended at the end never clobbers the retried row. */
-  resolveAssistantAt: (index: number, text: string) => void;
+   *  concurrent send appended at the end never clobbers the retried row. `actions`
+   *  (F4) is optional — omit/[] when there's nothing honest to deep-link to. */
+  resolveAssistantAt: (index: number, text: string, actions?: Array<{ labelKey: string; anchorId: string }>) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
   /**
@@ -275,12 +278,12 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Resolve a SPECIFIC assistant row (by index) with the answer. Used by per-row
   // retry where the retried slot is NOT necessarily the last assistant.
-  resolveAssistantAt: (index, text) =>
+  resolveAssistantAt: (index, text, actions) =>
     set((s) => {
       const target = s.chatMessages[index];
       if (!target || target.role !== "assistant") return {};
       const chatMessages = s.chatMessages.slice();
-      chatMessages[index] = { role: "assistant", text, pending: false, error: false, question: target.question };
+      chatMessages[index] = { role: "assistant", text, pending: false, error: false, question: target.question, actions };
       return { chatMessages };
     }),
   // Fail a SPECIFIC assistant row (by index). Used by per-row retry.

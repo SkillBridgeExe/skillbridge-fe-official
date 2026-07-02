@@ -76,6 +76,7 @@ export const API_ROUTES = {
     ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
     INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
     NEXT_STEPS: (matchId: string) => `${API}/cv-matches/${matchId}/next-steps`,
+    PROGRESS: (matchId: string) => `${API}/cv-matches/${matchId}/progress`,
     /** Corner-advisor two-way chat (BE endpoint built separately). */
     CHAT: (matchId: string) => `${API}/cv-matches/${matchId}/chat`,
   },

@@ -276,6 +276,20 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     expect(msgs[3]).toMatchObject({ role: "assistant", text: "a2", error: false });
   });
 
+  it("resolveAssistantAt keeps the optional actions chips (F4 deep-link chips)", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q1" });
+    s.setChatPending("q1");
+    const actions = [{ labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" }];
+    s.resolveAssistantAt(1, "a1", actions);
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({ role: "assistant", text: "a1", actions });
+    // Omitting the 3rd arg (existing call sites) still resolves — no actions on the row.
+    s.appendChatMessage({ role: "user", text: "q2" });
+    s.setChatPending("q2");
+    s.resolveAssistantAt(3, "a2");
+    expect(useCompanionStore.getState().chatMessages[3].actions).toBeUndefined();
+  });
+
   it("clearChat empties the thread", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });
