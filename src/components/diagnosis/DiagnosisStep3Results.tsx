@@ -28,7 +28,7 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
-import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
+import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 /* ── Design tokens (§0b — editorial W24) ── */
@@ -309,7 +309,9 @@ export function DiagnosisStep3Results() {
   // the same grounded question the chip offers, and open the chat bubble.
   const explainProgress = useCallback(() => {
     chat.sendQuestion(t("companion.chat.progressChip"));
-    useCompanionStore.getState().activateContext("diagnosis:chat");
+    useCompanionStore.getState().activateContext(CHAT_CONTEXT_ID);
+    // Force bubble open even if dismissed (cf. CompanionShell.handleDolphinClick)
+    useCompanionStore.setState({ bubbleOpen: true });
   }, [chat, t]);
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
