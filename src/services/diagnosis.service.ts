@@ -478,6 +478,10 @@ export async function getNextSteps(
   return getNextStepsApi(matchId, lang);
 }
 
+// ── Companion: match progress ───────────────────────────────────────
+
+export { getMatchProgressApi as getMatchProgress } from "@/api/cv/progress";
+
 // ── Companion: corner-advisor chat (diagnosis page) ─────────────────
 
 /**
