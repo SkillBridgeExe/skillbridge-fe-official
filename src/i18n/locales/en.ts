@@ -2531,6 +2531,7 @@ export default {
     progress: {
       title: "Compared to your last scan",
       scoreDelta: "Overall score: {{delta}}",
+      scoreDeltaLabel: "overall score compared to previous scan",
       closed: "Closed",
       improved: "Improved",
       evidence: "Evidence recognized",

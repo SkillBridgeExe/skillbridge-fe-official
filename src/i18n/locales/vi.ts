@@ -2519,6 +2519,7 @@ export default {
     progress: {
       title: "So với lần quét trước",
       scoreDelta: "Điểm tổng: {{delta}}",
+      scoreDeltaLabel: "điểm tổng so với lần quét trước",
       closed: "Đã đóng",
       improved: "Tiến bộ",
       evidence: "Evidence được ghi nhận",

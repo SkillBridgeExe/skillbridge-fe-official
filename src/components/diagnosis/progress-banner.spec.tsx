@@ -11,7 +11,7 @@ import type { ProgressReportDto } from "@shared/api";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
-      if (key === "progress.scoreDelta") return `Score: ${opts?.delta}`;
+      if (key === "progress.scoreDeltaLabel") return "overall score compared to previous scan";
       if (key === "progress.strengthsKept") return `Kept: ${opts?.names}`;
       return key;
     },
@@ -83,6 +83,7 @@ describe("ProgressBanner", () => {
     render(<ProgressBanner matchId="m1" />);
     expect(screen.getByText(/\+12/)).toBeInTheDocument();
     expect(screen.getByText(/Docker/)).toBeInTheDocument();
+    expect(screen.getByText("overall score compared to previous scan")).toBeInTheDocument();
   });
 
   it("hides the score row when the scoring template changed (honest — scores aren't comparable)", () => {

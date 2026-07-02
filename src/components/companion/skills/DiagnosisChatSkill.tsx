@@ -13,7 +13,7 @@
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
 import { useState, useRef, useEffect } from "react";
-import { Send, RotateCcw, AlertCircle } from "lucide-react";
+import { Send, RotateCcw, AlertCircle, ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
@@ -155,9 +155,10 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
                           key={a.anchorId}
                           type="button"
                           onClick={() => onJump?.(a.anchorId)}
-                          className="rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-1 text-[11px] font-medium text-[#2F3437] hover:bg-[#EFEEEA]"
+                          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ink-accent/40 focus:outline-none"
                         >
-                          {t(a.labelKey)}
+                          <span>{t(a.labelKey)}</span>
+                          <ArrowUpRight className="w-3 h-3 shrink-0" />
                         </button>
                       ))}
                     </div>
