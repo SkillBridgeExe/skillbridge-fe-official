@@ -23,6 +23,8 @@ export type CompanionSkill =
 export interface CompanionChatMessage {
   role: "user" | "assistant";
   text: string;
+  /** UI-only prompt/opener restored from local context; never sent back to the LLM. */
+  local?: boolean;
   /** Assistant placeholder while the answer is in flight. */
   pending?: boolean;
   /** Assistant slot that failed (e.g. endpoint not built / network) → retry row. */
@@ -120,6 +122,8 @@ interface CompanionState {
   // ── Chat actions ──
   /** Append a user or assistant message to the corner-advisor thread. */
   appendChatMessage: (msg: CompanionChatMessage) => void;
+  /** Replace the chat thread with a server-restored seed (persisted history). */
+  seedChatMessages: (msgs: CompanionChatMessage[]) => void;
   /**
    * Append a pending (in-flight) assistant placeholder message. The owning
    * `question` is stored on the placeholder so a later retry can re-send THIS
@@ -244,6 +248,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
   // ── Chat actions (ephemeral corner-advisor thread) ──
   appendChatMessage: (msg) =>
     set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
+  seedChatMessages: (msgs) => set({ chatMessages: msgs }),
   // Append an in-flight assistant placeholder (drives the "thinking" row). The
   // owning question rides along so a later retry heals THIS row in place.
   setChatPending: (question) =>

@@ -213,6 +213,18 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     expect(msgs[1]).toMatchObject({ role: "assistant", pending: true, question: "why?" });
   });
 
+  it("seedChatMessages replaces the thread with restored server turns", () => {
+    const s = useCompanionStore.getState();
+    s.seedChatMessages([
+      { role: "user", text: "old q" },
+      { role: "assistant", text: "old a" },
+    ]);
+    expect(useCompanionStore.getState().chatMessages).toEqual([
+      { role: "user", text: "old q" },
+      { role: "assistant", text: "old a" },
+    ]);
+  });
+
   it("resolveLastAssistant fills the pending placeholder with the answer", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });

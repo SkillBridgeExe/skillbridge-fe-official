@@ -13,7 +13,7 @@
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
 import { useState, useRef, useEffect } from "react";
-import { Send, RotateCcw, AlertCircle, ArrowUpRight } from "lucide-react";
+import { Send, RotateCcw, AlertCircle, ArrowUpRight, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
@@ -26,13 +26,24 @@ interface Props {
   onSend: (question: string) => void;
   /** Per-row retry: heal the failed assistant row at this index in place + re-send its question. */
   onRetry: (index: number) => void;
+  /** Erase persisted chat memory for this match, then clear the local thread. */
+  onDeleteThread?: () => void;
   /** F4: jump to a deep-link chip's anchor (gap-, tailor-, or roadmap-anchor). */
   onJump?: (anchorId: string) => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
 }
 
-export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRetry, onJump, isPending }: Props) {
+export function DiagnosisChatSkill({
+  messages,
+  opener,
+  suggestions,
+  onSend,
+  onRetry,
+  onDeleteThread,
+  onJump,
+  isPending,
+}: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
@@ -93,13 +104,32 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
 
       {/* ── Thread ── */}
       {hasMessages && (
-        <div
-          ref={threadRef}
-          className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1"
-          role="log"
-          aria-live="polite"
-        >
-          {messages.map((m, i) => {
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 border-b border-[#F1F1EF] pb-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B949E]">
+              {t("companion.chat.thread")}
+            </span>
+            {onDeleteThread && (
+              <button
+                type="button"
+                onClick={onDeleteThread}
+                disabled={isPending}
+                aria-label={t("companion.chat.deleteThread")}
+                title={t("companion.chat.deleteThread")}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#8B949E] transition-colors hover:bg-[#F5F5F3] hover:text-[#2F3437] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t("companion.chat.deleteThread")}</span>
+              </button>
+            )}
+          </div>
+          <div
+            ref={threadRef}
+            className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1"
+            role="log"
+            aria-live="polite"
+          >
+            {messages.map((m, i) => {
             if (m.role === "user") {
               return (
                 <div key={i} className="flex justify-end">
@@ -166,7 +196,8 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       )}
 

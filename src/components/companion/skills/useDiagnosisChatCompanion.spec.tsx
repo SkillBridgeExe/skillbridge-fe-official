@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useDiagnosisChatCompanion } from "./useDiagnosisChatCompanion";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { askDiagnosisChat } from "@/services/diagnosis.service";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
 
@@ -11,10 +12,22 @@ import type { DiagnosisChatFocus } from "@/types/companion";
 // and return a 3-item array for the focus-aware chip set.
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => (key.includes("suggestionsByFocus") ? ["q1", "q2", "q3"] : key),
+    t: (key: string, params?: Record<string, unknown>) => {
+      if (key.includes("suggestionsByFocus")) return ["q1", "q2", "q3"];
+      if (key === "companion.chat.continuity") return `continue:${params?.topic ?? ""}`;
+      return key;
+    },
     i18n: { language: "en" },
   }),
 }));
+
+vi.mock("@/services/diagnosis.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/diagnosis.service")>();
+  return {
+    ...actual,
+    askDiagnosisChat: vi.fn().mockResolvedValue({ answer: "ok" }),
+  };
+});
 
 afterEach(() => {
   cleanup();
@@ -22,6 +35,11 @@ afterEach(() => {
 });
 
 const reviewData = { overallScore: 80, dimensions: [] } as unknown as CvReviewData;
+const reviewWithMatch = {
+  overallScore: 80,
+  dimensions: [],
+  jdMatch: { matchId: "match-1" },
+} as unknown as CvReviewData;
 
 function mkTransition(kind: GapTransitionDto["kind"]): GapTransitionDto {
   return {
@@ -58,11 +76,13 @@ function mkProgress(overrides: Partial<ProgressReportDto>): ProgressReportDto {
 function Harness({
   focus,
   progress,
+  data = reviewData,
 }: {
   focus: DiagnosisChatFocus;
   progress?: ProgressReportDto | null;
+  data?: CvReviewData;
 }) {
-  useDiagnosisChatCompanion(reviewData, focus, undefined, "cv-1", progress);
+  useDiagnosisChatCompanion(data, focus, undefined, "cv-1", progress);
   return null;
 }
 
@@ -158,5 +178,76 @@ describe("useDiagnosisChatCompanion — progress-aware chip", () => {
       </QueryClientProvider>,
     );
     expect(typeof api?.sendQuestion).toBe("function");
+  });
+});
+
+describe("useDiagnosisChatCompanion — persisted thread memory", () => {
+  it("seeds persisted turns when the local chat is empty and uses a continuity opener", async () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["chat-thread", "match-1"], {
+      turns: [
+        { role: "user", text: "Why is React weak?", ts: "2026-07-02T00:00:00.000Z" },
+        { role: "assistant", text: "Because the evidence is thin.", ts: "2026-07-02T00:00:01.000Z" },
+      ],
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="gap_results" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(useCompanionStore.getState().chatMessages).toEqual([
+        { role: "user", text: "Why is React weak?" },
+        { role: "assistant", text: "Because the evidence is thin." },
+      ]);
+    });
+    expect(useCompanionStore.getState().chatOpener).toBe("continue:Why is React weak?");
+  });
+
+  it("does not overwrite an active local chat with persisted turns", async () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["chat-thread", "match-1"], {
+      turns: [{ role: "user", text: "old server q", ts: "2026-07-02T00:00:00.000Z" }],
+    });
+    useCompanionStore.getState().appendChatMessage({ role: "user", text: "live draft" });
+
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="gap_results" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(useCompanionStore.getState().chatMessages).toEqual([{ role: "user", text: "live draft" }]);
+    });
+  });
+
+  it("excludes local-only messages from the thread sent to the diagnosis chat API", async () => {
+    const qc = new QueryClient();
+    let api: { sendQuestion: (q: string) => void } | undefined;
+    function CaptureHarness() {
+      api = useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    useCompanionStore.getState().seedChatMessages([
+      { role: "assistant", text: "continue locally", local: true },
+      { role: "user", text: "real previous question" },
+    ]);
+
+    render(
+      <QueryClientProvider client={qc}>
+        <CaptureHarness />
+      </QueryClientProvider>,
+    );
+
+    api?.sendQuestion("next question");
+
+    await waitFor(() => {
+      expect(askDiagnosisChat).toHaveBeenCalled();
+    });
+    expect(vi.mocked(askDiagnosisChat).mock.calls[0]?.[0].thread).toEqual([
+      { role: "user", text: "real previous question" },
+    ]);
   });
 });

@@ -468,6 +468,7 @@ export function CompanionShell() {
                   suggestions={chatSuggestions}
                   onSend={turn.props.onSend as (q: string) => void}
                   onRetry={turn.props.onRetry as (index: number) => void}
+                  onDeleteThread={turn.props.onDeleteThread as (() => void) | undefined}
                   onJump={turn.props.onJump as (anchorId: string) => void}
                   isPending={chatPending}
                 />

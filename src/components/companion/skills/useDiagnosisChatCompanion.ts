@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
-import { useGapReportQuery } from "@/hooks/use-diagnosis";
+import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData, ProgressReportDto } from "@shared/api";
@@ -115,18 +115,30 @@ export function useDiagnosisChatCompanion(
   // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
   // compared, the CV-only route (cvId) is the fallback target so the advisor still works.
   const matchId = reviewData?.jdMatch?.matchId ?? null;
+  const previousMatchIdRef = useRef<string | null | undefined>(undefined);
 
   // F4: same query key (matchId + lang) as GapReportCard/TailorChecklist already on
   // the page → this is a cache read, not an extra network call. Used to map a chat
   // answer's `cited_gap_id` to deep-link chips (view-gap / rewrite / roadmap).
   const gapReportQuery = useGapReportQuery(matchId, language);
+  const chatThreadQuery = useChatThreadQuery(matchId);
+  const deleteThreadMutation = useDeleteChatThreadMutation();
+
+  const restoredMessages = (chatThreadQuery.data?.turns ?? []).map((turn) => ({
+    role: turn.role,
+    text: turn.text,
+  }));
+  const lastRestoredUserTopic =
+    [...restoredMessages].reverse().find((msg) => msg.role === "user")?.text.trim().slice(0, 60) ?? null;
 
   // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
   const hasReview = typeof reviewData?.overallScore === "number";
   const score = reviewData?.overallScore ?? 0;
-  const opener = hasReview
-    ? t(openerKeyForFocus(focus, score), { score })
-    : null;
+  const opener = lastRestoredUserTopic
+    ? t("companion.chat.continuity", { topic: lastRestoredUserTopic })
+    : hasReview
+      ? t(openerKeyForFocus(focus, score), { score })
+      : null;
 
   // Suggested-question chips. The base set is a static i18n array; when the real
   // scored dimensions are present we swap the generic first chip for a GROUNDED one
@@ -190,10 +202,20 @@ export function useDiagnosisChatCompanion(
     suggestions: string[];
     onSend: (q: string) => void;
     onRetry: (index: number) => void;
+    onDeleteThread: () => void;
     onJump: (anchorId: string) => void;
     isPending: boolean;
     revealCard?: RevealCard;
-  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, onJump: () => {}, isPending: false, revealCard });
+  }>({
+    opener,
+    suggestions,
+    onSend: () => {},
+    onRetry: () => {},
+    onDeleteThread: () => {},
+    onJump: () => {},
+    isPending: false,
+    revealCard,
+  });
 
   // Jump to an anchor id (no-op-safe). revealCard handles the wrong-tab case for
   // `dim-*`/`gap-*` anchors; fall back to a direct scroll. Shared by the auto-reveal
@@ -262,7 +284,7 @@ export function useDiagnosisChatCompanion(
       const store = useCompanionStore.getState();
       // Build the grounding thread from what's already on screen (before appending).
       const thread: DiagnosisChatTurn[] = store.chatMessages
-        .filter((m) => !m.pending && !m.error && m.text)
+        .filter((m) => !m.local && !m.pending && !m.error && m.text)
         .slice(-THREAD_LIMIT)
         .map((m) => ({ role: m.role, text: m.text }));
       store.appendChatMessage({ role: "user", text });
@@ -290,13 +312,44 @@ export function useDiagnosisChatCompanion(
       if (!question) return;
       const thread: DiagnosisChatTurn[] = store.chatMessages
         .slice(0, index)
-        .filter((m) => !m.pending && !m.error && m.text)
+        .filter((m) => !m.local && !m.pending && !m.error && m.text)
         .slice(-THREAD_LIMIT)
         .map((m) => ({ role: m.role, text: m.text }));
       runChat(question, thread, index);
     },
     [chatMutation, runChat],
   );
+
+  const onDeleteThread = useCallback(() => {
+    if (!matchId) {
+      useCompanionStore.getState().clearChat();
+      return;
+    }
+    deleteThreadMutation.mutate(matchId, {
+      onSuccess: () => {
+        useCompanionStore.getState().clearChat();
+      },
+    });
+  }, [deleteThreadMutation, matchId]);
+
+  // A different match is a different persisted mascot memory. Clear local chat so
+  // the next seed cannot mix two CV/JD conversations.
+  useEffect(() => {
+    const previous = previousMatchIdRef.current;
+    if (previous !== undefined && previous !== matchId) {
+      useCompanionStore.getState().clearChat();
+    }
+    previousMatchIdRef.current = matchId;
+  }, [matchId]);
+
+  // Restore persisted turns once when the local thread is still empty. This keeps
+  // a live user draft/chat intact if the query resolves late.
+  useEffect(() => {
+    if (restoredMessages.length === 0) return;
+    const store = useCompanionStore.getState();
+    if (store.chatMessages.length > 0) return;
+    store.seedChatMessages(restoredMessages);
+  }, [matchId, restoredMessages]);
 
   // Store-back the focus-aware opener + chips so CompanionShell (which subscribes to
   // chatOpener/chatSuggestions) REPAINTS on a tab switch. Without this, opener/chips flow
@@ -312,7 +365,16 @@ export function useDiagnosisChatCompanion(
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
-  propsRef.current = { opener, suggestions, onSend, onRetry, onJump: jumpToAnchor, isPending: chatMutation.isPending, revealCard };
+  propsRef.current = {
+    opener,
+    suggestions,
+    onSend,
+    onRetry,
+    onDeleteThread,
+    onJump: jumpToAnchor,
+    isPending: chatMutation.isPending,
+    revealCard,
+  };
 
   // ── Register + activate the corner advisor ONCE on mount; unregister on unmount. ──
   // getTurn reads propsRef.current (always fresh) + the live thread from the store,
@@ -336,6 +398,7 @@ export function useDiagnosisChatCompanion(
           suggestions: propsRef.current.suggestions,
           onSend: propsRef.current.onSend,
           onRetry: propsRef.current.onRetry,
+          onDeleteThread: propsRef.current.onDeleteThread,
           onJump: propsRef.current.onJump,
           isPending: propsRef.current.isPending,
         },
