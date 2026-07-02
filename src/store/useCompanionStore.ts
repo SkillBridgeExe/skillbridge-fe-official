@@ -5,6 +5,7 @@
 
 import { create } from "zustand";
 import type { ElementIssue } from "@/components/companion/skills/element-issues";
+import type { ChatActionChip } from "@/components/companion/skills/chat-action-chips";
 
 export type CompanionSkill =
   | "cv_builder"
@@ -38,7 +39,7 @@ export interface CompanionChatMessage {
   /** The user question that produced this assistant slot (so retry heals THIS row in place). */
   question?: string;
   /** Deep-link chips (F4) built from the cited gap — honest-empty: absent/[] on a join miss. */
-  actions?: Array<{ labelKey: string; anchorId: string }>;
+  actions?: ChatActionChip[];
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -103,6 +104,8 @@ interface CompanionState {
   chatOpener: string | null;
   /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
   chatSuggestions: string[];
+  /** Action selected from a chat chip, waiting for explicit user confirmation. */
+  chatPendingAction: ChatActionChip | null;
   registerContext: (reg: CompanionContextReg) => void;
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
@@ -140,7 +143,7 @@ interface CompanionState {
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
    *  concurrent send appended at the end never clobbers the retried row. `actions`
    *  (F4) is optional — omit/[] when there's nothing honest to deep-link to. */
-  resolveAssistantAt: (index: number, text: string, actions?: Array<{ labelKey: string; anchorId: string }>) => void;
+  resolveAssistantAt: (index: number, text: string, actions?: ChatActionChip[]) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
   /**
@@ -151,6 +154,8 @@ interface CompanionState {
   retryAssistantAt: (index: number) => string | null;
   /** Clear the whole chat thread (e.g. on leaving the diagnosis tab / reset). */
   clearChat: () => void;
+  /** Store a chip action that needs explicit confirmation before spending quota. */
+  setChatPendingAction: (action: ChatActionChip | null) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
   setChatDisplay: (d: { opener: string | null; suggestions: string[] }) => void;
   resetCompanion: () => void;
@@ -170,6 +175,7 @@ const initial = {
   chatMessages: [] as CompanionChatMessage[],
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
+  chatPendingAction: null as ChatActionChip | null,
 };
 
 export const useCompanionStore = create<CompanionState>()((set) => ({
@@ -327,7 +333,8 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     });
     return question;
   },
-  clearChat: () => set({ chatMessages: [], chatOpener: null, chatSuggestions: [] }),
+  clearChat: () => set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null }),
+  setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
     set({
@@ -337,6 +344,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       chatMessages: [],
       chatOpener: null,
       chatSuggestions: [],
+      chatPendingAction: null,
       dismissedIssues: loadDismissedIssues(),
     }),
 }));

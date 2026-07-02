@@ -292,7 +292,7 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q1" });
     s.setChatPending("q1");
-    const actions = [{ labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" }];
+    const actions = [{ kind: "jump" as const, labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" }];
     s.resolveAssistantAt(1, "a1", actions);
     expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({ role: "assistant", text: "a1", actions });
     // Omitting the 3rd arg (existing call sites) still resolves — no actions on the row.
@@ -305,8 +305,19 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
   it("clearChat empties the thread", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });
+    s.setChatPendingAction({ kind: "roadmap", labelKey: "companion.chat.chipRoadmap" });
     s.clearChat();
     expect(useCompanionStore.getState().chatMessages).toEqual([]);
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+  });
+
+  it("setChatPendingAction stores the chip waiting for explicit confirmation", () => {
+    const s = useCompanionStore.getState();
+    const action = { kind: "roadmap" as const, labelKey: "companion.chat.chipRoadmap" };
+    s.setChatPendingAction(action);
+    expect(useCompanionStore.getState().chatPendingAction).toEqual(action);
+    s.setChatPendingAction(null);
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
   });
 
   it("resolve/fail are no-ops when there is no assistant message", () => {

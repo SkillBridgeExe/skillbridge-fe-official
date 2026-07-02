@@ -2512,7 +2512,13 @@ export default {
         progressChip: "What did I improve since last scan?",
         chipViewGap: "View this gap",
         chipRewrite: "Fix this bullet",
+        chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
+        confirmRewrite: "Rewrite this bullet? This uses 1 rewrite credit.",
+        confirmRoadmap: "Create a learning roadmap from this gap? This uses 1 roadmap credit.",
+        confirmAction: "Run this action?",
+        confirmYes: "Run",
+        confirmNo: "Cancel",
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],

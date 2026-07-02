@@ -2500,7 +2500,13 @@ export default {
         progressChip: "Tôi đã tiến bộ gì so với lần trước?",
         chipViewGap: "Xem gap này",
         chipRewrite: "Sửa bullet này",
+        chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        confirmRewrite: "Viết lại bullet này? Tốn 1 lượt rewrite.",
+        confirmRoadmap: "Tạo lộ trình từ gap này? Tốn 1 lượt roadmap.",
+        confirmAction: "Chạy hành động này?",
+        confirmYes: "Chạy",
+        confirmNo: "Hủy",
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],

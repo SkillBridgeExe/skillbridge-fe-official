@@ -33,6 +33,7 @@ import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
+import type { ChatActionChip } from "./chat-action-chips";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
 
@@ -203,7 +204,9 @@ export function useDiagnosisChatCompanion(
     onSend: (q: string) => void;
     onRetry: (index: number) => void;
     onDeleteThread: () => void;
-    onJump: (anchorId: string) => void;
+    onAction: (chip: ChatActionChip) => void;
+    onConfirmAction: () => void;
+    onCancelAction: () => void;
     isPending: boolean;
     revealCard?: RevealCard;
   }>({
@@ -212,7 +215,9 @@ export function useDiagnosisChatCompanion(
     onSend: () => {},
     onRetry: () => {},
     onDeleteThread: () => {},
-    onJump: () => {},
+    onAction: () => {},
+    onConfirmAction: () => {},
+    onCancelAction: () => {},
     isPending: false,
     revealCard,
   });
@@ -332,6 +337,29 @@ export function useDiagnosisChatCompanion(
     });
   }, [deleteThreadMutation, matchId]);
 
+  const onAction = useCallback(
+    (chip: ChatActionChip) => {
+      if (chip.kind === "jump") {
+        if (chip.anchorId) jumpToAnchor(chip.anchorId);
+        return;
+      }
+      // rewrite/roadmap/prove_it/copy are explicit user actions. MF6 wires the
+      // execution; MF3 only stores the pending intent and shows the confirm strip.
+      useCompanionStore.getState().setChatPendingAction(chip);
+    },
+    [jumpToAnchor],
+  );
+
+  const onConfirmAction = useCallback(() => {
+    // MF6 executes rewrite/roadmap/copy. Until then this is an explicit no-op that
+    // closes the confirmation affordance rather than spending quota accidentally.
+    useCompanionStore.getState().setChatPendingAction(null);
+  }, []);
+
+  const onCancelAction = useCallback(() => {
+    useCompanionStore.getState().setChatPendingAction(null);
+  }, []);
+
   // A different match is a different persisted mascot memory. Clear local chat so
   // the next seed cannot mix two CV/JD conversations.
   useEffect(() => {
@@ -371,7 +399,9 @@ export function useDiagnosisChatCompanion(
     onSend,
     onRetry,
     onDeleteThread,
-    onJump: jumpToAnchor,
+    onAction,
+    onConfirmAction,
+    onCancelAction,
     isPending: chatMutation.isPending,
     revealCard,
   };
@@ -399,7 +429,9 @@ export function useDiagnosisChatCompanion(
           onSend: propsRef.current.onSend,
           onRetry: propsRef.current.onRetry,
           onDeleteThread: propsRef.current.onDeleteThread,
-          onJump: propsRef.current.onJump,
+          onAction: propsRef.current.onAction,
+          onConfirmAction: propsRef.current.onConfirmAction,
+          onCancelAction: propsRef.current.onCancelAction,
           isPending: propsRef.current.isPending,
         },
       }),

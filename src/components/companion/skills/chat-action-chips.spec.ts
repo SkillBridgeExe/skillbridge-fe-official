@@ -39,20 +39,33 @@ function mkAction(overrides: Partial<TailorAction> = {}): TailorAction {
     cv_count: 0,
     action_id: "add_evidence:react",
     requirement_id: "req-1",
+    before: "Built React UI for booking flow.",
     ...overrides,
   };
 }
 
 describe("buildChatActionChips", () => {
-  it("returns view-gap + rewrite chips when the cited gap and a rewrite-eligible action both match", () => {
+  it("returns view-gap + in-chat rewrite chips when the cited gap and a verified rewrite action both match", () => {
     const chips = buildChatActionChips({
       citedGapId: "req-1",
       gapItems: [mkGap()],
       actions: [mkAction()],
     });
     expect(chips).toEqual([
-      { labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
-      { labelKey: "companion.chat.chipRewrite", anchorId: "tailor-add_evidence:react" },
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "rewrite", labelKey: "companion.chat.chipRewriteHere", rewrite: { action: mkAction() } },
+    ]);
+  });
+
+  it("falls back to a tailor jump when a rewrite action lacks the verified before anchor", () => {
+    const chips = buildChatActionChips({
+      citedGapId: "req-1",
+      gapItems: [mkGap()],
+      actions: [mkAction({ before: null })],
+    });
+    expect(chips).toEqual([
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: "tailor-add_evidence:react" },
     ]);
   });
 
@@ -81,8 +94,8 @@ describe("buildChatActionChips", () => {
       actions: [],
     });
     expect(chips).toEqual([
-      { labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
-      { labelKey: "companion.chat.chipRoadmap", anchorId: "roadmap-anchor" },
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "roadmap", labelKey: "companion.chat.chipRoadmap" },
     ]);
   });
 });

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
 import type { CompanionChatMessage } from "@/store/useCompanionStore";
+import type { ChatActionChip } from "./chat-action-chips";
 
 interface Props {
   messages: CompanionChatMessage[];
@@ -28,8 +29,11 @@ interface Props {
   onRetry: (index: number) => void;
   /** Erase persisted chat memory for this match, then clear the local thread. */
   onDeleteThread?: () => void;
-  /** F4: jump to a deep-link chip's anchor (gap-, tailor-, or roadmap-anchor). */
-  onJump?: (anchorId: string) => void;
+  /** F4+: dispatch a chip action (jump/rewrite/roadmap/prove-it/copy). */
+  onAction?: (chip: ChatActionChip) => void;
+  pendingAction?: ChatActionChip | null;
+  onConfirmAction?: () => void;
+  onCancelAction?: () => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
 }
@@ -41,7 +45,10 @@ export function DiagnosisChatSkill({
   onSend,
   onRetry,
   onDeleteThread,
-  onJump,
+  onAction,
+  pendingAction,
+  onConfirmAction,
+  onCancelAction,
   isPending,
 }: Props) {
   const { t } = useTranslation("diagnosis");
@@ -182,9 +189,9 @@ export function DiagnosisChatSkill({
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {m.actions.map((a) => (
                         <button
-                          key={a.anchorId}
+                          key={a.anchorId ?? `${a.labelKey}-${a.kind}`}
                           type="button"
-                          onClick={() => onJump?.(a.anchorId)}
+                          onClick={() => onAction?.(a)}
                           className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ink-accent/40 focus:outline-none"
                         >
                           <span>{t(a.labelKey)}</span>
@@ -198,6 +205,35 @@ export function DiagnosisChatSkill({
             );
             })}
           </div>
+          {pendingAction && (
+            <div className="rounded-xl border border-primary/15 bg-primary/5 p-2.5">
+              <p className="text-[12px] font-medium leading-relaxed text-[#2F3437]">
+                {pendingAction.kind === "rewrite"
+                  ? t("companion.chat.confirmRewrite")
+                  : pendingAction.kind === "roadmap"
+                    ? t("companion.chat.confirmRoadmap")
+                    : t("companion.chat.confirmAction")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={onConfirmAction}
+                  disabled={isPending}
+                  className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("companion.chat.confirmYes")}
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelAction}
+                  disabled={isPending}
+                  className="rounded-full border border-[#EAEAEA] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#5F6B76] transition-colors hover:bg-[#F8F8F7] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("companion.chat.confirmNo")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

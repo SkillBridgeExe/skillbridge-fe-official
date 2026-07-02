@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useDiagnosisChatCompanion } from "./useDiagnosisChatCompanion";
+import { CHAT_CONTEXT_ID, useDiagnosisChatCompanion } from "./useDiagnosisChatCompanion";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
@@ -249,5 +249,45 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
     expect(vi.mocked(askDiagnosisChat).mock.calls[0]?.[0].thread).toEqual([
       { role: "user", text: "real previous question" },
     ]);
+  });
+});
+
+describe("useDiagnosisChatCompanion — chat action dispatch", () => {
+  it("jumps immediately for jump chips and stores rewrite/roadmap chips for confirmation", () => {
+    const qc = new QueryClient();
+    const reveal = vi.fn();
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", reveal, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "jump" | "rewrite" | "roadmap";
+      labelKey: string;
+      anchorId?: string;
+      rewrite?: { action: { before: string } };
+    }) => void;
+
+    onAction({ kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" });
+    expect(reveal).toHaveBeenCalledWith("gap-req-1");
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+
+    const rewriteChip = {
+      kind: "rewrite" as const,
+      labelKey: "companion.chat.chipRewriteHere",
+      rewrite: { action: { before: "old bullet" } },
+    };
+    onAction(rewriteChip);
+    expect(useCompanionStore.getState().chatPendingAction).toEqual(rewriteChip);
+
+    const onCancelAction = turn?.props.onCancelAction as () => void;
+    onCancelAction();
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
   });
 });
