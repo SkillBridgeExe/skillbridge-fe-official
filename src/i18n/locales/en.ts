@@ -2506,6 +2506,7 @@ export default {
           "How can I improve?",
         ],
         suggestDim: "Why is {{dim}} scored low?",
+        progressChip: "What did I improve since last scan?",
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],

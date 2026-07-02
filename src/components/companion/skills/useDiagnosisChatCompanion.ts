@@ -29,7 +29,7 @@ import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
 import { getApiErrorCode } from "@/lib/api-error";
-import type { CvReviewData } from "@shared/api";
+import type { CvReviewData, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
@@ -93,13 +93,20 @@ function isDailyLimitError(error: unknown): boolean {
  * @param cvId        CV-only chat target. When there is no JD match id, the advisor
  *                    still works by posting to the CV-only route with this cvId. Pass
  *                    the diagnosis store's `lastCvId`. Step 3 can omit it (matchId works).
+ * @param progress    optional progress report (GET .../progress). When it's a real
+ *                    non-baseline report with at least one closed/improved transition,
+ *                    a grounded "what did I improve" chip is prepended to the chip list
+ *                    — real data only (baseline/empty → no chip, no fabrication).
+ * @returns           `sendQuestion` so a caller (e.g. the ProgressBanner "explain" button)
+ *                    can prefill + send a question through the same chat pipeline.
  */
 export function useDiagnosisChatCompanion(
   reviewData: CvReviewData | null | undefined,
   focus: DiagnosisChatFocus,
   revealCard?: RevealCard,
   cvId?: string | null,
-): void {
+  progress?: ProgressReportDto | null,
+): { sendQuestion: (question: string) => void } {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
@@ -129,9 +136,21 @@ export function useDiagnosisChatCompanion(
   const weakestDim = reviewData?.dimensions?.length
     ? reviewData.dimensions.reduce((lo, d) => (d.score20 < lo.score20 ? d : lo))
     : null;
-  const suggestions = focus === "cv_audit" && weakestDim
+  const focusSuggestions = focus === "cv_audit" && weakestDim
     ? [t("companion.chat.suggestDim", { dim: t(`review.dims.${weakestDim.key}`) }), ...baseSuggestions.slice(1)]
     : baseSuggestions;
+
+  // Progress chip: prepend ONE grounded chip when there's a REAL non-baseline report
+  // with at least one closed/improved transition since last scan. Anti-fab: never
+  // shown for a baseline (nothing to compare) or a report with no closed/improved
+  // transitions (nothing to celebrate) — real data only.
+  const hasProgressToExplain = Boolean(
+    progress && !progress.baseline &&
+    progress.transitions.some((tr) => tr.kind === "closed" || tr.kind === "improved"),
+  );
+  const suggestions = hasProgressToExplain
+    ? [t("companion.chat.progressChip"), ...focusSuggestions]
+    : focusSuggestions;
 
   // ── Chat send → BE (built separately). useMutation per convention (mirrors
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
@@ -311,4 +330,6 @@ export function useDiagnosisChatCompanion(
     // Mount-only: NEVER re-run (re-running would re-pop a closed bubble = Clippy).
     // All referenced values (store getState, propsRef) are stable, so [] is correct.
   }, []);
+
+  return { sendQuestion: onSend };
 }
