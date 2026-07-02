@@ -1732,6 +1732,15 @@ export default {
       rewriting: "Đang viết lại...",
       rewriteError:
         "Không thể viết lại gợi ý này. Hãy chạy lại phân tích hoặc chọn bullet khác.",
+      errors: {
+        matchTooOldTitle: "Kết quả so khớp cũ",
+        matchTooOldDesc: "Kết quả so khớp đã cũ, hãy chạy lại so khớp JD",
+        gotoMatch: "Chuyển tới",
+        actionInvalidTitle: "Gợi ý hết hiệu lực",
+        actionInvalidDesc: "Gợi ý này không còn hợp lệ, đang tải lại checklist...",
+        textNotInCvTitle: "Mất dấu gợi ý",
+        textNotInCvDesc: "Nội dung CV đã thay đổi so với lúc chấm hoặc gợi ý không khớp.",
+      },
     },
     market: {
       title: "JD này so với thị trường",
@@ -1793,6 +1802,7 @@ export default {
         fits: "Kinh nghiệm phù hợp",
         stretch: "Vai trò hơi thử thách",
         overqualified: "Vượt yêu cầu",
+        over_qualified: "Vượt yêu cầu",
         estimate: "ước lượng",
       },
       satisfiedBy: "Tính từ {{from}} trong CV của bạn",

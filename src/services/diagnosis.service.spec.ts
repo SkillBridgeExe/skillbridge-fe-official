@@ -158,13 +158,7 @@ const matchDto: CvMatchDto = {
     },
     source_of_requirements: "role_rubric",
     target_role: "frontend_developer",
-    experience_fit: {
-      status: "stretch",
-      required_years_min: 2,
-      required_years_max: 4,
-      cv_years: 1,
-      confidence: "estimated",
-    },
+
     inferred_skills: [
       {
         canonical_name: "javascript",
@@ -317,7 +311,6 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.summary).toContain("50%");
     expect(jd.scoring_breakdown?.cap_applied).toBe(true);
     expect(jd.required_coverage).toBe(0.5);
-    expect(jd.experience_fit?.status).toBe("stretch");
     expect(jd.inferred_skills?.[0].canonical_name).toBe("javascript");
   });
 

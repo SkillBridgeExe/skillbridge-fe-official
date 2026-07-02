@@ -1740,6 +1740,15 @@ export default {
       rewriting: "Rewriting...",
       rewriteError:
         "Couldn't rewrite this suggestion. Try re-running the analysis or pick another bullet.",
+      errors: {
+        matchTooOldTitle: "Stale match result",
+        matchTooOldDesc: "The match result is stale, please re-run JD match",
+        gotoMatch: "Go to match",
+        actionInvalidTitle: "Stale recommendation",
+        actionInvalidDesc: "This recommendation is no longer valid, reloading checklist...",
+        textNotInCvTitle: "Anchor bullet mismatch",
+        textNotInCvDesc: "The bullet text has changed in your CV since the analysis was run.",
+      },
     },
     market: {
       title: "This JD vs the market",
@@ -1803,6 +1812,7 @@ export default {
         fits: "Experience fits",
         stretch: "Stretch role",
         overqualified: "Above requirement",
+        over_qualified: "Above requirement",
         estimate: "estimated",
       },
       satisfiedBy: "Counted from {{from}} on your CV",
