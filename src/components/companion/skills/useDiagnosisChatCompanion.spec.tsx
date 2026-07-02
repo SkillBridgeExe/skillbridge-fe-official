@@ -15,6 +15,8 @@ vi.mock("react-i18next", () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       if (key.includes("suggestionsByFocus")) return ["q1", "q2", "q3"];
       if (key === "companion.chat.continuity") return `continue:${params?.topic ?? ""}`;
+      if (key === "companion.chat.proveitChip") return `prove:${params?.skill ?? ""}`;
+      if (key === "companion.chat.proveitIntro") return `intro:${params?.skill ?? ""}`;
       return key;
     },
     i18n: { language: "en" },
@@ -32,6 +34,7 @@ vi.mock("@/services/diagnosis.service", async (importOriginal) => {
 afterEach(() => {
   cleanup();
   useCompanionStore.getState().resetCompanion();
+  vi.clearAllMocks();
 });
 
 const reviewData = { overallScore: 80, dimensions: [] } as unknown as CvReviewData;
@@ -40,6 +43,11 @@ const reviewWithMatch = {
   dimensions: [],
   jdMatch: { matchId: "match-1" },
 } as unknown as CvReviewData;
+
+const proveIt = {
+  skill_canonical: "react",
+  display_name: "React",
+} as unknown as import("@shared/api").EvidenceItem;
 
 function mkTransition(kind: GapTransitionDto["kind"]): GapTransitionDto {
   return {
@@ -289,5 +297,40 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
     const onCancelAction = turn?.props.onCancelAction as () => void;
     onCancelAction();
     expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+  });
+
+  it("turns the prove-it suggestion into local coach messages without calling the chat API", () => {
+    const qc = new QueryClient();
+    function ProveItHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1", null, proveIt);
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ProveItHarness />
+      </QueryClientProvider>,
+    );
+
+    expect(useCompanionStore.getState().chatSuggestions).toContain("prove:React");
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onSuggestionTap = turn?.props.onSuggestionTap as (q: string) => void;
+    onSuggestionTap("prove:React");
+
+    expect(askDiagnosisChat).not.toHaveBeenCalled();
+    expect(useCompanionStore.getState().chatMessages).toEqual([
+      { role: "user", text: "prove:React", local: true },
+      {
+        role: "assistant",
+        text: "intro:React",
+        local: true,
+        actions: [
+          {
+            kind: "prove_it",
+            labelKey: "companion.chat.proveitCta",
+            proveIt: { canonical: "react", displayName: "React" },
+          },
+        ],
+      },
+    ]);
   });
 });

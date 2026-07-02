@@ -469,6 +469,7 @@ export function CompanionShell() {
                   opener={chatOpener}
                   suggestions={chatSuggestions}
                   onSend={turn.props.onSend as (q: string) => void}
+                  onSuggestionTap={turn.props.onSuggestionTap as ((q: string) => void) | undefined}
                   onRetry={turn.props.onRetry as (index: number) => void}
                   onDeleteThread={turn.props.onDeleteThread as (() => void) | undefined}
                   onAction={turn.props.onAction as ((chip: ChatActionChip) => void) | undefined}

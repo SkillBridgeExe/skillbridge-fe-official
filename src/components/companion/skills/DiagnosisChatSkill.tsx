@@ -25,6 +25,8 @@ interface Props {
   opener: string | null;
   suggestions: string[];
   onSend: (question: string) => void;
+  /** Suggestion chips can be plain questions or local deterministic coaching flows. */
+  onSuggestionTap?: (question: string) => void;
   /** Per-row retry: heal the failed assistant row at this index in place + re-send its question. */
   onRetry: (index: number) => void;
   /** Erase persisted chat memory for this match, then clear the local thread. */
@@ -43,6 +45,7 @@ export function DiagnosisChatSkill({
   opener,
   suggestions,
   onSend,
+  onSuggestionTap,
   onRetry,
   onDeleteThread,
   onAction,
@@ -97,7 +100,14 @@ export function DiagnosisChatSkill({
                 <button
                   key={s}
                   type="button"
-                  onClick={() => submit(s)}
+                  onClick={() => {
+                    const q = s.trim();
+                    if (!q || isPending) return;
+                    if (onSuggestionTap) onSuggestionTap(q);
+                    else submit(q);
+                    setDraft("");
+                    textareaRef.current?.focus();
+                  }}
                   disabled={isPending}
                   className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                 >

@@ -2502,6 +2502,10 @@ export default {
         chipRewrite: "Sửa bullet này",
         chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
+        proveitIntro:
+          "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
+        proveitCta: "Đi tới bullet",
         confirmRewrite: "Viết lại bullet này? Tốn 1 lượt rewrite.",
         confirmRoadmap: "Tạo lộ trình từ gap này? Tốn 1 lượt roadmap.",
         confirmAction: "Chạy hành động này?",

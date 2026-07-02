@@ -2514,6 +2514,10 @@ export default {
         chipRewrite: "Fix this bullet",
         chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
+        proveitChip: "⚠ {{skill}}: claimed but not proven",
+        proveitIntro:
+          "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
+        proveitCta: "Go to the bullet",
         confirmRewrite: "Rewrite this bullet? This uses 1 rewrite credit.",
         confirmRoadmap: "Create a learning roadmap from this gap? This uses 1 roadmap credit.",
         confirmAction: "Run this action?",

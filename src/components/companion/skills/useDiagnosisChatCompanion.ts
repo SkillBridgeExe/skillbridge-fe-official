@@ -31,7 +31,7 @@ import { askDiagnosisChat } from "@/services/diagnosis.service";
 import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
-import type { CvReviewData, ProgressReportDto } from "@shared/api";
+import type { CvReviewData, EvidenceItem, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 import type { ChatActionChip } from "./chat-action-chips";
 
@@ -109,6 +109,7 @@ export function useDiagnosisChatCompanion(
   revealCard?: RevealCard,
   cvId?: string | null,
   progress?: ProgressReportDto | null,
+  proveIt?: EvidenceItem | null,
 ): { sendQuestion: (question: string) => void } {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
@@ -168,9 +169,14 @@ export function useDiagnosisChatCompanion(
     progress && !progress.baseline &&
     progress.transitions.some((tr) => tr.kind === "closed" || tr.kind === "improved"),
   );
-  const suggestions = hasProgressToExplain
-    ? [t("companion.chat.progressChip"), ...focusSuggestions]
-    : focusSuggestions;
+  const proveItChip = proveIt
+    ? t("companion.chat.proveitChip", { skill: proveIt.display_name })
+    : null;
+  const suggestions = [
+    ...(hasProgressToExplain ? [t("companion.chat.progressChip")] : []),
+    ...(proveItChip ? [proveItChip] : []),
+    ...focusSuggestions,
+  ];
 
   // ── Chat send → BE (built separately). useMutation per convention (mirrors
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
@@ -202,6 +208,7 @@ export function useDiagnosisChatCompanion(
     opener: string | null;
     suggestions: string[];
     onSend: (q: string) => void;
+    onSuggestionTap: (q: string) => void;
     onRetry: (index: number) => void;
     onDeleteThread: () => void;
     onAction: (chip: ChatActionChip) => void;
@@ -213,6 +220,7 @@ export function useDiagnosisChatCompanion(
     opener,
     suggestions,
     onSend: () => {},
+    onSuggestionTap: () => {},
     onRetry: () => {},
     onDeleteThread: () => {},
     onAction: () => {},
@@ -325,6 +333,30 @@ export function useDiagnosisChatCompanion(
     [chatMutation, runChat],
   );
 
+  const onSuggestionTap = useCallback(
+    (question: string) => {
+      if (proveItChip && proveIt && question === proveItChip) {
+        const store = useCompanionStore.getState();
+        store.appendChatMessage({ role: "user", text: question, local: true });
+        store.appendChatMessage({
+          role: "assistant",
+          local: true,
+          text: t("companion.chat.proveitIntro", { skill: proveIt.display_name }),
+          actions: [
+            {
+              kind: "prove_it",
+              labelKey: "companion.chat.proveitCta",
+              proveIt: { canonical: proveIt.skill_canonical, displayName: proveIt.display_name },
+            },
+          ],
+        });
+        return;
+      }
+      onSend(question);
+    },
+    [onSend, proveIt, proveItChip, t],
+  );
+
   const onDeleteThread = useCallback(() => {
     if (!matchId) {
       useCompanionStore.getState().clearChat();
@@ -397,6 +429,7 @@ export function useDiagnosisChatCompanion(
     opener,
     suggestions,
     onSend,
+    onSuggestionTap,
     onRetry,
     onDeleteThread,
     onAction,
@@ -427,6 +460,7 @@ export function useDiagnosisChatCompanion(
           opener: propsRef.current.opener,
           suggestions: propsRef.current.suggestions,
           onSend: propsRef.current.onSend,
+          onSuggestionTap: propsRef.current.onSuggestionTap,
           onRetry: propsRef.current.onRetry,
           onDeleteThread: propsRef.current.onDeleteThread,
           onAction: propsRef.current.onAction,

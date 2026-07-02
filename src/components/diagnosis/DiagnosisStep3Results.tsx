@@ -296,6 +296,13 @@ export function DiagnosisStep3Results() {
   // Progress vs last scan (deterministic, no LLM) — feeds both the ProgressBanner
   // and the chat companion's progress-aware chip below.
   const progressQuery = useMatchProgressQuery(jdMatch?.matchId);
+  /* Prove-it (#13): a JD-relevant skill is listed on the CV but lacks concrete
+     evidence. The chat advisor turns this into a 0-LLM local coaching chip. */
+  const provedItem = pickTopProveIt(
+    jdMatch?.hardSkills ?? [],
+    jdMatch?.softSkills ?? [],
+    reviewData?.evidence_ledger,
+  );
   // matchId already works here; pass lastCvId too so the advisor still chats on a
   // CV-only result view (no JD compared) via the CV-only route.
   const chat = useDiagnosisChatCompanion(
@@ -304,6 +311,7 @@ export function DiagnosisStep3Results() {
     revealCard,
     lastCvId,
     progressQuery.data ?? null,
+    provedItem,
   );
   // ProgressBanner "Giải thích thêm" — hand off to the chat advisor: prefill + send
   // the same grounded question the chip offers, and open the chat bubble.
@@ -316,16 +324,6 @@ export function DiagnosisStep3Results() {
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
-
-  /* Prove-it (#13) outranks the next-step. Computed BEFORE the results effect so that effect can
-     yield to it deterministically — otherwise the async next-step query resolves later, re-runs the
-     results effect, and `activateContext` clobbers the already-active prove-it bubble (the store's
-     `priority` field is inert for manually-activated contexts). */
-  const provedItem = pickTopProveIt(
-    jdMatch?.hardSkills ?? [],
-    jdMatch?.softSkills ?? [],
-    reviewData?.evidence_ledger,
-  );
 
   useEffect(() => {
     const store = useCompanionStore.getState();
