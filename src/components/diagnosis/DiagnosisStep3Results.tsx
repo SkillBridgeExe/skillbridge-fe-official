@@ -365,38 +365,6 @@ export function DiagnosisStep3Results() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topStep?.canonical, topStep?.action, provedItem?.skill_canonical, chatContextActive]);
 
-  /* ── Companion: Prove-it coach (#13) — outranks the next-step (provedItem computed above) ── */
-  useEffect(() => {
-    const store = useCompanionStore.getState();
-    // Calm corner advisor (owner decision 06-23): the chat context is the SOLE
-    // diagnosis context — prove-it stays gated off whenever the chat advisor is live.
-    // Read chatLive FRESH from the store (see the diagnosis:results effect above) so
-    // this nudge never steals/nulls the chat's activeId on the mount pass.
-    const chatLive = chatContextActive || !!store.contexts["diagnosis:chat"];
-    if (!provedItem || chatLive) {
-      store.unregisterContext("diagnosis:proveit");
-      return;
-    }
-    store.registerContext({
-      id: "diagnosis:proveit",
-      priority: 20, // higher than results (10) → takes over
-      anchorId: "gap-anchor",
-      getTurn: () => ({
-        skill: "diagnosis_proveit",
-        props: {
-          displayName: provedItem.display_name,
-          onCta: () => {
-            useDiagnosisStore.getState().setStep("builder");
-            useCompanionStore.getState().dismissActive();
-          },
-        },
-      }),
-    });
-    store.activateContext("diagnosis:proveit");
-    return () => useCompanionStore.getState().unregisterContext("diagnosis:proveit");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provedItem?.skill_canonical, chatContextActive]);
-
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
 

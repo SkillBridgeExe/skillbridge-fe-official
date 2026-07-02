@@ -12,7 +12,6 @@ export type CompanionSkill =
   | "cv_intake"
   | "cv_project_intake"
   | "diagnosis_results"
-  | "diagnosis_proveit"
   | "diagnosis_review"
   | "diagnosis_upload"
   | "diagnosis_progress"

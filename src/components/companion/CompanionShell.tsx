@@ -35,7 +35,6 @@ import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
 import { CvProjectIntakeSkill } from "./skills/CvProjectIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
-import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
@@ -207,7 +206,6 @@ export function CompanionShell() {
   // Pose: dragging → "swimming"; success flash → "success";
   // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
   const isAdvisorySkill = turn?.skill === "diagnosis_results"
-    || turn?.skill === "diagnosis_proveit"
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
     || turn?.skill === "diagnosis_progress"
@@ -420,14 +418,6 @@ export function CompanionShell() {
                 <DiagnosisResultsSkill
                   action={turn.props.action as string}
                   ctaKind={turn.props.ctaKind as "roadmap" | "builder"}
-                  onCta={turn.props.onCta as () => void}
-                />
-              )}
-
-              {/* ── diagnosis_proveit ── */}
-              {turn?.skill === "diagnosis_proveit" && (
-                <DiagnosisProveItSkill
-                  displayName={turn.props.displayName as string}
                   onCta={turn.props.onCta as () => void}
                 />
               )}
