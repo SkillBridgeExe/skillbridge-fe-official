@@ -27,6 +27,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
 import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
@@ -375,7 +377,14 @@ export function useDiagnosisChatCompanion(
         if (chip.anchorId) jumpToAnchor(chip.anchorId);
         return;
       }
-      // rewrite/roadmap/prove_it/copy are explicit user actions. MF6 wires the
+      if (chip.kind === "prove_it" && chip.proveIt) {
+        useCvBuilderStore.getState().setPendingProveIt(chip.proveIt);
+        useCvBuilderStore.getState().setActiveSection(4);
+        useDiagnosisStore.getState().setStep("builder");
+        useCompanionStore.getState().setChatPendingAction(null);
+        return;
+      }
+      // rewrite/roadmap/copy are explicit user actions. MF6 wires the
       // execution; MF3 only stores the pending intent and shows the confirm strip.
       useCompanionStore.getState().setChatPendingAction(chip);
     },

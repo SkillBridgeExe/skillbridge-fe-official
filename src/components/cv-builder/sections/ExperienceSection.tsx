@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Plus, Sparkles, X, RotateCcw } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import type { AiGateCode } from "@/lib/ai-input-gate";
@@ -14,10 +14,20 @@ import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { openIntakeCoach } from "@/components/companion/skills/open-intake-coach";
 import type { CoachTrigger } from "@/components/companion/skills/coach-flow";
+import { findBulletWithSkill } from "@/components/companion/skills/find-bullet-with-skill";
 
 
 export function ExperienceSection() {
-  const { experience, addExperience, updateExperience, removeExperience, draftId, clearSectionEvaluation } = useCvBuilderStore();
+  const {
+    experience,
+    addExperience,
+    updateExperience,
+    removeExperience,
+    draftId,
+    clearSectionEvaluation,
+    pendingProveIt,
+    setPendingProveIt,
+  } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -55,7 +65,7 @@ export function ExperienceSection() {
   // field with nothing to rewrite) INTO the intake coaching loop instead of a
   // dead-end. Reuses the SAME `cv_intake` context the "✨ Trợ lý điền nhanh"
   // button opens; generation still flows only through extract→computeIntakeFields.
-  const routeFieldToIntakeCoach = (
+  const routeFieldToIntakeCoach = useCallback((
     entryIndex: number,
     field: "description" | "achievements",
     trigger: CoachTrigger,
@@ -84,9 +94,9 @@ export function ExperienceSection() {
         clearSectionEvaluation("experience");
       },
     });
-  };
+  }, [clearSectionEvaluation, draftId, experience, updateExperience]);
 
-  const handleAiSuggest = (
+  const handleAiSuggest = useCallback((
     entryId: string,
     field: "description" | "achievements",
     currentText: string,
@@ -141,7 +151,35 @@ export function ExperienceSection() {
         },
       }
     );
-  };
+  }, [aiRewrite, draftId, experience, routeFieldToIntakeCoach, t, targetRole, toast]);
+
+  useEffect(() => {
+    if (!pendingProveIt) return;
+    // The builder can mount before the server draft id is ready. Keep the signal
+    // alive until rewrite can actually run; clearing it early would lose the user's
+    // explicit "prove this skill" action.
+    if (!draftId) return;
+
+    const match = findBulletWithSkill(experience, pendingProveIt);
+    if (!match) {
+      document.getElementById("experience")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast({
+        title: t("builder.proveit.pickBullet", { skill: pendingProveIt.displayName }),
+      });
+      setPendingProveIt(null);
+      return;
+    }
+
+    const entry = experience.find((item) => item.id === match.entryId);
+    if (!entry) {
+      setPendingProveIt(null);
+      return;
+    }
+
+    const field = match.field === "description" ? "description" : "achievements";
+    handleAiSuggest(entry.id, field, entry[field]);
+    setPendingProveIt(null);
+  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast]);
 
   const handleUseIt = (entryId: string, field: "description" | "achievements") => {
     if (!activeSuggestion) return;

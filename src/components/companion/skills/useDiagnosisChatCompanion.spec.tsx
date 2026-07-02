@@ -4,6 +4,8 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CHAT_CONTEXT_ID, useDiagnosisChatCompanion } from "./useDiagnosisChatCompanion";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
@@ -34,6 +36,8 @@ vi.mock("@/services/diagnosis.service", async (importOriginal) => {
 afterEach(() => {
   cleanup();
   useCompanionStore.getState().resetCompanion();
+  useCvBuilderStore.getState().reset();
+  useDiagnosisStore.getState().reset();
   vi.clearAllMocks();
 });
 
@@ -332,5 +336,36 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
         ],
       },
     ]);
+  });
+
+  it("dispatches prove-it action to the CV Builder pending target", () => {
+    const qc = new QueryClient();
+    function ProveItHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1", null, proveIt);
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ProveItHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "prove_it";
+      labelKey: string;
+      proveIt: { canonical: string; displayName: string };
+    }) => void;
+
+    onAction({
+      kind: "prove_it",
+      labelKey: "companion.chat.proveitCta",
+      proveIt: { canonical: "react", displayName: "React" },
+    });
+
+    expect(useDiagnosisStore.getState().step).toBe("builder");
+    expect(useCvBuilderStore.getState().activeSection).toBe(4);
+    expect(useCvBuilderStore.getState().pendingProveIt).toEqual({ canonical: "react", displayName: "React" });
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
   });
 });

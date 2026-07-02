@@ -2059,6 +2059,9 @@ export default {
       retry: "Rewrite",
       undo: "Undo",
       fallbackNote: "AI kept your original wording to avoid inventing numbers.",
+      proveit: {
+        pickBullet: "I could not find {{skill}} in your experience bullets yet. Pick a real bullet that used it, then ask me to strengthen it.",
+      },
       aiGate: {
         needContext:
           "Add your experience, skills, or goal first — AI only writes from your real information.",

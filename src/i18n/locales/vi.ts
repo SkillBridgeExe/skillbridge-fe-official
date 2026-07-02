@@ -2049,6 +2049,9 @@ export default {
       retry: "Viết lại",
       undo: "Hoàn tác",
       fallbackNote: "AI giữ nguyên câu gốc để tránh bịa số liệu.",
+      proveit: {
+        pickBullet: "Mình chưa thấy {{skill}} trong các dòng kinh nghiệm. Chọn một dòng bạn thật sự đã dùng kỹ năng đó, rồi nhờ mình làm mạnh hơn.",
+      },
       aiGate: {
         needContext:
           "Điền kinh nghiệm/kỹ năng/mục tiêu trước — AI chỉ viết từ thông tin thật của bạn.",
