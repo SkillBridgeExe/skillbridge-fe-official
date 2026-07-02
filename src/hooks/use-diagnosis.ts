@@ -1,11 +1,13 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   analyzeCv,
   analyzeCvWithJd,
   compareJdForCv,
+  deleteChatThread,
   generateInterviewPlanFromMatch,
   getDiagnosisHistory,
   getGapReport,
+  getChatThread,
   getGithubEvidence,
   getInterviewPlan,
   getJobRecommendations,
@@ -229,5 +231,30 @@ export function useMatchProgressQuery(matchId?: string | null) {
     staleTime: 5 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
+  });
+}
+
+/** Persisted mascot memory for a match — read-only seed for the corner chat. */
+export function useChatThreadQuery(matchId?: string | null) {
+  const canUseApi = useHasApiSession();
+  return useQuery({
+    queryKey: ["chat-thread", matchId ?? "none"],
+    queryFn: () => getChatThread(matchId!),
+    enabled: Boolean(matchId) && canUseApi,
+    staleTime: 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** User-initiated erase for persisted mascot memory. */
+export function useDeleteChatThreadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (matchId: string) => deleteChatThread(matchId),
+    onSuccess: (_data, matchId) => {
+      void queryClient.invalidateQueries({ queryKey: ["chat-thread", matchId] });
+    },
+    retry: false,
   });
 }
