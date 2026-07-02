@@ -2495,6 +2495,9 @@ export default {
         ],
         suggestDim: "Vì sao {{dim}} chưa cao?",
         progressChip: "Tôi đã tiến bộ gì so với lần trước?",
+        chipViewGap: "Xem gap này",
+        chipRewrite: "Sửa bullet này",
+        chipRoadmap: "Đưa vào lộ trình",
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],

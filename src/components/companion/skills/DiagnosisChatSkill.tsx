@@ -26,11 +26,13 @@ interface Props {
   onSend: (question: string) => void;
   /** Per-row retry: heal the failed assistant row at this index in place + re-send its question. */
   onRetry: (index: number) => void;
+  /** F4: jump to a deep-link chip's anchor (gap-, tailor-, or roadmap-anchor). */
+  onJump?: (anchorId: string) => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
 }
 
-export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRetry, isPending }: Props) {
+export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRetry, onJump, isPending }: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
@@ -146,6 +148,20 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
               <div key={i} className="flex justify-start">
                 <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
                   {m.text}
+                  {m.actions && m.actions.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {m.actions.map((a) => (
+                        <button
+                          key={a.anchorId}
+                          type="button"
+                          onClick={() => onJump?.(a.anchorId)}
+                          className="rounded-full border border-[#EAEAEA] bg-[#F7F6F3] px-2.5 py-1 text-[11px] font-medium text-[#2F3437] hover:bg-[#EFEEEA]"
+                        >
+                          {t(a.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );

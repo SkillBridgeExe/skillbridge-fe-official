@@ -28,6 +28,8 @@ import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { useGapReportQuery } from "@/hooks/use-diagnosis";
+import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
@@ -114,6 +116,11 @@ export function useDiagnosisChatCompanion(
   // compared, the CV-only route (cvId) is the fallback target so the advisor still works.
   const matchId = reviewData?.jdMatch?.matchId ?? null;
 
+  // F4: same query key (matchId + lang) as GapReportCard/TailorChecklist already on
+  // the page → this is a cache read, not an extra network call. Used to map a chat
+  // answer's `cited_gap_id` to deep-link chips (view-gap / rewrite / roadmap).
+  const gapReportQuery = useGapReportQuery(matchId, language);
+
   // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
   const hasReview = typeof reviewData?.overallScore === "number";
   const score = reviewData?.overallScore ?? 0;
@@ -183,25 +190,34 @@ export function useDiagnosisChatCompanion(
     suggestions: string[];
     onSend: (q: string) => void;
     onRetry: (index: number) => void;
+    onJump: (anchorId: string) => void;
     isPending: boolean;
     revealCard?: RevealCard;
-  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, isPending: false, revealCard });
+  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, onJump: () => {}, isPending: false, revealCard });
 
-  // Reveal a cited card after a successful answer (no-op-safe). revealCard handles
-  // the wrong-tab case for `dim-*` anchors; fall back to a direct scroll.
-  const revealCited = useCallback((res: { cited_dimension?: string; cited_gap_id?: string }) => {
-    const anchorId = res.cited_dimension
-      ? `dim-${res.cited_dimension}`
-      : res.cited_gap_id
-        ? `gap-${res.cited_gap_id}`
-        : null;
-    if (!anchorId) return;
+  // Jump to an anchor id (no-op-safe). revealCard handles the wrong-tab case for
+  // `dim-*`/`gap-*` anchors; fall back to a direct scroll. Shared by the auto-reveal
+  // after a cited answer (revealCited) and the F4 chip click (onJump).
+  const jumpToAnchor = useCallback((anchorId: string) => {
     const reveal = propsRef.current.revealCard;
     if (reveal) reveal(anchorId);
     else if (typeof document !== "undefined") {
       document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, []);
+
+  // Reveal a cited card after a successful answer (no-op-safe).
+  const revealCited = useCallback(
+    (res: { cited_dimension?: string; cited_gap_id?: string }) => {
+      const anchorId = res.cited_dimension
+        ? `dim-${res.cited_dimension}`
+        : res.cited_gap_id
+          ? `gap-${res.cited_gap_id}`
+          : null;
+      if (anchorId) jumpToAnchor(anchorId);
+    },
+    [jumpToAnchor],
+  );
 
   /**
    * Send `question` and resolve/fail the assistant row at `assistantIndex`. Used by
@@ -215,7 +231,13 @@ export function useDiagnosisChatCompanion(
         { question, thread },
         {
           onSuccess: (res) => {
-            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer);
+            // F4: map the cited gap → deep-link chips (honest-empty on a join miss).
+            const actions = buildChatActionChips({
+              citedGapId: res.cited_gap_id,
+              gapItems: gapReportQuery.data?.gap_items,
+              actions: gapReportQuery.data?.recommended_actions,
+            });
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions);
             revealCited(res);
           },
           onError: (error) => {
@@ -228,7 +250,7 @@ export function useDiagnosisChatCompanion(
         },
       );
     },
-    [chatMutation, revealCited],
+    [chatMutation, revealCited, gapReportQuery.data],
   );
 
   const onSend = useCallback(
@@ -290,7 +312,7 @@ export function useDiagnosisChatCompanion(
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
-  propsRef.current = { opener, suggestions, onSend, onRetry, isPending: chatMutation.isPending, revealCard };
+  propsRef.current = { opener, suggestions, onSend, onRetry, onJump: jumpToAnchor, isPending: chatMutation.isPending, revealCard };
 
   // ── Register + activate the corner advisor ONCE on mount; unregister on unmount. ──
   // getTurn reads propsRef.current (always fresh) + the live thread from the store,
@@ -314,6 +336,7 @@ export function useDiagnosisChatCompanion(
           suggestions: propsRef.current.suggestions,
           onSend: propsRef.current.onSend,
           onRetry: propsRef.current.onRetry,
+          onJump: propsRef.current.onJump,
           isPending: propsRef.current.isPending,
         },
       }),

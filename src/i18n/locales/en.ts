@@ -2507,6 +2507,9 @@ export default {
         ],
         suggestDim: "Why is {{dim}} scored low?",
         progressChip: "What did I improve since last scan?",
+        chipViewGap: "View this gap",
+        chipRewrite: "Fix this bullet",
+        chipRoadmap: "Add to roadmap",
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],
