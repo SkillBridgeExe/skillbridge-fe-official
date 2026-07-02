@@ -19,6 +19,7 @@ import { JdMarketPosition } from "./JdMarketPosition";
 import { useQueryClient } from "@tanstack/react-query";
 import { ToastAction } from "@/components/ui/toast";
 import { getApiErrorCode } from "@/lib/api-error";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -270,12 +271,12 @@ function TailorRewriteDialog({
                         variant: "destructive",
                         action: (
                           <ToastAction
-                            altText="Chuyển tới"
+                            altText={t("tailor.errors.gotoMatch", { defaultValue: "Chuyển tới" })}
+                            // Khu so khớp JD nằm ở step "cv-review" (view khác) — scrollIntoView
+                            // không với tới; đổi step qua store rồi cuộn lên đầu.
                             onClick={() => {
-                              const el = window.document.getElementById("cv-jd-match") || window.document.getElementById("diagnosis-match-section") || window.document.getElementById("diagnosis-jd-upload");
-                              if (el) {
-                                el.scrollIntoView({ behavior: "smooth" });
-                              }
+                              useDiagnosisStore.getState().setStep("cv-review");
+                              window.scrollTo({ top: 0, behavior: "smooth" });
                             }}
                           >
                             {t("tailor.errors.gotoMatch", { defaultValue: "Chuyển tới" })}
@@ -288,7 +289,7 @@ function TailorRewriteDialog({
                         description: t("tailor.errors.actionInvalidDesc", { defaultValue: "Gợi ý này không còn hợp lệ, đang tải lại checklist..." }),
                         variant: "destructive",
                       });
-                      queryClient.invalidateQueries({ queryKey: ["gapReport", matchId] });
+                      queryClient.invalidateQueries({ queryKey: ["gap-report", matchId] });
                     } else if (code === "NO_ANCHOR" || code === "TEXT_NOT_IN_CV") {
                       toast({
                         title: t("tailor.errors.textNotInCvTitle", { defaultValue: "Mất dấu gợi ý" }),

@@ -437,7 +437,13 @@ export interface CvJdMatchParsedResponse {
   scoring_breakdown: ScoringBreakdown;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
   target_role: string | null;
-  keyword_frequency?: Record<string, number>;
+  /** Số lần xuất hiện per skill (CV vs JD) — mirror BE KeywordFrequency[], match cũ có thể thiếu. */
+  keyword_frequency?: Array<{
+    canonical_name: string;
+    display_name: string;
+    cv_count: number;
+    jd_count: number;
+  }>;
   inferred_skills?: InferredSkill[];
   /** BE #54/#56: non-null CHỈ khi requirements_source = role_rubric (JD path không band). */
   rubric_band?: RubricBand | null;
