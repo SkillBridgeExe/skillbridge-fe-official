@@ -21,6 +21,7 @@ import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
+import { ProgressBanner } from "./ProgressBanner";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 import { useNextStepsQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
@@ -292,6 +293,8 @@ export function DiagnosisStep3Results() {
     if (typeof document === "undefined") return;
     document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
+  // ProgressBanner "Giải thích thêm" — wired for real in Task F3 (chat companion hand-off).
+  const explainProgress = useCallback(() => {}, []);
   // matchId already works here; pass lastCvId too so the advisor still chats on a
   // CV-only result view (no JD compared) via the CV-only route.
   useDiagnosisChatCompanion(reviewData, "gap_results", revealCard, lastCvId);
@@ -468,6 +471,12 @@ export function DiagnosisStep3Results() {
       </div>
 
       <SectionRule />
+
+      {isJdMode && (
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 1 — Đọc vị: Radar + Narrative

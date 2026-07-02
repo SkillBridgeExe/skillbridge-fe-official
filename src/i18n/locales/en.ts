@@ -2524,5 +2524,16 @@ export default {
       empty: "Your CV is already strong for this role!",
       hint: "Add this skill to your CV with a concrete example.",
     },
+    progress: {
+      title: "Compared to your last scan",
+      scoreDelta: "Overall score: {{delta}}",
+      closed: "Closed",
+      improved: "Improved",
+      evidence: "Evidence recognized",
+      strengthsKept: "Kept: {{names}}",
+      newGaps: "New gap appeared",
+      explain: "Explain more",
+      templateChanged: "Your last scan used an older scoring template — only gap status is comparable, not the score.",
+    },
   },
 } as const;

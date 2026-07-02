@@ -2512,5 +2512,16 @@ export default {
       empty: "CV đã đủ mạnh cho vị trí này!",
       hint: "Bổ sung kỹ năng này vào CV kèm ví dụ cụ thể.",
     },
+    progress: {
+      title: "So với lần quét trước",
+      scoreDelta: "Điểm tổng: {{delta}}",
+      closed: "Đã đóng",
+      improved: "Tiến bộ",
+      evidence: "Evidence được ghi nhận",
+      strengthsKept: "Giữ vững: {{names}}",
+      newGaps: "Gap mới xuất hiện",
+      explain: "Giải thích thêm",
+      templateChanged: "Lần quét trước dùng thang chấm cũ — chỉ so được trạng thái gap, không so điểm.",
+    },
   },
 } as const;
