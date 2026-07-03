@@ -2049,6 +2049,9 @@ export default {
       retry: "Viết lại",
       undo: "Hoàn tác",
       fallbackNote: "AI giữ nguyên câu gốc để tránh bịa số liệu.",
+      proveit: {
+        pickBullet: "Mình chưa thấy {{skill}} trong các dòng kinh nghiệm. Chọn một dòng bạn thật sự đã dùng kỹ năng đó, rồi nhờ mình làm mạnh hơn.",
+      },
       aiGate: {
         needContext:
           "Điền kinh nghiệm/kỹ năng/mục tiêu trước — AI chỉ viết từ thông tin thật của bạn.",
@@ -2485,6 +2488,9 @@ export default {
         },
         placeholder: "Hỏi về điểm của bạn…",
         send: "Gửi",
+        thread: "Hội thoại",
+        continuity: "Lần trước bạn hỏi về “{{topic}}” — muốn tiếp tục không?",
+        deleteThread: "Xóa hội thoại",
         thinking: "Đang suy nghĩ…",
         error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
         limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
@@ -2497,7 +2503,17 @@ export default {
         progressChip: "Tôi đã tiến bộ gì so với lần trước?",
         chipViewGap: "Xem gap này",
         chipRewrite: "Sửa bullet này",
+        chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
+        proveitIntro:
+          "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
+        proveitCta: "Đi tới bullet",
+        confirmRewrite: "Viết lại bullet này? Tốn 1 lượt rewrite.",
+        confirmRoadmap: "Tạo lộ trình từ gap này? Tốn 1 lượt roadmap.",
+        confirmAction: "Chạy hành động này?",
+        confirmYes: "Chạy",
+        confirmNo: "Hủy",
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],

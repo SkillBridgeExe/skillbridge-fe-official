@@ -2059,6 +2059,9 @@ export default {
       retry: "Rewrite",
       undo: "Undo",
       fallbackNote: "AI kept your original wording to avoid inventing numbers.",
+      proveit: {
+        pickBullet: "I could not find {{skill}} in your experience bullets yet. Pick a real bullet that used it, then ask me to strengthen it.",
+      },
       aiGate: {
         needContext:
           "Add your experience, skills, or goal first — AI only writes from your real information.",
@@ -2497,6 +2500,9 @@ export default {
         },
         placeholder: "Ask about your score…",
         send: "Send",
+        thread: "Chat thread",
+        continuity: "Last time you asked about “{{topic}}” — want to continue?",
+        deleteThread: "Erase conversation",
         thinking: "Thinking…",
         error: "The assistant is being connected — please try again in a moment.",
         limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
@@ -2509,7 +2515,17 @@ export default {
         progressChip: "What did I improve since last scan?",
         chipViewGap: "View this gap",
         chipRewrite: "Fix this bullet",
+        chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
+        proveitChip: "⚠ {{skill}}: claimed but not proven",
+        proveitIntro:
+          "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
+        proveitCta: "Go to the bullet",
+        confirmRewrite: "Rewrite this bullet? This uses 1 rewrite credit.",
+        confirmRoadmap: "Create a learning roadmap from this gap? This uses 1 roadmap credit.",
+        confirmAction: "Run this action?",
+        confirmYes: "Run",
+        confirmNo: "Cancel",
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],

@@ -5,7 +5,7 @@
 //   2. pushes the severity-sorted queue into the companion store,
 //   3. registers exactly ONE context `id="diagnosis:issue"` anchored at the
 //      active issue's card, and
-//   4. REPLACES the legacy `diagnosis:results` + `diagnosis:proveit`
+//   4. REPLACES the legacy `diagnosis:results`
 //      registrations (the new detectors subsume them) so there is never a
 //      double-pop — preserving the single-active-`activeId` invariant.
 //
@@ -217,16 +217,15 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
     }
     if (!activeId) {
       // Nothing in view + no whole-doc fallback → honest-empty. Drop our context;
-      // leave legacy contexts (results/proveit) to their own effects.
+      // leave legacy contexts (results) to their own effects.
       store.unregisterContext(ISSUE_CONTEXT_ID);
       prevAnchorRef.current = null;
       return;
     }
 
-    // Element-issues subsume the legacy results/proveit surfacing → gate them off so
+    // Element-issues subsume the legacy results surfacing → gate it off so
     // only ONE bubble (diagnosis:issue) is ever active (anti-Clippy).
     store.unregisterContext("diagnosis:results");
-    store.unregisterContext("diagnosis:proveit");
 
     // A genuinely NEW card (scroll-switch or queue advance) = new advice → the dolphin
     // swims to it: re-enable anchoring (positionMode "manual"→"auto") + clear the
@@ -241,7 +240,7 @@ export function useElementIssuesCompanion(input: ElementIssuesInput, ready: bool
 
     store.registerContext({
       id: ISSUE_CONTEXT_ID,
-      priority: 30, // above legacy results(10)/proveit(20)
+      priority: 30, // above legacy results(10)
       anchorId: activeAnchorId ?? "",
       getTurn: () => {
         // Read the freshest in-view issue at render time (post-dismiss / post-scroll
