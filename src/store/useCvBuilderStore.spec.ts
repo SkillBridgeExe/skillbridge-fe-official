@@ -83,6 +83,25 @@ describe("useCvBuilderStore.hydrateFromCanonical", () => {
   });
 });
 
+describe("useCvBuilderStore.pendingProveIt", () => {
+  it("stores and clears the pending prove-it target", () => {
+    useCvBuilderStore.getState().setPendingProveIt({ canonical: "react", displayName: "React" });
+
+    expect(useCvBuilderStore.getState().pendingProveIt).toEqual({ canonical: "react", displayName: "React" });
+
+    useCvBuilderStore.getState().setPendingProveIt(null);
+    expect(useCvBuilderStore.getState().pendingProveIt).toBeNull();
+  });
+
+  it("clears pending prove-it on reset", () => {
+    useCvBuilderStore.getState().setPendingProveIt({ canonical: "react", displayName: "React" });
+
+    useCvBuilderStore.getState().reset();
+
+    expect(useCvBuilderStore.getState().pendingProveIt).toBeNull();
+  });
+});
+
 describe("getSectionStatuses quality-gating", () => {
   const reset = () => useCvBuilderStore.getState().reset();
 

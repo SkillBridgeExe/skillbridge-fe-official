@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, CheckCircle2, Clock, Loader2, RotateCcw } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import { DEFAULT_ROADMAP_BUDGET, type ComposedRoadmap, type RoadmapBudgetInput }
 import { useRoadmapStore } from "@/components/learning/roadmap-store";
 import { MascotRoadmapWizard } from "./roadmap-budget-wizard";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
+import { OPEN_ROADMAP_WIZARD_EVENT } from "@/components/companion/skills/chat-action-events";
 
 /**
  * Learning roadmap derived from a CV/JD match's GapReport (POST /api/cv-matches/:matchId/roadmap).
@@ -29,6 +30,13 @@ export function RoadmapFromMatchSection({
   const { mutate, data, isPending, isError } = useGenerateRoadmapFromMatchMutation();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [lastBudget, setLastBudget] = useState<RoadmapBudgetInput>(DEFAULT_ROADMAP_BUDGET);
+
+  useEffect(() => {
+    if (!matchId) return;
+    const openWizard = () => setIsWizardOpen(true);
+    window.addEventListener(OPEN_ROADMAP_WIZARD_EVENT, openWizard);
+    return () => window.removeEventListener(OPEN_ROADMAP_WIZARD_EVENT, openWizard);
+  }, [matchId]);
 
   const plan = data;
   const hasResult = Boolean(plan);

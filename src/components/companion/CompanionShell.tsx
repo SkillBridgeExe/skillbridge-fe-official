@@ -35,12 +35,12 @@ import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
 import { CvProjectIntakeSkill } from "./skills/CvProjectIntakeSkill";
 import { DiagnosisResultsSkill } from "./skills/DiagnosisResultsSkill";
-import { DiagnosisProveItSkill } from "./skills/DiagnosisProveItSkill";
 import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
 import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
 import type { ElementIssue } from "./skills/element-issues";
+import type { ChatActionChip } from "./skills/chat-action-chips";
 
 const POSE: Record<string, MascotState> = {
   idle: "idle",
@@ -83,6 +83,7 @@ export function CompanionShell() {
   // from the subscribed store — not turn.props — is what makes the swap live on tab switch.
   const chatOpener = useCompanionStore((s) => s.chatOpener);
   const chatSuggestions = useCompanionStore((s) => s.chatSuggestions);
+  const chatPendingAction = useCompanionStore((s) => s.chatPendingAction);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
@@ -205,7 +206,6 @@ export function CompanionShell() {
   // Pose: dragging → "swimming"; success flash → "success";
   // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
   const isAdvisorySkill = turn?.skill === "diagnosis_results"
-    || turn?.skill === "diagnosis_proveit"
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
     || turn?.skill === "diagnosis_progress"
@@ -422,14 +422,6 @@ export function CompanionShell() {
                 />
               )}
 
-              {/* ── diagnosis_proveit ── */}
-              {turn?.skill === "diagnosis_proveit" && (
-                <DiagnosisProveItSkill
-                  displayName={turn.props.displayName as string}
-                  onCta={turn.props.onCta as () => void}
-                />
-              )}
-
               {/* ── diagnosis_review / diagnosis_upload ── */}
               {(turn?.skill === "diagnosis_review" || turn?.skill === "diagnosis_upload") && (
                 <DiagnosisReviewSkill
@@ -467,8 +459,13 @@ export function CompanionShell() {
                   opener={chatOpener}
                   suggestions={chatSuggestions}
                   onSend={turn.props.onSend as (q: string) => void}
+                  onSuggestionTap={turn.props.onSuggestionTap as ((q: string) => void) | undefined}
                   onRetry={turn.props.onRetry as (index: number) => void}
-                  onJump={turn.props.onJump as (anchorId: string) => void}
+                  onDeleteThread={turn.props.onDeleteThread as (() => void) | undefined}
+                  onAction={turn.props.onAction as ((chip: ChatActionChip) => void) | undefined}
+                  pendingAction={chatPendingAction}
+                  onConfirmAction={turn.props.onConfirmAction as (() => void) | undefined}
+                  onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
                   isPending={chatPending}
                 />
               )}
