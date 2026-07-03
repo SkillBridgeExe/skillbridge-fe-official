@@ -13,7 +13,7 @@
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
 import { useState, useRef, useEffect } from "react";
-import { Send, RotateCcw, AlertCircle, ArrowUpRight, Trash2 } from "lucide-react";
+import { Send, RotateCcw, AlertCircle, ArrowUpRight, Trash2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
@@ -38,6 +38,12 @@ interface Props {
   onCancelAction?: () => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
+}
+
+function toolLabel(tool: string): string {
+  if (tool === "github.enrich") return "GitHub";
+  if (tool === "resource.validate") return "Link";
+  return tool;
 }
 
 export function DiagnosisChatSkill({
@@ -195,6 +201,14 @@ export function DiagnosisChatSkill({
               <div key={i} className="flex justify-start">
                 <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
                   {m.text}
+                  {m.citedTool && (
+                    <div className="mt-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <ShieldCheck className="h-3 w-3" />
+                        {t("companion.chat.verifiedWithTool", { tool: toolLabel(m.citedTool) })}
+                      </span>
+                    </div>
+                  )}
                   {m.actions && m.actions.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {m.actions.map((a) => (

@@ -302,6 +302,19 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     expect(useCompanionStore.getState().chatMessages[3].actions).toBeUndefined();
   });
 
+  it("resolveAssistantAt keeps optional cited tool metadata for tool-grounded answers", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "github?" });
+    s.setChatPending("github?");
+    s.resolveAssistantAt(1, "Verified with GitHub.", undefined, "github.enrich");
+
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
+      role: "assistant",
+      text: "Verified with GitHub.",
+      citedTool: "github.enrich",
+    });
+  });
+
   it("clearChat empties the thread", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });
