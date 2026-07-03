@@ -39,6 +39,8 @@ export interface CompanionChatMessage {
   question?: string;
   /** Deep-link chips (F4) built from the cited gap — honest-empty: absent/[] on a join miss. */
   actions?: ChatActionChip[];
+  /** Tool provenance from BE grounding, e.g. github.enrich/resource.validate. */
+  citedTool?: string;
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -142,7 +144,7 @@ interface CompanionState {
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
    *  concurrent send appended at the end never clobbers the retried row. `actions`
    *  (F4) is optional — omit/[] when there's nothing honest to deep-link to. */
-  resolveAssistantAt: (index: number, text: string, actions?: ChatActionChip[]) => void;
+  resolveAssistantAt: (index: number, text: string, actions?: ChatActionChip[], citedTool?: string) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
   /**
@@ -288,12 +290,12 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Resolve a SPECIFIC assistant row (by index) with the answer. Used by per-row
   // retry where the retried slot is NOT necessarily the last assistant.
-  resolveAssistantAt: (index, text, actions) =>
+  resolveAssistantAt: (index, text, actions, citedTool) =>
     set((s) => {
       const target = s.chatMessages[index];
       if (!target || target.role !== "assistant") return {};
       const chatMessages = s.chatMessages.slice();
-      chatMessages[index] = { role: "assistant", text, pending: false, error: false, question: target.question, actions };
+      chatMessages[index] = { role: "assistant", text, pending: false, error: false, question: target.question, actions, citedTool };
       return { chatMessages };
     }),
   // Fail a SPECIFIC assistant row (by index). Used by per-row retry.

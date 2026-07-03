@@ -160,6 +160,8 @@ export interface DiagnosisChatResponse {
   cited_dimension?: string;
   /** If the answer is about a specific gap, its id → scroll `gap-{id}`. */
   cited_gap_id?: string;
+  /** If the answer used a verified tool result, show a small provenance chip in the chat bubble. */
+  cited_tool?: "github.enrich" | "resource.validate" | string;
   /** Optional suggested follow-up step. */
   suggested_next_step?: string | null;
 }

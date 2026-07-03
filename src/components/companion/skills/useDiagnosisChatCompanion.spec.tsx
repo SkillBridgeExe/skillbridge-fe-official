@@ -293,6 +293,38 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
   });
 });
 
+describe("useDiagnosisChatCompanion — tool citation metadata", () => {
+  it("stores cited_tool from the BE answer so the chat bubble can show a verification chip", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({
+      answer: "Mình đã kiểm tra GitHub public repos cho bạn.",
+      cited_tool: "github.enrich",
+    });
+    let api: { sendQuestion: (q: string) => void } | undefined;
+    function CaptureHarness() {
+      api = useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+
+    render(
+      <QueryClientProvider client={qc}>
+        <CaptureHarness />
+      </QueryClientProvider>,
+    );
+
+    api?.sendQuestion("github tôi có gì?");
+
+    await waitFor(() => {
+      const messages = useCompanionStore.getState().chatMessages;
+      expect(messages[messages.length - 1]).toMatchObject({
+        role: "assistant",
+        text: "Mình đã kiểm tra GitHub public repos cho bạn.",
+        citedTool: "github.enrich",
+      });
+    });
+  });
+});
+
 describe("useDiagnosisChatCompanion — chat action dispatch", () => {
   it("jumps immediately for jump chips and stores rewrite/roadmap chips for confirmation", () => {
     const qc = new QueryClient();

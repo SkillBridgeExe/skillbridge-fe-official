@@ -275,7 +275,7 @@ export function useDiagnosisChatCompanion(
               gapItems: gapReportQuery.data?.gap_items,
               actions: gapReportQuery.data?.recommended_actions,
             });
-            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions);
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool);
             revealCited(res);
           },
           onError: (error) => {
