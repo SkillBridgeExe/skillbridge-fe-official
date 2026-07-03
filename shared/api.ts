@@ -1286,3 +1286,13 @@ export interface ProgressReportDto {
   required_coverage_delta: number | null;
   template_changed: boolean;
 }
+
+export interface ChatThreadTurnDto {
+  role: "user" | "assistant";
+  text: string;
+  ts: string;
+}
+
+export interface ChatThreadResponseDto {
+  turns: ChatThreadTurnDto[];
+}

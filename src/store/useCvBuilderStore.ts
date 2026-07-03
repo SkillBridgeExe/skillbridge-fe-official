@@ -60,6 +60,11 @@ export interface SectionMeta {
   reason?: string;
 }
 
+export interface PendingProveItTarget {
+  canonical: string;
+  displayName: string;
+}
+
 /* ── Helpers ── */
 let _idCounter = 0;
 const uid = () => `cv_${Date.now()}_${++_idCounter}`;
@@ -192,6 +197,7 @@ interface CvBuilderState {
   companionPatch: AssistantFieldPatch | null;
   companionMessage: string | null;
   companionReaskCount: number;
+  pendingProveIt: PendingProveItTarget | null;
 
   // Actions — Companion
   setMascotState: (state: CvBuilderState['mascotState']) => void;
@@ -202,6 +208,7 @@ interface CvBuilderState {
   setCompanionPatch: (patch: AssistantFieldPatch | null) => void;
   setCompanionMessage: (msg: string | null) => void;
   incrementReask: () => void;
+  setPendingProveIt: (target: PendingProveItTarget | null) => void;
   resetCompanion: () => void;
 
   // Computed
@@ -237,6 +244,7 @@ const initialState = {
   companionPatch: null as AssistantFieldPatch | null,
   companionMessage: null as string | null,
   companionReaskCount: 0,
+  pendingProveIt: null as PendingProveItTarget | null,
 };
 
 /* ── Map ngược CanonicalCvDocument → builder store (inverse của mapStoreToCanonical) ──
@@ -514,6 +522,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setCompanionPatch: (companionPatch) => set({ companionPatch }),
   setCompanionMessage: (companionMessage) => set({ companionMessage }),
   incrementReask: () => set((s) => ({ companionReaskCount: s.companionReaskCount + 1 })),
+  setPendingProveIt: (pendingProveIt) => set({ pendingProveIt }),
   resetCompanion: () => set({
     mascotState: 'idle',
     companionField: null,
@@ -523,5 +532,6 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     companionPatch: null,
     companionMessage: null,
     companionReaskCount: 0,
+    pendingProveIt: null,
   }),
 }));

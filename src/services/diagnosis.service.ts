@@ -23,6 +23,7 @@ import {
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
 import { getNextStepsApi } from "@/api/cv/next-steps";
+import { deleteChatThreadApi, getChatThreadApi } from "@/api/cv/chat-thread";
 import { askCvDiagnosisChatApi, askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
@@ -38,6 +39,7 @@ import type {
   CvMatchDto,
   CvReviewData,
   GapReportResponse,
+  ChatThreadResponseDto,
   GithubEvidenceResponse,
   InterviewPlanResponse,
   Paginated,
@@ -481,6 +483,16 @@ export async function getNextSteps(
 // ── Companion: match progress ───────────────────────────────────────
 
 export { getMatchProgressApi as getMatchProgress } from "@/api/cv/progress";
+
+export async function getChatThread(matchId: string): Promise<ChatThreadResponseDto> {
+  requireSession();
+  return getChatThreadApi(matchId);
+}
+
+export async function deleteChatThread(matchId: string): Promise<void> {
+  requireSession();
+  return deleteChatThreadApi(matchId);
+}
 
 // ── Companion: corner-advisor chat (diagnosis page) ─────────────────
 

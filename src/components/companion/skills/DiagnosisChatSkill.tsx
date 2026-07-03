@@ -13,26 +13,47 @@
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
 import { useState, useRef, useEffect } from "react";
-import { Send, RotateCcw, AlertCircle, ArrowUpRight } from "lucide-react";
+import { Send, RotateCcw, AlertCircle, ArrowUpRight, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
 import type { CompanionChatMessage } from "@/store/useCompanionStore";
+import type { ChatActionChip } from "./chat-action-chips";
 
 interface Props {
   messages: CompanionChatMessage[];
   opener: string | null;
   suggestions: string[];
   onSend: (question: string) => void;
+  /** Suggestion chips can be plain questions or local deterministic coaching flows. */
+  onSuggestionTap?: (question: string) => void;
   /** Per-row retry: heal the failed assistant row at this index in place + re-send its question. */
   onRetry: (index: number) => void;
-  /** F4: jump to a deep-link chip's anchor (gap-, tailor-, or roadmap-anchor). */
-  onJump?: (anchorId: string) => void;
+  /** Erase persisted chat memory for this match, then clear the local thread. */
+  onDeleteThread?: () => void;
+  /** F4+: dispatch a chip action (jump/rewrite/roadmap/prove-it/copy). */
+  onAction?: (chip: ChatActionChip) => void;
+  pendingAction?: ChatActionChip | null;
+  onConfirmAction?: () => void;
+  onCancelAction?: () => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
 }
 
-export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRetry, onJump, isPending }: Props) {
+export function DiagnosisChatSkill({
+  messages,
+  opener,
+  suggestions,
+  onSend,
+  onSuggestionTap,
+  onRetry,
+  onDeleteThread,
+  onAction,
+  pendingAction,
+  onConfirmAction,
+  onCancelAction,
+  isPending,
+}: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
@@ -79,7 +100,14 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
                 <button
                   key={s}
                   type="button"
-                  onClick={() => submit(s)}
+                  onClick={() => {
+                    const q = s.trim();
+                    if (!q || isPending) return;
+                    if (onSuggestionTap) onSuggestionTap(q);
+                    else submit(q);
+                    setDraft("");
+                    textareaRef.current?.focus();
+                  }}
                   disabled={isPending}
                   className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -93,13 +121,32 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
 
       {/* ── Thread ── */}
       {hasMessages && (
-        <div
-          ref={threadRef}
-          className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1"
-          role="log"
-          aria-live="polite"
-        >
-          {messages.map((m, i) => {
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 border-b border-[#F1F1EF] pb-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B949E]">
+              {t("companion.chat.thread")}
+            </span>
+            {onDeleteThread && (
+              <button
+                type="button"
+                onClick={onDeleteThread}
+                disabled={isPending}
+                aria-label={t("companion.chat.deleteThread")}
+                title={t("companion.chat.deleteThread")}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#8B949E] transition-colors hover:bg-[#F5F5F3] hover:text-[#2F3437] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t("companion.chat.deleteThread")}</span>
+              </button>
+            )}
+          </div>
+          <div
+            ref={threadRef}
+            className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1"
+            role="log"
+            aria-live="polite"
+          >
+            {messages.map((m, i) => {
             if (m.role === "user") {
               return (
                 <div key={i} className="flex justify-end">
@@ -152,9 +199,9 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {m.actions.map((a) => (
                         <button
-                          key={a.anchorId}
+                          key={a.anchorId ?? `${a.labelKey}-${a.kind}`}
                           type="button"
-                          onClick={() => onJump?.(a.anchorId)}
+                          onClick={() => onAction?.(a)}
                           className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ink-accent/40 focus:outline-none"
                         >
                           <span>{t(a.labelKey)}</span>
@@ -166,7 +213,37 @@ export function DiagnosisChatSkill({ messages, opener, suggestions, onSend, onRe
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
+          {pendingAction && (
+            <div className="rounded-xl border border-primary/15 bg-primary/5 p-2.5">
+              <p className="text-[12px] font-medium leading-relaxed text-[#2F3437]">
+                {pendingAction.kind === "rewrite"
+                  ? t("companion.chat.confirmRewrite")
+                  : pendingAction.kind === "roadmap"
+                    ? t("companion.chat.confirmRoadmap")
+                    : t("companion.chat.confirmAction")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={onConfirmAction}
+                  disabled={isPending}
+                  className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("companion.chat.confirmYes")}
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelAction}
+                  disabled={isPending}
+                  className="rounded-full border border-[#EAEAEA] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#5F6B76] transition-colors hover:bg-[#F8F8F7] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("companion.chat.confirmNo")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

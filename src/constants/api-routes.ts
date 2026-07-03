@@ -79,6 +79,7 @@ export const API_ROUTES = {
     PROGRESS: (matchId: string) => `${API}/cv-matches/${matchId}/progress`,
     /** Corner-advisor two-way chat (BE endpoint built separately). */
     CHAT: (matchId: string) => `${API}/cv-matches/${matchId}/chat`,
+    CHAT_THREAD: (matchId: string) => `${API}/cv-matches/${matchId}/chat/thread`,
   },
 
   // Unified plan entitlements and quotas.
