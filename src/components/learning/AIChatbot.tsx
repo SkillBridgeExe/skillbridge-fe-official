@@ -11,6 +11,13 @@ interface ChatMessage {
   text: string;
 }
 
+interface LearningChatHistoryMessage {
+  id?: string;
+  role: "assistant" | "user";
+  text?: string;
+  message?: string;
+}
+
 // Minimal markdown-like renderer (supports ** bold and ```code blocks```)
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isBot = message.role === "assistant";
@@ -91,7 +98,7 @@ export function AIChatbot() {
       getLearningChatHistory(savedId)
         .then((res) => {
           if (res.history && res.history.length > 0) {
-            setMessages(res.history.map((m: any) => ({
+            setMessages(res.history.map((m: LearningChatHistoryMessage) => ({
               id: m.id || Date.now().toString(),
               role: m.role,
               text: m.text || m.message || "",

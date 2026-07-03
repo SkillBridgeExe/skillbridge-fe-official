@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronRight, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, AlertCircle } from "lucide-react";
 import type { GapItem } from "@shared/api";
 import { DocumentPreview } from "./DocumentPreview";
 import { TailorChecklist } from "./TailorChecklist";

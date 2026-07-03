@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { AlertCircle, CheckCircle2, ChevronRight, Loader2, Target, TrendingUp, X } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2, Target } from "lucide-react";
 import { useGapReportQuery } from "@/hooks/use-diagnosis";
 import type { GapItem } from "@shared/api";
 
