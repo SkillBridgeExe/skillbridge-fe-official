@@ -28,8 +28,10 @@ import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { useGapReportQuery } from "@/hooks/use-diagnosis";
+import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
-import type { CvReviewData } from "@shared/api";
+import type { CvReviewData, ProgressReportDto } from "@shared/api";
 import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
@@ -93,19 +95,31 @@ function isDailyLimitError(error: unknown): boolean {
  * @param cvId        CV-only chat target. When there is no JD match id, the advisor
  *                    still works by posting to the CV-only route with this cvId. Pass
  *                    the diagnosis store's `lastCvId`. Step 3 can omit it (matchId works).
+ * @param progress    optional progress report (GET .../progress). When it's a real
+ *                    non-baseline report with at least one closed/improved transition,
+ *                    a grounded "what did I improve" chip is prepended to the chip list
+ *                    — real data only (baseline/empty → no chip, no fabrication).
+ * @returns           `sendQuestion` so a caller (e.g. the ProgressBanner "explain" button)
+ *                    can prefill + send a question through the same chat pipeline.
  */
 export function useDiagnosisChatCompanion(
   reviewData: CvReviewData | null | undefined,
   focus: DiagnosisChatFocus,
   revealCard?: RevealCard,
   cvId?: string | null,
-): void {
+  progress?: ProgressReportDto | null,
+): { sendQuestion: (question: string) => void } {
   const { t, i18n } = useTranslation("diagnosis");
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
   // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
   // compared, the CV-only route (cvId) is the fallback target so the advisor still works.
   const matchId = reviewData?.jdMatch?.matchId ?? null;
+
+  // F4: same query key (matchId + lang) as GapReportCard/TailorChecklist already on
+  // the page → this is a cache read, not an extra network call. Used to map a chat
+  // answer's `cited_gap_id` to deep-link chips (view-gap / rewrite / roadmap).
+  const gapReportQuery = useGapReportQuery(matchId, language);
 
   // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
   const hasReview = typeof reviewData?.overallScore === "number";
@@ -129,9 +143,21 @@ export function useDiagnosisChatCompanion(
   const weakestDim = reviewData?.dimensions?.length
     ? reviewData.dimensions.reduce((lo, d) => (d.score20 < lo.score20 ? d : lo))
     : null;
-  const suggestions = focus === "cv_audit" && weakestDim
+  const focusSuggestions = focus === "cv_audit" && weakestDim
     ? [t("companion.chat.suggestDim", { dim: t(`review.dims.${weakestDim.key}`) }), ...baseSuggestions.slice(1)]
     : baseSuggestions;
+
+  // Progress chip: prepend ONE grounded chip when there's a REAL non-baseline report
+  // with at least one closed/improved transition since last scan. Anti-fab: never
+  // shown for a baseline (nothing to compare) or a report with no closed/improved
+  // transitions (nothing to celebrate) — real data only.
+  const hasProgressToExplain = Boolean(
+    progress && !progress.baseline &&
+    progress.transitions.some((tr) => tr.kind === "closed" || tr.kind === "improved"),
+  );
+  const suggestions = hasProgressToExplain
+    ? [t("companion.chat.progressChip"), ...focusSuggestions]
+    : focusSuggestions;
 
   // ── Chat send → BE (built separately). useMutation per convention (mirrors
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
@@ -164,25 +190,34 @@ export function useDiagnosisChatCompanion(
     suggestions: string[];
     onSend: (q: string) => void;
     onRetry: (index: number) => void;
+    onJump: (anchorId: string) => void;
     isPending: boolean;
     revealCard?: RevealCard;
-  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, isPending: false, revealCard });
+  }>({ opener, suggestions, onSend: () => {}, onRetry: () => {}, onJump: () => {}, isPending: false, revealCard });
 
-  // Reveal a cited card after a successful answer (no-op-safe). revealCard handles
-  // the wrong-tab case for `dim-*` anchors; fall back to a direct scroll.
-  const revealCited = useCallback((res: { cited_dimension?: string; cited_gap_id?: string }) => {
-    const anchorId = res.cited_dimension
-      ? `dim-${res.cited_dimension}`
-      : res.cited_gap_id
-        ? `gap-${res.cited_gap_id}`
-        : null;
-    if (!anchorId) return;
+  // Jump to an anchor id (no-op-safe). revealCard handles the wrong-tab case for
+  // `dim-*`/`gap-*` anchors; fall back to a direct scroll. Shared by the auto-reveal
+  // after a cited answer (revealCited) and the F4 chip click (onJump).
+  const jumpToAnchor = useCallback((anchorId: string) => {
     const reveal = propsRef.current.revealCard;
     if (reveal) reveal(anchorId);
     else if (typeof document !== "undefined") {
       document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, []);
+
+  // Reveal a cited card after a successful answer (no-op-safe).
+  const revealCited = useCallback(
+    (res: { cited_dimension?: string; cited_gap_id?: string }) => {
+      const anchorId = res.cited_dimension
+        ? `dim-${res.cited_dimension}`
+        : res.cited_gap_id
+          ? `gap-${res.cited_gap_id}`
+          : null;
+      if (anchorId) jumpToAnchor(anchorId);
+    },
+    [jumpToAnchor],
+  );
 
   /**
    * Send `question` and resolve/fail the assistant row at `assistantIndex`. Used by
@@ -196,7 +231,13 @@ export function useDiagnosisChatCompanion(
         { question, thread },
         {
           onSuccess: (res) => {
-            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer);
+            // F4: map the cited gap → deep-link chips (honest-empty on a join miss).
+            const actions = buildChatActionChips({
+              citedGapId: res.cited_gap_id,
+              gapItems: gapReportQuery.data?.gap_items,
+              actions: gapReportQuery.data?.recommended_actions,
+            });
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions);
             revealCited(res);
           },
           onError: (error) => {
@@ -209,7 +250,7 @@ export function useDiagnosisChatCompanion(
         },
       );
     },
-    [chatMutation, revealCited],
+    [chatMutation, revealCited, gapReportQuery.data],
   );
 
   const onSend = useCallback(
@@ -271,7 +312,7 @@ export function useDiagnosisChatCompanion(
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
-  propsRef.current = { opener, suggestions, onSend, onRetry, isPending: chatMutation.isPending, revealCard };
+  propsRef.current = { opener, suggestions, onSend, onRetry, onJump: jumpToAnchor, isPending: chatMutation.isPending, revealCard };
 
   // ── Register + activate the corner advisor ONCE on mount; unregister on unmount. ──
   // getTurn reads propsRef.current (always fresh) + the live thread from the store,
@@ -295,6 +336,7 @@ export function useDiagnosisChatCompanion(
           suggestions: propsRef.current.suggestions,
           onSend: propsRef.current.onSend,
           onRetry: propsRef.current.onRetry,
+          onJump: propsRef.current.onJump,
           isPending: propsRef.current.isPending,
         },
       }),
@@ -311,4 +353,6 @@ export function useDiagnosisChatCompanion(
     // Mount-only: NEVER re-run (re-running would re-pop a closed bubble = Clippy).
     // All referenced values (store getState, propsRef) are stable, so [] is correct.
   }, []);
+
+  return { sendQuestion: onSend };
 }

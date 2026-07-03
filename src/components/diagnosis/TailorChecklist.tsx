@@ -85,7 +85,11 @@ export function TailorChecklist({
                   (action.action_type === "deepen_wording" && Boolean(action.before)));
 
               return (
-              <div key={action.action_id ?? `${action.skill_canonical}-${action.action_type}-${index}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
+              <div
+                key={action.action_id ?? `${action.skill_canonical}-${action.action_type}-${index}`}
+                id={action.action_id ? `tailor-${action.action_id}` : undefined}
+                className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4"
+              >
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
