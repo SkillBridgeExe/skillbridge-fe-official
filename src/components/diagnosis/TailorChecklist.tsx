@@ -21,6 +21,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { getApiErrorCode } from "@/lib/api-error";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { OPEN_TAILOR_REWRITE_EVENT, type OpenTailorRewriteEventDetail } from "@/components/companion/skills/chat-action-events";
+import { canOpenTailorRewrite } from "@/components/companion/skills/chat-action-chips";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -57,12 +58,7 @@ export function TailorChecklist({
       const detail = (event as CustomEvent<OpenTailorRewriteEventDetail>).detail;
       if (!detail?.actionId) return;
       const action = actions.find((item) => item.action_id === detail.actionId);
-      const canRewrite =
-        Boolean(cvId) &&
-        action?.rewrite_eligible &&
-        (action.action_type === "emphasize" ||
-          (action.action_type === "deepen_wording" && Boolean(action.before)));
-      if (action && canRewrite) setActiveAction(action);
+      if (cvId && canOpenTailorRewrite(action)) setActiveAction(action);
     };
 
     window.addEventListener(OPEN_TAILOR_REWRITE_EVENT, openRewrite);
@@ -96,11 +92,7 @@ export function TailorChecklist({
             actions.slice(0, 8).map((action, index) => {
               // deepen_wording needs the located `before` bullet — without it the server rejects
               // with NO_ANCHOR, so don't even offer the button. emphasize has no such requirement.
-              const canRewrite =
-                Boolean(cvId) &&
-                action.rewrite_eligible &&
-                (action.action_type === "emphasize" ||
-                  (action.action_type === "deepen_wording" && Boolean(action.before)));
+              const canRewrite = Boolean(cvId) && canOpenTailorRewrite(action);
 
               return (
               <div

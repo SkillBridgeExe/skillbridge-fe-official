@@ -15,6 +15,12 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { openIntakeCoach } from "@/components/companion/skills/open-intake-coach";
 import type { CoachTrigger } from "@/components/companion/skills/coach-flow";
 import { findBulletWithSkill } from "@/components/companion/skills/find-bullet-with-skill";
+import {
+  getAchievementLine,
+  parseAchievementFieldIndex,
+  replaceAchievementLine,
+  suggestionKeyForField,
+} from "./achievement-line-patch";
 
 
 export function ExperienceSection() {
@@ -35,6 +41,7 @@ export function ExperienceSection() {
   const [activeSuggestion, setActiveSuggestion] = useState<{
     entryId: string;
     field: "description" | "achievements";
+    achievementIndex?: number;
     suggestion: string;
     isFallback: boolean;
   } | null>(null);
@@ -42,6 +49,7 @@ export function ExperienceSection() {
   const [pendingTarget, setPendingTarget] = useState<{
     id: string;
     field: "description" | "achievements";
+    achievementIndex?: number;
   } | null>(null);
 
   const [originalTextMap, setOriginalTextMap] = useState<Record<string, string>>({});
@@ -101,6 +109,7 @@ export function ExperienceSection() {
     field: "description" | "achievements",
     currentText: string,
     regenerate = false,
+    achievementIndex?: number,
   ) => {
     if (!draftId) return;
     if (!currentText.trim()) {
@@ -108,10 +117,10 @@ export function ExperienceSection() {
     }
 
     setGateHint(null);
-    setPendingTarget({ id: entryId, field });
+    setPendingTarget({ id: entryId, field, achievementIndex });
     setActiveSuggestion(null);
 
-    const key = `${entryId}:${field}`;
+    const key = suggestionKeyForField(entryId, field, achievementIndex);
     const attempt = regenerate ? (attempts.current[key] = (attempts.current[key] ?? 0) + 1) : 0;
 
     aiRewrite.rewrite(
@@ -128,6 +137,7 @@ export function ExperienceSection() {
           setActiveSuggestion({
             entryId,
             field,
+            achievementIndex,
             suggestion: data.suggestion,
             isFallback: !!data.fallback,
           });
@@ -177,7 +187,12 @@ export function ExperienceSection() {
     }
 
     const field = match.field === "description" ? "description" : "achievements";
-    handleAiSuggest(entry.id, field, entry[field]);
+    const achievementIndex = field === "achievements" ? parseAchievementFieldIndex(match.field) : undefined;
+    const currentText =
+      field === "achievements" && achievementIndex !== undefined
+        ? getAchievementLine(entry.achievements, achievementIndex)
+        : entry[field];
+    handleAiSuggest(entry.id, field, currentText, false, achievementIndex);
     setPendingProveIt(null);
   }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast]);
 
@@ -186,22 +201,38 @@ export function ExperienceSection() {
     const entry = experience.find((e) => e.id === entryId);
     if (!entry) return;
 
-    const oldValue = entry[field];
-    updateExperience(entryId, field, activeSuggestion.suggestion);
+    const key = suggestionKeyForField(entryId, field, activeSuggestion.achievementIndex);
+    const isLineRewrite = field === "achievements" && activeSuggestion.achievementIndex !== undefined;
+    const oldValue = isLineRewrite
+      ? getAchievementLine(entry.achievements, activeSuggestion.achievementIndex as number)
+      : entry[field];
+    const nextValue = isLineRewrite
+      ? replaceAchievementLine(entry.achievements, activeSuggestion.achievementIndex as number, activeSuggestion.suggestion)
+      : activeSuggestion.suggestion;
+    updateExperience(entryId, field, nextValue);
     updateExperience(entryId, "aiRewrite", oldValue); // Sử dụng aiRewrite để lưu backup
-    setOriginalTextMap((prev) => ({ ...prev, [`${entryId}_${field}`]: oldValue }));
+    setOriginalTextMap((prev) => ({ ...prev, [key]: oldValue }));
     clearSectionEvaluation("experience");
   };
 
   const handleUndo = (entryId: string, field: "description" | "achievements") => {
-    const backupValue = originalTextMap[`${entryId}_${field}`];
+    const achievementIndex = activeSuggestion?.entryId === entryId && activeSuggestion.field === field
+      ? activeSuggestion.achievementIndex
+      : undefined;
+    const key = suggestionKeyForField(entryId, field, achievementIndex);
+    const backupValue = originalTextMap[key];
     if (!backupValue) return;
 
-    updateExperience(entryId, field, backupValue);
+    const entry = experience.find((e) => e.id === entryId);
+    if (!entry) return;
+    const nextValue = field === "achievements" && achievementIndex !== undefined
+      ? replaceAchievementLine(entry.achievements, achievementIndex, backupValue)
+      : backupValue;
+    updateExperience(entryId, field, nextValue);
     updateExperience(entryId, "aiRewrite", "");
     setOriginalTextMap((prev) => {
       const copy = { ...prev };
-      delete copy[`${entryId}_${field}`];
+      delete copy[key];
       return copy;
     });
   };
@@ -225,7 +256,16 @@ export function ExperienceSection() {
   const renderSuggestionBox = (entryId: string, field: "description" | "achievements") => {
     const isPending = aiRewrite.isPending && pendingTarget?.id === entryId && pendingTarget?.field === field;
     const entry = experience.find((e) => e.id === entryId);
-    const hasUndo = entry && entry.aiRewrite && originalTextMap[`${entryId}_${field}`] === entry.aiRewrite;
+    const achievementIndex = activeSuggestion?.entryId === entryId && activeSuggestion.field === field
+      ? activeSuggestion.achievementIndex
+      : pendingTarget?.id === entryId && pendingTarget.field === field
+        ? pendingTarget.achievementIndex
+        : undefined;
+    const targetValue = entry && field === "achievements" && achievementIndex !== undefined
+      ? getAchievementLine(entry.achievements, achievementIndex)
+      : entry?.[field];
+    const key = suggestionKeyForField(entryId, field, achievementIndex);
+    const hasUndo = Boolean(entry && entry.aiRewrite && originalTextMap[key] === entry.aiRewrite);
 
     if (!isPending && (!activeSuggestion || activeSuggestion.entryId !== entryId || activeSuggestion.field !== field)) {
       return null;
@@ -259,7 +299,7 @@ export function ExperienceSection() {
               </div>
             ) : (
               <div className="flex items-center gap-2 pt-1">
-                {hasUndo && entry[field] === activeSuggestion?.suggestion ? (
+                {hasUndo && targetValue === activeSuggestion?.suggestion ? (
                   <Button
                     size="sm"
                     onClick={() => handleUndo(entryId, field)}
@@ -281,7 +321,7 @@ export function ExperienceSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleAiSuggest(entryId, field, entry ? entry[field] : "", true)}
+                  onClick={() => handleAiSuggest(entryId, field, targetValue ?? "", true, achievementIndex)}
                   className="h-7 text-xs text-slate-500 hover:text-slate-750 hover:bg-slate-200/50"
                 >
                   {t("builder.retry")}

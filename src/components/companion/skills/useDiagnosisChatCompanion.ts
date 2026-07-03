@@ -361,15 +361,11 @@ export function useDiagnosisChatCompanion(
   );
 
   const onDeleteThread = useCallback(() => {
+    useCompanionStore.getState().clearChat();
     if (!matchId) {
-      useCompanionStore.getState().clearChat();
       return;
     }
-    deleteThreadMutation.mutate(matchId, {
-      onSuccess: () => {
-        useCompanionStore.getState().clearChat();
-      },
-    });
+    deleteThreadMutation.mutate(matchId);
   }, [deleteThreadMutation, matchId]);
 
   const onAction = useCallback(
@@ -396,17 +392,26 @@ export function useDiagnosisChatCompanion(
     const pending = useCompanionStore.getState().chatPendingAction;
     if (!pending) return;
 
+    const runAfterResultsMount = (run: () => void) => {
+      useDiagnosisStore.getState().setStep("results");
+      window.setTimeout(run, 0);
+    };
+
     if (pending.kind === "rewrite") {
       const actionId = pending.rewrite?.action.action_id;
       if (actionId) {
-        jumpToAnchor(`tailor-${actionId}`);
-        window.dispatchEvent(
-          new CustomEvent(OPEN_TAILOR_REWRITE_EVENT, { detail: { actionId } }),
-        );
+        runAfterResultsMount(() => {
+          jumpToAnchor(`tailor-${actionId}`);
+          window.dispatchEvent(
+            new CustomEvent(OPEN_TAILOR_REWRITE_EVENT, { detail: { actionId } }),
+          );
+        });
       }
     } else if (pending.kind === "roadmap") {
-      jumpToAnchor("roadmap-anchor");
-      window.dispatchEvent(new CustomEvent(OPEN_ROADMAP_WIZARD_EVENT));
+      runAfterResultsMount(() => {
+        jumpToAnchor("roadmap-anchor");
+        window.dispatchEvent(new CustomEvent(OPEN_ROADMAP_WIZARD_EVENT));
+      });
     } else if (pending.kind === "copy" && pending.copyText && navigator.clipboard) {
       void navigator.clipboard.writeText(pending.copyText);
     }

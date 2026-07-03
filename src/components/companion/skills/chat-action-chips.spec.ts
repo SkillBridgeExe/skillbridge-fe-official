@@ -28,7 +28,7 @@ function mkGap(overrides: Partial<GapItem> = {}): GapItem {
 
 function mkAction(overrides: Partial<TailorAction> = {}): TailorAction {
   return {
-    action_type: "add_evidence",
+    action_type: "deepen_wording",
     skill_canonical: "react",
     display_name: "React",
     why: "JD requires React",
@@ -37,7 +37,7 @@ function mkAction(overrides: Partial<TailorAction> = {}): TailorAction {
     jd_importance: "REQUIRED",
     jd_count: 5,
     cv_count: 0,
-    action_id: "add_evidence:react",
+    action_id: "deepen_wording:react",
     requirement_id: "req-1",
     before: "Built React UI for booking flow.",
     ...overrides,
@@ -57,11 +57,23 @@ describe("buildChatActionChips", () => {
     ]);
   });
 
-  it("falls back to a tailor jump when a rewrite action lacks the verified before anchor", () => {
+  it("falls back to a tailor jump when a deepen action lacks the verified before anchor", () => {
     const chips = buildChatActionChips({
       citedGapId: "req-1",
       gapItems: [mkGap()],
       actions: [mkAction({ before: null })],
+    });
+    expect(chips).toEqual([
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: "tailor-deepen_wording:react" },
+    ]);
+  });
+
+  it("does not create a confirmed rewrite chip for add_evidence actions", () => {
+    const chips = buildChatActionChips({
+      citedGapId: "req-1",
+      gapItems: [mkGap()],
+      actions: [mkAction({ action_type: "add_evidence", action_id: "add_evidence:react" })],
     });
     expect(chips).toEqual([
       { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },

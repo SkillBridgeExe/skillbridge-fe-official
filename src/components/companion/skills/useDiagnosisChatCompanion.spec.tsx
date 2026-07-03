@@ -6,7 +6,7 @@ import { CHAT_CONTEXT_ID, useDiagnosisChatCompanion } from "./useDiagnosisChatCo
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { askDiagnosisChat, deleteChatThread } from "@/services/diagnosis.service";
 import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
@@ -31,6 +31,7 @@ vi.mock("@/services/diagnosis.service", async (importOriginal) => {
   return {
     ...actual,
     askDiagnosisChat: vi.fn().mockResolvedValue({ answer: "ok" }),
+    deleteChatThread: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -39,6 +40,7 @@ afterEach(() => {
   useCompanionStore.getState().resetCompanion();
   useCvBuilderStore.getState().reset();
   useDiagnosisStore.getState().reset();
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -263,6 +265,32 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
       { role: "user", text: "real previous question" },
     ]);
   });
+
+  it("clears stale cached turns when deleting a persisted thread", async () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["chat-thread", "match-1"], {
+      turns: [{ role: "user", text: "old server q", ts: "2026-07-02T00:00:00.000Z" }],
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="gap_results" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(useCompanionStore.getState().chatMessages).toEqual([{ role: "user", text: "old server q" }]);
+    });
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onDeleteThread = turn?.props.onDeleteThread as () => void;
+    onDeleteThread();
+
+    await waitFor(() => {
+      expect(deleteChatThread).toHaveBeenCalledWith("match-1");
+      expect(useCompanionStore.getState().chatMessages).toEqual([]);
+    });
+    expect(qc.getQueryData(["chat-thread", "match-1"])).toEqual({ turns: [] });
+  });
 });
 
 describe("useDiagnosisChatCompanion — chat action dispatch", () => {
@@ -304,7 +332,8 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
     expect(useCompanionStore.getState().chatPendingAction).toBeNull();
   });
 
-  it("confirms rewrite and roadmap actions through page-level events", () => {
+  it("switches to results before confirming rewrite and roadmap page-level events", () => {
+    vi.useFakeTimers();
     const qc = new QueryClient();
     const reveal = vi.fn();
     const tailorHandler = vi.fn();
@@ -336,6 +365,9 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
       rewrite: { action: { action_id: "deepen:react" } },
     });
     onConfirmAction();
+    expect(useDiagnosisStore.getState().step).toBe("results");
+    expect(tailorHandler).not.toHaveBeenCalled();
+    vi.runOnlyPendingTimers();
     expect(reveal).toHaveBeenCalledWith("tailor-deepen:react");
     expect(tailorHandler).toHaveBeenCalledTimes(1);
     expect((tailorHandler.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({ actionId: "deepen:react" });
@@ -343,11 +375,13 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
 
     onAction({ kind: "roadmap", labelKey: "companion.chat.chipRoadmap" });
     onConfirmAction();
+    vi.runOnlyPendingTimers();
     expect(reveal).toHaveBeenCalledWith("roadmap-anchor");
     expect(roadmapHandler).toHaveBeenCalledTimes(1);
 
     window.removeEventListener(OPEN_TAILOR_REWRITE_EVENT, tailorHandler);
     window.removeEventListener(OPEN_ROADMAP_WIZARD_EVENT, roadmapHandler);
+    vi.useRealTimers();
   });
 
   it("turns the prove-it suggestion into local coach messages without calling the chat API", () => {

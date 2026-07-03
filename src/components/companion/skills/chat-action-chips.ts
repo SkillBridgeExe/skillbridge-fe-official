@@ -21,6 +21,11 @@ export interface ChatActionChip {
   copyText?: string;
 }
 
+export function canOpenTailorRewrite(action: TailorAction | null | undefined): action is TailorAction {
+  if (!action?.rewrite_eligible || !action.action_id) return false;
+  return action.action_type === "emphasize" || (action.action_type === "deepen_wording" && Boolean(action.before));
+}
+
 export function buildChatActionChips(input: {
   citedGapId?: string;
   gapItems: GapItem[] | undefined;
@@ -36,11 +41,12 @@ export function buildChatActionChips(input: {
   const action = (input.actions ?? []).find(
     (a) => a.requirement_id === gap.requirement_id || a.skill_canonical === gap.canonical_name,
   );
-  if (action?.rewrite_eligible && action.action_id) {
-    if (action.before) {
+  const actionId = action?.action_id;
+  if (action?.rewrite_eligible && actionId) {
+    if (canOpenTailorRewrite(action)) {
       out.push({ kind: "rewrite", labelKey: "companion.chat.chipRewriteHere", rewrite: { action } });
     } else {
-      out.push({ kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: `tailor-${action.action_id}` });
+      out.push({ kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: `tailor-${actionId}` });
     }
   }
 

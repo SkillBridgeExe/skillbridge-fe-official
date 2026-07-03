@@ -252,6 +252,9 @@ export function useDeleteChatThreadMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (matchId: string) => deleteChatThread(matchId),
+    onMutate: (matchId) => {
+      queryClient.setQueryData(["chat-thread", matchId], { turns: [] });
+    },
     onSuccess: (_data, matchId) => {
       void queryClient.invalidateQueries({ queryKey: ["chat-thread", matchId] });
     },
