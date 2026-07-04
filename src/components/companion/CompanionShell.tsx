@@ -39,6 +39,7 @@ import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
 import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
+import { LearningChatSkill } from "./skills/LearningChatSkill";
 import type { ElementIssue } from "./skills/element-issues";
 import type { ChatActionChip } from "./skills/chat-action-chips";
 
@@ -211,7 +212,8 @@ export function CompanionShell() {
     || turn?.skill === "diagnosis_progress"
     || turn?.skill === "diagnosis_element_issue"
     || turn?.skill === "diagnosis_commentary"
-    || turn?.skill === "diagnosis_chat";
+    || turn?.skill === "diagnosis_chat"
+    || turn?.skill === "learning_chat";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
@@ -466,6 +468,18 @@ export function CompanionShell() {
                   pendingAction={chatPendingAction}
                   onConfirmAction={turn.props.onConfirmAction as (() => void) | undefined}
                   onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
+                  isPending={chatPending}
+                />
+              )}
+
+              {/* ── learning_chat (Task M3 — corner advisor on a Learning session page) ── */}
+              {turn?.skill === "learning_chat" && (
+                <LearningChatSkill
+                  messages={chatMessages}
+                  opener={chatOpener}
+                  suggestions={chatSuggestions}
+                  onSend={turn.props.onSend as (q: string) => void}
+                  onRetry={turn.props.onRetry as (index: number) => void}
                   isPending={chatPending}
                 />
               )}
