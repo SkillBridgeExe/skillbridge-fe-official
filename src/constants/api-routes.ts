@@ -118,6 +118,12 @@ export const API_ROUTES = {
     CHAT_HISTORY: (conversationId: string) => `${API}/learning/chat/${conversationId}`,
     SESSION_PROGRESS: (sessionId: string) =>
       `${API}/learning/sessions/${encodeURIComponent(sessionId)}/progress`,
+    QUIZ_ANSWER: (sessionId: string) =>
+      `${API}/learning/sessions/${encodeURIComponent(sessionId)}/quiz/answer`,
+    NEXT_QUESTIONS: (sessionId: string, skill: string) =>
+      `${API}/learning/sessions/${encodeURIComponent(sessionId)}/next-questions?skill=${encodeURIComponent(skill)}`,
+    CHECKLIST_ITEM: (sessionId: string, itemId: string) =>
+      `${API}/learning/sessions/${encodeURIComponent(sessionId)}/checklist/${encodeURIComponent(itemId)}`,
   },
 
   BILLING: {

@@ -1680,8 +1680,7 @@ export default {
       daysQuestion: "Bạn muốn học trong bao nhiêu ngày?",
       hoursQuestion: "Ổn rồi. Mỗi tuần bạn học được khoảng bao nhiêu giờ?",
       languageQuestion: "Bạn muốn mình tạo roadmap bằng ngôn ngữ nào?",
-      confirmQuestion:
-        "Chốt nhé. Mình sẽ tạo lộ trình {{days}} ngày, {{hours}}h/tuần, ngôn ngữ {{language}}.",
+      confirmQuestion: "Chốt nhé. Mình sẽ tạo lộ trình bằng {{language}}.",
       daysOption: "{{count}} ngày",
       hoursOption: "{{count}}h/tuần",
       languageVi: "Tiếng Việt",

@@ -1,9 +1,21 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionDetail } from "./SessionDetail";
 import type { LearningSession } from "./types";
+
+const authMocks = vi.hoisted(() => ({
+  hasApiAuthSession: vi.fn(() => false),
+}));
+
+const learningServiceMocks = vi.hoisted(() => ({
+  answerLearningQuizQuestion: vi.fn(),
+  getLearningNextQuestions: vi.fn(),
+  getLearningSessionProgress: vi.fn(),
+  patchLearningChecklistItem: vi.fn(),
+  saveLearningSessionProgress: vi.fn(),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -35,6 +47,11 @@ vi.mock("react-i18next", () => ({
         "learning.common.paid": "Paid",
         "learning.common.openCourse": "Open course",
         "learning.common.save": "Save",
+        "learning.session.lessonContent": "Lesson Content",
+        "learning.session.knowledgeCheck": "Knowledge check",
+        "learning.session.correctCount": `${options?.correct} / ${options?.total} correct`,
+        "learning.session.checkAnswers": "Check answer",
+        "learning.session.questionCount": `${options?.count} questions`,
       };
       return labels[key] ?? String(options?.defaultValue ?? key);
     },
@@ -43,6 +60,10 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
+}));
+
+vi.mock("@posthog/react", () => ({
+  usePostHog: () => ({ capture: vi.fn() }),
 }));
 
 vi.mock("@/components/learning/roadmap-store", () => ({
@@ -54,13 +75,34 @@ vi.mock("@/components/learning/roadmap-store", () => ({
 }));
 
 vi.mock("@/services/auth-session.service", () => ({
-  hasApiAuthSession: () => false,
+  hasApiAuthSession: authMocks.hasApiAuthSession,
 }));
 
-vi.mock("@/services/learning-roadmap.service", () => ({
-  getLearningSessionProgress: vi.fn(),
-  saveLearningSessionProgress: vi.fn(),
-}));
+vi.mock("@/services/learning-roadmap.service", () => learningServiceMocks);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  authMocks.hasApiAuthSession.mockReturnValue(false);
+  learningServiceMocks.getLearningSessionProgress.mockResolvedValue({
+    checkedChecklistItems: {},
+    exerciseProofs: {},
+    quizAttempts: {},
+  });
+  learningServiceMocks.getLearningNextQuestions.mockResolvedValue({
+    weak_objectives: [],
+    next_recommended_questions: [],
+  });
+  learningServiceMocks.patchLearningChecklistItem.mockResolvedValue({
+    checkedChecklistItems: { "section-one": ["check-one"] },
+    exerciseProofs: {},
+    quizAttempts: {},
+  });
+  learningServiceMocks.saveLearningSessionProgress.mockResolvedValue({
+    checkedChecklistItems: {},
+    exerciseProofs: {},
+    quizAttempts: {},
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -109,6 +151,78 @@ const session: LearningSession = {
   recommendedCourses: Array.from({ length: 9 }, (_, index) => makeCourse(index + 1)),
 };
 
+const sqlDocVideoSession: LearningSession = {
+  ...session,
+  id: "session-sql-doc-video",
+  title: "SQL - Deep build",
+  estimatedMinutes: 30,
+  sections: [
+    {
+      id: "select-filter",
+      title: "Select and filter",
+      completed: false,
+      exercises: 1,
+      completedExercises: 0,
+      type: "reading",
+      body: "Start every query by being clear about the table.",
+      checklist: [{ id: "select-columns", label: "Select only needed columns." }],
+    },
+    {
+      id: "join-related",
+      title: "Join related tables",
+      completed: false,
+      exercises: 1,
+      completedExercises: 0,
+      type: "reading",
+      body: "A join combines rows from related tables.",
+      checklist: [{ id: "explicit-join", label: "Use an explicit JOIN clause." }],
+    },
+    {
+      id: "youtube-sql",
+      title: "SQL Course for Beginners [Full Course]",
+      completed: false,
+      exercises: 0,
+      completedExercises: 0,
+      type: "video",
+    },
+  ],
+  lessonContent: {
+    title: "SQL query basics for application data",
+    summary: "Practice selecting, filtering, joining, and explaining relational data.",
+    licenseType: "skillbridge_original",
+    reusePolicy: "full_reuse_allowed",
+    sourceResourceIds: ["youtube-sql"],
+    learningObjectives: [],
+    sections: [],
+    quiz: [
+      {
+        id: "where-clause",
+        question: "What does a WHERE clause do?",
+        options: ["Filters rows by a condition", "Creates a table"],
+        correctOptionIndex: 0,
+        explanation: "WHERE narrows rows.",
+        sectionId: "select-filter",
+      },
+    ],
+    exercises: [],
+  },
+  resources: [
+    {
+      id: "youtube-sql",
+      title: "SQL Course for Beginners [Full Course]",
+      url: "https://www.youtube.com/watch?v=7S_tz1z_5bA",
+      type: "youtube",
+      platform: "Video",
+      duration: "3h 11m",
+      videoChapters: [
+        { id: "select-filter", title: "Select and filter", startSeconds: 0 },
+        { id: "join-related", title: "Join related tables", startSeconds: 576 },
+      ],
+    },
+  ],
+  recommendedCourses: [],
+};
+
 describe("SessionDetail", () => {
   it("resets recommended-course pagination when the active section changes", () => {
     render(<SessionDetail session={session} />);
@@ -150,5 +264,380 @@ describe("SessionDetail", () => {
     rerender(<SessionDetail session={inProgressSession} />);
 
     expect(screen.queryByText("Done")).not.toBeInTheDocument();
+  });
+
+  it("uses checklist PATCH without scheduling the legacy full progress PUT", async () => {
+    authMocks.hasApiAuthSession.mockReturnValue(true);
+    const checklistSession: LearningSession = {
+      ...session,
+      id: "session-checklist-patch",
+      sections: [
+        {
+          id: "section-one",
+          title: "Section One",
+          completed: false,
+          exercises: 1,
+          completedExercises: 0,
+          type: "reading",
+          checklist: [{ id: "check-one", label: "Check one" }],
+        },
+      ],
+    };
+
+    render(<SessionDetail session={checklistSession} />);
+
+    await waitFor(() => {
+      expect(learningServiceMocks.getLearningNextQuestions).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+    fireEvent.click(screen.getByRole("button", { name: /Lab 01 Check one/ }));
+    fireEvent.change(screen.getByLabelText("Proof for Check one"), {
+      target: { value: "Completed check one with proof." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check task" }));
+
+    await waitFor(() => {
+      expect(learningServiceMocks.patchLearningChecklistItem).toHaveBeenCalledWith(
+        "session-checklist-patch",
+        "check-one",
+        { section_id: "section-one", checked: true },
+      );
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    expect(learningServiceMocks.saveLearningSessionProgress).not.toHaveBeenCalled();
+  });
+
+  it("seeks the YouTube lesson when a lesson content chapter is clicked", () => {
+    const videoSession: LearningSession = {
+      ...session,
+      id: "session-video-seek",
+      title: "SQL Course for Beginners [Full Course]",
+      sections: [
+        {
+          id: "section-video",
+          title: "SQL Course for Beginners [Full Course]",
+          completed: false,
+          exercises: 0,
+          completedExercises: 0,
+          type: "video",
+        },
+      ],
+      lessonContent: {
+        title: "SQL query basics for application data",
+        summary: "Practice selecting, filtering, joining, and explaining relational data.",
+        licenseType: "skillbridge_original",
+        reusePolicy: "full_reuse_allowed",
+        sourceResourceIds: ["youtube-sql"],
+        learningObjectives: [],
+        sections: [],
+        quiz: [
+          {
+            id: "where-clause",
+            question: "What does a WHERE clause do?",
+            options: ["Filters rows by a condition", "Creates a table"],
+            correctOptionIndex: 0,
+            explanation: "WHERE narrows rows.",
+            sectionId: "select-filter",
+          },
+        ],
+        exercises: [],
+      },
+      resources: [
+        {
+          id: "youtube-sql",
+          title: "SQL Course for Beginners [Full Course]",
+          url: "https://www.youtube.com/watch?v=HXV3zeQKqGY",
+          type: "youtube",
+          platform: "Video",
+          duration: "3h 11m",
+          videoChapters: [
+            { id: "select-filter", title: "Select and filter", startSeconds: 0 },
+            { id: "join-related-tables", title: "Join related tables", startSeconds: 576 },
+          ],
+        },
+      ],
+      recommendedCourses: [],
+    };
+
+    render(<SessionDetail session={videoSession} />);
+
+    fireEvent.click(screen.getByText("Join related tables"));
+
+    expect(screen.getByTitle("SQL Course for Beginners [Full Course]")).toHaveAttribute(
+      "src",
+      expect.stringContaining("start=576&autoplay=1"),
+    );
+  });
+
+  it("keeps video learning in Learn and moves the quiz into Check", () => {
+    const videoSession: LearningSession = {
+      ...sqlDocVideoSession,
+      id: "session-video-quiz-last",
+      sections: [
+        {
+          id: "youtube-sql",
+          title: "SQL Course for Beginners [Full Course]",
+          completed: false,
+          exercises: 0,
+          completedExercises: 0,
+          type: "video",
+        },
+      ],
+    };
+
+    render(<SessionDetail session={videoSession} />);
+
+    const videoFrame = screen.getByTitle("SQL Course for Beginners [Full Course]");
+    const lessonContentHeading = screen.getByText("Lesson Content");
+
+    expect(
+      Boolean(videoFrame.compareDocumentPosition(lessonContentHeading) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /Knowledge check/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+
+    expect(screen.getByRole("button", { name: /Knowledge check/ })).toBeInTheDocument();
+  });
+
+  it("filters the lesson sidebar with content-type tabs", () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    const lessonList = screen.getByLabelText("Session lesson list");
+    expect(within(lessonList).getByText("Select and filter")).toBeInTheDocument();
+    expect(within(lessonList).getByText("SQL Course for Beginners [Full Course]")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Video" }));
+
+    expect(within(lessonList).queryByText("Select and filter")).not.toBeInTheDocument();
+    expect(within(lessonList).getByText("SQL Course for Beginners [Full Course]")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Quiz" }));
+
+    expect(within(lessonList).queryByText("SQL Course for Beginners [Full Course]")).not.toBeInTheDocument();
+    expect(within(lessonList).getByText("Knowledge check")).toBeInTheDocument();
+  });
+
+  it("opens the video as the first lesson", () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    const lessonList = screen.getByLabelText("Session lesson list");
+    const lessonItems = within(lessonList).getAllByRole("button");
+
+    expect(lessonItems[0]).toHaveAccessibleName(
+      /SQL Course for Beginners \[Full Course\] video - 0 exercises/,
+    );
+    expect(screen.getByTitle("SQL Course for Beginners [Full Course]")).toBeInTheDocument();
+  });
+
+  it("shows document content in Learn and the quiz in Check", () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    const lessonList = screen.getByLabelText("Session lesson list");
+    fireEvent.click(within(lessonList).getByRole("button", { name: /Select and filter/ }));
+
+    const firstLessonHeading = screen.getByRole("heading", { name: "1. Select and filter" });
+
+    expect(firstLessonHeading).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Knowledge check/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+
+    expect(screen.getByRole("button", { name: /Knowledge check/ })).toBeInTheDocument();
+  });
+
+  it("requires proof before a practice lab task can be completed", () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    const lessonList = screen.getByLabelText("Session lesson list");
+    fireEvent.click(within(lessonList).getByRole("button", { name: /Select and filter/ }));
+
+    expect(screen.getByText("You will be able to")).toBeInTheDocument();
+    expect(screen.getAllByText("Select only needed columns.").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/Proof for Select only needed columns/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+
+    expect(screen.getAllByText("Lab 01").length).toBeGreaterThan(0);
+    expect(screen.getByText("Evidence summary")).toBeInTheDocument();
+    expect(screen.getAllByText("Practice needed").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Lab 01 Select only needed columns/ }));
+
+    expect(screen.getByText("Practice rubric")).toBeInTheDocument();
+    expect(screen.getByText("Specific result or output")).toBeInTheDocument();
+    expect(screen.getByText("Example proof")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Proof for Select only needed columns/)).toHaveAttribute(
+      "placeholder",
+      "Example: I practiced this and the result was...",
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Check task" })[0]);
+
+    expect(screen.getByText("Add proof before checking this task.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Proof for Select only needed columns/), {
+      target: { value: "I selected customer_id and email only in my SQL query." },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Check task" })[0]);
+
+    expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /Knowledge check/ }));
+
+    expect(screen.getByText("Concept")).toBeInTheDocument();
+    expect(screen.getByText("Portfolio evidence")).toBeInTheDocument();
+  });
+
+  it("waits for Check answer before revealing quiz feedback", async () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /Knowledge check/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Filters rows by a condition/ }));
+
+    expect(screen.queryByText("WHERE narrows rows.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Check answer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("WHERE narrows rows.")).toBeInTheDocument();
+    });
+  });
+
+  it("does not always show the original correct answer as option A", () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /Knowledge check/ }));
+
+    expect(screen.getByRole("button", { name: /A Creates a table/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /B Filters rows by a condition/ })).toBeInTheDocument();
+  });
+
+  it("uses one shared Check answers button for the whole quiz", async () => {
+    const twoQuestionSession: LearningSession = {
+      ...sqlDocVideoSession,
+      id: "session-two-question-quiz",
+      lessonContent: {
+        ...sqlDocVideoSession.lessonContent!,
+        quiz: [
+          ...sqlDocVideoSession.lessonContent!.quiz,
+          {
+            id: "join-purpose",
+            question: "Why use a JOIN?",
+            options: ["Combines related rows", "Deletes every row"],
+            correctOptionIndex: 0,
+            explanation: "JOIN combines related data.",
+            sectionId: "join-related",
+          },
+        ],
+      },
+    };
+
+    render(<SessionDetail session={twoQuestionSession} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /Knowledge check/ }));
+
+    expect(screen.getAllByRole("button", { name: "Check answer" })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /B Filters rows by a condition/ }));
+    fireEvent.click(screen.getByRole("button", { name: /B Combines related rows/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Check answer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("WHERE narrows rows.")).toBeInTheDocument();
+      expect(screen.getByText("JOIN combines related data.")).toBeInTheDocument();
+    });
+  });
+
+  it("lets the learner retry the quiz after checking answers", async () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /Knowledge check/ }));
+    fireEvent.click(screen.getByRole("button", { name: /B Filters rows by a condition/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Check answer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("WHERE narrows rows.")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry quiz" }));
+
+    expect(screen.queryByText("WHERE narrows rows.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /B Filters rows by a condition/ })).not.toBeDisabled();
+  });
+
+  it("requires passing the quiz before completing the session", () => {
+    const readyButQuizIncompleteSession: LearningSession = {
+      ...sqlDocVideoSession,
+      id: "session-quiz-required",
+      sections: sqlDocVideoSession.sections.map((section) => ({
+        ...section,
+        completed: true,
+        checklist: undefined,
+      })),
+    };
+
+    render(<SessionDetail session={readyButQuizIncompleteSession} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark complete" })[0]);
+
+    expect(screen.queryByText("Done")).not.toBeInTheDocument();
+  });
+
+  it("uses video duration and hides the full-video row when timeline chapters are missing", () => {
+    const noChapterVideoSession: LearningSession = {
+      ...sqlDocVideoSession,
+      id: "session-video-no-chapters",
+      title: "Computer Vision - Deep build",
+      estimatedMinutes: 417,
+      sections: [
+        {
+          id: "core-concepts",
+          title: "Core concepts of Computer Vision",
+          completed: false,
+          exercises: 1,
+          completedExercises: 0,
+          type: "reading",
+        },
+        {
+          id: "practical-application",
+          title: "Practical application of Computer Vision",
+          completed: false,
+          exercises: 1,
+          completedExercises: 0,
+          type: "reading",
+        },
+        {
+          id: "opencv-video",
+          title: "OpenCV Course - Full Tutorial with Python",
+          completed: false,
+          exercises: 0,
+          completedExercises: 0,
+          type: "video",
+        },
+      ],
+      resources: [
+        {
+          id: "opencv-video",
+          title: "OpenCV Course - Full Tutorial with Python",
+          url: "https://www.youtube.com/watch?v=oXlwWbU8l2o",
+          type: "youtube",
+          platform: "Video",
+          duration: "3h 42m",
+        },
+      ],
+    };
+
+    render(<SessionDetail session={noChapterVideoSession} />);
+
+    expect(screen.getByText("01:51:00")).toBeInTheDocument();
+    expect(screen.queryByText("06:56:00")).not.toBeInTheDocument();
   });
 });

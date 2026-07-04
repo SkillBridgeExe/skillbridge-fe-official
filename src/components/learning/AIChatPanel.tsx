@@ -66,7 +66,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-export function AIChatPanel({ sessionId, onClose }: { sessionId?: string; onClose?: () => void }) {
+export function AIChatPanel({
+  sessionId,
+  skillCanonical,
+  onClose,
+}: {
+  sessionId?: string;
+  skillCanonical?: string;
+  onClose?: () => void;
+}) {
   const { t, i18n } = useTranslation("common");
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -127,6 +135,8 @@ export function AIChatPanel({ sessionId, onClose }: { sessionId?: string; onClos
         message: trimmed,
         conversationId,
         language: i18n.language.startsWith("vi") ? "vi" : "en",
+        session_id: sessionId,
+        skill_canonical: skillCanonical,
       });
       setConversationId(reply.conversationId);
       localStorage.setItem(storageKey, reply.conversationId);
