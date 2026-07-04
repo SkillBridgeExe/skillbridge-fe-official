@@ -24,6 +24,10 @@ import { openIntakeCoach } from "./open-intake-coach";
 
 const MAX_REASK = 2;
 
+// Synthetic gap key for the user-initiated "Hỏi thêm để rõ hơn" free-text answer — never
+// sent by BE's Turn-1 analyze, so it can't collide with a real gap code.
+const EXTRA_CLARIFY_GAP = "user_clarify";
+
 const EMPTY_ENTRY = {
   company: "", position: "", startDate: "", endDate: "",
   description: "", achievements: "",
@@ -176,6 +180,12 @@ export function CvBuilderSkill({
     Record<string, { optionId: string | null; freeText: string }>
   >({});
 
+  // ── "Hỏi thêm để rõ hơn" (user-initiated re-ask, Task M4) ──
+  // Local-only: a transient sub-mode of mascotState==='asking' showing ONE generic
+  // free-text question instead of the original chip set.
+  const [askMoreActive, setAskMoreActive] = useState(false);
+  const [askMoreText, setAskMoreText] = useState("");
+
   // ── Trigger analyze (Turn-1) ──
   const handleAnalyze = useCallback(() => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
@@ -267,18 +277,35 @@ export function CvBuilderSkill({
     [draftId, section, fieldPath, currentValue, onApply, resetCompanion],
   );
 
+  // ── Build the wire answer list from a { [gap]: {optionId, freeText} } snapshot ──
+  // Shared by the initial Turn-2 submit AND the Task M4 follow-ups (softer / ask-more)
+  // so every rewrite call sees the SAME per-question shape, plus the synthetic
+  // EXTRA_CLARIFY_GAP entry when the user has answered the "ask more" free-text box.
+  const buildAnswerList = useCallback(
+    (answersSnapshot: typeof answers): AssistantAnswer[] => {
+      if (!companionTurn) return [];
+      const list: AssistantAnswer[] = companionTurn.questions.map((q) => {
+        const a = answersSnapshot[q.gap];
+        return {
+          gap: q.gap,
+          option_id: a?.optionId ?? "other",
+          detail: a?.freeText?.trim() || undefined,
+        };
+      });
+      const clarify = answersSnapshot[EXTRA_CLARIFY_GAP];
+      if (clarify?.freeText?.trim()) {
+        list.push({ gap: EXTRA_CLARIFY_GAP, option_id: "other", detail: clarify.freeText.trim() });
+      }
+      return list;
+    },
+    [companionTurn],
+  );
+
   // ── Submit answers (Turn-2) ──
   const handleSubmitAnswers = useCallback(() => {
     if (!draftId || !companionTurn) return;
 
-    const answerList: AssistantAnswer[] = companionTurn.questions.map((q) => {
-      const a = answers[q.gap];
-      return {
-        gap: q.gap,
-        option_id: a?.optionId ?? "other",
-        detail: a?.freeText?.trim() || undefined,
-      };
-    });
+    const answerList = buildAnswerList(answers);
 
     setMascotState("thinking");
 
@@ -322,10 +349,86 @@ export function CvBuilderSkill({
       },
     );
   }, [
-    draftId, companionTurn, answers, currentValue, fieldPath, section, outputLocale,
+    draftId, companionTurn, answers, buildAnswerList, currentValue, fieldPath, section, outputLocale,
     rewriteMutation, setMascotState, setCompanionPatch,
     setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach,
   ]);
+
+  // ── Follow-up rewrites from the PRESENTING state (Task M4) ──
+  // Re-fires Turn-2 with the SAME target/answers (+ optional tone or an extra
+  // clarify answer). Deliberately does NOT touch companionReaskCount/MAX_REASK:
+  // that budget guards the AUTO re-ask loop inside handleSubmitAnswers; these are
+  // user-initiated, already-presented-a-patch actions, so they're gated only by
+  // "one in flight at a time" (rewriteMutation.isPending) — no separate FE cap.
+  // A failed follow-up keeps the last good companionPatch (don't erase progress),
+  // it only surfaces the error message.
+  const fireFollowupRewrite = useCallback(
+    (opts: { tone?: "softer"; answersSnapshot?: typeof answers } = {}) => {
+      if (!draftId || !companionTurn || rewriteMutation.isPending) return;
+
+      const answerList = buildAnswerList(opts.answersSnapshot ?? answers);
+      setMascotState("thinking");
+
+      rewriteMutation.mutate(
+        {
+          draftId,
+          before: currentValue,
+          answers: answerList,
+          target: fieldPath ?? "",
+          kind: section === "summary" ? "summary" : "bullet",
+          locale: outputLocale,
+          ...(opts.tone ? { tone: opts.tone } : {}),
+        },
+        {
+          onSuccess: (res) => {
+            if (res.ok && res.field_patch) {
+              setCompanionPatch(res.field_patch);
+              setCompanionMessage(null);
+            } else {
+              setCompanionMessage(
+                res.message ?? t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }),
+              );
+            }
+            setMascotState("presenting");
+          },
+          onError: () => {
+            setCompanionMessage(t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }));
+            setMascotState("presenting");
+          },
+        },
+      );
+    },
+    [
+      draftId, companionTurn, rewriteMutation, buildAnswerList, answers, currentValue, fieldPath,
+      section, outputLocale, setMascotState, setCompanionPatch, setCompanionMessage, t,
+    ],
+  );
+
+  // ── "Viết lại nhẹ hơn" ──
+  const handleRewriteSofter = useCallback(() => {
+    fireFollowupRewrite({ tone: "softer" });
+  }, [fireFollowupRewrite]);
+
+  // ── "Hỏi thêm để rõ hơn" — open the single free-text ask ──
+  const handleAskMore = useCallback(() => {
+    setAskMoreText("");
+    setAskMoreActive(true);
+    setCompanionMessage(null);
+    setMascotState("asking");
+  }, [setMascotState, setCompanionMessage]);
+
+  // ── "Hỏi thêm để rõ hơn" — submit the free-text answer, append + re-fire ──
+  const handleSubmitAskMore = useCallback(() => {
+    const text = askMoreText.trim();
+    if (!text) return;
+    const nextAnswers = {
+      ...answers,
+      [EXTRA_CLARIFY_GAP]: { optionId: "other", freeText: text },
+    };
+    setAnswers(nextAnswers);
+    setAskMoreActive(false);
+    fireFollowupRewrite({ answersSnapshot: nextAnswers });
+  }, [askMoreText, answers, fireFollowupRewrite]);
 
   // ── Apply patch ──
   const handleApply = useCallback(() => {
@@ -337,6 +440,8 @@ export function CvBuilderSkill({
 
   // ── Discard ──
   const handleDiscard = useCallback(() => {
+    setAskMoreActive(false);
+    setAskMoreText("");
     resetCompanion();
     useCompanionStore.getState().dismissActive();
   }, [resetCompanion]);
@@ -386,8 +491,8 @@ export function CvBuilderSkill({
         </p>
       )}
 
-      {/* ── STATE: ASKING ── */}
-      {mascotState === "asking" && companionTurn && companionTurn.questions.length > 0 && (
+      {/* ── STATE: ASKING (original chip questions) ── */}
+      {mascotState === "asking" && !askMoreActive && companionTurn && companionTurn.questions.length > 0 && (
         <div className="space-y-3">
           {companionTurn.questions.map((q) => (
             <QuestionChips
@@ -425,6 +530,32 @@ export function CvBuilderSkill({
         </div>
       )}
 
+      {/* ── STATE: ASKING (user-initiated "Hỏi thêm để rõ hơn" — ONE free-text question) ── */}
+      {mascotState === "asking" && askMoreActive && (
+        <div className="space-y-2">
+          <p className="text-[13px] font-medium text-[#2F3437] leading-relaxed">
+            {t("companion.askMorePrompt", { defaultValue: "Cho mình biết thêm để viết chính xác hơn nhé." })}
+          </p>
+          <input
+            type="text"
+            autoFocus
+            value={askMoreText}
+            onChange={(e) => setAskMoreText(e.target.value)}
+            placeholder={t("companion.freeTextPlaceholder", { defaultValue: "Hoặc nhập chi tiết..." })}
+            className="w-full px-3 py-2 text-xs border border-[#EAEAEA] rounded-lg bg-white focus:border-primary/40 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+          />
+          <Button
+            size="sm"
+            onClick={handleSubmitAskMore}
+            disabled={!askMoreText.trim() || rewriteMutation.isPending}
+            className="h-8 text-xs bg-primary hover:bg-primary/90 text-white gap-1.5"
+          >
+            <Send className="w-3 h-3" />
+            {t("companion.send", { defaultValue: "Gửi" })}
+          </Button>
+        </div>
+      )}
+
       {/* ── STATE: THINKING ── */}
       {mascotState === "thinking" && (
         <div className="space-y-2 py-2">
@@ -447,7 +578,7 @@ export function CvBuilderSkill({
                 after={companionPatch.after}
                 why={companionPatch.why}
               />
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={handleApply}
@@ -455,6 +586,26 @@ export function CvBuilderSkill({
                 >
                   <Check className="w-3 h-3" />
                   {t("companion.apply", { defaultValue: "Áp dụng" })}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRewriteSofter}
+                  disabled={rewriteMutation.isPending}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <PenLine className="w-3 h-3" />
+                  {t("companion.rewriteSofter", { defaultValue: "Viết lại nhẹ hơn" })}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAskMore}
+                  disabled={rewriteMutation.isPending}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <MessageCircle className="w-3 h-3" />
+                  {t("companion.askMore", { defaultValue: "Hỏi thêm để rõ hơn" })}
                 </Button>
                 <Button
                   size="sm"
