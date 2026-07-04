@@ -1542,6 +1542,7 @@ export default {
       badgeOutstanding: "Hồ sơ nổi bật",
       exportReport: "Xuất báo cáo",
       editCta: "Sửa CV & tải PDF",
+      overallScore: "Điểm CV tổng",
       editNoDataTitle: "Chưa mở được trình sửa",
       editNoDataDesc: "Chưa có dữ liệu CV đã phân tích để chỉnh sửa.",
       "scoreMsg.excellent":
@@ -1550,7 +1551,7 @@ export default {
       "scoreMsg.fair":
         "CV đạt chuẩn cơ bản. Hãy tập trung lượng hoá thành tích.",
       "scoreMsg.poor": "CV cần cải thiện đáng kể. Làm theo gợi ý bên dưới nhé.",
-      "dims.action_verbs": "Động từ hành động & tác động",
+      "dims.action_verbs": "Sử dụng động từ mạnh & Nêu bật kết quả",
       "dims.skills_relevance": "Độ liên quan kỹ năng",
       "dims.experience": "Kinh nghiệm rõ ràng",
       "dims.education": "Học vấn & tinh thần học",

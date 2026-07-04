@@ -129,12 +129,12 @@ function DimensionCard({
                         ? "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]"
                         : "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]"
                     )}>
-                      {t(`diagnosis.provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
+                      {t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs max-w-[280px]">
                     <div className="space-y-1.5">
-                      <p className="font-semibold">{t(`diagnosis.provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
+                      <p className="font-semibold">{t(`provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
                       {dim.provenance.evidence.length > 0 && (
                         <ul className="list-disc pl-4 space-y-0.5 text-[#787774] max-h-32 overflow-y-auto">
                           {dim.provenance.evidence.map((ev, i) => (
@@ -472,8 +472,8 @@ export function DiagnosisStep2Review() {
         breakdown={reviewData?.breakdown}
       />
 
-      {/* ── StatRow (replaces 3 dashboard cards) ── */}
-      <div className="flex justify-center">
+      {/* ── Metadata & Actions ── */}
+      <div className="mx-auto max-w-lg mt-1 mb-10 flex flex-col items-center gap-6">
         <StatRow
           score={overallCvScore}
           atsScore={atsScore}
@@ -482,25 +482,24 @@ export function DiagnosisStep2Review() {
           scoreMessage={scoreLabel}
           atsNote={t("review.atsNote")}
         />
-      </div>
 
-      {/* Quick Actions — i18n (was hardcoded Vietnamese) */}
-      <div className="flex justify-center gap-3 mt-2 mb-6">
-        <Button
-          onClick={handleEditCv}
-          size="sm"
-          className="rounded-lg gap-1.5 text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all justify-center shadow-sm"
-        >
-          <Pencil className="w-3.5 h-3.5" /> {t("review.quickPanel.editCta")}
-        </Button>
-        <Button
-          onClick={() => setShowJdInput(true)}
-          size="sm"
-          variant="outline"
-          className="rounded-lg gap-1.5 text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 active:scale-[0.98] transition-all justify-center"
-        >
-          <Briefcase className="w-3.5 h-3.5" /> {t("review.quickPanel.compareCta")}
-        </Button>
+        <div className="flex w-full justify-center gap-4">
+          <Button
+            onClick={handleEditCv}
+            size="sm"
+            className="rounded-full gap-2 px-6 h-10 text-sm font-bold bg-[#2F3437] text-white hover:bg-[#2F3437]/90 active:scale-[0.98] transition-all shadow-sm"
+          >
+            <Pencil className="w-4 h-4" /> {t("review.quickPanel.editCta")}
+          </Button>
+          <Button
+            onClick={() => setShowJdInput(true)}
+            size="sm"
+            variant="outline"
+            className="rounded-full gap-2 px-6 h-10 text-sm font-bold border-[#EAEAEA] hover:bg-[#FBFBFA] text-[#2F3437] active:scale-[0.98] transition-all"
+          >
+            <Briefcase className="w-4 h-4" /> {t("review.quickPanel.compareCta")}
+          </Button>
+        </div>
       </div>
 
       <SectionRule />

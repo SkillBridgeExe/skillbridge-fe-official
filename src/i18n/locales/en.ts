@@ -1545,6 +1545,7 @@ export default {
       badgeOutstanding: "Outstanding profile",
       exportReport: "Export report",
       editCta: "Edit CV & download PDF",
+      overallScore: "Overall CV score",
       editNoDataTitle: "Can't open the editor",
       editNoDataDesc: "No parsed CV data is available to edit yet.",
       "scoreMsg.excellent":
