@@ -2597,6 +2597,7 @@ export default {
         chipRewrite: "Fix this bullet",
         chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
+        chipViewMatch: "View this JD analysis",
         proveitChip: "⚠ {{skill}}: claimed but not proven",
         proveitIntro:
           "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
@@ -2609,8 +2610,8 @@ export default {
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],
-          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?"],
-          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?"],
+          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?", "Which JD fits me best?"],
+          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?", "Which JD fits me best?"],
         },
       },
       // Learning companion (Task M3) — the mascot's corner-advisor chat on a

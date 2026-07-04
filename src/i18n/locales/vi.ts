@@ -2570,6 +2570,7 @@ export default {
         chipRewrite: "Sửa bullet này",
         chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        chipViewMatch: "Xem phân tích JD này",
         proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
         proveitIntro:
           "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
@@ -2582,8 +2583,8 @@ export default {
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],
-          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?"],
-          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
+          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?", "JD nào hợp tôi nhất?"],
+          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?", "JD nào hợp tôi nhất?"],
         },
       },
       // Trợ lý học tập (Task M3) — chat góc màn hình trên trang session học. Câu mở
