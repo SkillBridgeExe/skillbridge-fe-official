@@ -68,6 +68,12 @@ export interface AssistantRewriteRequest {
   /** "bullet" for projects/experience, "summary" for summary. */
   kind: "bullet" | "summary";
   locale: "vi" | "en";
+  /**
+   * Task M4 — set ONLY when the user clicks "Viết lại nhẹ hơn" on an already-presented
+   * patch (re-fires the SAME answers/target, asking BE for a gentler tone). Additive:
+   * an older BE ignores the unknown field.
+   */
+  tone?: "softer";
 }
 
 export type AssistantRewriteReason =
