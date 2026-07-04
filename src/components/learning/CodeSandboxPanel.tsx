@@ -497,7 +497,7 @@ export function CodeSandboxPanel({
   const lineCount = code.split("\n").length;
 
   return (
-    <div className="fixed top-0 right-0 z-50 flex flex-col h-screen bg-slate-900 border-l border-slate-800 w-[420px] lg:w-[480px] shadow-2xl animate-in slide-in-from-right-4 duration-300 text-slate-200">
+    <div className="absolute top-0 right-0 z-30 flex flex-col h-full bg-slate-900 border-l border-slate-800 w-[420px] lg:w-[480px] shadow-2xl animate-in slide-in-from-right-4 duration-300 text-slate-200">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950 shadow-sm z-10">
         <div className="flex items-center gap-3">
