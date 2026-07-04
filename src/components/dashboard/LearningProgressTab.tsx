@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,16 +16,140 @@ import {
   MOCK_AI_INSIGHTS,
   MOCK_TROPHY_STATS,
 } from "@/lib/mock-data/dashboard";
+import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 
 const DONUT_COLORS = ["#e2e8f0", "#f59e0b", "#10b981"]; 
-const DONUT_DATA = [
-  { name: "Not Started", value: MOCK_MODULE_PROGRESS.notStarted },
-  { name: "In Progress", value: MOCK_MODULE_PROGRESS.inProgress },
-  { name: "Completed", value: MOCK_MODULE_PROGRESS.completed },
-];
 
 export default function LearningProgressTab() {
-  const activeCourses = MOCK_COURSES.filter((c) => c.status === "active");
+  const weeks = useActiveWeekPlans();
+  const { reviewData, targetRole } = useDiagnosisStore();
+
+  const hasRealRoadmap = weeks.length > 0;
+
+  // Compute stats from dynamic learning sessions
+  const sessions = useMemo(() => weeks.flatMap((w) => w.sessions || []), [weeks]);
+  
+  const completedUnits = useMemo(() => sessions.filter((s) => s.status === "completed").length, [sessions]);
+  const totalUnits = sessions.length;
+  
+  const earnedStars = useMemo(() => sessions.reduce((total, s) => total + (s.stars || 0), 0), [sessions]);
+  const totalStars = useMemo(() => sessions.reduce((total, s) => total + (s.maxStars || 0), 0), [sessions]);
+
+  const roleName = targetRole || reviewData?.parsedCv?.inferred_roles?.[0] || "Frontend Career Path";
+
+  // Compute lesson and test progress from sections
+  const allSections = useMemo(() => sessions.flatMap((s) => s.sections || []), [sessions]);
+  
+  const lessonsCompleted = useMemo(() => {
+    if (!hasRealRoadmap) return MOCK_TROPHY_STATS.lessonsCompleted;
+    return allSections.length > 0
+      ? allSections.filter((sec) => sec.completed && (sec.type === "video" || sec.type === "reading")).length
+      : completedUnits;
+  }, [allSections, completedUnits, hasRealRoadmap]);
+
+  const testsCompleted = useMemo(() => {
+    if (!hasRealRoadmap) return MOCK_TROPHY_STATS.testsCompleted;
+    return allSections.length > 0
+      ? allSections.filter((sec) => sec.completed && (sec.type === "quiz" || sec.type === "practice")).length
+      : 0;
+  }, [allSections, hasRealRoadmap]);
+
+  const lessonsRatio = useMemo(() => {
+    const total = lessonsCompleted + testsCompleted;
+    if (total === 0) return 0;
+    return (lessonsCompleted / total) * 100;
+  }, [lessonsCompleted, testsCompleted]);
+
+  const testsRatio = useMemo(() => {
+    const total = lessonsCompleted + testsCompleted;
+    if (total === 0) return 0;
+    return (testsCompleted / total) * 100;
+  }, [lessonsCompleted, testsCompleted]);
+
+  // Compute donut chart status grouping
+  const moduleProgress = useMemo(() => {
+    if (!hasRealRoadmap) {
+      return {
+        notStarted: MOCK_MODULE_PROGRESS.notStarted,
+        inProgress: MOCK_MODULE_PROGRESS.inProgress,
+        completed: MOCK_MODULE_PROGRESS.completed,
+        total: MOCK_MODULE_PROGRESS.total,
+      };
+    }
+
+    let notStarted = 0;
+    let inProgress = 0;
+    let completed = 0;
+
+    weeks.forEach((week) => {
+      const total = week.sessions.length;
+      const done = week.sessions.filter((s) => s.status === "completed").length;
+      const started = week.sessions.some((s) => s.status === "in-progress" || s.status === "completed");
+
+      if (done === total && total > 0) {
+        completed++;
+      } else if (started) {
+        inProgress++;
+      } else {
+        notStarted++;
+      }
+    });
+
+    return {
+      notStarted,
+      inProgress,
+      completed,
+      total: weeks.length,
+    };
+  }, [weeks, hasRealRoadmap]);
+
+  const donutData = useMemo(() => [
+    { name: "Not Started", value: moduleProgress.notStarted },
+    { name: "In Progress", value: moduleProgress.inProgress },
+    { name: "Completed", value: moduleProgress.completed },
+  ], [moduleProgress]);
+
+  // Compute course items list
+  const courses = useMemo(() => {
+    if (!hasRealRoadmap) return MOCK_COURSES;
+
+    return weeks.map((week, idx) => {
+      const completedSessions = week.sessions.filter((s) => s.status === "completed").length;
+      const totalSessions = week.sessions.length;
+      const progress = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+      
+      let status: "active" | "completed" | "not_started" = "not_started";
+      if (completedSessions === totalSessions && totalSessions > 0) {
+        status = "completed";
+      } else if (completedSessions > 0 || week.sessions.some((s) => s.status === "in-progress")) {
+        status = "active";
+      }
+
+      return {
+        id: week.moduleId || String(idx),
+        title: week.moduleTitle,
+        progress,
+        completedUnits: completedSessions,
+        totalUnits: totalSessions,
+        status,
+      };
+    });
+  }, [weeks, hasRealRoadmap]);
+
+  // If there are no active courses, render the first upcoming one as active for UX clarity
+  const activeCourses = useMemo(() => {
+    const active = courses.filter((c) => c.status === "active");
+    if (active.length > 0) return active;
+    const upcoming = courses.filter((c) => c.status === "not_started");
+    return upcoming.slice(0, 1);
+  }, [courses]);
+
+  const upcomingCourses = useMemo(() => {
+    const hasActive = courses.some((c) => c.status === "active");
+    const upcoming = courses.filter((c) => c.status === "not_started");
+    return hasActive ? upcoming : upcoming.slice(1);
+  }, [courses]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -45,7 +170,7 @@ export default function LearningProgressTab() {
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
               <div className="flex items-center gap-5 relative z-10">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl font-black text-primary shadow-inner flex-shrink-0 border border-primary/20">
-                  {MOCK_STUDY_PLAN.level.charAt(0)}
+                  {roleName.charAt(0)}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -54,16 +179,16 @@ export default function LearningProgressTab() {
                       Active Study Plan
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 mt-1.5">{MOCK_STUDY_PLAN.name}</h3>
+                  <h3 className="text-base font-bold text-slate-900 mt-1.5">{roleName}</h3>
                   <div className="flex items-center gap-4 mt-1.5">
                      <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> 
-                        <strong className="text-slate-700">{MOCK_STUDY_PLAN.totalCups}</strong>/{MOCK_STUDY_PLAN.maxCups} Trophies
+                        <strong className="text-slate-700">{hasRealRoadmap ? earnedStars : MOCK_STUDY_PLAN.totalCups}</strong>/{hasRealRoadmap ? totalStars : MOCK_STUDY_PLAN.maxCups} Trophies
                      </p>
                      <div className="w-1 h-1 rounded-full bg-slate-200" />
                      <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
                         <Medal className="w-3.5 h-3.5 text-primary" /> 
-                        <strong className="text-slate-700">{MOCK_STUDY_PLAN.unitsWith2Cups}</strong>/{MOCK_STUDY_PLAN.totalUnits} Units
+                        <strong className="text-slate-700">{hasRealRoadmap ? completedUnits : MOCK_STUDY_PLAN.unitsWith2Cups}</strong>/{hasRealRoadmap ? totalUnits : MOCK_STUDY_PLAN.totalUnits} Units
                      </p>
                   </div>
                 </div>
@@ -103,26 +228,30 @@ export default function LearningProgressTab() {
                 <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-400 cursor-help transition-colors" />
               </div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-900 tracking-tight">{MOCK_STUDY_PLAN.unitsWith2Cups}</span>
-                <span className="text-sm text-slate-400 font-bold">/{MOCK_STUDY_PLAN.totalUnits}</span>
+                <span className="text-4xl font-black text-slate-900 tracking-tight">{hasRealRoadmap ? completedUnits : MOCK_STUDY_PLAN.unitsWith2Cups}</span>
+                <span className="text-sm text-slate-400 font-bold">/{hasRealRoadmap ? totalUnits : MOCK_STUDY_PLAN.totalUnits}</span>
               </div>
               {/* Mini progress bar */}
               <div className="h-2.5 bg-slate-100 rounded-full mt-4 overflow-hidden shadow-inner">
-                <div className="flex h-full">
-                  <div className="bg-primary h-full rounded-l-full relative" style={{ width: `${(MOCK_TROPHY_STATS.lessonsCompleted / (MOCK_TROPHY_STATS.lessonsCompleted + MOCK_TROPHY_STATS.testsCompleted + 1)) * 100}%` }}>
-                    <div className="absolute inset-0 bg-white/20 w-full" />
+                {lessonsCompleted + testsCompleted > 0 ? (
+                  <div className="flex h-full">
+                    <div className="bg-primary h-full rounded-l-full relative" style={{ width: `${lessonsRatio}%` }}>
+                      <div className="absolute inset-0 bg-white/20 w-full" />
+                    </div>
+                    <div className="bg-emerald-500 h-full rounded-r-full" style={{ width: `${testsRatio}%` }} />
                   </div>
-                  <div className="bg-emerald-500 h-full rounded-r-full" style={{ width: `${(MOCK_TROPHY_STATS.testsCompleted / (MOCK_TROPHY_STATS.lessonsCompleted + MOCK_TROPHY_STATS.testsCompleted + 1)) * 100}%` }} />
-                </div>
+                ) : (
+                  <div className="w-0 h-full bg-slate-200" />
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] font-medium">
                 <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
-                  <span className="text-slate-500">Lessons</span><strong className="text-slate-800">{MOCK_TROPHY_STATS.lessonsCompleted}</strong>
+                  <span className="text-slate-500">Lessons</span><strong className="text-slate-800">{lessonsCompleted}</strong>
                 </span>
                 <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
-                  <span className="text-slate-500">Tests</span><strong className="text-slate-800">{MOCK_TROPHY_STATS.testsCompleted}</strong>
+                  <span className="text-slate-500">Tests</span><strong className="text-slate-800">{testsCompleted}</strong>
                 </span>
               </div>
             </CardContent>
@@ -137,16 +266,19 @@ export default function LearningProgressTab() {
                 Total Trophies Earned
               </p>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-900 tracking-tight">{MOCK_TROPHY_STATS.totalEarned}</span>
-                <span className="text-sm text-slate-400 font-bold">/{MOCK_TROPHY_STATS.totalPossible}</span>
+                <span className="text-4xl font-black text-slate-900 tracking-tight">{hasRealRoadmap ? earnedStars : MOCK_TROPHY_STATS.totalEarned}</span>
+                <span className="text-sm text-slate-400 font-bold">/{hasRealRoadmap ? totalStars : MOCK_TROPHY_STATS.totalPossible}</span>
               </div>
               <div className="h-2.5 bg-slate-100 rounded-full mt-4 overflow-hidden shadow-inner">
-                <div className="flex h-full">
-                  <div className="bg-amber-500 h-full rounded-l-full relative" style={{ width: `${(MOCK_TROPHY_STATS.totalEarned / MOCK_TROPHY_STATS.totalPossible) * 100}%` }}>
-                     <div className="absolute inset-0 bg-white/20 w-full" />
+                {totalStars > 0 ? (
+                  <div className="flex h-full">
+                    <div className="bg-amber-500 h-full rounded-l-full relative" style={{ width: `${(earnedStars / totalStars) * 100}%` }}>
+                       <div className="absolute inset-0 bg-white/20 w-full" />
+                    </div>
                   </div>
-                  <div className="bg-emerald-500 h-full rounded-r-full" style={{ width: "5%" }} />
-                </div>
+                ) : (
+                  <div className="w-0 h-full bg-slate-250" />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -170,7 +302,7 @@ export default function LearningProgressTab() {
                <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
                    <Pie 
-                     data={DONUT_DATA} 
+                     data={donutData} 
                      cx="50%" 
                      cy="50%" 
                      innerRadius={70} 
@@ -180,7 +312,7 @@ export default function LearningProgressTab() {
                      strokeWidth={0}
                      cornerRadius={8}
                     >
-                     {DONUT_DATA.map((_, idx) => (
+                     {donutData.map((_, idx) => (
                        <Cell key={idx} fill={DONUT_COLORS[idx]} />
                      ))}
                    </Pie>
@@ -197,7 +329,7 @@ export default function LearningProgressTab() {
                </ResponsiveContainer>
                {/* Center text overlay */}
                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-4">
-                 <p className="text-4xl font-black text-slate-900 tracking-tight">{MOCK_MODULE_PROGRESS.total}</p>
+                 <p className="text-4xl font-black text-slate-900 tracking-tight">{moduleProgress.total}</p>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Courses</p>
                </div>
              </div>
@@ -238,13 +370,13 @@ export default function LearningProgressTab() {
               ))}
             </div>
 
-            {MOCK_COURSES.filter((c) => c.status === "not_started").length > 0 && (
+            {upcomingCourses.length > 0 && (
               <div className="pt-5 border-t border-slate-100/80 mt-auto">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                    <Clock className="w-3.5 h-3.5" /> Upcoming Courses
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                   {MOCK_COURSES.filter((c) => c.status === "not_started")
+                   {upcomingCourses
                      .slice(0, 2)
                      .map((course) => (
                        <div key={course.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100/80 bg-white/60 hover:bg-white hover:shadow-sm hover:border-slate-200 transition-all cursor-pointer">

@@ -1627,8 +1627,7 @@ export default {
       daysQuestion: "How many days do you have for this learning plan?",
       hoursQuestion: "Nice. How many hours can you study each week?",
       languageQuestion: "Which language should I use for your roadmap?",
-      confirmQuestion:
-        "Great. I will create a {{days}}-day roadmap with {{hours}}h/week in {{language}}. Ready?",
+      confirmQuestion: "Great. I will create your roadmap in {{language}}. Ready?",
       daysOption: "{{count}} days",
       hoursOption: "{{count}}h/week",
       languageVi: "Tiếng Việt",

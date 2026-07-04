@@ -6,7 +6,21 @@ export interface LearningSection {
   completedExercises: number;
   type: "video" | "reading" | "practice" | "quiz";
   body?: string;
-  checklist?: string[];
+  objectiveId?: string;
+  checklist?: Array<{ id: string; label: string; objectiveId?: string }>;
+}
+
+export interface LearningObjective {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface LearningVideoChapter {
+  id: string;
+  title: string;
+  startSeconds: number;
+  objectiveId?: string;
 }
 
 export interface LearningLessonContent {
@@ -15,11 +29,13 @@ export interface LearningLessonContent {
   licenseType: "skillbridge_original" | "official_reference" | "link_only";
   reusePolicy: "full_reuse_allowed" | "summary_only" | "link_only";
   sourceResourceIds: string[];
+  learningObjectives: LearningObjective[];
   sections: Array<{
     id: string;
     title: string;
     body: string;
-    checklist: string[];
+    objectiveId?: string;
+    checklist: Array<{ id: string; label: string; objectiveId?: string }>;
   }>;
   quiz: Array<{
     id: string;
@@ -27,6 +43,15 @@ export interface LearningLessonContent {
     options: string[];
     correctOptionIndex: number;
     explanation: string;
+    kind?: "concept" | "scenario" | "debug" | "mini_case";
+    objectiveId?: string;
+    sectionId?: string;
+    remediation?: {
+      sectionId?: string;
+      videoResourceId?: string;
+      videoChapterId?: string;
+      startSeconds?: number;
+    };
   }>;
   exercises: Array<{
     id: string;
@@ -67,6 +92,7 @@ export interface LearningSession {
     matchScore?: number;
     qualityScore?: number;
     freshnessScore?: number;
+    videoChapters?: LearningVideoChapter[];
   }>;
   recommendedCourses?: Array<{
     id: string;

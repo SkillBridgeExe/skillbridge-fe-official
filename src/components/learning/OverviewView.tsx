@@ -324,19 +324,21 @@ export function OverviewView() {
                 <div
                   key={idx}
                   className={cn(
-                    "min-h-[180px] p-2.5 transition-colors",
-                    today ? "bg-primary/5 border-t-2 border-t-primary" : "hover:bg-slate-50/70"
+                    "min-h-[180px] p-2.5 transition-all duration-300",
+                    today 
+                      ? "bg-gradient-to-b from-primary/[0.03] to-transparent border-t-2 border-t-primary shadow-[inset_0_2px_4px_rgba(59,130,246,0.02)]" 
+                      : "hover:bg-slate-50/65"
                   )}
                 >
                 {/* Day header */}
                 <div className="text-center mb-2.5">
-                  <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{dayLabels[idx]}</p>
+                  <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">{dayLabels[idx]}</p>
                   <div className="mt-1 flex justify-center">
                     <span className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
+                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
                       today
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-slate-700"
+                        ? "bg-gradient-to-br from-primary to-blue-600 text-white shadow-md shadow-primary/20 scale-105"
+                        : "text-slate-700 hover:bg-slate-100"
                     )}>
                       {date.getDate()}
                     </span>
@@ -359,36 +361,36 @@ export function OverviewView() {
                           onClick={() => canClick && navigate(`/learning/session/${session.id}`)}
                           disabled={isLocked}
                           className={cn(
-                            "w-full rounded-xl border p-2 text-left transition-all",
+                            "w-full rounded-xl border p-2 text-left transition-all duration-300 shadow-sm",
                             isLocked
-                              ? "opacity-40 cursor-not-allowed border-slate-100 bg-slate-50/80"
+                              ? "opacity-45 cursor-not-allowed border-slate-100 bg-slate-50/50"
                               : "hover:shadow-md hover:-translate-y-0.5 cursor-pointer bg-white",
-                            isActive && "border-primary/40 ring-2 ring-primary/20 shadow-sm bg-primary/[0.02]",
-                            isCompleted && "border-emerald-200 bg-emerald-50/30",
+                            isActive && "border-primary/40 ring-2 ring-primary/10 shadow-md shadow-primary/5 bg-gradient-to-br from-white to-primary/[0.01]",
+                            isCompleted && "border-emerald-200 bg-emerald-50/20 hover:border-emerald-355",
                             !isActive && !isCompleted && canClick && "border-slate-200"
                           )}
                         >
                           {/* Session badge */}
                           <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                             <span className={cn(
-                              "inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-black flex-shrink-0",
-                              isCompleted && "bg-emerald-500 text-white",
-                              isActive && "bg-primary text-white",
-                              isLocked && "bg-slate-100 text-slate-400"
+                              "inline-flex items-center justify-center w-5 h-5 rounded-lg text-[9px] font-black flex-shrink-0 shadow-sm",
+                              isCompleted && "bg-emerald-500 text-white shadow-emerald-500/20",
+                              isActive && "bg-primary text-white shadow-primary/20",
+                              isLocked && "bg-slate-200 text-slate-400 border border-slate-300/10"
                             )}>
-                              {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : session.sessionNumber}
+                              {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : session.sessionNumber}
                             </span>
-                            <Badge className={cn("text-[10px] px-1.5 py-0.5 border font-semibold", colors.bg, colors.text, colors.border)}>
-                              <span className="truncate max-w-[85px]">{session.skill}</span>
+                            <Badge className={cn("text-[9px] font-bold px-1.5 py-0.5 border shadow-none rounded-md whitespace-nowrap", colors.bg, colors.text, colors.border)}>
+                              <span className="truncate max-w-[70px]">{session.skill}</span>
                             </Badge>
                           </div>
-                          <p className="text-[11px] font-bold text-slate-800 leading-snug line-clamp-2 mb-1" title={session.title}>
+                          <p className="text-[11px] font-bold text-slate-800 leading-snug line-clamp-2 mb-1.5" title={session.title}>
                             {session.title}
                           </p>
                           {/* ✅ Start button for active sessions */}
                           {isActive && (
-                            <div className="mt-1.5 flex w-full items-center justify-center gap-1 bg-primary text-white text-[9px] font-black py-1 rounded-lg">
-                              <PlayCircle className="h-3 w-3" /> {t("learning.common.start")}
+                            <div className="mt-1.5 flex w-full items-center justify-center gap-1 bg-primary text-white text-[9px] font-black py-1.5 rounded-lg shadow-sm shadow-primary/10 hover:bg-primary/95 active:scale-[0.98] transition-all">
+                              <PlayCircle className="h-3 w-3 fill-white/20" /> {t("learning.common.start")}
                             </div>
                           )}
                           {/* Stars */}
@@ -439,11 +441,11 @@ export function OverviewView() {
                   onClick={() => !isLocked && navigate(`/learning/session/${session.id}`)}
                   disabled={isLocked}
                   className={cn(
-                    "relative w-full overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 md:p-5 sm:pr-6 rounded-2xl border text-left transition-all duration-300 group",
+                    "relative w-full overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 md:p-5 sm:pr-6 rounded-2xl border text-left transition-all duration-300 group shadow-sm",
                     isLocked 
-                      ? "bg-slate-50/60 border-dashed border-slate-200 hover:bg-slate-100/50" 
-                      : "bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 border-slate-200",
-                    isActive && "ring-1 ring-primary/30 border-primary/50 shadow-lg shadow-primary/10 bg-gradient-to-r from-white to-primary/[0.03]"
+                      ? "bg-slate-50/50 border-dashed border-slate-200 hover:bg-slate-100/50 opacity-60" 
+                      : "bg-white hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-0.5 border-slate-200",
+                    isActive && "ring-2 ring-primary/10 border-primary/40 shadow-lg shadow-primary/[0.03] bg-gradient-to-br from-white to-primary/[0.01]"
                   )}
                 >
                   {/* Active Indicator Line */}
@@ -557,9 +559,6 @@ export function OverviewView() {
 
         {/* Horizontal flow */}
         <div className="relative">
-          {/* Main horizontal connecting line (background) */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-1 bg-slate-100 rounded-full z-0 hidden md:block"></div>
-
           <div 
             ref={roadmapScrollRef}
             onMouseDown={handleMouseDown}
@@ -594,16 +593,39 @@ export function OverviewView() {
 
                     {/* Top Row: Week Badge & Status */}
                     <div className="flex justify-between items-start mb-2">
-                       <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                        {t("learning.common.week", { number: mod.weekNumber })}
-                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                          {t("learning.common.week", { number: mod.weekNumber })}
+                        </span>
+                        {isInProgress && (
+                          <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none animate-pulse">
+                            {t("learning.status.inProgress")}
+                          </Badge>
+                        )}
+                        {isCompleted && (
+                          <Badge variant="outline" className="w-fit bg-emerald-50 text-emerald-600 border-emerald-250 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
+                            {t("learning.status.completed")}
+                          </Badge>
+                        )}
+                        {isLocked && (
+                          <Badge variant="outline" className="w-fit bg-slate-50 text-slate-400 border-slate-200 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
+                            {t("learning.status.locked")}
+                          </Badge>
+                        )}
+                      </div>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-sm transition-transform",
                         isCompleted && "bg-emerald-500 text-white shadow-emerald-500/20",
                         isInProgress && "bg-primary text-white shadow-primary/30",
-                        isLocked && "bg-slate-100 text-slate-400"
+                        isLocked && "bg-slate-100 text-slate-400 border border-slate-200"
                       )}>
-                        {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : mod.weekNumber}
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-4 h-4" />
+                        ) : isLocked ? (
+                          <Lock className="w-3.5 h-3.5" />
+                        ) : (
+                          mod.weekNumber
+                        )}
                       </div>
                     </div>
 
@@ -653,14 +675,34 @@ export function OverviewView() {
 
                   {/* Dynamic Connector */}
                   {idx < roadmapModules.length - 1 && (
-                    <div className="flex items-center justify-center w-8 md:w-12 relative z-0">
+                    <div className="flex items-center justify-center w-8 md:w-12 relative z-0 flex-shrink-0 px-0.5">
                        <div className={cn(
-                          "w-full h-1 rounded-full transition-colors duration-500",
-                          isCompleted ? "bg-emerald-400" : "bg-slate-100"
+                          "w-full transition-all duration-500",
+                          isCompleted && roadmapModules[idx+1]?.status === "completed" && "h-1 bg-gradient-to-r from-emerald-500 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded-full",
+                          isCompleted && roadmapModules[idx+1]?.status === "in-progress" && "h-1 bg-gradient-to-r from-emerald-500 to-primary rounded-full shadow-[0_0_8px_rgba(16,185,129,0.2)]",
+                          isInProgress && "h-1 bg-gradient-to-r from-primary to-slate-200 rounded-full",
+                          isLocked && "h-[2px] border-t border-dashed border-slate-200",
+                          !isCompleted && !isInProgress && "h-[2px] border-t border-dashed border-slate-200"
                        )} />
-                       {/* Animated dot on active path */}
+
+                       {/* Solid Arrowhead pointing right */}
+                       <svg className={cn(
+                         "w-1.5 h-1.5 absolute -right-0.5 top-1/2 -translate-y-1/2 fill-current z-10 transition-colors duration-500",
+                         isCompleted && roadmapModules[idx+1]?.status === "completed" && "text-emerald-500",
+                         isCompleted && roadmapModules[idx+1]?.status === "in-progress" && "text-primary",
+                         isInProgress && "text-slate-300",
+                         isLocked && "text-slate-200"
+                       )} viewBox="0 0 8 8">
+                         <path d="M 0 0 L 8 4 L 0 8 Z" />
+                       </svg>
+
+                       {/* Animated pulse dot on active path */}
                        {isCompleted && roadmapModules[idx+1]?.status === "in-progress" && (
-                          <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary animate-ping" />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(59,130,246,0.6)] relative">
+                              <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
+                            </div>
+                          </div>
                        )}
                     </div>
                   )}
