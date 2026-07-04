@@ -1392,6 +1392,11 @@ export default {
     },
   },
   diagnosis: {
+    rubricFallback: {
+      title: "This score is not based on your pasted JD yet",
+      body: "The JD contains requirements outside SkillBridge's skill dictionary, so scoring fell back to the {{role}} role standard. Unrecognized requirements: {{skills}}.",
+      bodyNoRole: "The JD contains requirements outside SkillBridge's skill dictionary, so scoring fell back to standard role rubric. Unrecognized requirements: {{skills}}.",
+    },
     header: {
       badge: "AI Analysis",
       title: "Where does your CV stand?",

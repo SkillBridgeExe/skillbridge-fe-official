@@ -1388,6 +1388,11 @@ export default {
     },
   },
   diagnosis: {
+    rubricFallback: {
+      title: "Điểm dưới đây chưa chấm theo JD bạn dán",
+      body: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge, nên hệ thống tạm chấm theo chuẩn vai trò {{role}}. Yêu cầu chưa nhận diện được: {{skills}}.",
+      bodyNoRole: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge nên chưa thể chấm điểm theo JD. Yêu cầu chưa nhận diện được: {{skills}}.",
+    },
     header: {
       badge: "Phân tích AI",
       title: "CV của bạn đang ở mức nào?",
