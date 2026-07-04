@@ -60,3 +60,7 @@ export const AdminBusinessProfiles = lazy(() => import("@/pages/admin/AdminBusin
 
 // Dev-only mascot animation showcase (visit /mascot). Safe to remove later.
 export const MascotShowcase = lazy(() => import("@/pages/dev/MascotShowcase"));
+
+// Dev-only resume-engine template review harness (visit /dev/resume-smoke).
+// Route registration is gated by import.meta.env.DEV in App.tsx.
+export const ResumeSmoke = lazy(() => import("@/pages/dev/ResumeSmoke"));

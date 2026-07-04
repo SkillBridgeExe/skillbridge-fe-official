@@ -103,6 +103,9 @@ const App = () => (
               <Route path="/roadmap-generator" element={<Navigate to="/diagnosis" replace />} />
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
+              {import.meta.env.DEV ? (
+                <Route path="/dev/resume-smoke" element={<Pages.ResumeSmoke />} />
+              ) : null}
 
               <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
               <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
