@@ -69,6 +69,9 @@ export interface CvJdMatch {
   inferred_skills?: InferredSkill[];
   /** Thước seniority khi chấm theo rubric; null = chấm theo JD dán (thước của JD). */
   rubric_band?: RubricBand | null;
+  fell_back_to_rubric?: boolean;
+  source_of_requirements?: "role_rubric" | "jd_extraction" | "none";
+  unnormalized_jd_requirements?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
 }
 
 export type RubricBand = "intern" | "fresher" | "mid";
@@ -449,6 +452,7 @@ export interface CvJdMatchParsedResponse {
   rubric_band?: RubricBand | null;
   /** cv_jd_match_v2: non-skill dimensions extracted from JD (seniority/language/education/domain/work_mode). */
   jd_dimensions?: JdDimension[];
+  fell_back_to_rubric?: boolean;
 }
 
 export interface CvMatchDto {
