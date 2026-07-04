@@ -35,6 +35,7 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
+import { CodeSandboxPanel } from "./CodeSandboxPanel";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import { hasApiAuthSession } from "@/services/auth-session.service";
 import {
@@ -1536,6 +1537,132 @@ function EvidenceSummary({
     </section>
   );
 }
+const getSectionEnrichments = (skillCanonical: string, title: string) => {
+  const sk = skillCanonical.toLowerCase();
+  const t = title.toLowerCase();
+
+  // 1. React Template
+  if (sk.includes("react")) {
+    return {
+      exampleCode: `import React, { useState, useEffect } from 'react';\n\nexport function UserProfile({ userId }) {\n  const [user, setUser] = useState(null);\n\n  useEffect(() => {\n    // Fetch user details\n    fetch(\`/api/users/\${userId}\`)\n      .then(res => res.json())\n      .then(data => setUser(data));\n  }, [userId]);\n\n  if (!user) return <p>Loading user profile...</p>;\n\n  return (\n    <div className="p-4 rounded-xl border border-slate-200">\n      <h3 className="text-lg font-bold">{user.name}</h3>\n      <p className="text-slate-500">{user.email}</p>\n    </div>\n  );\n}`,
+      proTip: "Always specify the dependency array in useEffect to avoid infinite render loops, and make sure to clean up event listeners or timers on unmount!"
+    };
+  }
+
+  // 2. JS / TS Template
+  if (sk.includes("javascript") || sk.includes("typescript")) {
+    return {
+      exampleCode: `// Async/Await API Fetch with TypeScript interface\ninterface JobMatch {\n  jobId: string;\n  score: number;\n}\n\nasync function fetchJobMatches(userId: string): Promise<JobMatch[]> {\n  try {\n    const response = await fetch(\`/api/matches/\${userId}\`);\n    if (!response.ok) throw new Error("Failed to load matches");\n    return await response.json();\n  } catch (error) {\n    console.error("Match error:", error);\n    return [];\n  }\n}`,
+      proTip: "Use 'const' for variables by default. Only use 'let' if you expect the variable value to change. Avoid 'var' entirely in modern JS/TS."
+    };
+  }
+
+  // 3. HTML / CSS Template
+  if (sk.includes("html") || sk.includes("css")) {
+    return {
+      exampleCode: `<!-- Semantic HTML structure with Flexbox centering CSS -->\n<main class="container">\n  <article class="card">\n    <h2>Learning Dashboard</h2>\n    <p>Track your generated roadmap and complete exercises.</p>\n  </article>\n</main>\n\n<style>\n  .container {\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    min-height: 100vh;\n    background: #f8fafc;\n  }\n  .card {\n    padding: 24px;\n    border-radius: 12px;\n    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);\n  }\n</style>`,
+      proTip: "Using semantic tags like <main>, <article>, and <section> instead of generic <div> tags greatly improves both SEO indexing and Screen Reader accessibility."
+    };
+  }
+
+  // 4. SQL / Postgres Template
+  if (sk.includes("sql") || sk.includes("postgresql")) {
+    return {
+      exampleCode: `-- SQL Inner Join with Aggregation and Filter\nSELECT \n  d.role_title,\n  COUNT(u.id) as total_candidates,\n  ROUND(AVG(m.score), 2) as avg_match_score\nFROM job_descriptions d\nINNER JOIN cv_match_scores m ON d.id = m.job_id\nINNER JOIN users u ON m.user_id = u.id\nWHERE m.score >= 70\nGROUP BY d.role_title\nHAVING COUNT(u.id) > 5\nORDER BY avg_match_score DESC;`,
+      proTip: "Always index database columns that are frequently used in WHERE conditions, JOIN clauses, or ORDER BY statements to speed up queries!"
+    };
+  }
+
+  // 5. Node.js / Backend Development Template
+  if (sk.includes("node") || sk.includes("backend")) {
+    return {
+      exampleCode: `const express = require('express');\nconst app = express();\n\napp.use(express.json());\n\n// REST API endpoint to save learning progress\napp.post('/api/learning/progress', async (req, res) => {\n  const { sessionId, progress } = req.body;\n  if (!sessionId || !progress) {\n    return res.status(400).json({ error: "Missing parameters" });\n  }\n  try {\n    const saved = await db.saveProgress(req.user.id, sessionId, progress);\n    res.status(201).json(saved);\n  } catch (err) {\n    res.status(500).json({ error: "Database save failed" });\n  }\n});`,
+      proTip: "Always validate incoming request body parameters at the API gateway layer to prevent malicious SQL injections or Server crashes."
+    };
+  }
+
+  // 6. Java / Spring Boot Template
+  if (sk.includes("java") || sk.includes("spring")) {
+    return {
+      exampleCode: `@RestController\n@RequestMapping("/api/roadmap")\npublic class RoadmapController {\n\n    @Autowired\n    private RoadmapService roadmapService;\n\n    @GetMapping("/{userId}")\n    public ResponseEntity<RoadmapDto> getUserRoadmap(@PathVariable String userId) {\n        RoadmapDto roadmap = roadmapService.generateOrGet(userId);\n        if (roadmap == null) {\n            return ResponseEntity.notFound().build();\n        }\n        return ResponseEntity.ok(roadmap);\n    }\n}`,
+      proTip: "Use Constructor Injection instead of field-based @Autowired for dependencies to ensure class parameters can be easily mocked in Unit Tests."
+    };
+  }
+
+  // 7. .NET Template
+  if (sk.includes("dotnet") || sk.includes("csharp")) {
+    return {
+      exampleCode: `using Microsoft.AspNetCore.Mvc;\n\n[ApiController]\n[Route("api/[controller]")]\npublic class LearningController : ControllerBase\n{\n    private readonly ILearningService _learningService;\n    public LearningController(ILearningService service) => _learningService = service;\n\n    [HttpGet("{sessionId}")]\n    public async Task<IActionResult> GetProgress(string sessionId)\n    {\n        var progress = await _learningService.GetProgressAsync(User.GetUserId(), sessionId);\n        return progress == null ? NotFound() : Ok(progress);\n    }\n}`,
+      proTip: "Always use asynchronous operations (async/await) when writing database or file operations to prevent thread pool starvation on high traffic servers."
+    };
+  }
+
+  // 8. Docker / DevOps Template
+  if (sk.includes("docker") || sk.includes("kubernetes") || sk.includes("ci_cd")) {
+    return {
+      exampleCode: `# Multi-stage Build Dockerfile for high-performance frontend\nFROM node:18-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nCOPY --from=builder /app/dist /usr/share/nginx/html\nEXPOSE 80\nCMD ["nginx", "-g", "daemon off;"]`,
+      proTip: "Keep Docker images as lightweight as possible by using alpine-based images and utilizing multi-stage builds to discard build dependencies."
+    };
+  }
+
+  // 9. Git Template
+  if (sk.includes("git")) {
+    return {
+      exampleCode: `# Resolve merge conflicts or cherry pick commits\ngit checkout -b feature/cv-playground\n\n# Staging and committing changes\ngit add .\ngit commit -m "feat(learning): code sandbox drawer"\n\n# Push branch and link to remote upstream\ngit push --set-upstream origin feature/cv-playground`,
+      proTip: "Write descriptive commit messages in the imperative mood (e.g. 'feat: add login validation') to maintain clean and readable git history logs."
+    };
+  }
+
+  // 10. AI / Machine Learning Template
+  if (sk.includes("llm") || sk.includes("machine") || sk.includes("deep")) {
+    return {
+      exampleCode: `import openai\n\n# OpenAI client invocation structured parsing\nresponse = openai.chat.completions.create(\n    model="gpt-4o",\n    response_format={ "type": "json_object" },\n    messages=[\n        {"role": "system", "content": "You are a CV grader. Output JSON containing scores & gaps."},\n        {"role": "user", "content": "Grades for candidate: Resume text..."}\n    ]\n)\nprint("AI Grade Output:", response.choices[0].message.content)`,
+      proTip: "Always set system prompts to anchor AI behaviors, and use JSON validation schemas to ensure response structures do not break downstream logic."
+    };
+  }
+
+  // 11. Soft Skills Template (Reflections, agile, communication)
+  if (sk.includes("communication") || sk.includes("writing") || sk.includes("teamwork") || sk.includes("english") || sk.includes("agile")) {
+    return {
+      exampleCode: `# Daily Agile Standup Update\n1. Accomplished Yesterday:\n   - Fixed the dynamic OpenCV Canvas rendering script.\n2. Targets for Today:\n   - Connect layout tabs and run full typescript type-checks.\n3. Blockers:\n   - None.`,
+      proTip: "Keep updates concise. Focus on quantifiable achievements (e.g. 'Improved performance by 15%') rather than vague statements."
+    };
+  }
+
+  // 12. OpenCV Computer Vision Templates (Default Fallback)
+  if (t.includes("setup") || t.includes("introduction")) {
+    return {
+      exampleCode: `import cv2\nimport numpy as np\n\nprint("OpenCV version:", cv2.__version__)\nprint("NumPy version:", np.__version__)`,
+      proTip: "Make sure you run 'pip install opencv-python' in your local environment. In this sandbox, cv2 is pre-loaded and simulated client-side!"
+    };
+  }
+  if (t.includes("reading") || t.includes("video")) {
+    return {
+      exampleCode: `import cv2\n\n# Read image in BGR format\nimg = cv2.imread("input.jpg")\n\n# Check shape (height, width, channels)\nprint("Image properties:", img.shape)\n\n# Show image\ncv2.imshow("Preview", img)\ncv2.waitKey(0)`,
+      proTip: "OpenCV reads images in BGR order, while most other libraries (like PIL or matplotlib) use RGB. Keep this in mind when displaying color channels!"
+    };
+  }
+  if (t.includes("resizing") || t.includes("drawing") || t.includes("overlay")) {
+    return {
+      exampleCode: `import cv2\n\nimg = cv2.imread("input.jpg")\n\n# Resize to specific (width, height)\nresized = cv2.resize(img, (400, 300))\n\n# Draw line, rectangle, and circle\ncv2.line(resized, (0, 0), (100, 100), (255, 0, 0), 2)\ncv2.rectangle(resized, (50, 50), (150, 150), (0, 255, 0), 3)\ncv2.circle(resized, (200, 200), 50, (0, 0, 255), -1)\n\n# Draw text overlay\ncv2.putText(resized, "CV Studio", (20, 280), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)`,
+      proTip: "OpenCV drawing operations are in-place, meaning they modify the original image array. Use img.copy() if you want to keep the original untouched!"
+    };
+  }
+  if (t.includes("transforms") || t.includes("edge") || t.includes("contour")) {
+    return {
+      exampleCode: `import cv2\n\nimg = cv2.imread("input.jpg")\n\n# Convert to grayscale\ngray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)\n\n# Apply Gaussian Blur to reduce noise\nblurred = cv2.GaussianBlur(gray, (5, 5), 0)\n\n# Detect edges using Canny filter\nedges = cv2.Canny(blurred, 100, 200)\n\n# Find contours\ncontours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)`,
+      proTip: "Always apply Gaussian Blur before running Canny Edge Detection to filter out random high-frequency background noise!"
+    };
+  }
+  if (t.includes("face") || t.includes("cascade") || t.includes("recognition")) {
+    return {
+      exampleCode: `import cv2\n\n# Load pre-trained frontal face cascade\nface_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')\n\nimg = cv2.imread("input.jpg")\ngray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)\n\n# Detect faces\nfaces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)\n\n# Draw boxes around faces\nfor (x, y, w, h) in faces:\n    cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)`,
+      proTip: "Haar cascade models are fast but can have false positives. Adjust 'scaleFactor' (usually 1.1 - 1.3) and 'minNeighbors' (usually 3 - 6) to fine-tune accuracy."
+    };
+  }
+  return null;
+};
+
 function DocContentPanel({
   session,
   activeSectionId,
@@ -1549,6 +1676,7 @@ function DocContentPanel({
   adaptiveQuiz,
   showValidationErrors = false,
   mode = "learn",
+  onOpenSandboxWithSection,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -1562,6 +1690,7 @@ function DocContentPanel({
   adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
   mode?: LearningMode;
+  onOpenSandboxWithSection?: (sectionTitle: string) => void;
 }) {
   const { t } = useTranslation("common");
   const [currentPage, setCurrentPage] = useState(1);
@@ -1698,6 +1827,7 @@ function DocContentPanel({
         {contentSections.map((sec, i) => {
           const isSectionIncomplete = !isSectionComplete(session, progress, sec.id);
           const shouldHighlightSection = showValidationErrors && isSectionIncomplete;
+          const enrich = mode === "learn" ? getSectionEnrichments(session.moduleId, sec.title) : null;
           return (
             <div
               key={sec.id}
@@ -1709,7 +1839,23 @@ function DocContentPanel({
                   : "border-transparent"
               )}
             >
-              <h3 className={cn(shouldHighlightSection ? "text-red-900" : "")}>{i + 1}. {sec.title}</h3>
+              <div className="flex items-center justify-between gap-3 flex-wrap border-b border-slate-100 pb-2 mb-3">
+                <h3 className={cn("m-0 border-0 pb-0", shouldHighlightSection ? "text-red-900" : "")}>
+                  {i + 1}. {sec.title}
+                </h3>
+                {mode === "learn" && onOpenSandboxWithSection && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-primary hover:border-primary/45 font-bold px-3 flex items-center gap-1.5 shadow-sm transition-all text-xs"
+                    onClick={() => onOpenSandboxWithSection(sec.title)}
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-emerald-500" />
+                    Try Sandbox
+                  </Button>
+                )}
+              </div>
               {shouldHighlightSection && (
                 <p className="text-xs font-semibold text-red-500 flex items-center gap-1 mt-1 mb-2 animate-pulse">
                   <AlertCircle className="w-3.5 h-3.5" /> Chưa hoàn thành nội dung tự học này
@@ -1723,6 +1869,27 @@ function DocContentPanel({
                   {t("learning.common.exercises", { count: sec.exercises })}
                   {sec.completed ? ` - ${t("learning.status.completed")}` : ""}
                 </p>
+              )}
+              {mode === "learn" && enrich && (
+                <div className="mt-4 space-y-3">
+                  {enrich.exampleCode && (
+                    <div className="not-prose rounded-xl bg-slate-950 p-4 border border-slate-800 shadow-inner font-mono text-[11px] text-emerald-400 leading-relaxed">
+                      <div className="flex justify-between items-center text-slate-500 mb-2 pb-1.5 border-b border-slate-850 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5"><Code className="w-3.5 h-3.5" /> Example Code</span>
+                        <span>python</span>
+                      </div>
+                      <pre className="overflow-x-auto whitespace-pre-wrap select-all font-mono">{enrich.exampleCode}</pre>
+                    </div>
+                  )}
+                  {enrich.proTip && (
+                    <div className="not-prose rounded-xl border border-amber-250/30 bg-amber-50/20 p-3.5 text-xs text-amber-800 leading-relaxed shadow-sm">
+                      <span className="font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider text-[9px] mb-1">
+                        💡 Pro Tip
+                      </span>
+                      {enrich.proTip}
+                    </div>
+                  )}
+                </div>
               )}
               {mode === "practice" ? (
                 sec.checklist?.length ? (
@@ -2155,6 +2322,7 @@ function MainContentPanel({
   onSeekVideo,
   adaptiveQuiz,
   showValidationErrors = false,
+  onOpenSandboxWithSection,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -2169,6 +2337,7 @@ function MainContentPanel({
   onSeekVideo: (seconds: number) => void;
   adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
+  onOpenSandboxWithSection?: (sectionTitle: string) => void;
 }) {
   const { t } = useTranslation("common");
   const [activeMode, setActiveMode] = useState<LearningMode>("learn");
@@ -2258,6 +2427,7 @@ function MainContentPanel({
             adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
             mode={activeMode}
+            onOpenSandboxWithSection={onOpenSandboxWithSection}
           />
         )}
       </div>
@@ -2278,6 +2448,14 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSandboxOpen, setIsSandboxOpen] = useState(false);
+  const [sandboxSectionTitle, setSandboxSectionTitle] = useState<string | undefined>(undefined);
+  
+  const handleOpenSandboxWithSection = (sectionTitle: string) => {
+    setSandboxSectionTitle(sectionTitle);
+    setIsSandboxOpen(true);
+  };
+
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [videoStartSeconds, setVideoStartSeconds] = useState<number | undefined>(undefined);
   const [adaptiveQuiz, setAdaptiveQuiz] = useState<AdaptiveQuizState | null>(null);
@@ -2706,6 +2884,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
             onSeekVideo={setVideoStartSeconds}
             adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
+            onOpenSandboxWithSection={handleOpenSandboxWithSection}
           />
 
           {/* Right AI Chat Panel — sticky */}
@@ -2728,6 +2907,17 @@ export function SessionDetail({ session }: SessionDetailProps) {
                 {t("learning.session.askAiTutor")}
               </span>
             </button>
+          )}
+
+          {/* Right Code Sandbox Panel */}
+          {isSandboxOpen && (
+            <CodeSandboxPanel
+              sessionId={session.id}
+              skillCanonical={session.moduleId}
+              sessionTitle={session.title}
+              onClose={() => setIsSandboxOpen(false)}
+              sectionTitle={sandboxSectionTitle}
+            />
           )}
         </div>
       )}
