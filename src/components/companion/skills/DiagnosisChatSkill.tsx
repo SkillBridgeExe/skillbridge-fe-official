@@ -224,6 +224,18 @@ export function DiagnosisChatSkill({
                       ))}
                     </div>
                   )}
+                  {m.suggestedNextStep && (
+                    <div className="mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onSend(m.suggestedNextStep!)}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#D8DEE4] bg-transparent px-2.5 py-1 text-[11px] font-medium text-[#5F6B76] hover:bg-[#F5F5F3] transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <span>{m.suggestedNextStep}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

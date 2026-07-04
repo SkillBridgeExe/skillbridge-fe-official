@@ -315,6 +315,24 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     });
   });
 
+  it("resolveAssistantAt keeps the optional suggested-next-step follow-up", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q1" });
+    s.setChatPending("q1");
+    s.resolveAssistantAt(1, "a1", undefined, undefined, "What about my experience gap?");
+
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
+      role: "assistant",
+      text: "a1",
+      suggestedNextStep: "What about my experience gap?",
+    });
+    // Omitting the 5th arg (existing call sites) still resolves — no follow-up on the row.
+    s.appendChatMessage({ role: "user", text: "q2" });
+    s.setChatPending("q2");
+    s.resolveAssistantAt(3, "a2");
+    expect(useCompanionStore.getState().chatMessages[3].suggestedNextStep).toBeUndefined();
+  });
+
   it("clearChat empties the thread", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q" });

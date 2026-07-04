@@ -29,7 +29,7 @@ import { isAxiosError } from "axios";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { askDiagnosisChat, loadMatchForChat } from "@/services/diagnosis.service";
 import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
@@ -269,13 +269,17 @@ export function useDiagnosisChatCompanion(
         { question, thread },
         {
           onSuccess: (res) => {
-            // F4: map the cited gap → deep-link chips (honest-empty on a join miss).
+            // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
+            // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
               citedGapId: res.cited_gap_id,
+              citedMatch: res.cited_match,
               gapItems: gapReportQuery.data?.gap_items,
               actions: gapReportQuery.data?.recommended_actions,
             });
-            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool);
+            useCompanionStore
+              .getState()
+              .resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool, res.suggested_next_step ?? undefined);
             revealCited(res);
           },
           onError: (error) => {
@@ -381,7 +385,7 @@ export function useDiagnosisChatCompanion(
         useCompanionStore.getState().setChatPendingAction(null);
         return;
       }
-      // rewrite/roadmap/copy are explicit user actions. MF6 wires the
+      // rewrite/roadmap/copy/view_match are explicit user actions. MF6 wires the
       // execution; MF3 only stores the pending intent and shows the confirm strip.
       useCompanionStore.getState().setChatPendingAction(chip);
     },
@@ -414,6 +418,19 @@ export function useDiagnosisChatCompanion(
       });
     } else if (pending.kind === "copy" && pending.copyText && navigator.clipboard) {
       void navigator.clipboard.writeText(pending.copyText);
+    } else if (pending.kind === "view_match" && pending.viewMatch) {
+      // Cross-JD deep-link: load the cited match's OWN cv + review in place, then
+      // switch to it — a different match_id (effect above) clears the local chat.
+      const { cvId, matchId } = pending.viewMatch;
+      loadMatchForChat({ cvId, matchId })
+        .then((outcome) => {
+          useDiagnosisStore.getState().setLastCvId(outcome.cvId);
+          useDiagnosisStore.getState().setReviewData(outcome.review);
+          useDiagnosisStore.getState().setStep("results");
+        })
+        // ponytail: silent no-op on failure — a convenience deep-link; the current
+        // view stays intact, nothing is lost. Upgrade to a toast if this confuses users.
+        .catch(() => {});
     }
 
     useCompanionStore.getState().setChatPendingAction(null);
