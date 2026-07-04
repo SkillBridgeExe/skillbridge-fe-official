@@ -35,6 +35,7 @@ export interface ParsedCvSummary {
   phone?: string;
   summary: string;
   skills: string[];
+  inferred_roles?: string[];
 }
 
 export interface SkillMatchItem {
