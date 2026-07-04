@@ -125,4 +125,46 @@ describe("buildChatActionChips", () => {
       { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
     ]);
   });
+
+  it("adds a view_match chip when the answer cites another persisted match (no gap citation needed)", () => {
+    const chips = buildChatActionChips({
+      citedMatch: { match_id: "match-2", cv_id: "cv-2", jd_title: "Backend Engineer" },
+      gapItems: [],
+      actions: [],
+    });
+    expect(chips).toEqual([
+      {
+        kind: "view_match",
+        labelKey: "companion.chat.chipViewMatch",
+        viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: "Backend Engineer" },
+      },
+    ]);
+  });
+
+  it("returns [] when citedMatch is absent (honest-empty — the answer wasn't about another match)", () => {
+    const chips = buildChatActionChips({
+      citedMatch: undefined,
+      gapItems: [mkGap()],
+      actions: [mkAction()],
+    });
+    expect(chips).toEqual([]);
+  });
+
+  it("combines the view_match chip with a cited gap's chips when the answer cites both", () => {
+    const chips = buildChatActionChips({
+      citedGapId: "req-1",
+      citedMatch: { match_id: "match-2", cv_id: "cv-2", jd_title: null },
+      gapItems: [mkGap()],
+      actions: [mkAction()],
+    });
+    expect(chips).toEqual([
+      {
+        kind: "view_match",
+        labelKey: "companion.chat.chipViewMatch",
+        viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: null },
+      },
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "rewrite", labelKey: "companion.chat.chipRewriteHere", rewrite: { action: mkAction() } },
+    ]);
+  });
 });

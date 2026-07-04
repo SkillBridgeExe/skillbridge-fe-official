@@ -6,7 +6,13 @@
 
 import type { GapItem, TailorAction } from "@shared/api";
 
-export type ChatActionKind = "jump" | "rewrite" | "roadmap" | "prove_it" | "copy";
+export type ChatActionKind = "jump" | "rewrite" | "roadmap" | "prove_it" | "copy" | "view_match";
+
+export interface CitedMatch {
+  match_id: string;
+  cv_id: string;
+  jd_title: string | null;
+}
 
 export interface ChatActionChip {
   kind: ChatActionKind;
@@ -19,6 +25,8 @@ export interface ChatActionChip {
   proveIt?: { canonical: string; displayName: string };
   /** Clipboard payload; only present for kind='copy'. */
   copyText?: string;
+  /** Cross-JD deep-link target (another persisted CV/JD match); only present for kind='view_match'. */
+  viewMatch?: { cvId: string; matchId: string; jdTitle: string | null };
 }
 
 export function canOpenTailorRewrite(action: TailorAction | null | undefined): action is TailorAction {
@@ -28,10 +36,27 @@ export function canOpenTailorRewrite(action: TailorAction | null | undefined): a
 
 export function buildChatActionChips(input: {
   citedGapId?: string;
+  /** Another persisted match the answer cited (cross-JD comparison) — honest-empty if absent. */
+  citedMatch?: CitedMatch;
   gapItems: GapItem[] | undefined;
   actions: TailorAction[] | undefined;
 }): ChatActionChip[] {
   const out: ChatActionChip[] = [];
+
+  // Cross-JD deep-link chip — independent of the gap citation below (a single
+  // answer can cite another match without citing a specific gap, or vice versa).
+  if (input.citedMatch) {
+    out.push({
+      kind: "view_match",
+      labelKey: "companion.chat.chipViewMatch",
+      viewMatch: {
+        cvId: input.citedMatch.cv_id,
+        matchId: input.citedMatch.match_id,
+        jdTitle: input.citedMatch.jd_title,
+      },
+    });
+  }
+
   if (!input.citedGapId) return out;
   const gap = (input.gapItems ?? []).find((g) => g.requirement_id === input.citedGapId);
   if (!gap) return out; // join miss → no chip (honest)
