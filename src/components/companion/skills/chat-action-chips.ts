@@ -42,12 +42,20 @@ export function buildChatActionChips(input: {
     (a) => a.requirement_id === gap.requirement_id || a.skill_canonical === gap.canonical_name,
   );
   const actionId = action?.action_id;
-  if (action?.rewrite_eligible && actionId) {
+  if (gap.fixability === "rewrite" && action?.rewrite_eligible && actionId) {
     if (canOpenTailorRewrite(action)) {
       out.push({ kind: "rewrite", labelKey: "companion.chat.chipRewriteHere", rewrite: { action } });
     } else {
       out.push({ kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: `tailor-${actionId}` });
     }
+  }
+
+  if (gap.fixability === "add_evidence") {
+    out.push({
+      kind: "prove_it",
+      labelKey: "companion.chat.proveitCta",
+      proveIt: { canonical: gap.canonical_name, displayName: gap.display_name },
+    });
   }
 
   if (gap.fixability === "learn") {

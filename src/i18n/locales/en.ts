@@ -1393,9 +1393,60 @@ export default {
   },
   diagnosis: {
     rubricFallback: {
-      title: "This score is not based on your pasted JD yet",
-      body: "The JD contains requirements outside SkillBridge's skill dictionary, so scoring fell back to the {{role}} role standard. Unrecognized requirements: {{skills}}.",
-      bodyNoRole: "The JD contains requirements outside SkillBridge's skill dictionary, so scoring fell back to standard role rubric. Unrecognized requirements: {{skills}}.",
+      title: "Score below not fully based on your JD",
+      body: "This JD contains requirements outside SkillBridge's skill dictionary, so the system is temporarily scoring based on the {{role}} role standard. Unrecognized requirements: {{skills}}.",
+      bodyNoRole: "This JD contains requirements outside SkillBridge's skill dictionary, so it cannot be scored against the JD yet. Unrecognized requirements: {{skills}}.",
+    },
+    severityBreakdown: {
+      title: "Severity Breakdown",
+      importance: "JD Importance",
+      core: "Core Competency",
+      market: "Market Factor",
+      formula: "Severity = Importance × Core × Market"
+    },
+    evidenceTitle: "Evidence from CV",
+    provenance: {
+      source: {
+        deterministic: "Real Data",
+        llm: "AI Evaluation"
+      },
+      conf: {
+        high: "Confidence: High",
+        medium: "Confidence: Medium",
+        low: "Confidence: Low"
+      }
+    },
+    atsBreakdown: {
+      title: "ATS rules breakdown",
+      passed: "Passed ({{count}})",
+      failed: "Needs work ({{count}})"
+    },
+    cvBreakdown: {
+      title: "CV score breakdown ({{score}}/100)",
+      note: "Based on system rules and AI-assisted evaluation",
+      skills: "Skills",
+      experience: "Experience"
+    },
+    bulletFeedback: {
+      title: "Bullet feedback",
+      verbFirst: "#action_verb",
+      quantified: "#quantified",
+      needsWork: "needs work"
+    },
+    fit: {
+      verdict: {
+        safe_apply: "Safe to apply",
+        stretch: "Worth a stretch",
+        not_recommended: "Not a fit yet"
+      },
+      reason: {
+        LOW_COVERAGE: "Low coverage of required skills",
+        SENIORITY_STRETCH: "Job level is higher than your current seniority",
+        DEAL_BREAKER_UNMET: "Missing a deal-breaker requirement",
+        STRONG_COVERAGE: "Strong coverage of required skills",
+        MISSING_EXPERIENCE: "Missing required deep experience",
+        MATCHED_EXPERIENCE: "Good experience match"
+      }
     },
     header: {
       badge: "AI Analysis",
@@ -1481,6 +1532,14 @@ export default {
       dropActive: "Drop your CV here",
     },
     review: {
+      actionList: {
+        rankedCaption: "Ranked by impact on your score",
+        impact: "Impact {{severity}}",
+        impactHint: "Estimated gap severity used by the backend to rank this action."
+      },
+      actionClass: {
+        not_fixable_now: "Already met or cannot be fixed right now"
+      },
       backToUpload: "Back to upload",
       heroTitle: "Your CV quality score",
       badgeOutstanding: "Outstanding profile",
@@ -1613,6 +1672,8 @@ export default {
       scanAgain: "Scan again",
       generatePlan: "Generate study plan",
       jdHighlightTitle: "See the keywords in your JD",
+      dimensionDetails: "Detailed analysis",
+      keywordFreqTooltip: "Appears: CV {{cv}} times / JD {{jd}} times",
     },
     roadmapWizard: {
       title: "Roadmap buddy",
@@ -1653,12 +1714,12 @@ export default {
       },
     },
     jobs: {
+      seniorityTooltip: "Base score {{match}} × {{factor}} (level adjustment: {{level}} diff)",
       title: "Jobs that match your CV",
       empty: "No matching jobs for this role yet — check back soon.",
       missing: "Missing:",
       apply: "View & apply",
-      disclaimer:
-        "Match score reflects CV–JD skill fit, not a guarantee of selection.",
+      disclaimer: "Match score reflects CV–JD skill fit, not a guarantee of selection.",
       quotaBlocked:
         "You have used all job-recommendation views in your current plan.",
       error: "Could not load job recommendations.",
@@ -1743,6 +1804,8 @@ export default {
       fallbackNote: "AI kept the original wording to avoid inventing details.",
       close: "Close",
       rewriting: "Rewriting...",
+      lowConfidenceWarning:
+        "This CV location is estimated — double-check before applying.",
       rewriteError:
         "Couldn't rewrite this suggestion. Try re-running the analysis or pick another bullet.",
       errors: {
@@ -1875,6 +1938,17 @@ export default {
       marketDemand: "Market demand: {{pct}}%",
       moreGaps: "and {{count}} more gaps...",
       severity: { high: "High priority", med: "Medium priority", low: "Low priority" },
+      estimatedPrefix: "Estimated · ",
+      source: {
+        jd: "JD",
+        role_rubric: "Role rubric",
+        market_implied: "Market",
+      },
+      sourceHint: {
+        jd: "Directly extracted from your JD · {{confidence}}% confidence",
+        role_rubric: "Inferred from the target role rubric · {{confidence}}% confidence",
+        market_implied: "Implied from market data · {{confidence}}% confidence",
+      },
       evidenceFrom: "From: {{sources}}",
       evidenceKind: {
         experience: "Experience",

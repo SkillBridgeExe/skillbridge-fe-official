@@ -101,6 +101,7 @@ const matchDto: CvMatchDto = {
   jobDescriptionId: "jd-1",
   aiResultId: null,
   overallScore: 58.6,
+  overall_match_score: 58.6,
   matchRatio: 60,
   requiredCoverage: 0.5,
   parsedResponse: {
@@ -142,6 +143,7 @@ const matchDto: CvMatchDto = {
     ],
     bonus_skills: [],
     required_coverage: 0.5,
+    fit: { verdict: "stretch", reasons: ["SENIORITY_STRETCH"] },
     unnormalized_cv_skills: [],
     unnormalized_jd_requirements: [],
     scoring_breakdown: {
@@ -311,6 +313,7 @@ describe("mapMatchDtoToJdMatch", () => {
     expect(jd.summary).toContain("50%");
     expect(jd.scoring_breakdown?.cap_applied).toBe(true);
     expect(jd.required_coverage).toBe(0.5);
+    expect(jd.fit).toEqual({ verdict: "stretch", reasons: ["SENIORITY_STRETCH"] });
     expect(jd.inferred_skills?.[0].canonical_name).toBe("javascript");
   });
 

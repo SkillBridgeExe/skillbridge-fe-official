@@ -30,6 +30,7 @@ import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
+import { FitBadge } from "./FitBadge";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -261,7 +262,7 @@ export function DiagnosisStep3Results() {
   /* ── Rubric Fallback Warning Strings ── */
   const unnormalizedSkillsList = jdMatch?.unnormalized_jd_requirements || [];
   const unnormalizedSkillNames = unnormalizedSkillsList
-    .map(s => s.raw_input || (s as any).name)
+    .map((skill) => skill.raw_input || readLegacyName(skill))
     .filter(Boolean);
   const fallbackSkillsString = unnormalizedSkillNames.length > 5
     ? unnormalizedSkillNames.slice(0, 5).join(", ") + "…"
@@ -448,7 +449,7 @@ export function DiagnosisStep3Results() {
 
         {/* Ribbon — inline stats + deal-breaker chips */}
         {isJdMode && (
-          <div className="flex justify-center mt-4">
+          <div className="flex flex-col items-center justify-center gap-3 mt-4">
             <Ribbon
               matched={presentCount}
               partial={partialCount}
@@ -456,6 +457,7 @@ export function DiagnosisStep3Results() {
               coverage={coverage}
               capApplied={capApplied}
             />
+            {jdMatch?.fit && <FitBadge fit={jdMatch.fit} className="mt-1" />}
           </div>
         )}
 
@@ -761,6 +763,12 @@ export function DiagnosisStep3Results() {
       )}
     </div>
   );
+}
+
+function readLegacyName(value: unknown): string | undefined {
+  if (!value || typeof value !== "object" || !("name" in value)) return undefined;
+  const name = (value as { name?: unknown }).name;
+  return typeof name === "string" ? name : undefined;
 }
 
 /* ── helper và component JD Highlight ── */

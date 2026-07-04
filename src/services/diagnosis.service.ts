@@ -139,6 +139,7 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
       key,
       score20: dims[key],
       rationale: review.rationale?.[key] ?? "",
+      provenance: review.dimension_provenance?.[key],
     })),
     // Checklist ATS đầy đủ — tab ATS (W3c).
     atsCheck: review.ats_check,
@@ -201,8 +202,11 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
     skills_relevance_breakdown: review.skills_relevance_breakdown,
     top_summary: review.top_summary,
     evidence_ledger: review.evidence_ledger,
+    bullet_feedback: review.bullet_feedback || {},
+    buzzwords_detected: review.buzzwords_detected || [],
     // Input-quality disclosure (additive, BE-deterministic) — absent on older payloads → null → no banner.
     extraction_quality: review.extraction_quality ?? null,
+    dimension_provenance: review.dimension_provenance,
   });
 }
 
@@ -262,12 +266,18 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
       .map((skill) => skill.display_name || skill.canonical_name),
     required_coverage: parsed?.required_coverage ?? null,
     scoring_breakdown: parsed?.scoring_breakdown ?? null,
+    experience_fit: parsed?.experience_fit ?? null,
+    fit: parsed?.fit ?? match.fit ?? null,
     inferred_skills: parsed?.inferred_skills ?? [],
-    // W17: thước chấm — null = JD path (thước của JD dán), non-null = rubric band.
     rubric_band: parsed?.rubric_band ?? null,
     fell_back_to_rubric: parsed?.fell_back_to_rubric ?? false,
     source_of_requirements: parsed?.source_of_requirements ?? "none",
     unnormalized_jd_requirements: parsed?.unnormalized_jd_requirements ?? [],
+    keyword_frequency: parsed?.keyword_frequency?.map(f => ({
+      keyword: f.canonical_name || f.display_name,
+      jd_count: f.jd_count,
+      cv_count: f.cv_count,
+    })) ?? [],
   };
 }
 
