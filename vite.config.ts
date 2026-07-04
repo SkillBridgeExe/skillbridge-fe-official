@@ -120,6 +120,7 @@ export default defineConfig(({ mode }) => {
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@shared": path.resolve(__dirname, "./shared"),
+      "@resume-engine": path.resolve(__dirname, "./src/lib/resume-engine"),
     },
   },
   });
