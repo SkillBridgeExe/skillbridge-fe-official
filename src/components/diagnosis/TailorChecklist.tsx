@@ -30,6 +30,8 @@ const ACTION_CLASS: Record<TailorActionType, string> = {
   add_evidence: "bg-[#E1F3FE] text-[#1F6C9F] border-[#BEE3F8]",
   emphasize: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
   deepen_wording: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  not_fixable_now: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+  already_met: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
 };
 
 export function TailorChecklist({
@@ -77,7 +79,7 @@ export function TailorChecklist({
             <FilePenLine className="h-5 w-5 text-primary" />
             {t("tailor.title")}
           </h3>
-          <p className="mt-1 text-xs text-[#787774]">{t("tailor.subtitle")}</p>
+          <p className="mt-1 text-xs text-[#787774]">{t("review.actionList.rankedCaption", { defaultValue: "Xếp theo mức ảnh hưởng tới điểm của bạn" })}</p>
           {data?.generated_with_ledger === false && (
             <p className="mt-3 rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] px-3 py-2 text-xs text-[#787774]">
               {t("tailor.noLedger")}
@@ -104,11 +106,21 @@ export function TailorChecklist({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", ACTION_CLASS[action.action_type])}>
-                        {t(`tailor.action.${action.action_type}`)}
+                        {action.action_type === 'not_fixable_now' || action.action_type === 'already_met'
+                          ? t('review.actionClass.not_fixable_now', { defaultValue: "Đã đạt hoặc chưa xử lý được ngay" })
+                          : t(`tailor.action.${action.action_type}`)}
                       </span>
                       {action.jd_importance && (
                         <span className="rounded-full border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-bold text-[#787774]">
                           {action.jd_importance}
+                        </span>
+                      )}
+                      {typeof action.gap_severity === "number" && (
+                        <span
+                          title={t("review.actionList.impactHint")}
+                          className="rounded-full border border-[#DCE9D7] bg-white px-2 py-0.5 text-[11px] font-bold text-[#346538]"
+                        >
+                          {t("review.actionList.impact", { severity: action.gap_severity.toFixed(2) })}
                         </span>
                       )}
                     </div>

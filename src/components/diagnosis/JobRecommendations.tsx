@@ -4,8 +4,10 @@ import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import type { JobRecommendationDto } from "@shared/api";
+import { FitBadge } from "./FitBadge";
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
@@ -49,11 +51,32 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     <>
       <div className="flex items-start justify-between gap-3">
         <h4 className="text-[13px] font-semibold text-[#2F3437] leading-snug line-clamp-2">{job.title}</h4>
-        <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
-          {recScore}%
-        </span>
+        {job.seniority_factor && job.seniority_factor < 1 ? (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={cn("cursor-help shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
+                  {recScore}%
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {t("diagnosis.jobs.seniorityTooltip", {
+                  defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
+                  match: job.match_score,
+                  factor: job.seniority_factor.toFixed(2),
+                  level: job.level_gap ?? 0,
+                })}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
+            {recScore}%
+          </span>
+        )}
       </div>
-      {demoted && (
+      {job.fit && <FitBadge fit={job.fit} className="mt-2" />}
+      {!job.fit && demoted && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className={cn(
             "inline-flex rounded border px-2 py-0.5 text-[10px] font-bold",
@@ -64,7 +87,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           <span className="text-[10px] font-mono tabular-nums text-[#787774]">{t("jobs.skillMatch", { score: job.match_score })}</span>
         </div>
       )}
-      {experienceFit && !demoted && (
+      {!job.fit && experienceFit && !demoted && (
         <span className={cn("inline-flex mt-2 rounded border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
           {t(`matchDepth.fit.${experienceFit.verdict}`)}
           {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}

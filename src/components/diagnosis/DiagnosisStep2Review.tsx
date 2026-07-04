@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText, AlertCircle } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -22,6 +22,7 @@ import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
@@ -118,6 +119,34 @@ function DimensionCard({
             <span className="rounded-full border border-[#EAEAEA] bg-[#FBFBFA] px-2.5 py-1 text-[11px] font-bold text-[#787774]">
               {t("review.priorityCount", { count: issues.length })}
             </span>
+            {dim.provenance && (
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn(
+                      "cursor-help rounded-full border px-2.5 py-1 text-[10px] font-bold",
+                      dim.provenance.source === "deterministic"
+                        ? "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]"
+                        : "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]"
+                    )}>
+                      {t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-[280px]">
+                    <div className="space-y-1.5">
+                      <p className="font-semibold">{t(`provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
+                      {dim.provenance.evidence.length > 0 && (
+                        <ul className="list-disc pl-4 space-y-0.5 text-[#787774] max-h-32 overflow-y-auto">
+                          {dim.provenance.evidence.map((ev, i) => (
+                            <li key={i}>{ev}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
 
           <p className={cn("text-[13px] leading-relaxed text-[#5F666B]", !expanded && hasLongRationale && "line-clamp-1")}>
@@ -437,39 +466,40 @@ export function DiagnosisStep2Review() {
       {/* ── VerdictHero (replaces CircularScoreGauge + confetti) ── */}
       <VerdictHero
         target={overallCvScore}
-        label={scoreLabel}
+        label={t("review.overallScore")}
         verdictMessage={scoreMessage}
         isJdMode={false}
+        breakdown={reviewData?.breakdown}
       />
 
-      {/* ── StatRow (replaces 3 dashboard cards) ── */}
-      <div className="flex justify-center">
+      {/* ── Metadata & Actions ── */}
+      <div className="mx-auto max-w-lg mt-1 mb-10 flex flex-col items-center gap-6">
         <StatRow
           score={overallCvScore}
           atsScore={atsScore}
+          atsCheck={reviewData?.atsCheck}
           role={targetRole ? getRoleLabel(targetRole) : "N/A"}
           scoreMessage={scoreLabel}
           atsNote={t("review.atsNote")}
         />
-      </div>
 
-      {/* Quick Actions — i18n (was hardcoded Vietnamese) */}
-      <div className="flex justify-center gap-3 mt-2 mb-6">
-        <Button
-          onClick={handleEditCv}
-          size="sm"
-          className="rounded-lg gap-1.5 text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all justify-center shadow-sm"
-        >
-          <Pencil className="w-3.5 h-3.5" /> {t("review.quickPanel.editCta")}
-        </Button>
-        <Button
-          onClick={() => setShowJdInput(true)}
-          size="sm"
-          variant="outline"
-          className="rounded-lg gap-1.5 text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 active:scale-[0.98] transition-all justify-center"
-        >
-          <Briefcase className="w-3.5 h-3.5" /> {t("review.quickPanel.compareCta")}
-        </Button>
+        <div className="flex w-full justify-center gap-4">
+          <Button
+            onClick={handleEditCv}
+            size="sm"
+            className="rounded-full gap-2 px-6 h-10 text-sm font-bold bg-[#2F3437] text-white hover:bg-[#2F3437]/90 active:scale-[0.98] transition-all shadow-sm"
+          >
+            <Pencil className="w-4 h-4" /> {t("review.quickPanel.editCta")}
+          </Button>
+          <Button
+            onClick={() => setShowJdInput(true)}
+            size="sm"
+            variant="outline"
+            className="rounded-full gap-2 px-6 h-10 text-sm font-bold border-[#EAEAEA] hover:bg-[#FBFBFA] text-[#2F3437] active:scale-[0.98] transition-all"
+          >
+            <Briefcase className="w-4 h-4" /> {t("review.quickPanel.compareCta")}
+          </Button>
+        </div>
       </div>
 
       <SectionRule />
@@ -502,6 +532,23 @@ export function DiagnosisStep2Review() {
               <div className="space-y-5">
                 {activeTab === 'audit' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
+                    {/* Buzzwords warning */}
+                    {reviewData?.buzzwords_detected && reviewData.buzzwords_detected.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="text-[13px] font-medium text-amber-800">
+                          {t("review.buzzwordsDetected", "Phát hiện từ ngữ sáo rỗng (cần thay bằng số liệu cụ thể):")}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {reviewData.buzzwords_detected.map((word, idx) => (
+                            <span key={idx} className="bg-white px-2 py-0.5 rounded text-xs font-semibold text-amber-700 border border-amber-200/60 shadow-sm">
+                              {word}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Top Summary prioritized checklist */}
                     {reviewData?.top_summary && (
                       <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>

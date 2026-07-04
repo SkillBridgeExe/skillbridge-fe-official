@@ -1389,9 +1389,60 @@ export default {
   },
   diagnosis: {
     rubricFallback: {
-      title: "Điểm dưới đây chưa chấm theo JD bạn dán",
+      title: "Điểm dưới đây chưa hoàn toàn dựa trên JD",
       body: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge, nên hệ thống tạm chấm theo chuẩn vai trò {{role}}. Yêu cầu chưa nhận diện được: {{skills}}.",
       bodyNoRole: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge nên chưa thể chấm điểm theo JD. Yêu cầu chưa nhận diện được: {{skills}}.",
+    },
+    severityBreakdown: {
+      title: "Chi tiết độ nghiêm trọng",
+      importance: "Độ quan trọng (JD)",
+      core: "Năng lực lõi (Core)",
+      market: "Hệ số thị trường",
+      formula: "Severity = Importance × Core × Market"
+    },
+    evidenceTitle: "Bằng chứng từ CV",
+    provenance: {
+      source: {
+        deterministic: "Dữ liệu thật",
+        llm: "AI đánh giá"
+      },
+      conf: {
+        high: "Độ tin cậy: Cao",
+        medium: "Độ tin cậy: Trung bình",
+        low: "Độ tin cậy: Thấp"
+      }
+    },
+    atsBreakdown: {
+      title: "Phân tích chuẩn ATS",
+      passed: "Đạt ({{count}})",
+      failed: "Cần cải thiện ({{count}})"
+    },
+    cvBreakdown: {
+      title: "Phân bổ điểm CV ({{score}}/100)",
+      note: "Dựa trên tiêu chuẩn hệ thống và đánh giá AI",
+      skills: "Kỹ năng",
+      experience: "Kinh nghiệm"
+    },
+    bulletFeedback: {
+      title: "Đánh giá bullet",
+      verbFirst: "#động_từ",
+      quantified: "#số_liệu",
+      needsWork: "cần tối ưu"
+    },
+    fit: {
+      verdict: {
+        safe_apply: "Nên ứng tuyển",
+        stretch: "Đáng thử — có khoảng cách",
+        not_recommended: "Chưa phù hợp"
+      },
+      reason: {
+        LOW_COVERAGE: "Độ phủ kỹ năng bắt buộc còn thấp",
+        SENIORITY_STRETCH: "Vị trí cao hơn cấp bậc hiện tại của bạn",
+        DEAL_BREAKER_UNMET: "Thiếu yêu cầu bắt buộc",
+        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        MISSING_EXPERIENCE: "Thiếu kinh nghiệm chuyên môn sâu",
+        MATCHED_EXPERIENCE: "Kinh nghiệm tương đồng tốt"
+      }
     },
     header: {
       badge: "Phân tích AI",
@@ -1478,11 +1529,20 @@ export default {
       dropActive: "Thả CV vào đây",
     },
     review: {
+      actionList: {
+        rankedCaption: "Xếp theo mức ảnh hưởng tới điểm của bạn",
+        impact: "Ảnh hưởng {{severity}}",
+        impactHint: "Độ nghiêm trọng gap do backend dùng để xếp hạng hành động này."
+      },
+      actionClass: {
+        not_fixable_now: "Đã đạt hoặc chưa xử lý được ngay"
+      },
       backToUpload: "Về màn tải CV",
       heroTitle: "Điểm chất lượng CV của bạn",
       badgeOutstanding: "Hồ sơ nổi bật",
       exportReport: "Xuất báo cáo",
       editCta: "Sửa CV & tải PDF",
+      overallScore: "Điểm CV tổng",
       editNoDataTitle: "Chưa mở được trình sửa",
       editNoDataDesc: "Chưa có dữ liệu CV đã phân tích để chỉnh sửa.",
       "scoreMsg.excellent":
@@ -1491,7 +1551,7 @@ export default {
       "scoreMsg.fair":
         "CV đạt chuẩn cơ bản. Hãy tập trung lượng hoá thành tích.",
       "scoreMsg.poor": "CV cần cải thiện đáng kể. Làm theo gợi ý bên dưới nhé.",
-      "dims.action_verbs": "Động từ hành động & tác động",
+      "dims.action_verbs": "Sử dụng động từ mạnh & Nêu bật kết quả",
       "dims.skills_relevance": "Độ liên quan kỹ năng",
       "dims.experience": "Kinh nghiệm rõ ràng",
       "dims.education": "Học vấn & tinh thần học",

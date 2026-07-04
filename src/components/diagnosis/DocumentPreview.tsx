@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   CheckCircle2,
   Mail,
@@ -125,25 +127,80 @@ export function DocumentPreview() {
 
     const builder = useCvBuilderStore.getState();
     builder.hydrateFromCanonical(seedDoc);
-    
+
     const diag = useDiagnosisStore.getState();
     if (diag.targetRole) {
       builder.setCareerTarget("targetPosition", diag.targetRole);
     }
-    
+
     diag.setStep("builder");
   };
 
   const renderBullet = (bullet: string) => {
     const isChanged = viewMode === "ai" && aiCv.changedBullets.includes(bullet);
-    if (isChanged) {
+
+    let feedback: import("@shared/api").BulletFeedbackItem | null = null;
+    if (reviewData?.bullet_feedback) {
+      if (reviewData.bullet_feedback[bullet]) {
+        feedback = reviewData.bullet_feedback[bullet];
+      } else {
+        const normBullet = bullet.toLowerCase().replace(/\s+/g, "");
+        for (const [key, fb] of Object.entries(reviewData.bullet_feedback)) {
+          const normKey = key.toLowerCase().replace(/\s+/g, "");
+          if (normKey.length > 10 && (normBullet.includes(normKey) || normKey.includes(normBullet))) {
+            feedback = fb;
+            break;
+          }
+        }
+      }
+    }
+
+    const content = (
+      <>
+        {isChanged ? (
+          <mark className="bg-[#DCE9D7] text-[#346538] rounded px-0.5 font-medium transition-colors">
+            {bullet}
+          </mark>
+        ) : (
+          renderHighlightedText(bullet, highlightEvidence)
+        )}
+      </>
+    );
+
+    if (feedback) {
       return (
-        <mark className="bg-[#DCE9D7] text-[#346538] rounded px-0.5 font-medium transition-colors">
-          {bullet}
-        </mark>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="relative cursor-help group inline-block">
+                {content}
+                <span className="inline-flex ml-1.5 gap-1 align-middle opacity-80 group-hover:opacity-100 transition-opacity">
+                   {feedback.verbFirst && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 font-medium">{t("bulletFeedback.verbFirst")}</Badge>}
+                   {feedback.quantified && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-emerald-200 text-emerald-700 bg-emerald-50 font-medium">{t("bulletFeedback.quantified")}</Badge>}
+                   {(!feedback.quantified || !feedback.verbFirst) && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-200 text-amber-700 bg-amber-50 font-medium">{t("bulletFeedback.needsWork")}</Badge>}
+                </span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[280px] p-3 text-sm bg-slate-900 text-white shadow-xl border-none">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4 border-b border-slate-700 pb-2 mb-2">
+                  <span className="font-medium text-slate-200">{t("bulletFeedback.title")}</span>
+                </div>
+                <div className="text-slate-300 text-[13px] leading-relaxed">
+                  <ul className="list-disc pl-4 space-y-1">
+                    {feedback.tips.map((tip, idx) => (
+                      <li key={idx}>{tip}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     }
-    return renderHighlightedText(bullet, highlightEvidence);
+
+    return content;
   };
 
   React.useEffect(() => {
@@ -155,10 +212,10 @@ export function DocumentPreview() {
       if (markEl && scrollContainer) {
         const containerRect = scrollContainer.getBoundingClientRect();
         const markRect = markEl.getBoundingClientRect();
-        
+
         const relativeTop = markRect.top - containerRect.top + scrollContainer.scrollTop;
         const targetScrollTop = relativeTop - containerRect.height / 2 + markRect.height / 2;
-        
+
         scrollContainer.scrollTo({
           top: Math.max(0, targetScrollTop),
           behavior: "smooth"
@@ -215,7 +272,7 @@ export function DocumentPreview() {
                   {t("preview.tabAi")}
                 </button>
               </div>
-              
+
               {viewMode === "ai" && !aiCv.isFetching && (
                 <div className="text-xs text-slate-600 px-1 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-1.5">

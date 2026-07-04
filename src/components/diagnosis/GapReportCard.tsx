@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { 
+import {
   TrendingUp, CheckCircle2, AlertCircle, X, Loader2,
-  Briefcase, Globe, GraduationCap, Building2, MapPin, Code 
+  Briefcase, Globe, GraduationCap, Building2, MapPin, Code
 } from "lucide-react";
 import { useGapReportQuery } from "@/hooks/use-diagnosis";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { GapReportDto } from "@shared/api";
 import { JdIntelligenceCard } from "./JdIntelligenceCard";
 import { SectionRule } from "./editorial";
@@ -18,6 +19,12 @@ const GAP_TYPE_ICON: Record<string, React.ReactNode> = {
   education: <GraduationCap className="w-3.5 h-3.5" />,
   domain: <Building2 className="w-3.5 h-3.5" />,
   work_mode: <MapPin className="w-3.5 h-3.5" />,
+};
+
+const GAP_SOURCE_STYLE: Record<string, string> = {
+  jd: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  role_rubric: "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]",
+  market_implied: "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]",
 };
 
 /** Map evidence_refs ("experience_0") → human source labels ("Kinh nghiệm #1"), max 3. */
@@ -136,6 +143,7 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                 }[gap.fixability] || "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
 
                 const sevBand = severityBand(gap.severity);
+                const lowConfidence = gap.confidence < 0.8;
                 const severityStyle = {
                   high: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
                   med: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
@@ -170,10 +178,24 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                       <span className="text-[13px] font-bold text-[#2F3437] mr-1">
                         {gap.display_name}
                       </span>
-                      
+
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#EAEAEA] bg-[#F7F6F3] text-[#787774] text-[10px] font-medium">
                         {GAP_TYPE_ICON[gap.type] || null}
                         {t(`gapReport.type.${gap.type}`, { defaultValue: gap.type })}
+                      </span>
+
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded border text-[10px] font-bold cursor-help",
+                          GAP_SOURCE_STYLE[gap.source] || "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
+                        )}
+                        title={t(`gapReport.sourceHint.${gap.source}`, {
+                          confidence: Math.round(gap.confidence * 100),
+                          defaultValue: `${gap.source} · ${Math.round(gap.confidence * 100)}% confidence`,
+                        })}
+                      >
+                        {lowConfidence ? t("gapReport.estimatedPrefix") : null}
+                        {t(`gapReport.source.${gap.source}`, { defaultValue: gap.source })}
                       </span>
 
                       <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", importanceStyle)}>
@@ -188,9 +210,39 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         {t(`gapReport.fix.${gap.fixability}`, { defaultValue: gap.fixability })}
                       </span>
 
-                      <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", severityStyle)}>
-                        {t(`gapReport.severity.${sevBand}`)}
-                      </span>
+                      {gap.severity_factors ? (
+                        <Popover>
+                          <PopoverTrigger>
+                            <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold cursor-pointer hover:opacity-80 transition-opacity", severityStyle)}>
+                              {t(`gapReport.severity.${sevBand}`)}
+                            </span>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-3 shadow-lg" side="top" align="center">
+                            <div className="space-y-2 text-sm text-[#2F3437]">
+                              <p className="font-semibold text-[13px] border-b pb-1.5">{t("diagnosis.severityBreakdown.title", "Chi tiết độ nghiêm trọng")}</p>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-slate-500">{t("diagnosis.severityBreakdown.importance", "Độ quan trọng (JD)")}</span>
+                                <span className="font-medium">{gap.severity_factors.importance.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-slate-500">{t("diagnosis.severityBreakdown.core", "Năng lực lõi (Core)")}</span>
+                                <span className="font-medium">{gap.severity_factors.core.toFixed(3)}</span>
+                              </div>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-slate-500">{t("diagnosis.severityBreakdown.market", "Hệ số thị trường")}</span>
+                                <span className="font-medium">{gap.severity_factors.market_mult.toFixed(3)}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-2 bg-slate-50 p-1.5 rounded">
+                                {t("diagnosis.severityBreakdown.formula", "Severity = Importance × Core × Market")}
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", severityStyle)}>
+                          {t(`gapReport.severity.${sevBand}`)}
+                        </span>
+                      )}
                     </div>
 
                     {/* Middle row: Action */}
@@ -222,11 +274,33 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                             {t("gapReport.marketDemand", { pct: gap.market_demand })}
                           </span>
                         )}
-                        {gap.evidence_refs && gap.evidence_refs.length > 0 && (
+                        {!gap.evidence && gap.evidence_refs && gap.evidence_refs.length > 0 && (
                           <span>
                             {t("gapReport.evidenceFrom", { sources: formatEvidenceRefs(gap.evidence_refs, t) })}
                           </span>
                         )}
+                      </div>
+                    )}
+
+                    {/* W39: Evidence block with quotes */}
+                    {gap.evidence && gap.evidence.length > 0 && (
+                      <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-[#F1F1EF]">
+                        <span className="text-[11px] font-medium text-slate-500">{t("diagnosis.evidenceTitle", "Bằng chứng từ CV")}</span>
+                        {gap.evidence.map((ev, evIdx) => (
+                          <div key={evIdx} className="pl-2 border-l-2 border-slate-200">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                                {t(`gapReport.evidenceKind.${ev.kind}`, { defaultValue: ev.kind })}
+                              </span>
+                              <span className="text-[10px] text-slate-400">{ev.ref}</span>
+                            </div>
+                            {ev.quote && (
+                              <p className="text-[12px] italic text-slate-600 line-clamp-2 mt-0.5">
+                                "{ev.quote}"
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                     </div>

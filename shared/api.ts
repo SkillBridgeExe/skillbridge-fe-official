@@ -55,6 +55,15 @@ export interface RadarMetric {
   required: number;
 }
 
+export interface KeywordFrequency {
+  keyword: string;
+  jd_count: number;
+  cv_count: number;
+}
+
+export type FitVerdict = 'safe_apply' | 'stretch' | 'not_recommended';
+export type FitReasonCode = 'LOW_COVERAGE' | 'SENIORITY_STRETCH' | 'DEAL_BREAKER_UNMET' | 'STRONG_COVERAGE' | string;
+
 export interface CvJdMatch {
   matchId?: string;
   match_id?: string | null;
@@ -68,11 +77,13 @@ export interface CvJdMatch {
   scoring_breakdown?: ScoringBreakdown | null;
   experience_fit?: ExperienceFit | null;
   inferred_skills?: InferredSkill[];
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] } | null;
   /** Thước seniority khi chấm theo rubric; null = chấm theo JD dán (thước của JD). */
   rubric_band?: RubricBand | null;
   fell_back_to_rubric?: boolean;
   source_of_requirements?: "role_rubric" | "jd_extraction" | "none";
   unnormalized_jd_requirements?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
+  keyword_frequency?: KeywordFrequency[];
 }
 
 export type RubricBand = "intern" | "fresher" | "mid";
@@ -150,6 +161,7 @@ export interface ReviewDimension {
   /** Điểm BE 0-20 — UI tự nhân 5 khi cần thang 100 (đơn vị hiển thị). */
   score20: number;
   rationale: string;
+  provenance?: { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] };
 }
 
 export interface CvReviewData {
@@ -176,6 +188,10 @@ export interface CvReviewData {
   evidence_ledger?: EvidenceLedger | null;
   /** Input-quality disclosure (mojibake/OCR/thin/sparse). Absent/null → no banner. */
   extraction_quality?: ExtractionQuality | null;
+  bullet_feedback?: Record<string, BulletFeedbackItem>;
+  buzzwords_detected?: string[];
+  dimension_provenance?: Partial<Record<'action_verbs'|'skills_relevance'|'experience'|'education',
+    { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] }>>;
 }
 
 export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "skills_list" | "summary" | "other";
@@ -328,7 +344,7 @@ export interface CvReviewParsedResponse {
     education: string;
   };
   sections: BeReviewSection[];
-  bullet_feedback?: BulletFeedbackItem[];
+  bullet_feedback?: Record<string, BulletFeedbackItem>;
   buzzwords_detected?: string[];
   ats_extracted: {
     name: string | null;
@@ -347,6 +363,8 @@ export interface CvReviewParsedResponse {
   evidence_ledger?: EvidenceLedger | null;
   /** Deterministic input-quality signal (BE). Optional — absent on older cached reviews. */
   extraction_quality?: ExtractionQuality | null;
+  dimension_provenance?: Partial<Record<'action_verbs'|'skills_relevance'|'experience'|'education',
+    { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] }>>;
 }
 
 export interface CvSkillDto {
@@ -440,6 +458,7 @@ export interface CvJdMatchParsedResponse {
   unnormalized_jd_requirements: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   scoring_breakdown: ScoringBreakdown;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   target_role: string | null;
   /** Số lần xuất hiện per skill (CV vs JD) — mirror BE KeywordFrequency[], match cũ có thể thiếu. */
   keyword_frequency?: Array<{
@@ -454,6 +473,7 @@ export interface CvJdMatchParsedResponse {
   /** cv_jd_match_v2: non-skill dimensions extracted from JD (seniority/language/education/domain/work_mode). */
   jd_dimensions?: JdDimension[];
   fell_back_to_rubric?: boolean;
+  experience_fit?: ExperienceFit | null;
 }
 
 export interface CvMatchDto {
@@ -461,6 +481,9 @@ export interface CvMatchDto {
   cvId: string;
   jobDescriptionId: string | null;
   aiResultId: string | null;
+  overall_match_score: number | null;
+  seniority_match?: GapSeniorityBlock | null;
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   overallScore: number | null;
   matchRatio: number | null;
   requiredCoverage: number | null;
@@ -496,6 +519,9 @@ export interface JobRecommendationDto {
    *  minh bạch cho UI, KHÔNG phải khoá sort: BE rank nội bộ bằng fused(skill+semantic) × factor + nudge.
    *  Có thể vắng ở response cũ. */
   recommendation_score?: number;
+  seniority_match?: GapSeniorityBlock | null;
+  experience_fit?: ExperienceFit | null;
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   /** true khi job cao hơn CV ≥3 bậc seniority (vd fresher→LEAD) — UI badge/lọc. */
   severe_stretch?: boolean;
   semantic_similarity: number | null;
@@ -505,7 +531,8 @@ export interface JobRecommendationDto {
   partial_skills?: MatchPartialSkill[];
   missing_skills: Array<{ display_name: string; importance: string }>;
   scoring_breakdown?: ScoringBreakdown | null;
-  experience_fit?: ExperienceFit | null;
+  seniority_factor?: number;
+  level_gap?: number;
 }
 
 export interface JobRecommendationsResponse {
@@ -1129,7 +1156,7 @@ export interface LearningChatResponse {
   history?: LearningChatMessageDto[];
 }
 
-export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording";
+export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording" | "not_fixable_now" | "already_met";
 
 export interface GapEvidenceItem {
   skill_canonical: string;
@@ -1154,8 +1181,8 @@ export interface GapSeniorityBlock {
     confidence: string;
     signals: string[];
   } | null;
-  jd_level: null;
-  verdict: "unknown";
+  jd_level: string | null;
+  verdict: ExperienceVerdict;
   note: string;
 }
 
@@ -1171,6 +1198,7 @@ export interface TailorActionDto {
   cv_count: number | null;
   cv_level?: number | null;
   required_level?: number | null;
+  gap_severity?: number | null;
   // PR4 CV Patch Engine (BE) — all OPTIONAL/additive; absent on the legacy payload.
   /** Stable key for dedupe / React key: `${action_type}:${skill_canonical}`. */
   action_id?: string;
@@ -1361,6 +1389,8 @@ export interface GapItem {
   severity: number;
   confidence: number;
   recommended_next_action: string;
+  severity_factors?: { importance: number; core: number; market_mult: number };
+  evidence?: Array<{ kind: string; ref: string; quote: string | null }>;
 }
 
 export interface GapTransitionDto {
