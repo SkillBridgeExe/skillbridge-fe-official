@@ -110,6 +110,13 @@ interface CompanionState {
   chatSuggestions: string[];
   /** Action selected from a chat chip, waiting for explicit user confirmation. */
   chatPendingAction: ChatActionChip | null;
+  /**
+   * True while a CONFIRMED chip action is running a real network call (e.g.
+   * view_match's loadMatchForChat) — OR'd into CompanionShell's composer-disable
+   * flag so the bubble shows visible pending feedback + a double-fire guard, same
+   * as the chat-send pending row, without faking a chat message for a non-chat action.
+   */
+  chatActionPending: boolean;
   registerContext: (reg: CompanionContextReg) => void;
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
@@ -167,6 +174,8 @@ interface CompanionState {
   clearChat: () => void;
   /** Store a chip action that needs explicit confirmation before spending quota. */
   setChatPendingAction: (action: ChatActionChip | null) => void;
+  /** Flip while a confirmed chip action's real network call is in flight. */
+  setChatActionPending: (pending: boolean) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
   setChatDisplay: (d: { opener: string | null; suggestions: string[] }) => void;
   resetCompanion: () => void;
@@ -187,6 +196,7 @@ const initial = {
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
+  chatActionPending: false,
 };
 
 export const useCompanionStore = create<CompanionState>()((set) => ({
@@ -353,8 +363,10 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     });
     return question;
   },
-  clearChat: () => set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null }),
+  clearChat: () =>
+    set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null, chatActionPending: false }),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
+  setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
     set({
@@ -365,6 +377,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
+      chatActionPending: false,
       dismissedIssues: loadDismissedIssues(),
     }),
 }));

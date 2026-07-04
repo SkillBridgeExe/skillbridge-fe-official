@@ -78,7 +78,11 @@ export function CompanionShell() {
   // (only a chatMessages change does) — so reading it here leaves the composer/retry
   // stuck disabled after a send resolves/fails. The pending row IS in chatMessages,
   // which we subscribe to, so this stays reactive.
-  const chatPending = chatMessages.some((m) => m.role === "assistant" && !!m.pending);
+  // chatActionPending (store-backed) ORs in a confirmed chip action's own network
+  // call (e.g. view_match's loadMatchForChat) — same disable, no fake chat row.
+  const chatActionPending = useCompanionStore((s) => s.chatActionPending);
+  const chatPending =
+    chatMessages.some((m) => m.role === "assistant" && !!m.pending) || chatActionPending;
   // Subscribe to the store-backed opener + chips so the bubble REPAINTS when the user
   // switches tabs (focus change). The hook pushes these via setChatDisplay; reading them
   // from the subscribed store — not turn.props — is what makes the swap live on tab switch.

@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
+import { useToast } from "@/hooks/use-toast";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
@@ -115,6 +116,7 @@ export function useDiagnosisChatCompanion(
   proveIt?: EvidenceItem | null,
 ): { sendQuestion: (question: string) => void } {
   const { t, i18n } = useTranslation("diagnosis");
+  const { toast } = useToast();
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
   // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
@@ -419,6 +421,12 @@ export function useDiagnosisChatCompanion(
     } else if (pending.kind === "copy" && pending.copyText && navigator.clipboard) {
       void navigator.clipboard.writeText(pending.copyText);
     } else if (pending.kind === "view_match" && pending.viewMatch) {
+      // Guard a duplicate confirm while a previous view_match load is still in
+      // flight (e.g. the user re-taps the chip and confirms again before the
+      // first fetch settles) — skip the whole function so chatPendingAction
+      // (the re-armed chip) stays visible/untouched instead of being cleared below.
+      if (useCompanionStore.getState().chatActionPending) return;
+      useCompanionStore.getState().setChatActionPending(true);
       // Cross-JD deep-link: load the cited match's OWN cv + review in place, then
       // switch to it — a different match_id (effect above) clears the local chat.
       const { cvId, matchId } = pending.viewMatch;
@@ -428,13 +436,19 @@ export function useDiagnosisChatCompanion(
           useDiagnosisStore.getState().setReviewData(outcome.review);
           useDiagnosisStore.getState().setStep("results");
         })
-        // ponytail: silent no-op on failure — a convenience deep-link; the current
-        // view stays intact, nothing is lost. Upgrade to a toast if this confuses users.
-        .catch(() => {});
+        // The only confirm-gated action with a real network call — never swallow
+        // the failure (repo doctrine "không nuốt lỗi", PR#49). Current view stays
+        // intact (no store mutation); the user just sees why nothing happened.
+        .catch(() => {
+          toast({ title: t("companion.chat.viewMatchError"), variant: "destructive" });
+        })
+        .finally(() => {
+          useCompanionStore.getState().setChatActionPending(false);
+        });
     }
 
     useCompanionStore.getState().setChatPendingAction(null);
-  }, [jumpToAnchor]);
+  }, [jumpToAnchor, t, toast]);
 
   const onCancelAction = useCallback(() => {
     useCompanionStore.getState().setChatPendingAction(null);

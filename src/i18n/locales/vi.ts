@@ -2571,6 +2571,7 @@ export default {
         chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
         chipViewMatch: "Xem phân tích JD này",
+        viewMatchError: "Không mở được phân tích JD này — thử lại sau nhé.",
         proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
         proveitIntro:
           "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",

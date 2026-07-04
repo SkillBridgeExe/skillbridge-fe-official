@@ -2598,6 +2598,7 @@ export default {
         chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
         chipViewMatch: "View this JD analysis",
+        viewMatchError: "Couldn't open this JD's analysis — try again shortly.",
         proveitChip: "⚠ {{skill}}: claimed but not proven",
         proveitIntro:
           "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
