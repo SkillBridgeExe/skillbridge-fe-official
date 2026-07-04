@@ -46,8 +46,8 @@ export function MascotRoadmapWizard({
   const { t } = useTranslation("diagnosis");
   const [step, setStep] = useState<WizardStep>("language");
   const [answers, setAnswers] = useState<RoadmapWizardAnswers>({
-    availableDays: 365,
-    hoursPerWeek: 40,
+    availableDays: 30,
+    hoursPerWeek: 8,
     languagePref: "vi",
   });
 
@@ -70,8 +70,6 @@ export function MascotRoadmapWizard({
     step === "language"
       ? t("roadmapWizard.languageQuestion")
       : t("roadmapWizard.confirmQuestion", {
-          days: answers.availableDays,
-          hours: answers.hoursPerWeek,
           language: t(`roadmapWizard.language.${answers.languagePref}`),
         });
 

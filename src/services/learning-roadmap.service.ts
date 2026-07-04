@@ -6,9 +6,13 @@ import type { LearningRoadmap } from "@/types/user";
 import type { LearningSession, WeekPlan } from "@/components/learning/types";
 import type {
   GenerateRoadmapFromMatchRequest,
+  AnswerLearningQuizQuestionRequest,
   LearningChatRequest,
   LearningChatResponse,
+  LearningNextQuestionsResponseDto,
+  LearningQuizAnswerResponseDto,
   LearningSessionProgressDto,
+  PatchLearningChecklistItemRequest,
   RecommendedCourseDto,
   LearningResourceDto,
   LearningResourceSourceType,
@@ -76,6 +80,18 @@ function toSessionProgressState(dto: LearningSessionProgressDto): SessionProgres
   return {
     checkedChecklistItems: dto.checked_checklist_items ?? {},
     exerciseProofs: dto.exercise_proofs ?? {},
+    quizAttempts: Object.fromEntries(
+      Object.entries(dto.quiz_attempts ?? {}).map(([questionId, attempt]) => [
+        questionId,
+        {
+          selectedOptionIndex: attempt.selected_option_index,
+          isCorrect: attempt.is_correct,
+          attemptCount: attempt.attempts,
+          answeredAt: attempt.answered_at,
+          lastAnsweredAt: attempt.last_answered_at,
+        },
+      ]),
+    ),
   };
 }
 
@@ -108,6 +124,43 @@ export async function saveLearningSessionProgress(
       toUpsertSessionProgressRequest(progress),
     ),
     "Failed to save the learning session progress.",
+  );
+  return toSessionProgressState(envelope.data);
+}
+
+export async function answerLearningQuizQuestion(
+  sessionId: string,
+  body: AnswerLearningQuizQuestionRequest,
+): Promise<LearningQuizAnswerResponseDto> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<LearningQuizAnswerResponseDto>>(
+    httpClient.post(API_ROUTES.LEARNING.QUIZ_ANSWER(sessionId), body),
+    "Failed to score the quiz answer.",
+  );
+  return envelope.data;
+}
+
+export async function getLearningNextQuestions(
+  sessionId: string,
+  skillCanonical: string,
+): Promise<LearningNextQuestionsResponseDto> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<LearningNextQuestionsResponseDto>>(
+    httpClient.get(API_ROUTES.LEARNING.NEXT_QUESTIONS(sessionId, skillCanonical)),
+    "Failed to load the next quiz questions.",
+  );
+  return envelope.data;
+}
+
+export async function patchLearningChecklistItem(
+  sessionId: string,
+  itemId: string,
+  body: PatchLearningChecklistItemRequest,
+): Promise<SessionProgressState> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<LearningSessionProgressDto>>(
+    httpClient.put(API_ROUTES.LEARNING.CHECKLIST_ITEM(sessionId, itemId), body),
+    "Failed to update the checklist item.",
   );
   return toSessionProgressState(envelope.data);
 }
@@ -165,6 +218,12 @@ function toSessionResource(resource: LearningResourceDto) {
     matchScore: resource.match_score,
     qualityScore: resource.quality_score,
     freshnessScore: resource.freshness_score,
+    videoChapters: resource.video_chapters?.map((chapter) => ({
+      id: chapter.id,
+      title: chapter.title,
+      startSeconds: chapter.start_seconds,
+      objectiveId: chapter.objective_id,
+    })),
   };
 }
 
@@ -201,24 +260,46 @@ function toRecommendedCourse(course: RecommendedCourseDto) {
 }
 
 function toLessonContent(lesson: SkillBridgeLessonContentDto) {
+  const quiz = lesson.quiz_bank ?? lesson.quiz;
   return {
     title: lesson.title,
     summary: lesson.summary,
     licenseType: lesson.license_type,
     reusePolicy: lesson.reuse_policy,
     sourceResourceIds: lesson.source_resource_ids,
+    learningObjectives: (lesson.learning_objectives ?? []).map((objective) => ({
+      id: objective.id,
+      title: objective.title,
+      description: objective.description,
+    })),
     sections: lesson.sections.map((section) => ({
       id: section.id,
       title: section.title,
       body: section.body,
-      checklist: section.checklist,
+      objectiveId: section.objective_id,
+      checklist: section.checklist.map((item, index) =>
+        typeof item === "string"
+          ? { id: `${section.id}-${index + 1}`, label: item, objectiveId: section.objective_id }
+          : { id: item.id, label: item.label, objectiveId: item.objective_id },
+      ),
     })),
-    quiz: lesson.quiz.map((question) => ({
+    quiz: quiz.map((question) => ({
       id: question.id,
       question: question.question,
       options: question.options,
       correctOptionIndex: question.correct_option_index,
       explanation: question.explanation,
+      kind: question.kind,
+      objectiveId: question.objective_id,
+      sectionId: question.section_id,
+      remediation: question.remediation
+        ? {
+            sectionId: question.remediation.section_id,
+            videoResourceId: question.remediation.video_resource_id,
+            videoChapterId: question.remediation.video_chapter_id,
+            startSeconds: question.remediation.start_seconds,
+          }
+        : undefined,
     })),
     exercises: lesson.exercises.map((exercise) => ({
       id: exercise.id,
@@ -330,6 +411,7 @@ export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
                   type: "reading" as const,
                   body: section.body,
                   checklist: section.checklist,
+                  objectiveId: section.objectiveId,
                 }))
               : step.resources.length
                 ? step.resources.map((resource) => ({

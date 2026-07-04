@@ -4,9 +4,46 @@ export interface SessionProgressState {
   checkedChecklistItems: Record<string, string[]>;
   exerciseProofs: Record<string, string>;
   savedCourseIds?: string[];
+  quizAttempts?: Record<string, QuizAttemptProgress>;
+}
+
+export interface QuizAttemptProgress {
+  selectedOptionIndex: number;
+  isCorrect: boolean;
+  attemptCount: number;
+  answeredAt: string;
+  lastAnsweredAt?: string;
+  scored?: boolean;
+  explanation?: string;
+  correctOptionIndex?: number;
+  objectiveMastery?: {
+    objectiveId: string;
+    correct: number;
+    totalAnswered: number;
+    accuracy: number;
+    mastered: boolean;
+  };
+  remediationSectionId?: string;
+  remediationVideoResourceId?: string;
+  remediationVideoChapterId?: string;
+  remediationStartSeconds?: number;
 }
 
 const SESSION_PROGRESS_STORAGE_PREFIX = "skillbridge:learning-session-progress:";
+const MIN_CHECKLIST_TASK_PROOF_LENGTH = 12;
+
+export function getChecklistTaskProofId(sectionId: string, itemId: string): string {
+  return `task:${sectionId}:${itemId}`;
+}
+
+export function hasChecklistTaskProof(
+  progress: SessionProgressState,
+  sectionId: string,
+  itemId: string,
+): boolean {
+  const proof = progress.exerciseProofs[getChecklistTaskProofId(sectionId, itemId)]?.trim() ?? "";
+  return proof.length >= MIN_CHECKLIST_TASK_PROOF_LENGTH;
+}
 
 export function readStoredSessionProgress(sessionId: string): Partial<SessionProgressState> | null {
   if (typeof window === "undefined") return null;
@@ -48,6 +85,7 @@ export function createInitialSessionProgress(
     checkedChecklistItems,
     exerciseProofs: saved?.exerciseProofs ?? {},
     savedCourseIds,
+    quizAttempts: saved?.quizAttempts ?? {},
   };
 }
 
@@ -99,7 +137,9 @@ export function isSectionComplete(
   }
 
   const checked = new Set(progress.checkedChecklistItems[sectionId] ?? []);
-  return section.checklist.every((item) => checked.has(item));
+  return section.checklist.every((item) =>
+    checked.has(item.id) && hasChecklistTaskProof(progress, sectionId, item.id),
+  );
 }
 
 export function applyProgressToSession(
@@ -211,4 +251,3 @@ export function toggleSavedCourse(
     savedCourseIds: next,
   };
 }
-

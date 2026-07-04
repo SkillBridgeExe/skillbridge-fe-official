@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,61 @@ import {
   MOCK_ROADMAP_NODES,
   MOCK_RECOMMENDATIONS,
 } from "@/lib/mock-data/dashboard";
+import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 
 export default function OverviewTab() {
+  const weeks = useActiveWeekPlans();
+  const { reviewData, targetRole } = useDiagnosisStore();
+
+  const hasRealRoadmap = weeks.length > 0;
+
+  // Compute dynamic nodes from the active week plans
+  const nodes = useMemo(() => {
+    if (!hasRealRoadmap) return MOCK_ROADMAP_NODES;
+
+    let foundInProgress = false;
+    return weeks.map((week) => {
+      const totalSessions = week.sessions.length;
+      const completedSessions = week.sessions.filter((s) => s.status === "completed").length;
+      const hasInProgress = week.sessions.some((s) => s.status === "in-progress");
+      const allCompleted = totalSessions > 0 && completedSessions === totalSessions;
+
+      let status: "completed" | "in_progress" | "locked";
+      if (allCompleted) {
+        status = "completed";
+      } else if (hasInProgress || !foundInProgress) {
+        status = "in_progress";
+        foundInProgress = true;
+      } else {
+        status = "locked";
+      }
+
+      return {
+        status,
+        week: `Week ${week.weekNumber}`,
+        title: week.moduleTitle,
+      };
+    });
+  }, [weeks, hasRealRoadmap]);
+
+  // Compute the active progress line fill ratio
+  const completedWeeksCount = useMemo(() => {
+    if (!hasRealRoadmap) return 2; // mock has index 2 in_progress (meaning 2 completed)
+    return weeks.filter((w) => w.sessions.length > 0 && w.sessions.every((s) => s.status === "completed")).length;
+  }, [weeks, hasRealRoadmap]);
+
+  const progressRatio = useMemo(() => {
+    const total = hasRealRoadmap ? weeks.length : MOCK_ROADMAP_NODES.length;
+    if (total <= 1) return 0;
+    return Math.min(1, completedWeeksCount / (total - 1));
+  }, [completedWeeksCount, weeks.length, hasRealRoadmap]);
+
+  // Compute real target role match details
+  const roleName = targetRole || reviewData?.parsedCv?.inferred_roles?.[0] || "Senior Frontend Engineer";
+  const matchScore = reviewData?.jdMatch?.matchScore ?? 65;
+  const criticalGaps = reviewData?.jdMatch?.criticalGaps || [];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
@@ -60,14 +114,12 @@ export default function OverviewTab() {
               <div className="absolute top-[28px] left-[70px] right-[70px] h-2 bg-slate-100 rounded-full -translate-y-1/2 z-0" />
               
               {/* Active progress fill */}
-              {/* For mock data with 6 nodes total, index 2 is in-progress. Width relative to track. */}
-              {/* Note: Left padding is at 70px. Total track width is (w-full - 140px). 40% of the active path is used for 2/5 progress. */}
               <div 
                 className="absolute top-[28px] left-[70px] h-2 bg-primary rounded-full -translate-y-1/2 transition-all duration-1000 ease-out z-0"
-                style={{ width: 'calc((100% - 140px) * 0.4)' }} 
+                style={{ width: `calc((100% - 140px) * ${progressRatio})` }} 
               />
 
-              {MOCK_ROADMAP_NODES.map((node, idx) => (
+              {nodes.map((node, idx) => (
                 <RoadmapNode key={idx} {...node} />
               ))}
             </div>
@@ -83,14 +135,14 @@ export default function OverviewTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 font-medium mb-1">Senior Frontend Engineer</p>
+              <div className="min-w-0 flex-1 pr-2">
+                <p className="text-sm text-slate-500 font-medium mb-1 truncate">{roleName}</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-primary">65%</span>
+                  <span className="text-4xl font-black text-primary">{matchScore}%</span>
                   <span className="text-sm text-slate-400">match core</span>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-full border-4 border-primary/20 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border-4 border-primary/20 flex items-center justify-center flex-shrink-0">
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <CheckCircle2 className="w-4 h-4 text-primary" />
                 </div>
@@ -98,12 +150,25 @@ export default function OverviewTab() {
             </div>
             
             <div className="space-y-2">
-               <div className="flex items-center justify-between text-sm">
-                 <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Missing: System Design</span>
-               </div>
-               <div className="flex items-center justify-between text-sm">
-                 <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Gap: Cloud AWS</span>
-               </div>
+              {criticalGaps.length > 0 ? (
+                criticalGaps.slice(0, 2).map((gap, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600 flex items-center gap-1.5 truncate">
+                      <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      Gap: {gap}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Missing: System Design</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Gap: Cloud AWS</span>
+                  </div>
+                </>
+              )}
             </div>
             
             <Button size="sm" className="w-full bg-white text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors text-sm font-bold rounded-xl">

@@ -3,7 +3,10 @@ import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
   generateRoadmapFromMatch,
+  answerLearningQuizQuestion,
+  getLearningNextQuestions,
   getLearningSessionProgress,
+  patchLearningChecklistItem,
   roadmapToLearningRoadmap,
   roadmapToWeekPlans,
   saveLearningSessionProgress,
@@ -49,6 +52,14 @@ const composedRoadmap: ComposedRoadmap = {
           quality_score: 0.95,
           freshness_score: 0.9,
           low_confidence: false,
+          video_chapters: [
+            {
+              id: "react-props",
+              title: "Props",
+              start_seconds: 900,
+              objective_id: "react-props",
+            },
+          ],
         },
         {
           id: "sb-react-project",
@@ -87,14 +98,47 @@ const composedRoadmap: ComposedRoadmap = {
         license_type: "skillbridge_original",
         reuse_policy: "full_reuse_allowed",
         source_resource_ids: ["react-docs", "sb-react-project"],
+        learning_objectives: [
+          {
+            id: "react-props",
+            title: "Pass data with props",
+            description: "Use one-way parent-to-child data flow.",
+          },
+        ],
         sections: [
           {
             id: "react-components",
             title: "Components and props",
             body: "A React component is a small function that returns UI.",
-            checklist: ["Create a parent component", "Pass props to a child component"],
+            objective_id: "react-props",
+            checklist: [
+              { id: "create-parent", label: "Create a parent component", objective_id: "react-props" },
+              { id: "pass-props", label: "Pass props to a child component", objective_id: "react-props" },
+            ],
           },
         ],
+        quiz_bank: [
+          {
+            id: "react-q1",
+            question: "What are props used for?",
+            options: ["Parent-to-child data", "Database writes"],
+            correct_option_index: 0,
+            explanation: "Props keep data flow explicit.",
+            kind: "scenario",
+            objective_id: "react-props",
+            section_id: "react-components",
+            remediation: {
+              section_id: "react-components",
+              video_resource_id: "react-docs",
+              video_chapter_id: "react-props",
+              start_seconds: 900,
+            },
+          },
+        ],
+        pass_policy: {
+          min_correct_per_objective: 2,
+          min_accuracy: 0.7,
+        },
         quiz: [
           {
             id: "react-q1",
@@ -102,6 +146,8 @@ const composedRoadmap: ComposedRoadmap = {
             options: ["Parent-to-child data", "Database writes"],
             correct_option_index: 0,
             explanation: "Props keep data flow explicit.",
+            objective_id: "react-props",
+            section_id: "react-components",
           },
         ],
         exercises: [
@@ -162,6 +208,7 @@ describe("learning-roadmap.service", () => {
     expect(progress).toEqual({
       checkedChecklistItems: { "react-components": ["Create a parent component"] },
       exerciseProofs: { "react-ex1": "Saved screenshot" },
+      quizAttempts: {},
     });
   });
 
@@ -182,6 +229,103 @@ describe("learning-roadmap.service", () => {
       checked_checklist_items: { "react-components": ["Create a parent component"] },
       exercise_proofs: { "react-ex1": "Saved screenshot" },
     });
+  });
+
+  it("posts quiz answers to the BE scoring endpoint", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(ok({
+      question_id: "state-purpose",
+      selected_option_index: 0,
+      is_correct: true,
+      scored: true,
+      attempt_count: 1,
+      correct_option_index: 0,
+      explanation: "Local state belongs to interaction-owned UI data.",
+      objective_mastery: {
+        objective_id: "state-events",
+        correct: 1,
+        total_answered: 1,
+        accuracy: 1,
+        mastered: false,
+      },
+      lesson_status: "in_progress",
+      next_recommended_questions: [],
+      remediation: { section_id: "state-events" },
+    }) as never);
+
+    const result = await answerLearningQuizQuestion("roadmap-react", {
+      skill_canonical: "react",
+      question_id: "state-purpose",
+      selected_option_index: 0,
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.QUIZ_ANSWER("roadmap-react"),
+      {
+        skill_canonical: "react",
+        question_id: "state-purpose",
+        selected_option_index: 0,
+      },
+    );
+    expect(result).toMatchObject({
+      question_id: "state-purpose",
+      is_correct: true,
+      attempt_count: 1,
+    });
+  });
+
+  it("loads adaptive next questions from the BE learning endpoint", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(ok({
+      weak_objectives: [
+        {
+          objective_id: "react-props",
+          correct: 0,
+          total_answered: 1,
+          accuracy: 0,
+          mastered: false,
+        },
+      ],
+      next_recommended_questions: [
+        {
+          id: "props-callback",
+          question: "How should a child notify its parent?",
+          options: ["Callback prop", "Global variable"],
+          explanation: "Callbacks keep ownership clear.",
+          objective_id: "react-props",
+          section_id: "react-components",
+        },
+      ],
+    }) as never);
+
+    const result = await getLearningNextQuestions("roadmap-react", "react");
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.NEXT_QUESTIONS("roadmap-react", "react"),
+    );
+    expect(result.next_recommended_questions[0].id).toBe("props-callback");
+  });
+
+  it("patches a single checklist item without sending the full progress blob", async () => {
+    vi.mocked(httpClient.put).mockReturnValueOnce(ok({
+      session_id: "roadmap-react",
+      checked_checklist_items: { "react-components": ["pass-props"] },
+      exercise_proofs: {},
+      quiz_attempts: {},
+      updated_at: "2026-06-23T10:00:00.000Z",
+    }) as never);
+
+    const progress = await patchLearningChecklistItem("roadmap-react", "pass-props", {
+      section_id: "react-components",
+      checked: true,
+    });
+
+    expect(httpClient.put).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.CHECKLIST_ITEM("roadmap-react", "pass-props"),
+      {
+        section_id: "react-components",
+        checked: true,
+      },
+    );
+    expect(progress.checkedChecklistItems).toEqual({ "react-components": ["pass-props"] });
   });
 
   it("maps composed steps to the Learning roadmap module shape", () => {
@@ -213,6 +357,14 @@ describe("learning-roadmap.service", () => {
         matchScore: 0.92,
         qualityScore: 0.95,
         freshnessScore: 0.9,
+        videoChapters: [
+          {
+            id: "react-props",
+            title: "Props",
+            startSeconds: 900,
+            objectiveId: "react-props",
+          },
+        ],
       },
       {
         title: "SkillBridge React level 4 project",
@@ -263,6 +415,14 @@ describe("learning-roadmap.service", () => {
         matchScore: 0.92,
         qualityScore: 0.95,
         freshnessScore: 0.9,
+        videoChapters: [
+          {
+            id: "react-props",
+            title: "Props",
+            startSeconds: 900,
+            objectiveId: "react-props",
+          },
+        ],
       },
       {
         title: "SkillBridge React level 4 project",
@@ -304,12 +464,23 @@ describe("learning-roadmap.service", () => {
       licenseType: "skillbridge_original",
       reusePolicy: "full_reuse_allowed",
       sourceResourceIds: ["react-docs", "sb-react-project"],
+      learningObjectives: [
+        {
+          id: "react-props",
+          title: "Pass data with props",
+          description: "Use one-way parent-to-child data flow.",
+        },
+      ],
       sections: [
         {
           id: "react-components",
           title: "Components and props",
           body: "A React component is a small function that returns UI.",
-          checklist: ["Create a parent component", "Pass props to a child component"],
+          objectiveId: "react-props",
+          checklist: [
+            { id: "create-parent", label: "Create a parent component", objectiveId: "react-props" },
+            { id: "pass-props", label: "Pass props to a child component", objectiveId: "react-props" },
+          ],
         },
       ],
       quiz: [
@@ -319,6 +490,15 @@ describe("learning-roadmap.service", () => {
           options: ["Parent-to-child data", "Database writes"],
           correctOptionIndex: 0,
           explanation: "Props keep data flow explicit.",
+          kind: "scenario",
+          objectiveId: "react-props",
+          sectionId: "react-components",
+          remediation: {
+            sectionId: "react-components",
+            videoResourceId: "react-docs",
+            videoChapterId: "react-props",
+            startSeconds: 900,
+          },
         },
       ],
       exercises: [
@@ -340,7 +520,11 @@ describe("learning-roadmap.service", () => {
         completedExercises: 0,
         type: "reading",
         body: "A React component is a small function that returns UI.",
-        checklist: ["Create a parent component", "Pass props to a child component"],
+        objectiveId: "react-props",
+        checklist: [
+          { id: "create-parent", label: "Create a parent component", objectiveId: "react-props" },
+          { id: "pass-props", label: "Pass props to a child component", objectiveId: "react-props" },
+        ],
       },
     ]);
   });

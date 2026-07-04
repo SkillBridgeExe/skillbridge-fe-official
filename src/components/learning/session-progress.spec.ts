@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyProgressToSession,
   createInitialSessionProgress,
+  getChecklistTaskProofId,
   isSessionReadyToComplete,
   setExerciseProof,
   toggleChecklistItem,
@@ -28,7 +29,10 @@ const session: LearningSession = {
       exercises: 1,
       completedExercises: 0,
       type: "reading",
-      checklist: ["Write one answer.", "Keep the answer under two minutes."],
+      checklist: [
+        { id: "write-one-answer", label: "Write one answer." },
+        { id: "under-two-minutes", label: "Keep the answer under two minutes." },
+      ],
     },
     {
       id: "speak",
@@ -37,7 +41,7 @@ const session: LearningSession = {
       exercises: 1,
       completedExercises: 0,
       type: "reading",
-      checklist: ["Practice aloud."],
+      checklist: [{ id: "practice-aloud", label: "Practice aloud." }],
     },
   ],
   lessonContent: {
@@ -46,6 +50,7 @@ const session: LearningSession = {
     licenseType: "skillbridge_original",
     reusePolicy: "full_reuse_allowed",
     sourceResourceIds: [],
+    learningObjectives: [],
     sections: [],
     quiz: [],
     exercises: [
@@ -65,8 +70,10 @@ const session: LearningSession = {
 describe("session-progress", () => {
   it("marks a section complete when all checklist items are ticked", () => {
     const initial = createInitialSessionProgress(session);
-    const firstTick = toggleChecklistItem(initial, "star", "Write one answer.");
-    const completed = toggleChecklistItem(firstTick, "star", "Keep the answer under two minutes.");
+    const firstTick = toggleChecklistItem(initial, "star", "write-one-answer");
+    let completed = toggleChecklistItem(firstTick, "star", "under-two-minutes");
+    completed = setExerciseProof(completed, getChecklistTaskProofId("star", "write-one-answer"), "Wrote a STAR answer.");
+    completed = setExerciseProof(completed, getChecklistTaskProofId("star", "under-two-minutes"), "Timed it under two minutes.");
 
     const nextSession = applyProgressToSession(session, completed);
 
@@ -82,15 +89,33 @@ describe("session-progress", () => {
 
   it("requires all sections and exercise proof before the session is ready to complete", () => {
     let progress = createInitialSessionProgress(session);
-    progress = toggleChecklistItem(progress, "star", "Write one answer.");
-    progress = toggleChecklistItem(progress, "star", "Keep the answer under two minutes.");
-    progress = toggleChecklistItem(progress, "speak", "Practice aloud.");
+    progress = toggleChecklistItem(progress, "star", "write-one-answer");
+    progress = toggleChecklistItem(progress, "star", "under-two-minutes");
+    progress = toggleChecklistItem(progress, "speak", "practice-aloud");
+    progress = setExerciseProof(progress, getChecklistTaskProofId("star", "write-one-answer"), "Wrote a STAR answer.");
+    progress = setExerciseProof(progress, getChecklistTaskProofId("star", "under-two-minutes"), "Timed it under two minutes.");
+    progress = setExerciseProof(progress, getChecklistTaskProofId("speak", "practice-aloud"), "Practiced aloud and recorded a short take.");
 
     expect(isSessionReadyToComplete(session, progress)).toBe(false);
 
     progress = setExerciseProof(progress, "record-answer", "Transcript saved in portfolio notes.");
 
     expect(isSessionReadyToComplete(session, progress)).toBe(true);
+  });
+
+  it("requires checklist task proof before a checked section is complete", () => {
+    let progress = createInitialSessionProgress(session);
+    progress = toggleChecklistItem(progress, "star", "write-one-answer");
+    progress = toggleChecklistItem(progress, "star", "under-two-minutes");
+
+    let nextSession = applyProgressToSession(session, progress);
+    expect(nextSession.sections[0].completed).toBe(false);
+
+    progress = setExerciseProof(progress, "task:star:write-one-answer", "Wrote a STAR answer for a project conflict.");
+    progress = setExerciseProof(progress, "task:star:under-two-minutes", "Timed the answer at 1 minute 45 seconds.");
+
+    nextSession = applyProgressToSession(session, progress);
+    expect(nextSession.sections[0].completed).toBe(true);
   });
 
   it("marks a checklist-free section complete when '__completed' is checked", () => {

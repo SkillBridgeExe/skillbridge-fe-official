@@ -907,6 +907,12 @@ export interface LearningResourceDto {
   quality_score: number;
   freshness_score: number;
   low_confidence: boolean;
+  video_chapters?: Array<{
+    id: string;
+    title: string;
+    start_seconds: number;
+    objective_id?: string;
+  }>;
 }
 
 export interface RecommendedCourseDto {
@@ -934,7 +940,8 @@ export interface LessonSectionContentDto {
   id: string;
   title: string;
   body: string;
-  checklist: string[];
+  objective_id?: string;
+  checklist: Array<string | { id: string; label: string; objective_id?: string }>;
 }
 
 export interface LessonQuizQuestionDto {
@@ -943,6 +950,15 @@ export interface LessonQuizQuestionDto {
   options: string[];
   correct_option_index: number;
   explanation: string;
+  kind?: "concept" | "scenario" | "debug" | "mini_case";
+  objective_id?: string;
+  section_id?: string;
+  remediation?: {
+    section_id?: string;
+    video_resource_id?: string;
+    video_chapter_id?: string;
+    start_seconds?: number;
+  };
 }
 
 export interface LessonExerciseContentDto {
@@ -960,7 +976,17 @@ export interface SkillBridgeLessonContentDto {
   license_type: "skillbridge_original" | "official_reference" | "link_only";
   reuse_policy: "full_reuse_allowed" | "summary_only" | "link_only";
   source_resource_ids: string[];
+  learning_objectives?: Array<{
+    id: string;
+    title: string;
+    description: string;
+  }>;
   sections: LessonSectionContentDto[];
+  quiz_bank?: LessonQuizQuestionDto[];
+  pass_policy?: {
+    min_correct_per_objective: number;
+    min_accuracy: number;
+  };
   quiz: LessonQuizQuestionDto[];
   exercises: LessonExerciseContentDto[];
 }
@@ -996,6 +1022,13 @@ export interface LearningSessionProgressDto {
   session_id: string;
   checked_checklist_items: Record<string, string[]>;
   exercise_proofs: Record<string, string>;
+  quiz_attempts?: Record<string, {
+    selected_option_index: number;
+    is_correct: boolean;
+    attempts: number;
+    answered_at: string;
+    last_answered_at?: string;
+  }>;
   updated_at: string | null;
 }
 
@@ -1004,10 +1037,75 @@ export interface UpsertLearningSessionProgressRequest {
   exercise_proofs: Record<string, string>;
 }
 
+export interface AnswerLearningQuizQuestionRequest {
+  skill_canonical: string;
+  question_id: string;
+  selected_option_index: number;
+}
+
+export interface PatchLearningChecklistItemRequest {
+  section_id: string;
+  checked: boolean;
+}
+
+export interface LearningQuizAnswerResponseDto {
+  question_id: string;
+  selected_option_index: number;
+  is_correct: boolean;
+  scored: boolean;
+  attempt_count: number;
+  correct_option_index: number;
+  explanation: string;
+  objective_mastery: {
+    objective_id: string;
+    correct: number;
+    total_answered: number;
+    accuracy: number;
+    mastered: boolean;
+  };
+  lesson_status: "not_started" | "in_progress" | "mastered";
+  next_recommended_questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
+    explanation: string;
+    kind?: "concept" | "scenario" | "debug" | "mini_case";
+    objective_id?: string;
+    section_id?: string;
+  }>;
+  remediation?: {
+    section_id?: string;
+    video_resource_id?: string;
+    video_chapter_id?: string;
+    start_seconds?: number;
+  };
+}
+
+export interface LearningNextQuestionsResponseDto {
+  weak_objectives: Array<{
+    objective_id: string;
+    correct: number;
+    total_answered: number;
+    accuracy: number;
+    mastered: boolean;
+  }>;
+  next_recommended_questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
+    explanation: string;
+    kind?: "concept" | "scenario" | "debug" | "mini_case";
+    objective_id: string;
+    section_id: string;
+  }>;
+}
+
 export interface LearningChatRequest {
   message: string;
   conversationId?: string;
   language?: "vi" | "en";
+  session_id?: string;
+  skill_canonical?: string;
 }
 
 export interface LearningChatMessageDto {

@@ -38,7 +38,10 @@ import { AIChatPanel } from "./AIChatPanel";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import { hasApiAuthSession } from "@/services/auth-session.service";
 import {
+  answerLearningQuizQuestion,
+  getLearningNextQuestions,
   getLearningSessionProgress,
+  patchLearningChecklistItem,
   saveLearningSessionProgress,
 } from "@/services/learning-roadmap.service";
 import { buildInternalResourceTask } from "./internal-resource-content";
@@ -53,45 +56,337 @@ import {
   writeStoredSessionProgress,
   toggleSavedCourse,
   isSectionComplete,
+  getChecklistTaskProofId,
+  hasChecklistTaskProof,
   type SessionProgressState,
 } from "./session-progress";
+import {
+  answerQuestion,
+  applyServerQuizAnswer,
+  getQuizStats,
+  type QuizQuestionForProgress,
+} from "./quiz-progress";
+
+interface AdaptiveQuizState {
+  weakObjectives: Array<{
+    objectiveId: string;
+    correct: number;
+    totalAnswered: number;
+    accuracy: number;
+    mastered: boolean;
+  }>;
+  nextRecommendedQuestions: Array<{
+    id: string;
+    question: string;
+    objectiveId?: string;
+    sectionId?: string;
+  }>;
+}
 
 // ─── Helpers ─────────────────────────────────────────
-// Build timeline from session sections dynamically
-function buildTimeline(session: LearningSession) {
-  let mins = 0;
-  const perSection = Math.round(session.estimatedMinutes / Math.max(session.sections.length, 1));
-  return session.sections.map(sec => {
-    const h = String(Math.floor(mins / 60)).padStart(2, "0");
-    const m = String(mins % 60).padStart(2, "0");
-    const label = sec.title;
-    mins += perSection;
-    return { time: `${h}:${m}`, label };
+const QUIZ_PASSING_RATIO = 0.8;
+
+function formatTimestamp(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  if (hours > 0) {
+    return [
+      String(hours).padStart(2, "0"),
+      String(minutes).padStart(2, "0"),
+      String(remainingSeconds).padStart(2, "0"),
+    ].join(":");
+  }
+
+  return [String(minutes).padStart(2, "0"), String(remainingSeconds).padStart(2, "0")].join(":");
+}
+
+function parseDurationSeconds(duration?: string): number | null {
+  if (!duration) return null;
+  const hoursMatch = duration.match(/(\d+)\s*h/i);
+  const minutesMatch = duration.match(/(\d+)\s*m/i);
+  const secondsMatch = duration.match(/(\d+)\s*s/i);
+  const hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+  const minutes = minutesMatch ? Number(minutesMatch[1]) : 0;
+  const seconds = secondsMatch ? Number(secondsMatch[1]) : 0;
+  const total = hours * 3600 + minutes * 60 + seconds;
+  return total > 0 ? total : null;
+}
+
+function orderLearningSectionsForDisplay(sections: LearningSession["sections"]) {
+  return [...sections].sort((a, b) => {
+    const rank = (section: LearningSession["sections"][number]) => {
+      if (section.type === "video") return 0;
+      if (section.type === "quiz") return 2;
+      return 1;
+    };
+
+    return rank(a) - rank(b);
   });
+}
+
+function orderSessionForDisplay(session: LearningSession): LearningSession {
+  return {
+    ...session,
+    sections: orderLearningSectionsForDisplay(session.sections),
+  };
+}
+
+function buildTimeline(session: LearningSession) {
+  const youtubeResource = session.resources.find((resource) => resource.type === "youtube");
+  const chapters = youtubeResource?.videoChapters ?? [];
+
+  if (chapters.length > 0) {
+    return chapters.map((chapter) => ({
+      id: chapter.id,
+      time: formatTimestamp(chapter.startSeconds),
+      label: chapter.title,
+      startSeconds: chapter.startSeconds,
+    }));
+  }
+
+  const nonVideoSections = session.sections.filter((section) => section.type !== "video");
+  const sections = nonVideoSections.length > 0 ? nonVideoSections : session.sections;
+  const totalSeconds = parseDurationSeconds(youtubeResource?.duration) ?? session.estimatedMinutes * 60;
+  const perSectionSeconds = Math.max(
+    1,
+    Math.round(totalSeconds / Math.max(sections.length, 1)),
+  );
+
+  return sections.map((section, index) => {
+    const startSeconds = index * perSectionSeconds;
+    return {
+      id: section.id,
+      time: formatTimestamp(startSeconds),
+      label: section.title,
+      startSeconds,
+    };
+  });
+}
+
+function getSectionVideoStartSeconds(session: LearningSession, sectionId: string): number | undefined {
+  const section = session.sections.find((item) => item.id === sectionId);
+  if (!section) return undefined;
+
+  const timeline = buildTimeline(session);
+  const matchingItem =
+    timeline.find((item) => item.id === section.id) ??
+    timeline.find((item) => item.label.trim().toLowerCase() === section.title.trim().toLowerCase());
+
+  if (matchingItem) return matchingItem.startSeconds;
+  return section.type === "video" ? 0 : undefined;
 }
 
 function buildQuiz(session: LearningSession) {
   if (session.lessonContent?.quiz && session.lessonContent.quiz.length) {
     return session.lessonContent.quiz.map((item) => ({
+      id: item.id,
       question: item.question,
       options: item.options,
       correct: item.correctOptionIndex,
+      correctOptionIndex: item.correctOptionIndex,
       explanation: item.explanation,
+      kind: item.kind ?? inferQuizKind(item.id, item.question),
+      objectiveId: item.objectiveId,
+      sectionId: item.sectionId,
+      remediation: item.remediation,
     }));
   }
 
   return [];
 }
 
-function buildResourceSummary(session: LearningSession): string[] {
-  if (session.lessonContent?.summary) {
-    return [
-      session.lessonContent.summary,
-      ...session.lessonContent.sections.map((section) => `${section.title}: ${section.body}`),
-    ];
-  }
+function getQuizPassingCount(totalQuestions: number): number {
+  if (totalQuestions <= 0) return 0;
+  return Math.max(1, Math.ceil(totalQuestions * QUIZ_PASSING_RATIO));
+}
 
-  return [];
+function isQuizPassed(session: LearningSession, progress: SessionProgressState): boolean {
+  const quiz = buildQuiz(session);
+  if (quiz.length === 0) return true;
+  const stats = getQuizStats(progress, quiz);
+  return stats.correct >= getQuizPassingCount(quiz.length);
+}
+
+type LearningMode = "learn" | "practice" | "check";
+type QuizKind = "concept" | "scenario" | "debug" | "mini_case";
+type SectionMasteryStatus = "Learning" | "Practice needed" | "Quiz passed" | "Completed";
+
+function inferQuizKind(id: string, question: string): QuizKind {
+  const normalized = `${id} ${question}`.toLowerCase();
+  if (/\b(debug|bug|error|wrong|fix|mistake|fails|failure)\b/.test(normalized)) return "debug";
+  if (/\b(case|evidence|portfolio|show|prove)\b/.test(normalized)) return "mini_case";
+  if (/\b(scenario|learner|working|best next action|when should|what should)\b/.test(normalized)) return "scenario";
+  return "concept";
+}
+
+function quizKindLabel(kind: QuizKind): string {
+  if (kind === "mini_case") return "Mini case";
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+function getSectionTaskStats(
+  section: LearningSession["sections"][number],
+  progress: SessionProgressState,
+) {
+  const checklist = section.checklist ?? [];
+  const completed = checklist.filter((item) =>
+    (progress.checkedChecklistItems[section.id] ?? []).includes(item.id) &&
+    hasChecklistTaskProof(progress, section.id, item.id),
+  ).length;
+  return {
+    total: checklist.length,
+    completed,
+  };
+}
+
+function getSectionMasteryStatus(
+  session: LearningSession,
+  progress: SessionProgressState,
+  section: LearningSession["sections"][number],
+): SectionMasteryStatus {
+  if (isSectionComplete(session, progress, section.id)) return "Completed";
+  const quiz = buildQuiz(session);
+  if (quiz.length > 0 && isQuizPassed(session, progress)) return "Quiz passed";
+  const stats = getSectionTaskStats(section, progress);
+  if (stats.total > 0 && stats.completed < stats.total) return "Practice needed";
+  return "Learning";
+}
+
+function getSessionEvidenceSummary(session: LearningSession, progress: SessionProgressState) {
+  const taskRows = session.sections.flatMap((section) =>
+    (section.checklist ?? []).map((item) => {
+      const proofId = getChecklistTaskProofId(section.id, item.id);
+      const proof = progress.exerciseProofs[proofId]?.trim() ?? "";
+      const checked = (progress.checkedChecklistItems[section.id] ?? []).includes(item.id);
+      return {
+        id: proofId,
+        sectionTitle: section.title,
+        label: item.label,
+        proof,
+        complete: checked && proof.length >= 12,
+      };
+    }),
+  );
+  const quiz = buildQuiz(session);
+  const quizStats = getQuizStats(progress, quiz);
+  return {
+    tasks: taskRows,
+    completedTasks: taskRows.filter((item) => item.complete).length,
+    totalTasks: taskRows.length,
+    quizCorrect: quizStats.correct,
+    quizTotal: quiz.length,
+    quizPassed: isQuizPassed(session, progress),
+    readyForPortfolio:
+      taskRows.length > 0 &&
+      taskRows.every((item) => item.complete) &&
+      (quiz.length === 0 || isQuizPassed(session, progress)),
+  };
+}
+
+function buildEvidenceClipboardText(session: LearningSession, progress: SessionProgressState): string {
+  const evidence = getSessionEvidenceSummary(session, progress);
+  const lines = [
+    `${session.title} learning evidence`,
+    `Lab tasks: ${evidence.completedTasks}/${evidence.totalTasks}`,
+    `Quiz score: ${evidence.quizCorrect}/${evidence.quizTotal}`,
+    `Status: ${evidence.readyForPortfolio ? "Ready for portfolio" : "In progress"}`,
+    ...evidence.tasks
+      .filter((item) => item.complete)
+      .map((item) => `- ${item.sectionTitle}: ${item.label} | Proof: ${item.proof}`),
+  ];
+  return lines.join("\n");
+}
+
+function getDeterministicRotation(id: string, length: number): number {
+  if (length <= 1) return 0;
+  let hash = 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
+  }
+  return (hash % (length - 1)) + 1;
+}
+
+type BuiltQuizQuestion = ReturnType<typeof buildQuiz>[number];
+
+type MissionStepKind = "setup" | "explain" | "build" | "practice";
+
+function getMissionStepKind(label: string): MissionStepKind {
+  const normalized = label.toLowerCase();
+  if (/\b(install|setup|environment|python|package|opencv)\b/.test(normalized)) return "setup";
+  if (/\b(explain|why|identify|review|understand)\b/.test(normalized)) return "explain";
+  if (/\b(create|build|folder|project|draw|load|read|resize|write|run)\b/.test(normalized)) return "build";
+  return "practice";
+}
+
+function getPracticeTaskGuide(kind: MissionStepKind): string {
+  if (kind === "setup") {
+    return "Run the setup and paste the version or command result.";
+  }
+  if (kind === "explain") {
+    return "Answer in your own words with one concrete example.";
+  }
+  if (kind === "build") {
+    return "Paste a code snippet, command output, or short result note.";
+  }
+  return "Paste a note, snippet, link, or result that proves you practiced.";
+}
+
+function getPracticeTaskRubric(kind: MissionStepKind): string[] {
+  if (kind === "setup") {
+    return ["Command or version shown", "Specific result or output", "Ran on your local setup"];
+  }
+  if (kind === "explain") {
+    return ["Own words", "Specific result or output", "One concrete example"];
+  }
+  if (kind === "build") {
+    return ["Code or command included", "Specific result or output", "Can be reproduced"];
+  }
+  return ["What you tried", "Specific result or output", "Short reflection or link"];
+}
+
+function getPracticeTaskPlaceholder(kind: MissionStepKind): string {
+  if (kind === "setup") return "Example: cv2 version 4.10.0 installed";
+  if (kind === "explain") return "Example: An image shape is height x width x channels because...";
+  if (kind === "build") return "Example: cv2.imread('image.jpg') returned shape (720, 1280, 3)";
+  return "Example: I practiced this and the result was...";
+}
+
+function getSectionLearningOutcomes(section?: LearningSession["sections"][number]): string[] {
+  if (!section) return [];
+  const checklistOutcomes = (section.checklist ?? [])
+    .map((item) => item.label.trim())
+    .filter(Boolean);
+  if (checklistOutcomes.length > 0) return checklistOutcomes.slice(0, 3);
+  if (section.body?.trim()) return [`Explain ${section.title} in your own words.`];
+  return [`Complete the ${section.title} activity with proof.`];
+}
+
+function MissionStepIcon({
+  kind,
+  completed,
+}: {
+  kind: MissionStepKind;
+  completed: boolean;
+}) {
+  const iconClassName = cn("h-4 w-4", completed ? "text-white" : "text-slate-600");
+  if (kind === "setup") return <Terminal className={iconClassName} />;
+  if (kind === "explain") return <FileText className={iconClassName} />;
+  if (kind === "build") return <Code className={iconClassName} />;
+  return <GraduationCap className={iconClassName} />;
+}
+
+function getDisplayOptions(question: BuiltQuizQuestion) {
+  const rotation = getDeterministicRotation(question.id, question.options.length);
+  return question.options.map((_, displayIndex) => {
+    const originalIndex = (displayIndex + rotation) % question.options.length;
+    return {
+      option: question.options[originalIndex],
+      originalIndex,
+    };
+  });
 }
 
 function displayScore(value?: number): string | null {
@@ -434,21 +729,39 @@ function StarRating({ stars, max }: { stars: number; max: number }) {
 interface SidebarProps {
   session: LearningSession;
   activeSectionId: string;
+  progress: SessionProgressState;
   onSelectSection: (id: string) => void;
   onToggle: () => void;
   showValidationErrors?: boolean;
 }
 
+type SidebarTab = "all" | "lessons" | "video" | "quiz";
+
 function SessionSidebar({
   session,
   activeSectionId,
+  progress: sessionProgress,
   onSelectSection,
   onToggle,
   showValidationErrors = false,
 }: SidebarProps) {
   const { t } = useTranslation("common");
+  const [activeTab, setActiveTab] = useState<SidebarTab>("all");
   const completedCount = session.sections.filter(s => s.completed).length;
   const progress = session.sections.length > 0 ? (completedCount / session.sections.length) * 100 : 0;
+  const quizCount = buildQuiz(session).length;
+  const sidebarTabs: Array<{ id: SidebarTab; label: string }> = [
+    { id: "all", label: "All" },
+    { id: "lessons", label: "Lessons" },
+    { id: "video", label: "Video" },
+    { id: "quiz", label: "Quiz" },
+  ];
+  const filteredSections = session.sections.filter((section) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "lessons") return section.type !== "video" && section.type !== "quiz";
+    return section.type === activeTab;
+  });
+  const showQuizItem = quizCount > 0 && (activeTab === "all" || activeTab === "quiz");
 
   const typeIcon = (t: LearningSession["sections"][number]["type"]) => {
     switch (t) {
@@ -493,11 +806,36 @@ function SessionSidebar({
         </div>
       </div>
 
+      <div className="border-b border-slate-100 bg-white px-3 py-3">
+        <div role="tablist" aria-label="Lesson list filters" className="grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+          {sidebarTabs.map((tab) => {
+            const isActiveTab = tab.id === activeTab;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActiveTab}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "rounded-lg px-2 py-1.5 text-[11px] font-semibold transition-colors",
+                  isActiveTab ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800",
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Section list */}
-      <nav className="p-3 space-y-1">
-        {session.sections.map(section => {
+      <nav aria-label="Session lesson list" className="p-3 space-y-1">
+        {filteredSections.map(section => {
           const isActive = section.id === activeSectionId;
-          const isSectionIncomplete = !section.completed;
+          const sectionStatus = getSectionMasteryStatus(session, sessionProgress, section);
+          const isCompletedStatus = sectionStatus === "Completed";
+          const isSectionIncomplete = sectionStatus !== "Completed";
           const shouldHighlightSection = showValidationErrors && isSectionIncomplete;
           return (
             <button
@@ -513,7 +851,7 @@ function SessionSidebar({
               )}
             >
               <span className="mt-0.5 flex-shrink-0">
-                {section.completed ? (
+                {isCompletedStatus ? (
                   <CheckCircle2 className={cn("w-4 h-4", isActive ? "text-white" : "text-emerald-500")} />
                 ) : shouldHighlightSection ? (
                   <AlertCircle className="w-4 h-4 text-red-500 animate-pulse" />
@@ -532,6 +870,22 @@ function SessionSidebar({
                   <span className="text-xs">-</span>
                   <span className="text-xs">{t("learning.common.exercises", { count: section.exercises })}</span>
                 </div>
+                <span
+                  className={cn(
+                    "mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold",
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : sectionStatus === "Completed"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : sectionStatus === "Quiz passed"
+                      ? "bg-blue-50 text-blue-700"
+                      : sectionStatus === "Practice needed"
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-slate-100 text-slate-500",
+                  )}
+                >
+                  {sectionStatus}
+                </span>
                 {/* Section stars */}
                 <div className="flex items-center gap-0.5 mt-1">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -539,7 +893,7 @@ function SessionSidebar({
                       key={i}
                       className={cn(
                         "w-3 h-3",
-                        section.completed
+                        isCompletedStatus
                           ? (isActive ? "fill-white text-white" : "fill-amber-400 text-amber-400")
                           : (isActive ? "fill-white/30 text-white/30" : "fill-slate-200 text-slate-200")
                       )}
@@ -550,6 +904,35 @@ function SessionSidebar({
             </button>
           );
         })}
+        {showQuizItem ? (
+          <button
+            type="button"
+            aria-label="Open quiz section"
+            onClick={() => document.getElementById("quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border text-slate-700 border-transparent hover:bg-white hover:shadow-sm"
+          >
+            <span className="mt-0.5 flex-shrink-0">
+              <HelpCircle className="w-4 h-4 text-amber-500" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium leading-snug text-slate-800">
+                {t("learning.session.knowledgeCheck")}
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-slate-400">
+                <span className="flex items-center gap-1 text-xs">
+                  <HelpCircle className="w-3.5 h-3.5" /> quiz
+                </span>
+                <span className="text-xs">-</span>
+                <span className="text-xs">{t("learning.session.questionCount", { count: quizCount })}</span>
+              </div>
+              <div className="flex items-center gap-0.5 mt-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Star key={i} className="w-3 h-3 fill-slate-200 text-slate-200" />
+                ))}
+              </div>
+            </div>
+          </button>
+        ) : null}
       </nav>
     </aside>
   );
@@ -560,28 +943,45 @@ function VideoContentPanel({
   activeSectionId,
   progress,
   onToggleChecklistItem,
+  onAnswerQuizQuestion,
+  onRetryQuiz,
+  videoStartSeconds,
+  onSeekVideo,
+  adaptiveQuiz,
   showValidationErrors = false,
+  showQuiz = true,
 }: {
   session: LearningSession;
   activeSectionId?: string;
   progress: SessionProgressState;
   onToggleChecklistItem: (sectionId: string, item: string) => void;
+  onAnswerQuizQuestion: (question: QuizQuestionForProgress, selectedOptionIndex: number) => Promise<void>;
+  onRetryQuiz: (questionIds: string[]) => void;
+  videoStartSeconds?: number;
+  onSeekVideo: (seconds: number) => void;
+  adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
+  showQuiz?: boolean;
 }) {
   const { t } = useTranslation("common");
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
-  const [showQuizResults, setShowQuizResults] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(true);
   const [timelineExpanded, setTimelineExpanded] = useState(true);
-  const [quizExpanded, setQuizExpanded] = useState(true);
+  const [quizExpanded, setQuizExpanded] = useState(false);
 
   // Find matching YouTube resource or fallback to first YouTube resource
   const activeResource = activeSectionId ? session.resources.find(r => r.id === activeSectionId && r.type === "youtube") : undefined;
   const ytResource = activeResource || session.resources.find(r => r.type === "youtube");
   const ytId = ytResource ? getYouTubeId(ytResource.url) : null;
-
   const quiz = buildQuiz(session);
-  const correctCount = quiz.reduce((acc, q, i) => acc + (quizAnswers[i] === q.correct ? 1 : 0), 0);
+  const quizStats = getQuizStats(progress, quiz);
+  const timeline = buildTimeline(session);
+  const correctCount = quizStats.correct;
+  const quizAnswers = Object.fromEntries(
+    quiz
+      .map((question, index) => [index, progress.quizAttempts?.[question.id]?.selectedOptionIndex])
+      .filter((item): item is [number, number] => typeof item[1] === "number"),
+  );
+  const legacyAdaptiveQuiz = adaptiveQuiz ?? { weakObjectives: [], nextRecommendedQuestions: [] };
 
   // Determine if this active section is uncompleted
   const isSectionUncompleted = activeSectionId ? !isSectionComplete(session, progress, activeSectionId) : false;
@@ -594,8 +994,9 @@ function VideoContentPanel({
         <div className="rounded-2xl overflow-hidden bg-black shadow-lg">
           <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
             <iframe
+              key={`${ytId}-${videoStartSeconds ?? 0}`}
               className="absolute inset-0 w-full h-full"
-              src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
+              src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1${typeof videoStartSeconds === "number" ? `&start=${videoStartSeconds}&autoplay=1` : ""}`}
               title={ytResource?.title || "Video"}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
@@ -658,6 +1059,7 @@ function VideoContentPanel({
         )}
       </div>
 
+
       {/* ═══ Video Timeline — generated from session sections ═══ */}
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <button
@@ -670,18 +1072,26 @@ function VideoContentPanel({
             </div>
             <div className="text-left">
               <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.lessonContent")}</h4>
-              <p className="text-xs text-slate-400">{t("learning.common.sections", { count: session.sections.length })}</p>
+              <p className="text-xs text-slate-400">{t("learning.common.sections", { count: timeline.length })}</p>
             </div>
           </div>
           {timelineExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
         </button>
         {timelineExpanded && (
           <div className="px-5 pb-5 space-y-0">
-            {buildTimeline(session).map((item, i) => (
-              <div key={i} className="flex items-center gap-4 py-2.5 border-t border-slate-100 first:border-0 group hover:bg-primary/5 -mx-5 px-5 cursor-pointer transition-colors">
+            {timeline.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSeekVideo(item.startSeconds)}
+                className={cn(
+                  "flex w-full items-center gap-4 py-2.5 border-t border-slate-100 first:border-0 group hover:bg-primary/5 -mx-5 px-5 cursor-pointer transition-colors text-left",
+                  videoStartSeconds === item.startSeconds && "bg-primary/10 text-primary",
+                )}
+              >
                 <span className="text-xs font-mono font-bold text-primary w-12 shrink-0">{item.time}</span>
                 <span className="text-sm text-slate-700 group-hover:text-primary transition-colors">{item.label}</span>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -696,11 +1106,11 @@ function VideoContentPanel({
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-indigo-100 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-primary" />
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="text-left">
-                <h4 className="font-bold text-slate-800 text-sm">{t("learning.session.aiLessonSummary")}</h4>
-                <p className="text-xs text-slate-400">{t("learning.session.aiGeneratedBy")}</p>
+                <h4 className="font-bold text-slate-800 text-sm">Lesson summary</h4>
+                <p className="text-xs text-slate-400">SkillBridge lesson</p>
               </div>
             </div>
             {summaryExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
@@ -709,14 +1119,7 @@ function VideoContentPanel({
             <div className="px-5 pb-5 border-t border-slate-100">
               <div className="prose prose-sm prose-slate max-w-none pt-4 [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-semibold [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-xs [&_code]:font-mono [&_strong]:text-slate-800 [&_li]:text-slate-600 [&_p]:text-slate-600 [&_ol]:list-decimal [&_ol]:pl-4">
                 <h2>{session.title}</h2>
-                <p>
-                  {t("learning.session.summaryBody")}
-                </p>
-                <ul className="list-disc pl-4">
-                  {buildResourceSummary(session).map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
+                <p>{session.lessonContent.summary}</p>
               </div>
             </div>
           )}
@@ -724,7 +1127,7 @@ function VideoContentPanel({
       )}
 
       {/* ═══ Knowledge Check Quiz ═══ */}
-      {quiz.length > 0 && (
+      {false && (
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <button
             onClick={() => setQuizExpanded(!quizExpanded)}
@@ -751,13 +1154,14 @@ function VideoContentPanel({
                   </p>
                   <div className="space-y-2">
                     {q.options.map((opt, oi) => {
-                      const isSelected = quizAnswers[qi] === oi;
-                      const isCorrect = showQuizResults && oi === q.correct;
-                      const isWrong = showQuizResults && isSelected && oi !== q.correct;
+                      const attempt = progress.quizAttempts?.[q.id];
+                      const isSelected = attempt?.selectedOptionIndex === oi;
+                      const isCorrect = Boolean(attempt) && oi === (attempt?.correctOptionIndex ?? q.correct);
+                      const isWrong = Boolean(attempt) && isSelected && !attempt?.isCorrect;
                       return (
                         <button
                           key={oi}
-                          onClick={() => !showQuizResults && setQuizAnswers(prev => ({ ...prev, [qi]: oi }))}
+                          onClick={() => void onAnswerQuizQuestion(q, oi)}
                           className={cn(
                             "w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all",
                             isCorrect
@@ -783,20 +1187,37 @@ function VideoContentPanel({
                       );
                     })}
                   </div>
-                  {showQuizResults && q.explanation ? (
+                  {progress.quizAttempts?.[q.id] && q.explanation ? (
                     <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
-                      {q.explanation}
+                      {progress.quizAttempts[q.id]?.explanation ?? q.explanation}
                     </p>
                   ) : null}
                 </div>
               ))}
 
+              {legacyAdaptiveQuiz.weakObjectives.length > 0 || legacyAdaptiveQuiz.nextRecommendedQuestions.length > 0 ? (
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                  {legacyAdaptiveQuiz.weakObjectives.length > 0 ? (
+                    <p className="text-sm font-semibold text-blue-900">
+                      Weak objective: {legacyAdaptiveQuiz.weakObjectives.map((item) => item.objectiveId).join(", ")}
+                    </p>
+                  ) : null}
+                  {legacyAdaptiveQuiz.nextRecommendedQuestions.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-sm text-blue-800">
+                      {legacyAdaptiveQuiz.nextRecommendedQuestions.map((item) => (
+                        <li key={item.id}>{item.question}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+
               {/* Submit / Results */}
-              {!showQuizResults ? (
+              {false ? (
                 <Button
                   className="rounded-full w-full"
                   disabled={Object.keys(quizAnswers).length < quiz.length}
-                  onClick={() => setShowQuizResults(true)}
+                  onClick={() => undefined}
                 >
                   {t("learning.session.checkAnswers")}
                 </Button>
@@ -819,7 +1240,7 @@ function VideoContentPanel({
                     variant="outline"
                     size="sm"
                     className="mt-3 rounded-full"
-                    onClick={() => { setQuizAnswers({}); setShowQuizResults(false); }}
+                    onClick={() => undefined}
                   >
                     {t("learning.session.retryQuiz")}
                   </Button>
@@ -829,11 +1250,292 @@ function VideoContentPanel({
           )}
         </div>
       )}
+
+      {showQuiz ? (
+        <SessionQuiz
+          session={session}
+          progress={progress}
+          onAnswer={onAnswerQuizQuestion}
+          onRetry={onRetryQuiz}
+          adaptiveQuiz={adaptiveQuiz}
+        />
+      ) : null}
     </div>
   );
 }
 
 // ─── Doc Content Panel (react.dev style) ────────────
+function SessionQuiz({
+  session,
+  progress,
+  onAnswer,
+  onRetry,
+  adaptiveQuiz,
+}: {
+  session: LearningSession;
+  progress: SessionProgressState;
+  onAnswer: (question: QuizQuestionForProgress, selectedOptionIndex: number) => Promise<void>;
+  onRetry: (questionIds: string[]) => void;
+  adaptiveQuiz?: AdaptiveQuizState | null;
+}) {
+  const { t } = useTranslation("common");
+  const quiz = buildQuiz(session);
+  const stats = getQuizStats(progress, quiz);
+  const passingCount = getQuizPassingCount(quiz.length);
+  const passed = stats.correct >= passingCount;
+  const [expanded, setExpanded] = useState(false);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  const [checkingAnswers, setCheckingAnswers] = useState(false);
+  if (quiz.length === 0) return null;
+
+  const unansweredQuestions = quiz.filter((question) => !progress.quizAttempts?.[question.id]);
+  const hasSelectedEveryUnansweredQuestion = unansweredQuestions.every(
+    (question) => typeof selectedAnswers[question.id] === "number",
+  );
+  const allQuestionsAnswered = quiz.every((question) => progress.quizAttempts?.[question.id]);
+
+  const handleCheckAnswers = async () => {
+    if (!hasSelectedEveryUnansweredQuestion || checkingAnswers) return;
+
+    setCheckingAnswers(true);
+    try {
+      for (const question of unansweredQuestions) {
+        const selectedOptionIndex = selectedAnswers[question.id];
+        if (typeof selectedOptionIndex === "number") {
+          await onAnswer(question, selectedOptionIndex);
+        }
+      }
+    } finally {
+      setCheckingAnswers(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setSelectedAnswers({});
+    onRetry(quiz.map((question) => question.id));
+  };
+
+  return (
+    <div id="quiz-panel" className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+        className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-slate-50"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
+            <HelpCircle className="h-5 w-5 text-amber-500" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-800">{t("learning.session.knowledgeCheck")}</h4>
+            <p className="text-xs text-slate-400">
+              {t("learning.session.questionCount", { count: quiz.length })} - {t("learning.session.correctCount", { correct: stats.correct, total: quiz.length })} - Pass {passingCount}/{quiz.length}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+          <span>{expanded ? "Hide quiz" : "Start quiz"}</span>
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="space-y-5 border-t border-slate-100 p-5">
+          {quiz.map((question, index) => {
+            const attempt = progress.quizAttempts?.[question.id];
+            const answered = Boolean(attempt);
+            const correctOptionIndex = attempt?.correctOptionIndex ?? question.correct;
+            const selectedOptionIndex = answered ? attempt?.selectedOptionIndex : selectedAnswers[question.id];
+            const displayOptions = getDisplayOptions(question);
+
+            return (
+              <div key={question.id} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary">
+                    {quizKindLabel(question.kind)}
+                  </Badge>
+                </div>
+                <p className="text-sm font-semibold text-slate-800">
+                  <span className="mr-2 font-bold text-primary">Q{index + 1}.</span>
+                  {question.question}
+                </p>
+                <div className="space-y-2">
+                  {displayOptions.map(({ option, originalIndex }, displayIndex) => {
+                    const isSelected = selectedOptionIndex === originalIndex;
+                    const isCorrect = answered && originalIndex === correctOptionIndex;
+                    const isWrong = answered && isSelected && !attempt?.isCorrect;
+
+                    return (
+                      <button
+                        key={`${question.id}-${originalIndex}`}
+                        type="button"
+                        disabled={answered}
+                        onClick={() =>
+                          setSelectedAnswers((current) => ({
+                            ...current,
+                            [question.id]: originalIndex,
+                          }))
+                        }
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all disabled:cursor-default",
+                          isCorrect
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                            : isWrong
+                            ? "border-red-300 bg-red-50 text-red-800"
+                            : isSelected
+                            ? "border-primary/30 bg-primary/5 text-primary"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold",
+                            isCorrect
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : isWrong
+                              ? "border-red-500 bg-red-500 text-white"
+                              : isSelected
+                              ? "border-primary bg-primary text-white"
+                              : "border-slate-300",
+                          )}
+                        >
+                          {String.fromCharCode(65 + displayIndex)}
+                        </span>
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+                {answered ? (
+                  <div className="flex justify-end">
+                    <span className={cn("text-xs font-semibold", attempt?.isCorrect ? "text-emerald-600" : "text-red-600")}>
+                      {attempt?.isCorrect ? "Correct" : "Review this answer"}
+                    </span>
+                  </div>
+                ) : null}
+                {attempt ? (
+                  <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
+                    {attempt.explanation ?? question.explanation}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Passing score: {passingCount}/{quiz.length} correct ({Math.round(QUIZ_PASSING_RATIO * 100)}%)
+              </p>
+              <p className={cn("mt-1 text-xs font-medium", passed ? "text-emerald-600" : "text-slate-500")}>
+                {allQuestionsAnswered
+                  ? passed
+                    ? "Quiz passed. You can complete this lesson."
+                    : "Review the explanations and retry before completing this lesson."
+                  : "Choose an answer for every question, then check once."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="rounded-full"
+              disabled={!hasSelectedEveryUnansweredQuestion || allQuestionsAnswered || checkingAnswers}
+              onClick={() => void handleCheckAnswers()}
+            >
+              {t("learning.session.checkAnswers")}
+            </Button>
+            {allQuestionsAnswered ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={handleRetry}
+              >
+                {t("learning.session.retryQuiz", { defaultValue: "Retry quiz" })}
+              </Button>
+            ) : null}
+          </div>
+          {adaptiveQuiz && (adaptiveQuiz.weakObjectives.length > 0 || adaptiveQuiz.nextRecommendedQuestions.length > 0) ? (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+              {adaptiveQuiz.weakObjectives.length > 0 ? (
+                <p className="text-sm font-semibold text-blue-900">
+                  Weak objective: {adaptiveQuiz.weakObjectives.map((item) => item.objectiveId).join(", ")}
+                </p>
+              ) : null}
+              {adaptiveQuiz.nextRecommendedQuestions.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm text-blue-800">
+                  {adaptiveQuiz.nextRecommendedQuestions.map((item) => (
+                    <li key={item.id}>{item.question}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EvidenceSummary({
+  session,
+  progress,
+}: {
+  session: LearningSession;
+  progress: SessionProgressState;
+}) {
+  const evidence = getSessionEvidenceSummary(session, progress);
+  const completedProofs = evidence.tasks.filter((item) => item.complete);
+
+  const handleCopy = () => {
+    const text = buildEvidenceClipboardText(session, progress);
+    void navigator.clipboard?.writeText(text).catch(() => undefined);
+  };
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            Portfolio evidence
+          </p>
+          <h3 className="mt-1 text-lg font-bold text-slate-900">Evidence summary</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Lab proof {evidence.completedTasks}/{evidence.totalTasks} - Quiz {evidence.quizCorrect}/{evidence.quizTotal}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-bold",
+              evidence.readyForPortfolio
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700",
+            )}
+          >
+            {evidence.readyForPortfolio ? "Ready for portfolio" : "Practice needed"}
+          </span>
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={handleCopy}>
+            Copy summary
+          </Button>
+        </div>
+      </div>
+      {completedProofs.length > 0 ? (
+        <ul className="mt-4 space-y-2">
+          {completedProofs.map((item) => (
+            <li key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{item.proof}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+          Complete at least one lab task to build portfolio evidence.
+        </p>
+      )}
+    </section>
+  );
+}
 function DocContentPanel({
   session,
   activeSectionId,
@@ -842,7 +1544,11 @@ function DocContentPanel({
   onToggleChecklistItem,
   onExerciseProofChange,
   onToggleSaveCourse,
+  onAnswerQuizQuestion,
+  onRetryQuiz,
+  adaptiveQuiz,
   showValidationErrors = false,
+  mode = "learn",
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -851,12 +1557,20 @@ function DocContentPanel({
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
   onToggleSaveCourse: (courseId: string) => void;
+  onAnswerQuizQuestion: (question: QuizQuestionForProgress, selectedOptionIndex: number) => Promise<void>;
+  onRetryQuiz: (questionIds: string[]) => void;
+  adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
+  mode?: LearningMode;
 }) {
   const { t } = useTranslation("common");
   const [currentPage, setCurrentPage] = useState(1);
+  const [taskProofErrors, setTaskProofErrors] = useState<Record<string, boolean>>({});
+  const [expandedTaskProofId, setExpandedTaskProofId] = useState<string | null>(null);
   useEffect(() => setCurrentPage(1), [activeSectionId]);
-  const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
+  const lessonSections = session.sections.filter((section) => section.type !== "video");
+  const contentSections = lessonSections.length > 0 ? lessonSections : session.sections;
+  const activeSection = contentSections.find(s => s.id === activeSectionId) ?? contentSections[0];
   const activeResource = getActiveSessionResource(session, activeSection?.id ?? activeSectionId);
   
   const convertedSavedCourses = (session.recommendedCourses ?? [])
@@ -874,14 +1588,29 @@ function DocContentPanel({
   const allSupplementalResources = convertedSavedCourses;
 
   const visibleRecommendedCourses = (session.recommendedCourses ?? []).filter((c) => !progress.savedCourseIds?.includes(c.id));
-  const nextSectionId = getNextLearningSectionId(session.sections, activeSection?.id ?? activeSectionId);
-  const nextSection = session.sections.find((section) => section.id === nextSectionId);
+  const nextSectionId = getNextLearningSectionId(contentSections, activeSection?.id ?? activeSectionId);
+  const nextSection = contentSections.find((section) => section.id === nextSectionId);
 
   const ITEMS_PER_PAGE = 5;
   const totalPages = Math.ceil(visibleRecommendedCourses.length / ITEMS_PER_PAGE);
   const effectivePage = Math.min(currentPage, Math.max(1, totalPages));
   const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
   const paginatedCourses = visibleRecommendedCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const activeSectionOutcomes = getSectionLearningOutcomes(activeSection);
+
+  const handleCheckPracticeTask = (sectionId: string, itemId: string) => {
+    const proofId = getChecklistTaskProofId(sectionId, itemId);
+    if (!hasChecklistTaskProof(progress, sectionId, itemId)) {
+      setExpandedTaskProofId(proofId);
+      setTaskProofErrors((current) => ({ ...current, [proofId]: true }));
+      return;
+    }
+
+    setTaskProofErrors((current) => ({ ...current, [proofId]: false }));
+    if (!(progress.checkedChecklistItems[sectionId] ?? []).includes(itemId)) {
+      onToggleChecklistItem(sectionId, itemId);
+    }
+  };
 
   return (
     <div className="relative w-full">
@@ -914,7 +1643,7 @@ function DocContentPanel({
       <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
         <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">{t("learning.session.onThisPage")}</h4>
         <ul className="space-y-2">
-          {session.sections.map((section, i) => (
+          {contentSections.map((section, i) => (
             <li key={section.id}>
               <button
                 type="button"
@@ -951,7 +1680,22 @@ function DocContentPanel({
             count: activeSection?.exercises ?? 0,
           })}
         </p>
-        {session.sections.map((sec, i) => {
+        {activeSectionOutcomes.length > 0 ? (
+          <div className="not-prose mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-sky-700">
+              You will be able to
+            </p>
+            <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+              {activeSectionOutcomes.map((outcome) => (
+                <li key={outcome} className="flex items-start gap-2 text-sm leading-5 text-slate-700">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                  <span>{outcome}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {contentSections.map((sec, i) => {
           const isSectionIncomplete = !isSectionComplete(session, progress, sec.id);
           const shouldHighlightSection = showValidationErrors && isSectionIncomplete;
           return (
@@ -980,71 +1724,201 @@ function DocContentPanel({
                   {sec.completed ? ` - ${t("learning.status.completed")}` : ""}
                 </p>
               )}
-              {sec.checklist?.length ? (
-                <ul className="mt-3 space-y-2">
-                  {sec.checklist.map((item) => {
-                    const isItemUnchecked = !(progress.checkedChecklistItems[sec.id] ?? []).includes(item);
-                    const shouldHighlightItem = showValidationErrors && isItemUnchecked;
-                    return (
-                      <li key={item} className="flex gap-2">
-                        <button
-                          type="button"
-                          aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes(item)}
-                          onClick={() => onToggleChecklistItem(sec.id, item)}
+              {mode === "practice" ? (
+                sec.checklist?.length ? (
+                  <div className="mt-4 space-y-3">
+                    {sec.checklist.map((item, itemIndex) => {
+                    const isItemChecked = (progress.checkedChecklistItems[sec.id] ?? []).includes(item.id);
+                    const proofId = getChecklistTaskProofId(sec.id, item.id);
+                    const proofValue = progress.exerciseProofs[proofId] ?? "";
+                    const hasProof = hasChecklistTaskProof(progress, sec.id, item.id);
+                    const isTaskComplete = isItemChecked && hasProof;
+                    const shouldHighlightItem = (showValidationErrors && !isTaskComplete) || taskProofErrors[proofId];
+                    const missionKind = getMissionStepKind(item.label);
+                    const guide = getPracticeTaskGuide(missionKind);
+                    const rubric = getPracticeTaskRubric(missionKind);
+                    const placeholder = getPracticeTaskPlaceholder(missionKind);
+                    const isExpanded = expandedTaskProofId === proofId || shouldHighlightItem;
+                      return (
+                        <div
+                          key={item.id}
                           className={cn(
-                            "flex w-full items-start gap-2 rounded-lg px-2 py-1 text-left transition-colors border",
-                            (progress.checkedChecklistItems[sec.id] ?? []).includes(item)
-                              ? "hover:bg-emerald-50 border-transparent"
+                            "overflow-hidden rounded-xl border bg-white transition-all",
+                            isTaskComplete
+                              ? "border-emerald-200 bg-emerald-50/50"
                               : shouldHighlightItem
-                              ? "bg-red-50 border-red-200 hover:bg-red-100/50"
-                              : "hover:bg-emerald-50 border-transparent"
+                              ? "border-red-200 bg-red-50/40"
+                              : "border-slate-200 hover:border-primary/30",
                           )}
                         >
-                          {(progress.checkedChecklistItems[sec.id] ?? []).includes(item) ? (
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                          ) : shouldHighlightItem ? (
-                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500 animate-pulse" />
+                          <button
+                            type="button"
+                            aria-expanded={isExpanded}
+                            onClick={() =>
+                              setExpandedTaskProofId((current) => (current === proofId ? null : proofId))
+                            }
+                            className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+                          >
+                            <span
+                              className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                                isTaskComplete
+                                  ? "border-emerald-500 bg-emerald-500"
+                                  : shouldHighlightItem
+                                  ? "border-red-200 bg-white"
+                                  : "border-slate-200 bg-slate-50",
+                              )}
+                            >
+                              {shouldHighlightItem && !isTaskComplete ? (
+                                <AlertCircle className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <MissionStepIcon kind={missionKind} completed={isTaskComplete} />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "text-[11px] font-bold uppercase tracking-widest",
+                                    isTaskComplete ? "text-emerald-600" : shouldHighlightItem ? "text-red-500" : "text-primary",
+                                  )}
+                                >
+                                  Lab {String(itemIndex + 1).padStart(2, "0")}
+                                </span>
+                              </span>
+                              <span
+                                className={cn(
+                                  "mt-0.5 block truncate text-sm font-semibold leading-5",
+                                  isTaskComplete ? "text-emerald-950" : shouldHighlightItem ? "text-red-900" : "text-slate-800",
+                                )}
+                              >
+                                {item.label}
+                              </span>
+                            </span>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold",
+                                isTaskComplete
+                                  ? "border-emerald-200 bg-white text-emerald-700"
+                                  : shouldHighlightItem
+                                  ? "border-red-200 bg-white text-red-600"
+                                  : "border-slate-200 bg-slate-50 text-slate-500",
+                              )}
+                            >
+                              {isTaskComplete ? "Done" : shouldHighlightItem ? "Required" : "To do"}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                            )}
+                          </button>
+                          {isExpanded ? (
+                            <div className="border-t border-slate-100 px-3 pb-3 pt-2">
+                              <p className="text-xs leading-5 text-slate-500">{guide}</p>
+                              <div className="mt-2 grid gap-2 lg:grid-cols-[1fr_0.9fr]">
+                                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    Practice rubric
+                                  </p>
+                                  <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {rubric.map((criterion) => (
+                                      <li
+                                        key={criterion}
+                                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600"
+                                      >
+                                        {criterion}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+                                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    Example proof
+                                  </p>
+                                  <p className="mt-1.5 text-xs leading-5 text-slate-500">{placeholder}</p>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                <label className="min-w-0 flex-1">
+                                  <span className="sr-only">
+                                    Proof for {item.label}
+                                  </span>
+                                  <textarea
+                                    aria-label={`Proof for ${item.label}`}
+                                    value={proofValue}
+                                    onChange={(event) => {
+                                      onExerciseProofChange(proofId, event.target.value);
+                                      if (taskProofErrors[proofId]) {
+                                        setTaskProofErrors((current) => ({ ...current, [proofId]: false }));
+                                      }
+                                    }}
+                                    placeholder={placeholder}
+                                    className={cn(
+                                      "min-h-12 w-full resize-y rounded-lg border px-3 py-2 text-sm leading-5 outline-none transition-colors placeholder:text-slate-400 focus:ring-2",
+                                      shouldHighlightItem && !hasProof
+                                        ? "border-red-300 bg-white text-red-900 focus:border-red-400 focus:ring-red-100"
+                                        : "border-slate-200 bg-white text-slate-700 focus:border-primary/40 focus:ring-primary/10",
+                                    )}
+                                  />
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant={isTaskComplete ? "outline" : "default"}
+                                  size="sm"
+                                  className="h-10 shrink-0 rounded-full px-4"
+                                  disabled={isTaskComplete}
+                                  onClick={() => handleCheckPracticeTask(sec.id, item.id)}
+                                >
+                                  {isTaskComplete ? "Done" : "Check task"}
+                                </Button>
+                              </div>
+                              {taskProofErrors[proofId] ? (
+                                <p className="mt-1.5 text-xs font-semibold text-red-600">
+                                  Add proof before checking this task.
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-3 flex">
+                    <button
+                      type="button"
+                      aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")}
+                      onClick={() => onToggleChecklistItem(sec.id, "__completed")}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+                        (progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                          : shouldHighlightSection
+                          ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      )}
+                    >
+                      {(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed") ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <span>{t("learning.session.done")}</span>
+                        </>
+                      ) : (
+                        <>
+                          {shouldHighlightSection ? (
+                            <AlertCircle className="h-4 w-4 shrink-0 text-red-500 animate-bounce" />
                           ) : (
-                            <Circle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                            <Circle className="h-4 w-4 shrink-0 text-slate-400" />
                           )}
-                          <span className={cn(shouldHighlightItem ? "text-red-900 font-medium" : "")}>{item}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          <span>{t("learning.session.markComplete")}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )
               ) : (
-                <div className="mt-3 flex">
-                  <button
-                    type="button"
-                    aria-pressed={(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")}
-                    onClick={() => onToggleChecklistItem(sec.id, "__completed")}
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all border font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
-                      (progress.checkedChecklistItems[sec.id] ?? []).includes("__completed")
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                        : shouldHighlightSection
-                        ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
-                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    {(progress.checkedChecklistItems[sec.id] ?? []).includes("__completed") ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                        <span>{t("learning.session.done")}</span>
-                      </>
-                    ) : (
-                      <>
-                        {shouldHighlightSection ? (
-                          <AlertCircle className="h-4 w-4 shrink-0 text-red-500 animate-bounce" />
-                        ) : (
-                          <Circle className="h-4 w-4 shrink-0 text-slate-400" />
-                        )}
-                        <span>{t("learning.session.markComplete")}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                null
               )}
             </div>
           );
@@ -1070,7 +1944,7 @@ function DocContentPanel({
         </div>
       </article>
 
-      {session.lessonContent?.exercises.length ? (
+      {mode === "practice" && session.lessonContent?.exercises.length ? (
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {t("learning.session.practiceTasks")}
@@ -1135,7 +2009,11 @@ function DocContentPanel({
         </div>
       ) : null}
 
-      {activeResource && (
+      {mode === "practice" ? (
+        <EvidenceSummary session={session} progress={progress} />
+      ) : null}
+
+      {mode === "learn" && activeResource && (
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {t("learning.session.lessonContent")}
@@ -1271,6 +2149,11 @@ function MainContentPanel({
   onToggleChecklistItem,
   onExerciseProofChange,
   onToggleSaveCourse,
+  onAnswerQuizQuestion,
+  onRetryQuiz,
+  videoStartSeconds,
+  onSeekVideo,
+  adaptiveQuiz,
   showValidationErrors = false,
 }: {
   session: LearningSession;
@@ -1280,9 +2163,15 @@ function MainContentPanel({
   onToggleChecklistItem: (sectionId: string, item: string) => void;
   onExerciseProofChange: (exerciseId: string, proof: string) => void;
   onToggleSaveCourse: (courseId: string) => void;
+  onAnswerQuizQuestion: (question: QuizQuestionForProgress, selectedOptionIndex: number) => Promise<void>;
+  onRetryQuiz: (questionIds: string[]) => void;
+  videoStartSeconds?: number;
+  onSeekVideo: (seconds: number) => void;
+  adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
 }) {
   const { t } = useTranslation("common");
+  const [activeMode, setActiveMode] = useState<LearningMode>("learn");
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const isVideoSection = activeSection?.type === "video" || activeSection?.type === "quiz" || activeSection?.type === "practice";
   const isDocSection = activeSection?.type === "reading";
@@ -1302,14 +2191,58 @@ function MainContentPanel({
           <span className="text-slate-700 font-medium">{activeSection?.title}</span>
         </div>
 
+        <div role="tablist" aria-label="Learning mode" className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+          {([
+            { id: "learn", label: "Learn", icon: BookOpen },
+            { id: "practice", label: "Practice", icon: GraduationCap },
+            { id: "check", label: "Check", icon: HelpCircle },
+          ] as const).map((tab) => {
+            const isActiveMode = activeMode === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActiveMode}
+                onClick={() => setActiveMode(tab.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors",
+                  isActiveMode ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Render based on content type */}
-        {(hasYouTube && (isVideoSection || !isDocSection)) ? (
+        {activeMode === "check" ? (
+          <div className="space-y-4">
+            <EvidenceSummary session={session} progress={progress} />
+            <SessionQuiz
+              session={session}
+              progress={progress}
+              onAnswer={onAnswerQuizQuestion}
+              onRetry={onRetryQuiz}
+              adaptiveQuiz={adaptiveQuiz}
+            />
+          </div>
+        ) : activeMode === "learn" && (hasYouTube && (isVideoSection || !isDocSection)) ? (
           <VideoContentPanel
             session={session}
             activeSectionId={activeSectionId}
             progress={progress}
             onToggleChecklistItem={onToggleChecklistItem}
+            onAnswerQuizQuestion={onAnswerQuizQuestion}
+            onRetryQuiz={onRetryQuiz}
+            videoStartSeconds={videoStartSeconds}
+            onSeekVideo={onSeekVideo}
+            adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
+            showQuiz={false}
           />
         ) : (
           <DocContentPanel
@@ -1320,7 +2253,11 @@ function MainContentPanel({
             onToggleChecklistItem={onToggleChecklistItem}
             onExerciseProofChange={onExerciseProofChange}
             onToggleSaveCourse={onToggleSaveCourse}
+            onAnswerQuizQuestion={onAnswerQuizQuestion}
+            onRetryQuiz={onRetryQuiz}
+            adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
+            mode={activeMode}
           />
         )}
       </div>
@@ -1337,11 +2274,13 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const initialSectionId = session.sections[0]?.id ?? "";
+  const initialSectionId = orderLearningSectionsForDisplay(session.sections)[0]?.id ?? "";
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [videoStartSeconds, setVideoStartSeconds] = useState<number | undefined>(undefined);
+  const [adaptiveQuiz, setAdaptiveQuiz] = useState<AdaptiveQuizState | null>(null);
   const [progress, setProgress] = useState<SessionProgressState>(() =>
     createInitialSessionProgress(session, readStoredSessionProgress(session.id)),
   );
@@ -1349,6 +2288,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const progressRef = useRef(progress);
   const progressHydratedRef = useRef(false);
   const locallyChangedProgressRef = useRef(false);
+  const suppressNextProgressSaveRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
   const progressBelongsToCurrentSession = progressSessionId === session.id;
@@ -1366,6 +2306,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   useEffect(() => {
     setActiveSectionId(initialSectionId);
+    setVideoStartSeconds(undefined);
+    setAdaptiveQuiz(null);
     setShowValidationErrors(false);
   }, [initialSectionId, session.id]);
 
@@ -1390,6 +2332,26 @@ export function SessionDetail({ session }: SessionDetailProps) {
         setProgress(hydrated);
         setProgressSessionId(session.id);
         progressRef.current = hydrated;
+        return getLearningNextQuestions(session.id, session.moduleId)
+          .then((nextQuestions) => {
+            if (!isActive) return;
+            setAdaptiveQuiz({
+              weakObjectives: nextQuestions.weak_objectives.map((item) => ({
+                objectiveId: item.objective_id,
+                correct: item.correct,
+                totalAnswered: item.total_answered,
+                accuracy: item.accuracy,
+                mastered: item.mastered,
+              })),
+              nextRecommendedQuestions: nextQuestions.next_recommended_questions.map((item) => ({
+                id: item.id,
+                question: item.question,
+                objectiveId: item.objective_id,
+                sectionId: item.section_id,
+              })),
+            });
+          })
+          .catch(() => undefined);
       })
       .catch(() => {
         // Keep local fallback when BE is unavailable or the migration has not run yet.
@@ -1412,6 +2374,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
     if (!progressBelongsToCurrentSession) return;
     writeStoredSessionProgress(session.id, progress);
     if (!hasApiAuthSession() || !progressHydratedRef.current) return;
+    if (suppressNextProgressSaveRef.current) {
+      suppressNextProgressSaveRef.current = false;
+      return;
+    }
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       void saveLearningSessionProgress(session.id, progress).catch(() => undefined);
@@ -1421,7 +2387,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
     };
   }, [progress, progressBelongsToCurrentSession, session.id]);
 
-  const displaySession = applyProgressToSession(session, visibleProgress);
+  const displaySession = orderSessionForDisplay(applyProgressToSession(session, visibleProgress));
 
   const weeks = useActiveWeekPlans();
   const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
@@ -1440,8 +2406,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
     const incompleteExercises = exercises.filter(
       (ex) => !visibleProgress.exerciseProofs[ex.id]?.trim()
     );
+    const quizPassed = isQuizPassed(session, visibleProgress);
 
-    if (incompleteSections.length > 0 || incompleteExercises.length > 0) {
+    if (incompleteSections.length > 0 || incompleteExercises.length > 0 || !quizPassed) {
       setShowValidationErrors(true);
       
       // Optionally scroll to the first uncompleted section
@@ -1450,6 +2417,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
         const element = document.getElementById(`section-${firstIncompleteId}`);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } else if (!quizPassed) {
+        const quizPanel = document.getElementById("quiz-panel");
+        if (typeof quizPanel?.scrollIntoView === "function") {
+          quizPanel.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
       return;
@@ -1500,9 +2472,27 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const handleToggleChecklistItem = (sectionId: string, item: string) => {
     locallyChangedProgressRef.current = true;
     setProgressSessionId(session.id);
-    setProgress((current) =>
-      toggleChecklistItem(progressBelongsToCurrentSession ? current : visibleProgress, sectionId, item),
-    );
+    const baseProgress = progressBelongsToCurrentSession ? progressRef.current : visibleProgress;
+    const nextChecked = !(baseProgress.checkedChecklistItems[sectionId] ?? []).includes(item);
+    const optimisticProgress = toggleChecklistItem(baseProgress, sectionId, item);
+    progressRef.current = optimisticProgress;
+    if (hasApiAuthSession() && item !== "__completed") {
+      suppressNextProgressSaveRef.current = true;
+    }
+    setProgress(optimisticProgress);
+    if (hasApiAuthSession() && item !== "__completed") {
+      void patchLearningChecklistItem(session.id, item, {
+        section_id: sectionId,
+        checked: nextChecked,
+      })
+        .then((remoteProgress) => {
+          const hydrated = createInitialSessionProgress(session, remoteProgress);
+          progressRef.current = hydrated;
+          suppressNextProgressSaveRef.current = true;
+          setProgress(hydrated);
+        })
+        .catch(() => undefined);
+    }
   };
 
   const handleExerciseProofChange = (exerciseId: string, proof: string) => {
@@ -1519,6 +2509,103 @@ export function SessionDetail({ session }: SessionDetailProps) {
     setProgress((current) =>
       toggleSavedCourse(progressBelongsToCurrentSession ? current : visibleProgress, courseId),
     );
+  };
+
+  const handleSelectSection = (sectionId: string) => {
+    const startSeconds = getSectionVideoStartSeconds(displaySession, sectionId);
+    if (typeof startSeconds === "number") {
+      setVideoStartSeconds(startSeconds);
+    }
+    setActiveSectionId(sectionId);
+  };
+
+  const handleAnswerQuizQuestion = async (
+    question: QuizQuestionForProgress,
+    selectedOptionIndex: number,
+  ) => {
+    locallyChangedProgressRef.current = true;
+    setProgressSessionId(session.id);
+
+    const baseProgress = progressBelongsToCurrentSession ? progressRef.current : visibleProgress;
+    const localPatch = answerQuestion(baseProgress, question, selectedOptionIndex);
+    const optimisticProgress = {
+      ...baseProgress,
+      quizAttempts: localPatch.quizAttempts,
+    };
+    progressRef.current = optimisticProgress;
+    setProgress(optimisticProgress);
+
+    if (!hasApiAuthSession()) return;
+
+    try {
+      const response = await answerLearningQuizQuestion(session.id, {
+        skill_canonical: session.moduleId,
+        question_id: question.id,
+        selected_option_index: selectedOptionIndex,
+      });
+      const serverPatch = applyServerQuizAnswer(progressRef.current, response);
+      const serverProgress = {
+        ...progressRef.current,
+        quizAttempts: serverPatch.quizAttempts,
+      };
+      progressRef.current = serverProgress;
+      setProgress(serverProgress);
+      setAdaptiveQuiz({
+        weakObjectives: response.objective_mastery.mastered
+          ? []
+          : [
+              {
+                objectiveId: response.objective_mastery.objective_id,
+                correct: response.objective_mastery.correct,
+                totalAnswered: response.objective_mastery.total_answered,
+                accuracy: response.objective_mastery.accuracy,
+                mastered: response.objective_mastery.mastered,
+              },
+            ],
+        nextRecommendedQuestions: response.next_recommended_questions.map((item) => ({
+          id: item.id,
+          question: item.question,
+          objectiveId: item.objective_id,
+          sectionId: item.section_id,
+        })),
+      });
+      const remediation = response.remediation;
+      if (typeof remediation?.start_seconds === "number") {
+        setVideoStartSeconds(remediation.start_seconds);
+      }
+      if (remediation?.video_resource_id) {
+        setActiveSectionId(remediation.video_resource_id);
+      } else if (remediation?.section_id) {
+        setActiveSectionId(remediation.section_id);
+      }
+    } catch {
+      // Keep deterministic local fallback when BE is unavailable during rollout.
+      if (question.remediation?.startSeconds !== undefined) {
+        setVideoStartSeconds(question.remediation.startSeconds);
+      }
+      if (question.remediation?.videoResourceId) {
+        setActiveSectionId(question.remediation.videoResourceId);
+      }
+    }
+  };
+
+  const handleRetryQuiz = (questionIds: string[]) => {
+    locallyChangedProgressRef.current = true;
+    setProgressSessionId(session.id);
+
+    const baseProgress = progressBelongsToCurrentSession ? progressRef.current : visibleProgress;
+    const nextQuizAttempts = { ...(baseProgress.quizAttempts ?? {}) };
+    for (const questionId of questionIds) {
+      delete nextQuizAttempts[questionId];
+    }
+
+    const nextProgress = {
+      ...baseProgress,
+      quizAttempts: nextQuizAttempts,
+    };
+    progressRef.current = nextProgress;
+    setProgress(nextProgress);
+    setAdaptiveQuiz(null);
   };
 
   // Pass handleComplete down to content panels via context or prop
@@ -1597,7 +2684,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
             <SessionSidebar
               session={displaySession}
               activeSectionId={activeSectionId}
-              onSelectSection={setActiveSectionId}
+              progress={visibleProgress}
+              onSelectSection={handleSelectSection}
               onToggle={() => setIsSidebarOpen(false)}
               showValidationErrors={showValidationErrors}
             />
@@ -1607,21 +2695,30 @@ export function SessionDetail({ session }: SessionDetailProps) {
           <MainContentPanel
             session={displaySession}
             activeSectionId={activeSectionId}
-            onSelectSection={setActiveSectionId}
+            onSelectSection={handleSelectSection}
             progress={visibleProgress}
             onToggleChecklistItem={handleToggleChecklistItem}
             onExerciseProofChange={handleExerciseProofChange}
             onToggleSaveCourse={handleToggleSaveCourse}
+            onAnswerQuizQuestion={handleAnswerQuizQuestion}
+            onRetryQuiz={handleRetryQuiz}
+            videoStartSeconds={videoStartSeconds}
+            onSeekVideo={setVideoStartSeconds}
+            adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
           />
 
           {/* Right AI Chat Panel — sticky */}
-          {isChatOpen && (
-            <AIChatPanel sessionId={session.id} onClose={() => setIsChatOpen(false)} />
+          {false && isChatOpen && (
+            <AIChatPanel
+              sessionId={session.id}
+              skillCanonical={session.moduleId}
+              onClose={() => setIsChatOpen(false)}
+            />
           )}
 
           {/* Floating AI toggle when closed */}
-          {!isChatOpen && (
+          {false && !isChatOpen && (
             <button
               onClick={() => setIsChatOpen(true)}
               className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-primary to-indigo-600 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-white z-50 group"
