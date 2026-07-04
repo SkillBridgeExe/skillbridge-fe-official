@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle2, AlertCircle, X, ArrowLeft, Share2, Download,
+  CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
   ChevronDown, ChevronUp,
 } from "lucide-react";
@@ -258,6 +258,16 @@ export function DiagnosisStep3Results() {
         ? t("results.scoreMsg.decent")
         : t("results.scoreMsg.weak");
 
+  /* ── Rubric Fallback Warning Strings ── */
+  const unnormalizedSkillsList: Array<{ raw_input?: string; name?: string }> =
+    jdMatch?.unnormalized_jd_requirements || [];
+  const unnormalizedSkillNames = unnormalizedSkillsList
+    .map(s => s.raw_input || s.name)
+    .filter(Boolean);
+  const fallbackSkillsString = unnormalizedSkillNames.length > 5
+    ? unnormalizedSkillNames.slice(0, 5).join(", ") + "…"
+    : unnormalizedSkillNames.join(", ") || "...";
+
   /* ── Skill Details collapse ── */
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -405,6 +415,20 @@ export function DiagnosisStep3Results() {
         <p className="text-[11px] font-bold uppercase tracking-widest text-[#787774] text-center pt-6">
           {kickerText}
         </p>
+
+        {isJdMode && jdMatch?.fell_back_to_rubric && (
+          <div className="flex items-start gap-3 p-4 mx-auto max-w-2xl mt-4 bg-amber-50 border border-amber-200 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-900">{t("rubricFallback.title")}</h4>
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                {targetRole
+                  ? t("rubricFallback.body", { role: targetRole, skills: fallbackSkillsString })
+                  : t("rubricFallback.bodyNoRole", { skills: fallbackSkillsString })}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
         <VerdictHero
