@@ -2613,6 +2613,25 @@ export default {
           gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?"],
         },
       },
+      // Learning companion (Task M3) — the mascot's corner-advisor chat on a
+      // learning session page. Opener is a STATIC template that only interpolates
+      // the REAL session title being viewed; suggestions are a flat static set
+      // (no LLM, no fabrication). Reuses the SAME learning chat endpoint as
+      // AIChatbot/AIChatPanel (conversationId continuity, not a forked thread).
+      learningChat: {
+        opener: "You're studying “{{session}}”. I can explain a concept, suggest what to practice next, or check a resource link — what do you need?",
+        placeholder: "Ask about this lesson…",
+        send: "Send",
+        thread: "Chat thread",
+        thinking: "Thinking…",
+        error: "The assistant is being connected — please try again in a moment.",
+        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        suggestions: [
+          "Explain this concept",
+          "What should I practice next?",
+          "Is this resource link still valid?",
+        ],
+      },
     },
     skillsNudge: {
       title: "Skill completeness suggestions",

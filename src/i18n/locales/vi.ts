@@ -2586,6 +2586,24 @@ export default {
           gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
         },
       },
+      // Trợ lý học tập (Task M3) — chat góc màn hình trên trang session học. Câu mở
+      // đầu là template TĨNH chỉ chèn TÊN SESSION thật; suggestions là tập tĩnh cố
+      // định (KHÔNG LLM, KHÔNG bịa). Dùng CHUNG endpoint learning chat với
+      // AIChatbot/AIChatPanel (nối tiếp conversationId, không tách luồng hội thoại).
+      learningChat: {
+        opener: "Bạn đang học “{{session}}”. Mình có thể giải thích khái niệm, gợi ý bài tiếp theo, hoặc kiểm tra tài liệu — bạn cần gì?",
+        placeholder: "Hỏi về bài học này…",
+        send: "Gửi",
+        thread: "Hội thoại",
+        thinking: "Đang suy nghĩ…",
+        error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        suggestions: [
+          "Giải thích khái niệm này",
+          "Mình nên luyện gì tiếp?",
+          "Link tài liệu còn dùng được không?",
+        ],
+      },
     },
     skillsNudge: {
       title: "Gợi ý hoàn thiện kỹ năng",
