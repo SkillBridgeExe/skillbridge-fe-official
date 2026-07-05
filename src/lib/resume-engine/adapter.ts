@@ -17,17 +17,16 @@ const escapeHtml = (value: string): string =>
 const resolveTemplate = (template: string | undefined): Template =>
 	(templateSchema.options as readonly string[]).includes(template ?? "") ? (template as Template) : "onyx";
 
-/**
- * Generates a basic UUID v4 for adapter usage.
- * (Note: Math.random() is sufficient for UI-level ID generation if a library is not available,
- * but crypto.randomUUID() is preferred when available).
- */
-function generateId(): string {
-	if (typeof crypto !== "undefined" && crypto.randomUUID) {
-		return crypto.randomUUID();
-	}
-	return `adapter_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
+const normalizeIdPart = (value: unknown): string =>
+	String(value ?? "")
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 48) || "empty";
+
+const stableId = (prefix: string, ...parts: unknown[]): string =>
+	[prefix, ...parts.map(normalizeIdPart)].join("_");
 
 /**
  * Wraps simple text with HTML paragraphs if it's not already HTML,
@@ -60,8 +59,8 @@ function htmlToBullets(html: string | undefined): string[] {
 export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeData {
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
-		.map((edu) => ({
-			id: edu.id || generateId(),
+		.map((edu, index) => ({
+			id: edu.id || stableId("education", index, edu.school, edu.major, edu.degree),
 			hidden: false,
 			school: edu.school || "",
 			degree: edu.degree || "",
@@ -75,8 +74,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	const experienceItems = store.experience
 		.filter((exp) => hasText(exp.company, exp.position, exp.startDate, exp.endDate, exp.description, exp.responsibilities, exp.achievements))
-		.map((exp) => ({
-			id: exp.id || generateId(),
+		.map((exp, index) => ({
+			id: exp.id || stableId("experience", index, exp.company, exp.position),
 			hidden: false,
 			company: exp.company || "",
 			position: exp.position || "",
@@ -89,8 +88,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	const projectItems = store.projects
 		.filter((proj) => hasText(proj.name, proj.role, proj.link, proj.description, proj.tools, proj.contribution, proj.result))
-		.map((proj) => ({
-			id: proj.id || generateId(),
+		.map((proj, index) => ({
+			id: proj.id || stableId("project", index, proj.name, proj.role),
 			hidden: false,
 			name: proj.name || "",
 			period: "", // projects in old builder don't have dates
@@ -106,8 +105,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	const certificationItems = store.certifications
 		.filter((cert) => hasText(cert.name, cert.organization, cert.issueDate, cert.credentialUrl))
-		.map((cert) => ({
-			id: cert.id || generateId(),
+		.map((cert, index) => ({
+			id: cert.id || stableId("certification", index, cert.name, cert.organization),
 			hidden: false,
 			title: cert.name || "",
 			issuer: cert.organization || "",
@@ -143,7 +142,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				...(store.linkedin
 					? [
 							{
-								id: generateId(),
+								id: stableId("custom-field", "linkedin", store.linkedin),
 								icon: "linkedin-logo",
 								text: store.linkedin,
 								link: store.linkedin,
@@ -153,7 +152,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				...(store.github
 					? [
 							{
-								id: generateId(),
+								id: stableId("custom-field", "github", store.github),
 								icon: "github-logo",
 								text: store.github,
 								link: store.github,
@@ -207,7 +206,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 					...(store.technicalSkills.length > 0
 						? [
 								{
-									id: generateId(),
+									id: "skill-technical",
 									hidden: false,
 									icon: "",
 									iconColor: "",
@@ -221,7 +220,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 					...(store.softSkills.length > 0
 						? [
 								{
-									id: generateId(),
+									id: "skill-soft",
 									hidden: false,
 									icon: "",
 									iconColor: "",
@@ -235,7 +234,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 					...(store.tools.length > 0
 						? [
 								{
-									id: generateId(),
+									id: "skill-tools",
 									hidden: false,
 									icon: "",
 									iconColor: "",
@@ -253,8 +252,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				icon: "translate",
 				columns: 1,
 				hidden: store.languages.length === 0,
-				items: store.languages.map((lang) => ({
-					id: generateId(),
+				items: store.languages.map((lang, index) => ({
+					id: stableId("language", index, lang),
 					hidden: false,
 					language: lang,
 					fluency: "",
@@ -435,8 +434,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				url: canonical.contact.links[0]?.url || "",
 				label: canonical.contact.links[0]?.label || "",
 			},
-			customFields: canonical.contact.links.slice(1).map((link) => ({
-				id: generateId(),
+			customFields: canonical.contact.links.slice(1).map((link, index) => ({
+				id: stableId("canonical-link", index, link.label, link.url),
 				icon: "link",
 				text: link.label,
 				link: link.url,
@@ -456,8 +455,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				icon: "briefcase",
 				columns: 1,
 				hidden: canonical.experience.length === 0,
-				items: canonical.experience.map((exp) => ({
-					id: generateId(),
+				items: canonical.experience.map((exp, index) => ({
+					id: stableId("canonical-experience", index, exp.org, exp.role),
 					hidden: false,
 					company: exp.org,
 					position: exp.role || "",
@@ -473,8 +472,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				icon: "graduation-cap",
 				columns: 1,
 				hidden: canonical.education.length === 0,
-				items: canonical.education.map((edu) => ({
-					id: generateId(),
+				items: canonical.education.map((edu, index) => ({
+					id: stableId("canonical-education", index, edu.school, edu.degree, edu.field),
 					hidden: false,
 					school: edu.school,
 					degree: edu.degree || "",
@@ -491,8 +490,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				icon: "folder",
 				columns: 1,
 				hidden: canonical.projects.length === 0,
-				items: canonical.projects.map((proj) => ({
-					id: generateId(),
+				items: canonical.projects.map((proj, index) => ({
+					id: stableId("canonical-project", index, proj.name, proj.role),
 					hidden: false,
 					name: proj.name,
 					period: "",
@@ -510,9 +509,9 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				columns: 1,
 				hidden: (!canonical.skills.technical || canonical.skills.technical.length === 0) && (!canonical.skills.soft || canonical.skills.soft.length === 0) && (!canonical.skills.tools || canonical.skills.tools.length === 0),
 				items: [
-					...(canonical.skills.technical && canonical.skills.technical.length > 0 ? [{ id: generateId(), hidden: false, icon: "", iconColor: "", name: "Technical", proficiency: "", level: 0, keywords: canonical.skills.technical }] : []),
-					...(canonical.skills.soft && canonical.skills.soft.length > 0 ? [{ id: generateId(), hidden: false, icon: "", iconColor: "", name: "Soft Skills", proficiency: "", level: 0, keywords: canonical.skills.soft }] : []),
-					...(canonical.skills.tools && canonical.skills.tools.length > 0 ? [{ id: generateId(), hidden: false, icon: "", iconColor: "", name: "Tools", proficiency: "", level: 0, keywords: canonical.skills.tools }] : []),
+					...(canonical.skills.technical && canonical.skills.technical.length > 0 ? [{ id: "skill-technical", hidden: false, icon: "", iconColor: "", name: "Technical", proficiency: "", level: 0, keywords: canonical.skills.technical }] : []),
+					...(canonical.skills.soft && canonical.skills.soft.length > 0 ? [{ id: "skill-soft", hidden: false, icon: "", iconColor: "", name: "Soft Skills", proficiency: "", level: 0, keywords: canonical.skills.soft }] : []),
+					...(canonical.skills.tools && canonical.skills.tools.length > 0 ? [{ id: "skill-tools", hidden: false, icon: "", iconColor: "", name: "Tools", proficiency: "", level: 0, keywords: canonical.skills.tools }] : []),
 				]
 			},
 			languages: {
@@ -520,8 +519,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				icon: "translate",
 				columns: 1,
 				hidden: !canonical.skills.languages || canonical.skills.languages.length === 0,
-				items: (canonical.skills.languages || []).map((lang) => ({
-					id: generateId(),
+				items: (canonical.skills.languages || []).map((lang, index) => ({
+					id: stableId("language", index, lang),
 					hidden: false,
 					language: lang,
 					fluency: "",
@@ -535,8 +534,8 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				icon: "certificate",
 				columns: 1,
 				hidden: canonical.certifications.length === 0,
-				items: canonical.certifications.map((cert) => ({
-					id: generateId(),
+				items: canonical.certifications.map((cert, index) => ({
+					id: stableId("canonical-certification", index, cert.name, cert.issuer),
 					hidden: false,
 					title: cert.name,
 					issuer: cert.issuer || "",

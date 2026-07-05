@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BuilderSnapshot } from "@/services/cv-builder.service";
 import type { BuilderSection } from "@shared/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -310,64 +311,73 @@ export function CvFormPanel() {
     );
   };
 
-  return (
-    <div className="p-4 space-y-6">
-      {SECTIONS.map((section, index) => {
-        const Icon = section.icon;
-        const status = index < 8 ? statuses[index]?.status : null;
-        const title = sectionTitleMap[section.id][currentLang];
-        const beSection = sectionUiToBeMap[section.id];
+  const activeSectionData = SECTIONS[activeSection];
 
-        return (
-          <div
-            key={section.id}
-            id={section.id}
-            className="scroll-mt-24 border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm hover:border-slate-300 transition-all duration-200"
-          >
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
-                  <Icon className="w-4 h-4" />
+  return (
+    <div className="p-4 relative">
+      <AnimatePresence mode="wait">
+        {activeSectionData && (() => {
+          const section = activeSectionData;
+          const index = activeSection;
+          const Icon = section.icon;
+          const status = index < 8 ? statuses[index]?.status : null;
+          const title = sectionTitleMap[section.id][currentLang];
+          const beSection = sectionUiToBeMap[section.id];
+
+          return (
+            <motion.div
+              key={section.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm"
+            >
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-semibold text-slate-800 text-sm">{title}</h4>
                 </div>
-                <h4 className="font-semibold text-slate-800 text-sm">{title}</h4>
+
+                {/* Status Chip / Score Chip */}
+                {isLoggedIn && beSection ? (
+                  renderEvaluateChip(beSection, section.id)
+                ) : (
+                  status && (
+                    <div>
+                      {status === "completed" && (
+                        <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
+                          <Check className="w-3.5 h-3.5 shrink-0" />
+                          <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
+                        </div>
+                      )}
+                      {status === "needs-improvement" && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
+                        </div>
+                      )}
+                      {status === "missing" && (
+                        <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
+                          <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
 
-              {/* Status Chip / Score Chip */}
-              {isLoggedIn && beSection ? (
-                renderEvaluateChip(beSection, section.id)
-              ) : (
-                status && (
-                  <div>
-                    {status === "completed" && (
-                      <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
-                        <Check className="w-3.5 h-3.5 shrink-0" />
-                        <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
-                      </div>
-                    )}
-                    {status === "needs-improvement" && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                        <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
-                      </div>
-                    )}
-                    {status === "missing" && (
-                      <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
-                        <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
-            </div>
-
-            {/* Content Body */}
-            <div className="p-5 bg-white">
-              <section.component />
-            </div>
-          </div>
-        );
-      })}
+              {/* Content Body */}
+              <div className="p-5 bg-white">
+                <section.component />
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,19 +1,8 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { adaptCvBuilderStoreToResumeData, adaptResumeDataToCanonical, adaptCanonicalToResumeData } from "./adapter";
 import type { CvBuilderState } from "@/store/useCvBuilderStore";
 
 describe("adaptCvBuilderStoreToResumeData", () => {
-	beforeAll(() => {
-		// Mock crypto.randomUUID for deterministic test output if needed
-		vi.stubGlobal("crypto", {
-			randomUUID: () => "mock-uuid-1234",
-		});
-	});
-
-	afterAll(() => {
-		vi.restoreAllMocks();
-	});
-
 	it("should correctly map basic info", () => {
 		const mockStore = {
 			fullName: "John Doe",
@@ -189,6 +178,44 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(skills[1].keywords).toEqual(["Communication"]);
 		expect(skills[2].name).toBe("Tools");
 		expect(skills[2].keywords).toEqual(["Git"]);
+	});
+
+	it("produces stable output for identical builder state to avoid preview rerender loops", () => {
+		const mockStore = {
+			fullName: "Stable Preview",
+			targetPosition: "Frontend Developer",
+			email: "stable@example.com",
+			phone: "0901234567",
+			location: "Ho Chi Minh City",
+			portfolio: "https://stable.dev",
+			linkedin: "https://linkedin.com/in/stable",
+			github: "https://github.com/stable",
+			cvLanguage: "en",
+			template: "azurill",
+			summary: "Builds accessible React applications.",
+			education: [{ id: "", school: "FPT University", major: "Software Engineering", degree: "Bachelor", startYear: "2022", endYear: "2026", gpa: "", coursework: "", achievements: "" }],
+			experience: [{ id: "", company: "SkillBridge", position: "Intern", startDate: "2025", endDate: "2026", description: "Built UI", responsibilities: "", achievements: "", aiRewrite: "" }],
+			projects: [{ id: "", name: "CV Builder", role: "Developer", link: "https://github.com/stable/cv", description: "Built preview", tools: "React, TypeScript", contribution: "", result: "" }],
+			technicalSkills: ["React", "TypeScript"],
+			softSkills: ["Communication"],
+			tools: ["Git"],
+			languages: ["English"],
+			certifications: [{ id: "", name: "React Basics", organization: "Meta", issueDate: "2025", credentialUrl: "https://example.com/cert" }],
+		} as unknown as CvBuilderState;
+
+		const first = adaptCvBuilderStoreToResumeData(mockStore);
+		const second = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(second).toEqual(first);
+		expect(first.basics.customFields.map((field) => field.id)).toEqual([
+			"custom-field_linkedin_https-linkedin-com-in-stable",
+			"custom-field_github_https-github-com-stable",
+		]);
+		expect(first.sections.skills.items.map((item) => item.id)).toEqual([
+			"skill-technical",
+			"skill-soft",
+			"skill-tools",
+		]);
 	});
 });
 

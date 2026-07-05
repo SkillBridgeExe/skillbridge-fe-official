@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -43,7 +43,7 @@ const sectionUiToBeMap: Record<string, BuilderSection> = {
   "certifications": "certifications",
 };
 
-export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | "horizontal" }) {
+export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | "horizontal" | "icon" }) {
   const { t, i18n } = useTranslation("diagnosis");
   const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations } = useCvBuilderStore();
   const statuses = getSectionStatuses();
@@ -61,39 +61,9 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   }).length;
   const totalCount = 8; // There are 8 metadata statuses (0-7)
 
-  // IntersectionObserver to sync scroll active section
-  useEffect(() => {
-    const callback = (entries: IntersectionObserverEntry[]) => {
-      // Find the entry that is currently intersecting
-      const visibleEntry = entries.find(entry => entry.isIntersecting);
-      if (visibleEntry) {
-        const id = visibleEntry.target.id;
-        const idx = SECTIONS.findIndex(s => s.id === id);
-        if (idx !== -1 && idx !== activeSection) {
-          setActiveSection(idx);
-        }
-      }
-    };
-
-    const observer = new IntersectionObserver(callback, {
-      rootMargin: "-40% 0px -55% 0px",
-      threshold: 0
-    });
-
-    SECTIONS.forEach(s => {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [activeSection, setActiveSection]);
-
-  const handleNavClick = (idx: number, id: string) => {
+  const handleNavClick = (idx: number, _id: string) => {
     setActiveSection(idx);
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
+    // Removed scrollIntoView because we are now using a tab-based UI
   };
 
   if (variant === "horizontal") {
@@ -145,19 +115,80 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
     );
   }
 
-  // Vertical layout (Sidebar)
-  return (
-    <div className="space-y-4 select-none sticky top-24">
-      <div className="px-3 space-y-1">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-          {t("builder.sections")}
-        </h3>
-        <p className="text-xs font-mono text-slate-500">
-          {t("builder.sectionsDone", { done: doneCount, total: totalCount })}
-        </p>
-      </div>
+  // Vertical layout (Sidebar - text)
+  if (variant === "vertical") {
+    return (
+      <div className="space-y-4 select-none sticky top-24">
+        <div className="px-3 space-y-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+            {t("builder.sections")}
+          </h3>
+          <p className="text-xs font-mono text-slate-500">
+            {t("builder.sectionsDone", { done: doneCount, total: totalCount })}
+          </p>
+        </div>
 
-      <nav className="space-y-1">
+        <nav className="space-y-1">
+          {SECTIONS.map((section, index) => {
+            const Icon = section.icon;
+            const isSelected = activeSection === index;
+            const status = index < 8 ? statuses[index]?.status : null;
+            const title = sectionTitleMap[section.id][currentLang];
+            const beSection = sectionUiToBeMap[section.id];
+            const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
+
+            return (
+              <button
+                key={section.id}
+                onClick={() => handleNavClick(index, section.id)}
+                className={cn(
+                  "w-full text-left py-2 px-3 text-sm rounded-lg flex items-center justify-between transition-all duration-200 group outline-none",
+                  isSelected
+                    ? "bg-primary/5 text-primary font-semibold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon className={cn("w-4 h-4 shrink-0", isSelected ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+                  <span className="truncate">{title}</span>
+                </div>
+
+                {/* Status/Score indicator on the right */}
+                {evaluation ? (
+                  <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-2 shadow-sm",
+                    evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
+                    : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
+                    : "bg-[#FBFBFA] border border-slate-200 text-slate-500"
+                  )}>
+                    {evaluation.score}%
+                  </span>
+                ) : (
+                  <>
+                    {status === "completed" && (
+                      <span className="w-5 h-5 rounded-full bg-[#EDF3EC] flex items-center justify-center text-[#346538] shrink-0 ml-2">
+                        <Check className="w-3 h-3" />
+                      </span>
+                    )}
+                    {status === "needs-improvement" && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 ml-2" />
+                    )}
+                    {status === "missing" && (
+                      <span className="w-2 h-2 rounded-full border border-[#EAEAEA] shrink-0 ml-2" />
+                    )}
+                  </>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    );
+  }
+
+  // Thin Icon-only Sidebar (RR v4 style)
+  return (
+    <div className="flex flex-col items-center py-4 space-y-4 select-none h-full">
+      <nav className="flex flex-col gap-2">
         {SECTIONS.map((section, index) => {
           const Icon = section.icon;
           const isSelected = activeSection === index;
@@ -170,39 +201,32 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
             <button
               key={section.id}
               onClick={() => handleNavClick(index, section.id)}
+              title={title}
               className={cn(
-                "w-full text-left py-2 px-3 text-sm rounded-lg flex items-center justify-between transition-all duration-200 group outline-none",
+                "relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 group outline-none",
                 isSelected
-                  ? "bg-primary/5 text-primary font-semibold"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-primary text-white shadow-md shadow-primary/20 scale-105"
+                  : "bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-200"
               )}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Icon className={cn("w-4 h-4 shrink-0", isSelected ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
-                <span className="truncate">{title}</span>
-              </div>
+              <Icon className={cn("w-5 h-5 shrink-0", isSelected ? "text-white" : "group-hover:text-slate-700")} />
 
-              {/* Status/Score indicator on the right */}
+              {/* Status dot */}
               {evaluation ? (
-                <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-2 shadow-sm",
-                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
-                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
-                  : "bg-[#FBFBFA] border border-slate-200 text-slate-500"
+                <div className={cn("absolute -top-1 -right-1 w-4 h-4 text-[8px] font-bold flex items-center justify-center rounded-full shadow-sm",
+                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538] border border-[#346538]/20"
+                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900] border border-[#B98900]/20"
+                  : "bg-white border border-slate-200 text-slate-500"
                 )}>
-                  {evaluation.score}%
-                </span>
+                  {evaluation.score}
+                </div>
               ) : (
                 <>
                   {status === "completed" && (
-                    <span className="w-5 h-5 rounded-full bg-[#EDF3EC] flex items-center justify-center text-[#346538] shrink-0 ml-2">
-                      <Check className="w-3 h-3" />
-                    </span>
+                    <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                   )}
                   {status === "needs-improvement" && (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 ml-2" />
-                  )}
-                  {status === "missing" && (
-                    <span className="w-2 h-2 rounded-full border border-[#EAEAEA] shrink-0 ml-2" />
+                    <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
                   )}
                 </>
               )}

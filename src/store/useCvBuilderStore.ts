@@ -238,7 +238,7 @@ const initialState = {
   technicalSkills: [], softSkills: [], tools: [], languages: [],
   certifications: [],
   activeSection: 0,
-  template: "ats-modern",
+  template: "azurill",
   cvLanguage: "en" as CvLanguage,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
