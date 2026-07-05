@@ -26,10 +26,11 @@ import { useCallback, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
+import { useToast } from "@/hooks/use-toast";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { askDiagnosisChat } from "@/services/diagnosis.service";
+import { askDiagnosisChat, loadMatchForChat } from "@/services/diagnosis.service";
 import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
@@ -115,6 +116,7 @@ export function useDiagnosisChatCompanion(
   proveIt?: EvidenceItem | null,
 ): { sendQuestion: (question: string) => void } {
   const { t, i18n } = useTranslation("diagnosis");
+  const { toast } = useToast();
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
 
   // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
@@ -269,13 +271,17 @@ export function useDiagnosisChatCompanion(
         { question, thread },
         {
           onSuccess: (res) => {
-            // F4: map the cited gap → deep-link chips (honest-empty on a join miss).
+            // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
+            // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
               citedGapId: res.cited_gap_id,
+              citedMatch: res.cited_match,
               gapItems: gapReportQuery.data?.gap_items,
               actions: gapReportQuery.data?.recommended_actions,
             });
-            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool);
+            useCompanionStore
+              .getState()
+              .resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool, res.suggested_next_step ?? undefined);
             revealCited(res);
           },
           onError: (error) => {
@@ -381,7 +387,7 @@ export function useDiagnosisChatCompanion(
         useCompanionStore.getState().setChatPendingAction(null);
         return;
       }
-      // rewrite/roadmap/copy are explicit user actions. MF6 wires the
+      // rewrite/roadmap/copy/view_match are explicit user actions. MF6 wires the
       // execution; MF3 only stores the pending intent and shows the confirm strip.
       useCompanionStore.getState().setChatPendingAction(chip);
     },
@@ -414,10 +420,35 @@ export function useDiagnosisChatCompanion(
       });
     } else if (pending.kind === "copy" && pending.copyText && navigator.clipboard) {
       void navigator.clipboard.writeText(pending.copyText);
+    } else if (pending.kind === "view_match" && pending.viewMatch) {
+      // Guard a duplicate confirm while a previous view_match load is still in
+      // flight (e.g. the user re-taps the chip and confirms again before the
+      // first fetch settles) — skip the whole function so chatPendingAction
+      // (the re-armed chip) stays visible/untouched instead of being cleared below.
+      if (useCompanionStore.getState().chatActionPending) return;
+      useCompanionStore.getState().setChatActionPending(true);
+      // Cross-JD deep-link: load the cited match's OWN cv + review in place, then
+      // switch to it — a different match_id (effect above) clears the local chat.
+      const { cvId, matchId } = pending.viewMatch;
+      loadMatchForChat({ cvId, matchId })
+        .then((outcome) => {
+          useDiagnosisStore.getState().setLastCvId(outcome.cvId);
+          useDiagnosisStore.getState().setReviewData(outcome.review);
+          useDiagnosisStore.getState().setStep("results");
+        })
+        // The only confirm-gated action with a real network call — never swallow
+        // the failure (repo doctrine "không nuốt lỗi", PR#49). Current view stays
+        // intact (no store mutation); the user just sees why nothing happened.
+        .catch(() => {
+          toast({ title: t("companion.chat.viewMatchError"), variant: "destructive" });
+        })
+        .finally(() => {
+          useCompanionStore.getState().setChatActionPending(false);
+        });
     }
 
     useCompanionStore.getState().setChatPendingAction(null);
-  }, [jumpToAnchor]);
+  }, [jumpToAnchor, t, toast]);
 
   const onCancelAction = useCallback(() => {
     useCompanionStore.getState().setChatPendingAction(null);

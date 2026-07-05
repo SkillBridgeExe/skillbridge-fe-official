@@ -69,15 +69,19 @@ describe("buildChatActionChips", () => {
     ]);
   });
 
-  it("does not create a confirmed rewrite chip for add_evidence actions", () => {
+  it("maps add_evidence gaps to the prove-it builder bridge instead of a rewrite CTA", () => {
     const chips = buildChatActionChips({
       citedGapId: "req-1",
-      gapItems: [mkGap()],
+      gapItems: [mkGap({ fixability: "add_evidence" })],
       actions: [mkAction({ action_type: "add_evidence", action_id: "add_evidence:react" })],
     });
     expect(chips).toEqual([
       { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
-      { kind: "jump", labelKey: "companion.chat.chipRewrite", anchorId: "tailor-add_evidence:react" },
+      {
+        kind: "prove_it",
+        labelKey: "companion.chat.proveitCta",
+        proveIt: { canonical: "react", displayName: "React" },
+      },
     ]);
   });
 
@@ -108,6 +112,59 @@ describe("buildChatActionChips", () => {
     expect(chips).toEqual([
       { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
       { kind: "roadmap", labelKey: "companion.chat.chipRoadmap" },
+    ]);
+  });
+
+  it("does not create action CTAs for not_fixable_now gaps", () => {
+    const chips = buildChatActionChips({
+      citedGapId: "req-1",
+      gapItems: [mkGap({ fixability: "not_fixable_now" })],
+      actions: [mkAction()],
+    });
+    expect(chips).toEqual([
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+    ]);
+  });
+
+  it("adds a view_match chip when the answer cites another persisted match (no gap citation needed)", () => {
+    const chips = buildChatActionChips({
+      citedMatch: { match_id: "match-2", cv_id: "cv-2", jd_title: "Backend Engineer" },
+      gapItems: [],
+      actions: [],
+    });
+    expect(chips).toEqual([
+      {
+        kind: "view_match",
+        labelKey: "companion.chat.chipViewMatch",
+        viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: "Backend Engineer" },
+      },
+    ]);
+  });
+
+  it("returns [] when citedMatch is absent (honest-empty — the answer wasn't about another match)", () => {
+    const chips = buildChatActionChips({
+      citedMatch: undefined,
+      gapItems: [mkGap()],
+      actions: [mkAction()],
+    });
+    expect(chips).toEqual([]);
+  });
+
+  it("combines the view_match chip with a cited gap's chips when the answer cites both", () => {
+    const chips = buildChatActionChips({
+      citedGapId: "req-1",
+      citedMatch: { match_id: "match-2", cv_id: "cv-2", jd_title: null },
+      gapItems: [mkGap()],
+      actions: [mkAction()],
+    });
+    expect(chips).toEqual([
+      {
+        kind: "view_match",
+        labelKey: "companion.chat.chipViewMatch",
+        viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: null },
+      },
+      { kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" },
+      { kind: "rewrite", labelKey: "companion.chat.chipRewriteHere", rewrite: { action: mkAction() } },
     ]);
   });
 });

@@ -36,6 +36,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
 import { CodeSandboxPanel } from "./CodeSandboxPanel";
+import { useLearningChatCompanion } from "@/components/companion/skills/useLearningChatCompanion";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import { hasApiAuthSession } from "@/services/auth-session.service";
 import {
@@ -1671,9 +1672,9 @@ function DocContentPanel({
   onToggleChecklistItem,
   onExerciseProofChange,
   onToggleSaveCourse,
-  onAnswerQuizQuestion,
-  onRetryQuiz,
-  adaptiveQuiz,
+  onAnswerQuizQuestion: _onAnswerQuizQuestion,
+  onRetryQuiz: _onRetryQuiz,
+  adaptiveQuiz: _adaptiveQuiz,
   showValidationErrors = false,
   mode = "learn",
   onOpenSandboxWithSection,
@@ -2444,6 +2445,13 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const posthog = usePostHog();
+
+  // Mascot learning companion (Task M3): registers the corner-advisor chat for
+  // this session view (session-scoped — mirrors AIChatPanel's session_id +
+  // skill_canonical wiring). See useLearningChatCompanion for the anti-Clippy
+  // register-once pattern.
+  useLearningChatCompanion(session.id, session.title, session.moduleId);
+
   const initialSectionId = orderLearningSectionsForDisplay(session.sections)[0]?.id ?? "";
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);

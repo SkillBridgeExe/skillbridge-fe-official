@@ -1,7 +1,6 @@
 import { ArrowRight, Calendar, Flame, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
-import { cn } from "@/lib/utils";
 
 export function LearningSidebar() {
   const { t } = useTranslation("common");

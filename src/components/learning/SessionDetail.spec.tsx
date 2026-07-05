@@ -15,6 +15,9 @@ const learningServiceMocks = vi.hoisted(() => ({
   getLearningSessionProgress: vi.fn(),
   patchLearningChecklistItem: vi.fn(),
   saveLearningSessionProgress: vi.fn(),
+  // useLearningChatCompanion (Task M3) imports these from the same service module.
+  sendLearningChatMessage: vi.fn(),
+  getLearningChatHistory: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -53,8 +56,15 @@ vi.mock("react-i18next", () => ({
         "learning.session.checkAnswers": "Check answer",
         "learning.session.questionCount": `${options?.count} questions`,
       };
+      // useLearningChatCompanion (Task M3) requests the static suggestion chips
+      // with { returnObjects: true } — this fake `t` otherwise only ever returns
+      // strings, so give it back a real array like the diagnosis chat spec does.
+      if (key === "companion.learningChat.suggestions") return ["q1", "q2", "q3"];
       return labels[key] ?? String(options?.defaultValue ?? key);
     },
+    // useLearningChatCompanion (Task M3) reads i18n.language for the chat's
+    // answer-language field — a real mock needs this shape, not just `t`.
+    i18n: { language: "en" },
   }),
 }));
 

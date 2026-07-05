@@ -1389,9 +1389,60 @@ export default {
   },
   diagnosis: {
     rubricFallback: {
-      title: "Điểm dưới đây chưa chấm theo JD bạn dán",
+      title: "Điểm dưới đây chưa hoàn toàn dựa trên JD",
       body: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge, nên hệ thống tạm chấm theo chuẩn vai trò {{role}}. Yêu cầu chưa nhận diện được: {{skills}}.",
       bodyNoRole: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge nên chưa thể chấm điểm theo JD. Yêu cầu chưa nhận diện được: {{skills}}.",
+    },
+    severityBreakdown: {
+      title: "Chi tiết độ nghiêm trọng",
+      importance: "Độ quan trọng (JD)",
+      core: "Năng lực lõi (Core)",
+      market: "Hệ số thị trường",
+      formula: "Severity = Importance × Core × Market"
+    },
+    evidenceTitle: "Bằng chứng từ CV",
+    provenance: {
+      source: {
+        deterministic: "Dữ liệu thật",
+        llm: "AI đánh giá"
+      },
+      conf: {
+        high: "Độ tin cậy: Cao",
+        medium: "Độ tin cậy: Trung bình",
+        low: "Độ tin cậy: Thấp"
+      }
+    },
+    atsBreakdown: {
+      title: "Phân tích chuẩn ATS",
+      passed: "Đạt ({{count}})",
+      failed: "Cần cải thiện ({{count}})"
+    },
+    cvBreakdown: {
+      title: "Phân bổ điểm CV ({{score}}/100)",
+      note: "Dựa trên tiêu chuẩn hệ thống và đánh giá AI",
+      skills: "Kỹ năng",
+      experience: "Kinh nghiệm"
+    },
+    bulletFeedback: {
+      title: "Đánh giá bullet",
+      verbFirst: "#động_từ",
+      quantified: "#số_liệu",
+      needsWork: "cần tối ưu"
+    },
+    fit: {
+      verdict: {
+        safe_apply: "Nên ứng tuyển",
+        stretch: "Đáng thử — có khoảng cách",
+        not_recommended: "Chưa phù hợp"
+      },
+      reason: {
+        LOW_COVERAGE: "Độ phủ kỹ năng bắt buộc còn thấp",
+        SENIORITY_STRETCH: "Vị trí cao hơn cấp bậc hiện tại của bạn",
+        DEAL_BREAKER_UNMET: "Thiếu yêu cầu bắt buộc",
+        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        MISSING_EXPERIENCE: "Thiếu kinh nghiệm chuyên môn sâu",
+        MATCHED_EXPERIENCE: "Kinh nghiệm tương đồng tốt"
+      }
     },
     header: {
       badge: "Phân tích AI",
@@ -1478,11 +1529,20 @@ export default {
       dropActive: "Thả CV vào đây",
     },
     review: {
+      actionList: {
+        rankedCaption: "Xếp theo mức ảnh hưởng tới điểm của bạn",
+        impact: "Ảnh hưởng {{severity}}",
+        impactHint: "Độ nghiêm trọng gap do backend dùng để xếp hạng hành động này."
+      },
+      actionClass: {
+        not_fixable_now: "Đã đạt hoặc chưa xử lý được ngay"
+      },
       backToUpload: "Về màn tải CV",
       heroTitle: "Điểm chất lượng CV của bạn",
       badgeOutstanding: "Hồ sơ nổi bật",
       exportReport: "Xuất báo cáo",
       editCta: "Sửa CV & tải PDF",
+      overallScore: "Điểm CV tổng",
       editNoDataTitle: "Chưa mở được trình sửa",
       editNoDataDesc: "Chưa có dữ liệu CV đã phân tích để chỉnh sửa.",
       "scoreMsg.excellent":
@@ -1491,7 +1551,7 @@ export default {
       "scoreMsg.fair":
         "CV đạt chuẩn cơ bản. Hãy tập trung lượng hoá thành tích.",
       "scoreMsg.poor": "CV cần cải thiện đáng kể. Làm theo gợi ý bên dưới nhé.",
-      "dims.action_verbs": "Động từ hành động & tác động",
+      "dims.action_verbs": "Sử dụng động từ mạnh & Nêu bật kết quả",
       "dims.skills_relevance": "Độ liên quan kỹ năng",
       "dims.experience": "Kinh nghiệm rõ ràng",
       "dims.education": "Học vấn & tinh thần học",
@@ -2294,6 +2354,9 @@ export default {
       send: "Gửi",
       apply: "Áp dụng",
       discard: "Bỏ",
+      rewriteSofter: "Viết lại nhẹ hơn",
+      askMore: "Hỏi thêm để rõ hơn",
+      askMorePrompt: "Cho mình biết thêm để viết chính xác hơn nhé.",
       retry: "Thử lại",
       before: "Trước",
       after: "Sau",
@@ -2510,6 +2573,8 @@ export default {
         chipRewrite: "Sửa bullet này",
         chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        chipViewMatch: "Xem phân tích JD này",
+        viewMatchError: "Không mở được phân tích JD này — thử lại sau nhé.",
         proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
         proveitIntro:
           "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
@@ -2522,9 +2587,27 @@ export default {
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],
-          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?"],
-          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
+          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?", "JD nào hợp tôi nhất?"],
+          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?", "JD nào hợp tôi nhất?"],
         },
+      },
+      // Trợ lý học tập (Task M3) — chat góc màn hình trên trang session học. Câu mở
+      // đầu là template TĨNH chỉ chèn TÊN SESSION thật; suggestions là tập tĩnh cố
+      // định (KHÔNG LLM, KHÔNG bịa). Dùng CHUNG endpoint learning chat với
+      // AIChatbot/AIChatPanel (nối tiếp conversationId, không tách luồng hội thoại).
+      learningChat: {
+        opener: "Bạn đang học “{{session}}”. Mình có thể giải thích khái niệm, gợi ý bài tiếp theo, hoặc kiểm tra tài liệu — bạn cần gì?",
+        placeholder: "Hỏi về bài học này…",
+        send: "Gửi",
+        thread: "Hội thoại",
+        thinking: "Đang suy nghĩ…",
+        error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        suggestions: [
+          "Giải thích khái niệm này",
+          "Mình nên luyện gì tiếp?",
+          "Link tài liệu còn dùng được không?",
+        ],
       },
     },
     skillsNudge: {

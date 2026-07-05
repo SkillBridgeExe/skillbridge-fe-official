@@ -2,7 +2,9 @@ import React, { memo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Ruler, Check } from "lucide-react";
-import type { GapItem } from "@shared/api";
+import type { AtsCheckResult, GapItem } from "@shared/api";
+import { AtsBreakdownPopover } from "./AtsBreakdownPopover";
+import { CvBreakdownPopover } from "./CvBreakdownPopover";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Editorial primitives for Diagnosis Results (W24).
@@ -108,6 +110,7 @@ export const VerdictHero = memo(function VerdictHero({
   rubricBand,
   bandLabel,
   bandTooltip,
+  breakdown,
 }: {
   target: number;
   label: React.ReactNode;
@@ -116,6 +119,12 @@ export const VerdictHero = memo(function VerdictHero({
   rubricBand?: string | null;
   bandLabel?: string;
   bandTooltip?: string;
+  breakdown?: {
+    ats: number;
+    structure: number;
+    skills: number;
+    experience: number;
+  };
 }) {
   const { t } = useTranslation("diagnosis");
   const [displayed, setDisplayed] = useState(0);
@@ -145,10 +154,8 @@ export const VerdictHero = memo(function VerdictHero({
   // SVG Path for half circle
   const arcPath = `M ${strokeWidth/2} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - strokeWidth/2} ${radius}`;
 
-  return (
-    <div className="flex flex-col items-center pt-8 pb-4 space-y-6" role="img" aria-label={`${label}: ${target}%`}>
-      {/* Premium SVG Gauge Chart */}
-      <div className="relative flex flex-col items-center justify-end" style={{ width: radius * 2, height: radius + strokeWidth }}>
+  const gaugeContent = (
+      <div className={cn("relative flex flex-col items-center justify-end", !isJdMode && breakdown && "cursor-pointer hover:opacity-90 transition-opacity")} style={{ width: radius * 2, height: radius + strokeWidth }}>
         <svg
           height={radius + strokeWidth}
           width={radius * 2}
@@ -203,6 +210,18 @@ export const VerdictHero = memo(function VerdictHero({
           </span>
         </div>
       </div>
+  );
+
+  return (
+    <div className="flex flex-col items-center pt-8 pb-4 space-y-6" role="img" aria-label={`${label}: ${target}%`}>
+      {/* Premium SVG Gauge Chart */}
+      {!isJdMode && breakdown ? (
+        <CvBreakdownPopover breakdown={breakdown} overallScore={target}>
+          {gaugeContent}
+        </CvBreakdownPopover>
+      ) : (
+        gaugeContent
+      )}
 
       {/* Pull-quote verdict — sleek modern text */}
       <div className={cn(
@@ -366,12 +385,14 @@ export function EditorialTabNav({
 export function StatRow({
   score: _score,
   atsScore,
+  atsCheck,
   role,
   scoreMessage: _scoreMessage,
   atsNote: _atsNote,
 }: {
   score: number;
   atsScore: number;
+  atsCheck?: AtsCheckResult | null;
   role: string;
   scoreMessage: string;
   atsNote?: string;
@@ -380,12 +401,20 @@ export function StatRow({
     : atsScore >= 50 ? "text-[#956400] bg-[#FBF3DB] border-[#F1E5C0]"
     : "text-[#9F2F2D] bg-[#FDEBEC] border-[#F6D4D5]";
 
+  const atsContent = (
+    <span className={cn("inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-bold", atsColor)}>
+      <Check className="w-3.5 h-3.5" />
+      ATS <span className="font-mono tabular-nums">{atsScore}%</span>
+    </span>
+  );
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 py-3 px-1">
-      <span className={cn("inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-bold", atsColor)}>
-        <Check className="w-3.5 h-3.5" />
-        ATS <span className="font-mono tabular-nums">{atsScore}%</span>
-      </span>
+      {atsCheck?.rules && atsCheck.rules.length > 0 ? (
+        <AtsBreakdownPopover atsCheck={atsCheck}>
+          {atsContent}
+        </AtsBreakdownPopover>
+      ) : atsContent}
       {role && role !== "N/A" && (
         <span className="inline-flex items-center gap-2 rounded-full border border-[#EAEAEA] bg-[#FBFBFA] px-3.5 py-1.5 text-[12px] font-bold text-[#2F3437]">
           <Ruler className="w-3.5 h-3.5 text-[#787774]" />

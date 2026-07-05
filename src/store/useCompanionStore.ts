@@ -17,7 +17,8 @@ export type CompanionSkill =
   | "diagnosis_progress"
   | "diagnosis_element_issue"
   | "diagnosis_commentary"
-  | "diagnosis_chat";
+  | "diagnosis_chat"
+  | "learning_chat";
 
 /** One message in the calm corner-advisor chat thread (ephemeral, NOT persisted). */
 export interface CompanionChatMessage {
@@ -41,6 +42,8 @@ export interface CompanionChatMessage {
   actions?: ChatActionChip[];
   /** Tool provenance from BE grounding, e.g. github.enrich/resource.validate. */
   citedTool?: string;
+  /** BE-suggested follow-up question — absent when the answer had no follow-up (honest-empty). */
+  suggestedNextStep?: string;
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -107,6 +110,13 @@ interface CompanionState {
   chatSuggestions: string[];
   /** Action selected from a chat chip, waiting for explicit user confirmation. */
   chatPendingAction: ChatActionChip | null;
+  /**
+   * True while a CONFIRMED chip action is running a real network call (e.g.
+   * view_match's loadMatchForChat) — OR'd into CompanionShell's composer-disable
+   * flag so the bubble shows visible pending feedback + a double-fire guard, same
+   * as the chat-send pending row, without faking a chat message for a non-chat action.
+   */
+  chatActionPending: boolean;
   registerContext: (reg: CompanionContextReg) => void;
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
@@ -143,8 +153,15 @@ interface CompanionState {
   failLastAssistant: (kind?: "retry" | "limit") => void;
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
    *  concurrent send appended at the end never clobbers the retried row. `actions`
-   *  (F4) is optional — omit/[] when there's nothing honest to deep-link to. */
-  resolveAssistantAt: (index: number, text: string, actions?: ChatActionChip[], citedTool?: string) => void;
+   *  (F4) is optional — omit/[] when there's nothing honest to deep-link to.
+   *  `suggestedNextStep` is optional — omit/undefined when the BE had no follow-up. */
+  resolveAssistantAt: (
+    index: number,
+    text: string,
+    actions?: ChatActionChip[],
+    citedTool?: string,
+    suggestedNextStep?: string,
+  ) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
   /**
@@ -157,6 +174,8 @@ interface CompanionState {
   clearChat: () => void;
   /** Store a chip action that needs explicit confirmation before spending quota. */
   setChatPendingAction: (action: ChatActionChip | null) => void;
+  /** Flip while a confirmed chip action's real network call is in flight. */
+  setChatActionPending: (pending: boolean) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
   setChatDisplay: (d: { opener: string | null; suggestions: string[] }) => void;
   resetCompanion: () => void;
@@ -177,6 +196,7 @@ const initial = {
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
+  chatActionPending: false,
 };
 
 export const useCompanionStore = create<CompanionState>()((set) => ({
@@ -290,12 +310,21 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Resolve a SPECIFIC assistant row (by index) with the answer. Used by per-row
   // retry where the retried slot is NOT necessarily the last assistant.
-  resolveAssistantAt: (index, text, actions, citedTool) =>
+  resolveAssistantAt: (index, text, actions, citedTool, suggestedNextStep) =>
     set((s) => {
       const target = s.chatMessages[index];
       if (!target || target.role !== "assistant") return {};
       const chatMessages = s.chatMessages.slice();
-      chatMessages[index] = { role: "assistant", text, pending: false, error: false, question: target.question, actions, citedTool };
+      chatMessages[index] = {
+        role: "assistant",
+        text,
+        pending: false,
+        error: false,
+        question: target.question,
+        actions,
+        citedTool,
+        suggestedNextStep,
+      };
       return { chatMessages };
     }),
   // Fail a SPECIFIC assistant row (by index). Used by per-row retry.
@@ -334,8 +363,10 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     });
     return question;
   },
-  clearChat: () => set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null }),
+  clearChat: () =>
+    set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null, chatActionPending: false }),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
+  setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
     set({
@@ -346,6 +377,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
+      chatActionPending: false,
       dismissedIssues: loadDismissedIssues(),
     }),
 }));

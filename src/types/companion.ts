@@ -68,6 +68,12 @@ export interface AssistantRewriteRequest {
   /** "bullet" for projects/experience, "summary" for summary. */
   kind: "bullet" | "summary";
   locale: "vi" | "en";
+  /**
+   * Task M4 — set ONLY when the user clicks "Viết lại nhẹ hơn" on an already-presented
+   * patch (re-fires the SAME answers/target, asking BE for a gentler tone). Additive:
+   * an older BE ignores the unknown field.
+   */
+  tone?: "softer";
 }
 
 export type AssistantRewriteReason =
@@ -164,6 +170,13 @@ export interface DiagnosisChatResponse {
   cited_tool?: "github.enrich" | "resource.validate" | string;
   /** Optional suggested follow-up step. */
   suggested_next_step?: string | null;
+  /** If the answer references ANOTHER persisted match (cross-JD comparison), its id + owning CV so the
+   * FE can offer a deep-link chip. Absent when the answer isn't about another match (honest-empty). */
+  cited_match?: {
+    match_id: string;
+    cv_id: string;
+    jd_title: string | null;
+  };
 }
 
 // ── CV Intake: POST /api/cvs/:id/builder/assistant/extract ──────────

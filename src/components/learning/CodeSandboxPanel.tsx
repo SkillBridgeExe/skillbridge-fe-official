@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { PlayCircle, RefreshCw, Copy, Check, Terminal, Code, Database, Eye, FileText, X } from "lucide-react";
+import { PlayCircle, RefreshCw, Copy, Check, Terminal, Code, Database, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +10,14 @@ interface CodeSandboxPanelProps {
   onClose: () => void;
   sectionTitle?: string;
 }
+
+type SqlCell = string | number | boolean | null;
+type SqlRow = Record<string, SqlCell>;
+type BgrColor = [number, number, number];
+type CvDrawingOp =
+  | { type: "rectangle"; x1: number; y1: number; x2: number; y2: number; bgr: BgrColor; thick: number }
+  | { type: "circle"; cx: number; cy: number; radius: number; bgr: BgrColor; thick: number }
+  | { type: "text"; text: string; x: number; y: number; scale: number; bgr: BgrColor; thick: number };
 
 // ─── Default Templates & Data ──────────────────────────────────────────
 
@@ -222,8 +229,6 @@ export function CodeSandboxPanel({
   onClose,
   sectionTitle,
 }: CodeSandboxPanelProps) {
-  const { t } = useTranslation("common");
-  
   // Identify template based on sectionTitle first, then fallback to skillCanonical
   const sectionKey = Object.keys(SECTION_TEMPLATES).find(k => 
     sectionTitle && sectionTitle.toLowerCase().includes(k)
@@ -241,13 +246,13 @@ export function CodeSandboxPanel({
   const [copied, setCopied] = useState(false);
 
   // SQL data grid result state
-  const [sqlResults, setSqlResults] = useState<any[] | null>(null);
+  const [sqlResults, setSqlResults] = useState<SqlRow[] | null>(null);
 
   // Web rendering iframe srcDoc state
   const [webSrcDoc, setWebSrcDoc] = useState("");
 
   // OpenCV canvas drawing queue
-  const [cvOps, setCvOps] = useState<any[]>([]);
+  const [cvOps, setCvOps] = useState<CvDrawingOp[]>([]);
   const [cvSize, setCvSize] = useState({ w: 400, h: 300 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -297,14 +302,15 @@ export function CodeSandboxPanel({
         outputLogs.push("[INFO] Parsing virtual Python OpenCV code...");
         outputLogs.push("[INFO] cv2.imread('input.jpg') -> loaded base image (640x480)");
 
-        const drawingOps: any[] = [];
+        const drawingOps: CvDrawingOp[] = [];
         
         // Helper function to resolve BGR tuple color from code string
-        const resolveBGRColor = (colorStr: string): number[] => {
+        const resolveBGRColor = (colorStr: string): BgrColor => {
           if (!colorStr) return [255, 255, 255];
           const clean = colorStr.trim();
           if (clean.includes(",")) {
-            return clean.split(",").map(c => parseInt(c.trim()) || 0);
+            const [b = 0, g = 0, r = 0] = clean.split(",").map(c => parseInt(c.trim()) || 0);
+            return [b, g, r];
           }
           // Variable lookup in script
           const varRegex = new RegExp(`\\b${clean}\\s*=\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)`);
@@ -447,8 +453,9 @@ export function CodeSandboxPanel({
         
         // Setup console.log capture
         const logCapture: string[] = [];
-        const originalLog = console.log;
-        console.log = (...args) => {
+        const sandboxConsole = globalThis.console;
+        const originalLog = sandboxConsole.log;
+        sandboxConsole.log = (...args: unknown[]) => {
           logCapture.push("[CONSOLE] " + args.map(arg => typeof arg === "object" ? JSON.stringify(arg) : String(arg)).join(" "));
         };
 
@@ -458,11 +465,11 @@ export function CodeSandboxPanel({
           runFn();
           outputLogs.push(...logCapture);
           outputLogs.push("[SUCCESS] Script executed successfully.");
-        } catch (err: any) {
+        } catch (err: unknown) {
           outputLogs.push(...logCapture);
-          outputLogs.push(`[RUNTIME ERROR] ${err.message}`);
+          outputLogs.push(`[RUNTIME ERROR] ${err instanceof Error ? err.message : String(err)}`);
         } finally {
-          console.log = originalLog;
+          sandboxConsole.log = originalLog;
         }
       } 
       else {
