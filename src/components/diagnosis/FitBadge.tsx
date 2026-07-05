@@ -10,7 +10,7 @@ interface FitBadgeProps {
 }
 
 export function FitBadge({ fit, className }: FitBadgeProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation("diagnosis");
 
   const colorClass =
     fit.verdict === "safe_apply"
@@ -22,7 +22,7 @@ export function FitBadge({ fit, className }: FitBadgeProps) {
   return (
     <div className={cn("inline-flex items-center gap-1", className)}>
       <span className={cn("inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-bold", colorClass)}>
-        {t(`diagnosis.fit.verdict.${fit.verdict}`)}
+        {t(`fit.verdict.${fit.verdict}`)}
       </span>
       {fit.reasons && fit.reasons.length > 0 && (
         <TooltipProvider delayDuration={150}>
@@ -34,7 +34,7 @@ export function FitBadge({ fit, className }: FitBadgeProps) {
               <ul className="list-disc pl-3">
                 {fit.reasons.map((reason, idx) => (
                   <li key={idx}>
-                    {t(`diagnosis.fit.reason.${reason}`, {
+                    {t(`fit.reason.${reason}`, {
                       defaultValue: reason,
                     })}
                   </li>
