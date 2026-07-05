@@ -11,6 +11,7 @@ import {
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
@@ -445,6 +446,7 @@ export function DiagnosisStep3Results() {
           verdictMessage={scoreMessage}
           isJdMode={isJdMode}
           rubricBand={jdMatch?.rubric_band}
+          bandTooltip={t("band.tooltip")}
         />
 
         {/* Ribbon — inline stats + deal-breaker chips */}
@@ -537,7 +539,9 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
        * ──────────────────────────────────────────────────────────────────── */}
-      {isJdMode && jdMatch?.matchId && (
+      {/* Guard the WHOLE chapter behind the same flag GapReportCard checks internally —
+          a disabled flag must not render a chapter title over an empty body (reads as broken). */}
+      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && (
         <div id="gap-anchor" className="py-12 md:py-16">
           <Chapter
             kicker="02"
@@ -548,7 +552,7 @@ export function DiagnosisStep3Results() {
         </div>
       )}
 
-      {isJdMode && jdMatch?.matchId && <SectionRule />}
+      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && <SectionRule />}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 3 — Chi tiết (collapsible)
