@@ -65,6 +65,10 @@ export interface LearningLessonContent {
 export interface LearningSession {
   id: string;
   moduleId: string;
+  /** Canonical skill name ("node_js") — the BE lesson/quiz lookup key. moduleId is its SLUG
+   *  ("node-js") and must never be sent as skill_canonical: the BE dictionary lookup is exact,
+   *  so every underscore skill 404s (live bug this field fixes). */
+  skillCanonical?: string;
   sessionNumber: number;
   title: string;
   skill: string;
