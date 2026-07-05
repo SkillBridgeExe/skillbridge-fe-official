@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { SectionItemCard } from "./SectionItemCard";
 
 export function CertificationsSection() {
-  const { certifications, addCertification, updateCertification, removeCertification } = useCvBuilderStore();
+  const { certifications, addCertification, updateCertification, removeCertification, moveCertification } = useCvBuilderStore();
   const { t } = useTranslation("diagnosis");
 
   return (
@@ -22,6 +22,10 @@ export function CertificationsSection() {
             subtitle={subtitle}
             onRemove={() => removeCertification(cert.id)}
             canRemove={true}
+            onMoveUp={() => moveCertification(cert.id, "up")}
+            canMoveUp={index > 0}
+            onMoveDown={() => moveCertification(cert.id, "down")}
+            canMoveDown={index < certifications.length - 1}
             defaultExpanded={index === 0 || !cert.name}
           >
             <div className="grid grid-cols-1 gap-4">

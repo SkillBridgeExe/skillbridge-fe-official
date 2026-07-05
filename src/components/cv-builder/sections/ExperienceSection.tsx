@@ -30,6 +30,7 @@ export function ExperienceSection() {
     addExperience,
     updateExperience,
     removeExperience,
+    moveExperience,
     draftId,
     clearSectionEvaluation,
     pendingProveIt,
@@ -348,6 +349,10 @@ export function ExperienceSection() {
             subtitle={subtitle}
             onRemove={() => removeExperience(exp.id)}
             canRemove={experience.length > 1}
+            onMoveUp={() => moveExperience(exp.id, "up")}
+            canMoveUp={index > 0}
+            onMoveDown={() => moveExperience(exp.id, "down")}
+            canMoveDown={index < experience.length - 1}
             defaultExpanded={index === 0 || !exp.company}
           >
             <div className="flex items-center justify-between mb-4">

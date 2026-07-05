@@ -340,21 +340,29 @@ export function CvFormPanel() {
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
           const isReview = section.id === "review";
+          const isHidden = (["summary", "experience", "education", "projects", "skills", "certifications"].includes(section.id)) && store.sectionVisibility[section.id as keyof typeof store.sectionVisibility] === false;
 
           return (
             <AccordionItem
               key={section.id}
               value={section.id}
               id={`cv-section-${section.id}`}
-              className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm scroll-mt-6"
+              className={cn("border rounded-xl overflow-hidden transition-all scroll-mt-6", isHidden ? "border-slate-100 bg-slate-50/50 shadow-none" : "border-slate-200 bg-white shadow-sm")}
             >
-              <AccordionTrigger className="px-5 py-4 hover:no-underline bg-slate-50/50 hover:bg-slate-50 transition-colors">
+              <AccordionTrigger className={cn("px-5 py-4 hover:no-underline transition-colors", isHidden ? "bg-transparent hover:bg-slate-50/50" : "bg-slate-50/50 hover:bg-slate-50")}>
                 <div className="flex items-center justify-between w-full pr-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isHidden ? "bg-slate-100/50 text-slate-400" : "bg-slate-100 text-slate-500")}>
                       <Icon className="w-4 h-4" />
                     </div>
-                    <h4 className="font-semibold text-slate-800 text-sm">{title}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className={cn("font-semibold text-sm", isHidden ? "text-slate-400" : "text-slate-800")}>{title}</h4>
+                      {isHidden && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200/70 text-slate-500 uppercase tracking-wider">
+                          {currentLang === "vi" ? "Đã ẩn" : "Hidden"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Status Chip / Score Chip */}

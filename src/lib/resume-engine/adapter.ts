@@ -189,7 +189,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 			title: store.cvLanguage === "vi" ? "Tóm tắt" : "Summary",
 			icon: "article",
 			columns: 1,
-			hidden: !store.summary,
+			hidden: (store.sectionVisibility?.summary === false) || !store.summary,
 			content: toHtml(store.summary),
 		},
 		sections: {
@@ -204,28 +204,28 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Kinh nghiệm làm việc" : "Experience",
 				icon: "briefcase",
 				columns: 1,
-				hidden: experienceItems.length === 0,
+				hidden: (store.sectionVisibility?.experience === false) || experienceItems.length === 0,
 				items: experienceItems,
 			},
 			education: {
 				title: store.cvLanguage === "vi" ? "Học vấn" : "Education",
 				icon: "graduation-cap",
 				columns: 1,
-				hidden: educationItems.length === 0,
+				hidden: (store.sectionVisibility?.education === false) || educationItems.length === 0,
 				items: educationItems,
 			},
 			projects: {
 				title: store.cvLanguage === "vi" ? "Dự án" : "Projects",
 				icon: "folder",
 				columns: 1,
-				hidden: projectItems.length === 0,
+				hidden: (store.sectionVisibility?.projects === false) || projectItems.length === 0,
 				items: projectItems,
 			},
 			skills: {
 				title: store.cvLanguage === "vi" ? "Kỹ năng" : "Skills",
 				icon: "lightning",
 				columns: 1,
-				hidden: store.technicalSkills.length === 0 && store.softSkills.length === 0 && store.tools.length === 0,
+				hidden: (store.sectionVisibility?.skills === false) || (store.technicalSkills.length === 0 && store.softSkills.length === 0 && store.tools.length === 0),
 				items: [
 					...(store.technicalSkills.length > 0
 						? [
@@ -272,10 +272,10 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				],
 			},
 			languages: {
-				title: store.cvLanguage === "vi" ? "Ngoại ngữ" : "Languages",
-				icon: "translate",
+				title: store.cvLanguage === "vi" ? "Ngôn ngữ" : "Languages",
+				icon: "globe",
 				columns: 1,
-				hidden: store.languages.length === 0,
+				hidden: store.languages.length === 0, // Languages isn't in visibility toggle yet
 				items: store.languages.map((lang, index) => ({
 					id: stableId("language", index, lang),
 					hidden: false,
@@ -302,7 +302,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Chứng chỉ" : "Certifications",
 				icon: "certificate",
 				columns: 1,
-				hidden: certificationItems.length === 0,
+				hidden: (store.sectionVisibility?.certifications === false) || certificationItems.length === 0,
 				items: certificationItems,
 			},
 			publications: {
@@ -335,8 +335,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				pages: [
 					{
 						fullWidth: false,
-						main: ["experience", "education", "projects"],
-						sidebar: ["summary", "skills", "languages", "certifications"],
+						main: store.sectionOrder ? store.sectionOrder.filter(k => ["experience", "education", "projects"].includes(k)) : ["experience", "education", "projects"],
+						sidebar: [...(store.sectionOrder ? store.sectionOrder.filter(k => ["summary", "skills", "certifications"].includes(k)) : ["summary", "skills", "certifications"]), "languages"],
 					},
 				],
 			},

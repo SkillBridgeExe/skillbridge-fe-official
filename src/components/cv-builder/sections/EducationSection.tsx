@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { SectionItemCard } from "./SectionItemCard";
 
 export function EducationSection() {
-  const { education, addEducation, updateEducation, removeEducation } = useCvBuilderStore();
+  const { education, addEducation, updateEducation, removeEducation, moveEducation } = useCvBuilderStore();
   const { t } = useTranslation("diagnosis");
 
   return (
@@ -23,6 +23,10 @@ export function EducationSection() {
             subtitle={subtitle}
             onRemove={() => removeEducation(edu.id)}
             canRemove={education.length > 1}
+            onMoveUp={() => moveEducation(edu.id, "up")}
+            canMoveUp={index > 0}
+            onMoveDown={() => moveEducation(edu.id, "down")}
+            canMoveDown={index < education.length - 1}
             defaultExpanded={index === 0 || !edu.school}
           >
             <div className="grid grid-cols-1 gap-4">

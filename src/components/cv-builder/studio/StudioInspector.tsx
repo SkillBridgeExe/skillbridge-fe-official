@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { Globe, Type, Palette, Layout, Wand2, Settings2 } from "lucide-react";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { TemplateGallery } from "../preview/TemplatePicker";
-import { useCvBuilderStore, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +28,9 @@ const ACCENT_COLORS = [
   { value: "#dc2626", label: "Red" },
   { value: "#d97706", label: "Amber" },
 ];
+
+const MAIN_STRUCTURE_SECTIONS: CvBuilderSectionKey[] = ["experience", "education", "projects"];
+const SIDEBAR_STRUCTURE_SECTIONS: CvBuilderSectionKey[] = ["summary", "skills", "certifications"];
 
 function SegmentedButton({
   active,
@@ -56,6 +60,81 @@ function SegmentedButton({
 export function StudioInspector() {
   const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
+  const sectionLabels: Record<CvBuilderSectionKey, string> = {
+    summary: t("builder.tabSummary", { defaultValue: "Tóm tắt" }),
+    experience: t("builder.tabExperience", { defaultValue: "Kinh nghiệm" }),
+    education: t("builder.tabEducation", { defaultValue: "Học vấn" }),
+    projects: t("builder.tabProjects", { defaultValue: "Dự án" }),
+    skills: t("builder.tabSkills", { defaultValue: "Kỹ năng" }),
+    certifications: t("builder.tabCertifications", { defaultValue: "Chứng chỉ" }),
+  };
+
+  const renderStructureGroup = (
+    title: string,
+    sections: CvBuilderSectionKey[],
+  ) => {
+    const orderedSections = store.sectionOrder.filter((key) => sections.includes(key));
+
+    return (
+      <div className="space-y-1.5">
+        <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{title}</p>
+        {orderedSections.map((key, index, arr) => {
+          const isVisible = store.sectionVisibility[key] ?? true;
+
+          return (
+            <div
+              key={key}
+              className={cn(
+                "flex items-center justify-between rounded-md border p-2 text-sm transition-colors",
+                isVisible
+                  ? "border-slate-200 bg-white shadow-sm"
+                  : "border-dashed border-slate-100 bg-slate-50 text-slate-400",
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-6 w-6 shrink-0",
+                    isVisible ? "text-slate-400 hover:text-slate-600" : "text-slate-300 hover:text-slate-400",
+                  )}
+                  onClick={() => store.setSectionVisibility(key, !isVisible)}
+                  aria-label={isVisible ? `Hide ${sectionLabels[key]}` : `Show ${sectionLabels[key]}`}
+                >
+                  {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </Button>
+                <span className="truncate font-medium">{sectionLabels[key]}</span>
+              </div>
+
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                  onClick={() => store.moveSectionWithinGroup(key, "up", sections)}
+                  disabled={index === 0}
+                  aria-label={`Move ${sectionLabels[key]} up`}
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                  onClick={() => store.moveSectionWithinGroup(key, "down", sections)}
+                  disabled={index === arr.length - 1}
+                  aria-label={`Move ${sectionLabels[key]} down`}
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full bg-white border-l border-slate-200">
@@ -105,6 +184,39 @@ export function StudioInspector() {
                   {t("builder.gallery", { defaultValue: "Template Gallery" })}
                 </h3>
                 <TemplateGallery />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Structure Accordion */}
+          <AccordionItem value="structure" className="border-b-slate-100">
+            <AccordionTrigger className="px-5 py-3 hover:bg-slate-50 transition-colors hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-slate-500" />
+                <span className="font-semibold text-slate-800 text-sm">
+                  Cấu trúc
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-5 pt-2">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Thứ tự & Hiển thị
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-[10px] px-2 text-slate-400 hover:text-slate-600"
+                  onClick={() => store.resetSectionOrder()}
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Mặc định
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {renderStructureGroup("Cột chính", MAIN_STRUCTURE_SECTIONS)}
+                {renderStructureGroup("Thanh bên", SIDEBAR_STRUCTURE_SECTIONS)}
               </div>
             </AccordionContent>
           </AccordionItem>

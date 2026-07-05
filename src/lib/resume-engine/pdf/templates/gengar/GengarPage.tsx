@@ -120,19 +120,19 @@ const Header = ({ styles, colors }: GengarHeaderProps) => {
 			</View>
 
 			<View style={styles.contactList}>
-				{basics.email && (
+				{Boolean(basics.email) && (
 					<Link src={`mailto:${basics.email}`} style={styles.contactItem}>
 						<Icon name="envelope" color={colors.background} />
 						<Text style={styles.headerText}>{basics.email}</Text>
 					</Link>
 				)}
-				{basics.phone && (
+				{Boolean(basics.phone) && (
 					<Link src={`tel:${basics.phone}`} style={styles.contactItem}>
 						<Icon name="phone" color={colors.background} />
 						<Text style={styles.headerText}>{basics.phone}</Text>
 					</Link>
 				)}
-				{basics.location && (
+				{Boolean(basics.location) && (
 					<View style={styles.contactItem}>
 						<Icon name="map-pin" color={colors.background} />
 						<Text style={styles.headerText}>{basics.location}</Text>

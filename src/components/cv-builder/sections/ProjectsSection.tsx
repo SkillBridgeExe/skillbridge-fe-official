@@ -21,7 +21,7 @@ const BULLETS_INSTRUCTION =
 type ProjectNotice = AiGateCode | "LOCAL_ONLY" | "FALLBACK";
 
 export function ProjectsSection() {
-  const { projects, addProject, updateProject, removeProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
+  const { projects, addProject, updateProject, removeProject, moveProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -129,6 +129,10 @@ export function ProjectsSection() {
             subtitle={subtitle}
             onRemove={() => removeProject(proj.id)}
             canRemove={projects.length > 1}
+            onMoveUp={() => moveProject(proj.id, "up")}
+            canMoveUp={index > 0}
+            onMoveDown={() => moveProject(proj.id, "down")}
+            canMoveDown={index < projects.length - 1}
             defaultExpanded={index === 0 || !proj.name}
           >
             <div className="flex items-center justify-between mb-4">

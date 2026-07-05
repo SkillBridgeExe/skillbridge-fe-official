@@ -9,6 +9,10 @@ interface SectionItemCardProps {
   subtitle?: string;
   onRemove: () => void;
   canRemove: boolean;
+  onMoveUp?: () => void;
+  canMoveUp?: boolean;
+  onMoveDown?: () => void;
+  canMoveDown?: boolean;
   children: React.ReactNode;
   defaultExpanded?: boolean;
 }
@@ -18,6 +22,10 @@ export function SectionItemCard({
   subtitle,
   onRemove,
   canRemove,
+  onMoveUp,
+  canMoveUp = false,
+  onMoveDown,
+  canMoveDown = false,
   children,
   defaultExpanded = false
 }: SectionItemCardProps) {
@@ -35,6 +43,38 @@ export function SectionItemCard({
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
+          <div className={cn("flex items-center gap-0.5", !expanded && "opacity-0 group-hover:opacity-100 transition-opacity")}>
+            {onMoveUp && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-slate-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp();
+                }}
+                disabled={!canMoveUp}
+                aria-label="Move up"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </Button>
+            )}
+            {onMoveDown && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-slate-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown();
+                }}
+                disabled={!canMoveDown}
+                aria-label="Move down"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
