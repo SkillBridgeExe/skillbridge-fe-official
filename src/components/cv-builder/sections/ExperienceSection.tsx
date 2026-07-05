@@ -15,6 +15,7 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { openIntakeCoach } from "@/components/companion/skills/open-intake-coach";
 import type { CoachTrigger } from "@/components/companion/skills/coach-flow";
 import { findBulletWithSkill } from "@/components/companion/skills/find-bullet-with-skill";
+import { SectionItemCard } from "./SectionItemCard";
 import {
   getAchievementLine,
   parseAchievementFieldIndex,
@@ -335,79 +336,80 @@ export function ExperienceSection() {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      {experience.map((exp, index) => (
-        <div key={exp.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 relative group">
-          {/* Nút xóa đặt ở góc tuyệt đối absolute top-3 right-3 */}
-          <Button
-            variant="ghost" size="icon"
-            className="absolute top-3 right-3 h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            onClick={() => removeExperience(exp.id)} disabled={experience.length === 1}
-            aria-label={`${t("builder.remove")} ${t("builder.entry.experience")} ${index + 1}`}
+    <div className="space-y-6">
+      {experience.map((exp, index) => {
+        const title = exp.company || t("builder.ph.company", { defaultValue: "Tên công ty" });
+        const subtitle = exp.position || t("builder.entry.experience", { defaultValue: "Kinh nghiệm" });
+
+        return (
+          <SectionItemCard
+            key={exp.id}
+            title={title}
+            subtitle={subtitle}
+            onRemove={() => removeExperience(exp.id)}
+            canRemove={experience.length > 1}
+            defaultExpanded={index === 0 || !exp.company}
           >
-            <X className="w-4 h-4" />
-          </Button>
-
-          <div className="flex items-center justify-between mb-4 pr-6">
-            <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.experience")} #{index + 1}</h4>
-            {isLoggedIn && draftId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
-                onClick={() => {
-                  const id = `cvbuilder:intake:experience[${index}]`;
-                  useCompanionStore.getState().registerContext({
-                    id,
-                    getTurn: () => ({
-                      skill: "cv_intake",
-                      props: {
-                        draftId,
-                        entryIndex: index,
-                        currentEntry: {
-                          company: exp.company,
-                          position: exp.position,
-                          startDate: exp.startDate,
-                          endDate: exp.endDate,
-                          description: exp.description,
-                          achievements: exp.achievements,
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.experience")} #{index + 1}</h4>
+              {isLoggedIn && draftId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
+                  onClick={() => {
+                    const id = `cvbuilder:intake:experience[${index}]`;
+                    useCompanionStore.getState().registerContext({
+                      id,
+                      getTurn: () => ({
+                        skill: "cv_intake",
+                        props: {
+                          draftId,
+                          entryIndex: index,
+                          currentEntry: {
+                            company: exp.company,
+                            position: exp.position,
+                            startDate: exp.startDate,
+                            endDate: exp.endDate,
+                            description: exp.description,
+                            achievements: exp.achievements,
+                          },
+                          onApply: (fields: Record<string, string>) => {
+                            for (const [field, value] of Object.entries(fields)) {
+                              updateExperience(exp.id, field as keyof typeof exp, value);
+                            }
+                            clearSectionEvaluation("experience");
+                          },
                         },
-                        onApply: (fields: Record<string, string>) => {
-                          for (const [field, value] of Object.entries(fields)) {
-                            updateExperience(exp.id, field as keyof typeof exp, value);
-                          }
-                          clearSectionEvaluation("experience");
-                        },
-                      },
-                    }),
-                  });
-                  useCompanionStore.getState().activateContext(id);
-                  useCompanionStore.setState({ bubbleOpen: true });
-                }}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Trợ lý điền nhanh" })}</span>
-              </Button>
-            )}
-          </div>
+                      }),
+                    });
+                    useCompanionStore.getState().activateContext(id);
+                    useCompanionStore.setState({ bubbleOpen: true });
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Trợ lý điền nhanh" })}</span>
+                </Button>
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.company")} *</Label>
-              <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder={t("builder.ph.company")} />
-            </div>
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.position")} *</Label>
-              <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder={t("builder.ph.position")} />
-            </div>
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.startDate")}</Label>
-              <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} placeholder={t("builder.ph.startDate")} />
-            </div>
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.endDate")}</Label>
-              <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder={t("builder.ph.endDate")} />
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.company")} *</Label>
+                <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder={t("builder.ph.company")} />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.position")} *</Label>
+                <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder={t("builder.ph.position")} />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.startDate")}</Label>
+                <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} placeholder={t("builder.ph.startDate")} />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.endDate")}</Label>
+                <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder={t("builder.ph.endDate")} />
+              </div>
 
             {/* Description/Responsibilities field */}
             <div className="space-y-2 col-span-2 pt-2">
@@ -568,11 +570,17 @@ export function ExperienceSection() {
             </div>
 
           </div>
-        </div>
-      ))}
-      <Button variant="outline" className="w-full border-dashed" onClick={addExperience}>
-        <Plus className="w-4 h-4 mr-2" /> {t("builder.add.experience")}
-      </Button>
+          </SectionItemCard>
+        );
+      })}
+      
+      <button 
+        onClick={addExperience}
+        className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
+      >
+        <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
+        <span className="font-medium text-sm">{t("builder.add.experience")}</span>
+      </button>
     </div>
   );
 }

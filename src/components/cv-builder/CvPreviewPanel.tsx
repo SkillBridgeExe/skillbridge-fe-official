@@ -1,9 +1,8 @@
 import { useState, Suspense, lazy, useEffect, useRef } from "react";
 import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Globe, Loader2, ZoomIn, ZoomOut, Maximize, LayoutTemplate } from "lucide-react";
+import { Globe, ZoomIn, ZoomOut, Maximize, LayoutTemplate } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CV_CONTENT_LABELS } from "@/constants/cv-content-labels";
 import { resolveBuilderTemplate, TemplatePicker } from "./preview/TemplatePicker";
 import { Button } from "@/components/ui/button";
 
@@ -31,7 +30,6 @@ const PdfRendererWrapper = lazy(() => import("./preview/PdfRendererWrapper"));
 export function CvPreviewPanel() {
   const store = useCvBuilderStore();
   const { t } = useTranslation("diagnosis");
-  const L = CV_CONTENT_LABELS[store.cvLanguage];
 
   const resumeData = store.getResumeData();
   const resumeDataKey = JSON.stringify(resumeData);
@@ -81,29 +79,38 @@ export function CvPreviewPanel() {
       </div>
 
       {/* A4 Page container */}
-      <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-[#525659] relative custom-scrollbar shadow-inner">
+      <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-[#e2e8f0] relative custom-scrollbar shadow-inner">
         {isEmpty ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
-            <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-[360px] shadow-sm text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <LayoutTemplate className="w-8 h-8 text-primary" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#f8fafc]">
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 max-w-[420px] shadow-sm text-center">
+              <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3">
+                <LayoutTemplate className="w-10 h-10 text-slate-400 -rotate-3" />
               </div>
-              <p className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
-                {L.previewTitle}
+              <h3 className="text-lg font-bold text-slate-800 mb-2">
+                {t("builder.previewEmptyTitle", { defaultValue: "Bản xem trước CV" })}
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed font-medium mb-6">
+                {t("builder.previewEmpty", { defaultValue: "Bản xem trước sẽ xuất hiện ở đây khi bạn bắt đầu điền thông tin vào các mục bên trái." })}
               </p>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                {t("builder.previewEmpty", "Start filling out your details in the editor to see the live preview here.")}
-              </p>
+              <div className="flex flex-col gap-2 opacity-50">
+                <div className="h-2 bg-slate-100 rounded-full w-full" />
+                <div className="h-2 bg-slate-100 rounded-full w-4/5 mx-auto" />
+                <div className="h-2 bg-slate-100 rounded-full w-2/3 mx-auto" />
+              </div>
             </div>
           </div>
         ) : (
           <div className="min-h-full py-8 px-4 flex justify-center w-full" style={{ transform: `scale(${scale})`, transformOrigin: "top center", transition: "transform 0.2s ease-out" }}>
             <Suspense fallback={
-              <div className="w-[794px] h-[1123px] bg-white shadow-sm flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                  <p className="text-sm font-medium text-slate-500">
-                    {t("builder.previewLoadingEngine", { defaultValue: "Đang tải trình xem PDF..." })}
+              <div className="w-[794px] h-[1123px] bg-white shadow-md flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
+                <div className="relative flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center relative">
+                    <div className="absolute inset-0 rounded-xl border-2 border-primary/20 border-t-primary animate-spin" />
+                    <LayoutTemplate className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-500 animate-pulse">
+                    {t("builder.previewLoadingEngine", { defaultValue: "Đang khởi tạo studio..." })}
                   </p>
                 </div>
               </div>

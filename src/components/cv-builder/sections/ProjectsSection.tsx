@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, RotateCcw, X } from "lucide-react";
+import { Plus, Sparkles, RotateCcw } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -12,6 +12,7 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { SectionItemCard } from "./SectionItemCard";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const BULLETS_INSTRUCTION =
@@ -116,146 +117,47 @@ export function ProjectsSection() {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      {projects.map((proj, index) => (
-        <div key={proj.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 relative group">
-          {/* Nút xóa đặt ở góc tuyệt đối absolute top-3 right-3 */}
-          <Button
-            variant="ghost" size="icon"
-            className="absolute top-3 right-3 h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            onClick={() => removeProject(proj.id)} disabled={projects.length === 1}
-            aria-label={`${t("builder.remove")} ${t("builder.entry.project")} ${index + 1}`}
+    <div className="space-y-6">
+      {projects.map((proj, index) => {
+        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Tên dự án" });
+        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Dự án" });
+
+        return (
+          <SectionItemCard
+            key={proj.id}
+            title={title}
+            subtitle={subtitle}
+            onRemove={() => removeProject(proj.id)}
+            canRemove={projects.length > 1}
+            defaultExpanded={index === 0 || !proj.name}
           >
-            <X className="w-4 h-4" />
-          </Button>
-
-          <div className="flex items-center justify-between mb-4 pr-6">
-            <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.project")} #{index + 1}</h4>
-            {isLoggedIn && draftId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
-                onClick={() => {
-                  const id = `cvbuilder:intake:projects[${index}]`;
-                  useCompanionStore.getState().registerContext({
-                    id,
-                    getTurn: () => ({
-                      skill: "cv_project_intake",
-                      props: {
-                        draftId,
-                        entryIndex: index,
-                        currentEntry: {
-                          name: proj.name,
-                          role: proj.role,
-                          tools: proj.tools,
-                          link: proj.link,
-                          description: proj.description,
-                        },
-                        onApply: (fields: Record<string, string>) => {
-                          for (const [field, value] of Object.entries(fields)) {
-                            updateProject(proj.id, field as keyof typeof proj, value);
-                          }
-                          clearSectionEvaluation("projects");
-                        },
-                      },
-                    }),
-                  });
-                  useCompanionStore.getState().activateContext(id);
-                  useCompanionStore.setState({ bubbleOpen: true });
-                }}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "kể chuyện về dự án này" })}</span>
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.projectName")} *</Label>
-              <Input value={proj.name} onChange={(e) => updateProject(proj.id, "name", e.target.value)} placeholder={t("builder.ph.projectName")} />
-            </div>
-            <div className="space-y-1.5 col-span-2 sm:col-span-1">
-              <Label>{t("builder.fields.role")}</Label>
-              <Input value={proj.role} onChange={(e) => updateProject(proj.id, "role", e.target.value)} placeholder={t("builder.ph.role")} />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>{t("builder.fields.tools")}</Label>
-              <Input value={proj.tools} onChange={(e) => updateProject(proj.id, "tools", e.target.value)} placeholder={t("builder.ph.tools")} />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>{t("builder.fields.projectLink")}</Label>
-              <Input
-                type="url"
-                value={proj.link}
-                onChange={(e) => updateProject(proj.id, "link", e.target.value)}
-                placeholder={t("builder.ph.projectLink")}
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <div className="flex items-center justify-between">
-                <Label>{t("builder.fields.projectDescription")}</Label>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-sm text-slate-700">{t("builder.entry.project")} #{index + 1}</h4>
+              {isLoggedIn && draftId && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-primary"
-                  onClick={() => suggestBullets(proj.id, proj.description)}
-                  disabled={aiRewrite.isPending && pendingId === proj.id}
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  {aiRewrite.isPending && pendingId === proj.id
-                    ? t("builder.generating")
-                    : t("builder.turnIntoBullets")}
-                </Button>
-              </div>
-              <Textarea
-                value={proj.description}
-                onChange={(e) => updateProject(proj.id, "description", e.target.value)}
-                placeholder={t("builder.ph.projectDescription")}
-                className="text-[13px] resize-none h-20"
-              />
-
-              {/* Input-gate hint / fallback note */}
-              {notice?.id === proj.id && (
-                <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
-                  {noticeText(notice.kind)}
-                </div>
-              )}
-
-              {/* Hoàn tác sau khi áp bản viết lại của AI */}
-              {backupMap[proj.id] !== undefined && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleUndo(proj.id)}
-                  className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>{t("builder.undo")}</span>
-                </Button>
-              )}
-
-              {/* Companion AI trigger for project description */}
-              {isLoggedIn && draftId && proj.description.trim() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                  disabled={!draftId || !proj.description.trim()}
+                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1 px-2"
                   onClick={() => {
-                    const id = `cvbuilder:projects[${index}].description`;
+                    const id = `cvbuilder:intake:projects[${index}]`;
                     useCompanionStore.getState().registerContext({
                       id,
                       getTurn: () => ({
-                        skill: "cv_builder",
+                        skill: "cv_project_intake",
                         props: {
                           draftId,
-                          fieldPath: id,
-                          section: "projects",
-                          currentValue: proj.description,
-                          onApply: (after: string) => {
-                            updateProject(proj.id, "description", after);
+                          entryIndex: index,
+                          currentEntry: {
+                            name: proj.name,
+                            role: proj.role,
+                            tools: proj.tools,
+                            link: proj.link,
+                            description: proj.description,
+                          },
+                          onApply: (fields: Record<string, string>) => {
+                            for (const [field, value] of Object.entries(fields)) {
+                              updateProject(proj.id, field as keyof typeof proj, value);
+                            }
                             clearSectionEvaluation("projects");
                           },
                         },
@@ -266,16 +168,122 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "kể chuyện về dự án này" })}</span>
                 </Button>
               )}
             </div>
-          </div>
-        </div>
-      ))}
-      <Button variant="outline" className="w-full border-dashed" onClick={addProject}>
-        <Plus className="w-4 h-4 mr-2" /> {t("builder.add.project")}
-      </Button>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.projectName")} *</Label>
+                <Input value={proj.name} onChange={(e) => updateProject(proj.id, "name", e.target.value)} placeholder={t("builder.ph.projectName")} />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label>{t("builder.fields.role")}</Label>
+                <Input value={proj.role} onChange={(e) => updateProject(proj.id, "role", e.target.value)} placeholder={t("builder.ph.role")} />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>{t("builder.fields.tools")}</Label>
+                <Input value={proj.tools} onChange={(e) => updateProject(proj.id, "tools", e.target.value)} placeholder={t("builder.ph.tools")} />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>{t("builder.fields.projectLink")}</Label>
+                <Input
+                  type="url"
+                  value={proj.link}
+                  onChange={(e) => updateProject(proj.id, "link", e.target.value)}
+                  placeholder={t("builder.ph.projectLink")}
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label>{t("builder.fields.projectDescription")}</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-primary"
+                    onClick={() => suggestBullets(proj.id, proj.description)}
+                    disabled={aiRewrite.isPending && pendingId === proj.id}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    {aiRewrite.isPending && pendingId === proj.id
+                      ? t("builder.generating")
+                      : t("builder.turnIntoBullets")}
+                  </Button>
+                </div>
+                <Textarea
+                  value={proj.description}
+                  onChange={(e) => updateProject(proj.id, "description", e.target.value)}
+                  placeholder={t("builder.ph.projectDescription")}
+                  className="text-[13px] resize-none h-20"
+                />
+
+                {/* Input-gate hint / fallback note */}
+                {notice?.id === proj.id && (
+                  <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
+                    {noticeText(notice.kind)}
+                  </div>
+                )}
+
+                {/* Hoàn tác sau khi áp bản viết lại của AI */}
+                {backupMap[proj.id] !== undefined && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUndo(proj.id)}
+                    className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{t("builder.undo")}</span>
+                  </Button>
+                )}
+
+                {/* Companion AI trigger for project description */}
+                {isLoggedIn && draftId && proj.description.trim() && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+                    disabled={!draftId || !proj.description.trim()}
+                    onClick={() => {
+                      const id = `cvbuilder:projects[${index}].description`;
+                      useCompanionStore.getState().registerContext({
+                        id,
+                        getTurn: () => ({
+                          skill: "cv_builder",
+                          props: {
+                            draftId,
+                            fieldPath: id,
+                            section: "projects",
+                            currentValue: proj.description,
+                            onApply: (after: string) => {
+                              updateProject(proj.id, "description", after);
+                              clearSectionEvaluation("projects");
+                            },
+                          },
+                        }),
+                      });
+                      useCompanionStore.getState().activateContext(id);
+                      useCompanionStore.setState({ bubbleOpen: true });
+                    }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </SectionItemCard>
+        );
+      })}
+      
+      <button 
+        onClick={addProject}
+        className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
+      >
+        <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
+        <span className="font-medium text-sm">{t("builder.add.project")}</span>
+      </button>
     </div>
   );
 }
