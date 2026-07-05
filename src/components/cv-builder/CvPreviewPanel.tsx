@@ -1,6 +1,6 @@
 import { useState, Suspense, lazy, useEffect, useRef } from "react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { ZoomIn, ZoomOut, Maximize, LayoutTemplate } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize, Minimize, LayoutTemplate, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate } from "./preview/TemplatePicker";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,8 @@ const PdfRendererWrapper = lazy(() => import("./preview/PdfRendererWrapper"));
 
 export function CvPreviewPanel() {
   const store = useCvBuilderStore();
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
+  const isVi = i18n.language.startsWith("vi");
 
   const resumeData = store.getResumeData();
   const resumeDataKey = JSON.stringify(resumeData);
@@ -37,29 +38,65 @@ export function CvPreviewPanel() {
   const debouncedData = useDebounce(resumeData, 800, resumeDataKey);
 
   const [scale, setScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const handleFitWidth = () => {
+    if (containerRef.current) {
+      const padding = 32; // px-4 = 16px * 2
+      const availableWidth = containerRef.current.clientWidth - padding;
+      const newScale = availableWidth / 794;
+      setScale(Math.max(0.2, Math.min(newScale, 2)));
+    }
+  };
+
+  const handleFitPage = () => {
+    if (containerRef.current) {
+      const paddingY = 96; // py-12 = 48px * 2
+      const availableHeight = containerRef.current.clientHeight - paddingY;
+      const newScale = availableHeight / 1123;
+      setScale(Math.max(0.2, Math.min(newScale, 2)));
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   const isEmpty = store.getCompletionPercent() === 0;
 
   return (
-    <div className="flex flex-col h-full w-full relative">
+    <div className="flex flex-col h-full w-full relative bg-[#f3f4f6]" ref={containerRef}>
       {/* A4 Page container */}
-      <div className="flex-1 overflow-auto bg-slate-800 relative custom-scrollbar shadow-inner">
+      <div className="flex-1 overflow-auto relative custom-scrollbar shadow-inner">
         {isEmpty ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-10 max-w-[420px] shadow-2xl text-center">
-              <div className="w-20 h-20 bg-slate-800 border-2 border-dashed border-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 shadow-inner">
-                <LayoutTemplate className="w-10 h-10 text-slate-500 -rotate-3" />
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 max-w-[420px] shadow-sm text-center">
+              <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 shadow-sm">
+                <LayoutTemplate className="w-10 h-10 text-slate-400 -rotate-3" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">
+              <h3 className="text-lg font-bold text-slate-800 mb-2">
                 {t("builder.previewEmptyTitle", { defaultValue: "Bản xem trước CV" })}
               </h3>
-              <p className="text-sm text-slate-400 leading-relaxed font-medium mb-6">
+              <p className="text-sm text-slate-500 leading-relaxed font-medium mb-6">
                 {t("builder.previewEmpty", { defaultValue: "Bản xem trước sẽ xuất hiện ở đây khi bạn bắt đầu điền thông tin vào các mục bên trái." })}
               </p>
-              <div className="flex flex-col gap-2 opacity-30">
-                <div className="h-2 bg-slate-500 rounded-full w-full" />
-                <div className="h-2 bg-slate-500 rounded-full w-4/5 mx-auto" />
-                <div className="h-2 bg-slate-500 rounded-full w-2/3 mx-auto" />
+              <div className="flex flex-col gap-2 opacity-40">
+                <div className="h-2 bg-slate-200 rounded-full w-full" />
+                <div className="h-2 bg-slate-200 rounded-full w-4/5 mx-auto" />
+                <div className="h-2 bg-slate-200 rounded-full w-2/3 mx-auto" />
               </div>
             </div>
           </div>
@@ -98,17 +135,24 @@ export function CvPreviewPanel() {
 
       {/* Floating Bottom Toolbar */}
       {!isEmpty && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#18181b] text-zinc-300 backdrop-blur-md rounded-full px-3 py-1.5 border border-zinc-800 shadow-2xl z-20">
-          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#18181b]/95 backdrop-blur-md rounded-full px-3 py-1.5 border border-zinc-700/50 shadow-2xl z-20">
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.max(0.2, s - 0.1))} title={isVi ? "Thu nhỏ" : "Zoom out"}>
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className="text-[11px] font-semibold w-12 text-center text-zinc-300">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.min(2, s + 0.1))}>
+          <span className="text-[11px] font-semibold w-12 text-center text-zinc-300 select-none cursor-pointer hover:text-white" onClick={() => setScale(1)} title={isVi ? "Về 100%" : "Reset to 100%"}>{Math.round(scale * 100)}%</span>
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.min(2, s + 0.1))} title={isVi ? "Phóng to" : "Zoom in"}>
             <ZoomIn className="w-4 h-4" />
           </Button>
           <div className="w-px h-4 bg-zinc-700 mx-1" />
-          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(1)}>
-            <Maximize className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={handleFitWidth} title={isVi ? "Vừa chiều ngang" : "Fit width"}>
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={handleFitPage} title={isVi ? "Vừa trang" : "Fit page"}>
+            <ArrowUpDown className="w-3.5 h-3.5" />
+          </Button>
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={toggleFullscreen} title={isFullscreen ? (isVi ? "Thoát toàn màn hình" : "Exit fullscreen") : (isVi ? "Toàn màn hình" : "Fullscreen")}>
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </Button>
         </div>
       )}

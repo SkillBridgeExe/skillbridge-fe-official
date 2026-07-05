@@ -3,6 +3,7 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
 import { Check } from "lucide-react";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import { useTranslation } from "react-i18next";
 
 export const BUILDER_TEMPLATES: Template[] = [
   "azurill", "bronzor", "chikorita", "ditgar", "ditto",
@@ -14,6 +15,49 @@ export function resolveBuilderTemplate(template: string): Template {
   return BUILDER_TEMPLATES.includes(template as Template) ? (template as Template) : "azurill";
 }
 
+const TEMPLATE_DESCRIPTION_VI: Record<Template, string> = {
+  azurill: "Mẫu ATS cổ điển với phần tiêu đề xanh dịu.",
+  bronzor: "Bố cục sidebar chuyên nghiệp cho CV giàu hồ sơ cá nhân.",
+  chikorita: "Bố cục chia cột gọn cho fresher kỹ thuật.",
+  ditgar: "Cấu trúc timeline làm nổi bật câu chuyện kinh nghiệm.",
+  ditto: "Phong cách tối giản, thoáng cho CV một trang sạch sẽ.",
+  gengar: "Sidebar sáng tạo với mật độ cao cho CV nhiều dự án.",
+  glalie: "Bố cục ATS chặt chẽ cho CV kỹ sư súc tích.",
+  kakuna: "Timeline tông ấm cho câu chuyện phát triển nghề nghiệp.",
+  lapras: "Bố cục cân bằng cho vai trò product và frontend.",
+  leafish: "Thiết kế tối giản gọn cho CV học thuật hoặc thực tập.",
+  meowth: "Typography lớn, dễ đọc cho phần tóm tắt nghề nghiệp.",
+  onyx: "Sidebar chuyên nghiệp, sắc nét cho hồ sơ kỹ thuật.",
+  pikachu: "Bố cục chia cột sáng, gọn cho portfolio dự án.",
+  rhyhorn: "Timeline có cấu trúc cho hồ sơ nhiều thông tin.",
+  scizor: "Tối giản với điểm nhấn đỏ cho CV một trang chỉn chu.",
+};
+
+const TAG_VI: Record<string, string> = {
+  ATS: "ATS",
+  Classic: "Cổ điển",
+  Sidebar: "Thanh bên",
+  Professional: "Chuyên nghiệp",
+  Modern: "Hiện đại",
+  Compact: "Gọn",
+  Timeline: "Timeline",
+  Detailed: "Chi tiết",
+  Minimal: "Tối giản",
+  Clean: "Sạch",
+  Creative: "Sáng tạo",
+  Warm: "Ấm",
+  Balanced: "Cân bằng",
+  Readable: "Dễ đọc",
+  Technical: "Kỹ thuật",
+};
+
+export function getTemplateDescription(template: Template, isVi: boolean) {
+  return isVi ? TEMPLATE_DESCRIPTION_VI[template] : TEMPLATE_PREVIEWS[template].description;
+}
+
+export function localizeTemplateTag(tag: string, isVi: boolean) {
+  return isVi ? TAG_VI[tag] ?? tag : tag;
+}
 
 function TemplateThumbnail({ template }: { template: Template }) {
   const meta = TEMPLATE_PREVIEWS[template];
@@ -76,6 +120,8 @@ function TemplateThumbnail({ template }: { template: Template }) {
 
 export function TemplateGallery() {
   const store = useCvBuilderStore();
+  const { i18n } = useTranslation("diagnosis");
+  const isVi = i18n.language.startsWith("vi");
   const currentTemplate = resolveBuilderTemplate(store.template);
 
   return (
@@ -102,12 +148,12 @@ export function TemplateGallery() {
             <div className="mt-3 text-center">
               <div className="text-xs font-semibold text-slate-700">{meta.name}</div>
               <p className="mt-1 line-clamp-2 min-h-[28px] text-[10px] leading-snug text-slate-500">
-                {meta.description}
+                {getTemplateDescription(template, isVi)}
               </p>
               <div className="mt-2 flex flex-wrap justify-center gap-1">
                 {meta.tags.slice(0, 2).map((tag) => (
                   <span key={tag} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
-                    {tag}
+                    {localizeTemplateTag(tag, isVi)}
                   </span>
                 ))}
               </div>

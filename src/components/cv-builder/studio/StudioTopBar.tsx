@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
@@ -13,7 +13,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore } from "@/store/useCompanionStore";
 
 export function StudioTopBar() {
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
+  const isVi = i18n.language.startsWith("vi");
   const hasApiSession = useHasApiSession();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -181,24 +182,28 @@ export function StudioTopBar() {
       <div className="flex h-full items-center gap-0 flex-1">
         
         {/* Back Button (aligned with 56px sidebar) */}
-        <div className="w-[56px] h-full flex items-center justify-center border-r border-slate-200 shrink-0">
+        <div className="w-[56px] h-full flex items-center justify-center shrink-0">
           <button
             onClick={handleBackToDiagnosis}
-            className="group flex items-center justify-center w-8 h-8 text-slate-500 hover:text-slate-900 transition-colors rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="group flex items-center justify-center w-9 h-9 text-slate-500 hover:text-slate-900 transition-colors rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
             title={t("builder.backToDiagnosis")}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
         </div>
 
+        <div className="h-6 w-px bg-slate-200 mx-2" />
+
         {/* Document Title - Editable */}
-        <div className="flex items-center gap-2 max-w-[200px] sm:max-w-[300px] pl-4">
+        <div className="flex items-center gap-1.5 max-w-[200px] sm:max-w-[300px] group relative">
           <input 
             type="text" 
-            className="font-medium text-sm text-slate-800 bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-200 rounded px-2 py-1 w-full truncate hover:bg-slate-50"
-            value={title || "Untitled Resume"}
+            className="font-semibold text-[15px] text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-primary/20 rounded-md px-2.5 py-1 w-full truncate hover:bg-slate-100 transition-colors placeholder:text-slate-400 focus:bg-white"
+            value={title || ""}
+            placeholder={isVi ? "CV chưa đặt tên" : "Untitled Resume"}
             onChange={(e) => useCvBuilderStore.getState().setBasicInfo("fullName", e.target.value)}
           />
+          <PenLine className="w-3.5 h-3.5 text-slate-400 absolute right-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
         </div>
 
       </div>
@@ -237,13 +242,13 @@ export function StudioTopBar() {
           onClick={handleSaveDraft}
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 text-xs font-medium text-slate-600 hover:text-slate-900"
+          className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           disabled={saveStatus === "saving"}
         >
           {saveStatus === "saving" ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
-            <Save className="w-3.5 h-3.5" />
+            <Save className="w-3.5 h-3.5 text-slate-400" />
           )}
           <span className="hidden sm:inline">{t("builder.saveDraft")}</span>
         </Button>
@@ -269,7 +274,7 @@ export function StudioTopBar() {
           }}
           variant="secondary"
           size="sm"
-          className="gap-1.5 h-8 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+          className="gap-1.5 h-8 rounded-full text-[13px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">{t("builder.aiAssistant", { defaultValue: "AI Assistant" })}</span>
@@ -280,13 +285,13 @@ export function StudioTopBar() {
           onClick={handleAnalyze}
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 text-xs font-medium text-slate-600 hover:text-slate-900"
+          className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           disabled={analyzeCvMutation.isPending}
         >
           {analyzeCvMutation.isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
-            <Wand2 className="w-3.5 h-3.5" />
+            <Wand2 className="w-3.5 h-3.5 text-slate-400" />
           )}
           <span className="hidden sm:inline">{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
         </Button>
@@ -296,7 +301,7 @@ export function StudioTopBar() {
           variant="default"
           size="sm"
           onClick={handleDownload}
-          className="gap-2 h-8 text-xs font-medium"
+          className="gap-2 h-8 rounded-full text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
           disabled={renderPdfMutation.isPending}
         >
           {renderPdfMutation.isPending ? (
@@ -304,7 +309,7 @@ export function StudioTopBar() {
           ) : (
             <Download className="w-3.5 h-3.5" />
           )}
-          <span className="hidden sm:inline">{t("builder.downloadCv", { defaultValue: "Download PDF" })}</span>
+          <span className="hidden sm:inline">{t("builder.downloadCv", { defaultValue: isVi ? "Tải xuống" : "Download CV" })}</span>
         </Button>
       </div>
     </header>

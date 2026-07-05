@@ -344,13 +344,13 @@ export default function Diagnosis() {
               </div>
               
               {/* Zone 2: Editor (Scrollable Column) */}
-              <div className="w-full lg:w-[380px] xl:w-[400px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
+              <div className="w-full lg:w-[360px] xl:w-[380px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
                 {/* Mobile Nav */}
                 <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-200 shrink-0 shadow-sm">
                   <CvSectionNav variant="horizontal" />
                 </div>
                 {/* Editor Content */}
-                <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar scroll-smooth">
                   <CvFormPanel />
                 </div>
               </div>

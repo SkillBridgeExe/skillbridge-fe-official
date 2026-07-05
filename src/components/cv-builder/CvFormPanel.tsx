@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BuilderSnapshot } from "@/services/cv-builder.service";
 import type { BuilderSection } from "@shared/api";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -161,31 +160,46 @@ const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>
 export function CvFormPanel() {
   const { t, i18n } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
-  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, setActiveSection } = store;
+  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation } = store;
   const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
-  const [openSections, setOpenSections] = useState<string[]>(["basic-info"]);
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
 
-  // Sync store's activeSection index to our accordion state
+  // Intersection Observer for scroll tracking
   useEffect(() => {
-    const sectionId = SECTIONS[activeSection]?.id;
-    if (sectionId) {
-      setOpenSections(prev => prev.includes(sectionId) ? prev : [...prev, sectionId]);
-    }
-  }, [activeSection]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let maxVisibleRatio = 0;
+        let mostVisibleSectionIdx = -1;
 
-  const handleAccordionChange = (val: string[]) => {
-    setOpenSections(val);
-    if (val.length > 0) {
-      // Set active section to the last opened one
-      const lastOpened = val[val.length - 1];
-      const idx = SECTIONS.findIndex(s => s.id === lastOpened);
-      if (idx !== -1) setActiveSection(idx);
-    }
-  };
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.getAttribute("data-section-idx"));
+            // We can just pick the first one that intersects near the top (e.g., threshold > 0)
+            // or simply the one currently intersecting
+            if (!isNaN(idx) && entry.intersectionRatio > maxVisibleRatio) {
+              maxVisibleRatio = entry.intersectionRatio;
+              mostVisibleSectionIdx = idx;
+            }
+          }
+        });
+
+        if (mostVisibleSectionIdx !== -1) {
+          // Check if it's actually a user scroll versus a programmatic scroll
+          // We'll just set active section to keep the left nav in sync
+          useCvBuilderStore.getState().setActiveSection(mostVisibleSectionIdx);
+        }
+      },
+      { root: null, rootMargin: "-10% 0px -60% 0px", threshold: [0, 0.5, 1] }
+    );
+
+    const elements = document.querySelectorAll(".cv-section-card");
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
@@ -332,76 +346,82 @@ export function CvFormPanel() {
   };
 
   return (
-    <div className="flex flex-col relative max-w-4xl mx-auto pb-32">
-      <Accordion type="multiple" value={openSections} onValueChange={handleAccordionChange} className="w-full space-y-4">
-        {SECTIONS.map((section, index) => {
-          const Icon = section.icon;
-          const status = index < 8 ? statuses[index]?.status : null;
-          const title = sectionTitleMap[section.id][currentLang];
-          const beSection = sectionUiToBeMap[section.id];
-          const isReview = section.id === "review";
-          const isHidden = (["summary", "experience", "education", "projects", "skills", "certifications"].includes(section.id)) && store.sectionVisibility[section.id as keyof typeof store.sectionVisibility] === false;
+    <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-6">
+      {SECTIONS.map((section, index) => {
+        const Icon = section.icon;
+        const status = index < 8 ? statuses[index]?.status : null;
+        const title = sectionTitleMap[section.id][currentLang];
+        const beSection = sectionUiToBeMap[section.id];
+        const isReview = section.id === "review";
+        const isHidden = (["summary", "experience", "education", "projects", "skills", "certifications"].includes(section.id)) && store.sectionVisibility[section.id as keyof typeof store.sectionVisibility] === false;
+        
+        // Add active highlighting style
+        const isActive = activeSection === index;
 
-          return (
-            <AccordionItem
-              key={section.id}
-              value={section.id}
-              id={`cv-section-${section.id}`}
-              className={cn("border rounded-xl overflow-hidden transition-all scroll-mt-6", isHidden ? "border-slate-100 bg-slate-50/50 shadow-none" : "border-slate-200 bg-white shadow-sm")}
-            >
-              <AccordionTrigger className={cn("px-5 py-4 hover:no-underline transition-colors", isHidden ? "bg-transparent hover:bg-slate-50/50" : "bg-slate-50/50 hover:bg-slate-50")}>
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isHidden ? "bg-slate-100/50 text-slate-400" : "bg-slate-100 text-slate-500")}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <h4 className={cn("font-semibold text-sm", isHidden ? "text-slate-400" : "text-slate-800")}>{title}</h4>
-                      {isHidden && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200/70 text-slate-500 uppercase tracking-wider">
-                          {currentLang === "vi" ? "Đã ẩn" : "Hidden"}
-                        </span>
-                      )}
-                    </div>
+        return (
+          <div
+            key={section.id}
+            id={`cv-section-${section.id}`}
+            data-section-idx={index}
+            className={cn(
+              "cv-section-card overflow-hidden transition-all duration-300 scroll-mt-6",
+              isHidden ? "bg-slate-50/50 opacity-60" : "bg-white",
+              isActive ? "ring-1 ring-primary/20 border-primary/20" : "border-slate-100",
+              "border rounded-xl shadow-sm"
+            )}
+          >
+            <div className={cn("px-4 py-2.5 border-b transition-colors", isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 border-slate-100")}>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isHidden ? "bg-slate-100/50 text-slate-400" : isActive ? "bg-primary/10 text-primary" : "bg-white border border-slate-200 text-slate-500 shadow-sm")}>
+                    <Icon className="w-4 h-4" />
                   </div>
-                  
-                  {/* Status Chip / Score Chip */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    {!isReview && (isLoggedIn && beSection ? (
-                      renderEvaluateChip(beSection, section.id)
-                    ) : (
-                      status && (
-                        <div>
-                          {status === "completed" && (
-                            <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
-                              <Check className="w-3.5 h-3.5 shrink-0" />
-                              <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
-                            </div>
-                          )}
-                          {status === "needs-improvement" && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                              <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
-                            </div>
-                          )}
-                          {status === "missing" && (
-                            <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
-                              <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <h4 className={cn("font-bold text-sm tracking-tight", isHidden ? "text-slate-400" : "text-slate-900")}>{title}</h4>
+                    {isHidden && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200/70 text-slate-500 uppercase tracking-wider">
+                        {currentLang === "vi" ? "Đã ẩn" : "Hidden"}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="p-5 pt-2 border-t border-slate-100">
-                <section.component />
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+                
+                {/* Status Chip / Score Chip */}
+                <div>
+                  {!isReview && (isLoggedIn && beSection ? (
+                    renderEvaluateChip(beSection, section.id)
+                  ) : (
+                    status && (
+                      <div className="flex items-center">
+                        {status === "completed" && (
+                          <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
+                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
+                          </div>
+                        )}
+                        {status === "needs-improvement" && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
+                          </div>
+                        )}
+                        {status === "missing" && (
+                          <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
+                            <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
+              <section.component />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
