@@ -38,6 +38,7 @@ const isRenderingCancelledError = (error: unknown) =>
 export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDocumentProps) {
 	const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
 	const onLoadSuccessRef = useRef(onLoadSuccess);
+	const documentRef = useRef<PDFDocumentProxy | null>(null);
 
 	useEffect(() => {
 		onLoadSuccessRef.current = onLoadSuccess;
@@ -48,7 +49,6 @@ export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDo
 		let loadingTask: PDFDocumentLoadingTask | undefined;
 
 		const loadDocument = async () => {
-			setDocument(null);
 			if (isCancelled) return;
 
 			const arrayBuffer = await file.arrayBuffer();
@@ -60,8 +60,12 @@ export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDo
 				if (isCancelled) {
 					void loadingTask.destroy();
 				} else {
+					const previousDocument = documentRef.current;
+					documentRef.current = pdfDocument;
 					setDocument(pdfDocument);
 					onLoadSuccessRef.current(pdfDocument);
+					loadingTask = undefined;
+					void previousDocument?.cleanup();
 				}
 			}
 		};
@@ -77,6 +81,13 @@ export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDo
 			void loadingTask?.destroy();
 		};
 	}, [file]);
+
+	useEffect(() => {
+		return () => {
+			void documentRef.current?.cleanup();
+			documentRef.current = null;
+		};
+	}, []);
 
 	if (!document) return null;
 
