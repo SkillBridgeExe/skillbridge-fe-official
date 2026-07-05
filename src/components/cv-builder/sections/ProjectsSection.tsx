@@ -119,8 +119,8 @@ export function ProjectsSection() {
   return (
     <div className="space-y-6">
       {projects.map((proj, index) => {
-        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Tên dự án" });
-        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Dự án" });
+        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Project Name" });
+        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Project" });
 
         return (
           <SectionItemCard
@@ -168,25 +168,25 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "kể chuyện về dự án này" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "tell a story about this project" })}</span>
                 </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.projectName")} *</Label>
                 <Input value={proj.name} onChange={(e) => updateProject(proj.id, "name", e.target.value)} placeholder={t("builder.ph.projectName")} />
               </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.role")}</Label>
                 <Input value={proj.role} onChange={(e) => updateProject(proj.id, "role", e.target.value)} placeholder={t("builder.ph.role")} />
               </div>
-              <div className="space-y-1.5 col-span-2">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.tools")}</Label>
                 <Input value={proj.tools} onChange={(e) => updateProject(proj.id, "tools", e.target.value)} placeholder={t("builder.ph.tools")} />
               </div>
-              <div className="space-y-1.5 col-span-2">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.projectLink")}</Label>
                 <Input
                   type="url"
@@ -195,7 +195,7 @@ export function ProjectsSection() {
                   placeholder={t("builder.ph.projectLink")}
                 />
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>{t("builder.fields.projectDescription")}</Label>
                   <Button
@@ -268,7 +268,7 @@ export function ProjectsSection() {
                     }}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                    <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
                   </Button>
                 )}
               </div>

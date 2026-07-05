@@ -338,8 +338,8 @@ export function ExperienceSection() {
   return (
     <div className="space-y-6">
       {experience.map((exp, index) => {
-        const title = exp.company || t("builder.ph.company", { defaultValue: "Tên công ty" });
-        const subtitle = exp.position || t("builder.entry.experience", { defaultValue: "Kinh nghiệm" });
+        const title = exp.company || t("builder.ph.company", { defaultValue: "Company Name" });
+        const subtitle = exp.position || t("builder.entry.experience", { defaultValue: "Experience" });
 
         return (
           <SectionItemCard
@@ -388,31 +388,31 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Trợ lý điền nhanh" })}</span>
+                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Auto-fill Assistant" })}</span>
                 </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.company")} *</Label>
                 <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder={t("builder.ph.company")} />
               </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.position")} *</Label>
                 <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder={t("builder.ph.position")} />
               </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.startDate")}</Label>
                 <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} placeholder={t("builder.ph.startDate")} />
               </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+              <div className="space-y-1.5">
                 <Label>{t("builder.fields.endDate")}</Label>
                 <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} placeholder={t("builder.ph.endDate")} />
               </div>
 
             {/* Description/Responsibilities field */}
-            <div className="space-y-2 col-span-2 pt-2">
+            <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.expDescription")}</Label>
                 {isLoggedIn && draftId && exp.description.trim() && (
@@ -473,7 +473,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -485,13 +485,13 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "description", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Chưa biết viết gì? Kể tôi nghe" })}</span>
+                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
                 </Button>
               )}
             </div>
 
             {/* Achievements field */}
-            <div className="space-y-2 col-span-2 pt-2">
+            <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.keyAchievements")}</Label>
                 {isLoggedIn && draftId && exp.achievements.trim() && (
@@ -552,7 +552,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -564,7 +564,7 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "achievements", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Chưa biết viết gì? Kể tôi nghe" })}</span>
+                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
                 </Button>
               )}
             </div>

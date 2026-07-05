@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BuilderSnapshot } from "@/services/cv-builder.service";
 import type { BuilderSection } from "@shared/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -159,13 +159,33 @@ const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>
 });
 
 export function CvFormPanel() {
-  const { getSectionStatuses, activeSection, draftId, sectionEvaluations, setSectionEvaluation } = useCvBuilderStore();
-  const statuses = getSectionStatuses();
   const { t, i18n } = useTranslation("diagnosis");
+  const store = useCvBuilderStore();
+  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, setActiveSection } = store;
+  const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
+  const [openSections, setOpenSections] = useState<string[]>(["basic-info"]);
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
+
+  // Sync store's activeSection index to our accordion state
+  useEffect(() => {
+    const sectionId = SECTIONS[activeSection]?.id;
+    if (sectionId) {
+      setOpenSections(prev => prev.includes(sectionId) ? prev : [...prev, sectionId]);
+    }
+  }, [activeSection]);
+
+  const handleAccordionChange = (val: string[]) => {
+    setOpenSections(val);
+    if (val.length > 0) {
+      // Set active section to the last opened one
+      const lastOpened = val[val.length - 1];
+      const idx = SECTIONS.findIndex(s => s.id === lastOpened);
+      if (idx !== -1) setActiveSection(idx);
+    }
+  };
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
@@ -311,73 +331,69 @@ export function CvFormPanel() {
     );
   };
 
-  const activeSectionData = SECTIONS[activeSection];
-
   return (
-    <div className="p-4 relative">
-      <AnimatePresence mode="wait">
-        {activeSectionData && (() => {
-          const section = activeSectionData;
-          const index = activeSection;
+    <div className="flex flex-col relative max-w-4xl mx-auto pb-32">
+      <Accordion type="multiple" value={openSections} onValueChange={handleAccordionChange} className="w-full space-y-4">
+        {SECTIONS.map((section, index) => {
           const Icon = section.icon;
           const status = index < 8 ? statuses[index]?.status : null;
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
+          const isReview = section.id === "review";
 
           return (
-            <motion.div
+            <AccordionItem
               key={section.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm"
+              value={section.id}
+              id={`cv-section-${section.id}`}
+              className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm scroll-mt-6"
             >
-              {/* Header */}
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-semibold text-slate-800 text-sm">{title}</h4>
-                </div>
-
-                {/* Status Chip / Score Chip */}
-                {isLoggedIn && beSection ? (
-                  renderEvaluateChip(beSection, section.id)
-                ) : (
-                  status && (
-                    <div>
-                      {status === "completed" && (
-                        <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
-                          <Check className="w-3.5 h-3.5 shrink-0" />
-                          <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
-                        </div>
-                      )}
-                      {status === "needs-improvement" && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                          <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
-                        </div>
-                      )}
-                      {status === "missing" && (
-                        <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
-                          <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
-                        </div>
-                      )}
+              <AccordionTrigger className="px-5 py-4 hover:no-underline bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center justify-between w-full pr-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+                      <Icon className="w-4 h-4" />
                     </div>
-                  )
-                )}
-              </div>
-
-              {/* Content Body */}
-              <div className="p-5 bg-white">
+                    <h4 className="font-semibold text-slate-800 text-sm">{title}</h4>
+                  </div>
+                  
+                  {/* Status Chip / Score Chip */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {!isReview && (isLoggedIn && beSection ? (
+                      renderEvaluateChip(beSection, section.id)
+                    ) : (
+                      status && (
+                        <div>
+                          {status === "completed" && (
+                            <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
+                            </div>
+                          )}
+                          {status === "needs-improvement" && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                              <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
+                            </div>
+                          )}
+                          {status === "missing" && (
+                            <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
+                              <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="p-5 pt-2 border-t border-slate-100">
                 <section.component />
-              </div>
-            </motion.div>
+              </AccordionContent>
+            </AccordionItem>
           );
-        })()}
-      </AnimatePresence>
+        })}
+      </Accordion>
     </div>
   );
 }

@@ -61,9 +61,14 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   }).length;
   const totalCount = 8; // There are 8 metadata statuses (0-7)
 
-  const handleNavClick = (idx: number, _id: string) => {
+  const handleNavClick = (idx: number, id: string) => {
     setActiveSection(idx);
-    // Removed scrollIntoView because we are now using a tab-based UI
+    
+    // In studio mode, scroll the editor panel to the section anchor
+    const element = document.getElementById(`cv-section-${id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   if (variant === "horizontal") {

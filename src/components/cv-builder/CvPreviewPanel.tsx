@@ -1,9 +1,8 @@
 import { useState, Suspense, lazy, useEffect, useRef } from "react";
-import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Globe, ZoomIn, ZoomOut, Maximize, LayoutTemplate } from "lucide-react";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { ZoomIn, ZoomOut, Maximize, LayoutTemplate } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { resolveBuilderTemplate, TemplatePicker } from "./preview/TemplatePicker";
+import { resolveBuilderTemplate } from "./preview/TemplatePicker";
 import { Button } from "@/components/ui/button";
 
 function useDebounce<T>(value: T, delay: number, stableKey: string): T {
@@ -42,67 +41,32 @@ export function CvPreviewPanel() {
   const isEmpty = store.getCompletionPercent() === 0;
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[900px] mx-auto">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl shadow-sm border border-slate-200 shrink-0">
-        <div className="flex items-center gap-3">
-          <TemplatePicker />
-          <div className="w-px h-5 bg-slate-200" />
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-slate-500" />
-            <Select value={store.cvLanguage} onValueChange={(v) => store.setCvLanguage(v as CvLanguage)}>
-              <SelectTrigger className="h-8 text-xs w-[120px] bg-slate-50 border-slate-200">
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="vi">Vietnamese</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Preview Controls */}
-        <div className="flex items-center gap-1 bg-slate-50 rounded-lg p-1 border border-slate-200">
-          <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-600" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <span className="text-xs font-medium w-10 text-center text-slate-600">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-600" onClick={() => setScale(s => Math.min(2, s + 0.1))}>
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-          <div className="w-px h-4 bg-slate-200 mx-1" />
-          <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-600" onClick={() => setScale(1)}>
-            <Maximize className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full w-full relative">
       {/* A4 Page container */}
-      <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-[#e2e8f0] relative custom-scrollbar shadow-inner">
+      <div className="flex-1 overflow-auto bg-slate-800 relative custom-scrollbar shadow-inner">
         {isEmpty ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#f8fafc]">
-            <div className="bg-white border border-slate-200 rounded-2xl p-10 max-w-[420px] shadow-sm text-center">
-              <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3">
-                <LayoutTemplate className="w-10 h-10 text-slate-400 -rotate-3" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-10 max-w-[420px] shadow-2xl text-center">
+              <div className="w-20 h-20 bg-slate-800 border-2 border-dashed border-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 shadow-inner">
+                <LayoutTemplate className="w-10 h-10 text-slate-500 -rotate-3" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">
+              <h3 className="text-lg font-bold text-white mb-2">
                 {t("builder.previewEmptyTitle", { defaultValue: "Bản xem trước CV" })}
               </h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium mb-6">
+              <p className="text-sm text-slate-400 leading-relaxed font-medium mb-6">
                 {t("builder.previewEmpty", { defaultValue: "Bản xem trước sẽ xuất hiện ở đây khi bạn bắt đầu điền thông tin vào các mục bên trái." })}
               </p>
-              <div className="flex flex-col gap-2 opacity-50">
-                <div className="h-2 bg-slate-100 rounded-full w-full" />
-                <div className="h-2 bg-slate-100 rounded-full w-4/5 mx-auto" />
-                <div className="h-2 bg-slate-100 rounded-full w-2/3 mx-auto" />
+              <div className="flex flex-col gap-2 opacity-30">
+                <div className="h-2 bg-slate-500 rounded-full w-full" />
+                <div className="h-2 bg-slate-500 rounded-full w-4/5 mx-auto" />
+                <div className="h-2 bg-slate-500 rounded-full w-2/3 mx-auto" />
               </div>
             </div>
           </div>
         ) : (
-          <div className="min-h-full py-8 px-4 flex justify-center w-full" style={{ transform: `scale(${scale})`, transformOrigin: "top center", transition: "transform 0.2s ease-out" }}>
+          <div className="min-h-full py-12 px-4 flex justify-center w-full" style={{ transform: `scale(${scale})`, transformOrigin: "top center", transition: "transform 0.2s ease-out" }}>
             <Suspense fallback={
-              <div className="w-[794px] h-[1123px] bg-white shadow-md flex items-center justify-center relative overflow-hidden">
+              <div className="w-[794px] h-[1123px] bg-white shadow-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-black/5">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
                 <div className="relative flex flex-col items-center gap-4">
                   <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center relative">
@@ -120,6 +84,23 @@ export function CvPreviewPanel() {
           </div>
         )}
       </div>
+
+      {/* Floating Bottom Toolbar */}
+      {!isEmpty && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#18181b] text-zinc-300 backdrop-blur-md rounded-full px-3 py-1.5 border border-zinc-800 shadow-2xl z-20">
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <span className="text-[11px] font-semibold w-12 text-center text-zinc-300">{Math.round(scale * 100)}%</span>
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(s => Math.min(2, s + 0.1))}>
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={() => setScale(1)}>
+            <Maximize className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

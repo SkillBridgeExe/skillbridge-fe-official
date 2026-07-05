@@ -2097,6 +2097,16 @@ export default {
       unknownName: "Chưa rõ tên",
     },
     builder: {
+      inspectorTitle: "Cài đặt & Giao diện",
+      tabTemplate: "Mẫu",
+      cvLanguage: "Ngôn ngữ CV",
+      selectLanguage: "Chọn ngôn ngữ",
+      gallery: "Thư viện mẫu",
+      tabLayout: "Bố cục",
+      tabTypography: "Kiểu chữ",
+      tabTheme: "Màu nhấn",
+      aiAssistant: "Trợ lý AI",
+
       sections: "Các mục",
       sectionsDone: "Hoàn thành {{done}}/{{total}}",
       previewEmpty: "Bản xem trước CV sẽ hiện ở đây khi bạn điền các mục.",

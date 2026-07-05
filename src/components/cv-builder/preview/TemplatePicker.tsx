@@ -1,11 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
-import { LayoutTemplate, Check } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Check } from "lucide-react";
 
 export const BUILDER_TEMPLATES: Template[] = [
   "azurill", "bronzor", "chikorita", "ditgar", "ditto",
@@ -100,50 +96,50 @@ function TemplateThumbnail({ template }: { template: Template }) {
   );
 }
 
-export function TemplatePicker() {
+export function TemplateGallery() {
   const store = useCvBuilderStore();
-  const { t } = useTranslation("diagnosis");
-  const [open, setOpen] = useState(false);
   const currentTemplate = resolveBuilderTemplate(store.template);
 
+  const getTemplateTag = (layout: string) => {
+    switch (layout) {
+      case "classic": return "ATS Friendly";
+      case "sidebar": return "Creative";
+      case "split": return "Modern";
+      case "timeline": return "Detailed";
+      case "minimal": return "Clean";
+      default: return "";
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-slate-600 border-slate-200">
-          <LayoutTemplate className="w-4 h-4" />
-          <span className="capitalize">{currentTemplate}</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle>{t("builder.templatePicker.title", { defaultValue: "Chọn mẫu CV" })}</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 pt-4 max-h-[60vh] overflow-y-auto">
-          {BUILDER_TEMPLATES.map((template) => (
-            <button
-              key={template}
-              onClick={() => {
-                store.setTemplate(template);
-                setOpen(false);
-              }}
-              className={cn(
-                "relative flex flex-col items-center justify-center rounded-xl border-2 p-3 transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm",
-                currentTemplate === template
-                  ? "border-primary bg-primary/5 shadow-sm"
-                  : "border-slate-100"
-              )}
-            >
-              {currentTemplate === template && (
-                <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5">
-                  <Check className="w-3 h-3" />
-                </div>
-              )}
-              <TemplateThumbnail template={template} />
-              <span className="mt-3 text-xs font-semibold capitalize text-slate-700">{template}</span>
-            </button>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="grid grid-cols-2 gap-3">
+      {BUILDER_TEMPLATES.map((template) => {
+        const meta = TEMPLATE_PREVIEWS[template];
+        return (
+          <button
+            key={template}
+            onClick={() => store.setTemplate(template)}
+            className={cn(
+              "relative flex flex-col items-center justify-center rounded-xl border p-3 transition-all hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              currentTemplate === template
+                ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                : "border-slate-200"
+            )}
+          >
+            {currentTemplate === template && (
+              <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5 shadow-sm">
+                <Check className="w-3 h-3" />
+              </div>
+            )}
+            <TemplateThumbnail template={template} />
+            <div className="mt-3 text-center">
+              <div className="text-xs font-semibold capitalize text-slate-700">{template}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">{getTemplateTag(meta.layout)}</div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 }
+
