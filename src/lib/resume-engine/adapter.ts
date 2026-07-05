@@ -349,7 +349,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
 				hideLinkUnderline: false,
 				hideIcons: false,
-				hideSectionIcons: false,
+				hideSectionIcons: store.resumeHideSectionIcons ?? false,
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },

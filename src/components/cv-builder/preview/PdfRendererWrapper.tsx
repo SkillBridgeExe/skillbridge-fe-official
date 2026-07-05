@@ -87,8 +87,11 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
   return (
     <div className="relative shrink-0">
       {isRendering && (
-        <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none">
+          <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />
+          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+            {t("builder.previewUpdating", { defaultValue: "Đang cập nhật..." })}
+          </span>
         </div>
       )}
       <PdfCanvasDocument 

@@ -102,6 +102,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			resumeAccentColor: "#2563eb",
 			resumeFontScale: "large",
 			resumeDensity: "compact",
+			resumeHideSectionIcons: true,
 			summary: "",
 			education: [],
 			experience: [],
@@ -120,6 +121,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.typography.heading.fontSize).toBeGreaterThan(14);
 		expect(result.metadata.page.gapY).toBeLessThan(16);
 		expect(result.metadata.page.marginY).toBeLessThan(24);
+		expect(result.metadata.page.hideSectionIcons).toBe(true);
 	});
 
 	it("does not turn empty builder placeholder rows into fake resume entries", () => {

@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
 import { Check } from "lucide-react";
+import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 
 export const BUILDER_TEMPLATES: Template[] = [
   "azurill", "bronzor", "chikorita", "ditgar", "ditto",
@@ -13,29 +14,6 @@ export function resolveBuilderTemplate(template: string): Template {
   return BUILDER_TEMPLATES.includes(template as Template) ? (template as Template) : "azurill";
 }
 
-type TemplatePreviewMeta = {
-  accent: string;
-  background: string;
-  layout: "classic" | "sidebar" | "split" | "timeline" | "minimal";
-};
-
-const TEMPLATE_PREVIEWS: Record<Template, TemplatePreviewMeta> = {
-  azurill: { accent: "#3b82f6", background: "#eff6ff", layout: "classic" },
-  bronzor: { accent: "#64748b", background: "#f8fafc", layout: "sidebar" },
-  chikorita: { accent: "#16a34a", background: "#f0fdf4", layout: "split" },
-  ditgar: { accent: "#f97316", background: "#fff7ed", layout: "timeline" },
-  ditto: { accent: "#a855f7", background: "#faf5ff", layout: "minimal" },
-  gengar: { accent: "#7c3aed", background: "#f5f3ff", layout: "sidebar" },
-  glalie: { accent: "#06b6d4", background: "#ecfeff", layout: "classic" },
-  kakuna: { accent: "#ca8a04", background: "#fefce8", layout: "timeline" },
-  lapras: { accent: "#0ea5e9", background: "#f0f9ff", layout: "split" },
-  leafish: { accent: "#22c55e", background: "#f7fee7", layout: "minimal" },
-  meowth: { accent: "#d97706", background: "#fffbeb", layout: "classic" },
-  onyx: { accent: "#111827", background: "#f9fafb", layout: "sidebar" },
-  pikachu: { accent: "#eab308", background: "#fef9c3", layout: "split" },
-  rhyhorn: { accent: "#475569", background: "#f1f5f9", layout: "timeline" },
-  scizor: { accent: "#dc2626", background: "#fef2f2", layout: "minimal" },
-};
 
 function TemplateThumbnail({ template }: { template: Template }) {
   const meta = TEMPLATE_PREVIEWS[template];
@@ -100,17 +78,6 @@ export function TemplateGallery() {
   const store = useCvBuilderStore();
   const currentTemplate = resolveBuilderTemplate(store.template);
 
-  const getTemplateTag = (layout: string) => {
-    switch (layout) {
-      case "classic": return "ATS Friendly";
-      case "sidebar": return "Creative";
-      case "split": return "Modern";
-      case "timeline": return "Detailed";
-      case "minimal": return "Clean";
-      default: return "";
-    }
-  };
-
   return (
     <div className="grid grid-cols-2 gap-3">
       {BUILDER_TEMPLATES.map((template) => {
@@ -133,8 +100,17 @@ export function TemplateGallery() {
             )}
             <TemplateThumbnail template={template} />
             <div className="mt-3 text-center">
-              <div className="text-xs font-semibold capitalize text-slate-700">{template}</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">{getTemplateTag(meta.layout)}</div>
+              <div className="text-xs font-semibold text-slate-700">{meta.name}</div>
+              <p className="mt-1 line-clamp-2 min-h-[28px] text-[10px] leading-snug text-slate-500">
+                {meta.description}
+              </p>
+              <div className="mt-2 flex flex-wrap justify-center gap-1">
+                {meta.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </button>
         );

@@ -356,7 +356,7 @@ export default function Diagnosis() {
               </div>
 
               {/* Zone 3: Canvas (Preview) */}
-              <div className="hidden lg:block flex-1 h-full bg-[#f3f4f6]">
+              <div className="hidden lg:block min-w-0 flex-1 h-full bg-[#f3f4f6]">
                 <CvPreviewPanel />
               </div>
 

@@ -4,6 +4,8 @@ import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/ty
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
+import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import type { Template } from "@/lib/resume-engine/schema/templates";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -134,6 +136,7 @@ export interface CvBuilderState {
   resumeAccentColor: string;
   resumeFontScale: ResumeFontScale;
   resumeDensity: ResumeDensity;
+  resumeHideSectionIcons: boolean;
 
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
@@ -186,6 +189,7 @@ export interface CvBuilderState {
   setResumeAccentColor: (color: string) => void;
   setResumeFontScale: (scale: ResumeFontScale) => void;
   setResumeDensity: (density: ResumeDensity) => void;
+  setResumeHideSectionIcons: (hide: boolean) => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -251,6 +255,7 @@ const initialState = {
   resumeAccentColor: "#0f172a",
   resumeFontScale: "normal" as ResumeFontScale,
   resumeDensity: "comfortable" as ResumeDensity,
+  resumeHideSectionIcons: false,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   seededFromDiagnosis: false,
@@ -448,11 +453,23 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
-  setTemplate: (template) => set({ template }),
+  setTemplate: (template) => set(() => {
+    const meta = TEMPLATE_PREVIEWS[template as Template];
+    if (meta) {
+      return { 
+        template,
+        resumeAccentColor: meta.accent,
+        resumeDensity: meta.density,
+        resumeFontScale: meta.fontScale,
+      };
+    }
+    return { template };
+  }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
   setResumeAccentColor: (resumeAccentColor) => set({ resumeAccentColor }),
   setResumeFontScale: (resumeFontScale) => set({ resumeFontScale }),
   setResumeDensity: (resumeDensity) => set({ resumeDensity }),
+  setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),

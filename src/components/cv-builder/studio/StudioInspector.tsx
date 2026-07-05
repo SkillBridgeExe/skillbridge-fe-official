@@ -5,6 +5,7 @@ import { TemplateGallery } from "../preview/TemplatePicker";
 import { useCvBuilderStore, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 const DENSITY_OPTIONS: Array<{ value: ResumeDensity; label: string; hint: string }> = [
@@ -119,21 +120,37 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5 pt-2">
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Mật độ nội dung
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {DENSITY_OPTIONS.map((option) => (
-                    <SegmentedButton
-                      key={option.value}
-                      active={store.resumeDensity === option.value}
-                      onClick={() => store.setResumeDensity(option.value)}
-                    >
-                      <span className="block">{option.label}</span>
-                      <span className="mt-0.5 block text-[10px] font-medium opacity-70">{option.hint}</span>
-                    </SegmentedButton>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                    Mật độ nội dung
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DENSITY_OPTIONS.map((option) => (
+                      <SegmentedButton
+                        key={option.value}
+                        active={store.resumeDensity === option.value}
+                        onClick={() => store.setResumeDensity(option.value)}
+                      >
+                        <span className="block">{option.label}</span>
+                        <span className="mt-0.5 block text-[10px] font-medium opacity-70">{option.hint}</span>
+                      </SegmentedButton>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label htmlFor="hide-section-icons" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
+                      Hiển thị icon mục
+                    </label>
+                    <p className="text-[10px] text-slate-400">Có thể không tương thích với một số mẫu (Template).</p>
+                  </div>
+                  <Switch
+                    id="hide-section-icons"
+                    checked={!store.resumeHideSectionIcons}
+                    onCheckedChange={(checked) => store.setResumeHideSectionIcons(!checked)}
+                  />
                 </div>
               </div>
             </AccordionContent>

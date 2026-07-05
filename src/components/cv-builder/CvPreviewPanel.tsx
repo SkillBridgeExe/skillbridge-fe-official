@@ -64,23 +64,34 @@ export function CvPreviewPanel() {
             </div>
           </div>
         ) : (
-          <div className="min-h-full py-12 px-4 flex justify-center w-full" style={{ transform: `scale(${scale})`, transformOrigin: "top center", transition: "transform 0.2s ease-out" }}>
-            <Suspense fallback={
-              <div className="w-[794px] h-[1123px] bg-white shadow-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-black/5">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
-                <div className="relative flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center relative">
-                    <div className="absolute inset-0 rounded-xl border-2 border-primary/20 border-t-primary animate-spin" />
-                    <LayoutTemplate className="w-5 h-5 text-primary" />
+          <div className="min-h-full py-12 px-4 flex justify-center w-full relative">
+            <div 
+              style={{ 
+                transform: `scale(${scale})`, 
+                transformOrigin: "top center", 
+                transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" 
+              }}
+              className="flex justify-center"
+            >
+              <Suspense fallback={
+                <div className="w-[794px] h-[1123px] bg-white shadow-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-slate-900/5 rounded-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
+                  <div className="relative flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center relative shadow-sm">
+                      <div className="absolute inset-0 rounded-xl border-2 border-primary/20 border-t-primary animate-spin" />
+                      <LayoutTemplate className="w-5 h-5 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-500 animate-pulse">
+                      {t("builder.previewLoadingEngine", { defaultValue: "Đang tải mẫu CV..." })}
+                    </p>
                   </div>
-                  <p className="text-sm font-medium text-slate-500 animate-pulse">
-                    {t("builder.previewLoadingEngine", { defaultValue: "Đang khởi tạo studio..." })}
-                  </p>
                 </div>
-              </div>
-            }>
-              <PdfRendererWrapper data={debouncedData} template={template} />
-            </Suspense>
+              }>
+                <div className="shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] rounded-sm overflow-hidden">
+                  <PdfRendererWrapper data={debouncedData} template={template} />
+                </div>
+              </Suspense>
+            </div>
           </div>
         )}
       </div>
