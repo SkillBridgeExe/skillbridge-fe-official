@@ -2,6 +2,8 @@ import { create } from "zustand";
 import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
 import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/types/companion";
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
+import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
+import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
@@ -86,7 +88,7 @@ const emptyCertification = (): Certification => ({
 });
 
 /* ── State Interface ── */
-interface CvBuilderState {
+export interface CvBuilderState {
   // Section 1: Basic Info
   fullName: string;
   email: string;
@@ -213,6 +215,13 @@ interface CvBuilderState {
 
   // Computed
   getSectionStatuses: () => SectionMeta[];
+
+  /**
+   * RE-V1 Migration: Derives the new canonical ResumeData on the fly
+   * from the legacy builder state. We defer structural store migration
+   * to keep the old CV Builder UI working.
+   */
+  getResumeData: () => ResumeData;
   getCompletionPercent: () => number;
 
   // Reset
@@ -432,6 +441,8 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
 
   // Computed
+  getResumeData: () => adaptCvBuilderStoreToResumeData(get()),
+
   getSectionStatuses: () => {
     const s = get();
     const statuses: SectionMeta[] = [];
