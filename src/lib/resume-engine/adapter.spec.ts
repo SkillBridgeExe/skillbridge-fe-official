@@ -94,6 +94,34 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.template).toBe("onyx");
 	});
 
+	it("maps builder appearance settings into resume metadata", () => {
+		const mockStore = {
+			fullName: "Styled User",
+			template: "onyx",
+			cvLanguage: "en",
+			resumeAccentColor: "#2563eb",
+			resumeFontScale: "large",
+			resumeDensity: "compact",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.design.colors.primary).toBe("#2563eb");
+		expect(result.metadata.typography.body.fontSize).toBeGreaterThan(11);
+		expect(result.metadata.typography.heading.fontSize).toBeGreaterThan(14);
+		expect(result.metadata.page.gapY).toBeLessThan(16);
+		expect(result.metadata.page.marginY).toBeLessThan(24);
+	});
+
 	it("does not turn empty builder placeholder rows into fake resume entries", () => {
 		const mockStore = {
 			fullName: "",

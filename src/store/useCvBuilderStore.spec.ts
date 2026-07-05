@@ -102,6 +102,30 @@ describe("useCvBuilderStore.pendingProveIt", () => {
   });
 });
 
+describe("useCvBuilderStore.resumeAppearance", () => {
+  it("updates resume appearance controls and resets them to defaults", () => {
+    const store = useCvBuilderStore.getState();
+
+    store.setResumeAccentColor("#2563eb");
+    store.setResumeFontScale("large");
+    store.setResumeDensity("compact");
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      resumeAccentColor: "#2563eb",
+      resumeFontScale: "large",
+      resumeDensity: "compact",
+    });
+
+    useCvBuilderStore.getState().reset();
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      resumeAccentColor: "#0f172a",
+      resumeFontScale: "normal",
+      resumeDensity: "comfortable",
+    });
+  });
+});
+
 describe("getSectionStatuses quality-gating", () => {
   const reset = () => useCvBuilderStore.getState().reset();
 

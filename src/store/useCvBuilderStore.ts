@@ -9,6 +9,8 @@ import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
 export type SummaryMode = "manual" | "ai";
 export type CvLanguage = "en" | "vi";
+export type ResumeFontScale = "small" | "normal" | "large";
+export type ResumeDensity = "compact" | "comfortable";
 
 export interface Education {
   id: string;
@@ -129,6 +131,9 @@ export interface CvBuilderState {
   activeSection: number;
   template: string;
   cvLanguage: CvLanguage;
+  resumeAccentColor: string;
+  resumeFontScale: ResumeFontScale;
+  resumeDensity: ResumeDensity;
 
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
@@ -178,6 +183,9 @@ export interface CvBuilderState {
   setActiveSection: (section: number) => void;
   setTemplate: (template: string) => void;
   setCvLanguage: (lang: CvLanguage) => void;
+  setResumeAccentColor: (color: string) => void;
+  setResumeFontScale: (scale: ResumeFontScale) => void;
+  setResumeDensity: (density: ResumeDensity) => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -240,6 +248,9 @@ const initialState = {
   activeSection: 0,
   template: "azurill",
   cvLanguage: "en" as CvLanguage,
+  resumeAccentColor: "#0f172a",
+  resumeFontScale: "normal" as ResumeFontScale,
+  resumeDensity: "comfortable" as ResumeDensity,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   seededFromDiagnosis: false,
@@ -439,6 +450,9 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
   setTemplate: (template) => set({ template }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
+  setResumeAccentColor: (resumeAccentColor) => set({ resumeAccentColor }),
+  setResumeFontScale: (resumeFontScale) => set({ resumeFontScale }),
+  setResumeDensity: (resumeDensity) => set({ resumeDensity }),
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),

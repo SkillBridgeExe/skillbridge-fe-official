@@ -1,9 +1,56 @@
+import type { ReactNode } from "react";
 import { Globe, Type, Palette, Layout, Wand2, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TemplateGallery } from "../preview/TemplatePicker";
-import { useCvBuilderStore, type CvLanguage } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
+
+const DENSITY_OPTIONS: Array<{ value: ResumeDensity; label: string; hint: string }> = [
+  { value: "comfortable", label: "Thoáng", hint: "Dễ đọc" },
+  { value: "compact", label: "Gọn", hint: "Nhiều nội dung" },
+];
+
+const FONT_SCALE_OPTIONS: Array<{ value: ResumeFontScale; label: string }> = [
+  { value: "small", label: "Nhỏ" },
+  { value: "normal", label: "Vừa" },
+  { value: "large", label: "Lớn" },
+];
+
+const ACCENT_COLORS = [
+  { value: "#0f172a", label: "Slate" },
+  { value: "#2563eb", label: "Blue" },
+  { value: "#16a34a", label: "Green" },
+  { value: "#7c3aed", label: "Violet" },
+  { value: "#dc2626", label: "Red" },
+  { value: "#d97706", label: "Amber" },
+];
+
+function SegmentedButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors",
+        active
+          ? "border-sky-400 bg-sky-50 text-sky-700 shadow-sm"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function StudioInspector() {
   const { t } = useTranslation("diagnosis");
@@ -71,14 +118,23 @@ export function StudioInspector() {
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-5 pb-5 pt-2 opacity-50 pointer-events-none">
-              <div className="mt-2 flex flex-col items-center text-center p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-primary mb-1">
-                  Sắp ra mắt
-                </span>
-                <p className="text-xs text-slate-500 font-medium">
-                  Tính năng chỉnh sửa bố cục đang được phát triển.
+            <AccordionContent className="px-5 pb-5 pt-2">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Mật độ nội dung
                 </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {DENSITY_OPTIONS.map((option) => (
+                    <SegmentedButton
+                      key={option.value}
+                      active={store.resumeDensity === option.value}
+                      onClick={() => store.setResumeDensity(option.value)}
+                    >
+                      <span className="block">{option.label}</span>
+                      <span className="mt-0.5 block text-[10px] font-medium opacity-70">{option.hint}</span>
+                    </SegmentedButton>
+                  ))}
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -93,11 +149,22 @@ export function StudioInspector() {
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-5 pb-5 pt-2 opacity-50 pointer-events-none">
-              <div className="h-8 bg-slate-100 rounded-md border border-slate-200 w-full mb-2" />
-              <div className="flex items-center gap-2">
-                <div className="h-8 bg-slate-100 rounded-md border border-slate-200 flex-1" />
-                <div className="h-8 bg-slate-100 rounded-md border border-slate-200 flex-1" />
+            <AccordionContent className="px-5 pb-5 pt-2">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Cỡ chữ
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {FONT_SCALE_OPTIONS.map((option) => (
+                    <SegmentedButton
+                      key={option.value}
+                      active={store.resumeFontScale === option.value}
+                      onClick={() => store.setResumeFontScale(option.value)}
+                    >
+                      <span className="block text-center">{option.label}</span>
+                    </SegmentedButton>
+                  ))}
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -112,11 +179,27 @@ export function StudioInspector() {
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-5 pb-5 pt-2 opacity-50 pointer-events-none">
-              <div className="flex gap-2">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white shadow-sm" />
-                ))}
+            <AccordionContent className="px-5 pb-5 pt-2">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Màu nhấn
+                </p>
+                <div className="grid grid-cols-6 gap-2">
+                  {ACCENT_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      aria-label={`Chọn màu ${color.label}`}
+                      title={color.label}
+                      onClick={() => store.setResumeAccentColor(color.value)}
+                      className={cn(
+                        "h-8 rounded-full border-2 transition-transform hover:scale-105",
+                        store.resumeAccentColor === color.value ? "border-sky-400 ring-2 ring-sky-100" : "border-white shadow-sm",
+                      )}
+                      style={{ backgroundColor: color.value }}
+                    />
+                  ))}
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

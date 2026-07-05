@@ -17,6 +17,26 @@ const escapeHtml = (value: string): string =>
 const resolveTemplate = (template: string | undefined): Template =>
 	(templateSchema.options as readonly string[]).includes(template ?? "") ? (template as Template) : "onyx";
 
+const FONT_SCALE = {
+	small: { body: 10, heading: 13 },
+	normal: { body: 11, heading: 14 },
+	large: { body: 12, heading: 16 },
+} as const;
+
+const DENSITY = {
+	compact: { gap: 12, margin: 18 },
+	comfortable: { gap: 16, margin: 24 },
+} as const;
+
+const resolveFontScale = (scale: unknown) =>
+	scale === "small" || scale === "large" || scale === "normal" ? FONT_SCALE[scale] : FONT_SCALE.normal;
+
+const resolveDensity = (density: unknown) =>
+	density === "compact" || density === "comfortable" ? DENSITY[density] : DENSITY.comfortable;
+
+const resolveAccentColor = (color: unknown) =>
+	typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0f172a";
+
 const normalizeIdPart = (value: unknown): string =>
 	String(value ?? "")
 		.trim()
@@ -57,6 +77,10 @@ function htmlToBullets(html: string | undefined): string[] {
  * schema expected by the @resume-engine/pdf renderer.
  */
 export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeData {
+	const fontScale = resolveFontScale(store.resumeFontScale);
+	const density = resolveDensity(store.resumeDensity);
+	const accentColor = resolveAccentColor(store.resumeAccentColor);
+
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
 		.map((edu, index) => ({
@@ -317,10 +341,10 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				],
 			},
 			page: {
-				gapX: 16,
-				gapY: 16,
-				marginX: 24,
-				marginY: 24,
+				gapX: density.gap,
+				gapY: density.gap,
+				marginX: density.margin,
+				marginY: density.margin,
 				format: "a4",
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
 				hideLinkUnderline: false,
@@ -329,11 +353,11 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },
-				colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" },
+				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
 			},
 			typography: {
-				body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 },
-				heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 },
+				body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: fontScale.body, lineHeight: 1.5 },
+				heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: 1.5 },
 			},
 			notes: "",
 			styleRules: [],
