@@ -6,7 +6,7 @@ import { CHAT_CONTEXT_ID, useDiagnosisChatCompanion } from "./useDiagnosisChatCo
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { askDiagnosisChat, deleteChatThread } from "@/services/diagnosis.service";
+import { askDiagnosisChat, deleteChatThread, loadMatchForChat } from "@/services/diagnosis.service";
 import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
 import type { CvReviewData, ProgressReportDto, GapTransitionDto } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
@@ -32,8 +32,14 @@ vi.mock("@/services/diagnosis.service", async (importOriginal) => {
     ...actual,
     askDiagnosisChat: vi.fn().mockResolvedValue({ answer: "ok" }),
     deleteChatThread: vi.fn().mockResolvedValue(undefined),
+    loadMatchForChat: vi.fn(),
   };
 });
+
+const { mockToast } = vi.hoisted(() => ({ mockToast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -480,5 +486,249 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
     expect(useCvBuilderStore.getState().activeSection).toBe(4);
     expect(useCvBuilderStore.getState().pendingProveIt).toEqual({ canonical: "react", displayName: "React" });
     expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+  });
+});
+
+describe("useDiagnosisChatCompanion — suggested next-step", () => {
+  it("stores suggested_next_step from the BE answer so the bubble can render a follow-up chip", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({
+      answer: "Kỹ năng React của bạn khá tốt.",
+      suggested_next_step: "Còn kinh nghiệm thì sao?",
+    });
+    let api: { sendQuestion: (q: string) => void } | undefined;
+    function CaptureHarness() {
+      api = useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+
+    render(
+      <QueryClientProvider client={qc}>
+        <CaptureHarness />
+      </QueryClientProvider>,
+    );
+
+    api?.sendQuestion("kỹ năng react của tôi sao rồi?");
+
+    await waitFor(() => {
+      const messages = useCompanionStore.getState().chatMessages;
+      expect(messages[messages.length - 1]).toMatchObject({
+        role: "assistant",
+        text: "Kỹ năng React của bạn khá tốt.",
+        suggestedNextStep: "Còn kinh nghiệm thì sao?",
+      });
+    });
+  });
+
+  it("leaves suggestedNextStep undefined when the BE answer has none (honest-empty)", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "ok, no follow-up" });
+    let api: { sendQuestion: (q: string) => void } | undefined;
+    function CaptureHarness() {
+      api = useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <CaptureHarness />
+      </QueryClientProvider>,
+    );
+
+    api?.sendQuestion("một câu hỏi khác");
+
+    await waitFor(() => {
+      const messages = useCompanionStore.getState().chatMessages;
+      expect(messages[messages.length - 1]).toMatchObject({ role: "assistant", text: "ok, no follow-up" });
+      expect(messages[messages.length - 1].suggestedNextStep).toBeUndefined();
+    });
+  });
+});
+
+describe("useDiagnosisChatCompanion — cross-JD view_match chip", () => {
+  it("stores a view_match chip for confirmation, then loads the cited match in place on confirm", async () => {
+    const qc = new QueryClient();
+    vi.mocked(loadMatchForChat).mockResolvedValueOnce({
+      cvId: "cv-2",
+      review: { overallScore: 70, dimensions: [], jdMatch: { matchId: "match-2" } } as unknown as CvReviewData,
+    });
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "view_match";
+      labelKey: string;
+      viewMatch: { cvId: string; matchId: string; jdTitle: string | null };
+    }) => void;
+    const onConfirmAction = turn?.props.onConfirmAction as () => void;
+
+    const chip = {
+      kind: "view_match" as const,
+      labelKey: "companion.chat.chipViewMatch",
+      viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: "Backend Engineer" },
+    };
+    onAction(chip);
+    expect(useCompanionStore.getState().chatPendingAction).toEqual(chip);
+
+    onConfirmAction();
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+
+    await waitFor(() => {
+      expect(loadMatchForChat).toHaveBeenCalledWith({ cvId: "cv-2", matchId: "match-2" });
+      expect(useDiagnosisStore.getState().lastCvId).toBe("cv-2");
+      expect(useDiagnosisStore.getState().step).toBe("results");
+    });
+    expect(useDiagnosisStore.getState().reviewData?.jdMatch?.matchId).toBe("match-2");
+  });
+
+  it("leaves the current view untouched and toasts a destructive error when loading the cited match fails (não nuốt lỗi)", async () => {
+    const qc = new QueryClient();
+    vi.mocked(loadMatchForChat).mockRejectedValueOnce(new Error("network"));
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "view_match";
+      labelKey: string;
+      viewMatch: { cvId: string; matchId: string; jdTitle: string | null };
+    }) => void;
+    const onConfirmAction = turn?.props.onConfirmAction as () => void;
+
+    onAction({
+      kind: "view_match",
+      labelKey: "companion.chat.chipViewMatch",
+      viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: null },
+    });
+    onConfirmAction();
+
+    await waitFor(() => {
+      expect(loadMatchForChat).toHaveBeenCalled();
+    });
+    // No store mutation on a rejected load — the current view stays intact.
+    expect(useDiagnosisStore.getState().step).toBe("input");
+    expect(useDiagnosisStore.getState().lastCvId).toBeNull();
+    // The failure is surfaced, never swallowed (PR#49 "không nuốt lỗi").
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({
+        title: "companion.chat.viewMatchError",
+        variant: "destructive",
+      });
+    });
+    // The in-flight flag clears on the reject path too.
+    expect(useCompanionStore.getState().chatActionPending).toBe(false);
+  });
+
+  it("sets chatActionPending while the view_match load is in flight and clears it on resolve", async () => {
+    const qc = new QueryClient();
+    let resolveLoad!: (v: { cvId: string; review: CvReviewData }) => void;
+    const loadPromise = new Promise<{ cvId: string; review: CvReviewData }>((res) => {
+      resolveLoad = res;
+    });
+    vi.mocked(loadMatchForChat).mockReturnValueOnce(loadPromise);
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "view_match";
+      labelKey: string;
+      viewMatch: { cvId: string; matchId: string; jdTitle: string | null };
+    }) => void;
+    const onConfirmAction = turn?.props.onConfirmAction as () => void;
+
+    expect(useCompanionStore.getState().chatActionPending).toBe(false);
+
+    onAction({
+      kind: "view_match",
+      labelKey: "companion.chat.chipViewMatch",
+      viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: null },
+    });
+    onConfirmAction();
+
+    // Visible pending feedback: the flag flips true WHILE the fetch is unresolved.
+    expect(useCompanionStore.getState().chatActionPending).toBe(true);
+
+    resolveLoad({
+      cvId: "cv-2",
+      review: { overallScore: 70, dimensions: [], jdMatch: { matchId: "match-2" } } as unknown as CvReviewData,
+    });
+
+    await waitFor(() => {
+      expect(useCompanionStore.getState().chatActionPending).toBe(false);
+    });
+  });
+
+  it("guards a duplicate confirm while a view_match load is still in flight", async () => {
+    const qc = new QueryClient();
+    let resolveLoad!: (v: { cvId: string; review: CvReviewData }) => void;
+    const loadPromise = new Promise<{ cvId: string; review: CvReviewData }>((res) => {
+      resolveLoad = res;
+    });
+    vi.mocked(loadMatchForChat).mockReturnValueOnce(loadPromise);
+    function ActionHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ActionHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "view_match";
+      labelKey: string;
+      viewMatch: { cvId: string; matchId: string; jdTitle: string | null };
+    }) => void;
+    const onConfirmAction = turn?.props.onConfirmAction as () => void;
+
+    const chip = {
+      kind: "view_match" as const,
+      labelKey: "companion.chat.chipViewMatch",
+      viewMatch: { cvId: "cv-2", matchId: "match-2", jdTitle: null },
+    };
+
+    onAction(chip);
+    onConfirmAction();
+    expect(loadMatchForChat).toHaveBeenCalledTimes(1);
+
+    // Re-arm the same chip (e.g. user clicks the chip again) and confirm again
+    // while the first load is still unresolved — must NOT fire a second call.
+    onAction(chip);
+    onConfirmAction();
+    expect(loadMatchForChat).toHaveBeenCalledTimes(1);
+    expect(useCompanionStore.getState().chatPendingAction).toEqual(chip);
+
+    resolveLoad({
+      cvId: "cv-2",
+      review: { overallScore: 70, dimensions: [], jdMatch: { matchId: "match-2" } } as unknown as CvReviewData,
+    });
+
+    await waitFor(() => {
+      expect(useCompanionStore.getState().chatActionPending).toBe(false);
+    });
   });
 });

@@ -2354,6 +2354,9 @@ export default {
       send: "Gửi",
       apply: "Áp dụng",
       discard: "Bỏ",
+      rewriteSofter: "Viết lại nhẹ hơn",
+      askMore: "Hỏi thêm để rõ hơn",
+      askMorePrompt: "Cho mình biết thêm để viết chính xác hơn nhé.",
       retry: "Thử lại",
       before: "Trước",
       after: "Sau",
@@ -2570,6 +2573,8 @@ export default {
         chipRewrite: "Sửa bullet này",
         chipRewriteHere: "Sửa ngay tại đây",
         chipRoadmap: "Đưa vào lộ trình",
+        chipViewMatch: "Xem phân tích JD này",
+        viewMatchError: "Không mở được phân tích JD này — thử lại sau nhé.",
         proveitChip: "⚠ {{skill}}: khai nhưng chưa có bằng chứng",
         proveitIntro:
           "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
@@ -2582,9 +2587,27 @@ export default {
         suggestionsByFocus: {
           cv_audit: ["Sao điểm mình vậy?", "Chỗ nào yếu nhất?", "Làm sao cải thiện?"],
           skills_analysis: ["Kỹ năng nào được tính cho vai trò này?", "Mình còn thiếu kỹ năng gì?", "Kỹ năng mình mạnh tới đâu?"],
-          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?"],
-          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?"],
+          market_careers: ["Vai trò này khớp mình ra sao?", "Nhu cầu thị trường thế nào?", "Vai trò nào hợp mình nhất?", "JD nào hợp tôi nhất?"],
+          gap_results: ["Khoảng cách nào quan trọng nhất?", "Nên lấp cái nào trước?", "Lấp các khoảng cách này thế nào?", "JD nào hợp tôi nhất?"],
         },
+      },
+      // Trợ lý học tập (Task M3) — chat góc màn hình trên trang session học. Câu mở
+      // đầu là template TĨNH chỉ chèn TÊN SESSION thật; suggestions là tập tĩnh cố
+      // định (KHÔNG LLM, KHÔNG bịa). Dùng CHUNG endpoint learning chat với
+      // AIChatbot/AIChatPanel (nối tiếp conversationId, không tách luồng hội thoại).
+      learningChat: {
+        opener: "Bạn đang học “{{session}}”. Mình có thể giải thích khái niệm, gợi ý bài tiếp theo, hoặc kiểm tra tài liệu — bạn cần gì?",
+        placeholder: "Hỏi về bài học này…",
+        send: "Gửi",
+        thread: "Hội thoại",
+        thinking: "Đang suy nghĩ…",
+        error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
+        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        suggestions: [
+          "Giải thích khái niệm này",
+          "Mình nên luyện gì tiếp?",
+          "Link tài liệu còn dùng được không?",
+        ],
       },
     },
     skillsNudge: {

@@ -9,7 +9,7 @@
 
 import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
-import { matchCvWithJdApi } from "@/api/cv/match";
+import { matchCvWithJdApi, getCvMatchDetailApi } from "@/api/cv/match";
 import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
 import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
@@ -370,6 +370,32 @@ export async function loadCvFromHistory(id: string): Promise<AnalyzeOutcome> {
  * Top job thật khớp 1 CV (GET /api/cvs/:cvId/job-recommendations) — moat L2.
  * pool_size=0 → pool chưa có job cho role đó → UI hiện empty-state.
  */
+/**
+ * Open a DIFFERENT persisted CV/JD match from a chat citation (view_match chip —
+ * cross-JD comparison). No dedicated "view another match" page/loader exists yet, so
+ * this loads-in-place: the owning CV's review (GET /api/cvs/:cvId) + the cited match
+ * (GET /api/cvs/:cvId/matches/:matchId) in parallel, combined into the SAME
+ * `AnalyzeOutcome` shape the main analyze flow produces — the caller just
+ * `setReviewData`/`setLastCvId`s it, same as `loadCvFromHistory`.
+ */
+export async function loadMatchForChat({
+  cvId,
+  matchId,
+}: {
+  cvId: string;
+  matchId: string;
+}): Promise<AnalyzeOutcome> {
+  requireSession();
+  const [dto, match] = await Promise.all([
+    getCvDetailApi(cvId),
+    getCvMatchDetailApi(cvId, matchId),
+  ]);
+  return {
+    cvId: dto.id,
+    review: { ...mapCvDtoToReviewData(dto), jdMatch: mapMatchDtoToJdMatch(match) },
+  };
+}
+
 export async function getJobRecommendations(
   cvId: string,
   query: JobRecommendationsQuery = {},

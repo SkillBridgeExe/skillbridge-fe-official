@@ -39,6 +39,7 @@ import { DiagnosisReviewSkill } from "./skills/DiagnosisReviewSkill";
 import { ElementIssueSkill } from "./skills/ElementIssueSkill";
 import { DiagnosisCommentarySkill } from "./skills/DiagnosisCommentarySkill";
 import { DiagnosisChatSkill } from "./skills/DiagnosisChatSkill";
+import { LearningChatSkill } from "./skills/LearningChatSkill";
 import type { ElementIssue } from "./skills/element-issues";
 import type { ChatActionChip } from "./skills/chat-action-chips";
 
@@ -77,7 +78,11 @@ export function CompanionShell() {
   // (only a chatMessages change does) — so reading it here leaves the composer/retry
   // stuck disabled after a send resolves/fails. The pending row IS in chatMessages,
   // which we subscribe to, so this stays reactive.
-  const chatPending = chatMessages.some((m) => m.role === "assistant" && !!m.pending);
+  // chatActionPending (store-backed) ORs in a confirmed chip action's own network
+  // call (e.g. view_match's loadMatchForChat) — same disable, no fake chat row.
+  const chatActionPending = useCompanionStore((s) => s.chatActionPending);
+  const chatPending =
+    chatMessages.some((m) => m.role === "assistant" && !!m.pending) || chatActionPending;
   // Subscribe to the store-backed opener + chips so the bubble REPAINTS when the user
   // switches tabs (focus change). The hook pushes these via setChatDisplay; reading them
   // from the subscribed store — not turn.props — is what makes the swap live on tab switch.
@@ -211,7 +216,8 @@ export function CompanionShell() {
     || turn?.skill === "diagnosis_progress"
     || turn?.skill === "diagnosis_element_issue"
     || turn?.skill === "diagnosis_commentary"
-    || turn?.skill === "diagnosis_chat";
+    || turn?.skill === "diagnosis_chat"
+    || turn?.skill === "learning_chat";
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
@@ -466,6 +472,18 @@ export function CompanionShell() {
                   pendingAction={chatPendingAction}
                   onConfirmAction={turn.props.onConfirmAction as (() => void) | undefined}
                   onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
+                  isPending={chatPending}
+                />
+              )}
+
+              {/* ── learning_chat (Task M3 — corner advisor on a Learning session page) ── */}
+              {turn?.skill === "learning_chat" && (
+                <LearningChatSkill
+                  messages={chatMessages}
+                  opener={chatOpener}
+                  suggestions={chatSuggestions}
+                  onSend={turn.props.onSend as (q: string) => void}
+                  onRetry={turn.props.onRetry as (index: number) => void}
                   isPending={chatPending}
                 />
               )}

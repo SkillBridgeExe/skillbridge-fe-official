@@ -2380,6 +2380,9 @@ export default {
       send: "Send",
       apply: "Apply",
       discard: "Discard",
+      rewriteSofter: "Rewrite softer",
+      askMore: "Ask for more detail",
+      askMorePrompt: "Tell me a bit more so I can write it more precisely.",
       retry: "Retry",
       before: "Before",
       after: "After",
@@ -2597,6 +2600,8 @@ export default {
         chipRewrite: "Fix this bullet",
         chipRewriteHere: "Rewrite here",
         chipRoadmap: "Add to roadmap",
+        chipViewMatch: "View this JD analysis",
+        viewMatchError: "Couldn't open this JD's analysis — try again shortly.",
         proveitChip: "⚠ {{skill}}: claimed but not proven",
         proveitIntro:
           "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
@@ -2609,9 +2614,28 @@ export default {
         suggestionsByFocus: {
           cv_audit: ["Why is my score this?", "What's my weakest part?", "How can I improve?"],
           skills_analysis: ["Which skills counted for this role?", "What skills am I missing?", "How strong are my skills?"],
-          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?"],
-          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?"],
+          market_careers: ["How does this role match me?", "What's the market demand?", "Which role fits me best?", "Which JD fits me best?"],
+          gap_results: ["Which gap matters most?", "Which should I close first?", "How do I close these gaps?", "Which JD fits me best?"],
         },
+      },
+      // Learning companion (Task M3) — the mascot's corner-advisor chat on a
+      // learning session page. Opener is a STATIC template that only interpolates
+      // the REAL session title being viewed; suggestions are a flat static set
+      // (no LLM, no fabrication). Reuses the SAME learning chat endpoint as
+      // AIChatbot/AIChatPanel (conversationId continuity, not a forked thread).
+      learningChat: {
+        opener: "You're studying “{{session}}”. I can explain a concept, suggest what to practice next, or check a resource link — what do you need?",
+        placeholder: "Ask about this lesson…",
+        send: "Send",
+        thread: "Chat thread",
+        thinking: "Thinking…",
+        error: "The assistant is being connected — please try again in a moment.",
+        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        suggestions: [
+          "Explain this concept",
+          "What should I practice next?",
+          "Is this resource link still valid?",
+        ],
       },
     },
     skillsNudge: {

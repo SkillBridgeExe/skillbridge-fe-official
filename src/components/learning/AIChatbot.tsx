@@ -4,6 +4,8 @@ import { MessageCircle, X, Send, Bot, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { sendLearningChatMessage, getLearningChatHistory } from "@/services/learning-roadmap.service";
+import { useCompanionStore } from "@/store/useCompanionStore";
+import { LEARNING_CHAT_CONTEXT_ID } from "@/components/companion/skills/useLearningChatCompanion";
 
 interface ChatMessage {
   id: string;
@@ -88,6 +90,12 @@ export function AIChatbot() {
   ]);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Coexist policy (Task M3): a page that registers the mascot's learning-chat
+  // companion context already has a chat entry point — hide this legacy floating
+  // widget there so the two never stack. Currently a no-op (this widget only
+  // mounts on the roadmap dashboard, which doesn't register that context yet),
+  // but keeps the invariant true if that ever changes.
+  const hasLearningCompanion = useCompanionStore((s) => Boolean(s.contexts[LEARNING_CHAT_CONTEXT_ID]));
 
   // Load conversation ID and history on mount
   useEffect(() => {
@@ -145,6 +153,8 @@ export function AIChatbot() {
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", text: message }]);
     }
   };
+
+  if (hasLearningCompanion) return null;
 
   return (
     <>
