@@ -2121,6 +2121,16 @@ export default {
       unknownName: "Name not found",
     },
     builder: {
+      inspectorTitle: "Settings & Appearance",
+      tabTemplate: "Templates",
+      cvLanguage: "CV Language",
+      selectLanguage: "Select Language",
+      gallery: "Template Gallery",
+      tabLayout: "Layout",
+      tabTypography: "Typography",
+      tabTheme: "Theme Colors",
+      aiAssistant: "AI Assistant",
+
       sections: "Sections",
       sectionsDone: "{{done}}/{{total}} completed",
       previewEmpty: "Your CV preview appears here as you fill in the sections.",

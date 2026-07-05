@@ -116,19 +116,19 @@ const Header = ({ styles }: DittoHeaderProps) => {
 				<View style={styles.contactOffset} />
 
 				<View style={styles.contactList}>
-					{basics.email && (
+					{Boolean(basics.email) && (
 						<Link src={`mailto:${basics.email}`} style={styles.contactItem}>
 							<Icon name="envelope" />
 							<Text>{basics.email}</Text>
 						</Link>
 					)}
-					{basics.phone && (
+					{Boolean(basics.phone) && (
 						<Link src={`tel:${basics.phone}`} style={styles.contactItem}>
 							<Icon name="phone" />
 							<Text>{basics.phone}</Text>
 						</Link>
 					)}
-					{basics.location && (
+					{Boolean(basics.location) && (
 						<View style={styles.contactItem}>
 							<Icon name="map-pin" />
 							<Text>{basics.location}</Text>

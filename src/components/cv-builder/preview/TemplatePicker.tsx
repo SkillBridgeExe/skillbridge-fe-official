@@ -1,10 +1,8 @@
 import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
-import { LayoutTemplate, Check } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Check } from "lucide-react";
+import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import { useTranslation } from "react-i18next";
 
 export const BUILDER_TEMPLATES: Template[] = [
@@ -17,29 +15,49 @@ export function resolveBuilderTemplate(template: string): Template {
   return BUILDER_TEMPLATES.includes(template as Template) ? (template as Template) : "azurill";
 }
 
-type TemplatePreviewMeta = {
-  accent: string;
-  background: string;
-  layout: "classic" | "sidebar" | "split" | "timeline" | "minimal";
+const TEMPLATE_DESCRIPTION_VI: Record<Template, string> = {
+  azurill: "Mẫu ATS cổ điển với phần tiêu đề xanh dịu.",
+  bronzor: "Bố cục sidebar chuyên nghiệp cho CV giàu hồ sơ cá nhân.",
+  chikorita: "Bố cục chia cột gọn cho fresher kỹ thuật.",
+  ditgar: "Cấu trúc timeline làm nổi bật câu chuyện kinh nghiệm.",
+  ditto: "Phong cách tối giản, thoáng cho CV một trang sạch sẽ.",
+  gengar: "Sidebar sáng tạo với mật độ cao cho CV nhiều dự án.",
+  glalie: "Bố cục ATS chặt chẽ cho CV kỹ sư súc tích.",
+  kakuna: "Timeline tông ấm cho câu chuyện phát triển nghề nghiệp.",
+  lapras: "Bố cục cân bằng cho vai trò product và frontend.",
+  leafish: "Thiết kế tối giản gọn cho CV học thuật hoặc thực tập.",
+  meowth: "Typography lớn, dễ đọc cho phần tóm tắt nghề nghiệp.",
+  onyx: "Sidebar chuyên nghiệp, sắc nét cho hồ sơ kỹ thuật.",
+  pikachu: "Bố cục chia cột sáng, gọn cho portfolio dự án.",
+  rhyhorn: "Timeline có cấu trúc cho hồ sơ nhiều thông tin.",
+  scizor: "Tối giản với điểm nhấn đỏ cho CV một trang chỉn chu.",
 };
 
-const TEMPLATE_PREVIEWS: Record<Template, TemplatePreviewMeta> = {
-  azurill: { accent: "#3b82f6", background: "#eff6ff", layout: "classic" },
-  bronzor: { accent: "#64748b", background: "#f8fafc", layout: "sidebar" },
-  chikorita: { accent: "#16a34a", background: "#f0fdf4", layout: "split" },
-  ditgar: { accent: "#f97316", background: "#fff7ed", layout: "timeline" },
-  ditto: { accent: "#a855f7", background: "#faf5ff", layout: "minimal" },
-  gengar: { accent: "#7c3aed", background: "#f5f3ff", layout: "sidebar" },
-  glalie: { accent: "#06b6d4", background: "#ecfeff", layout: "classic" },
-  kakuna: { accent: "#ca8a04", background: "#fefce8", layout: "timeline" },
-  lapras: { accent: "#0ea5e9", background: "#f0f9ff", layout: "split" },
-  leafish: { accent: "#22c55e", background: "#f7fee7", layout: "minimal" },
-  meowth: { accent: "#d97706", background: "#fffbeb", layout: "classic" },
-  onyx: { accent: "#111827", background: "#f9fafb", layout: "sidebar" },
-  pikachu: { accent: "#eab308", background: "#fef9c3", layout: "split" },
-  rhyhorn: { accent: "#475569", background: "#f1f5f9", layout: "timeline" },
-  scizor: { accent: "#dc2626", background: "#fef2f2", layout: "minimal" },
+const TAG_VI: Record<string, string> = {
+  ATS: "ATS",
+  Classic: "Cổ điển",
+  Sidebar: "Thanh bên",
+  Professional: "Chuyên nghiệp",
+  Modern: "Hiện đại",
+  Compact: "Gọn",
+  Timeline: "Timeline",
+  Detailed: "Chi tiết",
+  Minimal: "Tối giản",
+  Clean: "Sạch",
+  Creative: "Sáng tạo",
+  Warm: "Ấm",
+  Balanced: "Cân bằng",
+  Readable: "Dễ đọc",
+  Technical: "Kỹ thuật",
 };
+
+export function getTemplateDescription(template: Template, isVi: boolean) {
+  return isVi ? TEMPLATE_DESCRIPTION_VI[template] : TEMPLATE_PREVIEWS[template].description;
+}
+
+export function localizeTemplateTag(tag: string, isVi: boolean) {
+  return isVi ? TAG_VI[tag] ?? tag : tag;
+}
 
 function TemplateThumbnail({ template }: { template: Template }) {
   const meta = TEMPLATE_PREVIEWS[template];
@@ -100,50 +118,50 @@ function TemplateThumbnail({ template }: { template: Template }) {
   );
 }
 
-export function TemplatePicker() {
+export function TemplateGallery() {
   const store = useCvBuilderStore();
-  const { t } = useTranslation("diagnosis");
-  const [open, setOpen] = useState(false);
+  const { i18n } = useTranslation("diagnosis");
+  const isVi = i18n.language.startsWith("vi");
   const currentTemplate = resolveBuilderTemplate(store.template);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-slate-600 border-slate-200">
-          <LayoutTemplate className="w-4 h-4" />
-          <span className="capitalize">{currentTemplate}</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle>{t("builder.templatePicker.title", { defaultValue: "Chọn mẫu CV" })}</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 pt-4 max-h-[60vh] overflow-y-auto">
-          {BUILDER_TEMPLATES.map((template) => (
-            <button
-              key={template}
-              onClick={() => {
-                store.setTemplate(template);
-                setOpen(false);
-              }}
-              className={cn(
-                "relative flex flex-col items-center justify-center rounded-xl border-2 p-3 transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm",
-                currentTemplate === template
-                  ? "border-primary bg-primary/5 shadow-sm"
-                  : "border-slate-100"
-              )}
-            >
-              {currentTemplate === template && (
-                <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5">
-                  <Check className="w-3 h-3" />
-                </div>
-              )}
-              <TemplateThumbnail template={template} />
-              <span className="mt-3 text-xs font-semibold capitalize text-slate-700">{template}</span>
-            </button>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="grid grid-cols-2 gap-3">
+      {BUILDER_TEMPLATES.map((template) => {
+        const meta = TEMPLATE_PREVIEWS[template];
+        return (
+          <button
+            key={template}
+            onClick={() => store.setTemplate(template)}
+            className={cn(
+              "relative flex flex-col items-center justify-center rounded-xl border p-3 transition-all hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              currentTemplate === template
+                ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                : "border-slate-200"
+            )}
+          >
+            {currentTemplate === template && (
+              <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-0.5 shadow-sm">
+                <Check className="w-3 h-3" />
+              </div>
+            )}
+            <TemplateThumbnail template={template} />
+            <div className="mt-3 text-center">
+              <div className="text-xs font-semibold text-slate-700">{meta.name}</div>
+              <p className="mt-1 line-clamp-2 min-h-[28px] text-[10px] leading-snug text-slate-500">
+                {getTemplateDescription(template, isVi)}
+              </p>
+              <div className="mt-2 flex flex-wrap justify-center gap-1">
+                {meta.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+                    {localizeTemplateTag(tag, isVi)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 }
+

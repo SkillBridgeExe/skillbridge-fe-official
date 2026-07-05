@@ -207,7 +207,7 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
         <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-slate-50/50 space-y-3">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-xs text-slate-500 font-medium">
-            {t("builder.storyReadiness.loading", { defaultValue: "Đang tính toán mức độ sẵn sàng..." })}
+            {t("builder.storyReadiness.loading", { defaultValue: "Calculating readiness level..." })}
           </span>
         </div>
       )}

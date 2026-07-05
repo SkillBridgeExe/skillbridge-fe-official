@@ -147,7 +147,7 @@ export function StoryReviewPanel({
             .map((item) => {
               const typeLabel = item.section === "projects"
                 ? t("builder.entry.project")
-                : t("builder.entry.certification", { defaultValue: "chứng chỉ" });
+                : t("builder.entry.certification", { defaultValue: "certification" });
               const nameWithSection = `${item.name} (${typeLabel.toLowerCase()})`;
               return t("builder.storyReview.skippedItem", { name: nameWithSection });
             })

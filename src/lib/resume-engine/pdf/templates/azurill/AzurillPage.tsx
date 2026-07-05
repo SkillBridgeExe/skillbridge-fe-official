@@ -108,19 +108,19 @@ const Header = ({ styles }: AzurillHeaderProps) => {
 			</View>
 
 			<View style={styles.headerContactRow}>
-				{basics.email && (
+				{Boolean(basics.email) && (
 					<Link src={`mailto:${basics.email}`} style={styles.headerContactItem}>
 						<Icon name="envelope" />
 						<Text>{basics.email}</Text>
 					</Link>
 				)}
-				{basics.phone && (
+				{Boolean(basics.phone) && (
 					<Link src={`tel:${basics.phone}`} style={styles.headerContactItem}>
 						<Icon name="phone" />
 						<Text>{basics.phone}</Text>
 					</Link>
 				)}
-				{basics.location && (
+				{Boolean(basics.location) && (
 					<View style={styles.headerContactItem}>
 						<Icon name="map-pin" />
 						<Text>{basics.location}</Text>

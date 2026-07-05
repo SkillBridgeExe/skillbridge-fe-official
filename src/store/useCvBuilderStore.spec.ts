@@ -102,6 +102,46 @@ describe("useCvBuilderStore.pendingProveIt", () => {
   });
 });
 
+describe("useCvBuilderStore.resumeAppearance", () => {
+  it("updates resume appearance controls and resets them to defaults", () => {
+    const store = useCvBuilderStore.getState();
+
+    store.setResumeAccentColor("#2563eb");
+    store.setResumeFontScale("large");
+    store.setResumeDensity("compact");
+    store.setResumeHideSectionIcons(true);
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      resumeAccentColor: "#2563eb",
+      resumeFontScale: "large",
+      resumeDensity: "compact",
+      resumeHideSectionIcons: true,
+    });
+
+    useCvBuilderStore.getState().reset();
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      resumeAccentColor: "#0f172a",
+      resumeFontScale: "normal",
+      resumeDensity: "comfortable",
+      resumeHideSectionIcons: false,
+    });
+  });
+
+  it("applies template-specific appearance defaults when selecting a template", () => {
+    useCvBuilderStore.getState().reset();
+
+    useCvBuilderStore.getState().setTemplate("gengar");
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      template: "gengar",
+      resumeAccentColor: "#7c3aed",
+      resumeDensity: "compact",
+      resumeFontScale: "normal",
+    });
+  });
+});
+
 describe("getSectionStatuses quality-gating", () => {
   const reset = () => useCvBuilderStore.getState().reset();
 
@@ -140,5 +180,83 @@ describe("getSectionStatuses quality-gating", () => {
     useCvBuilderStore.getState().setSummary("ssssssssssssssssssssssssssssssss");
     const summary = useCvBuilderStore.getState().getSectionStatuses()[2];
     expect(summary.status).toBe("needs-improvement");
+  });
+});
+
+describe("useCvBuilderStore.structure", () => {
+  it("updates section visibility", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSectionVisibility("summary", false);
+    
+    expect(useCvBuilderStore.getState().sectionVisibility.summary).toBe(false);
+    expect(useCvBuilderStore.getState().sectionVisibility.experience).toBe(true);
+  });
+
+  it("updates section order", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().moveSection("experience", "up");
+    
+    expect(useCvBuilderStore.getState().sectionOrder[0]).toBe("experience");
+    expect(useCvBuilderStore.getState().sectionOrder[1]).toBe("summary");
+  });
+
+  it("resets section order to default", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().moveSection("experience", "up");
+    useCvBuilderStore.getState().resetSectionOrder();
+    
+    expect(useCvBuilderStore.getState().sectionOrder).toEqual([
+      "summary",
+      "experience",
+      "education",
+      "projects",
+      "certifications",
+      "skills",
+    ]);
+  });
+
+  it("moves sections within a layout group without crossing columns", () => {
+    useCvBuilderStore.getState().reset();
+
+    useCvBuilderStore.getState().moveSectionWithinGroup("skills", "up", ["summary", "skills", "certifications"]);
+
+    expect(useCvBuilderStore.getState().sectionOrder).toEqual([
+      "summary",
+      "experience",
+      "education",
+      "projects",
+      "skills",
+      "certifications",
+    ]);
+  });
+
+  it("reorders repeatable project items without losing their data", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      projects: [
+        { id: "project-1", name: "First", role: "Developer", link: "", description: "", tools: "", contribution: "", result: "" },
+        { id: "project-2", name: "Second", role: "Lead", link: "", description: "", tools: "", contribution: "", result: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().moveProject("project-2", "up");
+
+    expect(useCvBuilderStore.getState().projects.map((project) => project.name)).toEqual(["Second", "First"]);
+    expect(useCvBuilderStore.getState().projects[0]).toMatchObject({ id: "project-2", role: "Lead" });
+  });
+
+  it("reorders repeatable experience items without losing their data", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      experience: [
+        { id: "exp-1", company: "First Co", position: "Intern", startDate: "", endDate: "", description: "", responsibilities: "", achievements: "", aiRewrite: "" },
+        { id: "exp-2", company: "Second Co", position: "Developer", startDate: "", endDate: "", description: "", responsibilities: "", achievements: "", aiRewrite: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().moveExperience("exp-2", "up");
+
+    expect(useCvBuilderStore.getState().experience.map((experience) => experience.company)).toEqual(["Second Co", "First Co"]);
+    expect(useCvBuilderStore.getState().experience[0]).toMatchObject({ id: "exp-2", position: "Developer" });
   });
 });

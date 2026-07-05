@@ -1,8 +1,33 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { adaptCvBuilderStoreToResumeData, adaptResumeDataToCanonical, adaptCanonicalToResumeData } from "./adapter";
 import type { CvBuilderState } from "@/store/useCvBuilderStore";
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+
+const listTemplateFiles = (dir: string): string[] => {
+	const entries = readdirSync(dir);
+	return entries.flatMap((entry) => {
+		const path = join(dir, entry);
+		if (statSync(path).isDirectory()) return listTemplateFiles(path);
+		return path.endsWith(".tsx") ? [path] : [];
+	});
+};
+
 describe("adaptCvBuilderStoreToResumeData", () => {
+	it("keeps PDF template optional contact guards boolean-safe", () => {
+		const templateDir = join(currentDir, "pdf", "templates");
+		const offenders = listTemplateFiles(templateDir).flatMap((file) => {
+			const source = readFileSync(file, "utf8");
+			const matches = source.match(/\{basics\.(email|phone|location|headline|name)\s*&&/g) ?? [];
+			return matches.map((match) => `${file}: ${match}`);
+		});
+
+		expect(offenders).toEqual([]);
+	});
+
 	it("should correctly map basic info", () => {
 		const mockStore = {
 			fullName: "John Doe",
@@ -92,6 +117,98 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 
 		const result = adaptCvBuilderStoreToResumeData(mockStore);
 		expect(result.metadata.template).toBe("onyx");
+	});
+
+	it("maps builder appearance settings into resume metadata", () => {
+		const mockStore = {
+			fullName: "Styled User",
+			template: "onyx",
+			cvLanguage: "en",
+			resumeAccentColor: "#2563eb",
+			resumeFontScale: "large",
+			resumeDensity: "compact",
+			resumeHideSectionIcons: true,
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.design.colors.primary).toBe("#2563eb");
+		expect(result.metadata.typography.body.fontSize).toBeGreaterThan(11);
+		expect(result.metadata.typography.heading.fontSize).toBeGreaterThan(14);
+		expect(result.metadata.page.gapY).toBeLessThan(16);
+		expect(result.metadata.page.marginY).toBeLessThan(24);
+		expect(result.metadata.page.hideSectionIcons).toBe(true);
+	});
+
+	it("maps builder structure visibility into resume sections", () => {
+		const mockStore = {
+			fullName: "Structure User",
+			template: "onyx",
+			cvLanguage: "en",
+			summary: "Frontend developer with React experience.",
+			sectionVisibility: {
+				summary: false,
+				education: true,
+				experience: true,
+				projects: false,
+				skills: true,
+				certifications: true,
+			},
+			education: [],
+			experience: [],
+			projects: [{ id: "project-1", name: "Visible Data", role: "Developer", link: "", description: "Built a feature", tools: "React", contribution: "", result: "" }],
+			technicalSkills: ["React"],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.summary.hidden).toBe(true);
+		expect(result.sections.projects.hidden).toBe(true);
+		expect(result.sections.skills.hidden).toBe(false);
+	});
+
+	it("maps builder section order into supported main/sidebar layout order", () => {
+		const mockStore = {
+			fullName: "Ordered User",
+			template: "onyx",
+			cvLanguage: "en",
+			summary: "Backend developer.",
+			sectionOrder: ["skills", "projects", "experience", "education", "summary", "certifications"],
+			sectionVisibility: {
+				summary: true,
+				education: true,
+				experience: true,
+				projects: true,
+				skills: true,
+				certifications: true,
+			},
+			education: [{ id: "edu-1", school: "FPT", major: "SE", degree: "", startYear: "", endYear: "", gpa: "", coursework: "", achievements: "" }],
+			experience: [{ id: "exp-1", company: "A", position: "Developer", startDate: "", endDate: "", description: "", responsibilities: "", achievements: "", aiRewrite: "" }],
+			projects: [{ id: "project-1", name: "Project", role: "", link: "", description: "", tools: "", contribution: "", result: "" }],
+			technicalSkills: ["React"],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [{ id: "cert-1", name: "Cert", organization: "", issueDate: "", credentialUrl: "" }],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.pages[0].main).toEqual(["projects", "experience", "education"]);
+		expect(result.metadata.layout.pages[0].sidebar).toEqual(["skills", "summary", "certifications", "languages"]);
 	});
 
 	it("does not turn empty builder placeholder rows into fake resume entries", () => {
@@ -217,6 +334,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			"skill-tools",
 		]);
 	});
+
 });
 
 describe("adapter round-trip: ResumeData -> CanonicalCvDocument -> ResumeData", () => {

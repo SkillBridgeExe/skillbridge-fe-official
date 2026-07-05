@@ -61,9 +61,14 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   }).length;
   const totalCount = 8; // There are 8 metadata statuses (0-7)
 
-  const handleNavClick = (idx: number, _id: string) => {
+  const handleNavClick = (idx: number, id: string) => {
     setActiveSection(idx);
-    // Removed scrollIntoView because we are now using a tab-based UI
+    
+    // In studio mode, scroll the editor panel to the section anchor
+    const element = document.getElementById(`cv-section-${id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   if (variant === "horizontal") {
@@ -185,10 +190,10 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
     );
   }
 
-  // Thin Icon-only Sidebar (RR v4 style)
+  // Thin Icon-only Sidebar (Studio V7 style)
   return (
-    <div className="flex flex-col items-center py-4 space-y-4 select-none h-full">
-      <nav className="flex flex-col gap-2">
+    <div className="flex flex-col items-center py-4 space-y-4 select-none h-full w-[56px]">
+      <nav className="flex flex-col gap-2 w-full px-2">
         {SECTIONS.map((section, index) => {
           const Icon = section.icon;
           const isSelected = activeSection === index;
@@ -203,30 +208,35 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               onClick={() => handleNavClick(index, section.id)}
               title={title}
               className={cn(
-                "relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 group outline-none",
+                "relative w-10 h-10 mx-auto flex items-center justify-center rounded-lg transition-all duration-200 group outline-none",
                 isSelected
-                  ? "bg-primary text-white shadow-md shadow-primary/20 scale-105"
-                  : "bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-200"
+                  ? "bg-primary/10 text-primary"
+                  : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800"
               )}
             >
-              <Icon className={cn("w-5 h-5 shrink-0", isSelected ? "text-white" : "group-hover:text-slate-700")} />
+              <Icon className={cn("w-[18px] h-[18px] shrink-0", isSelected ? "text-primary" : "group-hover:text-slate-700")} />
+
+              {/* Active Left Indicator */}
+              {isSelected && (
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+              )}
 
               {/* Status dot */}
               {evaluation ? (
-                <div className={cn("absolute -top-1 -right-1 w-4 h-4 text-[8px] font-bold flex items-center justify-center rounded-full shadow-sm",
-                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538] border border-[#346538]/20"
-                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900] border border-[#B98900]/20"
-                  : "bg-white border border-slate-200 text-slate-500"
+                <div className={cn("absolute -top-1 -right-1 min-w-4 h-4 px-1 text-[8px] font-bold flex items-center justify-center rounded-full shadow-sm ring-1 ring-white",
+                  evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
+                  : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
+                  : "bg-white text-slate-500"
                 )}>
                   {evaluation.score}
                 </div>
               ) : (
                 <>
                   {status === "completed" && (
-                    <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                    <div className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                   )}
                   {status === "needs-improvement" && (
-                    <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
+                    <div className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
                   )}
                 </>
               )}

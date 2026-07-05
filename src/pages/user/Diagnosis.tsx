@@ -24,10 +24,11 @@ import {
   type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
 
-const CvBuilderHeader = lazy(() => import("@/components/cv-builder/CvBuilderHeader").then(m => ({ default: m.CvBuilderHeader })));
+const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
 const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel").then(m => ({ default: m.CvPreviewPanel })));
 const CvSectionNav = lazy(() => import("@/components/cv-builder/CvSectionNav").then(m => ({ default: m.CvSectionNav })));
+const StudioInspector = lazy(() => import("@/components/cv-builder/studio/StudioInspector").then(m => ({ default: m.StudioInspector })));
 
 /* ── Step Indicator Dot ── */
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
@@ -331,27 +332,39 @@ export default function Diagnosis() {
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
     return (
-      <Layout hideFooter>
+      <Layout hideFooter hideNavbar>
         <Suspense fallback={<PageLoader />}>
-          <div id="cv-builder-anchor" className="h-[calc(100dvh-80px)] w-full flex flex-col bg-slate-50 overflow-hidden">
-            <CvBuilderHeader />
+          <div id="cv-builder-anchor" className="h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+            <StudioTopBar />
             <div className="flex-1 flex overflow-hidden">
-              <div className="w-full lg:w-[45%] h-full border-r border-slate-200 bg-white flex flex-col lg:flex-row overflow-hidden shrink-0">
-                <div className="hidden lg:flex w-[72px] border-r border-slate-150 h-full overflow-y-auto shrink-0 bg-white shadow-sm z-10">
-                  <CvSectionNav variant="icon" />
+              
+              {/* Zone 1: Navigation Rail (Desktop Only) */}
+              <div className="hidden lg:flex w-[56px] border-r border-slate-200 h-full overflow-y-auto shrink-0 bg-white shadow-sm z-10">
+                <CvSectionNav variant="icon" />
+              </div>
+              
+              {/* Zone 2: Editor (Scrollable Column) */}
+              <div className="w-full lg:w-[360px] xl:w-[380px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
+                {/* Mobile Nav */}
+                <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-200 shrink-0 shadow-sm">
+                  <CvSectionNav variant="horizontal" />
                 </div>
-                <div className="flex-1 h-full overflow-y-auto flex flex-col bg-slate-50 lg:bg-white relative">
-                  <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-150 shrink-0 shadow-sm">
-                    <CvSectionNav variant="horizontal" />
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4 lg:p-6 lg:pl-8 custom-scrollbar">
-                    <CvFormPanel />
-                  </div>
+                {/* Editor Content */}
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar scroll-smooth">
+                  <CvFormPanel />
                 </div>
               </div>
-              <div className="hidden lg:block w-[55%] h-full bg-[#f3f4f6] overflow-y-auto p-6 custom-scrollbar shadow-inner">
+
+              {/* Zone 3: Canvas (Preview) */}
+              <div className="hidden lg:block min-w-0 flex-1 h-full bg-[#f3f4f6]">
                 <CvPreviewPanel />
               </div>
+
+              {/* Zone 4: Inspector (Right Rail) */}
+              <div className="hidden xl:block w-[300px] h-full shrink-0 bg-white border-l border-slate-200 shadow-sm z-10">
+                <StudioInspector />
+              </div>
+
             </div>
           </div>
         </Suspense>

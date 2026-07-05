@@ -5,9 +5,10 @@ import { GIT_SHA_SHORT, APP_VERSION } from "@/lib/version";
 interface LayoutProps {
   children: React.ReactNode;
   hideFooter?: boolean;
+  hideNavbar?: boolean;
 }
 
-export default function Layout({ children, hideFooter = false }: LayoutProps) {
+export default function Layout({ children, hideFooter = false, hideNavbar = false }: LayoutProps) {
   const location = useLocation();
   const isLanding = location.pathname === "/";
   
@@ -29,8 +30,8 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
         <div className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[1000px] h-[600px] bg-ink-accent/10 blur-[120px] rounded-[100%] opacity-80 mix-blend-multiply"></div>
       </div>
 
-      <Navbar />
-      <main className={`flex-grow z-10 relative animate-in fade-in duration-700 ${!isLanding ? 'pt-24' : ''}`}>
+      {!hideNavbar && <Navbar />}
+      <main className={`flex-grow z-10 relative animate-in fade-in duration-700 ${(!isLanding && !hideNavbar) ? 'pt-24' : ''}`}>
         {children}
       </main>
       {!shouldHideFooter && <footer className="bg-white border-t border-slate-100 py-12 px-6">

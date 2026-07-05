@@ -17,6 +17,26 @@ const escapeHtml = (value: string): string =>
 const resolveTemplate = (template: string | undefined): Template =>
 	(templateSchema.options as readonly string[]).includes(template ?? "") ? (template as Template) : "onyx";
 
+const FONT_SCALE = {
+	small: { body: 10, heading: 13 },
+	normal: { body: 11, heading: 14 },
+	large: { body: 12, heading: 16 },
+} as const;
+
+const DENSITY = {
+	compact: { gap: 12, margin: 18 },
+	comfortable: { gap: 16, margin: 24 },
+} as const;
+
+const resolveFontScale = (scale: unknown) =>
+	scale === "small" || scale === "large" || scale === "normal" ? FONT_SCALE[scale] : FONT_SCALE.normal;
+
+const resolveDensity = (density: unknown) =>
+	density === "compact" || density === "comfortable" ? DENSITY[density] : DENSITY.comfortable;
+
+const resolveAccentColor = (color: unknown) =>
+	typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0f172a";
+
 const normalizeIdPart = (value: unknown): string =>
 	String(value ?? "")
 		.trim()
@@ -57,6 +77,10 @@ function htmlToBullets(html: string | undefined): string[] {
  * schema expected by the @resume-engine/pdf renderer.
  */
 export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeData {
+	const fontScale = resolveFontScale(store.resumeFontScale);
+	const density = resolveDensity(store.resumeDensity);
+	const accentColor = resolveAccentColor(store.resumeAccentColor);
+
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
 		.map((edu, index) => ({
@@ -165,7 +189,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 			title: store.cvLanguage === "vi" ? "Tóm tắt" : "Summary",
 			icon: "article",
 			columns: 1,
-			hidden: !store.summary,
+			hidden: (store.sectionVisibility?.summary === false) || !store.summary,
 			content: toHtml(store.summary),
 		},
 		sections: {
@@ -180,28 +204,28 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Kinh nghiệm làm việc" : "Experience",
 				icon: "briefcase",
 				columns: 1,
-				hidden: experienceItems.length === 0,
+				hidden: (store.sectionVisibility?.experience === false) || experienceItems.length === 0,
 				items: experienceItems,
 			},
 			education: {
 				title: store.cvLanguage === "vi" ? "Học vấn" : "Education",
 				icon: "graduation-cap",
 				columns: 1,
-				hidden: educationItems.length === 0,
+				hidden: (store.sectionVisibility?.education === false) || educationItems.length === 0,
 				items: educationItems,
 			},
 			projects: {
 				title: store.cvLanguage === "vi" ? "Dự án" : "Projects",
 				icon: "folder",
 				columns: 1,
-				hidden: projectItems.length === 0,
+				hidden: (store.sectionVisibility?.projects === false) || projectItems.length === 0,
 				items: projectItems,
 			},
 			skills: {
 				title: store.cvLanguage === "vi" ? "Kỹ năng" : "Skills",
 				icon: "lightning",
 				columns: 1,
-				hidden: store.technicalSkills.length === 0 && store.softSkills.length === 0 && store.tools.length === 0,
+				hidden: (store.sectionVisibility?.skills === false) || (store.technicalSkills.length === 0 && store.softSkills.length === 0 && store.tools.length === 0),
 				items: [
 					...(store.technicalSkills.length > 0
 						? [
@@ -248,10 +272,10 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				],
 			},
 			languages: {
-				title: store.cvLanguage === "vi" ? "Ngoại ngữ" : "Languages",
-				icon: "translate",
+				title: store.cvLanguage === "vi" ? "Ngôn ngữ" : "Languages",
+				icon: "globe",
 				columns: 1,
-				hidden: store.languages.length === 0,
+				hidden: store.languages.length === 0, // Languages isn't in visibility toggle yet
 				items: store.languages.map((lang, index) => ({
 					id: stableId("language", index, lang),
 					hidden: false,
@@ -278,7 +302,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Chứng chỉ" : "Certifications",
 				icon: "certificate",
 				columns: 1,
-				hidden: certificationItems.length === 0,
+				hidden: (store.sectionVisibility?.certifications === false) || certificationItems.length === 0,
 				items: certificationItems,
 			},
 			publications: {
@@ -311,29 +335,29 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				pages: [
 					{
 						fullWidth: false,
-						main: ["experience", "education", "projects"],
-						sidebar: ["summary", "skills", "languages", "certifications"],
+						main: store.sectionOrder ? store.sectionOrder.filter(k => ["experience", "education", "projects"].includes(k)) : ["experience", "education", "projects"],
+						sidebar: [...(store.sectionOrder ? store.sectionOrder.filter(k => ["summary", "skills", "certifications"].includes(k)) : ["summary", "skills", "certifications"]), "languages"],
 					},
 				],
 			},
 			page: {
-				gapX: 16,
-				gapY: 16,
-				marginX: 24,
-				marginY: 24,
+				gapX: density.gap,
+				gapY: density.gap,
+				marginX: density.margin,
+				marginY: density.margin,
 				format: "a4",
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
 				hideLinkUnderline: false,
 				hideIcons: false,
-				hideSectionIcons: false,
+				hideSectionIcons: store.resumeHideSectionIcons ?? false,
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },
-				colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" },
+				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
 			},
 			typography: {
-				body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 },
-				heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 },
+				body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: fontScale.body, lineHeight: 1.5 },
+				heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: 1.5 },
 			},
 			notes: "",
 			styleRules: [],

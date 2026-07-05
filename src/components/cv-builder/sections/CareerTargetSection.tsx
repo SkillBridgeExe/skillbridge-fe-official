@@ -23,8 +23,8 @@ export function CareerTargetSection() {
           onApply={(roleLabel) => setCareerTarget("targetPosition", roleLabel)}
         />
       )}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5 col-span-2 sm:col-span-1">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-1.5">
           <Label htmlFor="targetPosition">{t("builder.fields.targetPosition")} *</Label>
           <Input id="targetPosition" value={targetPosition} onChange={(e) => setCareerTarget("targetPosition", e.target.value)} placeholder={t("builder.ph.targetPosition")} />
           {!roleCheck.ok && (
@@ -35,7 +35,7 @@ export function CareerTargetSection() {
             </p>
           )}
         </div>
-        <div className="space-y-1.5 col-span-2 sm:col-span-1">
+        <div className="space-y-1.5">
           <Label htmlFor="careerLevel">{t("builder.fields.careerLevel")} *</Label>
           <Select value={careerLevel} onValueChange={(v) => setCareerTarget("careerLevel", v as CareerLevel)}>
             <SelectTrigger>
@@ -51,7 +51,7 @@ export function CareerTargetSection() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1.5 col-span-2 sm:col-span-1">
+        <div className="space-y-1.5">
           <Label htmlFor="industry">{t("builder.fields.industry")}</Label>
           <Input id="industry" value={industry} onChange={(e) => setCareerTarget("industry", e.target.value)} placeholder={t("builder.ph.industry")} />
           {industryBad && (

@@ -411,7 +411,7 @@ export function SummarySection() {
           }}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>{t("companion.analyze", { defaultValue: "Trợ lý AI" })}</span>
+          <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
         </Button>
       )}
     </div>

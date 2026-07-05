@@ -4,11 +4,15 @@ import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/ty
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
+import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import type { Template } from "@/lib/resume-engine/schema/templates";
 
 /* ── Types ── */
 export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-level" | "career-switcher";
 export type SummaryMode = "manual" | "ai";
 export type CvLanguage = "en" | "vi";
+export type ResumeFontScale = "small" | "normal" | "large";
+export type ResumeDensity = "compact" | "comfortable";
 
 export interface Education {
   id: string;
@@ -54,6 +58,8 @@ export interface Certification {
 }
 
 export type SectionStatus = "completed" | "missing" | "needs-improvement";
+
+export type CvBuilderSectionKey = "summary" | "experience" | "education" | "projects" | "skills" | "certifications";
 
 export interface SectionMeta {
   label: string;
@@ -129,6 +135,12 @@ export interface CvBuilderState {
   activeSection: number;
   template: string;
   cvLanguage: CvLanguage;
+  resumeAccentColor: string;
+  resumeFontScale: ResumeFontScale;
+  resumeDensity: ResumeDensity;
+  resumeHideSectionIcons: boolean;
+  sectionVisibility: Record<CvBuilderSectionKey, boolean>;
+  sectionOrder: CvBuilderSectionKey[];
 
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
@@ -153,16 +165,19 @@ export interface CvBuilderState {
   addEducation: () => void;
   updateEducation: (id: string, field: keyof Education, value: string) => void;
   removeEducation: (id: string) => void;
+  moveEducation: (id: string, direction: "up" | "down") => void;
 
   // Actions — Experience
   addExperience: () => void;
   updateExperience: (id: string, field: keyof WorkExperience, value: string) => void;
   removeExperience: (id: string) => void;
+  moveExperience: (id: string, direction: "up" | "down") => void;
 
   // Actions — Projects
   addProject: () => void;
   updateProject: (id: string, field: keyof Project, value: string) => void;
   removeProject: (id: string) => void;
+  moveProject: (id: string, direction: "up" | "down") => void;
 
   // Actions — Skills
   setSkills: (field: keyof Pick<CvBuilderState, "technicalSkills" | "softSkills" | "tools" | "languages">, value: string[]) => void;
@@ -173,11 +188,20 @@ export interface CvBuilderState {
   addCertification: () => void;
   updateCertification: (id: string, field: keyof Certification, value: string) => void;
   removeCertification: (id: string) => void;
+  moveCertification: (id: string, direction: "up" | "down") => void;
 
   // Actions — UI
   setActiveSection: (section: number) => void;
   setTemplate: (template: string) => void;
   setCvLanguage: (lang: CvLanguage) => void;
+  setResumeAccentColor: (color: string) => void;
+  setResumeFontScale: (scale: ResumeFontScale) => void;
+  setResumeDensity: (density: ResumeDensity) => void;
+  setResumeHideSectionIcons: (hide: boolean) => void;
+  setSectionVisibility: (section: CvBuilderSectionKey, visible: boolean) => void;
+  moveSection: (section: CvBuilderSectionKey, direction: "up" | "down") => void;
+  moveSectionWithinGroup: (section: CvBuilderSectionKey, direction: "up" | "down", group: CvBuilderSectionKey[]) => void;
+  resetSectionOrder: () => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -240,6 +264,19 @@ const initialState = {
   activeSection: 0,
   template: "azurill",
   cvLanguage: "en" as CvLanguage,
+  resumeAccentColor: "#0f172a",
+  resumeFontScale: "normal" as ResumeFontScale,
+  resumeDensity: "comfortable" as ResumeDensity,
+  resumeHideSectionIcons: false,
+  sectionVisibility: {
+    summary: true,
+    education: true,
+    experience: true,
+    projects: true,
+    skills: true,
+    certifications: true,
+  } as Record<CvBuilderSectionKey, boolean>,
+  sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   seededFromDiagnosis: false,
@@ -366,6 +403,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   removeEducation: (id) => set((s) => ({
     education: s.education.length > 1 ? s.education.filter((e) => e.id !== id) : s.education,
   })),
+  moveEducation: (id, direction) => set((s) => {
+    const idx = s.education.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    if (direction === "up" && idx === 0) return {};
+    if (direction === "down" && idx === s.education.length - 1) return {};
+    const newArr = [...s.education];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newArr[idx], newArr[targetIdx]] = [newArr[targetIdx], newArr[idx]];
+    return { education: newArr };
+  }),
 
   // Experience
   addExperience: () => set((s) => ({ experience: [...s.experience, emptyExperience()] })),
@@ -375,6 +422,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   removeExperience: (id) => set((s) => ({
     experience: s.experience.length > 1 ? s.experience.filter((e) => e.id !== id) : s.experience,
   })),
+  moveExperience: (id, direction) => set((s) => {
+    const idx = s.experience.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    if (direction === "up" && idx === 0) return {};
+    if (direction === "down" && idx === s.experience.length - 1) return {};
+    const newArr = [...s.experience];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newArr[idx], newArr[targetIdx]] = [newArr[targetIdx], newArr[idx]];
+    return { experience: newArr };
+  }),
 
   // Projects
   addProject: () => set((s) => ({ projects: [...s.projects, emptyProject()] })),
@@ -384,6 +441,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   removeProject: (id) => set((s) => ({
     projects: s.projects.length > 1 ? s.projects.filter((p) => p.id !== id) : s.projects,
   })),
+  moveProject: (id, direction) => set((s) => {
+    const idx = s.projects.findIndex((p) => p.id === id);
+    if (idx < 0) return {};
+    if (direction === "up" && idx === 0) return {};
+    if (direction === "down" && idx === s.projects.length - 1) return {};
+    const newArr = [...s.projects];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newArr[idx], newArr[targetIdx]] = [newArr[targetIdx], newArr[idx]];
+    return { projects: newArr };
+  }),
 
   // Skills
   setSkills: (field, value) => set({ [field]: value }),
@@ -402,8 +469,18 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     certifications: s.certifications.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
   })),
   removeCertification: (id) => set((s) => ({
-    certifications: s.certifications.filter((c) => c.id !== id),
+    certifications: s.certifications.length > 1 ? s.certifications.filter((c) => c.id !== id) : s.certifications,
   })),
+  moveCertification: (id, direction) => set((s) => {
+    const idx = s.certifications.findIndex((c) => c.id === id);
+    if (idx < 0) return {};
+    if (direction === "up" && idx === 0) return {};
+    if (direction === "down" && idx === s.certifications.length - 1) return {};
+    const newArr = [...s.certifications];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newArr[idx], newArr[targetIdx]] = [newArr[targetIdx], newArr[idx]];
+    return { certifications: newArr };
+  }),
 
   // UI
   setActiveSection: (section) => set({ activeSection: section }),
@@ -437,8 +514,55 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
-  setTemplate: (template) => set({ template }),
+  setTemplate: (template) => set(() => {
+    const meta = TEMPLATE_PREVIEWS[template as Template];
+    if (meta) {
+      return { 
+        template,
+        resumeAccentColor: meta.accent,
+        resumeDensity: meta.density,
+        resumeFontScale: meta.fontScale,
+      };
+    }
+    return { template };
+  }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
+  setResumeAccentColor: (resumeAccentColor) => set({ resumeAccentColor }),
+  setResumeFontScale: (resumeFontScale) => set({ resumeFontScale }),
+  setResumeDensity: (resumeDensity) => set({ resumeDensity }),
+  setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
+  setSectionVisibility: (section, visible) => set((s) => ({
+    sectionVisibility: { ...s.sectionVisibility, [section]: visible },
+  })),
+  moveSection: (section, direction) => set((s) => {
+    const idx = s.sectionOrder.indexOf(section);
+    if (idx < 0) return {};
+    if (direction === "up" && idx === 0) return {};
+    if (direction === "down" && idx === s.sectionOrder.length - 1) return {};
+    const newOrder = [...s.sectionOrder];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]];
+    return { sectionOrder: newOrder };
+  }),
+  moveSectionWithinGroup: (section, direction, group) => set((s) => {
+    const allowed = new Set(group);
+    const orderedGroup = s.sectionOrder.filter((key) => allowed.has(key));
+    const groupIdx = orderedGroup.indexOf(section);
+    if (groupIdx < 0) return {};
+    if (direction === "up" && groupIdx === 0) return {};
+    if (direction === "down" && groupIdx === orderedGroup.length - 1) return {};
+
+    const targetIdx = direction === "up" ? groupIdx - 1 : groupIdx + 1;
+    [orderedGroup[groupIdx], orderedGroup[targetIdx]] = [orderedGroup[targetIdx], orderedGroup[groupIdx]];
+
+    let cursor = 0;
+    return {
+      sectionOrder: s.sectionOrder.map((key) => (allowed.has(key) ? orderedGroup[cursor++] : key)),
+    };
+  }),
+  resetSectionOrder: () => set({
+    sectionOrder: [...initialState.sectionOrder],
+  }),
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),
