@@ -52,7 +52,6 @@ import type {
   DiagnosisChatFocus,
   DiagnosisChatRequest,
   DiagnosisChatResponse,
-  DiagnosisChatTurn,
   NextStepsResponse,
 } from "@/types/companion";
 
@@ -266,7 +265,6 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
       .map((skill) => skill.display_name || skill.canonical_name),
     required_coverage: parsed?.required_coverage ?? null,
     scoring_breakdown: parsed?.scoring_breakdown ?? null,
-    experience_fit: parsed?.experience_fit ?? null,
     fit: parsed?.fit ?? match.fit ?? null,
     inferred_skills: parsed?.inferred_skills ?? [],
     rubric_band: parsed?.rubric_band ?? null,
@@ -548,7 +546,6 @@ export async function askDiagnosisChat({
   matchId,
   cvId,
   question,
-  thread,
   focus,
   language = "vi",
 }: {
@@ -557,15 +554,15 @@ export async function askDiagnosisChat({
   /** CV id — CV-only fallback when there is no JD match. */
   cvId?: string | null;
   question: string;
-  thread?: DiagnosisChatTurn[];
   /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */
   focus?: DiagnosisChatFocus;
   language?: string;
 }): Promise<DiagnosisChatResponse> {
   requireSession();
+  // No `thread` payload: the BE validates but never reads it — it rebuilds the
+  // conversation from its own persisted history server-side.
   const baseBody: DiagnosisChatRequest = {
     question,
-    ...(thread && thread.length > 0 ? { thread } : {}),
     ...(focus ? { focus } : {}),
     language,
   };

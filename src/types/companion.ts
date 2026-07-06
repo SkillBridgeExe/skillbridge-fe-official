@@ -127,12 +127,6 @@ export interface NextStepsResponse {
 // was scored / where it's weak. The BE answer endpoint is built separately;
 // these client-side types let the FE wire the call + graceful states now.
 
-/** One prior turn passed back so the BE can ground its answer in the thread. */
-export interface DiagnosisChatTurn {
-  role: "user" | "assistant";
-  text: string;
-}
-
 /**
  * Which diagnosis section the user is currently viewing — TAB-level granularity.
  * Step 2 (DiagnosisStep2Review) has 3 tabs (CV Audit / Skills Analysis /
@@ -149,8 +143,6 @@ export type DiagnosisChatFocus =
 export interface DiagnosisChatRequest {
   /** The user's question (required, non-empty). */
   question: string;
-  /** Prior turns for context (optional — short, trimmed by the caller). */
-  thread?: DiagnosisChatTurn[];
   /** CV-only fallback when there is no JD match id. */
   cvId?: string;
   /** Section the user is viewing → BE biases the answer's emphasis (not the facts). */

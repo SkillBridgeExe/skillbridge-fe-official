@@ -101,7 +101,6 @@ const matchDto: CvMatchDto = {
   jobDescriptionId: "jd-1",
   aiResultId: null,
   overallScore: 58.6,
-  overall_match_score: 58.6,
   matchRatio: 60,
   requiredCoverage: 0.5,
   parsedResponse: {

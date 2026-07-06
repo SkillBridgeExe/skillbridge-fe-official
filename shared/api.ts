@@ -88,7 +88,6 @@ export interface CvJdMatch {
   criticalGaps: string[];
   required_coverage?: number | null;
   scoring_breakdown?: ScoringBreakdown | null;
-  experience_fit?: ExperienceFit | null;
   inferred_skills?: InferredSkill[];
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] } | null;
   /** Thước seniority khi chấm theo rubric; null = chấm theo JD dán (thước của JD). */
@@ -495,7 +494,6 @@ export interface CvJdMatchParsedResponse {
   /** cv_jd_match_v2: non-skill dimensions extracted from JD (seniority/language/education/domain/work_mode). */
   jd_dimensions?: JdDimension[];
   fell_back_to_rubric?: boolean;
-  experience_fit?: ExperienceFit | null;
 }
 
 export interface CvMatchDto {
@@ -503,8 +501,6 @@ export interface CvMatchDto {
   cvId: string;
   jobDescriptionId: string | null;
   aiResultId: string | null;
-  overall_match_score: number | null;
-  seniority_match?: GapSeniorityBlock | null;
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   overallScore: number | null;
   matchRatio: number | null;
@@ -545,7 +541,6 @@ export interface JobRecommendationDto {
    *  minh bạch cho UI, KHÔNG phải khoá sort: BE rank nội bộ bằng fused(skill+semantic) × factor + nudge.
    *  Có thể vắng ở response cũ. */
   recommendation_score?: number;
-  seniority_match?: GapSeniorityBlock | null;
   experience_fit?: ExperienceFit | null;
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   /** true khi job cao hơn CV ≥3 bậc seniority (vd fresher→LEAD) — UI badge/lọc. */
@@ -940,7 +935,6 @@ export interface InterviewPlanItem {
   focus_type: InterviewFocusType;
   reason: string;
   difficulty: "foundation" | "applied";
-  template_question: string;
   question: string;
   good_answer_hints: string[];
 }

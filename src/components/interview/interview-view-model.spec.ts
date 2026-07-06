@@ -66,7 +66,6 @@ const detail: InterviewDetailResponseDto = {
       filler_words: 65,
       structured_answers: 82,
     },
-    body_language: null,
     recommendations: "Practice system design.",
     suggested_modules: ["React Query"],
   },
@@ -83,7 +82,6 @@ const detail: InterviewDetailResponseDto = {
       phase: "INTRODUCTION",
       modality: "TEXT",
       aiRequestId: null,
-      interviewerMessage: "Hello",
       interviewerQuestion: "Tell me about your React project.",
       userAnswerText: "I built a dashboard.",
       userAnswerTranscript: null,
@@ -328,7 +326,6 @@ describe("interview view model", () => {
           depthSignal: "deep",
           currentThread: "React Query cache invalidation",
           skillCanonical: "react_query",
-          questionBankItemId: "bank-1",
           questionBankKey: "frontend-skill-react-query-01",
           insight: {
             talking_point: "project",
