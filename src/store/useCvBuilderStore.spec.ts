@@ -245,6 +245,43 @@ describe("useCvBuilderStore.structure", () => {
     expect(useCvBuilderStore.getState().projects[0]).toMatchObject({ id: "project-2", role: "Lead" });
   });
 
+  it("duplicates a project after the original and preserves its content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      projects: [
+        { id: "project-1", name: "Portfolio", role: "Developer", link: "https://example.com", description: "Built UI", tools: "React", contribution: "Frontend", result: "Shipped" },
+      ],
+    });
+
+    useCvBuilderStore.getState().duplicateProject("project-1");
+
+    const projects = useCvBuilderStore.getState().projects;
+    expect(projects).toHaveLength(2);
+    expect(projects[1]).toMatchObject({
+      name: "Portfolio",
+      role: "Developer",
+      link: "https://example.com",
+      description: "Built UI",
+      tools: "React",
+      contribution: "Frontend",
+      result: "Shipped",
+    });
+    expect(projects[1].id).not.toBe("project-1");
+  });
+
+  it("allows removing the last project so the section can show its empty state", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      projects: [
+        { id: "project-1", name: "Only Project", role: "Developer", link: "", description: "", tools: "", contribution: "", result: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().removeProject("project-1");
+
+    expect(useCvBuilderStore.getState().projects).toEqual([]);
+  });
+
   it("reorders repeatable experience items without losing their data", () => {
     useCvBuilderStore.getState().reset();
     useCvBuilderStore.setState({
@@ -258,5 +295,43 @@ describe("useCvBuilderStore.structure", () => {
 
     expect(useCvBuilderStore.getState().experience.map((experience) => experience.company)).toEqual(["Second Co", "First Co"]);
     expect(useCvBuilderStore.getState().experience[0]).toMatchObject({ id: "exp-2", position: "Developer" });
+  });
+
+  it("duplicates an experience entry after the original and preserves its content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      experience: [
+        { id: "exp-1", company: "SkillBridge", position: "Intern", startDate: "2026-01", endDate: "2026-06", description: "Built features", responsibilities: "Frontend", achievements: "Improved flow", aiRewrite: "Rewrite" },
+      ],
+    });
+
+    useCvBuilderStore.getState().duplicateExperience("exp-1");
+
+    const experience = useCvBuilderStore.getState().experience;
+    expect(experience).toHaveLength(2);
+    expect(experience[1]).toMatchObject({
+      company: "SkillBridge",
+      position: "Intern",
+      startDate: "2026-01",
+      endDate: "2026-06",
+      description: "Built features",
+      responsibilities: "Frontend",
+      achievements: "Improved flow",
+      aiRewrite: "Rewrite",
+    });
+    expect(experience[1].id).not.toBe("exp-1");
+  });
+
+  it("allows removing the last experience so the section can show its empty state", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      experience: [
+        { id: "exp-1", company: "Only Co", position: "Intern", startDate: "", endDate: "", description: "", responsibilities: "", achievements: "", aiRewrite: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().removeExperience("exp-1");
+
+    expect(useCvBuilderStore.getState().experience).toEqual([]);
   });
 });

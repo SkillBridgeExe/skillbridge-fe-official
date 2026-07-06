@@ -165,18 +165,21 @@ export interface CvBuilderState {
   addEducation: () => void;
   updateEducation: (id: string, field: keyof Education, value: string) => void;
   removeEducation: (id: string) => void;
+  duplicateEducation: (id: string) => void;
   moveEducation: (id: string, direction: "up" | "down") => void;
 
   // Actions — Experience
   addExperience: () => void;
   updateExperience: (id: string, field: keyof WorkExperience, value: string) => void;
   removeExperience: (id: string) => void;
+  duplicateExperience: (id: string) => void;
   moveExperience: (id: string, direction: "up" | "down") => void;
 
   // Actions — Projects
   addProject: () => void;
   updateProject: (id: string, field: keyof Project, value: string) => void;
   removeProject: (id: string) => void;
+  duplicateProject: (id: string) => void;
   moveProject: (id: string, direction: "up" | "down") => void;
 
   // Actions — Skills
@@ -188,6 +191,7 @@ export interface CvBuilderState {
   addCertification: () => void;
   updateCertification: (id: string, field: keyof Certification, value: string) => void;
   removeCertification: (id: string) => void;
+  duplicateCertification: (id: string) => void;
   moveCertification: (id: string, direction: "up" | "down") => void;
 
   // Actions — UI
@@ -401,8 +405,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     education: s.education.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
   })),
   removeEducation: (id) => set((s) => ({
-    education: s.education.length > 1 ? s.education.filter((e) => e.id !== id) : s.education,
+    education: s.education.filter((e) => e.id !== id),
   })),
+  duplicateEducation: (id) => set((s) => {
+    const idx = s.education.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.education[idx], id: uid() };
+    const newArr = [...s.education];
+    newArr.splice(idx + 1, 0, cloned);
+    return { education: newArr };
+  }),
   moveEducation: (id, direction) => set((s) => {
     const idx = s.education.findIndex((e) => e.id === id);
     if (idx < 0) return {};
@@ -420,8 +432,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     experience: s.experience.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
   })),
   removeExperience: (id) => set((s) => ({
-    experience: s.experience.length > 1 ? s.experience.filter((e) => e.id !== id) : s.experience,
+    experience: s.experience.filter((e) => e.id !== id),
   })),
+  duplicateExperience: (id) => set((s) => {
+    const idx = s.experience.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.experience[idx], id: uid() };
+    const newArr = [...s.experience];
+    newArr.splice(idx + 1, 0, cloned);
+    return { experience: newArr };
+  }),
   moveExperience: (id, direction) => set((s) => {
     const idx = s.experience.findIndex((e) => e.id === id);
     if (idx < 0) return {};
@@ -439,8 +459,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     projects: s.projects.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
   })),
   removeProject: (id) => set((s) => ({
-    projects: s.projects.length > 1 ? s.projects.filter((p) => p.id !== id) : s.projects,
+    projects: s.projects.filter((p) => p.id !== id),
   })),
+  duplicateProject: (id) => set((s) => {
+    const idx = s.projects.findIndex((p) => p.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.projects[idx], id: uid() };
+    const newArr = [...s.projects];
+    newArr.splice(idx + 1, 0, cloned);
+    return { projects: newArr };
+  }),
   moveProject: (id, direction) => set((s) => {
     const idx = s.projects.findIndex((p) => p.id === id);
     if (idx < 0) return {};
@@ -469,8 +497,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     certifications: s.certifications.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
   })),
   removeCertification: (id) => set((s) => ({
-    certifications: s.certifications.length > 1 ? s.certifications.filter((c) => c.id !== id) : s.certifications,
+    certifications: s.certifications.filter((c) => c.id !== id),
   })),
+  duplicateCertification: (id) => set((s) => {
+    const idx = s.certifications.findIndex((c) => c.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.certifications[idx], id: uid() };
+    const newArr = [...s.certifications];
+    newArr.splice(idx + 1, 0, cloned);
+    return { certifications: newArr };
+  }),
   moveCertification: (id, direction) => set((s) => {
     const idx = s.certifications.findIndex((c) => c.id === id);
     if (idx < 0) return {};

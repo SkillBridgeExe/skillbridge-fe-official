@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, X, RotateCcw } from "lucide-react";
+import { Plus, Sparkles, X, RotateCcw, Briefcase } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -22,6 +22,7 @@ import {
   replaceAchievementLine,
   suggestionKeyForField,
 } from "./achievement-line-patch";
+import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
 
 
 export function ExperienceSection() {
@@ -30,6 +31,7 @@ export function ExperienceSection() {
     addExperience,
     updateExperience,
     removeExperience,
+    duplicateExperience,
     moveExperience,
     draftId,
     clearSectionEvaluation,
@@ -70,6 +72,8 @@ export function ExperienceSection() {
   );
   // Số lần "Viết lại" theo từng (entry, field) → token variant để BE bỏ cache.
   const attempts = useRef<Record<string, number>>({});
+
+  useScrollToNewItem(experience, "experience");
 
   // Pillar 3 (no-dead-end): route a stuck field (input-gate reject OR an empty
   // field with nothing to rewrite) INTO the intake coaching loop instead of a
@@ -338,17 +342,21 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-6">
-      {experience.map((exp, index) => {
-        const title = exp.company || t("builder.ph.company", { defaultValue: "Company Name" });
-        const subtitle = exp.position || t("builder.entry.experience", { defaultValue: "Experience" });
-
+      {experience.length > 0 ? experience.map((exp, index) => {
         return (
+          <div key={exp.id} id={`experience-${exp.id}`}>
           <SectionItemCard
             key={exp.id}
-            title={title}
-            subtitle={subtitle}
+            title={exp.position || exp.company || t("builder.fields.newExperience")}
+            subtitle={exp.startDate || exp.endDate ? `${exp.startDate} - ${exp.endDate}` : undefined}
             onRemove={() => removeExperience(exp.id)}
-            canRemove={experience.length > 1}
+            canRemove={true}
+            requireConfirmOnRemove={!!exp.company || !!exp.position || !!exp.description || !!exp.achievements}
+            onDuplicate={() => {
+              duplicateExperience(exp.id);
+              // Focus could be handled here or rely on react rendering
+            }}
+            canDuplicate={true}
             onMoveUp={() => moveExperience(exp.id, "up")}
             canMoveUp={index > 0}
             onMoveDown={() => moveExperience(exp.id, "down")}
@@ -576,9 +584,23 @@ export function ExperienceSection() {
 
           </div>
           </SectionItemCard>
+          </div>
         );
-      })}
+      }) : (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <Briefcase className="w-6 h-6 text-slate-400" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle", { defaultValue: "No experience added" })}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc", { defaultValue: "Add relevant jobs or internships." })}</p>
+          <Button onClick={addExperience} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
+            <Plus className="w-3.5 h-3.5"/>
+            {t("builder.add.experience")}
+          </Button>
+        </div>
+      )}
       
+      {experience.length > 0 && (
       <button 
         onClick={addExperience}
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
@@ -586,6 +608,7 @@ export function ExperienceSection() {
         <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
         <span className="font-medium text-sm">{t("builder.add.experience")}</span>
       </button>
+      )}
     </div>
   );
 }

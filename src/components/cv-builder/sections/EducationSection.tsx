@@ -2,27 +2,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus } from "lucide-react";
+import { Plus, GraduationCap } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { SectionItemCard } from "./SectionItemCard";
+import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
 
 export function EducationSection() {
-  const { education, addEducation, updateEducation, removeEducation, moveEducation } = useCvBuilderStore();
+  const { education, addEducation, updateEducation, removeEducation, duplicateEducation, moveEducation } = useCvBuilderStore();
   const { t } = useTranslation("diagnosis");
+
+  useScrollToNewItem(education, "education");
 
   return (
     <div className="space-y-6">
-      {education.map((edu, index) => {
+      {education.length > 0 ? education.map((edu, index) => {
         const title = edu.school || t("builder.ph.school", { defaultValue: "School / Organization Name" });
         const subtitle = edu.degree && edu.major ? `${edu.degree} - ${edu.major}` : edu.major || edu.degree;
         
         return (
+          <div key={edu.id} id={`education-${edu.id}`}>
           <SectionItemCard
             key={edu.id}
             title={title}
             subtitle={subtitle}
             onRemove={() => removeEducation(edu.id)}
-            canRemove={education.length > 1}
+            canRemove={true}
+            requireConfirmOnRemove={!!edu.school || !!edu.major || !!edu.degree || !!edu.achievements}
+            onDuplicate={() => duplicateEducation(edu.id)}
+            canDuplicate={true}
             onMoveUp={() => moveEducation(edu.id, "up")}
             canMoveUp={index > 0}
             onMoveDown={() => moveEducation(edu.id, "down")}
@@ -65,9 +73,23 @@ export function EducationSection() {
               </div>
             </div>
           </SectionItemCard>
+          </div>
         );
-      })}
+      }) : (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <GraduationCap className="w-6 h-6 text-slate-400" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.educationTitle", { defaultValue: "No education added" })}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.educationDesc", { defaultValue: "Add your schooling or degrees." })}</p>
+          <Button onClick={addEducation} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
+            <Plus className="w-3.5 h-3.5"/>
+            {t("builder.add.education", { defaultValue: "Add Education" })}
+          </Button>
+        </div>
+      )}
       
+      {education.length > 0 && (
       <button 
         onClick={addEducation}
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
@@ -75,6 +97,7 @@ export function EducationSection() {
         <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
         <span className="font-medium text-sm">{t("builder.add.education", { defaultValue: "Add Education" })}</span>
       </button>
+      )}
     </div>
   );
 }

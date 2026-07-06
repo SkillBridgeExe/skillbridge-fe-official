@@ -266,16 +266,24 @@ export function SummarySection() {
             </Button>
           )}
         </div>
-        <Textarea
-          className="min-h-[120px] resize-none text-[13px]"
-          placeholder={
-            summaryMode === "ai"
-              ? t("builder.summaryAiPlaceholder")
-              : t("builder.summaryManualPlaceholder")
-          }
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-        />
+        <div className="relative">
+          <Textarea
+            className="min-h-[120px] resize-none text-[13px] pb-7"
+            placeholder={
+              summaryMode === "ai"
+                ? t("builder.summaryAiPlaceholder")
+                : t("builder.summaryManualPlaceholder")
+            }
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+          />
+          <div className={cn(
+            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors",
+            summary.length > 500 ? "text-amber-500" : "text-slate-400"
+          )}>
+            {summary.length} {t("builder.characters", { defaultValue: "chars" })}
+          </div>
+        </div>
       </div>
 
       {/* Input-gate hint — giải thích vì sao AI chưa chạy (thay vì nút chết) */}
