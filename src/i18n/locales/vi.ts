@@ -1727,6 +1727,15 @@ export default {
       trendUp: "nhu cầu tăng",
       error: "Không tải được nhận định thị trường.",
       retry: "Thử lại",
+      sampleSize: "Dựa trên {{count}} tin tuyển dụng đang hoạt động",
+      confidence: {
+        high: "Độ tin cậy cao",
+        medium: "Độ tin cậy vừa",
+        low: "Mẫu dữ liệu mỏng",
+      },
+      stale: "Dữ liệu chưa cập nhật hơn 3 ngày — số liệu là thật nhưng có thể chưa mới nhất.",
+      pctOfPostings: "{{pct}}% tin tuyển",
+      pairsTitle: "Kỹ năng thường được tuyển cùng nhau",
     },
     interviewPrep: {
       title: "Luyện phỏng vấn theo gap của bạn",

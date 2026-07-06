@@ -1736,6 +1736,15 @@ export default {
       trendUp: "rising demand",
       error: "Could not load market insight.",
       retry: "Retry",
+      sampleSize: "Based on {{count}} active job postings",
+      confidence: {
+        high: "High confidence",
+        medium: "Medium confidence",
+        low: "Thin sample",
+      },
+      stale: "Data has not refreshed in over 3 days — numbers are real but may not be current.",
+      pctOfPostings: "{{pct}}% of postings",
+      pairsTitle: "Skills often hired together",
     },
     interviewPrep: {
       title: "Practice interview for your gaps",

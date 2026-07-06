@@ -858,27 +858,51 @@ export interface SkillGapResponse {
   gap: SkillGapRow[];
 }
 
+// Mirror of BE trends-insight.types.ts (GET /api/trends/insight) — numbers are
+// re-attached from deterministic FACTS server-side; the LLM only writes prose.
 export interface TrendsRecommendedSkill {
-  canonical_name: string;
+  skill: string;
   display_name: string;
-  posting_count?: number;
-  pct_of_postings?: number;
-  trend_delta?: number | null;
+  pct_of_postings: number;
+  salary_p50_vnd: number | null;
 }
 
 export interface TrendsInsightItem {
-  title: string;
-  detail: string;
-  trend_delta?: number | null;
+  skill: string;
+  display_name: string;
+  pct_of_postings: number;
+  trend_delta: number | null;
+  /** null = role-level insight (no CV to check coverage against). */
+  covered: boolean | null;
+  comment: string;
+}
+
+/** Skill pair that co-occurs in the SAME postings — counts are real SQL facts. */
+export interface TrendsSkillPairInsight {
+  a: string;
+  a_display: string;
+  b: string;
+  b_display: string;
+  pair_count: number;
+  pct_of_postings: number;
+  comment: string;
 }
 
 export interface TrendsInsightResponse {
-  cv_id: string;
   role_code: string;
-  period?: string;
+  period: string;
+  /** Active postings in the role scope — basis for data_confidence. */
+  sample_size: number;
+  data_confidence: "high" | "medium" | "low";
+  personalized: boolean;
   summary: string;
   insights: TrendsInsightItem[];
   recommended_skills: TrendsRecommendedSkill[];
+  /** May be empty when the pool/LLM has no pair worth mentioning. */
+  skill_pairs: TrendsSkillPairInsight[];
+  cached: boolean;
+  /** True when the snapshot is older than the disclosure threshold (3 days). */
+  stale?: boolean;
 }
 
 // Diagnosis add-ons (W11/W12/W13)
