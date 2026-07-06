@@ -122,8 +122,8 @@ export function ProjectsSection() {
   return (
     <div className="space-y-6">
       {projects.length > 0 ? projects.map((proj, index) => {
-        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Project Name" });
-        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Project" });
+        const title = proj.name || t("builder.ph.projectName");
+        const subtitle = proj.role || t("builder.entry.project");
 
         return (
           <div key={proj.id} id={`projects-${proj.id}`}>
@@ -179,7 +179,7 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "tell a story about this project" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger")}</span>
                 </Button>
               )}
             </div>
@@ -279,7 +279,7 @@ export function ProjectsSection() {
                     }}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                    <span>{t("companion.analyze")}</span>
                   </Button>
                 )}
               </div>
@@ -292,8 +292,8 @@ export function ProjectsSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <LayoutTemplate className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle", { defaultValue: "No projects added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc", { defaultValue: "Add notable projects you've worked on." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc")}</p>
           <Button onClick={addProject} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.project")}

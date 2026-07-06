@@ -443,7 +443,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Auto-fill Assistant" })}</span>
+                  <span className="leading-none">{t("companion.intake.trigger")}</span>
                 </Button>
               )}
             </div>
@@ -528,7 +528,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                  <span>{t("companion.analyze")}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -540,7 +540,7 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "description", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
+                  <span>{t("companion.intake.coachStuck")}</span>
                 </Button>
               )}
             </div>
@@ -607,7 +607,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                  <span>{t("companion.analyze")}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -619,7 +619,7 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "achievements", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
+                  <span>{t("companion.intake.coachStuck")}</span>
                 </Button>
               )}
             </div>
@@ -633,8 +633,8 @@ export function ExperienceSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <Briefcase className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle", { defaultValue: "No experience added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc", { defaultValue: "Add relevant jobs or internships." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc")}</p>
           <Button onClick={addExperience} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.experience")}

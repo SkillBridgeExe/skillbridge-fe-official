@@ -17,7 +17,7 @@ export function EducationSection() {
   return (
     <div className="space-y-6">
       {education.length > 0 ? education.map((edu, index) => {
-        const title = edu.school || t("builder.ph.school", { defaultValue: "School / Organization Name" });
+        const title = edu.school || t("builder.ph.school");
         const subtitle = edu.degree && edu.major ? `${edu.degree} - ${edu.major}` : edu.major || edu.degree;
         
         return (
@@ -80,11 +80,11 @@ export function EducationSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <GraduationCap className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.educationTitle", { defaultValue: "No education added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.educationDesc", { defaultValue: "Add your schooling or degrees." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.educationTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.educationDesc")}</p>
           <Button onClick={addEducation} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
-            {t("builder.add.education", { defaultValue: "Add Education" })}
+            {t("builder.add.education")}
           </Button>
         </div>
       )}
@@ -95,7 +95,7 @@ export function EducationSection() {
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
       >
         <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
-        <span className="font-medium text-sm">{t("builder.add.education", { defaultValue: "Add Education" })}</span>
+        <span className="font-medium text-sm">{t("builder.add.education")}</span>
       </button>
       )}
     </div>

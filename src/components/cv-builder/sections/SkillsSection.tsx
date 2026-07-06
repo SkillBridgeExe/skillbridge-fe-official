@@ -54,7 +54,7 @@ export function SkillsSection() {
         <div className="p-3 bg-indigo-50/60 border border-indigo-100/80 rounded-lg space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600">
             <Zap className="w-3.5 h-3.5" />
-            {t("skillsNudge.title", { defaultValue: "Skill polishing suggestions" })}
+            {t("skillsNudge.title")}
           </div>
           <ul className="space-y-1">
             {nudgeItems.map((item) => (

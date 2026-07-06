@@ -42,7 +42,7 @@ export function SectionItemCard({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (requireConfirmOnRemove) {
-      if (window.confirm(t("builder.confirmRemove", { defaultValue: "Are you sure you want to remove this item? This action cannot be undone." }))) {
+      if (window.confirm(t("builder.confirmRemove"))) {
         onRemove();
       }
     } else {
@@ -58,7 +58,7 @@ export function SectionItemCard({
       >
         <div className="flex-1 min-w-0 pr-4">
           <h4 className="font-semibold text-sm text-slate-800 truncate">
-            {title || t("builder.actions.unnamedItem", { defaultValue: "Untitled item" })}
+            {title || t("builder.actions.unnamedItem")}
           </h4>
           {subtitle && <p className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</p>}
         </div>
@@ -75,8 +75,8 @@ export function SectionItemCard({
                   onMoveUp();
                 }}
                 disabled={!canMoveUp}
-                aria-label={t("builder.actions.moveUp", { defaultValue: "Move up" })}
-                title={t("builder.actions.moveUp", { defaultValue: "Move up" })}
+                aria-label={t("builder.actions.moveUp")}
+                title={t("builder.actions.moveUp")}
               >
                 <ChevronUp className="w-4 h-4" />
               </Button>
@@ -91,8 +91,8 @@ export function SectionItemCard({
                   onMoveDown();
                 }}
                 disabled={!canMoveDown}
-                aria-label={t("builder.actions.moveDown", { defaultValue: "Move down" })}
-                title={t("builder.actions.moveDown", { defaultValue: "Move down" })}
+                aria-label={t("builder.actions.moveDown")}
+                title={t("builder.actions.moveDown")}
               >
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -108,8 +108,8 @@ export function SectionItemCard({
                 onDuplicate();
               }}
               disabled={!canDuplicate}
-              aria-label={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
-              title={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
+              aria-label={t("builder.actions.duplicate")}
+              title={t("builder.actions.duplicate")}
             >
               <Copy className="w-3.5 h-3.5" />
             </Button>
@@ -120,8 +120,8 @@ export function SectionItemCard({
             className={cn("h-7 w-7 text-slate-400 hover:text-red-500 transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
             onClick={handleRemove}
             disabled={!canRemove}
-            aria-label={t("builder.actions.remove", { defaultValue: "Remove item" })}
-            title={t("builder.actions.remove", { defaultValue: "Remove item" })}
+            aria-label={t("builder.actions.remove")}
+            title={t("builder.actions.remove")}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
