@@ -202,7 +202,7 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
     skills_relevance_breakdown: review.skills_relevance_breakdown,
     top_summary: review.top_summary,
     evidence_ledger: review.evidence_ledger,
-    bullet_feedback: review.bullet_feedback || {},
+    bullet_feedback: review.bullet_feedback ?? [],
     buzzwords_detected: review.buzzwords_detected || [],
     // Input-quality disclosure (additive, BE-deterministic) — absent on older payloads → null → no banner.
     extraction_quality: review.extraction_quality ?? null,

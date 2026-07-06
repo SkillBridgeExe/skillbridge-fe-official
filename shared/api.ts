@@ -188,7 +188,9 @@ export interface CvReviewData {
   evidence_ledger?: EvidenceLedger | null;
   /** Input-quality disclosure (mojibake/OCR/thin/sparse). Absent/null → no banner. */
   extraction_quality?: ExtractionQuality | null;
-  bullet_feedback?: Record<string, BulletFeedbackItem>;
+  /** Per-bullet deterministic feedback — BE sends an ARRAY (bullet-analyzer.service.ts),
+   *  each item carrying its own `text`; match by bullet text, not by key. */
+  bullet_feedback?: BulletFeedbackItem[];
   buzzwords_detected?: string[];
   dimension_provenance?: Partial<Record<'action_verbs'|'skills_relevance'|'experience'|'education',
     { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] }>>;
@@ -344,7 +346,7 @@ export interface CvReviewParsedResponse {
     education: string;
   };
   sections: BeReviewSection[];
-  bullet_feedback?: Record<string, BulletFeedbackItem>;
+  bullet_feedback?: BulletFeedbackItem[];
   buzzwords_detected?: string[];
   ats_extracted: {
     name: string | null;
