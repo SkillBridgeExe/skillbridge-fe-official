@@ -35,12 +35,11 @@ export function minuteToTimeInput(value: number): string {
 export function normalizeWeeklyAvailability(
   template: SaveMentorAvailabilityTemplateRequest,
 ): SaveMentorAvailabilityTemplateRequest {
+  const bufferMinutes = template.bufferMinutes ?? 0;
   return {
     timezone: template.timezone || DEFAULT_MENTOR_TEMPLATE_TIMEZONE,
-    bufferMinutes: MENTOR_BUFFER_OPTIONS.includes(
-      template.bufferMinutes as (typeof MENTOR_BUFFER_OPTIONS)[number],
-    )
-      ? template.bufferMinutes
+    bufferMinutes: (MENTOR_BUFFER_OPTIONS as readonly number[]).includes(bufferMinutes)
+      ? bufferMinutes
       : 0,
     windows: template.windows
       .filter((window) => window.isActive !== false)

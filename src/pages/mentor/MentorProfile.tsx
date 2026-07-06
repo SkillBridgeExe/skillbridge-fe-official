@@ -59,7 +59,11 @@ export default function MentorProfile() {
     return openSlots.reduce<Array<{ dateKey: string; label: string; slots: typeof openSlots }>>(
       (groups, slot) => {
         const date = new Date(slot.startsAt);
-        const dateKey = date.toISOString().slice(0, 10);
+        const dateKey = [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+        ].join("-");
         const current = groups.find((group) => group.dateKey === dateKey);
         if (current) {
           current.slots.push(slot);

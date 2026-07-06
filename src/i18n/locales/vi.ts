@@ -191,7 +191,9 @@ export default {
         templateSaved: "Đã lưu lịch hằng tuần",
         templateInvalid: "Lịch hằng tuần cần kiểm tra lại",
         templateSaveFailed: "Không thể lưu lịch hằng tuần",
+        templateLoadFailed: "Không thể tải lịch hằng tuần. Vui lòng tải lại trước khi lưu thay đổi.",
         addWindow: "Thêm khung giờ",
+        removeWindow: "Xóa khung giờ",
         startTime: "Bắt đầu",
         endTime: "Kết thúc",
         addSlot: "Thêm slot",
@@ -221,8 +223,8 @@ export default {
           7: "Chủ nhật",
         },
         source: {
-          MANUAL: "Manual",
-          TEMPLATE: "Generated",
+          MANUAL: "Thủ công",
+          TEMPLATE: "Tự sinh",
         },
         status: {
           OPEN: "Mở",
@@ -1045,6 +1047,15 @@ export default {
           close: "Đóng",
           studentGoal: "Mục tiêu học viên",
           noStudentGoal: "Chưa có mục tiêu",
+          statusLabels: {
+            PENDING_PAYMENT: "Chờ thanh toán",
+            PENDING_DEPOSIT: "Chờ thanh toán (dữ liệu cũ)",
+            AWAITING_REMAINING: "Đang chờ thanh toán (dữ liệu cũ)",
+            CONFIRMED: "Đã xác nhận",
+            COMPLETED: "Đã hoàn tất",
+            CANCELLED: "Đã hủy",
+            EXPIRED: "Hết hạn",
+          },
           refundStatusLabels: {
             NOT_REQUIRED: "Không cần refund",
             PENDING: "Chờ xử lý refund",

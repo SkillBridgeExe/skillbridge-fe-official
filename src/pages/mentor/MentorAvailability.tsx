@@ -136,6 +136,13 @@ export default function MentorAvailability() {
   };
 
   const handleSaveTemplate = async () => {
+    if (templateQuery.isError) {
+      toast({
+        title: t("mentor.availability.templateLoadFailed"),
+        variant: "destructive",
+      });
+      return;
+    }
     if (validationCodes.length > 0) {
       toast({
         title: t("mentor.availability.templateInvalid"),
@@ -265,6 +272,10 @@ export default function MentorAvailability() {
                   <Skeleton key={day} className="h-20 rounded-lg" />
                 ))}
               </div>
+            ) : templateQuery.isError ? (
+              <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                {t("mentor.availability.templateLoadFailed")}
+              </div>
             ) : (
               <div className="mt-5 space-y-3">
                 {DAYS.map((day) => (
@@ -299,7 +310,7 @@ export default function MentorAvailability() {
               </p>
               <Button
                 onClick={handleSaveTemplate}
-                disabled={saveTemplate.isPending || templateQuery.isLoading}
+                disabled={saveTemplate.isPending || templateQuery.isLoading || templateQuery.isError}
                 className="h-10 rounded-lg bg-primary font-bold text-primary-foreground hover:bg-primary/90"
               >
                 {saveTemplate.isPending ? (
@@ -467,6 +478,7 @@ function WeeklyDayEditor({
                 size="icon"
                 className="h-10 w-10 rounded-lg text-slate-500"
                 onClick={() => onRemoveWindow(index)}
+                aria-label={t("mentor.availability.removeWindow")}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -624,17 +636,15 @@ function DateTimeField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="min-w-[200px] flex-1">
-      <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
-        {label}
-      </label>
+    <label className="min-w-[200px] flex-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+      {label}
       <Input
         type="datetime-local"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-lg"
+        className="mt-1 h-11 rounded-lg"
       />
-    </div>
+    </label>
   );
 }
 

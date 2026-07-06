@@ -78,7 +78,11 @@ export default function AdminBillingMentorBookings() {
           <SelectContent>
             <SelectItem value="ALL">{t("admin.mentorBookings.allStatuses")}</SelectItem>
             {MENTOR_BOOKING_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+              <SelectItem key={s} value={s}>
+                {t(`admin.mentorBookings.statusLabels.${s}`, {
+                  defaultValue: s.replace(/_/g, " "),
+                })}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -178,7 +182,9 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
       });
       toast({
         title: t("admin.mentorBookings.refundProcessed", {
-          status: t(`admin.mentorBookings.refundStatusLabels.${refundStatus}`),
+          status: t(`admin.mentorBookings.refundStatusLabels.${refundStatus}`, {
+            defaultValue: refundStatus.replace(/_/g, " "),
+          }),
         }),
       });
       setShowRefund(false);
@@ -197,7 +203,9 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[booking.status] ?? ""}`}>
-              {booking.status.replace(/_/g, " ")}
+              {t(`admin.mentorBookings.statusLabels.${booking.status}`, {
+                defaultValue: booking.status.replace(/_/g, " "),
+              })}
             </Badge>
             {booking.refundStatus !== "NOT_REQUIRED" ? (
               <Badge
@@ -230,9 +238,7 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
         </div>
         <div className="text-right">
           <p className="font-bold text-slate-950 dark:text-white">{formatVnd(booking.totalAmountVnd)}</p>
-          <p className="text-xs text-slate-400">
-            {t("admin.mentorBookings.paymentLabel")}: {formatVnd(booking.totalAmountVnd)}
-          </p>
+          <p className="text-xs text-slate-400">{t("admin.mentorBookings.paymentLabel")}</p>
         </div>
       </div>
 
