@@ -13,10 +13,15 @@ import {
   getMentorSlotsApi,
   getMyMentorSlotsApi,
   createMentorSlotApi,
+  blockMentorSlotApi,
   deleteMentorSlotApi,
+  getMyMentorAvailabilityTemplateApi,
   type AdminMentorListQuery,
   type CreateMentorSlotDto,
   type ListMentorSlotsQuery,
+  saveMyMentorAvailabilityTemplateApi,
+  unblockMentorSlotApi,
+  type SaveMentorAvailabilityTemplateRequest,
   type MentorListQuery,
   type SkillSearchQuery,
   type UpdateAdminMentorStatusRequest,
@@ -28,6 +33,8 @@ export type {
   AdminMentorListDto,
   CreateMentorSlotDto,
   ListMentorSlotsQuery,
+  MentorAvailabilityTemplateDto,
+  MentorAvailabilityWindow,
   MentorCardDto,
   MentorFiltersDto,
   MentorListDto,
@@ -37,6 +44,7 @@ export type {
   MentorProfileStatus,
   MentorSkillDto,
   MentorSlotDto,
+  MentorSlotSource,
   MentorSlotStatus,
   MentorSort,
   MentorSummaryDto,
@@ -44,11 +52,13 @@ export type {
   SkillSearchQuery,
   UpdateAdminMentorStatusRequest,
   UpdateMentorProfileRequest,
+  SaveMentorAvailabilityTemplateRequest,
 } from "@/api/mentors";
 
 export {
   MENTOR_PROFILE_STATUSES,
   MENTOR_SESSION_DURATIONS,
+  MENTOR_SLOT_SOURCES,
   MENTOR_SORTS,
   MENTOR_SLOT_STATUSES,
 } from "@/api/mentors";
@@ -78,5 +88,12 @@ export const getMyMentorSlots = (query: ListMentorSlotsQuery) =>
   getMyMentorSlotsApi(query);
 export const createMentorSlot = (payload: CreateMentorSlotDto) =>
   createMentorSlotApi(payload);
+export const getMyMentorAvailabilityTemplate = () =>
+  getMyMentorAvailabilityTemplateApi();
+export const saveMyMentorAvailabilityTemplate = (
+  payload: SaveMentorAvailabilityTemplateRequest,
+) => saveMyMentorAvailabilityTemplateApi(payload);
+export const blockMentorSlot = (slotId: string) => blockMentorSlotApi(slotId);
+export const unblockMentorSlot = (slotId: string) => unblockMentorSlotApi(slotId);
 export const deleteMentorSlot = (slotId: string) =>
   deleteMentorSlotApi(slotId);

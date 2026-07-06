@@ -1,23 +1,45 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const MAX_MENTOR_RANGE_DAYS = 60;
+export type MentorDateRangeErrorCode = "missing" | "invalid" | "reversed" | "tooLong";
 
 function localDay(value: string): Date {
   return new Date(`${value}T00:00:00`);
 }
 
-export function validateMentorDateRange(fromDate: string, toDate: string): string | null {
-  if (!fromDate || !toDate) return "Choose both start and end dates.";
+export function getMentorDateRangeErrorCode(
+  fromDate: string,
+  toDate: string,
+): MentorDateRangeErrorCode | null {
+  if (!fromDate || !toDate) return "missing";
   const from = localDay(fromDate);
   const to = localDay(toDate);
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    return "Choose valid dates.";
+    return "invalid";
   }
-  if (to < from) return "End date must be on or after start date.";
+  if (to < from) return "reversed";
   if (to.getTime() + DAY_MS - from.getTime() > MAX_MENTOR_RANGE_DAYS * DAY_MS) {
-    return `Date range cannot exceed ${MAX_MENTOR_RANGE_DAYS} days.`;
+    return "tooLong";
   }
   return null;
+}
+
+export function getMentorDateRangeErrorMessage(code: MentorDateRangeErrorCode): string {
+  switch (code) {
+    case "missing":
+      return "Choose both start and end dates.";
+    case "invalid":
+      return "Choose valid dates.";
+    case "reversed":
+      return "End date must be on or after start date.";
+    case "tooLong":
+      return `Date range cannot exceed ${MAX_MENTOR_RANGE_DAYS} days.`;
+  }
+}
+
+export function validateMentorDateRange(fromDate: string, toDate: string): string | null {
+  const code = getMentorDateRangeErrorCode(fromDate, toDate);
+  return code ? getMentorDateRangeErrorMessage(code) : null;
 }
 
 export function mentorDateRangeToIso(fromDate: string, toDate: string) {

@@ -5,7 +5,11 @@ import type { MeEntitlementDto } from "@shared/api";
 
 export type { MeEntitlementDto } from "@shared/api";
 
-export type BillingPurpose = "SUBSCRIPTION" | "MENTOR_DEPOSIT" | "MENTOR_REMAINING";
+export type BillingPurpose =
+  | "SUBSCRIPTION"
+  | "MENTOR_BOOKING"
+  | "MENTOR_DEPOSIT"
+  | "MENTOR_REMAINING";
 export type BillingOrderStatus = "PENDING" | "PROCESSING" | "PAID" | "CANCELLED" | "EXPIRED" | "FAILED";
 export type BillingPlanCategory = "SUBSCRIPTION" | "MENTOR_PACKAGE";
 export type BillingPlanInterval = "MONTHLY" | "ONE_TIME";
@@ -34,8 +38,8 @@ export interface BillingPlanDto {
 
 /**
  * POST /api/billing/checkout — subscription-only.
- * Mentor deposit/remaining payments MUST go through the mentor booking API
- * (POST /api/mentor-bookings, POST /api/mentor-bookings/:id/pay-remaining).
+ * Mentor booking payments MUST go through the mentor booking API
+ * (POST /api/mentor-bookings, POST /api/mentor-bookings/:id/pay).
  */
 export interface CreateCheckoutDto {
   purpose: "SUBSCRIPTION";

@@ -36,6 +36,7 @@ export const QUERY_KEYS = {
   MENTORS: (query: object) => ['mentors', 'list', query] as const,
   MENTOR: (slug: string) => ['mentors', 'detail', slug] as const,
   MY_MENTOR_PROFILE: ['mentor', 'me', 'profile'] as const,
+  MY_MENTOR_AVAILABILITY_TEMPLATE: ['mentor', 'me', 'availability-template'] as const,
   MENTOR_SKILLS: (query: object) => ['mentor', 'skills', query] as const,
   ADMIN_MENTORS: (query: object) => ['admin', 'mentors', query] as const,
   MENTOR_SLOTS: (slug: string, query: object) => ['mentors', 'slots', slug, query] as const,

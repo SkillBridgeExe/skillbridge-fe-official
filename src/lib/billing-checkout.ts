@@ -19,6 +19,7 @@ export interface PayOSReturnParams {
 
 export type PublicCheckoutSummaryKey = "amount" | "purpose" | "status" | "orderCode";
 export type BillingCheckoutSurfaceState = "checkout" | "processing" | "terminal" | "unavailable";
+export type MentorCheckoutStage = "booking_paid";
 
 export interface PublicCheckoutSummaryItem {
   key: PublicCheckoutSummaryKey;
@@ -83,6 +84,18 @@ export function shouldCaptureSubscriptionPaymentPaid(
   order: OrderStatusResponseDto | null | undefined,
 ): order is OrderStatusResponseDto & { status: "PAID"; purpose: "SUBSCRIPTION" } {
   return order?.status === "PAID" && order.purpose === "SUBSCRIPTION";
+}
+
+export function getMentorCheckoutStage(
+  order: OrderStatusResponseDto | null | undefined,
+): { stage: MentorCheckoutStage; bookingId: string } | null {
+  if (order?.status !== "PAID" || order.targetType !== "MENTOR_BOOKING" || !order.targetId) {
+    return null;
+  }
+  if (order.purpose === "MENTOR_BOOKING") {
+    return { stage: "booking_paid", bookingId: order.targetId };
+  }
+  return null;
 }
 
 export function getBillingCheckoutSurfaceState(

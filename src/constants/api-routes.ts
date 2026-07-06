@@ -166,8 +166,11 @@ export const API_ROUTES = {
     SLOTS: (slug: string) => `${API}/mentors/${slug}/slots`,
     MY_PROFILE: `${API}/mentors/me/profile`,
     SUBMIT_PROFILE: `${API}/mentors/me/profile/submit`,
+    MY_AVAILABILITY_TEMPLATE: `${API}/mentors/me/availability-template`,
     MY_SLOTS: `${API}/mentors/me/slots`,
     MY_SLOT: (slotId: string) => `${API}/mentors/me/slots/${slotId}`,
+    MY_SLOT_BLOCK: (slotId: string) => `${API}/mentors/me/slots/${slotId}/block`,
+    MY_SLOT_UNBLOCK: (slotId: string) => `${API}/mentors/me/slots/${slotId}/unblock`,
     MY_BOOKINGS: `${API}/mentors/me/bookings`,
     MY_BOOKING_MEETING_LINK: (bookingId: string) =>
       `${API}/mentors/me/bookings/${bookingId}/meeting-link`,
@@ -181,8 +184,7 @@ export const API_ROUTES = {
     CREATE: `${API}/mentor-bookings`,
     MY_LIST: `${API}/mentor-bookings/me`,
     DETAIL: (bookingId: string) => `${API}/mentor-bookings/${bookingId}`,
-    PAY_REMAINING: (bookingId: string) =>
-      `${API}/mentor-bookings/${bookingId}/pay-remaining`,
+    PAY: (bookingId: string) => `${API}/mentor-bookings/${bookingId}/pay`,
     CANCEL: (bookingId: string) => `${API}/mentor-bookings/${bookingId}/cancel`,
     REVIEW: (bookingId: string) => `${API}/mentor-bookings/${bookingId}/review`,
   },

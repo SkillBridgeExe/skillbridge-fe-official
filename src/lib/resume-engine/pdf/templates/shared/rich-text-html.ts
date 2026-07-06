@@ -122,6 +122,8 @@ export const convertPseudoBulletParagraphs = (html: string): string =>
 	});
 
 export const normalizeRichTextHtml = (html: string): string => {
+	if (typeof html !== "string") return "";
+
 	const root = parse(html.trim(), { comment: false });
 	const normalized: string[] = [];
 	let inlineNodes: string[] = [];

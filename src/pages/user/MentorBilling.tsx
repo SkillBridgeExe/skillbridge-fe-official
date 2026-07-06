@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarCheck2,
+  CheckCircle2,
+  Clock3,
   CreditCard,
   ExternalLink,
   Loader2,
@@ -18,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useMyBookings,
-  usePayRemaining,
+  usePayBooking,
   useCancelBooking,
   useReviewBooking,
 } from "@/hooks/use-mentor-bookings";
@@ -28,8 +30,7 @@ import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import type { MentorBookingDto } from "@/services/mentor-bookings.service";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING_DEPOSIT: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  AWAITING_REMAINING: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
   CONFIRMED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
   COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
   CANCELLED: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
@@ -39,6 +40,12 @@ const STATUS_STYLES: Record<string, string> = {
 export default function MentorBilling() {
   const { t } = useTranslation("common");
   const bookingsQuery = useMyBookings();
+  const bookings = bookingsQuery.data ?? [];
+  const activeBookings = bookings.filter((booking) => booking.status === "PENDING_PAYMENT");
+  const upcomingBookings = bookings.filter((booking) => booking.status === "CONFIRMED");
+  const historyBookings = bookings.filter((booking) =>
+    ["COMPLETED", "CANCELLED", "EXPIRED"].includes(booking.status),
+  );
 
   return (
     <Layout>
@@ -51,10 +58,10 @@ export default function MentorBilling() {
             {t("mentor.billing.subtitle", "Quản lý các buổi mentoring đã đặt")}
           </p>
 
-          <div className="mt-8 space-y-4">
+          <div className="mt-8 space-y-6">
             {bookingsQuery.isLoading ? (
               Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)
-            ) : !bookingsQuery.data?.length ? (
+            ) : !bookings.length ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-center dark:border-slate-800 dark:bg-slate-950">
                 <CalendarCheck2 className="h-12 w-12 text-slate-300 dark:text-slate-600" />
                 <p className="mt-4 font-bold text-slate-500 dark:text-slate-400">
@@ -65,9 +72,20 @@ export default function MentorBilling() {
                 </Button>
               </div>
             ) : (
-              bookingsQuery.data.map((booking) => (
-                <StudentBookingCard key={booking.id} booking={booking} />
-              ))
+              <>
+                <BookingSection
+                  title={t("mentor.billing.activeTitle", "Đang cần xử lý")}
+                  bookings={activeBookings}
+                />
+                <BookingSection
+                  title={t("mentor.billing.upcomingTitle", "Sắp tới")}
+                  bookings={upcomingBookings}
+                />
+                <BookingSection
+                  title={t("mentor.billing.historyTitle", "Lịch sử")}
+                  bookings={historyBookings}
+                />
+              </>
             )}
           </div>
         </div>
@@ -76,11 +94,25 @@ export default function MentorBilling() {
   );
 }
 
+function BookingSection({ title, bookings }: { title: string; bookings: MentorBookingDto[] }) {
+  if (bookings.length === 0) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {title}
+      </h2>
+      {bookings.map((booking) => (
+        <StudentBookingCard key={booking.id} booking={booking} />
+      ))}
+    </section>
+  );
+}
+
 function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const navigate = useNavigate();
-  const payRemaining = usePayRemaining();
+  const payBooking = usePayBooking();
   const cancelBooking = useCancelBooking();
   const reviewBooking = useReviewBooking();
 
@@ -90,9 +122,9 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5);
   const [comment, setComment] = useState("");
 
-  const handlePayRemaining = async () => {
+  const handlePayBooking = async () => {
     try {
-      const checkout = await payRemaining.mutateAsync(booking.id);
+      const checkout = await payBooking.mutateAsync(booking.id);
       const checkoutPath = getBillingCheckoutPath(checkout);
       if (!checkoutPath) {
         toast({
@@ -155,11 +187,16 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[booking.status] ?? ""}`}>
-              {booking.status.replace(/_/g, " ")}
+              {t(`mentor.billing.statusLabels.${booking.status}`, {
+                defaultValue: booking.status.replace(/_/g, " "),
+              })}
             </Badge>
             {booking.refundStatus !== "NOT_REQUIRED" ? (
               <Badge variant="outline" className="rounded-full text-xs">
-                Refund: {booking.refundStatus}
+                {t("mentor.billing.refundLabel")}:{" "}
+                {t(`mentor.billing.refundStatusLabels.${booking.refundStatus}`, {
+                  defaultValue: booking.refundStatus.replace(/_/g, " "),
+                })}
               </Badge>
             ) : null}
           </div>
@@ -175,34 +212,29 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
               {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
             </p>
           ) : null}
-        </div>
-        <div className="text-right">
-          <p className="text-lg font-black text-slate-950 dark:text-white">{formatVnd(booking.totalAmountVnd)}</p>
-          {booking.status === "AWAITING_REMAINING" ? (
-            <p className="text-xs text-slate-500">
-              {t("mentor.billing.remaining", "Còn lại")}: {formatVnd(booking.remainingAmountVnd)}
+          {booking.studentGoal ? (
+            <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+              {booking.studentGoal}
             </p>
           ) : null}
         </div>
+        <div className="text-right">
+          <p className="text-lg font-black text-slate-950 dark:text-white">{formatVnd(booking.totalAmountVnd)}</p>
+        </div>
       </div>
+
+      <BookingTimeline booking={booking} />
 
       {/* Status-based actions */}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-        {booking.status === "PENDING_DEPOSIT" ? (
-          <p className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
-            <CreditCard className="h-4 w-4" />
-            {t("mentor.billing.pendingDepositHint", "Đang chờ thanh toán cọc. Kiểm tra email hoặc lịch sử thanh toán.")}
-          </p>
-        ) : null}
-
-        {booking.status === "AWAITING_REMAINING" ? (
+        {booking.status === "PENDING_PAYMENT" ? (
           <Button
-            onClick={handlePayRemaining}
-            disabled={payRemaining.isPending}
+            onClick={handlePayBooking}
+            disabled={payBooking.isPending}
             className="h-10 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"
           >
-            {payRemaining.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CreditCard className="mr-1 h-4 w-4" />}
-            {t("mentor.billing.payRemaining", "Thanh toán phần còn lại")}
+            {payBooking.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CreditCard className="mr-1 h-4 w-4" />}
+            {t("mentor.billing.payBooking", "Thanh toán để xác nhận")}
           </Button>
         ) : null}
 
@@ -217,6 +249,13 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
           </a>
         ) : null}
 
+        {booking.status === "CONFIRMED" && !booking.meetingUrl ? (
+          <p className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300">
+            <Clock3 className="h-4 w-4" />
+            {t("mentor.billing.waitingMeetingLink", "Mentor sẽ cập nhật link meeting trước buổi học.")}
+          </p>
+        ) : null}
+
         {booking.status === "COMPLETED" ? (
           <Button
             variant="outline"
@@ -228,7 +267,7 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
           </Button>
         ) : null}
 
-        {["PENDING_DEPOSIT", "AWAITING_REMAINING", "CONFIRMED"].includes(booking.status) ? (
+        {["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) ? (
           <Button
             variant="outline"
             onClick={() => setShowCancel(!showCancel)}
@@ -271,7 +310,9 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
       {showReview ? (
         <div className="mt-3 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4 dark:border-primary/30">
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">Rating</label>
+            <label className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">
+              {t("mentor.billing.rating")}
+            </label>
             <div className="flex gap-1">
               {([1, 2, 3, 4, 5] as const).map((star) => (
                 <button
@@ -313,6 +354,34 @@ function StudentBookingCard({ booking }: { booking: MentorBookingDto }) {
           <p className="text-sm text-slate-600 dark:text-slate-300">{booking.cancellationReason}</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function BookingTimeline({ booking }: { booking: MentorBookingDto }) {
+  const { t } = useTranslation("common");
+  const paid = ["CONFIRMED", "COMPLETED"].includes(booking.status);
+  const completed = booking.status === "COMPLETED";
+  const cancelled = ["CANCELLED", "EXPIRED"].includes(booking.status);
+
+  return (
+    <div className="mt-4 grid gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/40 sm:grid-cols-3">
+      <TimelineStep done={paid} label={t("mentor.billing.timeline.paid")} />
+      <TimelineStep done={paid} label={t("mentor.billing.timeline.confirmed")} />
+      <TimelineStep
+        done={completed}
+        muted={cancelled}
+        label={cancelled ? t("mentor.billing.timeline.closed") : t("mentor.billing.timeline.completed")}
+      />
+    </div>
+  );
+}
+
+function TimelineStep({ done, label, muted }: { done: boolean; label: string; muted?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 text-xs font-bold ${done ? "text-emerald-700 dark:text-emerald-300" : muted ? "text-slate-400" : "text-slate-500"}`}>
+      {done ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+      {label}
     </div>
   );
 }
