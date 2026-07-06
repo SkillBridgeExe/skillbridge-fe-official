@@ -7,7 +7,7 @@ import {
   getMentorOwnedBookingsApi,
   getMyBookingsApi,
   mentorCancelBookingApi,
-  payRemainingApi,
+  payBookingApi,
   reviewBookingApi,
   setMeetingLinkApi,
   updateAdminMentorBookingRefundApi,
@@ -43,7 +43,7 @@ export { MENTOR_BOOKING_STATUSES, MENTOR_BOOKING_REFUND_STATUSES } from "@/api/m
 export const createBooking = (payload: CreateMentorBookingDto) => createBookingApi(payload);
 export const getMyBookings = () => getMyBookingsApi();
 export const getBooking = (id: string) => getBookingApi(id);
-export const payRemaining = (bookingId: string) => payRemainingApi(bookingId);
+export const payBooking = (bookingId: string) => payBookingApi(bookingId);
 export const cancelBooking = (bookingId: string, payload: CancelMentorBookingDto) =>
   cancelBookingApi(bookingId, payload);
 export const reviewBooking = (bookingId: string, payload: CreateMentorReviewDto) =>

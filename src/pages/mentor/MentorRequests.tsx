@@ -29,8 +29,7 @@ import { formatVnd } from "@/components/ecosystem/MentorCard";
 import type { MentorBookingDto } from "@/services/mentor-bookings.service";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING_DEPOSIT: "bg-amber-100 text-amber-800",
-  AWAITING_REMAINING: "bg-orange-100 text-orange-800",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-emerald-100 text-emerald-800",
   COMPLETED: "bg-blue-100 text-blue-800",
   CANCELLED: "bg-red-100 text-red-800",
@@ -92,6 +91,7 @@ export default function MentorRequests() {
 }
 
 function BookingCard({ booking, onClick }: { booking: MentorBookingDto; onClick: () => void }) {
+  const { t } = useTranslation("common");
   return (
     <div
       onClick={onClick}
@@ -107,7 +107,9 @@ function BookingCard({ booking, onClick }: { booking: MentorBookingDto; onClick:
               User #{booking.studentId.substring(0, 8)}
             </h3>
             <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-bold border-none ${STATUS_STYLES[booking.status] ?? ""}`}>
-              {booking.status.replace(/_/g, " ")}
+              {t(`mentor.requests.statusLabels.${booking.status}`, {
+                defaultValue: booking.status.replace(/_/g, " "),
+              })}
             </Badge>
           </div>
 
@@ -193,14 +195,6 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
     }
   };
 
-  // Mock handlers for Demo actions
-  const handleMockAccept = () => {
-    toast({ title: "Demo: Booking Accepted", description: "This is a demo action. Live integration pending." });
-  };
-  const handleMockReschedule = () => {
-    toast({ title: "Demo: Reschedule Requested", description: "This is a demo action. Live integration pending." });
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div
@@ -208,7 +202,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
-          <h2 className="text-lg font-bold text-slate-900">Booking Details</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t("mentor.requests.bookingDetails")}</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
             <XCircle size={20} />
           </button>
@@ -224,11 +218,16 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
               <h3 className="text-xl font-bold text-slate-900">User #{booking.studentId.substring(0, 8)}</h3>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-bold border-none ${STATUS_STYLES[booking.status] ?? ""}`}>
-                  {booking.status.replace(/_/g, " ")}
+                  {t(`mentor.requests.statusLabels.${booking.status}`, {
+                    defaultValue: booking.status.replace(/_/g, " "),
+                  })}
                 </Badge>
                 {booking.refundStatus !== "NOT_REQUIRED" && (
                   <Badge variant="outline" className="rounded-full text-xs">
-                    Refund: {booking.refundStatus}
+                    {t("mentor.requests.refundLabel")}:{" "}
+                    {t(`mentor.requests.refundStatusLabels.${booking.refundStatus}`, {
+                      defaultValue: booking.refundStatus.replace(/_/g, " "),
+                    })}
                   </Badge>
                 )}
               </div>
@@ -261,11 +260,10 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
               <FileText size={16} className="text-slate-400" />
-              Request Notes
+              {t("mentor.requests.requestNotes")}
             </h4>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600 italic">
-              "Looking for guidance on backend architecture and API design for a scalable e-commerce application. Specifically need help with PostgreSQL database schema."
-              <p className="text-xs text-slate-400 mt-2 not-italic font-medium">— Mock Note for Demo</p>
+              {booking.studentGoal || t("mentor.requests.noStudentGoal", "No goal note was provided for this booking.")}
             </div>
           </div>
 
@@ -274,7 +272,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <h4 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Link2 size={16} className="text-slate-400" />
-                Meeting Link
+                {t("mentor.requests.meetingLink")}
               </h4>
               <div className="flex gap-2">
                 <Input
@@ -289,7 +287,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
                   className="shrink-0"
                 >
                   {setMeetingLink.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Save Link
+                  {t("mentor.requests.saveLink")}
                 </Button>
               </div>
               {booking.meetingUrl && (
@@ -299,7 +297,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline mt-2"
                 >
-                  <ExternalLink size={14} /> Open Meeting Room
+                  <ExternalLink size={14} /> {t("mentor.requests.openMeetingRoom")}
                 </a>
               )}
             </div>
@@ -307,7 +305,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
 
           {booking.cancellationReason && (
             <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 text-sm">
-              <span className="font-semibold block mb-1">Cancellation Reason:</span>
+              <span className="font-semibold block mb-1">{t("mentor.requests.cancellationReason")}</span>
               {booking.cancellationReason}
             </div>
           )}
@@ -315,34 +313,23 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
 
         {/* Footer Actions */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 space-y-4">
-          {/* Demo Actions for PENDING states */}
-          {["PENDING_DEPOSIT", "AWAITING_REMAINING"].includes(booking.status) && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-amber-700">
-                Demo actions: live accept/reschedule APIs are not connected yet.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <Button onClick={handleMockAccept} className="w-full font-bold bg-sky-500 hover:bg-sky-600 text-white">
-                  Accept Request
-                </Button>
-                <Button variant="outline" onClick={handleMockReschedule} className="w-full font-bold text-slate-700">
-                  Reschedule
-                </Button>
-              </div>
-            </div>
-          )}
+          {booking.status === "PENDING_PAYMENT" ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              {t("mentor.requests.waitingPayment", "Student selected your slot and is completing payment. No accept action is needed.")}
+            </p>
+          ) : null}
 
           {/* Real Actions */}
-          {booking.status === "CONFIRMED" && (
+          {["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && (
             <div className="flex gap-3">
-              {isPastSlotEnd && (
+              {booking.status === "CONFIRMED" && isPastSlotEnd && (
                 <Button
                   onClick={handleComplete}
                   disabled={complete.isPending}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                 >
                   {complete.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                  Mark Completed
+                  {t("mentor.requests.markCompleted")}
                 </Button>
               )}
               <Button
@@ -350,23 +337,23 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
                 onClick={() => setShowCancel(!showCancel)}
                 className="flex-1 text-red-600 hover:bg-red-50 font-bold"
               >
-                Cancel Session
+                {t("mentor.requests.cancelSession")}
               </Button>
             </div>
           )}
 
-          {showCancel && ["CONFIRMED", "AWAITING_REMAINING", "PENDING_DEPOSIT"].includes(booking.status) && (
+          {showCancel && ["PENDING_PAYMENT", "CONFIRMED"].includes(booking.status) && (
             <div className="p-4 rounded-xl bg-red-50 border border-red-100 mt-4 animate-in fade-in zoom-in-95">
               <Textarea
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Reason for cancellation..."
+                placeholder={t("mentor.requests.cancelReasonPlaceholder")}
                 className="bg-white mb-3"
                 rows={2}
               />
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)}>
-                  Abort
+                  {t("mentor.requests.abort")}
                 </Button>
                 <Button
                   onClick={handleCancel}
@@ -375,7 +362,7 @@ function BookingDetailDrawer({ booking, onClose }: { booking: MentorBookingDto; 
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   {cancel.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Confirm Cancel
+                  {t("mentor.requests.confirmCancel")}
                 </Button>
               </div>
             </div>

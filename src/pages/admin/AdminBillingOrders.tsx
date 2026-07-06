@@ -64,6 +64,10 @@ export default function AdminBillingOrders() {
   });
 
   const orders = ordersQuery.data?.items ?? [];
+  const getPurposeLabel = (purpose: string) =>
+    t(`billing.checkout.purposeLabels.${purpose}`, {
+      defaultValue: purpose.replace(/_/g, " "),
+    });
 
   return (
     <div className="flex flex-col gap-5">
@@ -87,7 +91,7 @@ export default function AdminBillingOrders() {
             label={t("billing.admin.table.purpose")}
             value={filters.purpose}
             onChange={(purpose) => setFilters((prev) => ({ ...prev, purpose }))}
-            placeholder="SUBSCRIPTION"
+            placeholder="MENTOR_BOOKING"
           />
           <Filter
             label={t("billing.admin.table.userId")}
@@ -126,7 +130,7 @@ export default function AdminBillingOrders() {
                   <TableCell>
                     {order.userEmail || order.userId || "-"}
                   </TableCell>
-                  <TableCell>{order.purpose.replace(/_/g, " ")}</TableCell>
+                  <TableCell>{getPurposeLabel(order.purpose)}</TableCell>
                   <TableCell>
                     <StatusBadge status={order.status} />
                   </TableCell>
@@ -184,7 +188,7 @@ export default function AdminBillingOrders() {
               />
               <DetailItem
                 label="Purpose"
-                value={selectedOrder.purpose.replace(/_/g, " ")}
+                value={getPurposeLabel(selectedOrder.purpose)}
               />
               <DetailItem
                 label="Status"

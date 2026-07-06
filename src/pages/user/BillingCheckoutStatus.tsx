@@ -22,6 +22,7 @@ import {
   buildBillingCheckoutReturnUrl,
   getBillingCheckoutSurfaceState,
   getBillingOrderStatusMeta,
+  getMentorCheckoutStage,
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
   parsePayOSReturnParams,
@@ -104,12 +105,13 @@ export default function BillingCheckoutStatus() {
         defaultValue: getBillingOrderStatusMeta(publicSummary.status).label,
       })
     : "";
+  const mentorCheckoutStage = useMemo(() => getMentorCheckoutStage(order), [order]);
 
   const applyPaidInvalidation = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_USAGE });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
-    // Also invalidate mentor booking state (deposit/remaining payment)
+    // Also invalidate mentor booking state.
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_MENTOR_BOOKINGS });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MENTOR_OWNED_BOOKINGS });
   }, [queryClient]);
@@ -142,8 +144,8 @@ export default function BillingCheckoutStatus() {
     payOSControllerRef.current?.exit?.();
     payOSControllerRef.current = null;
     setEmbedState("idle");
-    navigate("/pricing");
-  }, [navigate]);
+    navigate(order?.targetType === "MENTOR_BOOKING" ? "/billing/mentor" : "/pricing");
+  }, [navigate, order?.targetType]);
 
   const copyOrderCode = useCallback(async () => {
     if (!publicSummary?.orderCode) return;
@@ -366,6 +368,12 @@ export default function BillingCheckoutStatus() {
                       </div>
                     ) : null}
 
+                    {mentorCheckoutStage ? (
+                      <MentorCheckoutNextStep
+                        onViewBookings={() => navigate("/billing/mentor")}
+                      />
+                    ) : null}
+
                     {embedState === "error" && checkoutUrl ? (
                       <Button asChild variant="outline" className="mt-4 h-10 w-full rounded-full bg-card font-bold">
                         <a href={checkoutUrl} target="_blank" rel="noreferrer">
@@ -379,6 +387,7 @@ export default function BillingCheckoutStatus() {
 
                 <CheckoutStatusBar
                   isBusy={orderQuery.isFetching || isReconciling}
+                  purpose={order.purpose}
                   status={order.status}
                   verifyError={verifyError}
                 />
@@ -397,6 +406,32 @@ export default function BillingCheckoutStatus() {
         </main>
       </div>
     </Layout>
+  );
+}
+
+function MentorCheckoutNextStep({
+  onViewBookings,
+}: {
+  onViewBookings: () => void;
+}) {
+  const { t } = useTranslation("common");
+  return (
+    <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+      <p className="text-sm font-black text-primary">
+        {t("billing.checkout.mentorBookingPaidTitle", "Mentor session confirmed")}
+      </p>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        {t(
+          "billing.checkout.mentorBookingPaidDesc",
+          "Your mentor session is confirmed. Check the booking page for the meeting link.",
+        )}
+      </p>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button type="button" variant="outline" onClick={onViewBookings} className="h-10 rounded-full bg-card font-bold">
+          {t("billing.checkout.viewMentorBooking", "View booking")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -566,10 +601,12 @@ function CleanInfoRow({ label, value }: { label: string; value: string }) {
 
 function CheckoutStatusBar({
   isBusy,
+  purpose,
   status,
   verifyError,
 }: {
   isBusy: boolean;
+  purpose: string;
   status: string;
   verifyError: string | null;
 }) {
@@ -579,6 +616,8 @@ function CheckoutStatusBar({
     ? t("billing.checkout.verifyError", { error: verifyError })
     : isBusy
       ? t("billing.checkout.statusVerifying")
+      : status === "PAID" && purpose === "MENTOR_BOOKING"
+        ? t("billing.checkout.statusBar.MENTOR_BOOKING_PAID")
       : t(`billing.checkout.statusBar.${status}`, {
           defaultValue: t("billing.checkout.statusBar.UNKNOWN"),
         });

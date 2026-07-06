@@ -10,14 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useMentorProfile, useMentorSlots } from "@/hooks/use-mentors";
 import { useCreateBooking } from "@/hooks/use-mentor-bookings";
 import { useToast } from "@/hooks/use-toast";
 import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import {
+  MAX_MENTOR_RANGE_DAYS,
   defaultMentorDateRange,
+  getMentorDateRangeErrorCode,
   mentorDateRangeToIso,
-  validateMentorDateRange,
 } from "@/lib/mentor-date-range";
 
 export default function MentorProfile() {
@@ -31,23 +33,67 @@ export default function MentorProfile() {
   const createBookingMutation = useCreateBooking();
   
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [studentGoal, setStudentGoal] = useState("");
   const [dateRange, setDateRange] = useState(defaultMentorDateRange);
-  const rangeError = validateMentorDateRange(dateRange.fromDate, dateRange.toDate);
+  const rangeErrorCode = getMentorDateRangeErrorCode(dateRange.fromDate, dateRange.toDate);
+  const rangeError = rangeErrorCode
+    ? t(`mentor.dateRange.${rangeErrorCode}`, { max: MAX_MENTOR_RANGE_DAYS })
+    : null;
   const slotQueryRange = useMemo(
     () =>
-      rangeError
+      rangeErrorCode
         ? { from: new Date().toISOString(), to: new Date().toISOString() }
         : mentorDateRangeToIso(dateRange.fromDate, dateRange.toDate),
-    [dateRange.fromDate, dateRange.toDate, rangeError],
+    [dateRange.fromDate, dateRange.toDate, rangeErrorCode],
   );
-  const slotsQuery = useMentorSlots(mentorSlug, slotQueryRange, !rangeError);
+  const slotsQuery = useMentorSlots(mentorSlug, slotQueryRange, !rangeErrorCode);
+  const openSlots = useMemo(
+    () => (slotsQuery.data ?? []).filter((slot) => slot.status === "OPEN"),
+    [slotsQuery.data],
+  );
+  const selectedSlot = useMemo(
+    () => openSlots.find((slot) => slot.id === selectedSlotId) ?? null,
+    [openSlots, selectedSlotId],
+  );
+  const groupedSlots = useMemo(() => {
+    return openSlots.reduce<Array<{ dateKey: string; label: string; slots: typeof openSlots }>>(
+      (groups, slot) => {
+        const date = new Date(slot.startsAt);
+        const dateKey = date.toISOString().slice(0, 10);
+        const current = groups.find((group) => group.dateKey === dateKey);
+        if (current) {
+          current.slots.push(slot);
+          return groups;
+        }
+        groups.push({
+          dateKey,
+          label: date.toLocaleDateString("vi-VN", {
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+          }),
+          slots: [slot],
+        });
+        return groups;
+      },
+      [],
+    );
+  }, [openSlots]);
+  const trimmedGoal = studentGoal.trim();
+  const goalError =
+    trimmedGoal.length > 0 && trimmedGoal.length < 20
+      ? t("mentor.profile.goalTooShort", "Mục tiêu cần ít nhất 20 ký tự.")
+      : null;
+  const canBook =
+    Boolean(selectedSlot) && trimmedGoal.length >= 20 && !createBookingMutation.isPending;
   
   const handleBookSession = async () => {
-    if (!selectedSlotId || !mentorSlug) return;
+    if (!selectedSlot || !mentorSlug || trimmedGoal.length < 20) return;
     try {
       const result = await createBookingMutation.mutateAsync({
         mentorProfileId: mentor.id,
-        slotId: selectedSlotId,
+        slotId: selectedSlot.id,
+        studentGoal: trimmedGoal,
       });
 
       const checkoutPath = getBillingCheckoutPath(result.checkout);
@@ -207,7 +253,7 @@ export default function MentorProfile() {
                       setDateRange((current) => ({ ...current, fromDate: event.target.value }));
                     }}
                     className="h-10 rounded-xl text-xs"
-                    aria-label="Từ ngày"
+                    aria-label={t("mentor.profile.fromDate")}
                   />
                   <Input
                     type="date"
@@ -217,32 +263,39 @@ export default function MentorProfile() {
                       setDateRange((current) => ({ ...current, toDate: event.target.value }));
                     }}
                     className="h-10 rounded-xl text-xs"
-                    aria-label="Đến ngày"
+                    aria-label={t("mentor.profile.toDate")}
                   />
                 </div>
-                {rangeError ? <p className="mt-2 text-xs text-red-600">{rangeError}</p> : null}
+                  {rangeError ? <p className="mt-2 text-xs text-red-600">{rangeError}</p> : null}
                 <div className="mt-3 flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
                   {slotsQuery.isError ? (
-                    <p className="text-sm text-red-600">Không thể tải lịch trống.</p>
+                    <p className="text-sm text-red-600">{t("mentor.profile.loadSlotsFailed")}</p>
                   ) : slotsQuery.isLoading ? (
                     <Skeleton className="h-12 w-full rounded-xl" />
-                  ) : slotsQuery.data?.filter(s => s.status === "OPEN").length ? (
-                    slotsQuery.data.filter(s => s.status === "OPEN").map(slot => (
-                      <button
-                        key={slot.id}
-                        onClick={() => setSelectedSlotId(slot.id)}
-                        className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${selectedSlotId === slot.id ? "border-primary bg-primary/10" : "border-slate-200 hover:border-primary/50 dark:border-slate-800"}`}
-                      >
-                        <div>
-                          <p className={`font-bold ${selectedSlotId === slot.id ? "text-primary" : "text-slate-950 dark:text-white"}`}>
-                            {new Date(slot.startsAt).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(slot.startsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {new Date(slot.endsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                        {selectedSlotId === slot.id && <div className="h-2 w-2 rounded-full bg-primary" />}
-                      </button>
+                  ) : groupedSlots.length ? (
+                    groupedSlots.map((group) => (
+                      <div key={group.dateKey} className="space-y-2">
+                        <p className="px-1 text-xs font-black uppercase text-slate-400">
+                          {group.label}
+                        </p>
+                        {group.slots.map((slot) => (
+                          <button
+                            key={slot.id}
+                            onClick={() => setSelectedSlotId(slot.id)}
+                            className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${selectedSlotId === slot.id ? "border-primary bg-primary/10" : "border-slate-200 hover:border-primary/50 dark:border-slate-800"}`}
+                          >
+                            <div>
+                              <p className={`font-bold ${selectedSlotId === slot.id ? "text-primary" : "text-slate-950 dark:text-white"}`}>
+                                {new Date(slot.startsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {new Date(slot.endsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            {selectedSlotId === slot.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                          </button>
+                        ))}
+                      </div>
                     ))
                   ) : (
                     <p className="text-sm text-slate-500">{t("mentor.profile.noSlots", "Hiện chưa có lịch trống.")}</p>
@@ -250,19 +303,63 @@ export default function MentorProfile() {
                 </div>
               </div>
 
-              {/* Note & CTA */}
-              {selectedSlotId ? (
-                <div className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+              <div className="space-y-3 border-t border-slate-100 pt-5 dark:border-slate-800">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    {t("mentor.profile.studentGoal", "Mục tiêu buổi mentoring")}
+                  </label>
+                  <Textarea
+                    value={studentGoal}
+                    onChange={(event) => setStudentGoal(event.target.value)}
+                    maxLength={1000}
+                    rows={4}
+                    placeholder={t("mentor.profile.studentGoalPlaceholder", "Ví dụ: Em muốn review kiến trúc backend và nhận góp ý về database schema trước khi demo.")}
+                    className="mt-2 rounded-xl"
+                  />
+                  <div className="mt-1 flex justify-between gap-3 text-xs">
+                    <span className={goalError ? "text-red-600" : "text-slate-400"}>
+                      {goalError ?? t("mentor.profile.studentGoalHint", "Tối thiểu 20 ký tự để mentor chuẩn bị tốt hơn.")}
+                    </span>
+                    <span className="text-slate-400">{trimmedGoal.length}/1000</span>
+                  </div>
+                </div>
+
+                {selectedSlot ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/40">
+                    <p className="font-bold text-slate-900 dark:text-white">
+                      {t("mentor.profile.selectedSlot", "Slot đã chọn")}
+                    </p>
+                    <p className="mt-1 text-slate-600 dark:text-slate-300">
+                      {new Date(selectedSlot.startsAt).toLocaleDateString("vi-VN", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                      {" • "}
+                      {new Date(selectedSlot.startsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      {" - "}
+                      {new Date(selectedSlot.endsAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <div className="mt-3 grid gap-2 text-xs font-semibold text-slate-500">
+                      <div className="flex justify-between">
+                        <span>{t("mentor.profile.payInFull", "Thanh toán 100% để xác nhận lịch")}</span>
+                        <span>{formatVnd(mentor.sessionPriceVnd)}</span>
+                      </div>
+                      <p>{t("mentor.profile.paymentConfirmsBooking", "Slot is held for 15 minutes and confirmed after payment.")}</p>
+                    </div>
+                  </div>
+                ) : null}
+
                   <Button
                     onClick={handleBookSession}
-                    disabled={createBookingMutation.isPending}
+                    disabled={!canBook}
                     className="w-full rounded-xl bg-primary py-6 text-base font-black text-primary-foreground hover:bg-primary/90"
                   >
                     {createBookingMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                    {t("mentor.profile.bookNow", "Đặt lịch ngay")}
+                    {t("mentor.profile.bookNow", "Đặt lịch và thanh toán")}
                   </Button>
-                </div>
-              ) : null}
+              </div>
             </aside>
           </div>
         </div>
