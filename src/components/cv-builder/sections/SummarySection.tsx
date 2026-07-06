@@ -12,6 +12,7 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const GENERATE_SUMMARY_INSTRUCTION =
@@ -165,7 +166,12 @@ export function SummarySection() {
     if (!suggestionText) return;
     setOriginalText(summary);
     setSummary(suggestionText);
-    clearSectionEvaluation("summary");
+    useCvBuilderStore.getState().markSectionNeedsRecheck("summary", {
+      source: "assistant_patch",
+      fieldPath: resumeDocumentPaths.summaryContent(),
+      beforePreview: summary.substring(0, 100),
+      afterPreview: suggestionText.substring(0, 100),
+    });
   };
 
   const handleUndo = () => {

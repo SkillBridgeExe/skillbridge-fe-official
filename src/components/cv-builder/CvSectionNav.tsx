@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 import { 
   User, Target, FileText, GraduationCap, Briefcase, 
-  FolderGit2, Wrench, Award, CheckCircle, Check
+  FolderGit2, Wrench, Award, CheckCircle, Check, RotateCcw
 } from "lucide-react";
 import type { BuilderSection } from "@shared/api";
 
@@ -45,7 +45,7 @@ const sectionUiToBeMap: Record<string, BuilderSection> = {
 
 export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | "horizontal" | "icon" }) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations } = useCvBuilderStore();
+  const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations, sectionFixFeedback } = useCvBuilderStore();
   const statuses = getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
   const isLoggedIn = useAuthStore(
@@ -81,6 +81,7 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
           const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
+          const fixFeedback = isLoggedIn && beSection ? sectionFixFeedback[beSection] : null;
 
           return (
             <button
@@ -97,7 +98,12 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               <span>{title}</span>
               
               {/* Status / Score in horizontal view */}
-              {evaluation ? (
+              {fixFeedback ? (
+                <span className="text-[9px] font-sans font-bold px-1.5 py-0.5 rounded-full shrink-0 shadow-sm bg-[#FFF8E6] text-[#D97706] border border-[#FDE68A] flex items-center gap-0.5 uppercase tracking-wider">
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  <span>{t("builder.review.recheckShort")}</span>
+                </span>
+              ) : evaluation ? (
                 <span className={cn("text-[9px] font-mono font-bold px-1 rounded-full shrink-0 shadow-sm",
                   evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
                   : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
@@ -110,7 +116,7 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                 )
               )}
-              {!evaluation && status === "needs-improvement" && (
+              {!fixFeedback && !evaluation && status === "needs-improvement" && (
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               )}
             </button>
@@ -141,6 +147,7 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
             const title = sectionTitleMap[section.id][currentLang];
             const beSection = sectionUiToBeMap[section.id];
             const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
+            const fixFeedback = isLoggedIn && beSection ? sectionFixFeedback[beSection] : null;
 
             return (
               <button
@@ -159,7 +166,12 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
                 </div>
 
                 {/* Status/Score indicator on the right */}
-                {evaluation ? (
+                {fixFeedback ? (
+                  <span className="text-[9px] font-sans font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-2 shadow-sm bg-[#FFF8E6] text-[#D97706] border border-[#FDE68A] uppercase tracking-wider flex items-center gap-1">
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    {t("builder.review.recheckShort")}
+                  </span>
+                ) : evaluation ? (
                   <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-2 shadow-sm",
                     evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
                     : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"
@@ -201,6 +213,7 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
           const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
+          const fixFeedback = isLoggedIn && beSection ? sectionFixFeedback[beSection] : null;
 
           return (
             <button
@@ -222,7 +235,11 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               )}
 
               {/* Status dot */}
-              {evaluation ? (
+              {fixFeedback ? (
+                <div className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-1 ring-white bg-[#FFF8E6] text-[#D97706] border border-[#FDE68A]">
+                  <RotateCcw className="w-2.5 h-2.5" />
+                </div>
+              ) : evaluation ? (
                 <div className={cn("absolute -top-1 -right-1 min-w-4 h-4 px-1 text-[8px] font-bold flex items-center justify-center rounded-full shadow-sm ring-1 ring-white",
                   evaluation.score >= 80 ? "bg-[#EDF3EC] text-[#346538]"
                   : evaluation.score >= 1 ? "bg-[#FEF7EA] text-[#B98900]"

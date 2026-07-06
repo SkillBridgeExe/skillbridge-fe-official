@@ -177,7 +177,7 @@ describe("CvBuilderSkill — Task M4 (Viết lại nhẹ hơn / Hỏi thêm đ�
 
     expect(mockOnApply).toHaveBeenCalledTimes(1);
     expect(mockOnApply).toHaveBeenCalledWith("new bullet");
-    expect(useCvBuilderStore.getState().companionPatch).toBeNull();
+    expect(useCvBuilderStore.getState().companionPatch).not.toBeNull();
   });
 
   it("handleApply validates patch before applying and prevents invalid patch", () => {

@@ -35,6 +35,7 @@ export function ExperienceSection() {
     moveExperience,
     draftId,
     clearSectionEvaluation,
+    markSectionNeedsRecheck,
     pendingProveIt,
     setPendingProveIt,
   } = useCvBuilderStore();
@@ -105,10 +106,15 @@ export function ExperienceSection() {
         for (const [key, value] of Object.entries(fields)) {
           updateExperience(exp.id, key as keyof typeof exp, value);
         }
-        clearSectionEvaluation("experience");
+        markSectionNeedsRecheck("experience", {
+          source: "assistant_patch",
+          fieldPath: resumeDocumentPaths.experienceDescription(exp.id),
+          beforePreview: "intake coach update",
+          afterPreview: "intake coach applied",
+        });
       },
     });
-  }, [clearSectionEvaluation, draftId, experience, updateExperience]);
+  }, [markSectionNeedsRecheck, draftId, experience, updateExperience]);
 
   const handleAiSuggest = useCallback((
     entryId: string,
@@ -212,7 +218,12 @@ export function ExperienceSection() {
           currentValue: currentText,
           onApply: (after: string) => {
             updateExperience(entry.id, field, after);
-            clearSectionEvaluation("experience");
+            markSectionNeedsRecheck("experience", {
+              source: "diagnosis_fix",
+              fieldPath,
+              beforePreview: currentText.substring(0, 100),
+              afterPreview: after.substring(0, 100),
+            });
           },
         },
       }),
@@ -221,7 +232,7 @@ export function ExperienceSection() {
     useCompanionStore.setState({ bubbleOpen: true });
     
     setPendingProveIt(null);
-  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast, clearSectionEvaluation, updateExperience]);
+  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast, markSectionNeedsRecheck, updateExperience]);
 
   const handleUseIt = (entryId: string, field: "description" | "achievements") => {
     if (!activeSuggestion) return;
@@ -239,7 +250,17 @@ export function ExperienceSection() {
     updateExperience(entryId, field, nextValue);
     updateExperience(entryId, "aiRewrite", oldValue); // Sử dụng aiRewrite để lưu backup
     setOriginalTextMap((prev) => ({ ...prev, [key]: oldValue }));
-    clearSectionEvaluation("experience");
+
+    const fieldPath = field === "description"
+      ? resumeDocumentPaths.experienceDescription(entryId)
+      : resumeDocumentPaths.experienceAchievements(entryId);
+
+    markSectionNeedsRecheck("experience", {
+      source: "assistant_patch",
+      fieldPath,
+      beforePreview: oldValue.substring(0, 100),
+      afterPreview: nextValue.substring(0, 100),
+    });
   };
 
   const handleUndo = (entryId: string, field: "description" | "achievements") => {

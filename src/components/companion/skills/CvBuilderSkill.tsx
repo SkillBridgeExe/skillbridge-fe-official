@@ -181,6 +181,8 @@ export function CvBuilderSkill({
     Record<string, { optionId: string | null; freeText: string }>
   >({});
 
+  const [isApplied, setIsApplied] = useState(false);
+
   // ── "Hỏi thêm để rõ hơn" (user-initiated re-ask, Task M4) ──
   // Local-only: a transient sub-mode of mascotState==='asking' showing ONE generic
   // free-text question instead of the original chip set.
@@ -199,6 +201,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setIsApplied(false);
 
     analyzeMutation.mutate(
       {
@@ -444,8 +447,7 @@ export function CvBuilderSkill({
       });
 
       onApply(companionPatch.after);
-      resetCompanion();
-      useCompanionStore.getState().closeBubble();
+      setIsApplied(true);
     } catch {
       setCompanionMessage(
         t("companion.patchRejected", {
@@ -459,11 +461,11 @@ export function CvBuilderSkill({
     section,
     fieldPath,
     onApply,
-    resetCompanion,
     setCompanionMessage,
     setMascotState,
     t,
   ]);
+
 
   // ── Discard ──
   const handleDiscard = useCallback(() => {
@@ -598,7 +600,26 @@ export function CvBuilderSkill({
       {/* ── STATE: PRESENTING ── */}
       {mascotState === "presenting" && (
         <div className="space-y-3">
-          {companionPatch && (
+          {isApplied && (
+            <div className="p-3 bg-[#ECFDF5] border border-[#A7F3D0] rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.15)] mt-3">
+              <p className="text-[#059669] text-xs font-medium flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0" />
+                {t("builder.review.applySuccess")}
+              </p>
+              <Button
+                size="sm"
+                onClick={() => {
+                  resetCompanion();
+                  useCompanionStore.getState().closeBubble();
+                }}
+                className="w-full mt-3 h-8 text-[11px] bg-[#10B981] hover:bg-[#059669] text-white"
+              >
+                {t("builder.review.close")}
+              </Button>
+            </div>
+          )}
+
+          {!isApplied && companionPatch && (
             <>
               <DiffView
                 before={companionPatch.before}
@@ -647,7 +668,7 @@ export function CvBuilderSkill({
           )}
 
           {/* Field already strong (questions: []) OR error message */}
-          {!companionPatch && companionMessage && (
+          {!isApplied && !companionPatch && companionMessage && (
             <div className="flex items-center gap-2">
               {companionTurn?.questions.length === 0 ? (
                 <div className="flex items-center gap-2 text-xs text-[#346538]">

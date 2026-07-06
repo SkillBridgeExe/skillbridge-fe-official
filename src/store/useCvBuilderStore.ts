@@ -63,6 +63,10 @@ export type SectionStatus = "completed" | "missing" | "needs-improvement";
 export type SectionFixFeedback = {
   status: "needs_recheck";
   updatedAt: number;
+  source?: "manual_edit" | "assistant_patch" | "diagnosis_fix";
+  fieldPath?: string;
+  beforePreview?: string;
+  afterPreview?: string;
 };
 
 export type CvBuilderSectionKey = "summary" | "experience" | "education" | "projects" | "skills" | "certifications";
@@ -218,6 +222,7 @@ export interface CvBuilderState {
   setDraftId: (id: string | null) => void;
   setSectionEvaluation: (section: BuilderSection, result: EvaluateSectionResponse) => void;
   clearSectionEvaluation: (section: BuilderSection) => void;
+  markSectionNeedsRecheck: (section: BuilderSection, feedback?: Omit<SectionFixFeedback, "status" | "updatedAt">) => void;
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
@@ -540,15 +545,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
         sectionFixFeedback,
       };
     }),
-  clearSectionEvaluation: (section) =>
+  clearSectionEvaluation: (section) => get().markSectionNeedsRecheck(section, { source: "manual_edit" }),
+  markSectionNeedsRecheck: (section, feedback) =>
     set((s) => {
-      const next = { ...s.sectionEvaluations };
-      delete next[section];
+      const nextEvaluations = { ...s.sectionEvaluations };
+      delete nextEvaluations[section];
       return {
-        sectionEvaluations: next,
+        sectionEvaluations: nextEvaluations,
         sectionFixFeedback: {
           ...s.sectionFixFeedback,
-          [section]: { status: "needs_recheck", updatedAt: Date.now() },
+          [section]: { status: "needs_recheck", updatedAt: Date.now(), ...feedback },
         },
       };
     }),

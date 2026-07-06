@@ -143,7 +143,7 @@ describe("useCvBuilderStore.resumeAppearance", () => {
 });
 
 describe("useCvBuilderStore.sectionFixFeedback", () => {
-  it("marks a section as needing re-check when its stale evaluation is cleared", () => {
+  it("marks a section as needing re-check when its stale evaluation is cleared via manual edit default", () => {
     useCvBuilderStore.getState().reset();
     useCvBuilderStore.getState().setSectionEvaluation("summary", {
       score: 60,
@@ -157,6 +157,33 @@ describe("useCvBuilderStore.sectionFixFeedback", () => {
     expect(useCvBuilderStore.getState().sectionEvaluations.summary).toBeUndefined();
     expect(useCvBuilderStore.getState().sectionFixFeedback.summary).toMatchObject({
       status: "needs_recheck",
+      source: "manual_edit",
+    });
+  });
+
+  it("can store rich feedback properties like field path and previews with markSectionNeedsRecheck", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSectionEvaluation("experience", {
+      score: 80,
+      label: "Good",
+      checklist: [],
+      missing: [],
+    });
+
+    useCvBuilderStore.getState().markSectionNeedsRecheck("experience", {
+      source: "assistant_patch",
+      fieldPath: "doc.sections.experience.items.0.description",
+      beforePreview: "before text",
+      afterPreview: "after text",
+    });
+
+    expect(useCvBuilderStore.getState().sectionEvaluations.experience).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionFixFeedback.experience).toMatchObject({
+      status: "needs_recheck",
+      source: "assistant_patch",
+      fieldPath: "doc.sections.experience.items.0.description",
+      beforePreview: "before text",
+      afterPreview: "after text",
     });
   });
 
