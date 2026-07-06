@@ -114,15 +114,17 @@ export interface ScoringBreakdown {
   cap_applied: boolean;
 }
 
+/** Job-rec partial_skills item — BE sends {display_name, importance, gap_levels} only. */
 export interface MatchPartialSkill {
   display_name: string;
-  canonical_name: string;
+  canonical_name?: string;
+  importance?: string;
   gap_levels: number;
 }
 
 export interface ExperienceFit {
   cv_seniority: string;
-  job_level: string;
+  job_level: string | null;
   verdict: "fits" | "stretch" | "over_qualified" | "unknown";
   confidence: "low" | "medium" | "high";
 }
@@ -530,6 +532,10 @@ export interface JobRecommendationDto {
   salary_max: number | null;
   currency: string;
   source_url: string | null;
+  /** URL-safe id for the in-app job page (BE will start sending — type-ready). */
+  slug?: string;
+  /** NATIVE = apply inside SkillBridge; EXTERNAL = follow source_url. */
+  application_mode?: "NATIVE" | "EXTERNAL";
   posted_at: string | null;
   /** 0-100, deterministic — cùng engine với CV/JD match. CHỈ skill match (để giải thích minh bạch);
    *  KHÔNG bị seniority guard tác động. */

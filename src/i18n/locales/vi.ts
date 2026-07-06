@@ -1724,6 +1724,7 @@ export default {
       skillMatch: "Kỹ năng {{score}}%",
       stretch: "Vượt cấp seniority",
       severeStretch: "Vượt cấp khá xa",
+      inAppSoon: "Ứng tuyển trong app sắp mở",
     },
     aiInsight: {
       title: "AI nhận định thị trường",

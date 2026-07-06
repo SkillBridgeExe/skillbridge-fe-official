@@ -1734,6 +1734,7 @@ export default {
       skillMatch: "Skill {{score}}%",
       stretch: "Above your level",
       severeStretch: "Far above your level",
+      inAppSoon: "In-app apply coming soon",
     },
     aiInsight: {
       title: "AI market insight",
