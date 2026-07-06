@@ -443,8 +443,8 @@ const ExperienceSection = ({ sectionId = "experience", sectionData }: ItemSectio
 		<SectionShell sectionId={sectionId} title={experience.title}>
 			<SectionItems columns={experience.columns}>
 				{items.map((item) => {
-					const hasPosition = Boolean(item.position.trim());
-					const hasLocation = Boolean(item.location.trim());
+					const hasPosition = hasSplitRowText(item.position);
+					const hasLocation = hasSplitRowText(item.location);
 					const { top: headerLocation, bottom: headerPeriod } = promoteSplitRowRight({
 						top: item.location,
 						bottom: item.period,
@@ -524,8 +524,8 @@ const EducationSection = ({ sectionId = "education", sectionData }: ItemSectionP
 					const degreeAndGrade = [item.degree, item.grade].filter(Boolean).join(" • ");
 					const locationAndPeriod = [item.location, item.period].filter(Boolean).join(" • ");
 					const gradeAndLocation = [item.grade, item.location].filter(Boolean).join(" • ");
-					const hasArea = Boolean(item.area.trim());
-					const hasDegree = Boolean(item.degree.trim());
+					const hasArea = hasSplitRowText(item.area);
+					const hasDegree = hasSplitRowText(item.degree);
 					const { top: headerDegreeAndGrade, bottom: headerLocationAndPeriod } = promoteSplitRowRight({
 						top: degreeAndGrade,
 						bottom: locationAndPeriod,

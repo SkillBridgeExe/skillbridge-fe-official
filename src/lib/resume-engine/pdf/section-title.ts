@@ -36,7 +36,7 @@ export const resolveSectionTitle = (
 	resolver?: SectionTitleResolver,
 	legacyFallback?: string,
 ) => {
-	if (title.trim()) return title;
+	if (typeof title === "string" && title.trim()) return title;
 
 	const resolvedTitle = resolver?.(input);
 	if (resolvedTitle?.trim()) return resolvedTitle;
