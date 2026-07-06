@@ -362,28 +362,33 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
                     <span className="text-[11px] font-semibold text-[#787774]">{t("evidence.foundIn")}</span>
                     {visibleSources.map((source, idx) => (
                       <span
-                        key={`${source.kind}-${source.label}-${idx}`}
+                        key={`${source.kind}-${source.ref}-${idx}`}
                         className="rounded-lg border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-medium text-[#2F3437]"
-                        title={source.excerpt ?? undefined}
+                        title={source.quote ?? undefined}
                       >
                         {t(`evidence.sourceKind.${source.kind}`)}
-                        {source.label?.trim() ? `: ${source.label}` : ""}
+                        {source.ref?.trim() ? `: ${source.ref}` : ""}
                       </span>
                     ))}
                     {extra > 0 && <span className="text-[11px] text-[#787774]">+{extra}</span>}
-                  </div>
-                )}
-
-                {item.evidence_gap && (
-                  <div className="mt-2 rounded-lg border border-[#F1E5C0] bg-[#FBF3DB] px-3 py-2">
-                    <p className="text-[11px] font-bold text-[#956400]">{t("evidence.gapTitle")}</p>
-                    <p className="text-xs leading-relaxed text-[#956400]">{item.evidence_gap}</p>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+
+        {/* Gap notes live at LEDGER level on the BE contract (never per-item). */}
+        {(ledger.evidence_gap?.length ?? 0) > 0 && (
+          <div className="rounded-lg border border-[#F1E5C0] bg-[#FBF3DB] px-3 py-2">
+            <p className="text-[11px] font-bold text-[#956400]">{t("evidence.gapTitle")}</p>
+            <ul className="mt-1 space-y-0.5">
+              {ledger.evidence_gap!.slice(0, 4).map((gap, idx) => (
+                <li key={idx} className="text-xs leading-relaxed text-[#956400]">{gap}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1943,6 +1943,12 @@ export default {
         certification: "Chứng chỉ",
         summary: "Tóm tắt",
         skill: "Kỹ năng",
+        github: "GitHub",
+        interview: "Phỏng vấn thử",
+        activity: "Hoạt động",
+        skill_list: "Danh sách kỹ năng",
+        skills_list: "Danh sách kỹ năng",
+        other: "Khác",
       },
     },
     jdIntel: {
@@ -2016,6 +2022,7 @@ export default {
       sourceKind: {
         experience: "Kinh nghiệm",
         project: "Dự án",
+        activity: "Hoạt động",
         education: "Học vấn",
         certification: "Chứng chỉ",
         skill_list: "Danh sách kỹ năng",

@@ -196,13 +196,17 @@ export interface CvReviewData {
     { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] }>>;
 }
 
-export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "skills_list" | "summary" | "other";
+// Mirror of BE evidence-ledger.ts — only the kinds the BE actually emits.
+export type EvidenceKind = "experience" | "project" | "activity" | "summary" | "skills_list";
 export type EvidenceStrength = "demonstrated" | "mentioned" | "listed_only";
 
 export interface EvidenceSource {
   kind: EvidenceKind;
-  label: string;
-  excerpt?: string | null;
+  /** Human location label, e.g. "Dự án: Booking App". */
+  ref: string;
+  recency_year: number | null;
+  /** The real bullet/sentence that matched (≤200 chars); null for a bare listing. */
+  quote?: string | null;
 }
 
 export interface EvidenceItem {
@@ -211,11 +215,12 @@ export interface EvidenceItem {
   strength: EvidenceStrength;
   sources: EvidenceSource[];
   most_recent_year: number | null;
-  evidence_gap?: string | null;
 }
 
 export interface EvidenceLedger {
   items: EvidenceItem[];
+  /** LEDGER-level gap notes (localized strings) — the BE never sends per-item gaps. */
+  evidence_gap?: string[];
 }
 
 export type ExtractionConfidence = "high" | "medium" | "low";

@@ -1967,6 +1967,12 @@ export default {
         certification: "Certification",
         summary: "Summary",
         skill: "Skill",
+        github: "GitHub",
+        interview: "Mock interview",
+        activity: "Activity",
+        skill_list: "Skill list",
+        skills_list: "Skill list",
+        other: "Other",
       },
     },
     jdIntel: {
@@ -2040,6 +2046,7 @@ export default {
       sourceKind: {
         experience: "Experience",
         project: "Project",
+        activity: "Activity",
         education: "Education",
         certification: "Certification",
         skill_list: "Skill list",
