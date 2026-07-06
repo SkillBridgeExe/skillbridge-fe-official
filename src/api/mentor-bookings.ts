@@ -5,6 +5,7 @@ import { API_ROUTES } from "@/constants/api-routes";
 // ── Status enums ───────────────────────────────────────────────────────────
 
 export const MENTOR_BOOKING_STATUSES = [
+  "PENDING_PAYMENT",
   "PENDING_DEPOSIT",
   "AWAITING_REMAINING",
   "CONFIRMED",
@@ -30,6 +31,7 @@ export interface MentorBookingDto {
   mentorProfileId: string;
   availabilitySlotId: string;
   status: MentorBookingStatus;
+  studentGoal: string | null;
   package: {
     mentorProfileId: string;
     mentorSlug: string;
@@ -41,6 +43,7 @@ export interface MentorBookingDto {
   slotStart: string | null;
   slotEnd: string | null;
   totalAmountVnd: number;
+  paymentOrderId: string | null;
   depositAmountVnd: number;
   remainingAmountVnd: number;
   remainingDueAt: string | null;
@@ -65,6 +68,7 @@ export interface CheckoutResponseDto {
 export interface CreateMentorBookingDto {
   mentorProfileId: string;
   slotId: string;
+  studentGoal: string;
 }
 
 export interface CreateBookingResponse {
@@ -97,6 +101,7 @@ export interface UpdateMeetingUrlDto {
 export interface AdminMentorBookingDto extends MentorBookingDto {
   mentorId: string;
   planCode: string | null;
+  paymentOrderId: string | null;
   depositPaymentOrderId: string | null;
   remainingPaymentOrderId: string | null;
   acceptedAt: string | null;
@@ -116,6 +121,7 @@ export interface AdminMentorBookingsQuery {
   page?: number;
   limit?: number;
   status?: MentorBookingStatus;
+  refundStatus?: MentorBookingRefundStatus;
   studentId?: string;
   mentorId?: string;
 }
@@ -163,12 +169,12 @@ export async function getBookingApi(
   return envelope.data;
 }
 
-export async function payRemainingApi(
+export async function payBookingApi(
   bookingId: string,
 ): Promise<CheckoutResponseDto> {
   const envelope = await unwrapEnvelope<ApiEnvelope<CheckoutResponseDto>>(
-    httpClient.post(API_ROUTES.MENTOR_BOOKINGS.PAY_REMAINING(bookingId)),
-    "Failed to create remaining payment.",
+    httpClient.post(API_ROUTES.MENTOR_BOOKINGS.PAY(bookingId)),
+    "Failed to create mentor booking payment.",
   );
   return envelope.data;
 }

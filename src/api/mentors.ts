@@ -229,14 +229,40 @@ export async function downloadAdminMentorAvatarApi(profileId: string): Promise<B
 // ── Slot types & APIs ──────────────────────────────────────────────────────
 
 export const MENTOR_SLOT_STATUSES = ["OPEN", "HELD", "BOOKED", "BLOCKED"] as const;
+export const MENTOR_SLOT_SOURCES = ["MANUAL", "TEMPLATE"] as const;
 export type MentorSlotStatus = (typeof MENTOR_SLOT_STATUSES)[number];
+export type MentorSlotSource = (typeof MENTOR_SLOT_SOURCES)[number];
 
 export interface MentorSlotDto {
   id: string;
   startsAt: string;
   endsAt: string;
   status: MentorSlotStatus;
+  source: MentorSlotSource;
+  availabilityTemplateId?: string | null;
   holdExpiresAt?: string | null;
+}
+
+export interface MentorAvailabilityWindow {
+  id?: string;
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+  isActive?: boolean;
+}
+
+export interface MentorAvailabilityTemplateDto {
+  timezone: string;
+  bufferMinutes: number;
+  windows: Array<Required<Pick<MentorAvailabilityWindow, "id" | "dayOfWeek" | "startMinute" | "endMinute">> & {
+    isActive: boolean;
+  }>;
+}
+
+export interface SaveMentorAvailabilityTemplateRequest {
+  timezone?: string;
+  bufferMinutes?: number;
+  windows: MentorAvailabilityWindow[];
 }
 
 export interface ListMentorSlotsQuery {
@@ -276,6 +302,40 @@ export async function createMentorSlotApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto>>(
     httpClient.post(API_ROUTES.MENTORS.MY_SLOTS, payload),
     "Failed to create slot.",
+  );
+  return envelope.data;
+}
+
+export async function getMyMentorAvailabilityTemplateApi(): Promise<MentorAvailabilityTemplateDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorAvailabilityTemplateDto>>(
+    httpClient.get(API_ROUTES.MENTORS.MY_AVAILABILITY_TEMPLATE),
+    "Failed to load weekly availability.",
+  );
+  return envelope.data;
+}
+
+export async function saveMyMentorAvailabilityTemplateApi(
+  payload: SaveMentorAvailabilityTemplateRequest,
+): Promise<MentorAvailabilityTemplateDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorAvailabilityTemplateDto>>(
+    httpClient.put(API_ROUTES.MENTORS.MY_AVAILABILITY_TEMPLATE, payload),
+    "Failed to save weekly availability.",
+  );
+  return envelope.data;
+}
+
+export async function blockMentorSlotApi(slotId: string): Promise<MentorSlotDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto>>(
+    httpClient.post(API_ROUTES.MENTORS.MY_SLOT_BLOCK(slotId)),
+    "Failed to block generated slot.",
+  );
+  return envelope.data;
+}
+
+export async function unblockMentorSlotApi(slotId: string): Promise<MentorSlotDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<MentorSlotDto>>(
+    httpClient.post(API_ROUTES.MENTORS.MY_SLOT_UNBLOCK(slotId)),
+    "Failed to restore generated slot.",
   );
   return envelope.data;
 }

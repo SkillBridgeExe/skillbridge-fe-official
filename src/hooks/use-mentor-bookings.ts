@@ -9,7 +9,7 @@ import {
   getMentorOwnedBookings,
   getMyBookings,
   mentorCancelBooking,
-  payRemaining,
+  payBooking,
   reviewBooking,
   setMeetingLink,
   updateAdminMentorBookingRefund,
@@ -48,10 +48,10 @@ export function useBooking(bookingId: string | undefined) {
   });
 }
 
-export function usePayRemaining() {
+export function usePayBooking() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (bookingId: string) => payRemaining(bookingId),
+    mutationFn: (bookingId: string) => payBooking(bookingId),
     onSuccess: () => {
       void invalidateBookingCaches(queryClient);
     },

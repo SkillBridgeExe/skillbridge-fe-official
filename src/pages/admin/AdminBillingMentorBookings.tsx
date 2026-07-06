@@ -19,10 +19,16 @@ import {
 } from "@/hooks/use-mentor-bookings";
 import { useToast } from "@/hooks/use-toast";
 import { formatVnd } from "@/components/ecosystem/MentorCard";
-import { MENTOR_BOOKING_STATUSES, type MentorBookingStatus } from "@/services/mentor-bookings.service";
+import {
+  MENTOR_BOOKING_REFUND_STATUSES,
+  MENTOR_BOOKING_STATUSES,
+  type MentorBookingRefundStatus,
+  type MentorBookingStatus,
+} from "@/services/mentor-bookings.service";
 import type { AdminMentorBookingDto } from "@/services/mentor-bookings.service";
 
 const STATUS_STYLES: Record<string, string> = {
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
   PENDING_DEPOSIT: "bg-amber-100 text-amber-800",
   AWAITING_REMAINING: "bg-orange-100 text-orange-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
@@ -35,11 +41,13 @@ export default function AdminBillingMentorBookings() {
   const { t } = useTranslation("common");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<MentorBookingStatus | "ALL">("ALL");
+  const [refundStatusFilter, setRefundStatusFilter] = useState<MentorBookingRefundStatus | "ALL">("ALL");
 
   const query = {
     page,
     limit: 20,
     ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+    ...(refundStatusFilter !== "ALL" ? { refundStatus: refundStatusFilter } : {}),
   };
 
   const bookingsQuery = useAdminMentorBookings(query);
@@ -65,17 +73,44 @@ export default function AdminBillingMentorBookings() {
           }}
         >
           <SelectTrigger className="h-10 w-[180px] rounded-xl">
-            <SelectValue placeholder="Trạng thái" />
+            <SelectValue placeholder={t("admin.mentorBookings.statusFilter")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Tất cả</SelectItem>
+            <SelectItem value="ALL">{t("admin.mentorBookings.allStatuses")}</SelectItem>
             {MENTOR_BOOKING_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+              <SelectItem key={s} value={s}>
+                {t(`admin.mentorBookings.statusLabels.${s}`, {
+                  defaultValue: s.replace(/_/g, " "),
+                })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={refundStatusFilter}
+          onValueChange={(val) => {
+            setRefundStatusFilter(val as MentorBookingRefundStatus | "ALL");
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-10 w-[190px] rounded-xl">
+            <SelectValue placeholder={t("admin.mentorBookings.refundStatusFilter")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">{t("admin.mentorBookings.allRefunds")}</SelectItem>
+            {MENTOR_BOOKING_REFUND_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {t(`admin.mentorBookings.refundStatusLabels.${s}`, {
+                  defaultValue: s.replace(/_/g, " "),
+                })}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <span className="text-sm text-slate-500">
-          {bookingsQuery.data ? `${bookingsQuery.data.total} booking(s)` : ""}
+          {bookingsQuery.data
+            ? t("admin.mentorBookings.totalBookings", { count: bookingsQuery.data.total })
+            : ""}
         </span>
       </div>
 
@@ -87,7 +122,7 @@ export default function AdminBillingMentorBookings() {
       ) : !bookingsQuery.data?.items.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-center dark:border-slate-800 dark:bg-slate-950">
           <CalendarCheck2 className="h-12 w-12 text-slate-300" />
-          <p className="mt-4 font-bold text-slate-500">Không có booking nào</p>
+          <p className="mt-4 font-bold text-slate-500">{t("admin.mentorBookings.empty")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -107,10 +142,13 @@ export default function AdminBillingMentorBookings() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded-xl font-bold"
           >
-            Trước
+            {t("admin.mentorBookings.previous")}
           </Button>
           <span className="flex items-center px-3 text-sm text-slate-500">
-            Trang {page} / {Math.ceil(bookingsQuery.data.total / 20)}
+            {t("admin.mentorBookings.page", {
+              page,
+              total: Math.ceil(bookingsQuery.data.total / 20),
+            })}
           </span>
           <Button
             variant="outline"
@@ -119,7 +157,7 @@ export default function AdminBillingMentorBookings() {
             onClick={() => setPage((p) => p + 1)}
             className="rounded-xl font-bold"
           >
-            Sau
+            {t("admin.mentorBookings.next")}
           </Button>
         </div>
       ) : null}
@@ -128,6 +166,7 @@ export default function AdminBillingMentorBookings() {
 }
 
 function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
+  const { t } = useTranslation("common");
   const { toast } = useToast();
   const refundMutation = useAdminMentorBookingRefund();
   const [showRefund, setShowRefund] = useState(false);
@@ -141,11 +180,17 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
         bookingId: booking.id,
         payload: { status: refundStatus, note: refundNote.trim() },
       });
-      toast({ title: `Refund ${refundStatus.toLowerCase()} thành công` });
+      toast({
+        title: t("admin.mentorBookings.refundProcessed", {
+          status: t(`admin.mentorBookings.refundStatusLabels.${refundStatus}`, {
+            defaultValue: refundStatus.replace(/_/g, " "),
+          }),
+        }),
+      });
       setShowRefund(false);
     } catch (error) {
       toast({
-        title: "Lỗi xử lý refund",
+        title: t("admin.mentorBookings.refundFailed"),
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
@@ -158,14 +203,19 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[booking.status] ?? ""}`}>
-              {booking.status.replace(/_/g, " ")}
+              {t(`admin.mentorBookings.statusLabels.${booking.status}`, {
+                defaultValue: booking.status.replace(/_/g, " "),
+              })}
             </Badge>
             {booking.refundStatus !== "NOT_REQUIRED" ? (
               <Badge
                 variant="outline"
                 className={`rounded-full text-xs ${booking.refundStatus === "PENDING" ? "border-amber-300 text-amber-700" : ""}`}
               >
-                Refund: {booking.refundStatus}
+                {t("admin.mentorBookings.refundLabel")}:{" "}
+                {t(`admin.mentorBookings.refundStatusLabels.${booking.refundStatus}`, {
+                  defaultValue: booking.refundStatus.replace(/_/g, " "),
+                })}
               </Badge>
             ) : null}
           </div>
@@ -179,12 +229,16 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
               {new Date(booking.slotStart).toLocaleDateString("vi-VN")} {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
             </p>
           ) : null}
+          {booking.studentGoal ? (
+            <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+              <span className="font-semibold">{t("admin.mentorBookings.studentGoal")}:</span>{" "}
+              {booking.studentGoal}
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
           <p className="font-bold text-slate-950 dark:text-white">{formatVnd(booking.totalAmountVnd)}</p>
-          <p className="text-xs text-slate-400">
-            Cọc: {formatVnd(booking.depositAmountVnd)}
-          </p>
+          <p className="text-xs text-slate-400">{t("admin.mentorBookings.paymentLabel")}</p>
         </div>
       </div>
 
@@ -198,7 +252,7 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
               onClick={() => setShowRefund(true)}
               className="rounded-xl font-bold"
             >
-              <RefreshCw className="mr-1 h-4 w-4" /> Xử lý refund
+              <RefreshCw className="mr-1 h-4 w-4" /> {t("admin.mentorBookings.processRefund")}
             </Button>
           ) : (
             <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
@@ -208,15 +262,15 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PROCESSED">Đã refund</SelectItem>
-                    <SelectItem value="REJECTED">Từ chối</SelectItem>
+                    <SelectItem value="PROCESSED">{t("admin.mentorBookings.processed")}</SelectItem>
+                    <SelectItem value="REJECTED">{t("admin.mentorBookings.rejected")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Textarea
                 value={refundNote}
                 onChange={(e) => setRefundNote(e.target.value)}
-                placeholder="Ghi chú refund..."
+                placeholder={t("admin.mentorBookings.refundNotePlaceholder")}
                 className="rounded-lg"
                 rows={2}
               />
@@ -228,10 +282,10 @@ function AdminBookingRow({ booking }: { booking: AdminMentorBookingDto }) {
                   className="rounded-lg font-bold"
                 >
                   {refundMutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                  Xác nhận
+                  {t("admin.mentorBookings.confirm")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowRefund(false)} className="rounded-lg font-bold">
-                  Đóng
+                  {t("admin.mentorBookings.close")}
                 </Button>
               </div>
             </div>

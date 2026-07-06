@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_MENTOR_RANGE_DAYS,
+  getMentorDateRangeErrorCode,
   mentorDateRangeToIso,
   validateMentorDateRange,
 } from "./mentor-date-range";
@@ -25,5 +26,7 @@ describe("mentor date range", () => {
     expect(validateMentorDateRange("2026-01-01", "2026-03-03")).toBe(
       "Date range cannot exceed 60 days.",
     );
+    expect(getMentorDateRangeErrorCode("2026-06-30", "2026-06-25")).toBe("reversed");
+    expect(getMentorDateRangeErrorCode("2026-01-01", "2026-03-03")).toBe("tooLong");
   });
 });

@@ -5,6 +5,7 @@ import {
   getBillingCheckoutPath,
   getBillingCheckoutSurfaceState,
   getBillingOrderStatusMeta,
+  getMentorCheckoutStage,
   getPublicCheckoutSummaryItems,
   parsePayOSReturnParams,
   shouldCaptureSubscriptionPaymentPaid,
@@ -148,5 +149,30 @@ describe("billing checkout helpers", () => {
       }),
     ).toBe(false);
     expect(shouldCaptureSubscriptionPaymentPaid(null)).toBe(false);
+  });
+
+  it("detects paid full mentor booking checkout from order purpose and target id", () => {
+    const baseOrder: OrderStatusResponseDto = {
+      orderId: "ord_mentor",
+      orderCode: 1781624341196493,
+      purpose: "MENTOR_BOOKING",
+      status: "PAID",
+      amountVnd: 500000,
+      currency: "VND",
+      checkoutUrl: null,
+      paymentLinkId: "6f4d2e78b2064883893c71441184035e",
+      targetType: "MENTOR_BOOKING",
+      targetId: "booking-1",
+      paidAt: "2026-06-16T15:39:00.000Z",
+      createdAt: "2026-06-16T15:39:00.000Z",
+      expiresAt: null,
+    };
+
+    expect(getMentorCheckoutStage(baseOrder)).toEqual({
+      stage: "booking_paid",
+      bookingId: "booking-1",
+    });
+    expect(getMentorCheckoutStage({ ...baseOrder, status: "PENDING" })).toBeNull();
+    expect(getMentorCheckoutStage({ ...baseOrder, targetId: null })).toBeNull();
   });
 });

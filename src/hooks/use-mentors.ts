@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/constants/app";
 import {
+  blockMentorSlot,
   createMentorSlot,
   deleteMentorSlot,
   downloadAdminMentorAvatar,
@@ -12,14 +13,18 @@ import {
   getMentorSummary,
   getMyMentorProfile,
   getMyMentorSlots,
+  getMyMentorAvailabilityTemplate,
+  saveMyMentorAvailabilityTemplate,
   searchMentorSkills,
   submitMyMentorProfile,
+  unblockMentorSlot,
   updateAdminMentorStatus,
   updateMyMentorProfile,
   type AdminMentorListQuery,
   type CreateMentorSlotDto,
   type ListMentorSlotsQuery,
   type MentorListQuery,
+  type SaveMentorAvailabilityTemplateRequest,
   type SkillSearchQuery,
   type UpdateAdminMentorStatusRequest,
 } from "@/services/mentor.service";
@@ -136,13 +141,52 @@ export function useMyMentorSlots(query: ListMentorSlotsQuery, enabled = true) {
   });
 }
 
+export function useMyMentorAvailabilityTemplate(enabled = true) {
+  return useQuery({
+    queryKey: QUERY_KEYS.MY_MENTOR_AVAILABILITY_TEMPLATE,
+    queryFn: getMyMentorAvailabilityTemplate,
+    enabled,
+  });
+}
+
 export function useCreateMentorSlot() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateMentorSlotDto) => createMentorSlot(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] });
-      void queryClient.invalidateQueries({ queryKey: ["mentors", "slots"] });
+      void invalidateMentorSlotCaches(queryClient);
+    },
+  });
+}
+
+export function useSaveMentorAvailabilityTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SaveMentorAvailabilityTemplateRequest) =>
+      saveMyMentorAvailabilityTemplate(payload),
+    onSuccess: (template) => {
+      queryClient.setQueryData(QUERY_KEYS.MY_MENTOR_AVAILABILITY_TEMPLATE, template);
+      void invalidateMentorSlotCaches(queryClient);
+    },
+  });
+}
+
+export function useBlockMentorSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slotId: string) => blockMentorSlot(slotId),
+    onSuccess: () => {
+      void invalidateMentorSlotCaches(queryClient);
+    },
+  });
+}
+
+export function useUnblockMentorSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slotId: string) => unblockMentorSlot(slotId),
+    onSuccess: () => {
+      void invalidateMentorSlotCaches(queryClient);
     },
   });
 }
@@ -152,8 +196,7 @@ export function useDeleteMentorSlot() {
   return useMutation({
     mutationFn: (slotId: string) => deleteMentorSlot(slotId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] });
-      void queryClient.invalidateQueries({ queryKey: ["mentors", "slots"] });
+      void invalidateMentorSlotCaches(queryClient);
     },
   });
 }
@@ -166,6 +209,13 @@ function invalidateMentorCaches(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] }),
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_MENTOR_PROFILE }),
     queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] }),
+  ]);
+}
+
+function invalidateMentorSlotCaches(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["mentor", "me", "slots"] }),
+    queryClient.invalidateQueries({ queryKey: ["mentors", "slots"] }),
   ]);
 }
 
