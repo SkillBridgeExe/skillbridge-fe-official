@@ -10,8 +10,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@resume-engine/utils/style";
 import { DEFAULT_PDF_PAGE_SIZE, getPreviewCanvasScale, getScaledPreviewPageSize } from "./preview.shared";
+import { withPdfWorkerCacheKey } from "./pdf-worker";
 
-GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
+GlobalWorkerOptions.workerSrc = withPdfWorkerCacheKey(
+	new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString(),
+);
 
 type PdfCanvasDocumentProps = {
 	children: (document: PDFDocumentProxy) => ReactNode;
