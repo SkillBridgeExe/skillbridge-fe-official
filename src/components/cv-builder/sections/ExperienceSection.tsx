@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, X, RotateCcw } from "lucide-react";
+import { Plus, Sparkles, X, RotateCcw, Briefcase } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -18,10 +18,11 @@ import { findBulletWithSkill } from "@/components/companion/skills/find-bullet-w
 import { SectionItemCard } from "./SectionItemCard";
 import {
   getAchievementLine,
-  parseAchievementFieldIndex,
   replaceAchievementLine,
   suggestionKeyForField,
 } from "./achievement-line-patch";
+import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 
 export function ExperienceSection() {
@@ -30,9 +31,11 @@ export function ExperienceSection() {
     addExperience,
     updateExperience,
     removeExperience,
+    duplicateExperience,
     moveExperience,
     draftId,
     clearSectionEvaluation,
+    markSectionNeedsRecheck,
     pendingProveIt,
     setPendingProveIt,
   } = useCvBuilderStore();
@@ -71,6 +74,8 @@ export function ExperienceSection() {
   // Số lần "Viết lại" theo từng (entry, field) → token variant để BE bỏ cache.
   const attempts = useRef<Record<string, number>>({});
 
+  useScrollToNewItem(experience, "experience");
+
   // Pillar 3 (no-dead-end): route a stuck field (input-gate reject OR an empty
   // field with nothing to rewrite) INTO the intake coaching loop instead of a
   // dead-end. Reuses the SAME `cv_intake` context the "✨ Trợ lý điền nhanh"
@@ -101,10 +106,15 @@ export function ExperienceSection() {
         for (const [key, value] of Object.entries(fields)) {
           updateExperience(exp.id, key as keyof typeof exp, value);
         }
-        clearSectionEvaluation("experience");
+        markSectionNeedsRecheck("experience", {
+          source: "assistant_patch",
+          fieldPath: resumeDocumentPaths.experienceDescription(exp.id),
+          beforePreview: "intake coach update",
+          afterPreview: "intake coach applied",
+        });
       },
     });
-  }, [clearSectionEvaluation, draftId, experience, updateExperience]);
+  }, [markSectionNeedsRecheck, draftId, experience, updateExperience]);
 
   const handleAiSuggest = useCallback((
     entryId: string,
@@ -189,14 +199,40 @@ export function ExperienceSection() {
     }
 
     const field = match.field === "description" ? "description" : "achievements";
-    const achievementIndex = field === "achievements" ? parseAchievementFieldIndex(match.field) : undefined;
-    const currentText =
-      field === "achievements" && achievementIndex !== undefined
-        ? getAchievementLine(entry.achievements, achievementIndex)
-        : entry[field];
-    handleAiSuggest(entry.id, field, currentText, false, achievementIndex);
+    const currentText = entry[field];
+        
+    const index = experience.findIndex(e => e.id === entry.id);
+    const contextId = `cvbuilder:experience[${index}].${field}`;
+    const fieldPath = field === "description" 
+      ? resumeDocumentPaths.experienceDescription(entry.id)
+      : resumeDocumentPaths.experienceAchievements(entry.id);
+
+    useCompanionStore.getState().registerContext({
+      id: contextId,
+      getTurn: () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath,
+          section: "experience",
+          currentValue: currentText,
+          onApply: (after: string) => {
+            updateExperience(entry.id, field, after);
+            markSectionNeedsRecheck("experience", {
+              source: "diagnosis_fix",
+              fieldPath,
+              beforePreview: currentText.substring(0, 100),
+              afterPreview: after.substring(0, 100),
+            });
+          },
+        },
+      }),
+    });
+    useCompanionStore.getState().activateContext(contextId);
+    useCompanionStore.setState({ bubbleOpen: true });
+    
     setPendingProveIt(null);
-  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast]);
+  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast, markSectionNeedsRecheck, updateExperience]);
 
   const handleUseIt = (entryId: string, field: "description" | "achievements") => {
     if (!activeSuggestion) return;
@@ -214,7 +250,17 @@ export function ExperienceSection() {
     updateExperience(entryId, field, nextValue);
     updateExperience(entryId, "aiRewrite", oldValue); // Sử dụng aiRewrite để lưu backup
     setOriginalTextMap((prev) => ({ ...prev, [key]: oldValue }));
-    clearSectionEvaluation("experience");
+
+    const fieldPath = field === "description"
+      ? resumeDocumentPaths.experienceDescription(entryId)
+      : resumeDocumentPaths.experienceAchievements(entryId);
+
+    markSectionNeedsRecheck("experience", {
+      source: "assistant_patch",
+      fieldPath,
+      beforePreview: oldValue.substring(0, 100),
+      afterPreview: nextValue.substring(0, 100),
+    });
   };
 
   const handleUndo = (entryId: string, field: "description" | "achievements") => {
@@ -338,17 +384,21 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-6">
-      {experience.map((exp, index) => {
-        const title = exp.company || t("builder.ph.company", { defaultValue: "Company Name" });
-        const subtitle = exp.position || t("builder.entry.experience", { defaultValue: "Experience" });
-
+      {experience.length > 0 ? experience.map((exp, index) => {
         return (
+          <div key={exp.id} id={`experience-${exp.id}`}>
           <SectionItemCard
             key={exp.id}
-            title={title}
-            subtitle={subtitle}
+            title={exp.position || exp.company || t("builder.fields.newExperience")}
+            subtitle={exp.startDate || exp.endDate ? `${exp.startDate} - ${exp.endDate}` : undefined}
             onRemove={() => removeExperience(exp.id)}
-            canRemove={experience.length > 1}
+            canRemove={true}
+            requireConfirmOnRemove={!!exp.company || !!exp.position || !!exp.description || !!exp.achievements}
+            onDuplicate={() => {
+              duplicateExperience(exp.id);
+              // Focus could be handled here or rely on react rendering
+            }}
+            canDuplicate={true}
             onMoveUp={() => moveExperience(exp.id, "up")}
             canMoveUp={index > 0}
             onMoveDown={() => moveExperience(exp.id, "down")}
@@ -463,7 +513,7 @@ export function ExperienceSection() {
                         skill: "cv_builder",
                         props: {
                           draftId,
-                          fieldPath: id,
+                          fieldPath: resumeDocumentPaths.experienceDescription(exp.id),
                           section: "experience",
                           currentValue: exp.description,
                           onApply: (after: string) => {
@@ -542,7 +592,7 @@ export function ExperienceSection() {
                         skill: "cv_builder",
                         props: {
                           draftId,
-                          fieldPath: id,
+                          fieldPath: resumeDocumentPaths.experienceAchievements(exp.id),
                           section: "experience",
                           currentValue: exp.achievements,
                           onApply: (after: string) => {
@@ -576,9 +626,23 @@ export function ExperienceSection() {
 
           </div>
           </SectionItemCard>
+          </div>
         );
-      })}
+      }) : (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <Briefcase className="w-6 h-6 text-slate-400" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle", { defaultValue: "No experience added" })}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc", { defaultValue: "Add relevant jobs or internships." })}</p>
+          <Button onClick={addExperience} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
+            <Plus className="w-3.5 h-3.5"/>
+            {t("builder.add.experience")}
+          </Button>
+        </div>
+      )}
       
+      {experience.length > 0 && (
       <button 
         onClick={addExperience}
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
@@ -586,6 +650,7 @@ export function ExperienceSection() {
         <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
         <span className="font-medium text-sm">{t("builder.add.experience")}</span>
       </button>
+      )}
     </div>
   );
 }

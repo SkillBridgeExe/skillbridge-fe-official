@@ -142,6 +142,67 @@ describe("useCvBuilderStore.resumeAppearance", () => {
   });
 });
 
+describe("useCvBuilderStore.sectionFixFeedback", () => {
+  it("marks a section as needing re-check when its stale evaluation is cleared via manual edit default", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSectionEvaluation("summary", {
+      score: 60,
+      label: "Needs improvement",
+      checklist: [],
+      missing: ["Add more evidence"],
+    });
+
+    useCvBuilderStore.getState().clearSectionEvaluation("summary");
+
+    expect(useCvBuilderStore.getState().sectionEvaluations.summary).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionFixFeedback.summary).toMatchObject({
+      status: "needs_recheck",
+      source: "manual_edit",
+    });
+  });
+
+  it("can store rich feedback properties like field path and previews with markSectionNeedsRecheck", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSectionEvaluation("experience", {
+      score: 80,
+      label: "Good",
+      checklist: [],
+      missing: [],
+    });
+
+    useCvBuilderStore.getState().markSectionNeedsRecheck("experience", {
+      source: "assistant_patch",
+      fieldPath: "doc.sections.experience.items.0.description",
+      beforePreview: "before text",
+      afterPreview: "after text",
+    });
+
+    expect(useCvBuilderStore.getState().sectionEvaluations.experience).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionFixFeedback.experience).toMatchObject({
+      status: "needs_recheck",
+      source: "assistant_patch",
+      fieldPath: "doc.sections.experience.items.0.description",
+      beforePreview: "before text",
+      afterPreview: "after text",
+    });
+  });
+
+  it("clears the post-fix feedback once a fresh section evaluation arrives", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().clearSectionEvaluation("projects");
+
+    useCvBuilderStore.getState().setSectionEvaluation("projects", {
+      score: 90,
+      label: "Good",
+      checklist: [],
+      missing: [],
+    });
+
+    expect(useCvBuilderStore.getState().sectionFixFeedback.projects).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionEvaluations.projects?.score).toBe(90);
+  });
+});
+
 describe("getSectionStatuses quality-gating", () => {
   const reset = () => useCvBuilderStore.getState().reset();
 
@@ -245,6 +306,43 @@ describe("useCvBuilderStore.structure", () => {
     expect(useCvBuilderStore.getState().projects[0]).toMatchObject({ id: "project-2", role: "Lead" });
   });
 
+  it("duplicates a project after the original and preserves its content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      projects: [
+        { id: "project-1", name: "Portfolio", role: "Developer", link: "https://example.com", description: "Built UI", tools: "React", contribution: "Frontend", result: "Shipped" },
+      ],
+    });
+
+    useCvBuilderStore.getState().duplicateProject("project-1");
+
+    const projects = useCvBuilderStore.getState().projects;
+    expect(projects).toHaveLength(2);
+    expect(projects[1]).toMatchObject({
+      name: "Portfolio",
+      role: "Developer",
+      link: "https://example.com",
+      description: "Built UI",
+      tools: "React",
+      contribution: "Frontend",
+      result: "Shipped",
+    });
+    expect(projects[1].id).not.toBe("project-1");
+  });
+
+  it("allows removing the last project so the section can show its empty state", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      projects: [
+        { id: "project-1", name: "Only Project", role: "Developer", link: "", description: "", tools: "", contribution: "", result: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().removeProject("project-1");
+
+    expect(useCvBuilderStore.getState().projects).toEqual([]);
+  });
+
   it("reorders repeatable experience items without losing their data", () => {
     useCvBuilderStore.getState().reset();
     useCvBuilderStore.setState({
@@ -258,5 +356,43 @@ describe("useCvBuilderStore.structure", () => {
 
     expect(useCvBuilderStore.getState().experience.map((experience) => experience.company)).toEqual(["Second Co", "First Co"]);
     expect(useCvBuilderStore.getState().experience[0]).toMatchObject({ id: "exp-2", position: "Developer" });
+  });
+
+  it("duplicates an experience entry after the original and preserves its content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      experience: [
+        { id: "exp-1", company: "SkillBridge", position: "Intern", startDate: "2026-01", endDate: "2026-06", description: "Built features", responsibilities: "Frontend", achievements: "Improved flow", aiRewrite: "Rewrite" },
+      ],
+    });
+
+    useCvBuilderStore.getState().duplicateExperience("exp-1");
+
+    const experience = useCvBuilderStore.getState().experience;
+    expect(experience).toHaveLength(2);
+    expect(experience[1]).toMatchObject({
+      company: "SkillBridge",
+      position: "Intern",
+      startDate: "2026-01",
+      endDate: "2026-06",
+      description: "Built features",
+      responsibilities: "Frontend",
+      achievements: "Improved flow",
+      aiRewrite: "Rewrite",
+    });
+    expect(experience[1].id).not.toBe("exp-1");
+  });
+
+  it("allows removing the last experience so the section can show its empty state", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      experience: [
+        { id: "exp-1", company: "Only Co", position: "Intern", startDate: "", endDate: "", description: "", responsibilities: "", achievements: "", aiRewrite: "" },
+      ],
+    });
+
+    useCvBuilderStore.getState().removeExperience("exp-1");
+
+    expect(useCvBuilderStore.getState().experience).toEqual([]);
   });
 });

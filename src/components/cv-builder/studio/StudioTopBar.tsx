@@ -10,11 +10,10 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useCompanionStore } from "@/store/useCompanionStore";
+import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
 
 export function StudioTopBar() {
-  const { t, i18n } = useTranslation("diagnosis");
-  const isVi = i18n.language.startsWith("vi");
+  const { t } = useTranslation("diagnosis");
   const hasApiSession = useHasApiSession();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -88,7 +87,13 @@ export function StudioTopBar() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${title || "cv"}-skillbridge.pdf`;
+        const safeTitle = (title || "skillbridge-cv")
+          .trim()
+          .replace(/[^a-z0-9]/gi, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, "")
+          .toLowerCase() || "skillbridge-cv";
+        a.download = `${safeTitle}-skillbridge.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -107,7 +112,7 @@ export function StudioTopBar() {
   const handleBackToDiagnosis = () => {
     const diagnosisStore = useDiagnosisStore.getState();
     diagnosisStore.setIsFromBuilder(false);
-    
+
     // If they already have a diagnosis result, return them to the review step
     // instead of forcing them back to the upload screen.
     if (diagnosisStore.reviewData) {
@@ -115,7 +120,7 @@ export function StudioTopBar() {
     } else {
       diagnosisStore.setStep("input");
     }
-    
+
     navigate("/diagnosis");
   };
 
@@ -177,16 +182,106 @@ export function StudioTopBar() {
     }
   };
 
+  const openAssistantContext = (
+    id: string,
+    getTurn: CompanionContextReg["getTurn"],
+  ) => {
+    const companion = useCompanionStore.getState();
+    companion.registerContext({ id, getTurn });
+    companion.activateContext(id);
+    useCompanionStore.setState({ bubbleOpen: true });
+  };
+
+  const handleOpenAiAssistant = () => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
+
+    const state = useCvBuilderStore.getState();
+
+    if (state.summary.trim()) {
+      const id = "cvbuilder:summary";
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "summary",
+          currentValue: useCvBuilderStore.getState().summary,
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().setSummary(after);
+            useCvBuilderStore.getState().clearSectionEvaluation("summary");
+          },
+        },
+      }));
+      return;
+    }
+
+    const projectIndex = state.projects.findIndex((project) => project.description.trim());
+    if (projectIndex >= 0) {
+      const project = state.projects[projectIndex];
+      const id = `cvbuilder:projects[${projectIndex}].description`;
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "projects",
+          currentValue:
+            useCvBuilderStore.getState().projects.find((item) => item.id === project.id)?.description ??
+            "",
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().updateProject(project.id, "description", after);
+            useCvBuilderStore.getState().clearSectionEvaluation("projects");
+          },
+        },
+      }));
+      return;
+    }
+
+    const experienceIndex = state.experience.findIndex((experience) =>
+      experience.description.trim() || experience.achievements.trim(),
+    );
+    if (experienceIndex >= 0) {
+      const experience = state.experience[experienceIndex];
+      const field = experience.achievements.trim() ? "achievements" : "description";
+      const id = `cvbuilder:experience[${experienceIndex}].${field}`;
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "experience",
+          currentValue:
+            useCvBuilderStore.getState().experience.find((item) => item.id === experience.id)?.[field] ??
+            "",
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().updateExperience(experience.id, field, after);
+            useCvBuilderStore.getState().clearSectionEvaluation("experience");
+          },
+        },
+      }));
+      return;
+    }
+
+    toast({
+      title: t("builder.aiNeedsContentTitle"),
+      description: t("builder.aiNeedsContentDesc"),
+    });
+  };
+
   return (
     <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10 pr-4 xl:pr-6 pl-0 sticky top-0 shadow-sm">
       <div className="flex h-full items-center gap-0 flex-1">
-        
+
         {/* Back Button (aligned with 56px sidebar) */}
         <div className="w-[56px] h-full flex items-center justify-center shrink-0">
           <button
             onClick={handleBackToDiagnosis}
             className="group flex items-center justify-center w-9 h-9 text-slate-500 hover:text-slate-900 transition-colors rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40"
             title={t("builder.backToDiagnosis")}
+            aria-label={t("builder.backToDiagnosis")}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -196,11 +291,12 @@ export function StudioTopBar() {
 
         {/* Document Title - Editable */}
         <div className="flex items-center gap-1.5 max-w-[200px] sm:max-w-[300px] group relative">
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="font-semibold text-[15px] text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-primary/20 rounded-md px-2.5 py-1 w-full truncate hover:bg-slate-100 transition-colors placeholder:text-slate-400 focus:bg-white"
             value={title || ""}
-            placeholder={isVi ? "CV chưa đặt tên" : "Untitled Resume"}
+            placeholder={t("builder.studio.untitledResume")}
+            aria-label={t("builder.studio.resumeNameLabel")}
             onChange={(e) => useCvBuilderStore.getState().setBasicInfo("fullName", e.target.value)}
           />
           <PenLine className="w-3.5 h-3.5 text-slate-400 absolute right-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
@@ -236,7 +332,7 @@ export function StudioTopBar() {
 
       {/* Right - Actions */}
       <div className="flex h-full items-center gap-2 flex-1 justify-end">
-        
+
         {/* AI Assistant Button */}
         <Button
           onClick={handleSaveDraft}
@@ -244,6 +340,8 @@ export function StudioTopBar() {
           size="sm"
           className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           disabled={saveStatus === "saving"}
+          aria-label={t("builder.saveDraft")}
+          title={t("builder.saveDraft")}
         >
           {saveStatus === "saving" ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -254,30 +352,15 @@ export function StudioTopBar() {
         </Button>
 
         <Button
-          onClick={() => {
-            const id = "cvbuilder:general";
-            useCompanionStore.getState().registerContext({
-              id,
-              getTurn: () => ({
-                skill: "cv_builder",
-                props: {
-                  draftId: draftId || "",
-                  fieldPath: id,
-                  section: "general",
-                  currentValue: "",
-                  onApply: () => {},
-                },
-              }),
-            });
-            useCompanionStore.getState().activateContext(id);
-            useCompanionStore.setState({ bubbleOpen: true });
-          }}
+          onClick={handleOpenAiAssistant}
           variant="secondary"
           size="sm"
           className="gap-1.5 h-8 rounded-full text-[13px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
+          aria-label={t("builder.aiAssistant")}
+          title={t("builder.aiAssistant")}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t("builder.aiAssistant", { defaultValue: "AI Assistant" })}</span>
+          <span className="hidden sm:inline">{t("builder.aiAssistant")}</span>
         </Button>
 
         {/* Analyze button (kept but made secondary) */}
@@ -287,6 +370,8 @@ export function StudioTopBar() {
           size="sm"
           className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           disabled={analyzeCvMutation.isPending}
+          aria-label={t("builder.analyzeCv")}
+          title={t("builder.analyzeCv")}
         >
           {analyzeCvMutation.isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -303,13 +388,15 @@ export function StudioTopBar() {
           onClick={handleDownload}
           className="gap-2 h-8 rounded-full text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
           disabled={renderPdfMutation.isPending}
+          aria-label={t("builder.downloadCv")}
+          title={t("builder.downloadCv")}
         >
           {renderPdfMutation.isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Download className="w-3.5 h-3.5" />
           )}
-          <span className="hidden sm:inline">{t("builder.downloadCv", { defaultValue: isVi ? "Tải xuống" : "Download CV" })}</span>
+          <span className="hidden sm:inline">{t("builder.downloadCv")}</span>
         </Button>
       </div>
     </header>

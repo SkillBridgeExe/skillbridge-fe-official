@@ -38,6 +38,7 @@ import type { CvReviewData, EvidenceItem, ProgressReportDto } from "@shared/api"
 import type { DiagnosisChatFocus } from "@/types/companion";
 import type { ChatActionChip } from "./chat-action-chips";
 import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
+import { resolveDiagnosisFixAnchor } from "./diagnosis-fix-anchor";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
 
@@ -72,6 +73,14 @@ function openerKeyForFocus(focus: DiagnosisChatFocus, score: number): string {
     return `companion.chat.opener.cv_audit.${openerBandKey(score)}`;
   }
   return `companion.chat.opener.${focus}`;
+}
+
+function isExperiencePatchField(field: string): field is "description" | "responsibilities" | "achievements" {
+  return field === "description" || field === "responsibilities" || field === "achievements";
+}
+
+function isProjectPatchField(field: string): field is "description" | "contribution" | "result" {
+  return field === "description" || field === "contribution" || field === "result";
 }
 
 /** Is this axios/Api error the BE's daily-cap 429? Status preserved by the API client; errorCode as fallback. */
@@ -366,17 +375,80 @@ export function useDiagnosisChatCompanion(
         return;
       }
       if (chip.kind === "prove_it" && chip.proveIt) {
-        useCvBuilderStore.getState().setPendingProveIt(chip.proveIt);
-        useCvBuilderStore.getState().setActiveSection(4);
-        useDiagnosisStore.getState().setStep("builder");
         useCompanionStore.getState().setChatPendingAction(null);
+        const draftId = useCvBuilderStore.getState().draftId;
+
+        if (!draftId) {
+          useCvBuilderStore.getState().setPendingProveIt(chip.proveIt);
+          useCvBuilderStore.getState().setActiveSection(4);
+          useDiagnosisStore.getState().setStep("builder");
+          return;
+        }
+
+        const doc = useCvBuilderStore.getState().getResumeDocumentV1();
+        
+        const anchor = resolveDiagnosisFixAnchor({
+          document: doc,
+          skill: chip.proveIt,
+          evidenceText: chip.proveIt.evidenceText,
+        });
+
+        useDiagnosisStore.getState().setStep("builder");
+
+        if (anchor.ok) {
+          const sectionIdx = anchor.section === "summary" ? 2 : anchor.section === "projects" ? 5 : 4;
+          useCvBuilderStore.getState().setActiveSection(sectionIdx);
+          
+          useCompanionStore.getState().registerContext({
+            id: "diagnosis_anchor_fix",
+            getTurn: () => ({
+              skill: "cv_builder",
+              props: {
+                draftId,
+                fieldPath: anchor.fieldPath,
+                section: anchor.section,
+                currentValue: anchor.currentValue,
+                onApply: (after: string) => {
+                  const store = useCvBuilderStore.getState();
+                  if (anchor.section === "summary") {
+                    store.setSummary(after);
+                    store.clearSectionEvaluation("summary");
+                    return;
+                  }
+
+                  if (anchor.section === "experience") {
+                    const match = anchor.fieldPath.match(/^\/sections\/experience\/items\/([^/]+)\/([^/]+)$/);
+                    if (match && isExperiencePatchField(match[2])) {
+                      store.updateExperience(match[1], match[2], after);
+                      store.clearSectionEvaluation("experience");
+                    }
+                    return;
+                  }
+
+                  const match = anchor.fieldPath.match(/^\/sections\/projects\/items\/([^/]+)\/([^/]+)$/);
+                  if (match && isProjectPatchField(match[2])) {
+                    store.updateProject(match[1], match[2], after);
+                    store.clearSectionEvaluation("projects");
+                  }
+                },
+              },
+            }),
+          });
+          useCompanionStore.getState().activateContext("diagnosis_anchor_fix");
+          useCompanionStore.setState({ bubbleOpen: true });
+        } else {
+          useCvBuilderStore.getState().setActiveSection(4);
+          const msg = t("companion.chat.proveitNoAnchor");
+          useCompanionStore.getState().appendChatMessage({ role: "assistant", local: true, text: msg });
+          useCompanionStore.setState({ bubbleOpen: true });
+        }
         return;
       }
       // rewrite/roadmap/copy/view_match are explicit user actions. MF6 wires the
       // execution; MF3 only stores the pending intent and shows the confirm strip.
       useCompanionStore.getState().setChatPendingAction(chip);
     },
-    [jumpToAnchor],
+    [jumpToAnchor, t],
   );
 
   const onConfirmAction = useCallback(() => {

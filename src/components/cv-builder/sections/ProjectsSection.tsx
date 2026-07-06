@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, RotateCcw } from "lucide-react";
+import { Plus, Sparkles, RotateCcw, LayoutTemplate } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -13,6 +13,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { SectionItemCard } from "./SectionItemCard";
+import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const BULLETS_INSTRUCTION =
@@ -21,7 +22,7 @@ const BULLETS_INSTRUCTION =
 type ProjectNotice = AiGateCode | "LOCAL_ONLY" | "FALLBACK";
 
 export function ProjectsSection() {
-  const { projects, addProject, updateProject, removeProject, moveProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
+  const { projects, addProject, updateProject, removeProject, duplicateProject, moveProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
   const { t } = useTranslation("diagnosis");
 
@@ -37,6 +38,8 @@ export function ProjectsSection() {
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
+
+  useScrollToNewItem(projects, "projects");
 
   const noticeText = (kind: ProjectNotice) => {
     switch (kind) {
@@ -118,17 +121,21 @@ export function ProjectsSection() {
 
   return (
     <div className="space-y-6">
-      {projects.map((proj, index) => {
+      {projects.length > 0 ? projects.map((proj, index) => {
         const title = proj.name || t("builder.ph.projectName", { defaultValue: "Project Name" });
         const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Project" });
 
         return (
+          <div key={proj.id} id={`projects-${proj.id}`}>
           <SectionItemCard
             key={proj.id}
             title={title}
             subtitle={subtitle}
             onRemove={() => removeProject(proj.id)}
-            canRemove={projects.length > 1}
+            canRemove={true}
+            requireConfirmOnRemove={!!proj.name || !!proj.role || !!proj.description}
+            onDuplicate={() => duplicateProject(proj.id)}
+            canDuplicate={true}
             onMoveUp={() => moveProject(proj.id, "up")}
             canMoveUp={index > 0}
             onMoveDown={() => moveProject(proj.id, "down")}
@@ -278,9 +285,23 @@ export function ProjectsSection() {
               </div>
             </div>
           </SectionItemCard>
+          </div>
         );
-      })}
+      }) : (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <LayoutTemplate className="w-6 h-6 text-slate-400" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle", { defaultValue: "No projects added" })}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc", { defaultValue: "Add notable projects you've worked on." })}</p>
+          <Button onClick={addProject} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
+            <Plus className="w-3.5 h-3.5"/>
+            {t("builder.add.project")}
+          </Button>
+        </div>
+      )}
       
+      {projects.length > 0 && (
       <button 
         onClick={addProject}
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
@@ -288,6 +309,7 @@ export function ProjectsSection() {
         <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
         <span className="font-medium text-sm">{t("builder.add.project")}</span>
       </button>
+      )}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/ty
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
+import type { ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import type { Template } from "@/lib/resume-engine/schema/templates";
 
@@ -58,6 +60,14 @@ export interface Certification {
 }
 
 export type SectionStatus = "completed" | "missing" | "needs-improvement";
+export type SectionFixFeedback = {
+  status: "needs_recheck";
+  updatedAt: number;
+  source?: "manual_edit" | "assistant_patch" | "diagnosis_fix";
+  fieldPath?: string;
+  beforePreview?: string;
+  afterPreview?: string;
+};
 
 export type CvBuilderSectionKey = "summary" | "experience" | "education" | "projects" | "skills" | "certifications";
 
@@ -145,6 +155,7 @@ export interface CvBuilderState {
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
   sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
+  sectionFixFeedback: Partial<Record<BuilderSection, SectionFixFeedback>>;
 
   /** True khi store vừa được nạp từ CV đã chẩn đoán (Diagnosis → "Sửa CV"):
    *  báo cho Diagnosis page đẩy ngay nội dung vào draft mới sau khi tạo. */
@@ -165,18 +176,21 @@ export interface CvBuilderState {
   addEducation: () => void;
   updateEducation: (id: string, field: keyof Education, value: string) => void;
   removeEducation: (id: string) => void;
+  duplicateEducation: (id: string) => void;
   moveEducation: (id: string, direction: "up" | "down") => void;
 
   // Actions — Experience
   addExperience: () => void;
   updateExperience: (id: string, field: keyof WorkExperience, value: string) => void;
   removeExperience: (id: string) => void;
+  duplicateExperience: (id: string) => void;
   moveExperience: (id: string, direction: "up" | "down") => void;
 
   // Actions — Projects
   addProject: () => void;
   updateProject: (id: string, field: keyof Project, value: string) => void;
   removeProject: (id: string) => void;
+  duplicateProject: (id: string) => void;
   moveProject: (id: string, direction: "up" | "down") => void;
 
   // Actions — Skills
@@ -188,6 +202,7 @@ export interface CvBuilderState {
   addCertification: () => void;
   updateCertification: (id: string, field: keyof Certification, value: string) => void;
   removeCertification: (id: string) => void;
+  duplicateCertification: (id: string) => void;
   moveCertification: (id: string, direction: "up" | "down") => void;
 
   // Actions — UI
@@ -207,6 +222,7 @@ export interface CvBuilderState {
   setDraftId: (id: string | null) => void;
   setSectionEvaluation: (section: BuilderSection, result: EvaluateSectionResponse) => void;
   clearSectionEvaluation: (section: BuilderSection) => void;
+  markSectionNeedsRecheck: (section: BuilderSection, feedback?: Omit<SectionFixFeedback, "status" | "updatedAt">) => void;
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
@@ -246,6 +262,7 @@ export interface CvBuilderState {
    * to keep the old CV Builder UI working.
    */
   getResumeData: () => ResumeData;
+  getResumeDocumentV1: () => ResumeDocumentV1;
   getCompletionPercent: () => number;
 
   // Reset
@@ -279,6 +296,7 @@ const initialState = {
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
+  sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
   seededFromDiagnosis: false,
   seedSourceCvId: null as string | null,
   // Companion
@@ -376,6 +394,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
     draftId: null,
     sectionEvaluations: {},
+    sectionFixFeedback: {},
     activeSection: 0,
     seededFromDiagnosis: true,
     seedSourceCvId: null,
@@ -401,8 +420,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     education: s.education.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
   })),
   removeEducation: (id) => set((s) => ({
-    education: s.education.length > 1 ? s.education.filter((e) => e.id !== id) : s.education,
+    education: s.education.filter((e) => e.id !== id),
   })),
+  duplicateEducation: (id) => set((s) => {
+    const idx = s.education.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.education[idx], id: uid() };
+    const newArr = [...s.education];
+    newArr.splice(idx + 1, 0, cloned);
+    return { education: newArr };
+  }),
   moveEducation: (id, direction) => set((s) => {
     const idx = s.education.findIndex((e) => e.id === id);
     if (idx < 0) return {};
@@ -420,8 +447,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     experience: s.experience.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
   })),
   removeExperience: (id) => set((s) => ({
-    experience: s.experience.length > 1 ? s.experience.filter((e) => e.id !== id) : s.experience,
+    experience: s.experience.filter((e) => e.id !== id),
   })),
+  duplicateExperience: (id) => set((s) => {
+    const idx = s.experience.findIndex((e) => e.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.experience[idx], id: uid() };
+    const newArr = [...s.experience];
+    newArr.splice(idx + 1, 0, cloned);
+    return { experience: newArr };
+  }),
   moveExperience: (id, direction) => set((s) => {
     const idx = s.experience.findIndex((e) => e.id === id);
     if (idx < 0) return {};
@@ -439,8 +474,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     projects: s.projects.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
   })),
   removeProject: (id) => set((s) => ({
-    projects: s.projects.length > 1 ? s.projects.filter((p) => p.id !== id) : s.projects,
+    projects: s.projects.filter((p) => p.id !== id),
   })),
+  duplicateProject: (id) => set((s) => {
+    const idx = s.projects.findIndex((p) => p.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.projects[idx], id: uid() };
+    const newArr = [...s.projects];
+    newArr.splice(idx + 1, 0, cloned);
+    return { projects: newArr };
+  }),
   moveProject: (id, direction) => set((s) => {
     const idx = s.projects.findIndex((p) => p.id === id);
     if (idx < 0) return {};
@@ -469,8 +512,16 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     certifications: s.certifications.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
   })),
   removeCertification: (id) => set((s) => ({
-    certifications: s.certifications.length > 1 ? s.certifications.filter((c) => c.id !== id) : s.certifications,
+    certifications: s.certifications.filter((c) => c.id !== id),
   })),
+  duplicateCertification: (id) => set((s) => {
+    const idx = s.certifications.findIndex((c) => c.id === id);
+    if (idx < 0) return {};
+    const cloned = { ...s.certifications[idx], id: uid() };
+    const newArr = [...s.certifications];
+    newArr.splice(idx + 1, 0, cloned);
+    return { certifications: newArr };
+  }),
   moveCertification: (id, direction) => set((s) => {
     const idx = s.certifications.findIndex((c) => c.id === id);
     if (idx < 0) return {};
@@ -486,12 +537,26 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setActiveSection: (section) => set({ activeSection: section }),
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
-    set((s) => ({ sectionEvaluations: { ...s.sectionEvaluations, [section]: result } })),
-  clearSectionEvaluation: (section) =>
     set((s) => {
-      const next = { ...s.sectionEvaluations };
-      delete next[section];
-      return { sectionEvaluations: next };
+      const sectionFixFeedback = { ...s.sectionFixFeedback };
+      delete sectionFixFeedback[section];
+      return {
+        sectionEvaluations: { ...s.sectionEvaluations, [section]: result },
+        sectionFixFeedback,
+      };
+    }),
+  clearSectionEvaluation: (section) => get().markSectionNeedsRecheck(section, { source: "manual_edit" }),
+  markSectionNeedsRecheck: (section, feedback) =>
+    set((s) => {
+      const nextEvaluations = { ...s.sectionEvaluations };
+      delete nextEvaluations[section];
+      return {
+        sectionEvaluations: nextEvaluations,
+        sectionFixFeedback: {
+          ...s.sectionFixFeedback,
+          [section]: { status: "needs_recheck", updatedAt: Date.now(), ...feedback },
+        },
+      };
     }),
 
   // Seed từ CV đã chẩn đoán
@@ -507,6 +572,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
+            sectionFixFeedback: state.sectionFixFeedback,
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
           }
@@ -566,6 +632,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),
+  getResumeDocumentV1: () => builderStateToResumeDocumentV1(get()),
 
   getSectionStatuses: () => {
     const s = get();

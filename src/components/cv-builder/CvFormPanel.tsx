@@ -2,7 +2,7 @@ import { useCvBuilderStore, type Education, type WorkExperience, type Project, t
 import { useTranslation } from "react-i18next";
 import { 
   User, Target, FileText, GraduationCap, Briefcase, 
-  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge
+  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw
 } from "lucide-react";
 import * as Sections from "./sections";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -13,8 +13,8 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { BuilderSnapshot } from "@/services/cv-builder.service";
 import type { BuilderSection } from "@shared/api";
+import { getBuilderSnapshot } from "./builder-snapshot";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -136,31 +136,10 @@ const isSectionDirty = (sectionId: string, state: ReturnType<typeof useCvBuilder
   }
 };
 
-const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
-  fullName: state.fullName,
-  email: state.email,
-  phone: state.phone,
-  location: state.location,
-  linkedin: state.linkedin,
-  portfolio: state.portfolio,
-  github: state.github,
-  targetPosition: state.targetPosition,
-  summary: state.summary,
-  education: state.education,
-  experience: state.experience,
-  projects: state.projects,
-  technicalSkills: state.technicalSkills,
-  softSkills: state.softSkills,
-  tools: state.tools,
-  languages: state.languages,
-  certifications: state.certifications,
-  cvLanguage: state.cvLanguage,
-});
-
 export function CvFormPanel() {
   const { t, i18n } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
-  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation } = store;
+  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, sectionFixFeedback } = store;
   const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
   const isLoggedIn = useAuthStore(
@@ -276,6 +255,23 @@ export function CvFormPanel() {
       );
     }
 
+    const fixFeedback = sectionFixFeedback[beSection];
+    if (fixFeedback) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => { e.stopPropagation(); handleEvaluateSection(beSection, sectionId); }}
+          className="h-7 px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm bg-[#FFF8E6] text-[#D97706] hover:bg-[#FEF0C7] border border-[#FDE68A]"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="font-sans font-semibold text-[10px] uppercase tracking-wider">
+            {t("builder.review.recheckSectionShort")}
+          </span>
+        </Button>
+      );
+    }
+
     if (evaluation) {
       const { score, label, checklist, missing } = evaluation;
       let badgeClass = "";
@@ -380,7 +376,7 @@ export function CvFormPanel() {
                     <h4 className={cn("font-bold text-sm tracking-tight", isHidden ? "text-slate-400" : "text-slate-900")}>{title}</h4>
                     {isHidden && (
                       <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200/70 text-slate-500 uppercase tracking-wider">
-                        {currentLang === "vi" ? "Đã ẩn" : "Hidden"}
+                        {t("builder.review.hidden")}
                       </span>
                     )}
                   </div>
@@ -396,18 +392,18 @@ export function CvFormPanel() {
                         {status === "completed" && (
                           <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
                             <Check className="w-3.5 h-3.5 shrink-0" />
-                            <span>{currentLang === "vi" ? "Đã xong" : "Done"}</span>
+                            <span>{t("builder.review.doneShort")}</span>
                           </div>
                         )}
                         {status === "needs-improvement" && (
                           <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#FEF7EA] text-[#B98900]">
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                            <span>{currentLang === "vi" ? "Cần cải thiện" : "Improve"}</span>
+                            <span>{t("builder.review.improveShort")}</span>
                           </div>
                         )}
                         {status === "missing" && (
                           <div className="px-2.5 py-1 text-xs font-semibold rounded-full border border-[#EAEAEA] text-[#787774] bg-[#FBFBFA]">
-                            <span>{currentLang === "vi" ? "Chưa bắt đầu" : "Missing"}</span>
+                            <span>{t("builder.review.missingShort")}</span>
                           </div>
                         )}
                       </div>

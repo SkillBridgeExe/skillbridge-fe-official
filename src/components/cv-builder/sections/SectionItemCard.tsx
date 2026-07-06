@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface SectionItemCardProps {
   title: string;
   subtitle?: string;
   onRemove: () => void;
   canRemove: boolean;
+  requireConfirmOnRemove?: boolean;
+  onDuplicate?: () => void;
+  canDuplicate?: boolean;
   onMoveUp?: () => void;
   canMoveUp?: boolean;
   onMoveDown?: () => void;
@@ -22,6 +26,9 @@ export function SectionItemCard({
   subtitle,
   onRemove,
   canRemove,
+  requireConfirmOnRemove = false,
+  onDuplicate,
+  canDuplicate = true,
   onMoveUp,
   canMoveUp = false,
   onMoveDown,
@@ -30,6 +37,18 @@ export function SectionItemCard({
   defaultExpanded = false
 }: SectionItemCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { t } = useTranslation("diagnosis");
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (requireConfirmOnRemove) {
+      if (window.confirm(t("builder.confirmRemove", { defaultValue: "Are you sure you want to remove this item? This action cannot be undone." }))) {
+        onRemove();
+      }
+    } else {
+      onRemove();
+    }
+  };
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
@@ -38,7 +57,9 @@ export function SectionItemCard({
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex-1 min-w-0 pr-4">
-          <h4 className="font-semibold text-sm text-slate-800 truncate">{title || "(Chưa có tên)"}</h4>
+          <h4 className="font-semibold text-sm text-slate-800 truncate">
+            {title || t("builder.actions.unnamedItem", { defaultValue: "Untitled item" })}
+          </h4>
           {subtitle && <p className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</p>}
         </div>
         
@@ -54,7 +75,8 @@ export function SectionItemCard({
                   onMoveUp();
                 }}
                 disabled={!canMoveUp}
-                aria-label="Move up"
+                aria-label={t("builder.actions.moveUp", { defaultValue: "Move up" })}
+                title={t("builder.actions.moveUp", { defaultValue: "Move up" })}
               >
                 <ChevronUp className="w-4 h-4" />
               </Button>
@@ -69,22 +91,37 @@ export function SectionItemCard({
                   onMoveDown();
                 }}
                 disabled={!canMoveDown}
-                aria-label="Move down"
+                aria-label={t("builder.actions.moveDown", { defaultValue: "Move down" })}
+                title={t("builder.actions.moveDown", { defaultValue: "Move down" })}
               >
                 <ChevronDown className="w-4 h-4" />
               </Button>
             )}
           </div>
+          {onDuplicate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-7 w-7 text-slate-400 hover:text-primary transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+              disabled={!canDuplicate}
+              aria-label={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
+              title={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className={cn("h-7 w-7 text-slate-400 hover:text-red-500 transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
+            onClick={handleRemove}
             disabled={!canRemove}
-            aria-label="Remove item"
+            aria-label={t("builder.actions.remove", { defaultValue: "Remove item" })}
+            title={t("builder.actions.remove", { defaultValue: "Remove item" })}
           >
             <Trash2 className="w-4 h-4" />
           </Button>

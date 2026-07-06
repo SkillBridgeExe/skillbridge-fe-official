@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillBridge — Diagnosis Logic: Báo cáo kiểm chứng &amp; đánh giá WOW</title>
+<style>
+  :root{
+    --pine:#175243; --pine-soft:#1f6b57; --pine-wash:#e8f1ee;
+    --ink:#22302b; --ink-soft:#5a6b64; --paper:#faf9f6; --card:#ffffff;
+    --line:#e3e0d8; --amber:#8a5a12; --amber-wash:#faf3e3;
+    --red:#8a2c22; --red-wash:#f9ebe8; --blue:#1f4e79; --blue-wash:#e9f0f7;
+    --mono:'Cascadia Code','Consolas',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pine:#5fb89d; --pine-soft:#4a9c84; --pine-wash:#12211d; --ink:#d9e2de; --ink-soft:#93a49d;
+      --paper:#121715; --card:#1a211e; --line:#2c3733; --amber:#d9a84e; --amber-wash:#251d0e;
+      --red:#d98077; --red-wash:#251311; --blue:#7aa8d0; --blue-wash:#101b26; }
+  }
+  *{box-sizing:border-box;margin:0;padding:0} html{scroll-behavior:smooth}
+  body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.65;font-size:15.5px}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px 90px}
+  header.hero{border-bottom:3px solid var(--pine);background:var(--card);padding:44px 20px 28px;margin-bottom:36px}
+  header.hero .inner{max-width:980px;margin:0 auto}
+  h1{font-family:Georgia,serif;font-size:1.9rem;color:var(--pine);letter-spacing:-.5px}
+  .meta{color:var(--ink-soft);font-size:.84rem;margin-top:10px}
+  h2{font-family:Georgia,serif;font-size:1.45rem;color:var(--pine);border-bottom:2px solid var(--line);padding-bottom:9px;margin:52px 0 18px}
+  h2 .idx{display:inline-block;background:var(--pine);color:var(--paper);font-size:.95rem;border-radius:8px;padding:2px 11px;margin-right:11px;vertical-align:3px}
+  h3{font-family:Georgia,serif;font-size:1.12rem;margin:26px 0 10px}
+  p{margin-bottom:12px} ul,ol{margin:0 0 14px 22px} li{margin-bottom:6px}
+  code{font-family:var(--mono);font-size:.86em;background:var(--pine-wash);padding:1px 5px;border-radius:4px}
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:.9rem;background:var(--card)}
+  th{background:var(--pine);color:#fff;text-align:left;padding:9px 12px}
+  @media (prefers-color-scheme: dark){ th{color:#0e1512} }
+  td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:color-mix(in srgb,var(--pine-wash) 40%,transparent)}
+  .tblwrap{overflow-x:auto}
+  .callout{border-left:4px solid var(--pine);background:var(--card);border-radius:0 10px 10px 0;padding:14px 18px;margin:18px 0;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .callout .ttl{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;color:var(--pine)}
+  .callout.warn{border-left-color:var(--amber);background:var(--amber-wash)} .callout.warn .ttl{color:var(--amber)}
+  .callout.danger{border-left-color:var(--red);background:var(--red-wash)} .callout.danger .ttl{color:var(--red)}
+  .callout.ex{border-left-color:var(--blue);background:var(--blue-wash)} .callout.ex .ttl{color:var(--blue)}
+  .formula{font-family:var(--mono);font-size:.85rem;background:var(--card);border:1px dashed var(--pine-soft);border-radius:8px;padding:12px 16px;margin:12px 0;overflow-x:auto;white-space:pre;line-height:1.7}
+  .big{font-size:2.4rem;font-family:Georgia,serif;color:var(--pine);font-weight:700}
+  .scorecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+  .sc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+  .sc .n{font-family:Georgia,serif;font-size:1.5rem;color:var(--pine);font-weight:700}
+  .sc .l{font-size:.78rem;color:var(--ink-soft)}
+  .tag{display:inline-block;font-size:.7rem;font-weight:700;border-radius:14px;padding:2px 10px;margin-right:6px}
+  .tag.pass{background:var(--pine-wash);color:var(--pine)} .tag.bug{background:var(--red-wash);color:var(--red)} .tag.q{background:var(--amber-wash);color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="hero"><div class="inner">
+  <h1>Diagnosis Logic — Báo cáo kiểm chứng bằng ma trận 3.551 phép thử</h1>
+  <p class="meta">2026-07-06 · Trả lời câu hỏi: <em>"LOGIC có chắc là ổn không?"</em> — bằng phép thử thật trên engine thật (0 LLM, 0 DB, tái lập được với seed cố định), không phải bằng khẳng định. Kèm đánh giá <em>"đủ WOW chưa"</em>. File local-only, không commit.</p>
+</div></header>
+<div class="wrap">
+
+<!-- A -->
+<h2><span class="idx">A</span>Kết luận trước, chứng cứ sau</h2>
+<div class="scorecards">
+  <div class="sc"><div class="n">3.551/3.551</div><div class="l">phép thử PASS (sau khi vá 1 bug)</div></div>
+  <div class="sc"><div class="n">5</div><div class="l">suite bất biến (invariants)</div></div>
+  <div class="sc"><div class="n">1</div><div class="l">bug thật tìm ra → PR #170</div></div>
+  <div class="sc"><div class="n">1</div><div class="l">câu hỏi product lộ ra (mục D)</div></div>
+</div>
+<p><strong>Trả lời thẳng: CÓ — lõi logic diagnosis chắc</strong>, và giờ "chắc" có nghĩa cụ thể: mọi bất biến quan trọng (đơn điệu, chặn biên, thứ tự severity, tính nhất quán fit, honest-zero, song ngữ công bằng, chống nhiễm bẩn input rác) được kiểm bằng <strong>3.551 phép thử sinh tự động</strong> chạy trên đúng code production. Và bằng chứng tốt nhất cho việc ma trận này "có răng": ngay lần chạy đầu nó <strong>cắn ra 1 bug thật</strong> mà 5 vòng review + 20 eval gate trước đó đều lọt (mục D1) — đã vá trong PR #170.</p>
+
+<!-- B -->
+<h2><span class="idx">B</span>Ma trận kiểm chứng gồm những gì</h2>
+<div class="tblwrap"><table>
+  <tr><th>Suite</th><th>Phép thử</th><th>Chứng minh điều gì</th></tr>
+  <tr><td><strong>S1 — Match invariants</strong> (907)</td><td>540 CV ngẫu nhiên (seed cố định) × 3 role × 3 band, + JD tổng hợp, + input rác/injection</td><td>Điểm luôn ∈ [0,100] · <strong>thêm skill không bao giờ tụt điểm</strong> · nâng level không bao giờ tụt điểm · khai trùng skill không ăn gian được điểm · band fresher ≥ mid trên cùng CV · thiếu hết REQUIRED thì trần 45 đúng như thiết kế · skill rác/SQL-injection/emoji = 0 điểm, không crash</td></tr>
+  <tr><td><strong>S2 — Severity invariants</strong> (9)</td><td>Gap engine với ledger/market/interview-signal overlay</td><td>Severity ∈ [0,1] · thiếu REQUIRED nghiêm trọng hơn thiếu NICE_TO_HAVE (0.538 vs 0.161) · overclaim (khai EXPERT không bằng chứng) nặng hơn matched (0.753 vs 0) · market demand chỉ NÂNG · interview signal chỉ NÂNG · vắng mọi overlay ⇒ output byte-identical · fixability gán đúng luật</td></tr>
+  <tr><td><strong>S3 — Fit sweep</strong> (2.617)</td><td>Quét toàn tổ hợp: 12 mức điểm × 6 mức coverage × 4 seniority × 3 trạng thái deal-breaker</td><td>Điểm &lt;40 KHÔNG BAO GIỜ safe_apply · deal-breaker chưa đạt ⇒ luôn not_recommended · deal-breaker chưa kiểm chứng được ⇒ không bao giờ safe_apply (cap-at-stretch) · mọi verdict đều kèm reason · cả 3 verdict đều đạt được</td></tr>
+  <tr><td><strong>S4 — Impact simulator</strong> (4)</td><td>Range + honest-zero + tương tác interview-signal</td><td>score_min ≤ score_max · delta ≥ 0 · add_evidence/emphasize = 0 điểm (honest-zero) + severity_drop dương và <strong>không phóng đại khi item bị interview nâng severity</strong> (bug đã vá)</td></tr>
+  <tr><td><strong>S5 — Review scorers</strong> (14)</td><td>Education/experience/bullet/seniority/ngôn ngữ — case biên</td><td>GPA hiểu đúng mẫu số (3.8/10 ≠ 3.8/4) · "Kỹ sư Cơ khí" không ăn bonus IT · CV trộn Việt-Anh được chấm công bằng cả 2 chiều · 3 dòng CLB không ngày không thành "senior" · LLM đoán sai ngôn ngữ bị code sửa lại bằng dấu tiếng Việt</td></tr>
+</table></div>
+<p class="meta">Cách chạy lại: script <code>tmp-logic-stress.ts</code> (worktree logic-stress, `npx tsx`) — seed 20260706, deterministic, ~10 giây.</p>
+
+<!-- C -->
+<h2><span class="idx">C</span>Số liệu kiểm chứng sống (chạy thật, không tính tay)</h2>
+<div class="tblwrap"><table>
+  <tr><th>Tình huống</th><th>Kết quả engine</th><th>Đọc thế nào</th></tr>
+  <tr><td>CV React level 2, JD đòi React level 4 REQUIRED</td><td><strong>match 33</strong></td><td>Partial credit dưới tuyến tính (2/4)^1.6 — biết một nửa không đáng nửa điểm</td></tr>
+  <tr><td>Đủ hết PREFERRED + NICE_TO_HAVE, thiếu cả 2 REQUIRED</td><td><strong>match 31</strong> (&lt; trần 45)</td><td>Không thể "bù điểm" kỹ năng bắt buộc bằng kỹ năng phụ</td></tr>
+  <tr><td>Cùng CV, chấm band fresher vs mid (frontend)</td><td><strong>77 vs 60</strong></td><td>Thước fresher nới 1 level — vì sao đồng bộ band (PR #167) làm điểm dịch lên có chủ ý</td></tr>
+  <tr><td>Thiếu React (REQUIRED) vs thiếu Docker (NICE, cùng level)</td><td>severity <strong>0.538 vs 0.161</strong></td><td>Checklist ưu tiên đúng cái JD đòi bắt buộc</td></tr>
+  <tr><td>Khai React EXPERT chỉ trong mục kỹ năng vs có bằng chứng</td><td>severity <strong>0.753 vs 0</strong></td><td>Overclaim = red flag phỏng vấn, bị xếp nặng nhất</td></tr>
+  <tr><td>Action "viết sâu React" (baseline 51)</td><td>range <strong>+12 → +26</strong></td><td>Hứa bằng KHOẢNG, không hứa số duy nhất</td></tr>
+  <tr><td>Action "bổ sung bằng chứng"</td><td>điểm <strong>0–0</strong>, severity_drop <strong>0.207</strong></td><td>Honest-zero: sửa chữ không tăng match %, chỉ giảm rủi ro</td></tr>
+  <tr><td>Bằng ĐH CNTT GPA 3.8/4 · Cơ khí GPA 3.8/4 · CNTT GPA 3.8/<u>10</u></td><td>education <strong>20 · 16 · 18</strong>/20</td><td>Ngành và MẪU SỐ GPA đều được hiểu đúng</td></tr>
+  <tr><td>CV trộn bullet Việt + Anh (2 mạnh, 2 yếu)</td><td>verbFirst <strong>0.5</strong>, quantified <strong>0.5</strong></td><td>"Tối ưu…40%" và "Built…200 developers" được tính NHƯ NHAU</td></tr>
+</table></div>
+
+<!-- D -->
+<h2><span class="idx">D</span>Ma trận tìm ra gì (đây mới là giá trị thật)</h2>
+<h3><span class="tag bug">BUG THẬT</span> D1. severity_drop phóng đại khi gap bị interview nâng — đã vá (PR #170)</h3>
+<p>Đường nối Wave 8 × Wave 4: item bị buổi phỏng vấn thật nâng severity, nhưng simulator tính severity-sau-khi-fix <strong>không mang signal</strong> (signal cố ý không nằm trên GapItem) → mức "giảm rủi ro" hứa với user bị thổi phồng — <em>bổ sung bằng chứng CV không thể xoá được một buổi phỏng vấn tệ</em>. 5 vòng review + 20 eval không bắt được vì mọi golden đều không có case giao thoa 2 wave. Fix: simulator nhận signal tường minh (mirror đúng pattern ranking), vắng signal ⇒ byte-identical. Test pin cả con-số-phóng-đại lẫn con-số-đúng.</p>
+<h3><span class="tag q">CÂU HỎI PRODUCT</span> D2. Senior ứng tuyển job junior đang bị dán nhãn "stretch"</h3>
+<p>Sweep 2.617 tổ hợp lộ ra: <code>over_qualified</code> (không nghiêm trọng, gap 2 bậc) chặn safe_apply → CV senior + match 100 điểm với job junior vẫn ra <strong>"Đáng thử — có khoảng cách"</strong> — chữ "khoảng cách" đúng về hướng NGƯỢC LẠI. Không sai logic (over_qualified nặng ≥3 bậc đã ra not_recommended đúng), nhưng label sai ngữ nghĩa với user. <strong>Cần bạn quyết:</strong> (a) cho over_qualified nhẹ được safe_apply kèm reason riêng, hay (b) thêm verdict/label thứ 4 kiểu "dư sức". Đề xuất của tôi: (a) — ít đổi contract nhất.</p>
+<h3><span class="tag pass">BÀI HỌC</span> D3. Hai "fail" còn lại là lỗi thiết kế phép thử, không phải lỗi engine</h3>
+<ul>
+  <li>"Bỏ bớt 1 requirement thì điểm phải tăng" — SAI về toán: bỏ requirement mà CV đang ăn điểm partial thì tử số giảm nhiều hơn mẫu số. Engine đúng, invariant phải phát biểu chặt hơn (chỉ áp cho requirement CV không chạm).</li>
+  <li>Fixture severity "bịa tay" không nhất quán với chính các trường của nó → severity_drop âm giả. Bài học trùng với doctrine của repo: <em>severity phải luôn được computeSeverity sinh ra, không bao giờ gán tay</em>.</li>
+</ul>
+
+<!-- E -->
+<h2><span class="idx">E</span>Ranh giới trung thực: ma trận này KHÔNG chứng minh được gì</h2>
+<div class="callout warn"><div class="ttl">4 rủi ro nằm ngoài phạm vi kiểm chứng deterministic</div>
+<ul>
+  <li><strong>Nhiễu extraction đầu vào</strong>: ma trận cấp level/importance sạch cho engine; prod thì LLM trích các giá trị này từ text. Công thức đúng ăn input rung thì output rung — cần eval chống noise cho extraction (backlog #4, chưa làm).</li>
+  <li><strong>Độ phủ taxonomy</strong>: skill/JD ngoài 179 canonical hiện tại rơi khỏi scoring (đo thật: ~4/10 requirement 1 JD smoke không normalize được). Ma trận chỉ chứng minh hành vi ĐÚNG với skill đã nhận diện.</li>
+  <li><strong>Ngưỡng là expert-set</strong>: 65/40/0.7 (fit) và mọi trọng số severity đúng-như-thiết-kế, nhưng "thiết kế có khớp thị trường không" cần vòng calibration đọc <code>impact_calibrations</code> (mới có write-path).</li>
+  <li><strong>Màn hình cuối</strong>: logic đúng vẫn vỡ được ở render (FitBadge hiện key thô là ví dụ nóng — vá ở FE PR #116). Kiểm chứng UI thuộc audit UX riêng, không thuộc file này.</li>
+</ul></div>
+
+<!-- F -->
+<h2><span class="idx">F</span>"Đủ WOW chưa?" — đánh giá thẳng</h2>
+<p><strong>Chưa — nhưng không phải vì thiếu chất liệu wow, mà vì chất liệu wow đang mắc kẹt ở backend.</strong> Định nghĩa wow cho sản phẩm này (theo đúng UX research đã chốt: earn-the-interruption, actionable &gt; informative): <em>trong 10 giây đầu sau khi quét, user thấy một điều về chính họ mà họ không tự thấy được, kèm con đường đi lên có con số</em>.</p>
+<div class="tblwrap"><table>
+  <tr><th>Chất liệu wow</th><th>BE</th><th>Trên màn hình?</th></tr>
+  <tr><td>Trích ĐÚNG DÒNG CV làm bằng chứng cho từng gap (quote spans)</td><td>✅ (Wave EXPLAIN)</td><td>✅ W38 đã render</td></tr>
+  <tr><td>Verdict fit + lý do (safe/stretch/not_recommended)</td><td>✅ (Wave ACTION)</td><td>⚠️ vừa vỡ chữ — vá ở PR #116, chờ merge</td></tr>
+  <tr><td>"Sửa cái này = +12→+26 điểm" (impact range per action)</td><td>✅ (Wave IMPACT)</td><td>❌ <strong>W41 chưa làm</strong> — lever wow lớn nhất đang nằm im</td></tr>
+  <tr><td>Phỏng vấn thử xong, gap tự nặng lên kèm citation "ghi nhận từ buổi phỏng vấn"</td><td>✅ (Wave 8)</td><td>❌ W43 chưa làm</td></tr>
+  <tr><td>"Đã học xong X — sẽ kiểm chứng ở lần quét tới" (vòng lặp khép)</td><td>✅ (Wave 8)</td><td>❌ W43 chưa làm</td></tr>
+  <tr><td>Đo được funnel aha-moment (để BIẾT wow có xảy ra không)</td><td>—</td><td>❌ W42 chưa làm</td></tr>
+</table></div>
+<div class="callout ex"><div class="ttl">Kết luận wow + thứ tự lever</div>
+<p><strong>Lever 1 (mạnh nhất, rẻ nhất): để AG làm W41</strong> — "hành động này đáng bao nhiêu điểm" là khoảnh khắc aha kinh điển của category này, BE đã tính sẵn range trung thực, chỉ thiếu render. <strong>Lever 2: W42</strong> — không đo thì mọi tranh luận về wow là cảm giác. <strong>Lever 3: W43</strong> — vòng lặp interview→severity→re-scan là thứ đối thủ không có (moat thật sự), phải nhìn thấy được. <strong>Lever 4: merge #116 + W44</strong> — wow không sống sót nổi qua một badge vỡ chữ trên mobile. <strong>Lever 5 (sau cùng): framing "stretch là bình thường ở giai đoạn của bạn"</strong> cho segment fresher (median match prod = 35) — wow của sản phẩm này phải là "tôi biết đường đi lên", không phải "điểm tôi cao".</p></div>
+
+<p class="meta" style="margin-top:40px">PR liên quan: skillbridge-ai #167 #168 #170 · skillbridge-fe-official #116 · Tài liệu nền: <code>docs/skillbridge-architecture-handbook.html</code> (công thức + kiến trúc đầy đủ).</p>
+</div>
+</body>
+</html>

@@ -52,11 +52,11 @@ function seedPresenting() {
   s.setMascotState("presenting");
 }
 
-function renderSkill(onApply = vi.fn(), currentValue = "old bullet") {
+function renderSkill(onApply = vi.fn(), currentValue = "old bullet", customFieldPath = FIELD) {
   return render(
     <CvBuilderSkill
       draftId="draft-1"
-      fieldPath={FIELD}
+      fieldPath={customFieldPath}
       section="experience"
       currentValue={currentValue}
       onApply={onApply}
@@ -166,5 +166,38 @@ describe("CvBuilderSkill — Task M4 (Viết lại nhẹ hơn / Hỏi thêm đ�
     expect(after.mascotState).toBe("idle");
     expect(after.companionField).toBeNull();
     expect(after.companionPatch).toBeNull();
+  });
+
+  it("handleApply validates patch and then applies the safe field update", () => {
+    seedPresenting();
+    const mockOnApply = vi.fn();
+    renderSkill(mockOnApply);
+
+    fireEvent.click(screen.getByText("companion.apply"));
+
+    expect(mockOnApply).toHaveBeenCalledTimes(1);
+    expect(mockOnApply).toHaveBeenCalledWith("new bullet");
+    expect(useCvBuilderStore.getState().companionPatch).not.toBeNull();
+  });
+
+  it("handleApply validates patch before applying and prevents invalid patch", () => {
+    // In this test, experience[99] does not exist in the document,
+    // so buildCvBuilderPatchProposal will throw an error, causing the catch block to run.
+    seedPresenting();
+    const s = useCvBuilderStore.getState();
+    s.setCompanionField("experience[99].description", "experience");
+    s.setCompanionPatch({ target: "experience[99].description", before: "old", after: "new bullet", why: "" });
+    s.setMascotState("presenting");
+    
+    const mockOnApply = vi.fn();
+    renderSkill(mockOnApply, "old bullet", "experience[99].description");
+
+    fireEvent.click(screen.getByText("companion.apply"));
+
+    expect(mockOnApply).not.toHaveBeenCalled();
+    const after = useCvBuilderStore.getState();
+    expect(after.mascotState).toBe("presenting");
+    expect(after.companionMessage).toBe("companion.patchRejected"); // from mock translation
+    expect(after.companionPatch?.after).toBe("new bullet");
   });
 });

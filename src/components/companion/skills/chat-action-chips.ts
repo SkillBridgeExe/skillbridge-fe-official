@@ -22,7 +22,7 @@ export interface ChatActionChip {
   /** Verified tailor rewrite action; only present for kind='rewrite'. */
   rewrite?: { action: TailorAction };
   /** Prove-it payload; only present for kind='prove_it'. */
-  proveIt?: { canonical: string; displayName: string };
+  proveIt?: { canonical: string; displayName: string; evidenceText?: string | null };
   /** Clipboard payload; only present for kind='copy'. */
   copyText?: string;
   /** Cross-JD deep-link target (another persisted CV/JD match); only present for kind='view_match'. */
@@ -76,10 +76,15 @@ export function buildChatActionChips(input: {
   }
 
   if (gap.fixability === "add_evidence") {
+    const evidenceText = gap.evidence?.[0]?.quote ?? null;
     out.push({
       kind: "prove_it",
       labelKey: "companion.chat.proveitCta",
-      proveIt: { canonical: gap.canonical_name, displayName: gap.display_name },
+      proveIt: {
+        canonical: gap.canonical_name, 
+        displayName: gap.display_name,
+        ...(evidenceText ? { evidenceText } : {}),
+      },
     });
   }
 

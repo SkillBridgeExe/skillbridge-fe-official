@@ -1,9 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useCvBuilderStore, type SectionStatus } from "@/store/useCvBuilderStore";
-import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import {
+  useCvBuilderStore,
+  type SectionFixFeedback,
+  type SectionStatus,
+} from "@/store/useCvBuilderStore";
+import { CheckCircle2, AlertCircle, XCircle, RotateCcw, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type { BuilderSection, EvaluateSectionResponse } from "@shared/api";
+import { getBuilderSnapshot } from "../builder-snapshot";
 
 /** FE fallback map for known BE English evaluation labels → Vietnamese. */
 const BE_LABEL_VI: Record<string, string> = {
@@ -57,9 +65,21 @@ function getDisplaySectionStatus(
   return "needs-improvement";
 }
 
+function getFeedbackMessageKey(feedback?: SectionFixFeedback): string {
+  switch (feedback?.source) {
+    case "assistant_patch":
+      return "builder.review.feedbackAssistant";
+    case "diagnosis_fix":
+      return "builder.review.feedbackDiagnosis";
+    case "manual_edit":
+    default:
+      return "builder.review.feedbackManual";
+  }
+}
+
 export function ReviewSection() {
-  const { getSectionStatuses, setActiveSection, sectionEvaluations } =
-    useCvBuilderStore();
+  const store = useCvBuilderStore();
+  const { getSectionStatuses, setActiveSection, sectionEvaluations, sectionFixFeedback, draftId, setSectionEvaluation } = store;
   const { t, i18n } = useTranslation("diagnosis");
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
 
@@ -119,8 +139,101 @@ export function ReviewSection() {
     }, 100);
   };
 
+  const evaluateMutation = useEvaluateSectionMutation();
+  const [isReevaluatingAll, setIsReevaluatingAll] = useState(false);
+  const [reevaluatingSection, setReevaluatingSection] = useState<BuilderSection | null>(null);
+  const [recheckError, setRecheckError] = useState<string | null>(null);
+  const sectionsToEval = SECTION_KEYS
+    .map((section) => section.beSection)
+    .filter((section): section is BuilderSection => !!section && !!sectionFixFeedback[section]);
+
+  const reevaluateSection = async (sec: BuilderSection) => {
+    if (!draftId) return;
+    setRecheckError(null);
+    setReevaluatingSection(sec);
+    const snapshot = getBuilderSnapshot(useCvBuilderStore.getState());
+    const roleCode = useDiagnosisStore.getState().targetRole;
+    snapshot.cvLanguage = currentLang as typeof snapshot.cvLanguage;
+
+    try {
+      const result = await evaluateMutation.mutateAsync({
+        draftId,
+        section: sec,
+        snapshot,
+        roleCode,
+      });
+      setSectionEvaluation(sec, result);
+    } catch {
+      setRecheckError(t("builder.review.recheckFailed"));
+    } finally {
+      setReevaluatingSection(null);
+    }
+  };
+
+  const handleReevaluateAll = async () => {
+    if (!draftId) return;
+    setIsReevaluatingAll(true);
+    setRecheckError(null);
+
+    try {
+      for (const sec of sectionsToEval) {
+        const snapshot = getBuilderSnapshot(useCvBuilderStore.getState());
+        const roleCode = useDiagnosisStore.getState().targetRole;
+        snapshot.cvLanguage = currentLang as typeof snapshot.cvLanguage;
+        const result = await evaluateMutation.mutateAsync({
+          draftId,
+          section: sec,
+          snapshot,
+          roleCode,
+        });
+        setSectionEvaluation(sec, result);
+      }
+    } catch {
+      setRecheckError(t("builder.review.recheckFailed"));
+    } finally {
+      setIsReevaluatingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-4">
+      {sectionsToEval.length > 0 && (
+        <div className="bg-[#FFF8E6] border border-[#FDE68A] rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#FEF0C7] flex items-center justify-center shrink-0">
+              <RotateCcw className="w-4 h-4 text-[#D97706]" />
+            </div>
+            <div>
+              <h4 className="font-bold text-[#92400E] text-sm">
+                {t("builder.review.recheckBannerTitle")}
+              </h4>
+              <p className="text-xs text-[#B45309] mt-0.5">
+                {t("builder.review.recheckBannerDescription", {
+                  count: sectionsToEval.length,
+                })}
+              </p>
+              {recheckError && (
+                <p className="text-xs text-[#9F2F2D] mt-1 font-medium">
+                  {recheckError}
+                </p>
+              )}
+            </div>
+          </div>
+          <Button
+            onClick={handleReevaluateAll}
+            disabled={isReevaluatingAll}
+            className="w-full sm:w-auto bg-[#D97706] hover:bg-[#B45309] text-white shrink-0 shadow-sm"
+          >
+            {isReevaluatingAll ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RotateCcw className="w-4 h-4 mr-2" />
+            )}
+            {t("builder.review.reevaluateAll")}
+          </Button>
+        </div>
+      )}
+
       <div className="text-center space-y-2 mb-6">
         <h3 className="text-xl font-bold text-slate-800">
           {t("builder.review.completionScore")}
@@ -138,6 +251,7 @@ export function ReviewSection() {
             ? sectionEvaluations[section.beSection]
             : undefined;
           const displayStatus = getDisplaySectionStatus(local.status, evaluation);
+          const feedback = section.beSection ? sectionFixFeedback[section.beSection] : undefined;
           const title = currentLang === "vi" ? section.titleVi : section.titleEn;
 
           return (
@@ -154,10 +268,39 @@ export function ReviewSection() {
                       {evaluation.score}% — {localizeBeLabel(evaluation.label, currentLang)}
                     </span>
                   )}
+                  {!evaluation && feedback?.status === "needs_recheck" && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] text-amber-600 font-medium">
+                        {t("builder.review.needsRecheck")}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {t(getFeedbackMessageKey(feedback))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {displayStatus !== "completed" && (
+                {feedback?.status === "needs_recheck" && section.beSection ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    disabled={
+                      !draftId ||
+                      isReevaluatingAll ||
+                      reevaluatingSection === section.beSection
+                    }
+                    onClick={() => reevaluateSection(section.beSection!)}
+                  >
+                    {reevaluatingSection === section.beSection ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    )}
+                    {t("builder.review.recheckSection")}
+                  </Button>
+                ) : displayStatus !== "completed" ? (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -166,7 +309,7 @@ export function ReviewSection() {
                   >
                     {t("builder.review.fix")}
                   </Button>
-                )}
+                ) : null}
                 {displayStatus !== "completed" && (
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">
                     {getStatusLabel(displayStatus)}

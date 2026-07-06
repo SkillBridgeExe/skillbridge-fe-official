@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { localizeTemplateTag, TemplateGallery } from "../preview/TemplatePicker";
+import { TemplateGallery } from "../preview/TemplatePicker";
 import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -11,15 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import { cn } from "@/lib/utils";
 
-const DENSITY_OPTIONS: Array<{ value: ResumeDensity; labelVi: string; labelEn: string; hintVi: string; hintEn: string }> = [
-  { value: "comfortable", labelVi: "Thoáng", labelEn: "Comfortable", hintVi: "Dễ đọc", hintEn: "Easy to read" },
-  { value: "compact", labelVi: "Gọn", labelEn: "Compact", hintVi: "Nhiều nội dung", hintEn: "More content" },
+const DENSITY_OPTIONS: Array<{ value: ResumeDensity; labelKey: string; hintKey: string }> = [
+  { value: "comfortable", labelKey: "comfortableLabel", hintKey: "comfortableHint" },
+  { value: "compact", labelKey: "compactLabel", hintKey: "compactHint" },
 ];
 
-const FONT_SCALE_OPTIONS: Array<{ value: ResumeFontScale; labelVi: string; labelEn: string }> = [
-  { value: "small", labelVi: "Nhỏ", labelEn: "Small" },
-  { value: "normal", labelVi: "Vừa", labelEn: "Normal" },
-  { value: "large", labelVi: "Lớn", labelEn: "Large" },
+const FONT_SCALE_OPTIONS: Array<{ value: ResumeFontScale; labelKey: string }> = [
+  { value: "small", labelKey: "small" },
+  { value: "normal", labelKey: "normal" },
+  { value: "large", labelKey: "large" },
 ];
 
 const ACCENT_COLORS = [
@@ -60,16 +60,15 @@ function SegmentedButton({
 }
 
 export function StudioInspector() {
-  const { t, i18n } = useTranslation("diagnosis");
-  const isVi = i18n.language.startsWith("vi");
+  const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
   const sectionLabels: Record<CvBuilderSectionKey, string> = {
-    summary: t("builder.tabSummary", { defaultValue: "Tóm tắt" }),
-    experience: t("builder.tabExperience", { defaultValue: "Kinh nghiệm" }),
-    education: t("builder.tabEducation", { defaultValue: "Học vấn" }),
-    projects: t("builder.tabProjects", { defaultValue: "Dự án" }),
-    skills: t("builder.tabSkills", { defaultValue: "Kỹ năng" }),
-    certifications: t("builder.tabCertifications", { defaultValue: "Chứng chỉ" }),
+    summary: t("builder.tabSummary"),
+    experience: t("builder.tabExperience"),
+    education: t("builder.tabEducation"),
+    projects: t("builder.tabProjects"),
+    skills: t("builder.tabSkills"),
+    certifications: t("builder.tabCertifications"),
   };
 
   const renderStructureGroup = (
@@ -105,8 +104,8 @@ export function StudioInspector() {
                   onClick={() => store.setSectionVisibility(key, !isVisible)}
                   aria-label={
                     isVisible
-                      ? isVi ? `Ẩn ${sectionLabels[key]}` : `Hide ${sectionLabels[key]}`
-                      : isVi ? `Hiện ${sectionLabels[key]}` : `Show ${sectionLabels[key]}`
+                      ? t("builder.inspector.hideSection", { section: sectionLabels[key] })
+                      : t("builder.inspector.showSection", { section: sectionLabels[key] })
                   }
                 >
                   {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -121,7 +120,7 @@ export function StudioInspector() {
                   className="h-6 w-6 text-slate-400 hover:text-slate-600"
                   onClick={() => store.moveSectionWithinGroup(key, "up", sections)}
                   disabled={index === 0}
-                  aria-label={isVi ? `Di chuyển ${sectionLabels[key]} lên` : `Move ${sectionLabels[key]} up`}
+                  aria-label={t("builder.inspector.moveUp", { section: sectionLabels[key] })}
                 >
                   <ChevronUp className="h-3.5 w-3.5" />
                 </Button>
@@ -131,7 +130,7 @@ export function StudioInspector() {
                   className="h-6 w-6 text-slate-400 hover:text-slate-600"
                   onClick={() => store.moveSectionWithinGroup(key, "down", sections)}
                   disabled={index === arr.length - 1}
-                  aria-label={isVi ? `Di chuyển ${sectionLabels[key]} xuống` : `Move ${sectionLabels[key]} down`}
+                  aria-label={t("builder.inspector.moveDown", { section: sectionLabels[key] })}
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
@@ -150,21 +149,21 @@ export function StudioInspector() {
         <div className="flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-slate-500" />
           <h2 className="font-semibold text-sm text-slate-800">
-            {t("builder.inspectorTitle", { defaultValue: "Settings & Appearance" })}
+            {t("builder.inspectorTitle")}
           </h2>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <Accordion type="multiple" defaultValue={["template"]} className="w-full">
-          
+
           {/* Templates Accordion */}
           <AccordionItem value="template" className="border-b-slate-100">
             <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
               <div className="flex items-center gap-2">
                 <Layout className="w-4 h-4 text-slate-500" />
                 <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.tabTemplate", { defaultValue: "Templates" })}
+                  {t("builder.tabTemplate")}
                 </span>
               </div>
             </AccordionTrigger>
@@ -172,11 +171,11 @@ export function StudioInspector() {
               <div className="mb-4">
                 <h3 className="text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5" />
-                  {t("builder.cvLanguage", { defaultValue: "CV Language" })}
+                  {t("builder.cvLanguage")}
                 </h3>
                 <Select value={store.cvLanguage} onValueChange={(v) => store.setCvLanguage(v as CvLanguage)}>
                   <SelectTrigger className="w-full h-8 text-xs bg-slate-50 border-slate-200 focus:ring-1 focus:ring-primary/30">
-                    <SelectValue placeholder={t("builder.selectLanguage", { defaultValue: "Select Language" })} />
+                    <SelectValue placeholder={t("builder.selectLanguage")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English (Anh)</SelectItem>
@@ -188,9 +187,9 @@ export function StudioInspector() {
               <div>
                 <h3 className="text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                   <Wand2 className="w-3.5 h-3.5" />
-                  {isVi ? "Mẫu CV" : "Resume Template"}
+                  {t("builder.inspector.resumeTemplate")}
                 </h3>
-                
+
                 <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm flex flex-col gap-3">
                   <div className="flex gap-3">
                     {/* Small thumbnail representation */}
@@ -204,31 +203,29 @@ export function StudioInspector() {
                     </div>
                     <div>
                       <div className="text-sm font-bold text-slate-800">{TEMPLATE_PREVIEWS[store.template]?.name}</div>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {TEMPLATE_PREVIEWS[store.template]?.tags.slice(0, 2).map(tag => (
                           <span key={tag} className="text-[9px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
-                            {localizeTemplateTag(tag, isVi)}
+                            {t(`builder.templateTag.${tag}`)}
                           </span>
                         ))}
                       </div>
                     </div>
                   </div>
-                  
+
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="w-full text-xs h-8 border-slate-200 shadow-sm hover:bg-slate-50 hover:text-primary">
-                        {isVi ? "Đổi mẫu CV" : "Change template"}
+                        {t("builder.inspector.changeTemplate")}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0">
                       <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <DialogTitle className="text-lg font-bold text-slate-800">
-                          {isVi ? "Thư viện mẫu CV" : "Template library"}
+                          {t("builder.inspector.templateLibrary")}
                         </DialogTitle>
                         <p className="text-sm text-slate-500">
-                          {isVi
-                            ? "Chọn mẫu CV phù hợp với phong cách và ngành nghề của bạn."
-                            : "Choose a resume template that fits your style and target role."}
+                          {t("builder.inspector.templateLibraryDesc")}
                         </p>
                       </DialogHeader>
                       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar">
@@ -247,29 +244,29 @@ export function StudioInspector() {
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-500" />
                 <span className="font-semibold text-slate-800 text-sm">
-                  {isVi ? "Cấu trúc" : "Structure"}
+                  {t("builder.inspector.structure")}
                 </span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  {isVi ? "Thứ tự & Hiển thị" : "Order & Visibility"}
+                  {t("builder.inspector.orderAndVisibility")}
                 </span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="h-6 text-[10px] px-2 text-slate-400 hover:text-slate-600"
                   onClick={() => store.resetSectionOrder()}
                 >
                   <RotateCcw className="w-3 h-3 mr-1" />
-                  {isVi ? "Mặc định" : "Reset"}
+                  {t("builder.inspector.reset")}
                 </Button>
               </div>
-              
+
               <div className="space-y-3">
-                {renderStructureGroup(isVi ? "Cột chính" : "Main column", MAIN_STRUCTURE_SECTIONS)}
-                {renderStructureGroup(isVi ? "Thanh bên" : "Sidebar", SIDEBAR_STRUCTURE_SECTIONS)}
+                {renderStructureGroup(t("builder.inspector.mainColumn"), MAIN_STRUCTURE_SECTIONS)}
+                {renderStructureGroup(t("builder.inspector.sidebar"), SIDEBAR_STRUCTURE_SECTIONS)}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -280,7 +277,7 @@ export function StudioInspector() {
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-slate-500" />
                 <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.tabLayout", { defaultValue: "Layout" })}
+                  {t("builder.tabLayout")}
                 </span>
               </div>
             </AccordionTrigger>
@@ -288,7 +285,7 @@ export function StudioInspector() {
               <div className="space-y-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                    {isVi ? "Mật độ nội dung" : "Content density"}
+                    {t("builder.inspector.contentDensity")}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {DENSITY_OPTIONS.map((option) => (
@@ -297,20 +294,20 @@ export function StudioInspector() {
                         active={store.resumeDensity === option.value}
                         onClick={() => store.setResumeDensity(option.value)}
                       >
-                        <span className="block">{isVi ? option.labelVi : option.labelEn}</span>
-                        <span className="mt-0.5 block text-[10px] font-medium opacity-70">{isVi ? option.hintVi : option.hintEn}</span>
+                        <span className="block">{t(`builder.inspector.${option.labelKey}`)}</span>
+                        <span className="mt-0.5 block text-[10px] font-medium opacity-70">{t(`builder.inspector.${option.hintKey}`)}</span>
                       </SegmentedButton>
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <label htmlFor="hide-section-icons" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
-                      {isVi ? "Hiển thị icon mục" : "Show section icons"}
+                      {t("builder.inspector.showSectionIcons")}
                     </label>
                     <p className="text-[10px] text-slate-400">
-                      {isVi ? "Có thể không tương thích với một số mẫu." : "May not be supported by every template."}
+                      {t("builder.inspector.iconCompatibilityHint")}
                     </p>
                   </div>
                   <Switch
@@ -329,14 +326,14 @@ export function StudioInspector() {
               <div className="flex items-center gap-2">
                 <Type className="w-4 h-4 text-slate-500" />
                 <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.tabTypography", { defaultValue: "Typography" })}
+                  {t("builder.tabTypography")}
                 </span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  {isVi ? "Cỡ chữ" : "Font size"}
+                  {t("builder.inspector.fontSize")}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {FONT_SCALE_OPTIONS.map((option) => (
@@ -345,7 +342,7 @@ export function StudioInspector() {
                       active={store.resumeFontScale === option.value}
                       onClick={() => store.setResumeFontScale(option.value)}
                     >
-                      <span className="block text-center">{isVi ? option.labelVi : option.labelEn}</span>
+                      <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
                     </SegmentedButton>
                   ))}
                 </div>
@@ -359,21 +356,21 @@ export function StudioInspector() {
               <div className="flex items-center gap-2">
                 <Palette className="w-4 h-4 text-slate-500" />
                 <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.tabTheme", { defaultValue: "Theme Colors" })}
+                  {t("builder.tabTheme")}
                 </span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  {isVi ? "Màu nhấn" : "Accent color"}
+                  {t("builder.inspector.accentColor")}
                 </p>
                 <div className="grid grid-cols-6 gap-2">
                   {ACCENT_COLORS.map((color) => (
                     <button
                       key={color.value}
                       type="button"
-                      aria-label={isVi ? `Chọn màu ${color.label}` : `Choose ${color.label}`}
+                      aria-label={t("builder.inspector.chooseColor", { color: color.label })}
                       title={color.label}
                       onClick={() => store.setResumeAccentColor(color.value)}
                       className={cn(

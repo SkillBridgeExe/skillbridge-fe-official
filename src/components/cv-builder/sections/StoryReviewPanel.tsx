@@ -147,7 +147,7 @@ export function StoryReviewPanel({
             .map((item) => {
               const typeLabel = item.section === "projects"
                 ? t("builder.entry.project")
-                : t("builder.entry.certification", { defaultValue: "certification" });
+                : t("builder.entry.certification");
               const nameWithSection = `${item.name} (${typeLabel.toLowerCase()})`;
               return t("builder.storyReview.skippedItem", { name: nameWithSection });
             })
@@ -399,7 +399,7 @@ export function StoryReviewPanel({
                       <div className="flex items-center gap-1 text-xs text-amber-600">
                         <AlertCircle className="h-3 w-3" />
                         {proj.missing_fields
-                          .map((f) => t(`builder.storyReview.missing.${f}`, { defaultValue: f }))
+                          .map((f) => t(`builder.storyReview.missing.${f}`))
                           .join(", ")}
                       </div>
                     )}

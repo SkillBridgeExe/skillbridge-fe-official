@@ -12,6 +12,7 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const GENERATE_SUMMARY_INSTRUCTION =
@@ -165,7 +166,12 @@ export function SummarySection() {
     if (!suggestionText) return;
     setOriginalText(summary);
     setSummary(suggestionText);
-    clearSectionEvaluation("summary");
+    useCvBuilderStore.getState().markSectionNeedsRecheck("summary", {
+      source: "assistant_patch",
+      fieldPath: resumeDocumentPaths.summaryContent(),
+      beforePreview: summary.substring(0, 100),
+      afterPreview: suggestionText.substring(0, 100),
+    });
   };
 
   const handleUndo = () => {
@@ -266,16 +272,24 @@ export function SummarySection() {
             </Button>
           )}
         </div>
-        <Textarea
-          className="min-h-[120px] resize-none text-[13px]"
-          placeholder={
-            summaryMode === "ai"
-              ? t("builder.summaryAiPlaceholder")
-              : t("builder.summaryManualPlaceholder")
-          }
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-        />
+        <div className="relative">
+          <Textarea
+            className="min-h-[120px] resize-none text-[13px] pb-7"
+            placeholder={
+              summaryMode === "ai"
+                ? t("builder.summaryAiPlaceholder")
+                : t("builder.summaryManualPlaceholder")
+            }
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+          />
+          <div className={cn(
+            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors",
+            summary.length > 500 ? "text-amber-500" : "text-slate-400"
+          )}>
+            {summary.length} {t("builder.characters")}
+          </div>
+        </div>
       </div>
 
       {/* Input-gate hint — giải thích vì sao AI chưa chạy (thay vì nút chết) */}
@@ -411,7 +425,7 @@ export function SummarySection() {
           }}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+          <span>{t("companion.analyze")}</span>
         </Button>
       )}
     </div>
