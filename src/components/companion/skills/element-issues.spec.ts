@@ -25,15 +25,14 @@ import type {
 const skill = (over: Partial<SkillMatchItem>): SkillMatchItem =>
   ({ name: "React", canonical_name: "react", status: "present", cvScore: 50, ...over }) as SkillMatchItem;
 
-const ledger = (...pairs: Array<[string, string, string?]>): EvidenceLedger =>
+const ledger = (...pairs: Array<[string, string]>): EvidenceLedger =>
   ({
-    items: pairs.map(([skill_canonical, strength, evidence_gap]) => ({
+    items: pairs.map(([skill_canonical, strength]) => ({
       skill_canonical,
       display_name: skill_canonical,
       strength,
       sources: [],
       most_recent_year: null,
-      evidence_gap: evidence_gap ?? null,
     })),
   }) as unknown as EvidenceLedger;
 
@@ -185,18 +184,19 @@ describe("collectElementIssues — honest-empty", () => {
 // ── listed_no_evidence detector ──
 
 describe("collectElementIssues — listed_no_evidence", () => {
-  it("fires on a JD-required listed_only skill and surfaces evidence_gap verbatim as why", () => {
+  it("fires on a JD-required listed_only skill with the static enum why (BE never sends per-item gaps)", () => {
     const input = {
       jdMatch: jdMatch({ hardSkills: [skill({ canonical_name: "react", status: "present" })] }),
       reviewData: review({
-        evidence_ledger: ledger(["react", "listed_only", "Chỉ liệt kê, chưa có dẫn chứng cụ thể"]),
+        evidence_ledger: ledger(["react", "listed_only"]),
       }),
       gapReport: null,
     };
     const issues = collectElementIssues(input);
     const issue = issues.find((i) => i.kind === "listed_no_evidence");
     expect(issue).toBeDefined();
-    expect(issue!.why).toBe("Chỉ liệt kê, chưa có dẫn chứng cụ thể");
+    expect(issue!.why).toBeNull();
+    expect(issue!.whyKey).toBe("companion.elementIssue.listed_no_evidence.why");
     expect(issue!.anchorId).toBe("evidence-react");
     expect(issue!.ctaKind).toBe("rewrite");
   });
@@ -455,7 +455,7 @@ describe("Phase A — commentary ranks below every real issue", () => {
       reviewData: review({
         overallScore: 35, // low → praise_overall fires with a CTA
         dimensions: [dim({ key: "action_verbs", score20: 8 })],
-        evidence_ledger: ledger(["react", "listed_only", "Chỉ liệt kê"]),
+        evidence_ledger: ledger(["react", "listed_only"]),
         extraction_quality: extractionQuality({ confidence: "low" }),
         document: doc({ experience: [] }), // missing_section problem
         top_summary: topSummary({ prioritized_actions: ["Add a project"] }),

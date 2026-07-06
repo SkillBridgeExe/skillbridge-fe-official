@@ -20,9 +20,30 @@ import {
 } from "lucide-react";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useTranslation } from "react-i18next";
-import type { CanonicalCvDocument } from "@shared/api";
+import type { BulletFeedbackItem, CanonicalCvDocument } from "@shared/api";
 import { useAiAppliedCv } from "@/hooks/use-ai-applied-cv";
 import { Chapter } from "@/components/diagnosis/editorial";
+
+/** Match a rendered bullet against the BE's bullet_feedback ARRAY by its `text`.
+ *  Exact (whitespace-insensitive) match wins; else a containment match on
+ *  reasonably-long text (>10 chars) absorbs trims/ellipses either side. */
+export function findBulletFeedback(
+  bullet: string,
+  feedback: BulletFeedbackItem[] | undefined,
+): BulletFeedbackItem | null {
+  if (!feedback?.length) return null;
+  const norm = (value: string) => value.toLowerCase().replace(/\s+/g, "");
+  const normBullet = norm(bullet);
+  if (!normBullet) return null;
+  return (
+    feedback.find((fb) => norm(fb.text ?? "") === normBullet) ??
+    feedback.find((fb) => {
+      const normText = norm(fb.text ?? "");
+      return normText.length > 10 && (normBullet.includes(normText) || normText.includes(normBullet));
+    }) ??
+    null
+  );
+}
 
 const getSearchMatch = (text: string, search: string | null): string | null => {
   if (!search) return null;
@@ -139,21 +160,7 @@ export function DocumentPreview() {
   const renderBullet = (bullet: string) => {
     const isChanged = viewMode === "ai" && aiCv.changedBullets.includes(bullet);
 
-    let feedback: import("@shared/api").BulletFeedbackItem | null = null;
-    if (reviewData?.bullet_feedback) {
-      if (reviewData.bullet_feedback[bullet]) {
-        feedback = reviewData.bullet_feedback[bullet];
-      } else {
-        const normBullet = bullet.toLowerCase().replace(/\s+/g, "");
-        for (const [key, fb] of Object.entries(reviewData.bullet_feedback)) {
-          const normKey = key.toLowerCase().replace(/\s+/g, "");
-          if (normKey.length > 10 && (normBullet.includes(normKey) || normKey.includes(normBullet))) {
-            feedback = fb;
-            break;
-          }
-        }
-      }
-    }
+    const feedback = findBulletFeedback(bullet, reviewData?.bullet_feedback);
 
     const content = (
       <>

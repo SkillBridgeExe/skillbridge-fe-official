@@ -107,7 +107,8 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           <span className="text-[11px] text-[#787774]">{t("matchDepth.partial")}</span>
           {partial.slice(0, 3).map((s) => (
-            <span key={s.canonical_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
+            // Key by display_name — the BE does not send canonical_name on partial_skills.
+            <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
               {s.display_name}
               {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
             </span>
@@ -160,7 +161,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
   return (
     <div className={base}>
       {body}
-      {job.source_url && (
+      {job.source_url ? (
         <a
           href={job.source_url}
           target="_blank"
@@ -170,7 +171,16 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           {t("jobs.apply")}
           <ExternalLink className="w-3 h-3 transition-transform" />
         </a>
-      )}
+      ) : job.application_mode === "NATIVE" ? (
+        // In-app apply: no /jobs/:slug route exists yet, so show an honest
+        // "coming soon" state instead of nothing (never a dead link).
+        <span
+          className="inline-flex items-center gap-1 mt-2 cursor-not-allowed text-[11px] font-semibold text-[#9B9A97]"
+          title={t("jobs.inAppSoon")}
+        >
+          {t("jobs.inAppSoon")}
+        </span>
+      ) : null}
     </div>
   );
 }

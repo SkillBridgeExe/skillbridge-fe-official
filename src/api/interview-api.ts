@@ -70,7 +70,6 @@ export interface InterviewTurnDto {
   topicPhase?: string | null;
   modality: PlatformInterviewModality;
   aiRequestId: string | null;
-  interviewerMessage: string | null;
   interviewerQuestion: string;
   userAnswerText: string | null;
   userAnswerTranscript: string | null;
@@ -80,7 +79,6 @@ export interface InterviewTurnDto {
   insight?: unknown;
   currentThread?: string | null;
   skillCanonical?: string | null;
-  questionBankItemId?: string | null;
   questionBankKey?: string | null;
   strengths: string[] | unknown;
   improvements: string[] | unknown;
@@ -93,7 +91,6 @@ export interface InterviewFeedback {
   summary?: string;
   technical_delivery?: Record<string, number>;
   communication_flow?: Record<string, number>;
-  body_language?: Record<string, number> | null;
   recommendations?: string | string[];
   suggested_modules?: string[];
   [key: string]: unknown;

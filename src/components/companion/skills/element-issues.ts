@@ -138,7 +138,8 @@ function overallBandOf(overallScore: number): OverallBand {
 
 // ─── Detector: listed_no_evidence ──────────────────────────────────
 // JD-required skill that IS on the CV but only "listed" (no concrete
-// evidence). "Why" = EvidenceItem.evidence_gap, rendered VERBATIM.
+// evidence). "Why" = static enum string (the BE ledger carries gap notes
+// only at LEDGER level, never per-item — contract-sync 2026-07-06).
 function detectListedNoEvidence(input: ElementIssuesInput): ElementIssue[] {
   const { jdMatch, reviewData } = input;
   if (!jdMatch) return [];
@@ -155,9 +156,8 @@ function detectListedNoEvidence(input: ElementIssuesInput): ElementIssue[] {
       anchorId: `evidence-${item.skill_canonical}`,
       severity: NON_GAP_RANK.listed_no_evidence,
       whatKey: "companion.elementIssue.listed_no_evidence.what",
-      // BE-authored "why" verbatim; fall back to the static enum string when absent.
-      why: item.evidence_gap ?? null,
-      whyKey: item.evidence_gap ? null : "companion.elementIssue.listed_no_evidence.why",
+      why: null,
+      whyKey: "companion.elementIssue.listed_no_evidence.why",
       ctaKind: "rewrite",
     },
   ];

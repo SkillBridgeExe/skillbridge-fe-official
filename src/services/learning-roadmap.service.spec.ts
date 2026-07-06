@@ -166,8 +166,8 @@ const composedRoadmap: ComposedRoadmap = {
     {
       skill_canonical: "docker",
       display_name: "Docker",
-      reason: "Budget khong du",
-      estimated_hours: 10,
+      reason: "ran_out_of_budget",
+      fallback: "crash_prep",
     },
   ],
 };
