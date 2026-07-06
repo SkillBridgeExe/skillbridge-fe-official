@@ -1783,6 +1783,18 @@ export default {
       courses: "Suggested courses",
       free: "Free",
       advice: "Advice:",
+      budgetSummary: "{{hours}}h budget · {{count}} modules",
+      strategy: {
+        deep_build: "Deep build",
+        crash_prep: "Crash prep",
+      },
+      pendingSource: "Pending source",
+      notFeasible: "Not feasible within this time budget:",
+      fallback: {
+        crash_prep: "Suggested: crash prep before the interview",
+        interview_practice: "Suggested: practice interview answers instead",
+        cv_fix: "Suggested: fix the CV wording first",
+      },
       noGapsTitle: "No skills to learn for this role",
       noGapsDesc:
         "Your skills already meet this role's requirements. Any remaining gap is about evidence/wording in your CV — see the tailoring section, not a new skill to learn.",

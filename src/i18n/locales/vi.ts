@@ -1774,6 +1774,18 @@ export default {
       courses: "Khóa học gợi ý",
       free: "Miễn phí",
       advice: "Lời khuyên:",
+      budgetSummary: "Quỹ {{hours}} giờ · {{count}} học phần",
+      strategy: {
+        deep_build: "Học bài bản",
+        crash_prep: "Ôn cấp tốc",
+      },
+      pendingSource: "Nguồn đang chờ xác minh",
+      notFeasible: "Không kịp học trong quỹ thời gian này:",
+      fallback: {
+        crash_prep: "Gợi ý: ôn cấp tốc trước phỏng vấn",
+        interview_practice: "Gợi ý: luyện trả lời phỏng vấn thay vì học sâu",
+        cv_fix: "Gợi ý: sửa cách viết CV trước",
+      },
       noGapsTitle: "Không có kỹ năng cần học cho vai trò này",
       noGapsDesc:
         "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV, không phải học kỹ năng mới.",

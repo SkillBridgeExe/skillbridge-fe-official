@@ -1065,12 +1065,13 @@ export interface ComposedRoadmapStepDto {
   lesson_content?: SkillBridgeLessonContentDto;
 }
 
+// Mirror of BE roadmap-composer.ts NotFeasibleItem.
 export interface NotFeasibleItemDto {
   skill_canonical: string;
   display_name: string;
-  reason?: string;
-  estimated_hours?: number;
-  required_hours?: number;
+  reason: "ran_out_of_budget";
+  /** Deterministic routing hint for the skill that did not fit the budget. */
+  fallback: "crash_prep" | "interview_practice" | "cv_fix";
 }
 
 export interface RoadmapFromMatchResponse {
