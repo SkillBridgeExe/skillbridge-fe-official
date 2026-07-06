@@ -58,7 +58,7 @@ function getDisplaySectionStatus(
 }
 
 export function ReviewSection() {
-  const { getSectionStatuses, setActiveSection, sectionEvaluations } =
+  const { getSectionStatuses, setActiveSection, sectionEvaluations, sectionFixFeedback } =
     useCvBuilderStore();
   const { t, i18n } = useTranslation("diagnosis");
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
@@ -138,6 +138,7 @@ export function ReviewSection() {
             ? sectionEvaluations[section.beSection]
             : undefined;
           const displayStatus = getDisplaySectionStatus(local.status, evaluation);
+          const feedback = section.beSection ? sectionFixFeedback[section.beSection] : undefined;
           const title = currentLang === "vi" ? section.titleVi : section.titleEn;
 
           return (
@@ -152,6 +153,11 @@ export function ReviewSection() {
                   {evaluation && (
                     <span className="text-[11px] text-slate-400 font-mono">
                       {evaluation.score}% — {localizeBeLabel(evaluation.label, currentLang)}
+                    </span>
+                  )}
+                  {!evaluation && feedback?.status === "needs_recheck" && (
+                    <span className="text-[11px] text-amber-600 font-medium">
+                      {t("builder.review.needsRecheck")}
                     </span>
                   )}
                 </div>

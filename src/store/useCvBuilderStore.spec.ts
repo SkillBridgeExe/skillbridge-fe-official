@@ -142,6 +142,40 @@ describe("useCvBuilderStore.resumeAppearance", () => {
   });
 });
 
+describe("useCvBuilderStore.sectionFixFeedback", () => {
+  it("marks a section as needing re-check when its stale evaluation is cleared", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSectionEvaluation("summary", {
+      score: 60,
+      label: "Needs improvement",
+      checklist: [],
+      missing: ["Add more evidence"],
+    });
+
+    useCvBuilderStore.getState().clearSectionEvaluation("summary");
+
+    expect(useCvBuilderStore.getState().sectionEvaluations.summary).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionFixFeedback.summary).toMatchObject({
+      status: "needs_recheck",
+    });
+  });
+
+  it("clears the post-fix feedback once a fresh section evaluation arrives", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().clearSectionEvaluation("projects");
+
+    useCvBuilderStore.getState().setSectionEvaluation("projects", {
+      score: 90,
+      label: "Good",
+      checklist: [],
+      missing: [],
+    });
+
+    expect(useCvBuilderStore.getState().sectionFixFeedback.projects).toBeUndefined();
+    expect(useCvBuilderStore.getState().sectionEvaluations.projects?.score).toBe(90);
+  });
+});
+
 describe("getSectionStatuses quality-gating", () => {
   const reset = () => useCvBuilderStore.getState().reset();
 

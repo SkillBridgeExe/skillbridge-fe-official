@@ -10,7 +10,7 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { useCompanionStore } from "@/store/useCompanionStore";
+import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
 
 export function StudioTopBar() {
   const { t, i18n } = useTranslation("diagnosis");
@@ -177,6 +177,95 @@ export function StudioTopBar() {
     }
   };
 
+  const openAssistantContext = (
+    id: string,
+    getTurn: CompanionContextReg["getTurn"],
+  ) => {
+    const companion = useCompanionStore.getState();
+    companion.registerContext({ id, getTurn });
+    companion.activateContext(id);
+    useCompanionStore.setState({ bubbleOpen: true });
+  };
+
+  const handleOpenAiAssistant = () => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
+
+    const state = useCvBuilderStore.getState();
+
+    if (state.summary.trim()) {
+      const id = "cvbuilder:summary";
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "summary",
+          currentValue: useCvBuilderStore.getState().summary,
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().setSummary(after);
+            useCvBuilderStore.getState().clearSectionEvaluation("summary");
+          },
+        },
+      }));
+      return;
+    }
+
+    const projectIndex = state.projects.findIndex((project) => project.description.trim());
+    if (projectIndex >= 0) {
+      const project = state.projects[projectIndex];
+      const id = `cvbuilder:projects[${projectIndex}].description`;
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "projects",
+          currentValue:
+            useCvBuilderStore.getState().projects.find((item) => item.id === project.id)?.description ??
+            "",
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().updateProject(project.id, "description", after);
+            useCvBuilderStore.getState().clearSectionEvaluation("projects");
+          },
+        },
+      }));
+      return;
+    }
+
+    const experienceIndex = state.experience.findIndex((experience) =>
+      experience.description.trim() || experience.achievements.trim(),
+    );
+    if (experienceIndex >= 0) {
+      const experience = state.experience[experienceIndex];
+      const field = experience.achievements.trim() ? "achievements" : "description";
+      const id = `cvbuilder:experience[${experienceIndex}].${field}`;
+      openAssistantContext(id, () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "experience",
+          currentValue:
+            useCvBuilderStore.getState().experience.find((item) => item.id === experience.id)?.[field] ??
+            "",
+          onApply: (after: string) => {
+            useCvBuilderStore.getState().updateExperience(experience.id, field, after);
+            useCvBuilderStore.getState().clearSectionEvaluation("experience");
+          },
+        },
+      }));
+      return;
+    }
+
+    toast({
+      title: t("builder.aiNeedsContentTitle"),
+      description: t("builder.aiNeedsContentDesc"),
+    });
+  };
+
   return (
     <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10 pr-4 xl:pr-6 pl-0 sticky top-0 shadow-sm">
       <div className="flex h-full items-center gap-0 flex-1">
@@ -254,24 +343,7 @@ export function StudioTopBar() {
         </Button>
 
         <Button
-          onClick={() => {
-            const id = "cvbuilder:general";
-            useCompanionStore.getState().registerContext({
-              id,
-              getTurn: () => ({
-                skill: "cv_builder",
-                props: {
-                  draftId: draftId || "",
-                  fieldPath: id,
-                  section: "general",
-                  currentValue: "",
-                  onApply: () => {},
-                },
-              }),
-            });
-            useCompanionStore.getState().activateContext(id);
-            useCompanionStore.setState({ bubbleOpen: true });
-          }}
+          onClick={handleOpenAiAssistant}
           variant="secondary"
           size="sm"
           className="gap-1.5 h-8 rounded-full text-[13px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"

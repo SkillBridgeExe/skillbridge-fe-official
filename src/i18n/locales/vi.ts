@@ -2217,7 +2217,10 @@ export default {
         completed: "Hoàn thành",
         needsImprovement: "Cần cải thiện",
         missing: "Chưa bắt đầu",
+        needsRecheck: "Đã cập nhật — chấm lại để xác nhận đã cải thiện.",
       },
+      aiNeedsContentTitle: "Chưa có nội dung để AI hỗ trợ",
+      aiNeedsContentDesc: "Hãy nhập Summary, Project hoặc Experience trước, rồi mở AI ở đúng mục để nhận đề xuất có thể áp dụng.",
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
       commonSkillsSuggest: "Kỹ năng thường gặp cho {{role}}",
       skills: {

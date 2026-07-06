@@ -2243,7 +2243,10 @@ export default {
         completed: "Completed",
         needsImprovement: "Needs improvement",
         missing: "Not started",
+        needsRecheck: "Updated — re-check to confirm improvement.",
       },
+      aiNeedsContentTitle: "Nothing ready for AI yet",
+      aiNeedsContentDesc: "Add Summary, Project, or Experience content first, then open AI on that section for an applicable suggestion.",
       skillInputPlaceholder: "Type a skill and press Enter...",
       commonSkillsSuggest: "Common skills for {{role}}",
       skills: {

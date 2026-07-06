@@ -58,6 +58,10 @@ export interface Certification {
 }
 
 export type SectionStatus = "completed" | "missing" | "needs-improvement";
+export type SectionFixFeedback = {
+  status: "needs_recheck";
+  updatedAt: number;
+};
 
 export type CvBuilderSectionKey = "summary" | "experience" | "education" | "projects" | "skills" | "certifications";
 
@@ -145,6 +149,7 @@ export interface CvBuilderState {
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
   sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
+  sectionFixFeedback: Partial<Record<BuilderSection, SectionFixFeedback>>;
 
   /** True khi store vừa được nạp từ CV đã chẩn đoán (Diagnosis → "Sửa CV"):
    *  báo cho Diagnosis page đẩy ngay nội dung vào draft mới sau khi tạo. */
@@ -283,6 +288,7 @@ const initialState = {
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
+  sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
   seededFromDiagnosis: false,
   seedSourceCvId: null as string | null,
   // Companion
@@ -380,6 +386,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
     draftId: null,
     sectionEvaluations: {},
+    sectionFixFeedback: {},
     activeSection: 0,
     seededFromDiagnosis: true,
     seedSourceCvId: null,
@@ -522,12 +529,25 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setActiveSection: (section) => set({ activeSection: section }),
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
-    set((s) => ({ sectionEvaluations: { ...s.sectionEvaluations, [section]: result } })),
+    set((s) => {
+      const sectionFixFeedback = { ...s.sectionFixFeedback };
+      delete sectionFixFeedback[section];
+      return {
+        sectionEvaluations: { ...s.sectionEvaluations, [section]: result },
+        sectionFixFeedback,
+      };
+    }),
   clearSectionEvaluation: (section) =>
     set((s) => {
       const next = { ...s.sectionEvaluations };
       delete next[section];
-      return { sectionEvaluations: next };
+      return {
+        sectionEvaluations: next,
+        sectionFixFeedback: {
+          ...s.sectionFixFeedback,
+          [section]: { status: "needs_recheck", updatedAt: Date.now() },
+        },
+      };
     }),
 
   // Seed từ CV đã chẩn đoán
@@ -543,6 +563,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
+            sectionFixFeedback: state.sectionFixFeedback,
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
           }
