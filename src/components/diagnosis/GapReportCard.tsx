@@ -63,10 +63,15 @@ export function GapReportCard({ matchId }: { matchId: string }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang: "vi" | "en" = i18n.language?.startsWith("vi") ? "vi" : "en";
 
-  const { data, isLoading, isError } = useGapReportQuery(matchId, lang) as {
+  const { data, isLoading, isError, refetch, isRefetching } = useGapReportQuery(
+    matchId,
+    lang,
+  ) as {
     data: GapReportDto | undefined;
     isLoading: boolean;
     isError: boolean;
+    refetch: () => void;
+    isRefetching: boolean;
   };
 
   if (!ENABLE_DIAGNOSIS_ADDONS) {
@@ -81,8 +86,22 @@ export function GapReportCard({ matchId }: { matchId: string }) {
     );
   }
   if (isError || !data) {
+    // Same recover-in-place pattern as JobRecommendations/RoadmapFromMatchSection — the query
+    // has retry:false, so without this button the only way out of a transient error is a full
+    // page reload (audited 2026-07-06: the ONE place that lacked it was the most important one).
     return (
-      <div className="text-sm text-[#9F2F2D] py-4">{t("gapReport.error")}</div>
+      <div className="text-sm text-[#9F2F2D] py-4 flex items-center gap-3">
+        <span>{t("gapReport.error")}</span>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isRefetching}
+          className="inline-flex items-center gap-1 rounded border border-[#E3E0D8] px-2 py-0.5 text-xs text-[#37352F] hover:bg-[#F1F0EC] disabled:opacity-50"
+        >
+          {isRefetching ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+          {t("gapReport.retry", { defaultValue: lang === "vi" ? "Thử lại" : "Retry" })}
+        </button>
+      </div>
     );
   }
 

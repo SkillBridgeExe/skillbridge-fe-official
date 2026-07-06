@@ -1877,6 +1877,7 @@ export default {
       },
     },
     gapReport: {
+      retry: "Thử lại",
       title: "Báo cáo khoảng cách (Gap Report)",
       loading: "Đang tải báo cáo gap…",
       error: "Chưa tải được báo cáo gap — thử lại sau.",

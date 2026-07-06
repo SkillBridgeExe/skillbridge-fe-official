@@ -1891,6 +1891,7 @@ export default {
       },
     },
     gapReport: {
+      retry: "Retry",
       title: "Gap Report",
       loading: "Loading the gap report…",
       error: "Could not load the gap report — try again later.",

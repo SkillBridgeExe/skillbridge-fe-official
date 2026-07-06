@@ -340,6 +340,10 @@ export function sanitizeWeekPlans(plans: WeekPlan[]): WeekPlan[] {
     .filter((week) => week.sessions.length > 0);
 }
 
+// NOTE (cross-repo contract): the BE maps learning mastery back to skills by re-slugging
+// canonicals and matching the `roadmap-${moduleId}` session ids this file creates
+// (skillbridge-ai src/platform/learning/mastered-skills.ts). Changing this slug or the
+// `roadmap-` prefix silently breaks `learning_completed` on the progress report.
 function slugPart(value: string, fallback: string): string {
   const slug = value
     .trim()
@@ -392,6 +396,7 @@ export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
         {
           id: `roadmap-${moduleId}`,
           moduleId,
+          skillCanonical: step.skill_canonical,
           sessionNumber: index + 1,
           title: `${step.display_name} - ${strategyLabel(step.strategy)}`,
           skill: step.display_name,
