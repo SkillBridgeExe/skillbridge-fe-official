@@ -44,7 +44,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
           text: "text-emerald-700",
           stroke: "stroke-emerald-500",
           badgeBg: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
-          label: t("builder.storyReadiness.band.ready", { defaultValue: "Ready" }),
+          label: t("builder.storyReadiness.band.ready"),
         };
       case "building":
         return {
@@ -52,7 +52,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
           text: "text-amber-700",
           stroke: "stroke-amber-500",
           badgeBg: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-          label: t("builder.storyReadiness.band.building", { defaultValue: "Building" }),
+          label: t("builder.storyReadiness.band.building"),
         };
       case "starting":
       default:
@@ -61,7 +61,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
           text: "text-rose-700",
           stroke: "stroke-rose-500",
           badgeBg: "bg-rose-100 text-rose-800 hover:bg-rose-100",
-          label: t("builder.storyReadiness.band.starting", { defaultValue: "Starting" }),
+          label: t("builder.storyReadiness.band.starting"),
         };
     }
   };
@@ -88,7 +88,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
           <h3 className="text-base font-bold text-slate-900">
-            {t("builder.storyReadiness.panelTitle", { defaultValue: "Readiness Assessment" })}
+            {t("builder.storyReadiness.panelTitle")}
           </h3>
         </div>
         <Button
@@ -97,7 +97,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
           size="icon"
           className="h-8 w-8 rounded-full text-slate-400 hover:text-slate-600"
           onClick={onClose}
-          aria-label={t("builder.storyReadiness.close", { defaultValue: "Close" })}
+          aria-label={t("builder.storyReadiness.close")}
         >
           <XCircle className="h-5 w-5" />
         </Button>
@@ -151,24 +151,24 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
             <>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="text-sm font-semibold text-slate-800">
-                  {t("builder.storyReadiness.statusLabel", { defaultValue: "Match Level:" })}
+                  {t("builder.storyReadiness.statusLabel")}
                 </span>
                 <Badge variant="secondary" className={cn("w-fit mx-auto sm:mx-0", bandStyles.badgeBg)}>
                   {bandStyles.label}
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 italic">
-                * {t("builder.storyReadiness.preliminaryNote", { defaultValue: "Score is a preliminary estimate based on current CV." })}
+                * {t("builder.storyReadiness.preliminaryNote")}
               </p>
             </>
           ) : (
             <div className="space-y-1">
               <p className="text-sm font-bold text-amber-700 flex items-center justify-center sm:justify-start gap-1.5">
                 <HelpCircle className="h-4 w-4 shrink-0" />
-                {t("builder.storyReadiness.noRubricTitle", { defaultValue: "No Rubric Available" })}
+                {t("builder.storyReadiness.noRubricTitle")}
               </p>
               <p className="text-xs text-slate-600">
-                {t("builder.storyReadiness.noRubricDesc", { defaultValue: "SkillBridge has no standard rubric for this role yet so readiness cannot be measured." })}
+                {t("builder.storyReadiness.noRubricDesc")}
               </p>
             </div>
           )}
@@ -179,10 +179,9 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
       {role_has_rubric && (
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500">
-            <span>{t("builder.storyReadiness.gapListTitle", { defaultValue: "Competency Gaps" })}</span>
+            <span>{t("builder.storyReadiness.gapListTitle")}</span>
             <span className="normal-case font-medium">
               {t("builder.storyReadiness.matchedVsMissing", {
-                defaultValue: "Khớp {{matched}} / Thiếu {{missing}}",
                 matched: matched_count,
                 missing: missing_count,
               })}
@@ -193,10 +192,10 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
             <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
               <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
               <p className="text-sm font-medium text-slate-800">
-                {t("builder.storyReadiness.noGapsTitle", { defaultValue: "Great! No gaps detected" })}
+                {t("builder.storyReadiness.noGapsTitle")}
               </p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                {t("builder.storyReadiness.noGapsDesc", { defaultValue: "Your profile fully meets the basic requirements for this role." })}
+                {t("builder.storyReadiness.noGapsDesc")}
               </p>
             </div>
           ) : (
@@ -226,8 +225,8 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
                         )}
                       >
                         {isMissing
-                          ? t("builder.storyReadiness.gap.missing", { defaultValue: "Missing" })
-                          : t("builder.storyReadiness.gap.partial", { defaultValue: "Partial" })}
+                          ? t("builder.storyReadiness.gap.missing")
+                          : t("builder.storyReadiness.gap.partial")}
                       </Badge>
                     </div>
 
@@ -235,14 +234,13 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
                     <div className="flex items-center justify-between text-xs text-slate-500 border-b border-dashed border-slate-100 pb-1.5">
                       <span>
                         {t("builder.storyReadiness.gap.levels", {
-                          defaultValue: "Yêu cầu: Lvl {{req}} / CV: Lvl {{cv}}",
                           req: gap.required_level ?? 1,
                           cv: gap.cv_level ?? 0,
                         })}
                       </span>
                       {gap.importance === "REQUIRED" && (
                         <Badge variant="outline" className="text-[9px] text-rose-600 border-rose-200 bg-rose-50/50">
-                          {t("builder.storyReadiness.gap.required", { defaultValue: "Required" })}
+                          {t("builder.storyReadiness.gap.required")}
                         </Badge>
                       )}
                     </div>
@@ -269,7 +267,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
           className="w-full sm:w-auto text-slate-600 text-xs h-9"
           onClick={onClose}
         >
-          {t("builder.storyReadiness.doneBtn", { defaultValue: "Close" })}
+          {t("builder.storyReadiness.doneBtn")}
         </Button>
         {role_has_rubric && roadmap_pointer && (
           <Button
@@ -279,7 +277,7 @@ export function StoryReadinessPanel({ data, onClose }: StoryReadinessPanelProps)
             onClick={handleGenerateRoadmap}
           >
             <BookOpen className="h-4 w-4" />
-            <span>{t("builder.storyReadiness.roadmapBtn", { defaultValue: "Create learning roadmap from this gap" })}</span>
+            <span>{t("builder.storyReadiness.roadmapBtn")}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         )}

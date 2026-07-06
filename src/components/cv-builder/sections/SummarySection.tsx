@@ -287,7 +287,7 @@ export function SummarySection() {
             "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors",
             summary.length > 500 ? "text-amber-500" : "text-slate-400"
           )}>
-            {summary.length} {t("builder.characters", { defaultValue: "chars" })}
+            {summary.length} {t("builder.characters")}
           </div>
         </div>
       </div>
@@ -425,7 +425,7 @@ export function SummarySection() {
           }}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+          <span>{t("companion.analyze")}</span>
         </Button>
       )}
     </div>
