@@ -35,14 +35,11 @@ import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } fr
 import { buildChatActionChips } from "./chat-action-chips";
 import { getApiErrorCode } from "@/lib/api-error";
 import type { CvReviewData, EvidenceItem, ProgressReportDto } from "@shared/api";
-import type { DiagnosisChatFocus, DiagnosisChatTurn } from "@/types/companion";
+import type { DiagnosisChatFocus } from "@/types/companion";
 import type { ChatActionChip } from "./chat-action-chips";
 import { OPEN_ROADMAP_WIZARD_EVENT, OPEN_TAILOR_REWRITE_EVENT } from "./chat-action-events";
 
 export const CHAT_CONTEXT_ID = "diagnosis:chat";
-
-/** Trim the thread we send back as grounding context (recent turns, content only). */
-const THREAD_LIMIT = 8;
 
 /**
  * Reveal a cited card by anchor id. Step 2 passes a tab-aware reveal (switches to
@@ -187,7 +184,7 @@ export function useDiagnosisChatCompanion(
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
   //    flips the last assistant slot to an error row — never crashes. ──
   const chatMutation = useMutation({
-    mutationFn: (vars: { question: string; thread: DiagnosisChatTurn[] }) => {
+    mutationFn: (vars: { question: string }) => {
       if (!matchId && !cvId) {
         // Neither a JD match nor a CV id → no chat target server-side at all.
         // Reject → failLastAssistant → friendly "assistant being connected" row.
@@ -195,11 +192,11 @@ export function useDiagnosisChatCompanion(
       }
       // The service picks the route: matchId → /cv-matches/:id/chat (gap-report
       // grounded); else cvId → /cvs/:cvId/diagnosis-chat (CV-only, review grounded).
+      // No thread payload — the BE grounds on its own persisted history.
       return askDiagnosisChat({
         matchId,
         cvId,
         question: vars.question,
-        thread: vars.thread,
         focus,
         language,
       });
@@ -219,7 +216,6 @@ export function useDiagnosisChatCompanion(
     onAction: (chip: ChatActionChip) => void;
     onConfirmAction: () => void;
     onCancelAction: () => void;
-    isPending: boolean;
     revealCard?: RevealCard;
   }>({
     opener,
@@ -231,7 +227,6 @@ export function useDiagnosisChatCompanion(
     onAction: () => {},
     onConfirmAction: () => {},
     onCancelAction: () => {},
-    isPending: false,
     revealCard,
   });
 
@@ -266,9 +261,9 @@ export function useDiagnosisChatCompanion(
    * concurrent send appended later never clobbers the row this call owns.
    */
   const runChat = useCallback(
-    (question: string, thread: DiagnosisChatTurn[], assistantIndex: number) => {
+    (question: string, assistantIndex: number) => {
       chatMutation.mutate(
-        { question, thread },
+        { question },
         {
           onSuccess: (res) => {
             // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
@@ -304,16 +299,11 @@ export function useDiagnosisChatCompanion(
       // Guard against a double-send race: ignore while a request is in flight.
       if (chatMutation.isPending) return;
       const store = useCompanionStore.getState();
-      // Build the grounding thread from what's already on screen (before appending).
-      const thread: DiagnosisChatTurn[] = store.chatMessages
-        .filter((m) => !m.local && !m.pending && !m.error && m.text)
-        .slice(-THREAD_LIMIT)
-        .map((m) => ({ role: m.role, text: m.text }));
       store.appendChatMessage({ role: "user", text });
       store.setChatPending(text);
       // The pending placeholder is now the last message → its index.
       const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
-      runChat(text, thread, assistantIndex);
+      runChat(text, assistantIndex);
     },
     // chatMutation drives the pending guard; runChat carries the send logic. onSend
     // identity changing per render no longer re-registers the context (register is
@@ -324,7 +314,7 @@ export function useDiagnosisChatCompanion(
   /**
    * Per-row retry: heal the SPECIFIC failed row at `index` in place (back to pending,
    * keeping its owning question) and re-send THAT question — never append a duplicate
-   * user bubble. The grounding thread is rebuilt from the turns BEFORE this row.
+   * user bubble.
    */
   const onRetry = useCallback(
     (index: number) => {
@@ -332,12 +322,7 @@ export function useDiagnosisChatCompanion(
       const store = useCompanionStore.getState();
       const question = store.retryAssistantAt(index);
       if (!question) return;
-      const thread: DiagnosisChatTurn[] = store.chatMessages
-        .slice(0, index)
-        .filter((m) => !m.local && !m.pending && !m.error && m.text)
-        .slice(-THREAD_LIMIT)
-        .map((m) => ({ role: m.role, text: m.text }));
-      runChat(question, thread, index);
+      runChat(question, index);
     },
     [chatMutation, runChat],
   );
@@ -486,7 +471,9 @@ export function useDiagnosisChatCompanion(
   }, [opener, suggestions.join("")]);
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
-  // a tab switch, latest onSend/onRetry/isPending) WITHOUT re-registering the context.
+  // a tab switch, latest onSend/onRetry) WITHOUT re-registering the context.
+  // NOTE: no isPending here — CompanionShell derives the pending flag from the
+  // store's chat thread (chatPending), never from this turn's props.
   propsRef.current = {
     opener,
     suggestions,
@@ -497,7 +484,6 @@ export function useDiagnosisChatCompanion(
     onAction,
     onConfirmAction,
     onCancelAction,
-    isPending: chatMutation.isPending,
     revealCard,
   };
 
@@ -517,7 +503,7 @@ export function useDiagnosisChatCompanion(
           // Live-read the thread at render time (same getState() pattern as
           // useElementIssuesCompanion) so new messages appear without re-register.
           messages: useCompanionStore.getState().chatMessages,
-          // Live-read the rest from the props ref so opener/onSend/onRetry/isPending
+          // Live-read the rest from the props ref so opener/onSend/onRetry
           // stay fresh across tab switches and in-flight sends — WITHOUT re-registering.
           opener: propsRef.current.opener,
           suggestions: propsRef.current.suggestions,
@@ -528,7 +514,6 @@ export function useDiagnosisChatCompanion(
           onAction: propsRef.current.onAction,
           onConfirmAction: propsRef.current.onConfirmAction,
           onCancelAction: propsRef.current.onCancelAction,
-          isPending: propsRef.current.isPending,
         },
       }),
     });

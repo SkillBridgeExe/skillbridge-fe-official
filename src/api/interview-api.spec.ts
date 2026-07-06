@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
+import { getAccessToken } from "@/services/auth-token.service";
 import {
   endInterview,
   getInterviewQuestionAudio,
   getInterviewDetail,
   getInterviewHistory,
   refreshRealtimeToken,
+  sendBestEffortInterviewEnd,
   startInterview,
   submitInterviewTurn,
 } from "./interview-api";
@@ -16,6 +18,10 @@ vi.mock("@/api/core/http-client", () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+}));
+
+vi.mock("@/services/auth-token.service", () => ({
+  getAccessToken: vi.fn(),
 }));
 
 function ok<T>(data: T) {
@@ -32,6 +38,10 @@ function ok<T>(data: T) {
 describe("interview-api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("starts an interview using the platform contract and unwraps the envelope", async () => {
@@ -247,6 +257,35 @@ describe("interview-api", () => {
     await expect(getInterviewQuestionAudio("session-1")).rejects.toThrow(
       "OPENAI_API_KEY is not set",
     );
+  });
+
+  it("fires a keepalive authorized request for exit-time best-effort ends", () => {
+    vi.mocked(getAccessToken).mockReturnValue("token-1");
+    const fetchMock = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("fetch", fetchMock);
+
+    sendBestEffortInterviewEnd("session-9");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      API_ROUTES.INTERVIEW.END,
+      expect.objectContaining({
+        method: "POST",
+        keepalive: true,
+        credentials: "include",
+        headers: expect.objectContaining({ Authorization: "Bearer token-1" }),
+        body: JSON.stringify({ sessionId: "session-9" }),
+      }),
+    );
+  });
+
+  it("skips the exit-time best-effort end without an access token", () => {
+    vi.mocked(getAccessToken).mockReturnValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    sendBestEffortInterviewEnd("session-9");
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not expose legacy interview endpoints", () => {

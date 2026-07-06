@@ -1639,10 +1639,17 @@ export default {
         not_recommended: "Chưa phù hợp"
       },
       reason: {
+        STRONG_SCORE: "Điểm tổng thể cao",
+        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        SENIORITY_FITS: "Cấp bậc kinh nghiệm phù hợp",
+        LOW_SCORE: "Điểm tổng thể còn thấp",
         LOW_COVERAGE: "Độ phủ kỹ năng bắt buộc còn thấp",
         SENIORITY_STRETCH: "Vị trí cao hơn cấp bậc hiện tại của bạn",
+        SENIORITY_OVERQUALIFIED: "Bạn vượt cấp bậc vị trí này",
         DEAL_BREAKER_UNMET: "Thiếu yêu cầu bắt buộc",
-        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        SEVERE_STRETCH: "Vị trí cao hơn cấp bậc của bạn khá xa",
+        DEAL_BREAKER_UNVERIFIED: "Có yêu cầu bắt buộc chưa xác minh được",
+        MID_SCORE: "Điểm ở mức trung bình",
         MISSING_EXPERIENCE: "Thiếu kinh nghiệm chuyên môn sâu",
         MATCHED_EXPERIENCE: "Kinh nghiệm tương đồng tốt"
       }
@@ -1920,6 +1927,7 @@ export default {
       skillMatch: "Kỹ năng {{score}}%",
       stretch: "Vượt cấp seniority",
       severeStretch: "Vượt cấp khá xa",
+      inAppSoon: "Ứng tuyển trong app sắp mở",
     },
     aiInsight: {
       title: "AI nhận định thị trường",
@@ -1930,6 +1938,15 @@ export default {
       trendUp: "nhu cầu tăng",
       error: "Không tải được nhận định thị trường.",
       retry: "Thử lại",
+      sampleSize: "Dựa trên {{count}} tin tuyển dụng đang hoạt động",
+      confidence: {
+        high: "Độ tin cậy cao",
+        medium: "Độ tin cậy vừa",
+        low: "Mẫu dữ liệu mỏng",
+      },
+      stale: "Dữ liệu chưa cập nhật hơn 3 ngày — số liệu là thật nhưng có thể chưa mới nhất.",
+      pctOfPostings: "{{pct}}% tin tuyển",
+      pairsTitle: "Kỹ năng thường được tuyển cùng nhau",
     },
     interviewPrep: {
       title: "Luyện phỏng vấn theo gap của bạn",
@@ -1968,6 +1985,18 @@ export default {
       courses: "Khóa học gợi ý",
       free: "Miễn phí",
       advice: "Lời khuyên:",
+      budgetSummary: "Quỹ {{hours}} giờ · {{count}} học phần",
+      strategy: {
+        deep_build: "Học bài bản",
+        crash_prep: "Ôn cấp tốc",
+      },
+      pendingSource: "Nguồn đang chờ xác minh",
+      notFeasible: "Không kịp học trong quỹ thời gian này:",
+      fallback: {
+        crash_prep: "Gợi ý: ôn cấp tốc trước phỏng vấn",
+        interview_practice: "Gợi ý: luyện trả lời phỏng vấn thay vì học sâu",
+        cv_fix: "Gợi ý: sửa cách viết CV trước",
+      },
       noGapsTitle: "Không có kỹ năng cần học cho vai trò này",
       noGapsDesc:
         "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV, không phải học kỹ năng mới.",
@@ -1983,6 +2012,7 @@ export default {
         deepen_wording: "Viết sâu hơn",
       },
       anchor: "Vị trí: {{ref}}",
+      lowAnchor: "Chưa định vị chính xác bullet — kiểm tra lại vị trí trước khi sửa.",
       before: "Bản gốc",
       surfaceAt: "(đang ở: {{ref}})",
       rewriteBtn: "Viết lại với AI",
@@ -2080,6 +2110,7 @@ export default {
       },
     },
     gapReport: {
+      retry: "Thử lại",
       title: "Báo cáo khoảng cách (Gap Report)",
       loading: "Đang tải báo cáo gap…",
       error: "Chưa tải được báo cáo gap — thử lại sau.",
@@ -2136,6 +2167,12 @@ export default {
         certification: "Chứng chỉ",
         summary: "Tóm tắt",
         skill: "Kỹ năng",
+        github: "GitHub",
+        interview: "Phỏng vấn thử",
+        activity: "Hoạt động",
+        skill_list: "Danh sách kỹ năng",
+        skills_list: "Danh sách kỹ năng",
+        other: "Khác",
       },
     },
     jdIntel: {
@@ -2209,6 +2246,7 @@ export default {
       sourceKind: {
         experience: "Kinh nghiệm",
         project: "Dự án",
+        activity: "Hoạt động",
         education: "Học vấn",
         certification: "Chứng chỉ",
         skill_list: "Danh sách kỹ năng",

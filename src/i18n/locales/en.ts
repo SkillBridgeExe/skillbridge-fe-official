@@ -1643,10 +1643,17 @@ export default {
         not_recommended: "Not a fit yet"
       },
       reason: {
+        STRONG_SCORE: "Strong overall score",
+        STRONG_COVERAGE: "Strong coverage of required skills",
+        SENIORITY_FITS: "Seniority level fits",
+        LOW_SCORE: "Low overall score",
         LOW_COVERAGE: "Low coverage of required skills",
         SENIORITY_STRETCH: "Job level is higher than your current seniority",
+        SENIORITY_OVERQUALIFIED: "You are above this job's level",
         DEAL_BREAKER_UNMET: "Missing a deal-breaker requirement",
-        STRONG_COVERAGE: "Strong coverage of required skills",
+        SEVERE_STRETCH: "Job level is far above your current seniority",
+        DEAL_BREAKER_UNVERIFIED: "A deal-breaker requirement could not be verified",
+        MID_SCORE: "Mid-range overall score",
         MISSING_EXPERIENCE: "Missing required deep experience",
         MATCHED_EXPERIENCE: "Good experience match"
       }
@@ -1930,6 +1937,7 @@ export default {
       skillMatch: "Skill {{score}}%",
       stretch: "Above your level",
       severeStretch: "Far above your level",
+      inAppSoon: "In-app apply coming soon",
     },
     aiInsight: {
       title: "AI market insight",
@@ -1939,6 +1947,15 @@ export default {
       trendUp: "rising demand",
       error: "Could not load market insight.",
       retry: "Retry",
+      sampleSize: "Based on {{count}} active job postings",
+      confidence: {
+        high: "High confidence",
+        medium: "Medium confidence",
+        low: "Thin sample",
+      },
+      stale: "Data has not refreshed in over 3 days — numbers are real but may not be current.",
+      pctOfPostings: "{{pct}}% of postings",
+      pairsTitle: "Skills often hired together",
     },
     interviewPrep: {
       title: "Practice interview for your gaps",
@@ -1977,6 +1994,18 @@ export default {
       courses: "Suggested courses",
       free: "Free",
       advice: "Advice:",
+      budgetSummary: "{{hours}}h budget · {{count}} modules",
+      strategy: {
+        deep_build: "Deep build",
+        crash_prep: "Crash prep",
+      },
+      pendingSource: "Pending source",
+      notFeasible: "Not feasible within this time budget:",
+      fallback: {
+        crash_prep: "Suggested: crash prep before the interview",
+        interview_practice: "Suggested: practice interview answers instead",
+        cv_fix: "Suggested: fix the CV wording first",
+      },
       noGapsTitle: "No skills to learn for this role",
       noGapsDesc:
         "Your skills already meet this role's requirements. Any remaining gap is about evidence/wording in your CV — see the tailoring section, not a new skill to learn.",
@@ -1993,6 +2022,7 @@ export default {
         deepen_wording: "Deepen wording",
       },
       anchor: "Location: {{ref}}",
+      lowAnchor: "Could not pinpoint the exact bullet — double-check the spot before editing.",
       before: "Original",
       surfaceAt: "(currently in: {{ref}})",
       rewriteBtn: "Rewrite with AI",
@@ -2094,6 +2124,7 @@ export default {
       },
     },
     gapReport: {
+      retry: "Retry",
       title: "Gap Report",
       loading: "Loading the gap report…",
       error: "Could not load the gap report — try again later.",
@@ -2160,6 +2191,12 @@ export default {
         certification: "Certification",
         summary: "Summary",
         skill: "Skill",
+        github: "GitHub",
+        interview: "Mock interview",
+        activity: "Activity",
+        skill_list: "Skill list",
+        skills_list: "Skill list",
+        other: "Other",
       },
     },
     jdIntel: {
@@ -2233,6 +2270,7 @@ export default {
       sourceKind: {
         experience: "Experience",
         project: "Project",
+        activity: "Activity",
         education: "Education",
         certification: "Certification",
         skill_list: "Skill list",

@@ -2444,13 +2444,17 @@ interface SessionDetailProps {
 export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  // BE lookup key. moduleId is a SLUG ("node-js") — sending it as skill_canonical 404s every
+  // underscore skill ("node_js", "ci_cd", …) and starves learning_completed for half the
+  // catalog. Fallback keeps demo sessions (no canonical) behaving exactly as before.
+  const skillCanonical = session.skillCanonical ?? session.moduleId;
   const posthog = usePostHog();
 
   // Mascot learning companion (Task M3): registers the corner-advisor chat for
   // this session view (session-scoped — mirrors AIChatPanel's session_id +
   // skill_canonical wiring). See useLearningChatCompanion for the anti-Clippy
   // register-once pattern.
-  useLearningChatCompanion(session.id, session.title, session.moduleId);
+  useLearningChatCompanion(session.id, session.title, skillCanonical);
 
   const initialSectionId = orderLearningSectionsForDisplay(session.sections)[0]?.id ?? "";
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
@@ -2518,7 +2522,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
         setProgress(hydrated);
         setProgressSessionId(session.id);
         progressRef.current = hydrated;
-        return getLearningNextQuestions(session.id, session.moduleId)
+        return getLearningNextQuestions(session.id, skillCanonical)
           .then((nextQuestions) => {
             if (!isActive) return;
             setAdaptiveQuiz({
@@ -2554,7 +2558,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
       isActive = false;
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
-  }, [session]);
+    // skillCanonical derives from session — listed to keep exhaustive-deps honest; it never
+    // changes without `session` changing, so the effect re-runs exactly as before.
+  }, [session, skillCanonical]);
 
   useEffect(() => {
     if (!progressBelongsToCurrentSession) return;
@@ -2725,7 +2731,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
     try {
       const response = await answerLearningQuizQuestion(session.id, {
-        skill_canonical: session.moduleId,
+        skill_canonical: skillCanonical,
         question_id: question.id,
         selected_option_index: selectedOptionIndex,
       });
@@ -2899,7 +2905,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
           {false && isChatOpen && (
             <AIChatPanel
               sessionId={session.id}
-              skillCanonical={session.moduleId}
+              skillCanonical={skillCanonical}
               onClose={() => setIsChatOpen(false)}
             />
           )}
@@ -2921,7 +2927,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
           {isSandboxOpen && (
             <CodeSandboxPanel
               sessionId={session.id}
-              skillCanonical={session.moduleId}
+              skillCanonical={skillCanonical}
               sessionTitle={session.title}
               onClose={() => setIsSandboxOpen(false)}
               sectionTitle={sandboxSectionTitle}

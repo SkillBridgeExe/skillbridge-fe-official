@@ -244,7 +244,7 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
     });
   });
 
-  it("excludes local-only messages from the thread sent to the diagnosis chat API", async () => {
+  it("sends only the question — no thread payload (the BE grounds on its own persisted history)", async () => {
     const qc = new QueryClient();
     let api: { sendQuestion: (q: string) => void } | undefined;
     function CaptureHarness() {
@@ -267,9 +267,9 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
     await waitFor(() => {
       expect(askDiagnosisChat).toHaveBeenCalled();
     });
-    expect(vi.mocked(askDiagnosisChat).mock.calls[0]?.[0].thread).toEqual([
-      { role: "user", text: "real previous question" },
-    ]);
+    const args = vi.mocked(askDiagnosisChat).mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(args.question).toBe("next question");
+    expect("thread" in args).toBe(false);
   });
 
   it("clears stale cached turns when deleting a persisted thread", async () => {

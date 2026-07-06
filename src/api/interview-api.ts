@@ -1,6 +1,7 @@
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
+import { getAccessToken } from "@/services/auth-token.service";
 
 const QUESTION_AUDIO_TIMEOUT_MS = 60_000;
 
@@ -69,7 +70,6 @@ export interface InterviewTurnDto {
   topicPhase?: string | null;
   modality: PlatformInterviewModality;
   aiRequestId: string | null;
-  interviewerMessage: string | null;
   interviewerQuestion: string;
   userAnswerText: string | null;
   userAnswerTranscript: string | null;
@@ -79,7 +79,6 @@ export interface InterviewTurnDto {
   insight?: unknown;
   currentThread?: string | null;
   skillCanonical?: string | null;
-  questionBankItemId?: string | null;
   questionBankKey?: string | null;
   strengths: string[] | unknown;
   improvements: string[] | unknown;
@@ -92,7 +91,6 @@ export interface InterviewFeedback {
   summary?: string;
   technical_delivery?: Record<string, number>;
   communication_flow?: Record<string, number>;
-  body_language?: Record<string, number> | null;
   recommendations?: string | string[];
   suggested_modules?: string[];
   [key: string]: unknown;
@@ -192,6 +190,30 @@ export async function endInterview(
     "Failed to end interview.",
   );
   return envelope.data;
+}
+
+/**
+ * Best-effort end for a session being abandoned (tab close, page navigation).
+ * Uses a keepalive fetch instead of navigator.sendBeacon because /interview/end
+ * requires the Authorization bearer header, which sendBeacon cannot set.
+ * Fire-and-forget by design: the backend sweeps and scores stale IN_PROGRESS
+ * sessions on the user's next /interview/start if this request never lands.
+ */
+export function sendBestEffortInterviewEnd(sessionId: string): void {
+  const token = getAccessToken();
+  if (!token || typeof fetch !== "function") return;
+  void fetch(`${httpClient.defaults?.baseURL ?? ""}${API_ROUTES.INTERVIEW.END}`, {
+    method: "POST",
+    keepalive: true,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ sessionId }),
+  }).catch(() => {
+    // Swallowed on purpose — the BE stale-session sweep is the backstop.
+  });
 }
 
 export async function getInterviewHistory(

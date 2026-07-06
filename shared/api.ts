@@ -62,7 +62,20 @@ export interface KeywordFrequency {
 }
 
 export type FitVerdict = 'safe_apply' | 'stretch' | 'not_recommended';
-export type FitReasonCode = 'LOW_COVERAGE' | 'SENIORITY_STRETCH' | 'DEAL_BREAKER_UNMET' | 'STRONG_COVERAGE' | string;
+/** Mirror of BE fit-strategy.ts — the full 11-literal reason trail (positive codes
+ *  are included even when the verdict isn't safe_apply, so the FE can explain). */
+export type FitReasonCode =
+  | 'STRONG_SCORE'
+  | 'STRONG_COVERAGE'
+  | 'SENIORITY_FITS'
+  | 'LOW_SCORE'
+  | 'LOW_COVERAGE'
+  | 'SENIORITY_STRETCH'
+  | 'SENIORITY_OVERQUALIFIED'
+  | 'DEAL_BREAKER_UNMET'
+  | 'SEVERE_STRETCH'
+  | 'DEAL_BREAKER_UNVERIFIED'
+  | 'MID_SCORE';
 
 export interface CvJdMatch {
   matchId?: string;
@@ -75,7 +88,6 @@ export interface CvJdMatch {
   criticalGaps: string[];
   required_coverage?: number | null;
   scoring_breakdown?: ScoringBreakdown | null;
-  experience_fit?: ExperienceFit | null;
   inferred_skills?: InferredSkill[];
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] } | null;
   /** Thước seniority khi chấm theo rubric; null = chấm theo JD dán (thước của JD). */
@@ -101,15 +113,17 @@ export interface ScoringBreakdown {
   cap_applied: boolean;
 }
 
+/** Job-rec partial_skills item — BE sends {display_name, importance, gap_levels} only. */
 export interface MatchPartialSkill {
   display_name: string;
-  canonical_name: string;
+  canonical_name?: string;
+  importance?: string;
   gap_levels: number;
 }
 
 export interface ExperienceFit {
   cv_seniority: string;
-  job_level: string;
+  job_level: string | null;
   verdict: "fits" | "stretch" | "over_qualified" | "unknown";
   confidence: "low" | "medium" | "high";
 }
@@ -188,19 +202,25 @@ export interface CvReviewData {
   evidence_ledger?: EvidenceLedger | null;
   /** Input-quality disclosure (mojibake/OCR/thin/sparse). Absent/null → no banner. */
   extraction_quality?: ExtractionQuality | null;
-  bullet_feedback?: Record<string, BulletFeedbackItem>;
+  /** Per-bullet deterministic feedback — BE sends an ARRAY (bullet-analyzer.service.ts),
+   *  each item carrying its own `text`; match by bullet text, not by key. */
+  bullet_feedback?: BulletFeedbackItem[];
   buzzwords_detected?: string[];
   dimension_provenance?: Partial<Record<'action_verbs'|'skills_relevance'|'experience'|'education',
     { source: 'deterministic'|'llm'; confidence: 'high'|'medium'|'low'; evidence: string[] }>>;
 }
 
-export type EvidenceKind = "experience" | "project" | "education" | "certification" | "skill_list" | "skills_list" | "summary" | "other";
+// Mirror of BE evidence-ledger.ts — only the kinds the BE actually emits.
+export type EvidenceKind = "experience" | "project" | "activity" | "summary" | "skills_list";
 export type EvidenceStrength = "demonstrated" | "mentioned" | "listed_only";
 
 export interface EvidenceSource {
   kind: EvidenceKind;
-  label: string;
-  excerpt?: string | null;
+  /** Human location label, e.g. "Dự án: Booking App". */
+  ref: string;
+  recency_year: number | null;
+  /** The real bullet/sentence that matched (≤200 chars); null for a bare listing. */
+  quote?: string | null;
 }
 
 export interface EvidenceItem {
@@ -209,11 +229,12 @@ export interface EvidenceItem {
   strength: EvidenceStrength;
   sources: EvidenceSource[];
   most_recent_year: number | null;
-  evidence_gap?: string | null;
 }
 
 export interface EvidenceLedger {
   items: EvidenceItem[];
+  /** LEDGER-level gap notes (localized strings) — the BE never sends per-item gaps. */
+  evidence_gap?: string[];
 }
 
 export type ExtractionConfidence = "high" | "medium" | "low";
@@ -344,7 +365,7 @@ export interface CvReviewParsedResponse {
     education: string;
   };
   sections: BeReviewSection[];
-  bullet_feedback?: Record<string, BulletFeedbackItem>;
+  bullet_feedback?: BulletFeedbackItem[];
   buzzwords_detected?: string[];
   ats_extracted: {
     name: string | null;
@@ -473,7 +494,6 @@ export interface CvJdMatchParsedResponse {
   /** cv_jd_match_v2: non-skill dimensions extracted from JD (seniority/language/education/domain/work_mode). */
   jd_dimensions?: JdDimension[];
   fell_back_to_rubric?: boolean;
-  experience_fit?: ExperienceFit | null;
 }
 
 export interface CvMatchDto {
@@ -481,8 +501,6 @@ export interface CvMatchDto {
   cvId: string;
   jobDescriptionId: string | null;
   aiResultId: string | null;
-  overall_match_score: number | null;
-  seniority_match?: GapSeniorityBlock | null;
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   overallScore: number | null;
   matchRatio: number | null;
@@ -510,6 +528,10 @@ export interface JobRecommendationDto {
   salary_max: number | null;
   currency: string;
   source_url: string | null;
+  /** URL-safe id for the in-app job page (BE will start sending — type-ready). */
+  slug?: string;
+  /** NATIVE = apply inside SkillBridge; EXTERNAL = follow source_url. */
+  application_mode?: "NATIVE" | "EXTERNAL";
   posted_at: string | null;
   /** 0-100, deterministic — cùng engine với CV/JD match. CHỈ skill match (để giải thích minh bạch);
    *  KHÔNG bị seniority guard tác động. */
@@ -519,7 +541,6 @@ export interface JobRecommendationDto {
    *  minh bạch cho UI, KHÔNG phải khoá sort: BE rank nội bộ bằng fused(skill+semantic) × factor + nudge.
    *  Có thể vắng ở response cũ. */
   recommendation_score?: number;
-  seniority_match?: GapSeniorityBlock | null;
   experience_fit?: ExperienceFit | null;
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   /** true khi job cao hơn CV ≥3 bậc seniority (vd fresher→LEAD) — UI badge/lọc. */
@@ -858,27 +879,51 @@ export interface SkillGapResponse {
   gap: SkillGapRow[];
 }
 
+// Mirror of BE trends-insight.types.ts (GET /api/trends/insight) — numbers are
+// re-attached from deterministic FACTS server-side; the LLM only writes prose.
 export interface TrendsRecommendedSkill {
-  canonical_name: string;
+  skill: string;
   display_name: string;
-  posting_count?: number;
-  pct_of_postings?: number;
-  trend_delta?: number | null;
+  pct_of_postings: number;
+  salary_p50_vnd: number | null;
 }
 
 export interface TrendsInsightItem {
-  title: string;
-  detail: string;
-  trend_delta?: number | null;
+  skill: string;
+  display_name: string;
+  pct_of_postings: number;
+  trend_delta: number | null;
+  /** null = role-level insight (no CV to check coverage against). */
+  covered: boolean | null;
+  comment: string;
+}
+
+/** Skill pair that co-occurs in the SAME postings — counts are real SQL facts. */
+export interface TrendsSkillPairInsight {
+  a: string;
+  a_display: string;
+  b: string;
+  b_display: string;
+  pair_count: number;
+  pct_of_postings: number;
+  comment: string;
 }
 
 export interface TrendsInsightResponse {
-  cv_id: string;
   role_code: string;
-  period?: string;
+  period: string;
+  /** Active postings in the role scope — basis for data_confidence. */
+  sample_size: number;
+  data_confidence: "high" | "medium" | "low";
+  personalized: boolean;
   summary: string;
   insights: TrendsInsightItem[];
   recommended_skills: TrendsRecommendedSkill[];
+  /** May be empty when the pool/LLM has no pair worth mentioning. */
+  skill_pairs: TrendsSkillPairInsight[];
+  cached: boolean;
+  /** True when the snapshot is older than the disclosure threshold (3 days). */
+  stale?: boolean;
 }
 
 // Diagnosis add-ons (W11/W12/W13)
@@ -890,7 +935,6 @@ export interface InterviewPlanItem {
   focus_type: InterviewFocusType;
   reason: string;
   difficulty: "foundation" | "applied";
-  template_question: string;
   question: string;
   good_answer_hints: string[];
 }
@@ -1034,12 +1078,13 @@ export interface ComposedRoadmapStepDto {
   lesson_content?: SkillBridgeLessonContentDto;
 }
 
+// Mirror of BE roadmap-composer.ts NotFeasibleItem.
 export interface NotFeasibleItemDto {
   skill_canonical: string;
   display_name: string;
-  reason?: string;
-  estimated_hours?: number;
-  required_hours?: number;
+  reason: "ran_out_of_budget";
+  /** Deterministic routing hint for the skill that did not fit the budget. */
+  fallback: "crash_prep" | "interview_practice" | "cv_fix";
 }
 
 export interface RoadmapFromMatchResponse {
@@ -1214,6 +1259,12 @@ export interface TailorActionDto {
   target_section?: string | null;
   /** emphasize only: deterministic hint on how to surface the skill (no single-bullet edit). */
   insertion_hint?: string | null;
+  /** Wave TRUST: deterministic score-impact band for doing this action (render = W41). */
+  expected_impact?: {
+    score_min: number;
+    score_max: number;
+    severity_drop: number | null;
+  };
 }
 
 export type TailorAction = TailorActionDto;
@@ -1261,6 +1312,8 @@ export interface GapReportDto {
   target_role: string | null;
   overall_score: number;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
+  /** Deterministic apply-verdict (fit-strategy) — always present on fresh reports. */
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   explicit_gaps: BeMissingSkill[];
   proficiency_gaps: BePartialSkill[];
   evidence_gaps: GapEvidenceItem[];

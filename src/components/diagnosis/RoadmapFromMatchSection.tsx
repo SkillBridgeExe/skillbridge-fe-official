@@ -182,14 +182,15 @@ export function RoadmapFromMatchSection({
 
 function RoadmapResult({ plan }: { plan: ComposedRoadmap }) {
   const { t } = useTranslation("diagnosis");
-  const steps = [...plan.steps].sort((a, b) => a.priority - b.priority);
+  // Higher priority = more urgent gap → sort DESCENDING so the most urgent step leads.
+  const steps = [...plan.steps].sort((a, b) => b.priority - a.priority);
 
   return (
     <div className="rounded-xl border border-[#EAEAEA] bg-white p-5 space-y-5">
       <div>
         <h3 className="text-base font-bold text-[#2F3437]">{t("results.roadmapTitle")}</h3>
         <p className="mt-1 text-xs font-semibold text-[#787774]">
-          {plan.budget_hours}h budget · {steps.length} modules
+          {t("roadmap.budgetSummary", { hours: plan.budget_hours, count: steps.length })}
         </p>
         {plan.ai_summary && <p className="mt-2 text-[13px] leading-relaxed text-[#2F3437]">{plan.ai_summary}</p>}
       </div>
@@ -206,7 +207,7 @@ function RoadmapResult({ plan }: { plan: ComposedRoadmap }) {
                   <p className="text-sm font-bold text-[#2F3437]">{step.display_name}</p>
                   <p className="flex items-center gap-2 text-xs leading-relaxed text-[#787774]">
                     <Clock className="h-3.5 w-3.5" />
-                    {step.estimated_hours}h · {step.strategy === "deep_build" ? "Deep build" : "Crash prep"}
+                    {step.estimated_hours}h · {t(`roadmap.strategy.${step.strategy}`)}
                   </p>
                   {step.resources?.length ? (
                     <div className="space-y-1.5">
@@ -227,7 +228,7 @@ function RoadmapResult({ plan }: { plan: ComposedRoadmap }) {
                             </a>
                             {resource.low_confidence && (
                               <span className="shrink-0 rounded-full border border-[#DCE9D7] bg-[#EDF3EC] px-1.5 py-0.5 text-[10px] font-bold text-[#346538]">
-                                Pending source
+                                {t("roadmap.pendingSource")}
                               </span>
                             )}
                           </li>
@@ -244,10 +245,17 @@ function RoadmapResult({ plan }: { plan: ComposedRoadmap }) {
 
       {plan.not_feasible_items.length > 0 && (
         <div className="rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] px-4 py-3">
-          <p className="text-xs leading-relaxed text-[#787774]">
-            <span className="font-bold text-[#2F3437]">Không kịp học trong budget này: </span>
-            {plan.not_feasible_items.map((item) => item.display_name).join(", ")}
-          </p>
+          <p className="text-xs font-bold leading-relaxed text-[#2F3437]">{t("roadmap.notFeasible")}</p>
+          <ul className="mt-1 space-y-0.5">
+            {plan.not_feasible_items.map((item) => (
+              <li key={item.skill_canonical} className="text-xs leading-relaxed text-[#787774]">
+                {item.display_name}
+                {item.fallback && (
+                  <span className="text-[#956400]"> · {t(`roadmap.fallback.${item.fallback}`)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

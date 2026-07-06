@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useEndInterviewOnExit } from "@/hooks/use-end-interview-on-exit";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { INTERVIEW_SETUP_STEPS } from "@/constants/interview";
@@ -212,6 +213,14 @@ export default function Interview() {
   useEffect(() => {
     activeSessionRef.current = activeSession;
   }, [activeSession]);
+
+  // Best-effort /interview/end when the user abandons mid-interview (tab close,
+  // navigation away) so the answered turns still get scored instead of leaking
+  // the paid session. markEnded() below keeps explicit ends from double-firing.
+  const { markEnded: markExitEndHandled } = useEndInterviewOnExit({
+    interviewing: phase === "interviewing",
+    sessionId: activeSession?.id ?? null,
+  });
 
   useEffect(() => {
     currentQuestionRef.current = currentQuestion;
@@ -839,6 +848,7 @@ export default function Interview() {
       if (!sessionId || endingRef.current) return;
 
       endingRef.current = true;
+      markExitEndHandled();
       setIsEnding(true);
       setIsLoading(false);
       setApiError(null);
@@ -870,6 +880,7 @@ export default function Interview() {
       applyEndedInterview,
       disconnectRealtime,
       endInterviewMutation,
+      markExitEndHandled,
       stopMedia,
       stopQuestionAudio,
       t,

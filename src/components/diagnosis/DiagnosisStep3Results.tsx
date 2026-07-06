@@ -11,6 +11,7 @@ import {
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { downloadOriginalCvFile } from "@/services/diagnosis.service";
@@ -288,6 +289,9 @@ export function DiagnosisStep3Results() {
   // scan is a legitimate honest-empty, so reviewData alone gates the scan.
   const gapReportSettled = !gapReportQuery.isLoading; // false only while actively fetching an enabled query
   const issuesReady = !!reviewData && gapReportSettled;
+  // Fit verdict: the gap report ALWAYS carries `fit` on fresh reports, while the
+  // persisted jdMatch.fit is often null on older matches — prefer the live report.
+  const fitVerdict = gapReportQuery.data?.fit ?? jdMatch?.fit ?? null;
   // Auto-surfacing disabled (owner decision 06-23): this no longer registers/activates
   // the diagnosis:issue context — kept mounted so the detectors stay wired for future
   // chat grounding. The calm corner chat advisor below is the SOLE diagnosis context.
@@ -445,6 +449,7 @@ export function DiagnosisStep3Results() {
           verdictMessage={scoreMessage}
           isJdMode={isJdMode}
           rubricBand={jdMatch?.rubric_band}
+          bandTooltip={t("band.tooltip")}
         />
 
         {/* Ribbon — inline stats + deal-breaker chips */}
@@ -457,7 +462,7 @@ export function DiagnosisStep3Results() {
               coverage={coverage}
               capApplied={capApplied}
             />
-            {jdMatch?.fit && <FitBadge fit={jdMatch.fit} className="mt-1" />}
+            {fitVerdict && <FitBadge fit={fitVerdict} className="mt-1" />}
           </div>
         )}
 
@@ -537,7 +542,9 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
        * ──────────────────────────────────────────────────────────────────── */}
-      {isJdMode && jdMatch?.matchId && (
+      {/* Guard the WHOLE chapter behind the same flag GapReportCard checks internally —
+          a disabled flag must not render a chapter title over an empty body (reads as broken). */}
+      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && (
         <div id="gap-anchor" className="py-12 md:py-16">
           <Chapter
             kicker="02"
@@ -548,7 +555,7 @@ export function DiagnosisStep3Results() {
         </div>
       )}
 
-      {isJdMode && jdMatch?.matchId && <SectionRule />}
+      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && <SectionRule />}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 3 — Chi tiết (collapsible)

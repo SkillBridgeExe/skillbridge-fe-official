@@ -67,11 +67,11 @@ const review: CvReviewParsedResponse = {
         skill_canonical: "react",
         display_name: "React",
         strength: "demonstrated",
-        sources: [{ kind: "project", label: "Portfolio SPA", excerpt: "Built 2 SPAs" }],
+        sources: [{ kind: "project", ref: "Portfolio SPA", recency_year: 2025, quote: "Built 2 SPAs" }],
         most_recent_year: 2025,
-        evidence_gap: null,
       },
     ],
+    evidence_gap: ["Thêm số liệu cụ thể cho React"],
   },
 };
 
@@ -101,7 +101,6 @@ const matchDto: CvMatchDto = {
   jobDescriptionId: "jd-1",
   aiResultId: null,
   overallScore: 58.6,
-  overall_match_score: 58.6,
   matchRatio: 60,
   requiredCoverage: 0.5,
   parsedResponse: {
@@ -250,9 +249,11 @@ describe("mapCvDtoToReviewData", () => {
     });
     expect(ui.evidence_ledger?.items[0].sources[0]).toEqual({
       kind: "project",
-      label: "Portfolio SPA",
-      excerpt: "Built 2 SPAs",
+      ref: "Portfolio SPA",
+      recency_year: 2025,
+      quote: "Built 2 SPAs",
     });
+    expect(ui.evidence_ledger?.evidence_gap).toEqual(["Thêm số liệu cụ thể cho React"]);
   });
 
   it("throw rõ ràng khi review null (upload xong nhưng thiếu kết quả chấm)", () => {
