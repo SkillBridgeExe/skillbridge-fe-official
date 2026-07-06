@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillBridge — Production Validation Report</title>
+<style>
+  :root{
+    --pine:#175243; --pine-soft:#1f6b57; --pine-wash:#e8f1ee;
+    --ink:#22302b; --ink-soft:#5a6b64; --paper:#faf9f6; --card:#ffffff;
+    --line:#e3e0d8; --amber:#8a5a12; --amber-wash:#faf3e3;
+    --red:#8a2c22; --red-wash:#f9ebe8; --blue:#1f4e79; --blue-wash:#e9f0f7;
+    --mono:'Cascadia Code','Consolas',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pine:#5fb89d; --pine-soft:#4a9c84; --pine-wash:#12211d; --ink:#d9e2de; --ink-soft:#93a49d;
+      --paper:#121715; --card:#1a211e; --line:#2c3733; --amber:#d9a84e; --amber-wash:#251d0e;
+      --red:#d98077; --red-wash:#251311; --blue:#7aa8d0; --blue-wash:#101b26; }
+  }
+  *{box-sizing:border-box;margin:0;padding:0} html{scroll-behavior:smooth}
+  body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.65;font-size:15.5px}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 20px 90px}
+  header.hero{border-bottom:3px solid var(--pine);background:var(--card);padding:44px 20px 28px;margin-bottom:36px}
+  header.hero .inner{max-width:1020px;margin:0 auto}
+  h1{font-family:Georgia,serif;font-size:1.85rem;color:var(--pine);letter-spacing:-.5px}
+  .meta{color:var(--ink-soft);font-size:.84rem;margin-top:10px}
+  h2{font-family:Georgia,serif;font-size:1.4rem;color:var(--pine);border-bottom:2px solid var(--line);padding-bottom:9px;margin:50px 0 18px}
+  h2 .idx{display:inline-block;background:var(--pine);color:var(--paper);font-size:.92rem;border-radius:8px;padding:2px 11px;margin-right:11px;vertical-align:3px}
+  h3{font-family:Georgia,serif;font-size:1.1rem;margin:24px 0 10px}
+  p{margin-bottom:12px} ul,ol{margin:0 0 14px 22px} li{margin-bottom:6px}
+  code{font-family:var(--mono);font-size:.85em;background:var(--pine-wash);padding:1px 5px;border-radius:4px}
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:.89rem;background:var(--card)}
+  th{background:var(--pine);color:#fff;text-align:left;padding:9px 12px}
+  @media (prefers-color-scheme: dark){ th{color:#0e1512} }
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:color-mix(in srgb,var(--pine-wash) 40%,transparent)}
+  .tblwrap{overflow-x:auto}
+  .callout{border-left:4px solid var(--pine);background:var(--card);border-radius:0 10px 10px 0;padding:14px 18px;margin:18px 0;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .callout .ttl{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;color:var(--pine)}
+  .callout.warn{border-left-color:var(--amber);background:var(--amber-wash)} .callout.warn .ttl{color:var(--amber)}
+  .callout.danger{border-left-color:var(--red);background:var(--red-wash)} .callout.danger .ttl{color:var(--red)}
+  .scorecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:18px 0}
+  .sc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px;text-align:center}
+  .sc .n{font-family:Georgia,serif;font-size:1.45rem;color:var(--pine);font-weight:700}
+  .sc .l{font-size:.76rem;color:var(--ink-soft)}
+  .v{font-weight:700} .v.ok{color:var(--pine)} .v.mid{color:var(--amber)} .v.bad{color:var(--red)}
+  .mono{font-family:var(--mono);font-size:.85em}
+</style>
+</head>
+<body>
+<header class="hero"><div class="inner">
+  <h1>Production Validation Report — "đáng tin chưa?"</h1>
+  <p class="meta">2026-07-06 · Chương trình PV1-PV7: smoke prod thật + corpus 26 case × 113 assertion + audit explainability + audit contract FE↔BE (4 flow teams) + mổ cost/quota prod + monitoring pack. Mọi con số bên dưới chạy được lại — không có khẳng định suông. File local-only.</p>
+</div></header>
+<div class="wrap">
+
+<h2><span class="idx">A</span>Verdict tổng — từng flow</h2>
+<div class="scorecards">
+  <div class="sc"><div class="n">4/4</div><div class="l">prod smoke PASS (LLM + DB thật)</div></div>
+  <div class="sc"><div class="n">113/113</div><div class="l">corpus calibration PASS</div></div>
+  <div class="sc"><div class="n">12 ngày</div><div class="l">prod sạch lỗi liên tiếp</div></div>
+  <div class="sc"><div class="n">$1.03</div><div class="l">tổng cost LLM 30 ngày</div></div>
+  <div class="sc"><div class="n">18</div><div class="l">mục fix-wave từ audit</div></div>
+</div>
+<div class="tblwrap"><table>
+  <tr><th>Flow</th><th>Engine (chấm đúng?)</th><th>Delivery (user thấy đúng?)</th><th>Kết luận</th></tr>
+  <tr><td><strong>CV Review (Diagnosis)</strong></td><td class="v ok">TIN — smoke ✓, matrix 3.551 ✓, explainability core sạch (mọi dim có provenance + rationale cùng computation)</td><td class="v mid">Vá dở: FitBadge/chapter đã fix ở FE #116 (chờ merge); bullet_feedback + evidence-quote chết vì type drift (fix-wave)</td><td>TIN engine · delivery cần fix-wave</td></tr>
+  <tr><td><strong>CV-JD Match</strong></td><td class="v ok">TIN — corpus 26/26 đúng band, MATCH_TUNING chống ăn gian đã stress-test</td><td class="v mid">fit không bao giờ được gắn vào match response → badge Step3 chết từ nguồn (fix-wave #2)</td><td>TIN engine · 1 fix BE nhỏ</td></tr>
+  <tr><td><strong>Gap Report + Actions</strong></td><td class="v ok">TIN — flow sạch nhất: severity_factors render đủ, honest-zero ✓, bug #170 đã vá</td><td class="v ok">TIN — thiếu mỗi expected_impact (W41 + thêm field vào contract)</td><td class="v ok">TIN</td></tr>
+  <tr><td><strong>Job Recommendation</strong></td><td class="v ok">TIN — smoke trả job thật pool 847; min_level đã honor (#168); demote giải thích được</td><td class="v ok">TIN — semantic_similarity vô hình (minor)</td><td class="v ok">TIN</td></tr>
+  <tr><td><strong>Roadmap</strong></td><td class="v ok">TIN — FeasibilityPlanner đúng công thức</td><td class="v bad">CHƯA — sort NGƯỢC ở FE (gap ít khẩn nhất lên đầu) + verdict "không kịp học" bị BE nuốt (not_feasible_items luôn rỗng)</td><td class="v bad">CHƯA TIN delivery — 2 fix trong fix-wave</td></tr>
+  <tr><td><strong>Trends "AI nhận định"</strong></td><td class="v ok">TIN — chống bịa số tốt nhất hệ (schema không field số + digitFree + stale flag)</td><td class="v bad">CHƯA — FE type sai hoàn toàn (title/detail vs skill/comment) → insight cards TRẮNG trên prod từ đầu</td><td class="v bad">CHƯA TIN delivery — 1 fix FE khôi phục cả feature</td></tr>
+  <tr><td><strong>Mascot / Chat</strong></td><td class="v ok">TIN — grounding validated (citation phải trỏ facts thật, id không vào prompt), M1/M2 verify sống trên code</td><td class="v ok">TIN — chips mất khi reload thread (minor by-design)</td><td class="v ok">TIN</td></tr>
+  <tr><td><strong>Interview</strong></td><td class="v ok">TIN engine — scoring deterministic 5×6, anti-fab chokepoint, corpus signal-case ✓</td><td class="v mid">2 panel aiFeedback legacy rỗng vĩnh viễn cho session mới (bit-rot); gaps_revealed là narrative LLM duy nhất chưa grounding; quota leak đã có PR #169/#117 chờ merge</td><td>TIN engine · 3 fix + 1 quyết định (FREE=0)</td></tr>
+</table></div>
+
+<h2><span class="idx">B</span>PV1 — Prod smoke (LLM + DB thật)</h2>
+<ul>
+  <li><code>diagnosis:smoke</code> e2e review→match→gap: <strong>All invariants passed</strong> (review 67, match 61, fit stretch + reasons [LOW_COVERAGE, MID_SCORE], mọi expected_impact có min≤max).</li>
+  <li><code>reco:smoke</code>: 5 recommendation từ pool 847 job thật — top Golang Developer/Oivan 77, Engineering Manager/NAB 76; missing REQUIRED hiển thị đúng.</li>
+  <li><code>semantic:smoke</code>: tier semantic sống — "continuous delivery pipelines" → ci_cd (conf 0.84); từ ngoài phạm vi trả unresolved trung thực.</li>
+  <li><code>cv-assistant:smoke</code>: 4/4 grounding gate ACCEPT với LLM thật; operation flow ACCEPT → patch sẵn sàng Apply.</li>
+  <li>Gap khai báo: mascot chat lanes / roadmap / interview live chưa có smoke chuyên dụng — bù bằng prod traffic 30 ngày (mục F) + 20 eval CI.</li>
+</ul>
+
+<h2><span class="idx">C</span>PV2+PV3 — Golden corpus: chấm đúng theo chuyên gia?</h2>
+<p><strong>26 case</strong> phủ 3 role × (fresher yếu/khá, junior, mid, senior, career-switcher kế toán/marketing) × JD dễ/vừa/gắt + 8 edge case (CV rỗng, toàn soft-skill, overclaim EXPERT-everything, JD ngoài taxonomy, JD toàn NICE_TO_HAVE, interview-signal lật top-gap…). Expected được author độc lập <em>recompute tay theo công thức</em> trước khi chạy engine. Kết quả chạy engine thật:</p>
+<div class="scorecards">
+  <div class="sc"><div class="n">26/26</div><div class="l">đúng match band</div></div>
+  <div class="sc"><div class="n">26/26</div><div class="l">đúng fit verdict</div></div>
+  <div class="sc"><div class="n">28/28</div><div class="l">đúng top-gap (+degradation counts)</div></div>
+  <div class="sc"><div class="n">26/26</div><div class="l">đúng top-action</div></div>
+  <div class="sc"><div class="n">7/7</div><div class="l">quan hệ chéo (khá&gt;yếu, senior&gt;mid, signal==score)</div></div>
+</div>
+<p>Điểm tin cậy đáng nhắc: case "CV hoàn hảo" trả <strong>0 gap + 0 action</strong> (không bịa việc để làm); case interview-signal <strong>lật đúng top-gap sang SQL mà match score không đổi 1 điểm</strong>; JD chứa SAP ABAP/Salesforce ngoài taxonomy degrade đúng số lượng khai báo. Corpus ghi nhận 2 baseline có chủ đích: overclaim EXPERT vẫn safe_apply (classifyFit chưa nhìn evidence — ứng viên nâng cấp sau, có ghi chú trong corpus). <strong>Đề xuất fix-wave #13: promote thành <code>eval:golden</code> vào CI</strong> để 113 assertion này gác cổng vĩnh viễn.</p>
+
+<h2><span class="idx">D</span>PV4 — Explainability: có "con số trần trụi" không?</h2>
+<div class="callout"><div class="ttl">Kết luận audit</div><p><strong>Tầng BE compute: gần như KHÔNG có naked number</strong> — mọi score chính (review dims, match, severity, fit, impact, demote) sinh ra CÙNG LÚC với rationale/factors từ cùng một hàm (không phải LLM kể lại — không tìm thấy narration-divergence nào trên số liệu). <strong>9 vi phạm HIGH đều nằm ở last-mile FE↔BE</strong>: field bị drop ở BFF (confidence_score), type drift (trends, bullet_feedback, evidence quote), render path chết (fit badge, not_feasible), và đúng 1 narrative chưa grounding (interview gaps_revealed). Trust được build ở BE nhưng chưa được deliver — toàn bộ đã vào fix-wave.</p></div>
+
+<h2><span class="idx">E</span>PV5 — Contract FE↔BE: những bug "im lặng" tìm được</h2>
+<div class="tblwrap"><table>
+  <tr><th>Bug (type-drift / bit-rot)</th><th>Hậu quả với user</th><th>Fix-wave</th></tr>
+  <tr><td>Trends: FE type <code>title/detail</code> ≠ BE <code>skill/comment</code></td><td>Toàn bộ insight cards TRẮNG trên prod từ ngày đầu — cả hệ chống-bịa không tới mắt user</td><td>#5 (FE)</td></tr>
+  <tr><td><code>bullet_feedback</code> FE type Record, BE gửi Array</td><td>Tooltip chấm từng bullet trong preview CV chưa bao giờ hiện</td><td>#6 (FE)</td></tr>
+  <tr><td>EvidenceSource: FE tự đổi <code>ref→label</code>, <code>quote→excerpt</code>; evidence_gap sai cấp; thiếu kind 'activity'</td><td>Câu quote CV — linh hồn của evidence — không bao giờ hiện; CV sinh viên (bằng chứng từ hoạt động CLB) lộ key thô</td><td>#7 (FE)</td></tr>
+  <tr><td>Roadmap: FE sort ascending; BE nuốt not_feasible; NotFeasibleItemDto lệch shape</td><td>Gap ít khẩn nhất đứng đầu lộ trình; "không kịp học trước deadline" không bao giờ được nói</td><td>#1 (BE) + #8 (FE)</td></tr>
+  <tr><td><code>fit</code>/<code>experience_fit</code>/<code>seniority_match</code> bit-rot trên match DTO</td><td>FitBadge màn kết quả chính chết từ nguồn (fix i18n ở #116 là điều kiện cần, chưa đủ)</td><td>#2 (BE) + #9/#10 (FE)</td></tr>
+  <tr><td>Interview aiFeedback: path mới chỉ gửi {summary,strengths,priorities}, FE render 4 field legacy</td><td>2 panel + 2 list rỗng vĩnh viễn cho MỌI session mới</td><td>#14</td></tr>
+  <tr><td><code>learning_completed</code> thiếu trong ProgressReportDto; expected_impact thiếu trong TailorActionDto</td><td>Chất liệu wow Wave 8 + Wave 4 không có chỗ đáp trên FE</td><td>W43 + #11</td></tr>
+  <tr><td>🔥 Job NATIVE: <code>application_mode</code>/<code>slug</code> không qua wire — CTA duy nhất là link external (null với native)</td><td><strong>Job native được recommend hiện 0 nút hành động</strong> — widget âm thầm thành "external-only"</td><td>#16 (BE+FE)</td></tr>
+  <tr><td><code>partial_skills[].canonical_name</code>: FE type required, BE mapper không gửi</td><td>React key undefined hàng loạt trên mọi job card (bug đang sống)</td><td>#17 (1 dòng BE)</td></tr>
+  <tr><td><code>anchor_confidence</code> + <code>seniority.note</code> unrendered; <code>evidence_gaps</code>/<code>jd_emphasis_gaps</code> bị bỏ rơi</td><td>Hint trung thực ("đã định vị đúng bullet chưa", "không so được JD-level") không tới user</td><td>#18 (FE)</td></tr>
+</table></div>
+<p>Điểm sáng đối chứng: interview-plan contract sạch; chat citation contract sạch (M1/M2 fix verify sống); dimension_provenance/ATS breakdown/buzzwords đã render đầy đủ (một số ghi chú audit cũ đã lỗi thời — W38/W39 thực tế ship nhiều hơn sổ sách).</p>
+
+<h2><span class="idx">F</span>PV6 — Cost / quota / vận hành prod (30 ngày)</h2>
+<ul>
+  <li><strong>Cost $1.03/30 ngày</strong>, đắt nhất cv_review $0.48 (106 call, ~$0.0045/call) — không có nguồn đốt tiền; extraction cache có hit thật (18/43).</li>
+  <li><strong>0 failure từ 24/06</strong> — mọi lỗi lịch sử thuộc 2 outage đã vá (strict-schema + API key rotation).</li>
+  <li><strong>Blind spot:</strong> cost NULL cho interview_assess/ask; learning_chat trace 0-token (2 call) — cần vá cost-attribution (nhỏ).</li>
+  <li><strong>12 session interview treo &gt;1 ngày (27%)</strong> — mất quota trả phí im lặng; PR #169/#117 chờ merge sẽ tự dọn + chặn.</li>
+  <li><strong>impact_calibrations = 0 rows</strong> — vòng đo predicted-vs-actual chưa có nguyên liệu (cần user re-scan; monitoring #6 theo dõi).</li>
+  <li><strong>ai_tool_calls = 0 rows</strong> — tool loop chưa từng kích hoạt prod (gate chặt; không phải lỗi).</li>
+  <li>Phễu 30 ngày: review 98 → match 64 → interview 127 → roadmap 11. Interview usage cao bất thường so với start-trace (127 vs 27) = session voice không log interview_start — ghi nhận theo dõi.</li>
+</ul>
+
+<h2><span class="idx">G</span>PV7 — Monitoring: 10 query + 3 alert + dashboard</h2>
+<p>Gói đầy đủ ở <code>docs/monitoring-sql-pack.md</code> — mỗi query kèm ngưỡng hành động. 3 alert bắt buộc (xếp theo độ đau đã từng xảy ra thật): <strong>(1) pool active &lt; 300</strong> (đã sụp thật, im lặng 10 ngày) · <strong>(2) fail_pct &gt; 5% theo request_type/7d</strong> (2 outage trước đều im lặng) · <strong>(3) cost/ngày &gt; $1</strong>. Dashboard đề xuất: <strong>GitHub Actions cron hàng ngày → in bảng vào 1 Issue cố định + fail-job-gửi-email khi vượt ngưỡng</strong> — 0 đồng, 0 hạ tầng mới; nâng cấp Metabase khi có người/tiền.</p>
+
+<h2><span class="idx">H</span>Fix-wave 18 mục — thứ tự đề xuất</h2>
+<ol>
+  <li><strong>FE contract-sync PR</strong> (#5 trends + #6 bullet_feedback + #7 evidence + #8 roadmap sort/shape + #9 fit types/i18n + #10 xoá bit-rot + #11 expected_impact + #12 React-key + #15 dọn dead) — một PR khôi phục 3 feature đang chết im lặng.</li>
+  <li><strong>BE integrity PR</strong> (#1 not_feasible + #2 fit vào match + #3 ground gaps_revealed + #4 confidence_score + #14 aiFeedback compat + #13 eval:golden vào CI).</li>
+  <li>Merge 4 PR đang chờ: #169, #170, FE #116, #117.</li>
+  <li>AG: W41 → W42 → W43 → W44 (không đổi).</li>
+  <li>Quyết định cần bạn: FREE interview 0→1?; over_qualified label; mastery retry; 2 eval drift.</li>
+</ol>
+
+<h2><span class="idx">I</span>Kết luận</h2>
+<div class="callout"><div class="ttl">Đáng tin chưa?</div>
+<p><strong>Lõi chấm điểm: ĐÁNG TIN — và giờ có hồ sơ chứng minh</strong> (smoke prod, 3.551 + 113 assertion, explainability không naked number, 12 ngày prod sạch lỗi, cost kiểm soát). <strong>Lớp giao hàng tới user: chưa xứng với cái lõi</strong> — chuỗi audit tìm ra một mẫu hình lặp lại: engine tính đúng và trung thực, rồi giá trị chết ở bước cuối (type drift, field bị nuốt, sort ngược, panel legacy). Tin tốt: gần như toàn bộ là fix rẻ, đã gom thành 2 PR + 4 brief, không có gì phải đập xây lại. Làm xong fix-wave + merge hàng chờ thì câu trả lời là CÓ, toàn tuyến.</p></div>
+</div>
+</body>
+</html>
