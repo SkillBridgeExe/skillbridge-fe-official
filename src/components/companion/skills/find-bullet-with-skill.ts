@@ -14,7 +14,7 @@ export type BulletSkillMatch = {
   field: "description" | `achievements[${number}]`;
 };
 
-function normalizeSkillToken(value: string): string {
+export function normalizeSkillToken(value: string): string {
   return value
     .toLowerCase()
     .replace(/[_-]+/g, " ")
@@ -23,7 +23,7 @@ function normalizeSkillToken(value: string): string {
     .trim();
 }
 
-function textHasSkill(text: string | undefined, skill: ProveItSkillTarget): boolean {
+export function textHasSkill(text: string | undefined, skill: ProveItSkillTarget): boolean {
   const normalizedText = normalizeSkillToken(text ?? "");
   if (!normalizedText) return false;
 

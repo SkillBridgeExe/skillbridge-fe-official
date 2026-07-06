@@ -487,6 +487,54 @@ describe("useDiagnosisChatCompanion — chat action dispatch", () => {
     expect(useCvBuilderStore.getState().pendingProveIt).toEqual({ canonical: "react", displayName: "React" });
     expect(useCompanionStore.getState().chatPendingAction).toBeNull();
   });
+  
+  it("dispatches prove-it action with successful anchor resolution", () => {
+    // Setup a document that matches
+    useCvBuilderStore.setState({
+      experience: [{
+        id: "exp-1", company: "A", position: "B", startDate: "", endDate: "",
+        description: "Used React to build things", responsibilities: "", achievements: "", aiRewrite: ""
+      }],
+      draftId: "draft-1"
+    });
+    
+    const qc = new QueryClient();
+    function ProveItHarness() {
+      useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1", null, proveIt);
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <ProveItHarness />
+      </QueryClientProvider>,
+    );
+
+    const turn = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]?.getTurn();
+    const onAction = turn?.props.onAction as (chip: {
+      kind: "prove_it";
+      labelKey: string;
+      proveIt: { canonical: string; displayName: string };
+    }) => void;
+
+    onAction({
+      kind: "prove_it",
+      labelKey: "companion.chat.proveitCta",
+      proveIt: { canonical: "react", displayName: "React" },
+    });
+
+    expect(useDiagnosisStore.getState().step).toBe("builder");
+    expect(useCvBuilderStore.getState().activeSection).toBe(4); // experience
+
+    // The context should be registered and activated
+    const ctx = useCompanionStore.getState().contexts["diagnosis_anchor_fix"];
+    expect(ctx).toBeDefined();
+    const anchorTurn = ctx?.getTurn();
+    expect(anchorTurn?.skill).toBe("cv_builder");
+    expect(anchorTurn?.props.fieldPath).toBe("/sections/experience/items/exp-1/description");
+    expect(anchorTurn?.props.currentValue).toBe("Used React to build things");
+    expect(useCompanionStore.getState().bubbleOpen).toBe(true);
+    expect(useCompanionStore.getState().chatPendingAction).toBeNull();
+  });
 });
 
 describe("useDiagnosisChatCompanion — suggested next-step", () => {

@@ -2679,6 +2679,8 @@ export default {
         proveitIntro:
           "You list “{{skill}}” on your CV, but I don't see concrete evidence yet. Recruiters may ask about it — let's add a real example, not invent one.",
         proveitCta: "Go to the bullet",
+        proveitNoAnchor:
+          "I could not find a CV line that proves this skill yet. Add one evidence line in Experience or Projects first.",
         confirmRewrite: "Rewrite this bullet? This uses 1 rewrite credit.",
         confirmRoadmap: "Create a learning roadmap from this gap? This uses 1 roadmap credit.",
         confirmAction: "Run this action?",

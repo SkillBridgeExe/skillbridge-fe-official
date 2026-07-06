@@ -18,11 +18,11 @@ import { findBulletWithSkill } from "@/components/companion/skills/find-bullet-w
 import { SectionItemCard } from "./SectionItemCard";
 import {
   getAchievementLine,
-  parseAchievementFieldIndex,
   replaceAchievementLine,
   suggestionKeyForField,
 } from "./achievement-line-patch";
 import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 
 export function ExperienceSection() {
@@ -193,14 +193,35 @@ export function ExperienceSection() {
     }
 
     const field = match.field === "description" ? "description" : "achievements";
-    const achievementIndex = field === "achievements" ? parseAchievementFieldIndex(match.field) : undefined;
-    const currentText =
-      field === "achievements" && achievementIndex !== undefined
-        ? getAchievementLine(entry.achievements, achievementIndex)
-        : entry[field];
-    handleAiSuggest(entry.id, field, currentText, false, achievementIndex);
+    const currentText = entry[field];
+        
+    const index = experience.findIndex(e => e.id === entry.id);
+    const contextId = `cvbuilder:experience[${index}].${field}`;
+    const fieldPath = field === "description" 
+      ? resumeDocumentPaths.experienceDescription(entry.id)
+      : resumeDocumentPaths.experienceAchievements(entry.id);
+
+    useCompanionStore.getState().registerContext({
+      id: contextId,
+      getTurn: () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath,
+          section: "experience",
+          currentValue: currentText,
+          onApply: (after: string) => {
+            updateExperience(entry.id, field, after);
+            clearSectionEvaluation("experience");
+          },
+        },
+      }),
+    });
+    useCompanionStore.getState().activateContext(contextId);
+    useCompanionStore.setState({ bubbleOpen: true });
+    
     setPendingProveIt(null);
-  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast]);
+  }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast, clearSectionEvaluation, updateExperience]);
 
   const handleUseIt = (entryId: string, field: "description" | "achievements") => {
     if (!activeSuggestion) return;
@@ -471,7 +492,7 @@ export function ExperienceSection() {
                         skill: "cv_builder",
                         props: {
                           draftId,
-                          fieldPath: id,
+                          fieldPath: resumeDocumentPaths.experienceDescription(exp.id),
                           section: "experience",
                           currentValue: exp.description,
                           onApply: (after: string) => {
@@ -550,7 +571,7 @@ export function ExperienceSection() {
                         skill: "cv_builder",
                         props: {
                           draftId,
-                          fieldPath: id,
+                          fieldPath: resumeDocumentPaths.experienceAchievements(exp.id),
                           section: "experience",
                           currentValue: exp.achievements,
                           onApply: (after: string) => {

@@ -2652,6 +2652,8 @@ export default {
         proveitIntro:
           "Bạn ghi “{{skill}}” trong CV nhưng mình chưa thấy bằng chứng cụ thể. Nhà tuyển dụng có thể hỏi đấy — bổ sung ví dụ THẬT nhé, mình không giúp bịa đâu.",
         proveitCta: "Đi tới bullet",
+        proveitNoAnchor:
+          "Mình chưa tìm thấy dòng CV đang chứng minh kỹ năng này. Hãy thêm một dòng minh chứng trong Kinh nghiệm hoặc Dự án trước nhé.",
         confirmRewrite: "Viết lại bullet này? Tốn 1 lượt rewrite.",
         confirmRoadmap: "Tạo lộ trình từ gap này? Tốn 1 lượt roadmap.",
         confirmAction: "Chạy hành động này?",
