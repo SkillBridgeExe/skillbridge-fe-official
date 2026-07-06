@@ -1440,10 +1440,17 @@ export default {
         not_recommended: "Not a fit yet"
       },
       reason: {
+        STRONG_SCORE: "Strong overall score",
+        STRONG_COVERAGE: "Strong coverage of required skills",
+        SENIORITY_FITS: "Seniority level fits",
+        LOW_SCORE: "Low overall score",
         LOW_COVERAGE: "Low coverage of required skills",
         SENIORITY_STRETCH: "Job level is higher than your current seniority",
+        SENIORITY_OVERQUALIFIED: "You are above this job's level",
         DEAL_BREAKER_UNMET: "Missing a deal-breaker requirement",
-        STRONG_COVERAGE: "Strong coverage of required skills",
+        SEVERE_STRETCH: "Job level is far above your current seniority",
+        DEAL_BREAKER_UNVERIFIED: "A deal-breaker requirement could not be verified",
+        MID_SCORE: "Mid-range overall score",
         MISSING_EXPERIENCE: "Missing required deep experience",
         MATCHED_EXPERIENCE: "Good experience match"
       }

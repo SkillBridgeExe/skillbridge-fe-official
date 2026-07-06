@@ -62,7 +62,20 @@ export interface KeywordFrequency {
 }
 
 export type FitVerdict = 'safe_apply' | 'stretch' | 'not_recommended';
-export type FitReasonCode = 'LOW_COVERAGE' | 'SENIORITY_STRETCH' | 'DEAL_BREAKER_UNMET' | 'STRONG_COVERAGE' | string;
+/** Mirror of BE fit-strategy.ts — the full 11-literal reason trail (positive codes
+ *  are included even when the verdict isn't safe_apply, so the FE can explain). */
+export type FitReasonCode =
+  | 'STRONG_SCORE'
+  | 'STRONG_COVERAGE'
+  | 'SENIORITY_FITS'
+  | 'LOW_SCORE'
+  | 'LOW_COVERAGE'
+  | 'SENIORITY_STRETCH'
+  | 'SENIORITY_OVERQUALIFIED'
+  | 'DEAL_BREAKER_UNMET'
+  | 'SEVERE_STRETCH'
+  | 'DEAL_BREAKER_UNVERIFIED'
+  | 'MID_SCORE';
 
 export interface CvJdMatch {
   matchId?: string;
@@ -1293,6 +1306,8 @@ export interface GapReportDto {
   target_role: string | null;
   overall_score: number;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
+  /** Deterministic apply-verdict (fit-strategy) — always present on fresh reports. */
+  fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
   explicit_gaps: BeMissingSkill[];
   proficiency_gaps: BePartialSkill[];
   evidence_gaps: GapEvidenceItem[];

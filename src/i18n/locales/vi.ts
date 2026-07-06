@@ -1436,10 +1436,17 @@ export default {
         not_recommended: "Chưa phù hợp"
       },
       reason: {
+        STRONG_SCORE: "Điểm tổng thể cao",
+        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        SENIORITY_FITS: "Cấp bậc kinh nghiệm phù hợp",
+        LOW_SCORE: "Điểm tổng thể còn thấp",
         LOW_COVERAGE: "Độ phủ kỹ năng bắt buộc còn thấp",
         SENIORITY_STRETCH: "Vị trí cao hơn cấp bậc hiện tại của bạn",
+        SENIORITY_OVERQUALIFIED: "Bạn vượt cấp bậc vị trí này",
         DEAL_BREAKER_UNMET: "Thiếu yêu cầu bắt buộc",
-        STRONG_COVERAGE: "Phủ tốt các kỹ năng bắt buộc",
+        SEVERE_STRETCH: "Vị trí cao hơn cấp bậc của bạn khá xa",
+        DEAL_BREAKER_UNVERIFIED: "Có yêu cầu bắt buộc chưa xác minh được",
+        MID_SCORE: "Điểm ở mức trung bình",
         MISSING_EXPERIENCE: "Thiếu kinh nghiệm chuyên môn sâu",
         MATCHED_EXPERIENCE: "Kinh nghiệm tương đồng tốt"
       }
