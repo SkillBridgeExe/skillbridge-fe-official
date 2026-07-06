@@ -1261,8 +1261,8 @@ export interface TailorActionDto {
   insertion_hint?: string | null;
   /** Wave TRUST: deterministic score-impact band for doing this action (render = W41). */
   expected_impact?: {
-    score_min: number | null;
-    score_max: number | null;
+    score_min: number;
+    score_max: number;
     severity_drop: number | null;
   };
 }

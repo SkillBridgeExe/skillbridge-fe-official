@@ -108,7 +108,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           <span className="text-[11px] text-[#787774]">{t("matchDepth.partial")}</span>
           {partial.slice(0, 3).map((s) => (
             // Key by display_name — the BE does not send canonical_name on partial_skills.
-            <span key={s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
+            <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
               {s.display_name}
               {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
             </span>
