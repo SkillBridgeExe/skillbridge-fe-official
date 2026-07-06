@@ -21,6 +21,7 @@ import type { AssistantAnswer, AssistantQuestion } from "@/types/companion";
 import { assistantLocales } from "./assistant-locale";
 import { ThinkingDots } from "../ThinkingDots";
 import { openIntakeCoach } from "./open-intake-coach";
+import { buildCvBuilderPatchProposal } from "./cv-builder-patch";
 
 const MAX_REASK = 2;
 
@@ -433,10 +434,36 @@ export function CvBuilderSkill({
   // ── Apply patch ──
   const handleApply = useCallback(() => {
     if (!companionPatch) return;
-    onApply(companionPatch.after);
-    resetCompanion();
-    useCompanionStore.getState().closeBubble();
-  }, [companionPatch, onApply, resetCompanion]);
+
+    try {
+      const document = useCvBuilderStore.getState().getResumeDocumentV1();
+      buildCvBuilderPatchProposal(document, {
+        section,
+        fieldPath,
+        after: companionPatch.after,
+      });
+
+      onApply(companionPatch.after);
+      resetCompanion();
+      useCompanionStore.getState().closeBubble();
+    } catch {
+      setCompanionMessage(
+        t("companion.patchRejected", {
+          defaultValue: "Mình chưa thể áp dụng thay đổi này an toàn. Hãy thử lại hoặc sửa thủ công nhé.",
+        })
+      );
+      setMascotState("presenting");
+    }
+  }, [
+    companionPatch,
+    section,
+    fieldPath,
+    onApply,
+    resetCompanion,
+    setCompanionMessage,
+    setMascotState,
+    t,
+  ]);
 
   // ── Discard ──
   const handleDiscard = useCallback(() => {

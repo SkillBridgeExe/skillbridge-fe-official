@@ -2426,6 +2426,7 @@ export default {
       send: "Gửi",
       apply: "Áp dụng",
       discard: "Bỏ",
+      patchRejected: "Mình chưa thể áp dụng thay đổi này an toàn. Hãy thử lại hoặc sửa thủ công nhé.",
       rewriteSofter: "Viết lại nhẹ hơn",
       askMore: "Hỏi thêm để rõ hơn",
       askMorePrompt: "Cho mình biết thêm để viết chính xác hơn nhé.",

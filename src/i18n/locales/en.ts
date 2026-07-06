@@ -2452,6 +2452,7 @@ export default {
       send: "Send",
       apply: "Apply",
       discard: "Discard",
+      patchRejected: "I cannot apply this change safely yet. Please try again or edit it manually.",
       rewriteSofter: "Rewrite softer",
       askMore: "Ask for more detail",
       askMorePrompt: "Tell me a bit more so I can write it more precisely.",
