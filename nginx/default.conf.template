@@ -38,6 +38,15 @@ server {
     }
 
     # Content-hashed build assets (Vite emits hashed filenames) → cache forever.
+    # pdf.js emits its worker as .mjs. nginx:alpine may serve .mjs as
+    # application/octet-stream, which Chrome rejects for module workers.
+    location ~* ^/assets/.*\.mjs$ {
+        default_type application/javascript;
+        expires    1y;
+        add_header Cache-Control "public, immutable";
+        try_files  $uri =404;
+    }
+
     location /assets/ {
         expires    1y;
         add_header Cache-Control "public, immutable";
