@@ -4,6 +4,8 @@ import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/ty
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
+import type { ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import type { Template } from "@/lib/resume-engine/schema/templates";
 
@@ -255,6 +257,7 @@ export interface CvBuilderState {
    * to keep the old CV Builder UI working.
    */
   getResumeData: () => ResumeData;
+  getResumeDocumentV1: () => ResumeDocumentV1;
   getCompletionPercent: () => number;
 
   // Reset
@@ -623,6 +626,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),
+  getResumeDocumentV1: () => builderStateToResumeDocumentV1(get()),
 
   getSectionStatuses: () => {
     const s = get();
