@@ -37,7 +37,7 @@ export function CvPreviewPanel() {
 
   const debouncedData = useDebounce(resumeData, 800, resumeDataKey);
 
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(0.75);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -66,6 +66,21 @@ export function CvPreviewPanel() {
       setScale(Math.max(0.2, Math.min(newScale, 2)));
     }
   };
+
+  useEffect(() => {
+    // Initial fit on mount
+    const timer = setTimeout(() => {
+      handleFitPage();
+    }, 50);
+
+    const onResize = () => handleFitPage();
+    window.addEventListener("resize", onResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
