@@ -1819,6 +1819,7 @@ export default {
         deepen_wording: "Deepen wording",
       },
       anchor: "Location: {{ref}}",
+      lowAnchor: "Could not pinpoint the exact bullet — double-check the spot before editing.",
       before: "Original",
       surfaceAt: "(currently in: {{ref}})",
       rewriteBtn: "Rewrite with AI",

@@ -1259,6 +1259,12 @@ export interface TailorActionDto {
   target_section?: string | null;
   /** emphasize only: deterministic hint on how to surface the skill (no single-bullet edit). */
   insertion_hint?: string | null;
+  /** Wave TRUST: deterministic score-impact band for doing this action (render = W41). */
+  expected_impact?: {
+    score_min: number | null;
+    score_max: number | null;
+    severity_drop: number | null;
+  };
 }
 
 export type TailorAction = TailorActionDto;

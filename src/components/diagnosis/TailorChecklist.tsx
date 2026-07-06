@@ -133,6 +133,12 @@ export function TailorChecklist({
                           (action.anchor?.ref ? t("tailor.anchor", { ref: action.anchor.ref }) : "")}
                       </p>
                     )}
+                    {/* Honest disclosure: the BE could not pin the exact bullet — double-check the spot. */}
+                    {action.anchor_confidence === "low" && (
+                      <p className="mt-1 text-xs font-medium text-[#956400]">
+                        ⚠ {t("tailor.lowAnchor")}
+                      </p>
+                    )}
                     {/* emphasize: surface-the-skill hint (BE-provided, deterministic) — never a bullet rewrite */}
                     {action.insertion_hint && (
                       <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-[#1F6C9F]">

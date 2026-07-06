@@ -1809,6 +1809,7 @@ export default {
         deepen_wording: "Viết sâu hơn",
       },
       anchor: "Vị trí: {{ref}}",
+      lowAnchor: "Chưa định vị chính xác bullet — kiểm tra lại vị trí trước khi sửa.",
       before: "Bản gốc",
       surfaceAt: "(đang ở: {{ref}})",
       rewriteBtn: "Viết lại với AI",
