@@ -105,7 +105,7 @@ describe("OpenAIRealtimeSession", () => {
           {
             type: "input_text",
             text: expect.stringContaining(
-              "Hãy đọc câu hỏi phỏng vấn chính thức sau bằng tiếng Việt tự nhiên",
+              "Hãy đọc lượt phỏng vấn chính thức sau bằng tiếng Việt tự nhiên",
             ),
           },
         ],
