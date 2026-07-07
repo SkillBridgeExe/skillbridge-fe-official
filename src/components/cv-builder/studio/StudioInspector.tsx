@@ -379,6 +379,9 @@ export function StudioInspector() {
                       ))}
                     </div>
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t("builder.inspector.densityHelper")}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -508,6 +511,9 @@ export function StudioInspector() {
                       </SegmentedButton>
                     ))}
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t("builder.inspector.fontScaleHelper")}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -560,11 +566,30 @@ export function StudioInspector() {
                     />
                   ))}
                 </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t("builder.inspector.accentColorHelper")}
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
-        </Accordion>
+          </Accordion>
+
+          {/* W69: Reset Style Button */}
+          <div className="px-4 py-3 border-t border-slate-100">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-8 border-slate-200 text-slate-500 hover:text-slate-700"
+              onClick={() => store.resetStyle()}
+            >
+              <RotateCcw className="w-3 h-3 mr-1.5" />
+              {t("builder.inspector.resetStyle")}
+            </Button>
+            <p className="text-[10px] text-slate-400 mt-1 text-center">
+              {t("builder.inspector.resetStyleDesc")}
+            </p>
+          </div>
       </div>
     </div>
   );

@@ -115,6 +115,9 @@ const emptyCertification = (): Certification => ({
 
 /* ── State Interface ── */
 export interface CvBuilderState {
+  // W67: Resume metadata — title of the resume doc, NOT the candidate's full name
+  resumeTitle: string;
+
   // Section 1: Basic Info
   fullName: string;
   email: string;
@@ -236,6 +239,9 @@ export interface CvBuilderState {
   duplicateCertification: (id: string) => void;
   moveCertification: (id: string, direction: "up" | "down") => void;
 
+  // Actions — Resume metadata (W67)
+  setResumeTitle: (title: string) => void;
+
   // Actions — UI
   setActiveSection: (section: number) => void;
   setTemplate: (template: string) => void;
@@ -257,6 +263,8 @@ export interface CvBuilderState {
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
+  /** W69: Reset accent/font/density/icons to template defaults. */
+  resetStyle: () => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -313,6 +321,7 @@ export interface CvBuilderState {
 }
 
 const initialState = {
+  resumeTitle: "",
   fullName: "", email: "", phone: "", location: "", linkedin: "", portfolio: "", github: "",
   photoUrl: "", profileLinks: [] as ProfileLink[], customFields: [] as CustomField[],
   targetPosition: "", careerLevel: "" as const, industry: "",
@@ -625,6 +634,9 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     return { certifications: newArr };
   }),
 
+  // W67: Resume metadata
+  setResumeTitle: (resumeTitle) => set({ resumeTitle }),
+
   // UI
   setActiveSection: (section) => set({ activeSection: section }),
   toggleSectionCollapse: (sectionId) => set((s) => ({
@@ -633,6 +645,18 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setSectionCollapsed: (sectionId, collapsed) => set((s) => ({
     collapsedSections: { ...s.collapsedSections, [sectionId]: collapsed }
   })),
+
+  // W69: Reset style to template defaults
+  resetStyle: () => set((s) => {
+    const meta = TEMPLATE_PREVIEWS[s.template as keyof typeof TEMPLATE_PREVIEWS];
+    return {
+      resumeAccentColor: meta?.accent ?? "#0f172a",
+      resumeFontScale: (meta?.fontScale ?? "normal") as ResumeFontScale,
+      resumeDensity: (meta?.density ?? "comfortable") as ResumeDensity,
+      resumeHideSectionIcons: false,
+    };
+  }),
+
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
     set((s) => {

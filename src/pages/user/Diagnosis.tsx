@@ -115,6 +115,7 @@ export default function Diagnosis() {
   const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
   const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
+    resumeTitle: state.resumeTitle,
     fullName: state.fullName,
     email: state.email,
     phone: state.phone,
@@ -178,7 +179,7 @@ export default function Diagnosis() {
         {
           sourceCvId: builderSeed.seedSourceCvId,
           language: builderSeed.cvLanguage,
-          title: builderSeed.fullName || "CV Builder draft",
+          title: builderSeed.resumeTitle || builderSeed.fullName || "Untitled CV",
           targetRole: useDiagnosisStore.getState().targetRole,
         },
         {
