@@ -470,6 +470,7 @@ export function DiagnosisStep2Review() {
         verdictMessage={scoreMessage}
         isJdMode={false}
         breakdown={reviewData?.breakdown}
+        rubricBand={reviewData?.skills_relevance_breakdown?.rubric_band}
       />
 
       {/* ── Metadata & Actions ── */}
