@@ -85,6 +85,7 @@ export function StudioInspector() {
   const store = useCvBuilderStore();
   const currentTemplate = resolveBuilderTemplate(store.template);
   const layoutCapabilities = getTemplateLayoutCapabilities(currentTemplate);
+  
   const sectionLabels: Record<CvBuilderSectionKey, string> = {
     summary: t("builder.tabSummary"),
     experience: t("builder.tabExperience"),
