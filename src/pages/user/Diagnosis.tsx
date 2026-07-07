@@ -179,7 +179,7 @@ export default function Diagnosis() {
         {
           sourceCvId: builderSeed.seedSourceCvId,
           language: builderSeed.cvLanguage,
-          title: builderSeed.resumeTitle || builderSeed.fullName || "Untitled CV",
+          title: builderSeed.resumeTitle || builderSeed.fullName || t("builder.studio.untitledResume"),
           targetRole: useDiagnosisStore.getState().targetRole,
         },
         {
@@ -225,7 +225,7 @@ export default function Diagnosis() {
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(latestBuilder),
-                title: latestBuilder.fullName || "CV Builder draft",
+                title: latestBuilder.resumeTitle || latestBuilder.fullName || t("builder.studio.untitledResume"),
                 targetRole: useDiagnosisStore.getState().targetRole,
               }, {
                 onSuccess: markSaved,

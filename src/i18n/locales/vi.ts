@@ -2468,6 +2468,16 @@ export default {
         deleteSuccess: "Đã xóa CV",
         copyOfTitle: "Bản sao {{name}}",
         lastEdited: "Sửa lần cuối {{time}}",
+        actionMenu: "Tác vụ CV",
+        loadError: "Đã có lỗi xảy ra. Vui lòng thử lại.",
+        openFailed: "Không thể mở CV này",
+        openFailedDesc: "CV này chưa có dữ liệu builder hoặc tải dữ liệu thất bại.",
+        time: {
+          justNow: "vừa xong",
+          minutesAgo: "{{count}} phút trước",
+          hoursAgo: "{{count}} giờ trước",
+          daysAgo: "{{count}} ngày trước",
+        },
       },
       // W70: Lifecycle
       lifecycle: {

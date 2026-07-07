@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { getCvDetailApi } from "@/api/cv/list";
 import {
   useResumeListQuery,
   useDeleteResumeMutation,
@@ -8,6 +10,7 @@ import {
 } from "@/hooks/use-resume-library";
 import { useToast } from "@/hooks/use-toast";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,16 +40,16 @@ import {
 } from "lucide-react";
 import type { CvListItemDto } from "@shared/api";
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: TFunction<"diagnosis">): string {
   const now = Date.now();
   const diff = now - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("builder.resumeLibrary.time.justNow");
+  if (minutes < 60) return t("builder.resumeLibrary.time.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("builder.resumeLibrary.time.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t("builder.resumeLibrary.time.daysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString();
 }
 
@@ -55,11 +58,13 @@ function ResumeCard({
   onOpen,
   onDuplicate,
   onDelete,
+  isOpening = false,
 }: {
   item: CvListItemDto;
   onOpen: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  isOpening?: boolean;
 }) {
   const { t } = useTranslation("diagnosis");
   const displayTitle = item.title || t("builder.studio.untitledResume");
@@ -79,14 +84,18 @@ function ResumeCard({
             <button
               type="button"
               onClick={onOpen}
+              disabled={isOpening}
               className="text-sm font-semibold text-slate-800 hover:text-primary transition-colors truncate block w-full text-left"
               title={displayTitle}
             >
-              {displayTitle}
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                {isOpening ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : null}
+                <span className="truncate">{displayTitle}</span>
+              </span>
             </button>
             <p className="text-[11px] text-slate-400 mt-0.5">
               {t("builder.resumeLibrary.lastEdited", {
-                time: formatRelativeTime(item.createdAt),
+                time: formatRelativeTime(item.createdAt, t),
               })}
             </p>
           </div>
@@ -98,7 +107,8 @@ function ResumeCard({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Actions"
+                aria-label={t("builder.resumeLibrary.actionMenu")}
+                disabled={isOpening}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
@@ -145,26 +155,59 @@ export default function ResumeLibrary() {
   const { t } = useTranslation("diagnosis");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setStep } = useDiagnosisStore();
+  const { setStep, clearBuilderState } = useDiagnosisStore();
   const { data, isLoading, isError } = useResumeListQuery();
   const deleteMutation = useDeleteResumeMutation();
   const duplicateMutation = useDuplicateResumeMutation();
 
   const [deleteTarget, setDeleteTarget] = useState<CvListItemDto | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   const handleOpenResume = useCallback(
-    (_item: CvListItemDto) => {
-      // Navigate to diagnosis page in builder mode
-      setStep("builder");
-      navigate("/diagnosis?mode=builder");
+    async (item: CvListItemDto) => {
+      setOpeningId(item.id);
+      try {
+        const detail = await getCvDetailApi(item.id);
+        if (!detail.parsedJson) {
+          toast({
+            title: t("builder.resumeLibrary.openFailed"),
+            description: t("builder.resumeLibrary.openFailedDesc"),
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const initialTitle = detail.title || item.title || t("builder.studio.untitledResume");
+        const builder = useCvBuilderStore.getState();
+        builder.reset();
+        builder.hydrateFromCanonical(detail.parsedJson);
+        const hydrated = useCvBuilderStore.getState();
+        hydrated.setDraftId(detail.id);
+        hydrated.setResumeTitle(initialTitle);
+        hydrated.setSeededFromDiagnosis(false);
+        hydrated.setSeedSourceCvId(null);
+        clearBuilderState();
+        setStep("builder");
+        navigate(`/diagnosis?mode=builder&cvId=${encodeURIComponent(item.id)}`);
+      } catch {
+        toast({
+          title: t("builder.resumeLibrary.openFailed"),
+          description: t("builder.resumeLibrary.openFailedDesc"),
+          variant: "destructive",
+        });
+      } finally {
+        setOpeningId(null);
+      }
     },
-    [navigate, setStep],
+    [clearBuilderState, navigate, setStep, t, toast],
   );
 
   const handleCreateNew = useCallback(() => {
+    useCvBuilderStore.getState().reset();
+    clearBuilderState();
     setStep("builder");
-    navigate("/diagnosis?mode=builder");
-  }, [navigate, setStep]);
+    navigate("/diagnosis?mode=builder&new=1");
+  }, [clearBuilderState, navigate, setStep]);
 
   const handleDuplicate = useCallback(
     (item: CvListItemDto) => {
@@ -220,7 +263,7 @@ export default function ResumeLibrary() {
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <p className="text-slate-500">Something went wrong. Please try again.</p>
+            <p className="text-slate-500">{t("builder.resumeLibrary.loadError")}</p>
           </div>
         ) : items.length === 0 ? (
           /* Empty State */
@@ -246,6 +289,7 @@ export default function ResumeLibrary() {
                 onOpen={() => handleOpenResume(item)}
                 onDuplicate={() => handleDuplicate(item)}
                 onDelete={() => setDeleteTarget(item)}
+                isOpening={openingId === item.id}
               />
             ))}
           </div>

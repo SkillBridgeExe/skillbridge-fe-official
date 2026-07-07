@@ -2492,6 +2492,16 @@ export default {
         deleteSuccess: "CV deleted",
         copyOfTitle: "Copy of {{name}}",
         lastEdited: "Last edited {{time}}",
+        actionMenu: "Resume actions",
+        loadError: "Something went wrong. Please try again.",
+        openFailed: "Could not open this CV",
+        openFailedDesc: "This CV does not have builder data yet or could not be loaded.",
+        time: {
+          justNow: "just now",
+          minutesAgo: "{{count}}m ago",
+          hoursAgo: "{{count}}h ago",
+          daysAgo: "{{count}}d ago",
+        },
       },
       // W70: Lifecycle
       lifecycle: {
