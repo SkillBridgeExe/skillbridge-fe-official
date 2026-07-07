@@ -1635,7 +1635,8 @@ export default {
       title: "Phân bổ điểm CV ({{score}}/100)",
       note: "Dựa trên tiêu chuẩn hệ thống và đánh giá AI",
       skills: "Kỹ năng",
-      experience: "Kinh nghiệm"
+      experience: "Kinh nghiệm",
+      bandFraming: "Kỹ năng chấm theo chuẩn {{band}} — đổi thước thì điểm đổi theo.",
     },
     bulletFeedback: {
       title: "Đánh giá bullet",
@@ -1738,6 +1739,7 @@ export default {
       toastAnalysisFailedTitle: "Phân tích thất bại",
       errorAnalyze: "Không thể phân tích CV.",
       errorCompare: "Không thể so khớp CV với JD.",
+      throttled: "Bạn gửi yêu cầu quá nhanh. Hãy chờ một chút rồi thử lại.",
       consentLabel:
         "Tôi đồng ý cho phép xử lý dữ liệu cá nhân trong CV này để phục vụ việc phân tích.",
       errorFileTooLarge: "Tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.",
@@ -1887,6 +1889,7 @@ export default {
       scanAgain: "Chấm lại",
       generatePlan: "Tạo lộ trình học",
       jdHighlightTitle: "Xem từ khoá trong JD của bạn",
+      scoreDistinction: "Điểm khớp JD ≠ điểm CV: một cái đo độ phủ yêu cầu của JD này, một cái đo chất lượng trình bày.",
     },
     roadmapWizard: {
       title: "Bạn đồng hành lộ trình",
@@ -2049,6 +2052,13 @@ export default {
         textNotInCvTitle: "Mất dấu gợi ý",
         textNotInCvDesc: "Nội dung CV đã thay đổi so với lúc chấm hoặc gợi ý không khớp.",
       },
+      impact: {
+        points: "+{{min}}~{{max}} điểm",
+        pointsSingle: "+{{max}} điểm",
+        riskReduction: "Giảm rủi ro thiếu bằng chứng",
+        riskReductionTooltip: "Hành động này củng cố độ tin, không đổi điểm khớp.",
+        disclaimer: "Theo mô hình chấm của SkillBridge — không phải xác suất đậu",
+      },
     },
     market: {
       title: "JD này so với thị trường",
@@ -2185,6 +2195,7 @@ export default {
         skills_list: "Danh sách kỹ năng",
         other: "Khác",
       },
+      githubCorrobTooltip: "Kỹ năng này có repo GitHub công khai chứng thực — rủi ro thiếu bằng chứng đã được hạ",
     },
     jdIntel: {
       title: "JD yêu cầu (ngoài kỹ năng)",
@@ -3019,6 +3030,8 @@ export default {
       newGaps: "Gap mới xuất hiện",
       explain: "Giải thích thêm",
       templateChanged: "Lần quét trước dùng thang chấm cũ — chỉ so được trạng thái gap, không so điểm.",
+      learningCompleted: "Bài học đã hoàn thành",
+      learningCompletedHint: "Đã học xong — sẽ kiểm chứng ở lần quét CV tới",
     },
   },
 } as const;

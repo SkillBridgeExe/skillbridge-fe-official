@@ -1471,6 +1471,8 @@ export interface ProgressReportDto {
   strengths_kept: string[];
   required_coverage_delta: number | null;
   template_changed: boolean;
+  /** W43: Slugs of lessons the user completed since last scan — pending next-scan verification. */
+  learning_completed?: string[];
 }
 
 export interface ChatThreadTurnDto {

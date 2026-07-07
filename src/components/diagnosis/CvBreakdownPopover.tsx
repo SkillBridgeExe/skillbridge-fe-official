@@ -13,10 +13,12 @@ interface CvBreakdown {
 interface Props {
   breakdown?: CvBreakdown;
   overallScore: number;
+  /** W44: rubric band from JD match — used for honest framing in CV score popover. */
+  rubricBand?: string | null;
   children: React.ReactNode;
 }
 
-export function CvBreakdownPopover({ breakdown, overallScore, children }: Props) {
+export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, children }: Props) {
   const { t } = useTranslation("diagnosis");
   const [open, setOpen] = useState(false);
 
@@ -99,6 +101,15 @@ export function CvBreakdownPopover({ breakdown, overallScore, children }: Props)
             <p className="text-[10px] text-slate-400 mt-4 text-center">
               {t("cvBreakdown.note")}
             </p>
+            {/* W44: band framing — honest context */}
+            {rubricBand && (
+              <p className="text-[10px] text-[#6943C7] bg-[#F6F4FB] border border-[#E2D9F3] rounded-lg px-2.5 py-1.5 mt-2 text-center leading-relaxed">
+                {t("cvBreakdown.bandFraming", {
+                  band: rubricBand,
+                  defaultValue: `Skills scored against the ${rubricBand} standard — changing the bar will change the score.`,
+                })}
+              </p>
+            )}
           </div>
         </>
       )}

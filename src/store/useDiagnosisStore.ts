@@ -28,6 +28,10 @@ interface DiagnosisState {
   consentAccepted: boolean;
   highlightEvidence: string | null;
 
+  // W41: GitHub corroboration opt-in (persisted via session)
+  githubUsername: string | null;
+  githubConsent: boolean;
+
   // Builder-sourced CV state
   isFromBuilder: boolean;
   builderCvId: string | null;
@@ -53,6 +57,7 @@ interface DiagnosisState {
   setLastCvId: (id: string | null) => void;
   setConsentAccepted: (val: boolean) => void;
   setHighlightEvidence: (val: string | null) => void;
+  setGithubCredentials: (username: string, consent: boolean) => void;
 
   // Builder-sourced CV actions
   setIsFromBuilder: (isFromBuilder: boolean) => void;
@@ -78,6 +83,8 @@ export const persistDiagnosisState = (s: DiagnosisState) => ({
   analysisMode: s.analysisMode,
   hasActivatedJdMode: s.hasActivatedJdMode,
   consentAccepted: s.consentAccepted,
+  githubUsername: s.githubUsername,
+  githubConsent: s.githubConsent,
 });
 
 export const useDiagnosisStore = create<DiagnosisState>()(
@@ -102,6 +109,8 @@ export const useDiagnosisStore = create<DiagnosisState>()(
   lastCvId: null,
   consentAccepted: false,
   highlightEvidence: null,
+  githubUsername: null,
+  githubConsent: false,
 
   isFromBuilder: false,
   builderCvId: null,
@@ -130,6 +139,7 @@ export const useDiagnosisStore = create<DiagnosisState>()(
   setLastCvId: (lastCvId) => set({ lastCvId }),
   setConsentAccepted: (consentAccepted) => set({ consentAccepted }),
   setHighlightEvidence: (highlightEvidence) => set({ highlightEvidence }),
+  setGithubCredentials: (githubUsername, githubConsent) => set({ githubUsername, githubConsent }),
 
   setIsFromBuilder: (isFromBuilder) => set({ isFromBuilder }),
   setBuilderCvId: (builderCvId) => set({ builderCvId }),

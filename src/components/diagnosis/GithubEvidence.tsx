@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useGithubEvidenceMutation } from "@/hooks/use-diagnosis";
 import { ENABLE_GITHUB_EVIDENCE } from "@/lib/runtime-config";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type { CanonicalCvDocument, GithubEvidenceResponse, GithubSkillEvidence } from "@shared/api";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -40,7 +41,13 @@ export function GithubEvidence({
     mutation.mutate(
       { cvId, username: normalizedUsername, lang },
       {
-        onSuccess: (result) => setShowForm(result.available !== true),
+        onSuccess: (result) => {
+          setShowForm(result.available !== true);
+          // W41: persist credentials so gap-report can attach github_username + github_consent
+          if (result.available) {
+            useDiagnosisStore.getState().setGithubCredentials(normalizedUsername, true);
+          }
+        },
         onError: (err: Error) =>
           toast({
             title: t("github.errorTitle"),
