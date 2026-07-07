@@ -60,6 +60,10 @@ export const API_ROUTES = {
     ASSISTANT_REWRITE: (id: string) => `${API}/cvs/${id}/builder/assistant/rewrite`,
     ASSISTANT_SKILLS_NUDGE: (id: string) => `${API}/cvs/${id}/builder/assistant/skills-nudge`,
     ASSISTANT_EXTRACT: (id: string) => `${API}/cvs/${id}/builder/assistant/extract`,
+    // Task 6a: LLM role-aware sibling of ASSISTANT_ANALYZE — BE reads the real role
+    // server-side from the owned CV record (never a client-sent role).
+    ASSISTANT_SMART_QUESTIONS: (id: string) =>
+      `${API}/cvs/${id}/builder/assistant/smart-questions`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)
