@@ -13,7 +13,7 @@ export default function Layout({ children, hideFooter = false, hideNavbar = fals
   const isLanding = location.pathname === "/";
   
   // Hide footer on app pages automatically
-  const isAppPage = ["/learning", "/diagnosis", "/dashboard", "/profile", "/billing", "/interview", "/ecosystem", "/cv-builder"].some(
+  const isAppPage = ["/learning", "/diagnosis", "/dashboard", "/profile", "/billing", "/interview", "/ecosystem", "/cv-builder", "/cv-studio"].some(
     path => location.pathname.startsWith(path)
   );
   const shouldHideFooter = hideFooter || isAppPage;

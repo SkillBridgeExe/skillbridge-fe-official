@@ -453,6 +453,10 @@ export const layoutSchema = z.object({
 		.max(50)
 		.catch(35)
 		.describe("The width of the sidebar column, defined as a percentage of the page width."),
+	sidebarPosition: z
+		.enum(["left", "right"])
+		.catch("left")
+		.describe("The position of the sidebar column (left or right)."),
 	pages: z.array(pageLayoutSchema).describe("The pages to display in the layout."),
 });
 
@@ -501,6 +505,10 @@ export const colorDesignSchema = z.object({
 export const designSchema = z.object({
 	level: levelDesignSchema,
 	colors: colorDesignSchema,
+	dividerStyle: z
+		.enum(["none", "line", "accent", "subtle"])
+		.catch("line")
+		.describe("The style of the dividers between sections."),
 });
 
 export const typographySchema = z.object({

@@ -1,9 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, normalizeToBulletText } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, X, RotateCcw, Briefcase } from "lucide-react";
+import { Plus, Sparkles, X, RotateCcw, Briefcase, List as ListIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -200,10 +200,10 @@ export function ExperienceSection() {
 
     const field = match.field === "description" ? "description" : "achievements";
     const currentText = entry[field];
-        
+
     const index = experience.findIndex(e => e.id === entry.id);
     const contextId = `cvbuilder:experience[${index}].${field}`;
-    const fieldPath = field === "description" 
+    const fieldPath = field === "description"
       ? resumeDocumentPaths.experienceDescription(entry.id)
       : resumeDocumentPaths.experienceAchievements(entry.id);
 
@@ -230,9 +230,14 @@ export function ExperienceSection() {
     });
     useCompanionStore.getState().activateContext(contextId);
     useCompanionStore.setState({ bubbleOpen: true });
-    
+
     setPendingProveIt(null);
   }, [draftId, experience, handleAiSuggest, pendingProveIt, setPendingProveIt, t, toast, markSectionNeedsRecheck, updateExperience]);
+
+  const handleConvertToBullets = (entryId: string, field: "description" | "achievements", currentText: string) => {
+    if (!currentText.trim()) return;
+    updateExperience(entryId, field, normalizeToBulletText(currentText));
+  };
 
   const handleUseIt = (entryId: string, field: "description" | "achievements") => {
     if (!activeSuggestion) return;
@@ -443,7 +448,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.intake.trigger", { defaultValue: "Auto-fill Assistant" })}</span>
+                  <span className="leading-none">{t("companion.intake.trigger")}</span>
                 </Button>
               )}
             </div>
@@ -471,8 +476,8 @@ export function ExperienceSection() {
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.expDescription")}</Label>
                 {isLoggedIn && draftId && exp.description.trim() && (
-                  <Button 
-                    variant="ghost" size="sm" 
+                  <Button
+                    variant="ghost" size="sm"
                     className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
                     onClick={() => handleAiSuggest(exp.id, "description", exp.description)}
                     disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
@@ -482,12 +487,24 @@ export function ExperienceSection() {
                   </Button>
                 )}
               </div>
-              <Textarea
+              <RichTextEditor
                 value={exp.description}
-                onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
+                onChange={(val) => updateExperience(exp.id, "description", val)}
                 placeholder={t("builder.ph.expDescription")}
-                className="text-[13px] resize-none h-24 font-sans"
+                className="text-[13px] min-h-[96px] font-sans"
               />
+              <div className="flex justify-end pt-0.5">
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+                  onClick={() => handleConvertToBullets(exp.id, "description", exp.description)}
+                  title={t("builder.richText.convertToBullets")}
+                  aria-label={t("builder.richText.convertToBullets")}
+                >
+                  <ListIcon className="w-3 h-3" />
+                  <span>{t("builder.richText.convertToBullets")}</span>
+                </Button>
+              </div>
 
               {/* Input-gate hint for Description */}
               {renderGateHint(exp.id, "description")}
@@ -528,7 +545,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                  <span>{t("companion.analyze")}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -540,7 +557,7 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "description", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
+                  <span>{t("companion.intake.coachStuck")}</span>
                 </Button>
               )}
             </div>
@@ -550,8 +567,8 @@ export function ExperienceSection() {
               <div className="flex items-center justify-between">
                 <Label>{t("builder.fields.keyAchievements")}</Label>
                 {isLoggedIn && draftId && exp.achievements.trim() && (
-                  <Button 
-                    variant="ghost" size="sm" 
+                  <Button
+                    variant="ghost" size="sm"
                     className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
                     onClick={() => handleAiSuggest(exp.id, "achievements", exp.achievements)}
                     disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
@@ -561,12 +578,24 @@ export function ExperienceSection() {
                   </Button>
                 )}
               </div>
-              <Textarea
+              <RichTextEditor
                 value={exp.achievements}
-                onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)}
+                onChange={(val) => updateExperience(exp.id, "achievements", val)}
                 placeholder={t("builder.ph.keyAchievements")}
-                className="text-[13px] resize-none h-20 font-sans"
+                className="text-[13px] min-h-[96px] font-sans"
               />
+              <div className="flex justify-end pt-0.5">
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+                  onClick={() => handleConvertToBullets(exp.id, "achievements", exp.achievements)}
+                  title={t("builder.richText.convertToBullets")}
+                  aria-label={t("builder.richText.convertToBullets")}
+                >
+                  <ListIcon className="w-3 h-3" />
+                  <span>{t("builder.richText.convertToBullets")}</span>
+                </Button>
+              </div>
 
               {/* Input-gate hint for Achievements */}
               {renderGateHint(exp.id, "achievements")}
@@ -607,7 +636,7 @@ export function ExperienceSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                  <span>{t("companion.analyze")}</span>
                 </Button>
               )}
               {/* Empty field → no dead-end: open the intake coaching loop */}
@@ -619,7 +648,7 @@ export function ExperienceSection() {
                   onClick={() => routeFieldToIntakeCoach(index, "achievements", "gate")}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
+                  <span>{t("companion.intake.coachStuck")}</span>
                 </Button>
               )}
             </div>
@@ -633,21 +662,21 @@ export function ExperienceSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <Briefcase className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle", { defaultValue: "No experience added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc", { defaultValue: "Add relevant jobs or internships." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.experienceTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.experienceDesc")}</p>
           <Button onClick={addExperience} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.experience")}
           </Button>
         </div>
       )}
-      
+
       {experience.length > 0 && (
-      <button 
+      <button
         onClick={addExperience}
         className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer group"
       >
-        <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" /> 
+        <Plus className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
         <span className="font-medium text-sm">{t("builder.add.experience")}</span>
       </button>
       )}

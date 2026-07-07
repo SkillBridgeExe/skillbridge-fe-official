@@ -120,6 +120,7 @@ export const defaultResumeData: ResumeData = {
 		template: "onyx",
 		layout: {
 			sidebarWidth: 35,
+			sidebarPosition: "left",
 			pages: [
 				{
 					fullWidth: false,
@@ -129,10 +130,10 @@ export const defaultResumeData: ResumeData = {
 			],
 		},
 		page: {
-			gapX: 4,
+			gapX: 12,
 			gapY: 6,
-			marginX: 14,
-			marginY: 12,
+			marginX: 18,
+			marginY: 18,
 			format: "a4",
 			locale: "en-US",
 			hideLinkUnderline: false,
@@ -140,6 +141,7 @@ export const defaultResumeData: ResumeData = {
 			hideSectionIcons: true,
 		},
 		design: {
+			dividerStyle: "line",
 			colors: {
 				primary: "rgba(220, 38, 38, 1)",
 				text: "rgba(0, 0, 0, 1)",

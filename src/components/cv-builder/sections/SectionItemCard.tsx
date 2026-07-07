@@ -4,6 +4,16 @@ import { Trash2, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SectionItemCardProps {
   title: string;
@@ -37,34 +47,34 @@ export function SectionItemCard({
   defaultExpanded = false
 }: SectionItemCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const { t } = useTranslation("diagnosis");
 
-  const handleRemove = (e: React.MouseEvent) => {
+  const handleRemoveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (requireConfirmOnRemove) {
-      if (window.confirm(t("builder.confirmRemove", { defaultValue: "Are you sure you want to remove this item? This action cannot be undone." }))) {
-        onRemove();
-      }
+      setShowRemoveDialog(true);
     } else {
       onRemove();
     }
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
+    <>
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
       <div 
         className={cn("flex items-center justify-between p-4 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex-1 min-w-0 pr-4">
           <h4 className="font-semibold text-sm text-slate-800 truncate">
-            {title || t("builder.actions.unnamedItem", { defaultValue: "Untitled item" })}
+            {title || t("builder.actions.unnamedItem")}
           </h4>
           {subtitle && <p className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</p>}
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
-          <div className={cn("flex items-center gap-0.5", !expanded && "opacity-0 group-hover:opacity-100 transition-opacity")}>
+          <div className="flex items-center gap-0.5">
             {onMoveUp && (
               <Button
                 variant="ghost"
@@ -75,8 +85,8 @@ export function SectionItemCard({
                   onMoveUp();
                 }}
                 disabled={!canMoveUp}
-                aria-label={t("builder.actions.moveUp", { defaultValue: "Move up" })}
-                title={t("builder.actions.moveUp", { defaultValue: "Move up" })}
+                aria-label={t("builder.actions.moveUp")}
+                title={t("builder.actions.moveUp")}
               >
                 <ChevronUp className="w-4 h-4" />
               </Button>
@@ -91,8 +101,8 @@ export function SectionItemCard({
                   onMoveDown();
                 }}
                 disabled={!canMoveDown}
-                aria-label={t("builder.actions.moveDown", { defaultValue: "Move down" })}
-                title={t("builder.actions.moveDown", { defaultValue: "Move down" })}
+                aria-label={t("builder.actions.moveDown")}
+                title={t("builder.actions.moveDown")}
               >
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -102,14 +112,14 @@ export function SectionItemCard({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-7 w-7 text-slate-400 hover:text-primary transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
+              className="h-7 w-7 text-slate-400 hover:text-primary transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
               }}
               disabled={!canDuplicate}
-              aria-label={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
-              title={t("builder.actions.duplicate", { defaultValue: "Duplicate" })}
+              aria-label={t("builder.actions.duplicate")}
+              title={t("builder.actions.duplicate")}
             >
               <Copy className="w-3.5 h-3.5" />
             </Button>
@@ -117,11 +127,11 @@ export function SectionItemCard({
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7 text-slate-400 hover:text-red-500 transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
-            onClick={handleRemove}
+            className="h-7 w-7 text-slate-400 hover:text-red-500 transition-colors"
+            onClick={handleRemoveClick}
             disabled={!canRemove}
-            aria-label={t("builder.actions.remove", { defaultValue: "Remove item" })}
-            title={t("builder.actions.remove", { defaultValue: "Remove item" })}
+            aria-label={t("builder.actions.remove")}
+            title={t("builder.actions.remove")}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -146,5 +156,23 @@ export function SectionItemCard({
         )}
       </AnimatePresence>
     </div>
+      
+      <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.confirmRemoveTitle") || "Remove item?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.confirmRemove")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemove} className="bg-red-600 hover:bg-red-700">
+              {t("builder.actions.remove")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

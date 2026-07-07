@@ -102,20 +102,60 @@ describe("useCvBuilderStore.pendingProveIt", () => {
   });
 });
 
+describe("useCvBuilderStore.importState", () => {
+  it("imports serializable resume data while preserving the active draft session", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setDraftId("draft-1");
+    useCvBuilderStore.getState().setSectionEvaluation("summary", {
+      score: 60,
+      label: "Needs improvement",
+      checklist: [],
+      missing: ["Add more evidence"],
+    });
+
+    useCvBuilderStore.getState().importState({
+      fullName: "Imported Candidate",
+      photoUrl: "https://example.com/photo.jpg",
+      profileLinks: [{ id: "profile-1", network: "GitHub", url: "https://github.com/imported", visible: true }],
+      languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+    });
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      draftId: "draft-1",
+      fullName: "Imported Candidate",
+      photoUrl: "https://example.com/photo.jpg",
+      profileLinks: [{ id: "profile-1", network: "GitHub", url: "https://github.com/imported", visible: true }],
+      languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+      sectionEvaluations: {},
+      sectionFixFeedback: {},
+      mascotState: "idle",
+      pendingProveIt: null,
+    });
+  });
+});
+
 describe("useCvBuilderStore.resumeAppearance", () => {
   it("updates resume appearance controls and resets them to defaults", () => {
     const store = useCvBuilderStore.getState();
 
     store.setResumeAccentColor("#2563eb");
     store.setResumeFontScale("large");
-    store.setResumeDensity("compact");
+    store.setResumePageMargin("compact");
+    store.setResumeSectionSpacing("compact");
     store.setResumeHideSectionIcons(true);
+    store.setResumeSidebarPosition("right");
+    store.setResumeSidebarWidth("wide");
+    store.setResumeDividerStyle("accent");
 
     expect(useCvBuilderStore.getState()).toMatchObject({
       resumeAccentColor: "#2563eb",
       resumeFontScale: "large",
-      resumeDensity: "compact",
+      resumePageMargin: "compact",
+      resumeSectionSpacing: "compact",
       resumeHideSectionIcons: true,
+      resumeSidebarPosition: "right",
+      resumeSidebarWidth: "wide",
+      resumeDividerStyle: "accent",
     });
 
     useCvBuilderStore.getState().reset();
@@ -123,8 +163,12 @@ describe("useCvBuilderStore.resumeAppearance", () => {
     expect(useCvBuilderStore.getState()).toMatchObject({
       resumeAccentColor: "#0f172a",
       resumeFontScale: "normal",
-      resumeDensity: "comfortable",
+      resumePageMargin: "normal",
+      resumeSectionSpacing: "normal",
       resumeHideSectionIcons: false,
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
     });
   });
 
@@ -136,7 +180,8 @@ describe("useCvBuilderStore.resumeAppearance", () => {
     expect(useCvBuilderStore.getState()).toMatchObject({
       template: "gengar",
       resumeAccentColor: "#7c3aed",
-      resumeDensity: "compact",
+      resumePageMargin: "compact",
+      resumeSectionSpacing: "compact",
       resumeFontScale: "normal",
     });
   });
@@ -259,6 +304,19 @@ describe("useCvBuilderStore.structure", () => {
     
     expect(useCvBuilderStore.getState().sectionOrder[0]).toBe("experience");
     expect(useCvBuilderStore.getState().sectionOrder[1]).toBe("summary");
+  });
+
+  it("tracks collapsed section state without changing section content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSummary("Built APIs");
+
+    useCvBuilderStore.getState().toggleSectionCollapse("summary");
+    expect(useCvBuilderStore.getState().collapsedSections.summary).toBe(true);
+    expect(useCvBuilderStore.getState().summary).toBe("Built APIs");
+
+    useCvBuilderStore.getState().setSectionCollapsed("summary", false);
+    expect(useCvBuilderStore.getState().collapsedSections.summary).toBe(false);
+    expect(useCvBuilderStore.getState().summary).toBe("Built APIs");
   });
 
   it("resets section order to default", () => {

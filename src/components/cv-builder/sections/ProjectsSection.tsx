@@ -1,9 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, normalizeToBulletText } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, RotateCcw, LayoutTemplate } from "lucide-react";
+import { Plus, Sparkles, RotateCcw, LayoutTemplate, List as ListIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -119,11 +119,16 @@ export function ProjectsSection() {
     setNotice(null);
   };
 
+  const handleConvertToBullets = (id: string, currentText: string) => {
+    if (!currentText.trim()) return;
+    updateProject(id, "description", normalizeToBulletText(currentText));
+  };
+
   return (
     <div className="space-y-6">
       {projects.length > 0 ? projects.map((proj, index) => {
-        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Project Name" });
-        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Project" });
+        const title = proj.name || t("builder.ph.projectName");
+        const subtitle = proj.role || t("builder.entry.project");
 
         return (
           <div key={proj.id} id={`projects-${proj.id}`}>
@@ -179,7 +184,7 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "tell a story about this project" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger")}</span>
                 </Button>
               )}
             </div>
@@ -221,12 +226,23 @@ export function ProjectsSection() {
                       ? t("builder.generating")
                       : t("builder.turnIntoBullets")}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+                    onClick={() => handleConvertToBullets(proj.id, proj.description)}
+                    title={t("builder.richText.convertToBullets")}
+                    aria-label={t("builder.richText.convertToBullets")}
+                  >
+                    <ListIcon className="w-3 h-3" />
+                    <span>{t("builder.richText.convertToBullets")}</span>
+                  </Button>
                 </div>
-                <Textarea
+                <RichTextEditor
                   value={proj.description}
-                  onChange={(e) => updateProject(proj.id, "description", e.target.value)}
+                  onChange={(val) => updateProject(proj.id, "description", val)}
                   placeholder={t("builder.ph.projectDescription")}
-                  className="text-[13px] resize-none h-20"
+                  className="text-[13px] min-h-[96px] font-sans"
                 />
 
                 {/* Input-gate hint / fallback note */}
@@ -279,7 +295,7 @@ export function ProjectsSection() {
                     }}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+                    <span>{t("companion.analyze")}</span>
                   </Button>
                 )}
               </div>
@@ -292,8 +308,8 @@ export function ProjectsSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <LayoutTemplate className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle", { defaultValue: "No projects added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc", { defaultValue: "Add notable projects you've worked on." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc")}</p>
           <Button onClick={addProject} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.project")}

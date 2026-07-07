@@ -9,6 +9,7 @@ import {
 } from "./cv-builder.service";
 
 const snapshot: BuilderSnapshot = {
+  resumeTitle: "Frontend Intern CV",
   fullName: "Nguyen Minh An",
   email: "an@x.dev",
   phone: "0901 234 567",

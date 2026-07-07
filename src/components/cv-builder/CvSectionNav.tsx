@@ -43,26 +43,48 @@ const sectionUiToBeMap: Record<string, BuilderSection> = {
   "certifications": "certifications",
 };
 
+const STATUS_INDEX_MAP: Record<string, number> = {
+  "basic-info": 0,
+  "career-target": 1,
+  "summary": 2,
+  "education": 3,
+  "experience": 4,
+  "projects": 5,
+  "skills": 6,
+  "certifications": 7,
+};
+
 export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | "horizontal" | "icon" }) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations, sectionFixFeedback } = useCvBuilderStore();
+  const { activeSection, setActiveSection, getSectionStatuses, sectionEvaluations, sectionFixFeedback, sectionOrder } = useCvBuilderStore();
   const statuses = getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
 
+  const orderedSections = React.useMemo(() => [
+    SECTIONS.find(s => s.id === "basic-info")!,
+    SECTIONS.find(s => s.id === "career-target")!,
+    ...sectionOrder.map(id => SECTIONS.find(s => s.id === id)).filter(Boolean) as typeof SECTIONS[0][],
+    SECTIONS.find(s => s.id === "review")!,
+  ], [sectionOrder]);
+
   // Calculate completion — prefer BE evaluation over local heuristic
-  const doneCount = statuses.filter((s, i) => {
-    const beSection = sectionUiToBeMap[SECTIONS[i]?.id];
+  const doneCount = orderedSections.filter((section) => {
+    const statusIdx = STATUS_INDEX_MAP[section.id];
+    if (statusIdx === undefined) return false;
+    const status = statuses[statusIdx];
+    const beSection = sectionUiToBeMap[section.id];
     const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
     if (evaluation) return evaluation.score >= 80;
-    return s.status === "completed";
+    return status?.status === "completed";
   }).length;
   const totalCount = 8; // There are 8 metadata statuses (0-7)
 
   const handleNavClick = (idx: number, id: string) => {
     setActiveSection(idx);
+    useCvBuilderStore.getState().setSectionCollapsed(id, false); // Auto-expand
     
     // In studio mode, scroll the editor panel to the section anchor
     const element = document.getElementById(`cv-section-${id}`);
@@ -74,10 +96,11 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   if (variant === "horizontal") {
     return (
       <div className="flex items-center gap-2 overflow-x-auto py-3 px-4 bg-white scrollbar-none select-none">
-        {SECTIONS.map((section, index) => {
+        {orderedSections.map((section, index) => {
           const Icon = section.icon;
           const isSelected = activeSection === index;
-          const status = index < 8 ? statuses[index]?.status : null;
+          const statusIdx = STATUS_INDEX_MAP[section.id];
+          const status = statusIdx !== undefined ? statuses[statusIdx]?.status : null;
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
           const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
@@ -140,10 +163,11 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
         </div>
 
         <nav className="space-y-1">
-          {SECTIONS.map((section, index) => {
+          {orderedSections.map((section, index) => {
             const Icon = section.icon;
             const isSelected = activeSection === index;
-            const status = index < 8 ? statuses[index]?.status : null;
+            const statusIdx = STATUS_INDEX_MAP[section.id];
+            const status = statusIdx !== undefined ? statuses[statusIdx]?.status : null;
             const title = sectionTitleMap[section.id][currentLang];
             const beSection = sectionUiToBeMap[section.id];
             const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;
@@ -206,10 +230,11 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
   return (
     <div className="flex flex-col items-center py-4 space-y-4 select-none h-full w-[56px]">
       <nav className="flex flex-col gap-2 w-full px-2">
-        {SECTIONS.map((section, index) => {
+        {orderedSections.map((section, index) => {
           const Icon = section.icon;
           const isSelected = activeSection === index;
-          const status = index < 8 ? statuses[index]?.status : null;
+          const statusIdx = STATUS_INDEX_MAP[section.id];
+          const status = statusIdx !== undefined ? statuses[statusIdx]?.status : null;
           const title = sectionTitleMap[section.id][currentLang];
           const beSection = sectionUiToBeMap[section.id];
           const evaluation = isLoggedIn && beSection ? sectionEvaluations[beSection] : null;

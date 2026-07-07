@@ -60,10 +60,18 @@ export async function getInterviewPlanApi(
 export async function getGapReportApi(
   matchId: string,
   lang?: DiagnosisLang,
+  github?: { username: string; consent: boolean },
 ): Promise<GapReportResponse> {
+  const params: Record<string, unknown> = {};
+  if (lang) params.lang = lang;
+  // W41: opt-in GitHub corroboration
+  if (github?.consent && github.username) {
+    params.github_username = github.username;
+    params.github_consent = true;
+  }
   const envelope = await unwrapEnvelope<ApiEnvelope<GapReportResponse>>(
     httpClient.get(API_ROUTES.CV_MATCHES.GAP_REPORT(matchId), {
-      params: lang ? { lang } : undefined,
+      params: Object.keys(params).length > 0 ? params : undefined,
     }),
     "Failed to load the JD gap report.",
   );

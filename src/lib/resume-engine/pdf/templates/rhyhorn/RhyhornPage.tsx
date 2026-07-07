@@ -15,7 +15,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight } from "../shared/styles";
+import { composeStyles, headerNameLineHeight , resolveDividerStyles } from "../shared/styles";
 
 type RhyhornStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -257,8 +257,11 @@ const useRhyhornTemplate = (): RhyhornTemplate => {
 			},
 			sectionHeading: {
 				color: primary,
-				borderBottomWidth: 1,
-				borderBottomColor: primary,
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+				}),
 				textAlign: r.sectionHeadingTextAlign,
 			},
 			item: {

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { adaptCvBuilderStoreToResumeData, adaptResumeDataToCanonical, adaptCanonicalToResumeData } from "./adapter";
 import type { CvBuilderState } from "@/store/useCvBuilderStore";
+import { getTemplateLayoutCapabilities } from "./template-meta";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -64,6 +65,55 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.basics.customFields[1].icon).toBe("github-logo");
 	});
 
+	it("maps profile photo, dynamic links, custom fields, and language proficiency", () => {
+		const mockStore = {
+			fullName: "John Doe",
+			targetPosition: "Software Engineer",
+			email: "",
+			phone: "",
+			location: "",
+			portfolio: "",
+			linkedin: "",
+			github: "",
+			photoUrl: "https://example.com/photo.jpg",
+			profileLinks: [
+				{ id: "profile-1", network: "Medium", url: "https://medium.com/@john", label: "Writing", visible: true },
+				{ id: "profile-hidden", network: "Website", url: "https://hidden.example.com", visible: false },
+			],
+			customFields: [{ id: "field-1", name: "Work authorization", value: "Vietnam", icon: "passport" }],
+			cvLanguage: "en",
+			template: "onyx",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.picture).toMatchObject({
+			hidden: false,
+			url: "https://example.com/photo.jpg",
+		});
+		expect(result.basics.customFields).toEqual([
+			expect.objectContaining({ id: "profile-1", text: "Writing", link: "https://medium.com/@john" }),
+			expect.objectContaining({ id: "field-1", text: "Work authorization: Vietnam", link: "" }),
+		]);
+		expect(result.basics.customFields).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: "profile-hidden" })]),
+		);
+		expect(result.sections.languages.hidden).toBe(false);
+		expect(result.sections.languages.items).toEqual([
+			expect.objectContaining({ id: "lang-1", language: "English", fluency: "Professional" }),
+		]);
+	});
+
 	it("should handle HTML wrapping for multi-line text", () => {
 		const mockStore = {
 			fullName: "",
@@ -100,6 +150,66 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.summary.content).toBe("<p>React &lt; Node &amp; Express</p>");
 	});
 
+	it("converts plain-text bullets into safe resume HTML lists", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "- Built REST APIs\n- Reduced load time",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toBe("<ul><li>Built REST APIs</li><li>Reduced load time</li></ul>");
+	});
+
+	it("normalizes legacy builder HTML before sending content to the PDF renderer", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "<ul><li>Built REST APIs</li><li>Reduced load time</li></ul><script>alert(1)</script>",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toBe("<ul><li>Built REST APIs</li><li>Reduced load time</li></ul>");
+		expect(result.summary.content).not.toContain("<script>");
+		expect(result.summary.content).not.toContain("alert");
+	});
+
+	it("renders markdown-lite formatting while escaping unsupported HTML", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "**React** _intern_ [repo](https://github.com/acme/app) <script>alert(1)</script>",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toContain("<strong>React</strong>");
+		expect(result.summary.content).toContain("<em>intern</em>");
+		expect(result.summary.content).toContain('<a href="https://github.com/acme/app">repo</a>');
+		expect(result.summary.content).not.toContain("<script>");
+		expect(result.summary.content).not.toContain("alert");
+	});
+
 	it("falls back legacy builder templates to a valid resume-engine template", () => {
 		const mockStore = {
 			fullName: "Legacy Template User",
@@ -126,7 +236,8 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			cvLanguage: "en",
 			resumeAccentColor: "#2563eb",
 			resumeFontScale: "large",
-			resumeDensity: "compact",
+			resumePageMargin: "compact",
+			resumeSectionSpacing: "compact",
 			resumeHideSectionIcons: true,
 			summary: "",
 			education: [],
@@ -147,6 +258,71 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.page.gapY).toBeLessThan(16);
 		expect(result.metadata.page.marginY).toBeLessThan(24);
 		expect(result.metadata.page.hideSectionIcons).toBe(true);
+	});
+
+	it("maps bounded layout controls into resume metadata for sidebar templates", () => {
+		const mockStore = {
+			fullName: "Layout User",
+			template: "bronzor",
+			cvLanguage: "en",
+			resumeSidebarPosition: "right",
+			resumeSidebarWidth: "wide",
+			resumeDividerStyle: "accent",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.sidebarPosition).toBe("right");
+		expect(result.metadata.layout.sidebarWidth).toBe(42);
+		expect(result.metadata.design.dividerStyle).toBe("accent");
+	});
+
+	it("does not advertise sidebar position controls for split templates until templates apply position", () => {
+		expect(getTemplateLayoutCapabilities("chikorita")).toMatchObject({
+			supportsSidebar: true,
+			supportsSidebarWidth: true,
+			supportsSidebarPosition: false,
+		});
+		expect(getTemplateLayoutCapabilities("bronzor")).toMatchObject({
+			supportsSidebar: true,
+			supportsSidebarWidth: true,
+			supportsSidebarPosition: true,
+		});
+	});
+
+	it("does not write unsupported sidebar position values for split templates", () => {
+		const mockStore = {
+			fullName: "Split User",
+			template: "chikorita",
+			cvLanguage: "en",
+			resumeSidebarPosition: "right",
+			resumeSidebarWidth: "narrow",
+			resumeDividerStyle: "subtle",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.sidebarPosition).toBe("left");
+		expect(result.metadata.layout.sidebarWidth).toBe(28);
+		expect(result.metadata.design.dividerStyle).toBe("subtle");
 	});
 
 	it("maps builder structure visibility into resume sections", () => {

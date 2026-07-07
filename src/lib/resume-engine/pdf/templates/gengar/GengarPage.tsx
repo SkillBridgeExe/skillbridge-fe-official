@@ -15,7 +15,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight, resolvePlacementColor } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolveDividerStyles, resolvePlacementColor } from "../shared/styles";
 
 type GengarStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -197,7 +197,9 @@ const useGengarTemplate = (): GengarTemplate => {
 
 		const baseStyles = StyleSheet.create({
 			page: {
-				flexDirection: r.row,
+				flexDirection: metadata.layout.sidebarPosition === "right"
+					? (r.row === "row" ? "row-reverse" : "row")
+					: r.row,
 				color: foreground,
 				backgroundColor: background,
 				fontFamily: metadata.typography.body.fontFamily,
@@ -268,9 +270,12 @@ const useGengarTemplate = (): GengarTemplate => {
 			sectionHeading: {
 				fontSize: metadata.typography.heading.fontSize * 0.9,
 				color: primary,
-				borderBottomWidth: 1,
-				borderBottomColor: primary,
 				paddingBottom: metrics.gapY(0.125),
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+				}),
 			},
 			item: {
 				rowGap: metrics.gapY(0.125),

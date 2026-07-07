@@ -536,26 +536,17 @@ export const sampleResumeData: ResumeData = {
 	metadata: {
 		template: "azurill",
 		layout: {
-			sidebarWidth: 30,
+			sidebarWidth: 35,
+			sidebarPosition: "left",
 			pages: [
 				{
 					fullWidth: false,
-					main: ["summary", "education", "experience"],
-					sidebar: ["profiles", "skills"],
-				},
-				{
-					fullWidth: false,
-					main: ["019becaf-0b87-769d-98a6-46ccf558c0e8", "awards"],
-					sidebar: ["certifications", "languages", "interests", "references"],
+					main: ["summary", "experience"],
+					sidebar: ["skills", "languages", "references"],
 				},
 				{
 					fullWidth: true,
-					main: ["projects", "publications", "volunteer"],
-					sidebar: [],
-				},
-				{
-					fullWidth: true,
-					main: ["019bef5b-0b3d-7e2a-8a7c-12d9e23a4f6b"],
+					main: ["projects", "education"],
 					sidebar: [],
 				},
 			],
@@ -572,14 +563,15 @@ export const sampleResumeData: ResumeData = {
 			hideSectionIcons: false,
 		},
 		design: {
-			level: {
-				icon: "star",
-				type: "icon",
-			},
+			dividerStyle: "line",
 			colors: {
-				primary: "rgba(0, 132, 209, 1)",
-				text: "rgba(0, 0, 0, 1)",
+				primary: "rgba(14, 165, 233, 1)",
+				text: "rgba(15, 23, 42, 1)",
 				background: "rgba(255, 255, 255, 1)",
+			},
+			level: {
+				icon: "circle",
+				type: "icon",
 			},
 		},
 		typography: {

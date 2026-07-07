@@ -14,7 +14,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolveDividerStyles } from "../shared/styles";
 
 type BronzorStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -222,18 +222,26 @@ const useBronzorTemplate = (): BronzorTemplate => {
 				...r.alignEnd,
 			},
 			section: {
-				flexDirection: r.row,
+				flexDirection: metadata.layout.sidebarPosition === "right"
+					? (r.row === "row" ? "row-reverse" : "row")
+					: r.row,
 				columnGap: metrics.columnGap,
-				borderTopWidth: 1,
-				borderTopColor: primary,
 				paddingTop: metrics.gapY(0.5),
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+					position: "top",
+				}),
 			},
 			sectionHeading: {
 				width: `${metadata.layout.sidebarWidth}%`,
 				flexShrink: 0,
 				fontSize: metadata.typography.heading.fontSize * 0.75,
 				color: primary,
-				textAlign: r.sectionHeadingTextAlign,
+				textAlign: metadata.layout.sidebarPosition === "right"
+					? (r.sectionHeadingTextAlign === "right" ? "left" : "right")
+					: r.sectionHeadingTextAlign,
 			},
 			sectionItems: {
 				flex: 1,

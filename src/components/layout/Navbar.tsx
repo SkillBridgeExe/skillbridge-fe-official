@@ -48,6 +48,7 @@ const UKFlagCircle = () => (
 const NAV_ITEMS = [
   { labelKey: "nav.dashboard", href: "/dashboard" },
   { labelKey: "nav.diagnosis", href: "/diagnosis" },
+  { labelKey: "nav.cvStudio", href: "/cv-studio" },
   { labelKey: "nav.learning", href: "/learning" },
   { labelKey: "nav.interview", href: "/interview" },
   { labelKey: "nav.mentorship", href: "/ecosystem" },

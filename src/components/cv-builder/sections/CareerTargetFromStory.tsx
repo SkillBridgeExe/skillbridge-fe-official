@@ -207,7 +207,7 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
         <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-slate-50/50 space-y-3">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-xs text-slate-500 font-medium">
-            {t("builder.storyReadiness.loading", { defaultValue: "Calculating readiness level..." })}
+            {t("builder.storyReadiness.loading")}
           </span>
         </div>
       )}
@@ -215,7 +215,7 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
       {readinessStatus === "error" && (
         <div className="p-5 border border-rose-100 rounded-lg bg-rose-50/20 text-center space-y-3">
           <p className="text-xs text-rose-700 font-medium">
-            {t("builder.storyReadiness.error", { defaultValue: "Không thể tính toán mức độ sẵn sàng lúc này." })}
+            {t("builder.storyReadiness.error")}
           </p>
           <Button
             size="sm"
@@ -229,7 +229,7 @@ export function CareerTargetFromStory({ draftId, onApply }: CareerTargetFromStor
               setStory("");
             }}
           >
-            {t("builder.storyReadiness.retryBtn", { defaultValue: "Quay lại" })}
+            {t("builder.storyReadiness.retryBtn")}
           </Button>
         </div>
       )}

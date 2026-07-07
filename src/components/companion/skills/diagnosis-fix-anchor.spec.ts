@@ -76,7 +76,8 @@ function createMockDoc(): ResumeDocumentV1 {
     metadata: {
       templateId: "onyx",
       resumeFontScale: "normal",
-      resumeDensity: "comfortable",
+      resumePageMargin: "normal",
+      resumeSectionSpacing: "normal",
       resumeAccentColor: "#0f172a",
       resumeHideSectionIcons: false,
       sectionVisibility: {},
