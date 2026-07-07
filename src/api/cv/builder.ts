@@ -207,6 +207,24 @@ export async function assistantAnalyzeApi(
 }
 
 /**
+ * POST /api/cvs/:id/builder/assistant/smart-questions — Turn-1, LLM role-aware sibling
+ * of analyze. Same request/response shape; BE reads the real role server-side (never
+ * a client-sent role). LLM → nới timeout dài (KHÔNG phải 30s như analyze rule).
+ */
+export async function assistantSmartQuestionsApi(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<CvAssistantTurn> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CvAssistantTurn>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_SMART_QUESTIONS(draftId), input, {
+      timeout: CV_AI_TIMEOUT_MS,
+    }),
+    "Failed to fetch smart questions.",
+  );
+  return envelope.data;
+}
+
+/**
  * POST /api/cvs/:id/builder/assistant/rewrite — Turn-2: viết lại (LLM → timeout dài).
  * Tốn quota CV_BUILDER_REWRITE CHỈ khi trả patch (ok=true).
  */
