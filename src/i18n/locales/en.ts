@@ -2711,6 +2711,8 @@ export default {
         moveDown: "Move down",
         remove: "Remove item",
         unnamedItem: "Untitled item",
+        shareResume: "Share Resume",
+        comingSoon: "Soon",
       },
       confirmRemoveTitle: "Remove item?",
       confirmRemove: "Are you sure you want to remove this item? This action cannot be undone.",

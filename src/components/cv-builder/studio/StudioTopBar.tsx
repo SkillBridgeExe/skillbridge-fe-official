@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -51,7 +51,8 @@ export function StudioTopBar() {
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
   const draftId = useCvBuilderStore((s) => s.draftId);
-  const title = useCvBuilderStore((s) => s.fullName);
+  const title = useCvBuilderStore((s) => s.resumeTitle);
+  const fullName = useCvBuilderStore((s) => s.fullName);
   const renderPdfMutation = useRenderBuilderPdfMutation();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
@@ -121,7 +122,7 @@ export function StudioTopBar() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const safeTitle = (title || "skillbridge-cv")
+        const safeTitle = (title || fullName || "skillbridge-cv")
           .trim()
           .replace(/[^a-z0-9]/gi, '-')
           .replace(/-+/g, '-')
@@ -192,7 +193,7 @@ export function StudioTopBar() {
     const a = document.createElement("a");
     a.href = url;
 
-    const safeTitle = (title || "skillbridge-cv")
+    const safeTitle = (title || fullName || "skillbridge-cv")
       .trim()
       .replace(/[^a-z0-9]/gi, '-')
       .replace(/-+/g, '-')
@@ -278,7 +279,7 @@ export function StudioTopBar() {
 
     try {
       const state = useCvBuilderStore.getState();
-      const newTitle = t("builder.actions.copyOf", { title: title || t("builder.actions.untitledResume") });
+      const newTitle = t("builder.actions.copyOf", { title: title || fullName || t("builder.actions.untitledResume") });
 
       // Call create builder draft to get a new ID
       const newDraft = await createBuilderDraftApi({
@@ -322,7 +323,7 @@ export function StudioTopBar() {
 
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
-    diagnosisStore.setBuilderCvName(title || t("builder.studio.defaultCvName"));
+    diagnosisStore.setBuilderCvName(title || fullName || t("builder.studio.defaultCvName"));
 
     if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
       diagnosisStore.setStep("input");
@@ -330,7 +331,7 @@ export function StudioTopBar() {
         state: {
           source: "builder",
           cvId: draftId,
-          cvName: title || t("builder.studio.defaultCvName"),
+          cvName: title || fullName || t("builder.studio.defaultCvName"),
         },
       });
       return;
@@ -483,7 +484,7 @@ export function StudioTopBar() {
             value={title || ""}
             placeholder={t("builder.studio.untitledResume")}
             aria-label={t("builder.studio.resumeNameLabel")}
-            onChange={(e) => useCvBuilderStore.getState().setBasicInfo("fullName", e.target.value)}
+            onChange={(e) => useCvBuilderStore.getState().setResumeTitle(e.target.value)}
           />
           <PenLine className="w-3.5 h-3.5 text-slate-400 absolute right-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
         </div>
@@ -610,6 +611,12 @@ export function StudioTopBar() {
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2">
               <Upload className="w-4 h-4 text-slate-500" />
               <span>{t("builder.actions.importJson")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="gap-2 opacity-50 cursor-not-allowed">
+              <Share2 className="w-4 h-4 text-slate-400" />
+              <span>{t("builder.actions.shareResume")}</span>
+              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -652,7 +652,8 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     return {
       resumeAccentColor: meta?.accent ?? "#0f172a",
       resumeFontScale: (meta?.fontScale ?? "normal") as ResumeFontScale,
-      resumeDensity: (meta?.density ?? "comfortable") as ResumeDensity,
+      resumePageMargin: (meta?.pageMargin ?? "normal") as ResumeSpacing,
+      resumeSectionSpacing: (meta?.sectionSpacing ?? "normal") as ResumeSpacing,
       resumeHideSectionIcons: false,
     };
   }),
