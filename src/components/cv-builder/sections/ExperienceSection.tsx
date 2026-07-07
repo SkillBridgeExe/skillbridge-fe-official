@@ -2,9 +2,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type WorkExperience } from "@/store/useCvBuilderStore";
 import { Plus, Sparkles, X, RotateCcw, Briefcase } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
 import type { AiGateCode } from "@/lib/ai-input-gate";
@@ -23,7 +24,142 @@ import {
 } from "./achievement-line-patch";
 import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
 import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
+import { useFieldNudge } from "@/hooks/use-field-nudge";
+import { FieldNudge } from "@/components/companion/FieldNudge";
 
+/**
+ * One experience field (description or achievements): AI-suggest + the
+ * companion trigger + its on-blur nudge. Extracted to its own component
+ * (not inline in the parent's .map()) so `useFieldNudge` obeys the Rules
+ * of Hooks regardless of how many experience entries are in the array.
+ */
+function ExperienceFieldBlock({
+  exp,
+  index,
+  field,
+  label,
+  placeholder,
+  textareaClassName,
+  draftId,
+  locale,
+  isLoggedIn,
+  value,
+  onChange,
+  onAiSuggest,
+  aiSuggestPending,
+  gateHintNode,
+  suggestionBoxNode,
+  onApply,
+  onCoachStuck,
+}: {
+  exp: WorkExperience;
+  index: number;
+  field: "description" | "achievements";
+  label: string;
+  placeholder: string;
+  textareaClassName: string;
+  draftId: string | null;
+  locale: "vi" | "en";
+  isLoggedIn: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onAiSuggest: () => void;
+  aiSuggestPending: boolean;
+  gateHintNode: ReactNode;
+  suggestionBoxNode: ReactNode;
+  onApply: (after: string) => void;
+  onCoachStuck: () => void;
+}) {
+  const { t } = useTranslation("diagnosis");
+  const fieldPath = field === "description"
+    ? resumeDocumentPaths.experienceDescription(exp.id)
+    : resumeDocumentPaths.experienceAchievements(exp.id);
+  const contextId = `cvbuilder:experience[${index}].${field}`;
+
+  /** Activate path for the companion — shared by the trigger button and the on-blur nudge. */
+  const openCompanion = () => {
+    useCompanionStore.getState().registerContext({
+      id: contextId,
+      getTurn: () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath,
+          section: "experience",
+          currentValue: value,
+          onApply,
+        },
+      }),
+    });
+    useCompanionStore.getState().activateContext(contextId);
+    useCompanionStore.setState({ bubbleOpen: true });
+  };
+
+  const { count: nudgeCount, handleBlur } = useFieldNudge({
+    draftId,
+    section: "experience",
+    currentValue: value,
+    fieldPath,
+    locale,
+  });
+
+  return (
+    <div className="space-y-2 pt-2">
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        {isLoggedIn && draftId && value.trim() && (
+          <Button
+            variant="ghost" size="sm"
+            className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
+            onClick={onAiSuggest}
+            disabled={aiSuggestPending}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t("builder.aiSuggest")}</span>
+          </Button>
+        )}
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className={textareaClassName}
+      />
+
+      {gateHintNode}
+      {suggestionBoxNode}
+
+      {/* Companion AI trigger + on-blur nudge (same activate path) */}
+      {isLoggedIn && draftId && value.trim() && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+            onClick={openCompanion}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
+          </Button>
+          <FieldNudge count={nudgeCount} onClick={openCompanion} />
+        </div>
+      )}
+      {/* Empty field → no dead-end: open the intake coaching loop */}
+      {isLoggedIn && draftId && !value.trim() && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+          onClick={onCoachStuck}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export function ExperienceSection() {
   const {
@@ -40,7 +176,8 @@ export function ExperienceSection() {
     setPendingProveIt,
   } = useCvBuilderStore();
   const { toast } = useToast();
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
+  const locale = (i18n.language.startsWith("vi") ? "vi" : "en") as "vi" | "en";
 
   // AI suggest states per field per entry
   const [activeSuggestion, setActiveSuggestion] = useState<{
@@ -467,162 +604,60 @@ export function ExperienceSection() {
               </div>
 
             {/* Description/Responsibilities field */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between">
-                <Label>{t("builder.fields.expDescription")}</Label>
-                {isLoggedIn && draftId && exp.description.trim() && (
-                  <Button 
-                    variant="ghost" size="sm" 
-                    className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
-                    onClick={() => handleAiSuggest(exp.id, "description", exp.description)}
-                    disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("builder.aiSuggest")}</span>
-                  </Button>
-                )}
-              </div>
-              <Textarea
-                value={exp.description}
-                onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
-                placeholder={t("builder.ph.expDescription")}
-                className="text-[13px] resize-none h-24 font-sans"
-              />
-
-              {/* Input-gate hint for Description */}
-              {renderGateHint(exp.id, "description")}
-
-              {/* Suggestion Box for Description */}
-              {((pendingTarget?.id === exp.id && pendingTarget?.field === "description") ||
-                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) &&
+            <ExperienceFieldBlock
+              exp={exp}
+              index={index}
+              field="description"
+              label={t("builder.fields.expDescription")}
+              placeholder={t("builder.ph.expDescription")}
+              textareaClassName="text-[13px] resize-none h-24 font-sans"
+              draftId={draftId}
+              locale={locale}
+              isLoggedIn={isLoggedIn}
+              value={exp.description}
+              onChange={(value) => updateExperience(exp.id, "description", value)}
+              onAiSuggest={() => handleAiSuggest(exp.id, "description", exp.description)}
+              aiSuggestPending={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "description"}
+              gateHintNode={renderGateHint(exp.id, "description")}
+              suggestionBoxNode={
+                ((pendingTarget?.id === exp.id && pendingTarget?.field === "description") ||
+                  (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "description")) &&
                 renderSuggestionBox(exp.id, "description")
               }
-
-              {/* Companion AI trigger for description (has text → rewrite skill) */}
-              {isLoggedIn && draftId && exp.description.trim() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                  disabled={!draftId || !exp.description.trim()}
-                  onClick={() => {
-                    const id = `cvbuilder:experience[${index}].description`;
-                    useCompanionStore.getState().registerContext({
-                      id,
-                      getTurn: () => ({
-                        skill: "cv_builder",
-                        props: {
-                          draftId,
-                          fieldPath: resumeDocumentPaths.experienceDescription(exp.id),
-                          section: "experience",
-                          currentValue: exp.description,
-                          onApply: (after: string) => {
-                            updateExperience(exp.id, "description", after);
-                            clearSectionEvaluation("experience");
-                          },
-                        },
-                      }),
-                    });
-                    useCompanionStore.getState().activateContext(id);
-                    useCompanionStore.setState({ bubbleOpen: true });
-                  }}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
-                </Button>
-              )}
-              {/* Empty field → no dead-end: open the intake coaching loop */}
-              {isLoggedIn && draftId && !exp.description.trim() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                  onClick={() => routeFieldToIntakeCoach(index, "description", "gate")}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
-                </Button>
-              )}
-            </div>
+              onApply={(after) => {
+                updateExperience(exp.id, "description", after);
+                clearSectionEvaluation("experience");
+              }}
+              onCoachStuck={() => routeFieldToIntakeCoach(index, "description", "gate")}
+            />
 
             {/* Achievements field */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between">
-                <Label>{t("builder.fields.keyAchievements")}</Label>
-                {isLoggedIn && draftId && exp.achievements.trim() && (
-                  <Button 
-                    variant="ghost" size="sm" 
-                    className="h-6 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-1.5"
-                    onClick={() => handleAiSuggest(exp.id, "achievements", exp.achievements)}
-                    disabled={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("builder.aiSuggest")}</span>
-                  </Button>
-                )}
-              </div>
-              <Textarea
-                value={exp.achievements}
-                onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)}
-                placeholder={t("builder.ph.keyAchievements")}
-                className="text-[13px] resize-none h-20 font-sans"
-              />
-
-              {/* Input-gate hint for Achievements */}
-              {renderGateHint(exp.id, "achievements")}
-
-              {/* Suggestion Box for Achievements */}
-              {((pendingTarget?.id === exp.id && pendingTarget?.field === "achievements") ||
-                (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) &&
+            <ExperienceFieldBlock
+              exp={exp}
+              index={index}
+              field="achievements"
+              label={t("builder.fields.keyAchievements")}
+              placeholder={t("builder.ph.keyAchievements")}
+              textareaClassName="text-[13px] resize-none h-20 font-sans"
+              draftId={draftId}
+              locale={locale}
+              isLoggedIn={isLoggedIn}
+              value={exp.achievements}
+              onChange={(value) => updateExperience(exp.id, "achievements", value)}
+              onAiSuggest={() => handleAiSuggest(exp.id, "achievements", exp.achievements)}
+              aiSuggestPending={aiRewrite.isPending && pendingTarget?.id === exp.id && pendingTarget?.field === "achievements"}
+              gateHintNode={renderGateHint(exp.id, "achievements")}
+              suggestionBoxNode={
+                ((pendingTarget?.id === exp.id && pendingTarget?.field === "achievements") ||
+                  (activeSuggestion?.entryId === exp.id && activeSuggestion?.field === "achievements")) &&
                 renderSuggestionBox(exp.id, "achievements")
               }
-
-              {/* Companion AI trigger for achievements (has text → rewrite skill) */}
-              {isLoggedIn && draftId && exp.achievements.trim() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                  disabled={!draftId || !exp.achievements.trim()}
-                  onClick={() => {
-                    const id = `cvbuilder:experience[${index}].achievements`;
-                    useCompanionStore.getState().registerContext({
-                      id,
-                      getTurn: () => ({
-                        skill: "cv_builder",
-                        props: {
-                          draftId,
-                          fieldPath: resumeDocumentPaths.experienceAchievements(exp.id),
-                          section: "experience",
-                          currentValue: exp.achievements,
-                          onApply: (after: string) => {
-                            updateExperience(exp.id, "achievements", after);
-                            clearSectionEvaluation("experience");
-                          },
-                        },
-                      }),
-                    });
-                    useCompanionStore.getState().activateContext(id);
-                    useCompanionStore.setState({ bubbleOpen: true });
-                  }}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
-                </Button>
-              )}
-              {/* Empty field → no dead-end: open the intake coaching loop */}
-              {isLoggedIn && draftId && !exp.achievements.trim() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                  onClick={() => routeFieldToIntakeCoach(index, "achievements", "gate")}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("companion.intake.coachStuck", { defaultValue: "Don't know what to write? Tell me" })}</span>
-                </Button>
-              )}
-            </div>
+              onApply={(after) => {
+                updateExperience(exp.id, "achievements", after);
+                clearSectionEvaluation("experience");
+              }}
+              onCoachStuck={() => routeFieldToIntakeCoach(index, "achievements", "gate")}
+            />
 
           </div>
           </SectionItemCard>

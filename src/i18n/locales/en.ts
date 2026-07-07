@@ -2764,6 +2764,7 @@ export default {
     companion: {
       analyze: "AI Assistant",
       analyzing: "Analyzing...",
+      nudgeSuggestions: "suggestions",
       send: "Send",
       apply: "Apply",
       discard: "Discard",

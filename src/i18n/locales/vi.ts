@@ -2736,6 +2736,7 @@ export default {
     companion: {
       analyze: "Trợ lý AI",
       analyzing: "Đang phân tích...",
+      nudgeSuggestions: "gợi ý",
       send: "Gửi",
       apply: "Áp dụng",
       discard: "Bỏ",
