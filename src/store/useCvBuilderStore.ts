@@ -18,6 +18,10 @@ export type ResumeFontFamily = "inter" | "serif" | "roboto" | "merriweather" | "
 export type ResumeLineHeight = "tight" | "normal" | "relaxed";
 export type ResumeSpacing = "compact" | "normal" | "spacious";
 
+export type ProfileLink = { id: string; network: string; url: string; label?: string; visible?: boolean; };
+export type CustomField = { id: string; name: string; value: string; icon?: string; };
+export type LanguageDetail = { id: string; name: string; proficiency: string; };
+
 export interface Education {
   id: string;
   school: string;
@@ -89,6 +93,10 @@ export interface PendingProveItTarget {
 let _idCounter = 0;
 const uid = () => `cv_${Date.now()}_${++_idCounter}`;
 
+const emptyProfileLink = (): ProfileLink => ({ id: uid(), network: "", url: "", visible: true });
+const emptyCustomField = (): CustomField => ({ id: uid(), name: "", value: "", icon: "" });
+const emptyLanguageDetail = (): LanguageDetail => ({ id: uid(), name: "", proficiency: "" });
+
 const emptyEducation = (): Education => ({
   id: uid(), school: "", major: "", degree: "", startYear: "", endYear: "", gpa: "", coursework: "", achievements: "",
 });
@@ -115,6 +123,9 @@ export interface CvBuilderState {
   linkedin: string;
   portfolio: string;
   github: string;
+  photoUrl: string;
+  profileLinks: ProfileLink[];
+  customFields: CustomField[];
 
   // Section 2: Career Target
   targetPosition: string;
@@ -139,6 +150,7 @@ export interface CvBuilderState {
   softSkills: string[];
   tools: string[];
   languages: string[];
+  languageDetails: LanguageDetail[];
 
   // Section 8: Certifications
   certifications: Certification[];
@@ -173,7 +185,13 @@ export interface CvBuilderState {
   seedSourceCvId: string | null;
 
   // Actions — Basic Info
-  setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github">, value: string) => void;
+  setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github" | "photoUrl">, value: string) => void;
+  addProfileLink: () => void;
+  updateProfileLink: (id: string, field: keyof ProfileLink, value: string | boolean) => void;
+  removeProfileLink: (id: string) => void;
+  addCustomField: () => void;
+  updateCustomField: (id: string, field: keyof CustomField, value: string) => void;
+  removeCustomField: (id: string) => void;
 
   // Actions — Career Target
   setCareerTarget: (field: keyof Pick<CvBuilderState, "targetPosition" | "careerLevel" | "industry">, value: string) => void;
@@ -207,6 +225,9 @@ export interface CvBuilderState {
   setSkills: (field: keyof Pick<CvBuilderState, "technicalSkills" | "softSkills" | "tools" | "languages">, value: string[]) => void;
   addSkill: (field: keyof Pick<CvBuilderState, "technicalSkills" | "softSkills" | "tools" | "languages">, skill: string) => void;
   removeSkill: (field: keyof Pick<CvBuilderState, "technicalSkills" | "softSkills" | "tools" | "languages">, skill: string) => void;
+  addLanguageDetail: () => void;
+  updateLanguageDetail: (id: string, field: keyof LanguageDetail, value: string) => void;
+  removeLanguageDetail: (id: string) => void;
 
   // Actions — Certifications
   addCertification: () => void;
@@ -249,6 +270,9 @@ export interface CvBuilderState {
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
 
+  // Actions — Import/Restore backup (W64)
+  importState: (newState: Partial<CvBuilderState>) => void;
+
   // ── Companion state (mascot state machine) ──
   mascotState: 'idle' | 'asking' | 'thinking' | 'presenting';
   companionField: string | null;
@@ -290,12 +314,13 @@ export interface CvBuilderState {
 
 const initialState = {
   fullName: "", email: "", phone: "", location: "", linkedin: "", portfolio: "", github: "",
+  photoUrl: "", profileLinks: [] as ProfileLink[], customFields: [] as CustomField[],
   targetPosition: "", careerLevel: "" as const, industry: "",
   summary: "", summaryMode: "manual" as SummaryMode,
   education: [emptyEducation()],
   experience: [emptyExperience()],
   projects: [emptyProject()],
-  technicalSkills: [], softSkills: [], tools: [], languages: [],
+  technicalSkills: [], softSkills: [], tools: [], languages: [], languageDetails: [] as LanguageDetail[],
   certifications: [],
   activeSection: 0,
   template: "azurill",
@@ -399,6 +424,24 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     credentialUrl: "",
   }));
 
+  const profileLinks: ProfileLink[] = [];
+  const customFields: CustomField[] = [];
+  (doc.contact?.links ?? []).forEach((l) => {
+    const lLower = (l.label ?? "").toLowerCase();
+    const isNetwork = ["linkedin", "github", "portfolio", "facebook", "twitter", "website"].some((n) => lLower.includes(n));
+    if (isNetwork) {
+      profileLinks.push({ id: uid(), network: l.label || "Link", url: l.url, visible: true });
+    } else {
+      customFields.push({ id: uid(), name: l.label || "Field", value: l.url });
+    }
+  });
+
+  const languageDetails = (doc.skills?.languages ?? []).map((lang) => ({
+    id: uid(),
+    name: lang,
+    proficiency: "",
+  }));
+
   return {
     fullName: doc.contact?.name ?? "",
     email: doc.contact?.email ?? "",
@@ -407,6 +450,9 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     linkedin,
     github,
     portfolio,
+    photoUrl: "",
+    profileLinks,
+    customFields,
     summary: doc.summary ?? "",
     summaryMode: "manual" as SummaryMode,
     education: education.length ? education : [emptyEducation()],
@@ -416,6 +462,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     softSkills: doc.skills?.soft ?? [],
     tools: doc.skills?.tools ?? [],
     languages: doc.skills?.languages ?? [],
+    languageDetails,
     certifications,
     cvLanguage: (doc.language === "vi" ? "vi" : "en") as CvLanguage,
     // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
@@ -434,6 +481,17 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
 
   // Basic Info
   setBasicInfo: (field, value) => set({ [field]: value }),
+  addProfileLink: () => set((s) => ({ profileLinks: [...s.profileLinks, emptyProfileLink()] })),
+  updateProfileLink: (id, field, value) => set((s) => ({
+    profileLinks: s.profileLinks.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+  })),
+  removeProfileLink: (id) => set((s) => ({ profileLinks: s.profileLinks.filter((p) => p.id !== id) })),
+
+  addCustomField: () => set((s) => ({ customFields: [...s.customFields, emptyCustomField()] })),
+  updateCustomField: (id, field, value) => set((s) => ({
+    customFields: s.customFields.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
+  })),
+  removeCustomField: (id) => set((s) => ({ customFields: s.customFields.filter((c) => c.id !== id) })),
 
   // Career Target
   setCareerTarget: (field, value) => set({ [field]: value }),
@@ -534,6 +592,12 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     [field]: (s[field] as string[]).filter((sk) => sk !== skill),
   })),
 
+  addLanguageDetail: () => set((s) => ({ languageDetails: [...s.languageDetails, emptyLanguageDetail()] })),
+  updateLanguageDetail: (id, field, value) => set((s) => ({
+    languageDetails: s.languageDetails.map((l) => (l.id === id ? { ...l, [field]: value } : l)),
+  })),
+  removeLanguageDetail: (id) => set((s) => ({ languageDetails: s.languageDetails.filter((l) => l.id !== id) })),
+
   // Certifications
   addCertification: () => set((s) => ({ certifications: [...s.certifications, emptyCertification()] })),
   updateCertification: (id, field, value) => set((s) => ({
@@ -617,7 +681,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setTemplate: (template) => set(() => {
     const meta = TEMPLATE_PREVIEWS[template as Template];
     if (meta) {
-      return { 
+      return {
         template,
         resumeAccentColor: meta.accent,
         resumeFontScale: meta.fontScale,
@@ -674,6 +738,28 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setSectionPlacement: (section, placement) => set((s) => ({
     sectionPlacement: { ...s.sectionPlacement, [section]: placement },
   })),
+
+  importState: (newState) => set((s) => {
+    const cleanState = Object.fromEntries(
+      Object.entries(newState).filter(([, value]) => typeof value !== "function"),
+    ) as Partial<CvBuilderState>;
+
+    return {
+      ...cleanState,
+      draftId: s.draftId,
+      sectionEvaluations: {},
+      sectionFixFeedback: {},
+      mascotState: "idle",
+      companionField: null,
+      companionSection: null,
+      companionTurn: null,
+      companionAnswers: [],
+      companionPatch: null,
+      companionMessage: null,
+      companionReaskCount: 0,
+      pendingProveIt: null,
+    };
+  }),
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),

@@ -15,7 +15,20 @@ const SUGGESTIONS = {
 };
 
 export function SkillsSection() {
-  const { technicalSkills, softSkills, tools, languages, addSkill, removeSkill, targetPosition, draftId } = useCvBuilderStore();
+  const {
+    technicalSkills,
+    softSkills,
+    tools,
+    languages,
+    languageDetails,
+    addSkill,
+    removeSkill,
+    targetPosition,
+    draftId,
+    addLanguageDetail,
+    updateLanguageDetail,
+    removeLanguageDetail,
+  } = useCvBuilderStore();
   const { t, i18n } = useTranslation("diagnosis");
   const [inputs, setInputs] = useState({ technicalSkills: "", softSkills: "", tools: "", languages: "" });
   const isLoggedIn = useAuthStore(
@@ -40,7 +53,7 @@ export function SkillsSection() {
     if (role.includes("frontend") || role.includes("react")) return SUGGESTIONS["Frontend Developer"];
     return [];
   };
-  
+
   const suggestions = getSuggestions();
 
   // Lookup from the values already subscribed above — calling the store hook
@@ -85,7 +98,7 @@ export function SkillsSection() {
         </div>
       )}
 
-      {(["technicalSkills", "softSkills", "tools", "languages"] as const).map((field) => (
+      {(["technicalSkills", "softSkills", "tools"] as const).map((field) => (
         <div key={field} className="space-y-2">
           <Label>{t(`builder.skills.${field}`)}</Label>
           <div className="flex flex-wrap gap-2 mb-2">
@@ -111,6 +124,44 @@ export function SkillsSection() {
           />
         </div>
       ))}
+
+      {/* Language Details */}
+      <div className="space-y-3 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-between">
+          <Label className="font-semibold">{t("builder.skills.languages") || "Languages"}</Label>
+          <button
+            type="button"
+            onClick={addLanguageDetail}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t("builder.actions.addItem")}
+          </button>
+        </div>
+        {(languageDetails || []).map((lang) => (
+          <div key={lang.id} className="flex items-center gap-2">
+            <Input
+              className="flex-1"
+              placeholder={t("builder.skills.languageNamePlaceholder") || "Language (e.g. English)"}
+              value={lang.name}
+              onChange={(e) => updateLanguageDetail(lang.id, "name", e.target.value)}
+            />
+            <Input
+              className="w-1/3"
+              placeholder={t("builder.skills.proficiencyPlaceholder") || "Proficiency (e.g. Native)"}
+              value={lang.proficiency}
+              onChange={(e) => updateLanguageDetail(lang.id, "proficiency", e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => removeLanguageDetail(lang.id)}
+              className="shrink-0 text-slate-400 hover:text-red-500 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

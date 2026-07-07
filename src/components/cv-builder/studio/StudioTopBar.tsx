@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
@@ -11,7 +12,8 @@ import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
-
+import { useRef } from "react";
+import { createBuilderDraftApi } from "@/api/cv/builder";
 export function StudioTopBar() {
   const { t } = useTranslation("diagnosis");
   const hasApiSession = useHasApiSession();
@@ -122,6 +124,159 @@ export function StudioTopBar() {
     }
 
     navigate("/diagnosis");
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportJson = () => {
+    const state = useCvBuilderStore.getState();
+    const excludedKeys = new Set([
+      "draftId",
+      "sectionEvaluations",
+      "sectionFixFeedback",
+      "mascotState",
+      "companionField",
+      "companionSection",
+      "companionTurn",
+      "companionAnswers",
+      "companionPatch",
+      "companionMessage",
+      "companionReaskCount",
+      "pendingProveIt",
+    ]);
+    const exportData = Object.fromEntries(
+      Object.entries(state).filter(([key, value]) => !excludedKeys.has(key) && typeof value !== "function"),
+    );
+
+    // Add version schema indicator for W64 requirements
+    const payload = {
+      $schema: "skillbridge-cv-v1",
+      exportedAt: new Date().toISOString(),
+      ...exportData
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    const safeTitle = (title || "skillbridge-cv")
+      .trim()
+      .replace(/[^a-z0-9]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, "")
+      .toLowerCase() || "skillbridge-cv";
+
+    const date = new Date().toISOString().split("T")[0];
+    a.download = `${safeTitle}-${date}.skillbridge-resume.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const data = JSON.parse(content);
+
+        if (!data.$schema || !data.education || !data.experience) {
+          throw new Error("Invalid format");
+        }
+
+        const sectionsCount =
+          (data.experience?.length || 0) +
+          (data.education?.length || 0) +
+          (data.projects?.length || 0);
+
+        const confirmMessage = [
+          t("builder.import.confirmTitle"),
+          t("builder.import.confirmDesc"),
+          t("builder.import.stats", { sections: sectionsCount }),
+        ].join("\n\n");
+
+        if (window.confirm(confirmMessage)) {
+          const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = data;
+          useCvBuilderStore.getState().importState(stateToImport);
+          toast({
+            title: t("builder.import.success", "Backup imported successfully."),
+          });
+          // Clear draftId if we want to save it as a new draft, but spec says "overwrite your current resume data".
+          // So we trigger a save to the current draftId.
+          if (triggerSaveRef.current) {
+            await triggerSaveRef.current();
+          }
+        }
+      } catch {
+        toast({
+          title: t("builder.import.invalidFormat", "Invalid backup file format."),
+          variant: "destructive",
+        });
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.onerror = () => {
+      toast({
+        title: t("builder.import.readError", "Failed to read backup file."),
+        variant: "destructive",
+      });
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDuplicate = async () => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
+
+    // Check if there are unsaved changes
+    if (!(await flushDraftChanges())) return;
+
+    toast({
+      title: t("builder.actions.duplicateResume"),
+      description: "Duplicating...",
+    });
+
+    try {
+      const state = useCvBuilderStore.getState();
+      const newTitle = t("builder.actions.copyOf", { title: title || t("builder.actions.untitledResume") });
+
+      // Call create builder draft to get a new ID
+      const newDraft = await createBuilderDraftApi({
+        title: newTitle,
+        language: state.cvLanguage,
+        targetRole: useDiagnosisStore.getState().targetRole || undefined,
+      });
+
+      // Update store with new draftId and title
+      state.setDraftId(newDraft.id);
+
+      // Save full canonical document to the new draft
+      if (triggerSaveRef.current) {
+         await triggerSaveRef.current();
+      }
+
+      toast({
+        title: t("builder.actions.duplicateSuccess"),
+        description: t("builder.actions.duplicateSuccessDesc", { title: newTitle }),
+      });
+
+      navigate("/diagnosis?mode=builder", { replace: true });
+    } catch (error) {
+      toast({
+        title: t("builder.actions.duplicateFailed"),
+        description: getApiErrorMessage(error, t("builder.actions.duplicateFailedDesc")),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAnalyze = async () => {
@@ -398,6 +553,43 @@ export function StudioTopBar() {
           )}
           <span className="hidden sm:inline">{t("builder.downloadCv")}</span>
         </Button>
+
+        {/* More Options Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+              aria-label={t("builder.actions.more", "More actions")}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handleDuplicate} className="gap-2">
+              <Copy className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.duplicateResume")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleExportJson} className="gap-2">
+              <FileJson className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.exportJson", "Export JSON Backup")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2">
+              <Upload className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.importJson", "Import JSON Backup")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept=".json,application/json"
+          onChange={handleImportJson}
+        />
       </div>
     </header>
   );

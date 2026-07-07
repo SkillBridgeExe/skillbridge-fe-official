@@ -277,8 +277,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	return {
 		picture: {
-			hidden: true, // We don't have a picture field in CvBuilderStore currently
-			url: "",
+			hidden: !store.photoUrl,
+			url: store.photoUrl || "",
 			size: 64,
 			rotation: 0,
 			aspectRatio: 1,
@@ -319,6 +319,32 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 							},
 						]
 					: []),
+				...(store.profileLinks ?? [])
+					.filter((profile) => profile.visible !== false && hasText(profile.url))
+					.map((profile) => {
+						const network = profile.network || profile.label || "Link";
+						const networkKey = network.toLowerCase();
+						return {
+							id: profile.id,
+							icon: networkKey.includes("linkedin")
+								? "linkedin-logo"
+								: networkKey.includes("github")
+									? "github-logo"
+									: networkKey.includes("portfolio") || networkKey.includes("website")
+										? "globe"
+										: "link",
+							text: profile.label || network || profile.url,
+							link: profile.url,
+						};
+					}),
+				...(store.customFields ?? [])
+					.filter((field) => hasText(field.name, field.value))
+					.map((field) => ({
+						id: field.id,
+						icon: field.icon || "list",
+						text: [field.name, field.value].filter(Boolean).join(": "),
+						link: "",
+					})),
 			],
 		},
 		summary: {
@@ -411,14 +437,24 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Ngôn ngữ" : "Languages",
 				icon: "globe",
 				columns: 1,
-				hidden: store.languages.length === 0, // Languages isn't in visibility toggle yet
-				items: store.languages.map((lang, index) => ({
-					id: stableId("language", index, lang),
-					hidden: false,
-					language: lang,
-					fluency: "",
-					level: 0,
-				})),
+				hidden: (store.languageDetails?.length || store.languages?.length || 0) === 0,
+				items: store.languageDetails?.length
+					? store.languageDetails
+							.filter((lang) => hasText(lang.name, lang.proficiency))
+							.map((lang) => ({
+								id: lang.id,
+								hidden: false,
+								language: lang.name,
+								fluency: lang.proficiency,
+								level: 0,
+							}))
+					: (store.languages ?? []).map((lang, index) => ({
+							id: stableId("language", index, lang),
+							hidden: false,
+							language: lang,
+							fluency: "",
+							level: 0,
+						})),
 			},
 			interests: {
 				title: "Interests",

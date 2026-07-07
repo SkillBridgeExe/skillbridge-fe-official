@@ -102,6 +102,38 @@ describe("useCvBuilderStore.pendingProveIt", () => {
   });
 });
 
+describe("useCvBuilderStore.importState", () => {
+  it("imports serializable resume data while preserving the active draft session", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setDraftId("draft-1");
+    useCvBuilderStore.getState().setSectionEvaluation("summary", {
+      score: 60,
+      label: "Needs improvement",
+      checklist: [],
+      missing: ["Add more evidence"],
+    });
+
+    useCvBuilderStore.getState().importState({
+      fullName: "Imported Candidate",
+      photoUrl: "https://example.com/photo.jpg",
+      profileLinks: [{ id: "profile-1", network: "GitHub", url: "https://github.com/imported", visible: true }],
+      languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+    });
+
+    expect(useCvBuilderStore.getState()).toMatchObject({
+      draftId: "draft-1",
+      fullName: "Imported Candidate",
+      photoUrl: "https://example.com/photo.jpg",
+      profileLinks: [{ id: "profile-1", network: "GitHub", url: "https://github.com/imported", visible: true }],
+      languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+      sectionEvaluations: {},
+      sectionFixFeedback: {},
+      mascotState: "idle",
+      pendingProveIt: null,
+    });
+  });
+});
+
 describe("useCvBuilderStore.resumeAppearance", () => {
   it("updates resume appearance controls and resets them to defaults", () => {
     const store = useCvBuilderStore.getState();

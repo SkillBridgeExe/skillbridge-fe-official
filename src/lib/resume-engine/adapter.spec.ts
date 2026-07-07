@@ -65,6 +65,55 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.basics.customFields[1].icon).toBe("github-logo");
 	});
 
+	it("maps profile photo, dynamic links, custom fields, and language proficiency", () => {
+		const mockStore = {
+			fullName: "John Doe",
+			targetPosition: "Software Engineer",
+			email: "",
+			phone: "",
+			location: "",
+			portfolio: "",
+			linkedin: "",
+			github: "",
+			photoUrl: "https://example.com/photo.jpg",
+			profileLinks: [
+				{ id: "profile-1", network: "Medium", url: "https://medium.com/@john", label: "Writing", visible: true },
+				{ id: "profile-hidden", network: "Website", url: "https://hidden.example.com", visible: false },
+			],
+			customFields: [{ id: "field-1", name: "Work authorization", value: "Vietnam", icon: "passport" }],
+			cvLanguage: "en",
+			template: "onyx",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			languageDetails: [{ id: "lang-1", name: "English", proficiency: "Professional" }],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.picture).toMatchObject({
+			hidden: false,
+			url: "https://example.com/photo.jpg",
+		});
+		expect(result.basics.customFields).toEqual([
+			expect.objectContaining({ id: "profile-1", text: "Writing", link: "https://medium.com/@john" }),
+			expect.objectContaining({ id: "field-1", text: "Work authorization: Vietnam", link: "" }),
+		]);
+		expect(result.basics.customFields).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: "profile-hidden" })]),
+		);
+		expect(result.sections.languages.hidden).toBe(false);
+		expect(result.sections.languages.items).toEqual([
+			expect.objectContaining({ id: "lang-1", language: "English", fluency: "Professional" }),
+		]);
+	});
+
 	it("should handle HTML wrapping for multi-line text", () => {
 		const mockStore = {
 			fullName: "",
