@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Template } from "@/lib/resume-engine/schema/templates";
 import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
@@ -37,6 +36,12 @@ const FONT_SCALE_OPTIONS: Array<{ value: ResumeFontScale; labelKey: string }> = 
   { value: "normal", labelKey: "normal" },
   { value: "large", labelKey: "large" },
 ];
+
+const SIDEBAR_WIDTH_OPTIONS = [
+  { value: "narrow", labelKey: "narrowLabel" },
+  { value: "normal", labelKey: "normalLabel" },
+  { value: "wide", labelKey: "wideLabel" },
+] as const;
 
 const ACCENT_COLORS = [
   { value: "#0f172a", label: "Slate" },
@@ -79,6 +84,7 @@ export function StudioInspector() {
   const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
   const currentTemplate = resolveBuilderTemplate(store.template);
+  const layoutCapabilities = getTemplateLayoutCapabilities(currentTemplate);
   const sectionLabels: Record<CvBuilderSectionKey, string> = {
     summary: t("builder.tabSummary"),
     experience: t("builder.tabExperience"),
@@ -296,7 +302,7 @@ export function StudioInspector() {
               </div>
               <div className="space-y-3">
                 {(() => {
-                  const capabilities = getTemplateLayoutCapabilities(store.template as Template);
+                  const capabilities = layoutCapabilities;
 
                   if (!capabilities.supportsSidebar) {
                     return (
@@ -388,6 +394,70 @@ export function StudioInspector() {
                     checked={!store.resumeHideSectionIcons}
                     onCheckedChange={(checked) => store.setResumeHideSectionIcons(!checked)}
                   />
+                </div>
+
+                {layoutCapabilities.supportsSidebar ? (
+                  <>
+                    {layoutCapabilities.supportsSidebarPosition && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          {t("builder.inspector.sidebarPosition")}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <SegmentedButton
+                            active={store.resumeSidebarPosition === "left"}
+                            onClick={() => store.setResumeSidebarPosition("left")}
+                          >
+                            <span className="block text-center">{t("builder.inspector.sidebarLeft")}</span>
+                          </SegmentedButton>
+                          <SegmentedButton
+                            active={store.resumeSidebarPosition === "right"}
+                            onClick={() => store.setResumeSidebarPosition("right")}
+                          >
+                            <span className="block text-center">{t("builder.inspector.sidebarRight")}</span>
+                          </SegmentedButton>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {t("builder.inspector.sidebarWidth")}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {SIDEBAR_WIDTH_OPTIONS.map((option) => (
+                          <SegmentedButton
+                            key={option.value}
+                            active={store.resumeSidebarWidth === option.value}
+                            onClick={() => store.setResumeSidebarWidth(option.value)}
+                          >
+                            <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
+                          </SegmentedButton>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-2 text-[11px] leading-relaxed text-slate-500">
+                    {t("builder.inspector.noSidebarHelper")}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {t("builder.inspector.dividerStyle")}
+                  </p>
+                  <Select value={store.resumeDividerStyle} onValueChange={(v) => store.setResumeDividerStyle(v as typeof store.resumeDividerStyle)}>
+                    <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
+                      <SelectValue placeholder={t("builder.inspector.selectDivider")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="line">{t("builder.inspector.dividerLine")}</SelectItem>
+                      <SelectItem value="accent">{t("builder.inspector.dividerAccent")}</SelectItem>
+                      <SelectItem value="subtle">{t("builder.inspector.dividerSubtle")}</SelectItem>
+                      <SelectItem value="none">{t("builder.inspector.dividerNone")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </AccordionContent>

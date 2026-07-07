@@ -14,7 +14,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight, resolvePlacementColor } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolvePlacementColor , resolveDividerStyles } from "../shared/styles";
 
 type GlalieStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -245,8 +245,11 @@ const useGlalieTemplate = (): GlalieTemplate => {
 				rowGap: metrics.gapY(0.25),
 			},
 			sectionHeading: {
-				borderBottomWidth: 1,
-				borderBottomColor: primary,
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+				}),
 			},
 			item: {
 				rowGap: metrics.gapY(0.125),

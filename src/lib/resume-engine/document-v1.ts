@@ -80,6 +80,9 @@ export interface ResumeDocumentV1 {
     resumeDensity?: "compact" | "comfortable";
     resumePageMargin?: "compact" | "normal" | "spacious";
     resumeSectionSpacing?: "compact" | "normal" | "spacious";
+    resumeSidebarPosition?: "left" | "right";
+    resumeSidebarWidth?: "narrow" | "normal" | "wide";
+    resumeDividerStyle?: "none" | "line" | "accent" | "subtle";
     resumeAccentColor: string;
     resumeHideSectionIcons: boolean;
     sectionVisibility: Record<string, boolean>;
@@ -125,6 +128,9 @@ export function createDefaultResumeDocumentV1(): ResumeDocumentV1 {
       resumeLineHeight: "normal",
       resumePageMargin: "normal",
       resumeSectionSpacing: "normal",
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
       resumeAccentColor: "#0f172a",
       resumeHideSectionIcons: false,
       sectionVisibility: {

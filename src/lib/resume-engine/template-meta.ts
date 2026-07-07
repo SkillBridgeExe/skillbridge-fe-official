@@ -33,8 +33,11 @@ export const TEMPLATE_PREVIEWS: Record<Template, TemplatePreviewMeta> = {
 
 export function getTemplateLayoutCapabilities(template: Template) {
   const meta = TEMPLATE_PREVIEWS[template];
+  const supportsSidebar = meta?.layout === "sidebar" || meta?.layout === "split";
   return {
-    supportsSidebar: meta?.layout === "sidebar" || meta?.layout === "split",
+    supportsSidebar,
+    supportsSidebarPosition: meta?.layout === "sidebar",
+    supportsSidebarWidth: supportsSidebar,
     supportsSectionIcons: true,
     supportsDividerStyle: true,
   };

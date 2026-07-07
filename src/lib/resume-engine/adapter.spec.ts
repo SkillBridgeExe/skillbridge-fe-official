@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { adaptCvBuilderStoreToResumeData, adaptResumeDataToCanonical, adaptCanonicalToResumeData } from "./adapter";
 import type { CvBuilderState } from "@/store/useCvBuilderStore";
+import { getTemplateLayoutCapabilities } from "./template-meta";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -148,6 +149,71 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.page.gapY).toBeLessThan(16);
 		expect(result.metadata.page.marginY).toBeLessThan(24);
 		expect(result.metadata.page.hideSectionIcons).toBe(true);
+	});
+
+	it("maps bounded layout controls into resume metadata for sidebar templates", () => {
+		const mockStore = {
+			fullName: "Layout User",
+			template: "bronzor",
+			cvLanguage: "en",
+			resumeSidebarPosition: "right",
+			resumeSidebarWidth: "wide",
+			resumeDividerStyle: "accent",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.sidebarPosition).toBe("right");
+		expect(result.metadata.layout.sidebarWidth).toBe(42);
+		expect(result.metadata.design.dividerStyle).toBe("accent");
+	});
+
+	it("does not advertise sidebar position controls for split templates until templates apply position", () => {
+		expect(getTemplateLayoutCapabilities("chikorita")).toMatchObject({
+			supportsSidebar: true,
+			supportsSidebarWidth: true,
+			supportsSidebarPosition: false,
+		});
+		expect(getTemplateLayoutCapabilities("bronzor")).toMatchObject({
+			supportsSidebar: true,
+			supportsSidebarWidth: true,
+			supportsSidebarPosition: true,
+		});
+	});
+
+	it("does not write unsupported sidebar position values for split templates", () => {
+		const mockStore = {
+			fullName: "Split User",
+			template: "chikorita",
+			cvLanguage: "en",
+			resumeSidebarPosition: "right",
+			resumeSidebarWidth: "narrow",
+			resumeDividerStyle: "subtle",
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.sidebarPosition).toBe("left");
+		expect(result.metadata.layout.sidebarWidth).toBe(28);
+		expect(result.metadata.design.dividerStyle).toBe("subtle");
 	});
 
 	it("maps builder structure visibility into resume sections", () => {

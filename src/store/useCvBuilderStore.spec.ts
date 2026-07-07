@@ -111,6 +111,9 @@ describe("useCvBuilderStore.resumeAppearance", () => {
     store.setResumePageMargin("compact");
     store.setResumeSectionSpacing("compact");
     store.setResumeHideSectionIcons(true);
+    store.setResumeSidebarPosition("right");
+    store.setResumeSidebarWidth("wide");
+    store.setResumeDividerStyle("accent");
 
     expect(useCvBuilderStore.getState()).toMatchObject({
       resumeAccentColor: "#2563eb",
@@ -118,6 +121,9 @@ describe("useCvBuilderStore.resumeAppearance", () => {
       resumePageMargin: "compact",
       resumeSectionSpacing: "compact",
       resumeHideSectionIcons: true,
+      resumeSidebarPosition: "right",
+      resumeSidebarWidth: "wide",
+      resumeDividerStyle: "accent",
     });
 
     useCvBuilderStore.getState().reset();
@@ -128,6 +134,9 @@ describe("useCvBuilderStore.resumeAppearance", () => {
       resumePageMargin: "normal",
       resumeSectionSpacing: "normal",
       resumeHideSectionIcons: false,
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
     });
   });
 

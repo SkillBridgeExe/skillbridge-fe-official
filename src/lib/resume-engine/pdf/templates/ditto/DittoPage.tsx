@@ -14,7 +14,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight } from "../shared/styles";
+import { composeStyles, headerNameLineHeight  } from "../shared/styles";
 
 type DittoStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;

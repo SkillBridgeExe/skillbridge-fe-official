@@ -15,7 +15,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight, resolvePlacementColor } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolvePlacementColor , resolveDividerStyles } from "../shared/styles";
 
 type DitgarStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -271,9 +271,12 @@ const useDitgarTemplate = (): DitgarTemplate => {
 			sectionHeading: {
 				fontSize: metadata.typography.heading.fontSize * 0.9,
 				color: primary,
-				borderBottomWidth: 1,
-				borderBottomColor: primary,
 				paddingBottom: metrics.gapY(0.125),
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+				}),
 			},
 			item: {
 				rowGap: metrics.gapY(0.125),

@@ -153,6 +153,9 @@ export interface CvBuilderState {
   resumeLineHeight: ResumeLineHeight;
   resumePageMargin: ResumeSpacing;
   resumeSectionSpacing: ResumeSpacing;
+  resumeSidebarPosition: "left" | "right";
+  resumeSidebarWidth: "narrow" | "normal" | "wide";
+  resumeDividerStyle: "none" | "line" | "accent" | "subtle";
   resumeHideSectionIcons: boolean;
   sectionVisibility: Record<CvBuilderSectionKey, boolean>;
   sectionOrder: CvBuilderSectionKey[];
@@ -221,6 +224,9 @@ export interface CvBuilderState {
   setResumeLineHeight: (lineHeight: ResumeLineHeight) => void;
   setResumePageMargin: (margin: ResumeSpacing) => void;
   setResumeSectionSpacing: (spacing: ResumeSpacing) => void;
+  setResumeSidebarPosition: (val: "left" | "right") => void;
+  setResumeSidebarWidth: (val: "narrow" | "normal" | "wide") => void;
+  setResumeDividerStyle: (val: "none" | "line" | "accent" | "subtle") => void;
   setResumeHideSectionIcons: (hide: boolean) => void;
   setSectionVisibility: (section: CvBuilderSectionKey, visible: boolean) => void;
   moveSection: (section: CvBuilderSectionKey, direction: "up" | "down") => void;
@@ -297,6 +303,9 @@ const initialState = {
   resumeLineHeight: "normal" as ResumeLineHeight,
   resumePageMargin: "normal" as ResumeSpacing,
   resumeSectionSpacing: "normal" as ResumeSpacing,
+  resumeSidebarPosition: "left" as const,
+  resumeSidebarWidth: "normal" as const,
+  resumeDividerStyle: "line" as const,
   resumeHideSectionIcons: false,
   sectionVisibility: {
     summary: true,
@@ -614,6 +623,9 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setResumeLineHeight: (resumeLineHeight) => set({ resumeLineHeight }),
   setResumePageMargin: (resumePageMargin) => set({ resumePageMargin }),
   setResumeSectionSpacing: (resumeSectionSpacing) => set({ resumeSectionSpacing }),
+  setResumeSidebarPosition: (resumeSidebarPosition) => set({ resumeSidebarPosition }),
+  setResumeSidebarWidth: (resumeSidebarWidth) => set({ resumeSidebarWidth }),
+  setResumeDividerStyle: (resumeDividerStyle) => set({ resumeDividerStyle }),
   setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
   setSectionVisibility: (section, visible) => set((s) => ({
     sectionVisibility: { ...s.sectionVisibility, [section]: visible },

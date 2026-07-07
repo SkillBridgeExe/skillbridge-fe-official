@@ -62,6 +62,12 @@ const resolvePageMargin = (margin: unknown) =>
 const resolveSectionSpacing = (spacing: unknown) =>
 	spacing === "compact" || spacing === "spacious" || spacing === "normal" ? SECTION_SPACING[spacing] : SECTION_SPACING.normal;
 
+const resolveSidebarWidth = (width: unknown) => {
+	if (width === "narrow") return 28;
+	if (width === "wide") return 42;
+	return 35; // normal
+};
+
 const resolveFontFamily = (family: unknown) => {
 	if (typeof family === "string" && family in FONT_FAMILY) {
 		return FONT_FAMILY[family as keyof typeof FONT_FAMILY];
@@ -117,6 +123,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 	const lineHeight = resolveLineHeight(store.resumeLineHeight);
 	const margin = resolvePageMargin(store.resumePageMargin);
 	const spacing = resolveSectionSpacing(store.resumeSectionSpacing);
+	const sidebarWidth = resolveSidebarWidth(store.resumeSidebarWidth);
 	const accentColor = resolveAccentColor(store.resumeAccentColor);
 	const templateName = resolveTemplate(store.template);
 	const layoutCaps = getTemplateLayoutCapabilities(templateName);
@@ -385,7 +392,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 		metadata: {
 			template: templateName,
 			layout: {
-				sidebarWidth: 30,
+				sidebarWidth: layoutCaps.supportsSidebar ? sidebarWidth : 0,
+				sidebarPosition: layoutCaps.supportsSidebarPosition && store.resumeSidebarPosition === "right" ? "right" : "left",
 				pages: [
 					{
 						fullWidth: false,
@@ -408,6 +416,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 			design: {
 				level: { icon: "star", type: "hidden" },
 				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
+				dividerStyle: store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line",
 			},
 			typography: {
 				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: fontScale.body, lineHeight: lineHeight },
@@ -631,6 +640,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 			template: "onyx",
 			layout: {
 				sidebarWidth: 30,
+				sidebarPosition: "left",
 				pages: [
 					{
 						fullWidth: false,
@@ -640,7 +650,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				],
 			},
 			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false },
-			design: { level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
+			design: { dividerStyle: "line", level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
 			typography: { body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 }, heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 } },
 			notes: "",
 			styleRules: [],

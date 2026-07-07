@@ -48,3 +48,27 @@ export const resolvePlacementColor = ({
 
 	return defaultForeground;
 };
+
+export type ResolveDividerStylesOptions = {
+	dividerStyle?: "none" | "line" | "accent" | "subtle";
+	accentColor: string;
+	textColor: string;
+	position?: "top" | "bottom";
+};
+
+export const resolveDividerStyles = ({ dividerStyle, accentColor, textColor, position = "bottom" }: ResolveDividerStylesOptions): Style => {
+	const borderProp = position === "bottom" ? "borderBottomWidth" : "borderTopWidth";
+	const borderColorProp = position === "bottom" ? "borderBottomColor" : "borderTopColor";
+
+	switch (dividerStyle) {
+		case "none":
+			return { [borderProp]: 0 } as Style;
+		case "accent":
+			return { [borderProp]: 2, [borderColorProp]: accentColor } as Style;
+		case "subtle":
+			return { [borderProp]: 1, [borderColorProp]: textColor } as Style;
+		case "line":
+		default:
+			return { [borderProp]: 1, [borderColorProp]: accentColor } as Style;
+	}
+};
