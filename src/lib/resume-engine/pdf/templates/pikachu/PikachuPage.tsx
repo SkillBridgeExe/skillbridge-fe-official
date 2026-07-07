@@ -14,7 +14,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight, resolvePlacementColor } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolvePlacementColor , resolveDividerStyles } from "../shared/styles";
 
 type PikachuStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -288,9 +288,12 @@ const usePikachuTemplate = (): PikachuTemplate => {
 			},
 			headerDivider: {
 				rowGap: metrics.gapY(0.125),
-				borderBottomWidth: 1,
-				borderBottomColor: background,
 				paddingBottom: metrics.gapY(0.5),
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: background,
+					textColor: foreground,
+				}),
 			},
 			headerIdentity: {
 				...r.headerIdentity,

@@ -2,6 +2,7 @@ import type { CanonicalCvDocument } from "@shared/api";
 import type { CvBuilderState } from "@/store/useCvBuilderStore";
 import type { ResumeData } from "./schema/resume/data";
 import { templateSchema, type Template } from "./schema/templates";
+import { getTemplateLayoutCapabilities } from "./template-meta";
 
 const hasText = (...values: Array<string | null | undefined>): boolean =>
 	values.some((value) => Boolean(value?.trim()));
@@ -23,16 +24,56 @@ const FONT_SCALE = {
 	large: { body: 12, heading: 16 },
 } as const;
 
-const DENSITY = {
-	compact: { gap: 12, margin: 18 },
-	comfortable: { gap: 16, margin: 24 },
+const LINE_HEIGHT = {
+	tight: 1.25,
+	normal: 1.5,
+	relaxed: 1.75,
+} as const;
+
+const PAGE_MARGIN = {
+	compact: 18,
+	normal: 24,
+	spacious: 32,
+} as const;
+
+const SECTION_SPACING = {
+	compact: 12,
+	normal: 16,
+	spacious: 24,
+} as const;
+
+const FONT_FAMILY = {
+	inter: "Inter",
+	serif: "Lora",
+	roboto: "Roboto",
+	merriweather: "Merriweather",
+	mono: "Roboto Mono",
 } as const;
 
 const resolveFontScale = (scale: unknown) =>
 	scale === "small" || scale === "large" || scale === "normal" ? FONT_SCALE[scale] : FONT_SCALE.normal;
 
-const resolveDensity = (density: unknown) =>
-	density === "compact" || density === "comfortable" ? DENSITY[density] : DENSITY.comfortable;
+const resolveLineHeight = (lineHeight: unknown) =>
+	lineHeight === "tight" || lineHeight === "relaxed" || lineHeight === "normal" ? LINE_HEIGHT[lineHeight] : LINE_HEIGHT.normal;
+
+const resolvePageMargin = (margin: unknown) =>
+	margin === "compact" || margin === "spacious" || margin === "normal" ? PAGE_MARGIN[margin] : PAGE_MARGIN.normal;
+
+const resolveSectionSpacing = (spacing: unknown) =>
+	spacing === "compact" || spacing === "spacious" || spacing === "normal" ? SECTION_SPACING[spacing] : SECTION_SPACING.normal;
+
+const resolveSidebarWidth = (width: unknown) => {
+	if (width === "narrow") return 28;
+	if (width === "wide") return 42;
+	return 35; // normal
+};
+
+const resolveFontFamily = (family: unknown) => {
+	if (typeof family === "string" && family in FONT_FAMILY) {
+		return FONT_FAMILY[family as keyof typeof FONT_FAMILY];
+	}
+	return FONT_FAMILY.inter;
+};
 
 const resolveAccentColor = (color: unknown) =>
 	typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0f172a";
@@ -48,16 +89,91 @@ const normalizeIdPart = (value: unknown): string =>
 const stableId = (prefix: string, ...parts: unknown[]): string =>
 	[prefix, ...parts.map(normalizeIdPart)].join("_");
 
+const stripBuilderHtml = (value: string): string =>
+	value
+		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+		.replace(/<li\b[^>]*>/gi, "- ")
+		.replace(/<\/li>/gi, "\n")
+		.replace(/<br\s*\/?>/gi, "\n")
+		.replace(/<\/p>/gi, "\n")
+		.replace(/<[^>]*>/g, "")
+		.replace(/&nbsp;/g, " ")
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.trim();
+
+const isAllowedLink = (url: string): boolean => {
+	try {
+		const parsed = new URL(url);
+		return parsed.protocol === "https:" || parsed.protocol === "http:";
+	} catch {
+		return false;
+	}
+};
+
+const renderInlineText = (value: string): string => {
+	let escaped = escapeHtml(value);
+	escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_match, label, url) => {
+		const safeUrl = String(url);
+		if (!isAllowedLink(safeUrl)) return escapeHtml(String(label));
+		return `<a href="${escapeHtml(safeUrl)}">${String(label)}</a>`;
+	});
+	escaped = escaped.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+	escaped = escaped.replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>");
+	return escaped;
+};
+
+const bulletPattern = /^\s*[-•*]\s+(.+)$/;
+
+const renderPlainBlock = (lines: string[]): string => {
+	if (lines.every((line) => bulletPattern.test(line))) {
+		const items = lines
+			.map((line) => line.match(bulletPattern)?.[1]?.trim() ?? "")
+			.filter(Boolean)
+			.map((line) => `<li>${renderInlineText(line)}</li>`)
+			.join("");
+		return items ? `<ul>${items}</ul>` : "";
+	}
+
+	return `<p>${lines.map(renderInlineText).join("<br/>")}</p>`;
+};
+
+const plainTextToHtml = (text: string): string => {
+	const normalizedText = text.replace(/\r\n/g, "\n");
+	if (!normalizedText.split("\n").some((line) => bulletPattern.test(line))) {
+		return `<p>${normalizedText.split("\n").map(renderInlineText).join("<br/>")}</p>`;
+	}
+
+	const blocks: string[][] = [];
+	let current: string[] = [];
+
+	for (const line of normalizedText.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			if (current.length) blocks.push(current);
+			current = [];
+			continue;
+		}
+		current.push(trimmed);
+	}
+
+	if (current.length) blocks.push(current);
+
+	return blocks.map(renderPlainBlock).join("");
+};
+
 /**
- * Wraps simple text with HTML paragraphs if it's not already HTML,
- * because Resume Engine expects HTML content.
+ * Wraps builder plain text with HTML for the Resume Engine renderer.
+ * Builder state intentionally stores text/markdown-lite, not raw HTML.
  */
 function toHtml(text: string | undefined): string {
 	if (!text) return "";
-	if (text.includes("<p>") || text.includes("<ul>") || text.includes("<li>")) return text;
-	
-	// Convert newlines to paragraphs/breaks or simply wrap in <p>
-	return `<p>${escapeHtml(text).replace(/\n/g, "<br/>")}</p>`;
+
+	return plainTextToHtml(stripBuilderHtml(text));
 }
 
 /**
@@ -77,9 +193,29 @@ function htmlToBullets(html: string | undefined): string[] {
  * schema expected by the @resume-engine/pdf renderer.
  */
 export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeData {
+	const fontFamily = resolveFontFamily(store.resumeFontFamily);
 	const fontScale = resolveFontScale(store.resumeFontScale);
-	const density = resolveDensity(store.resumeDensity);
+	const lineHeight = resolveLineHeight(store.resumeLineHeight);
+	const margin = resolvePageMargin(store.resumePageMargin);
+	const spacing = resolveSectionSpacing(store.resumeSectionSpacing);
+	const sidebarWidth = resolveSidebarWidth(store.resumeSidebarWidth);
 	const accentColor = resolveAccentColor(store.resumeAccentColor);
+	const templateName = resolveTemplate(store.template);
+	const layoutCaps = getTemplateLayoutCapabilities(templateName);
+
+	let mainSections: string[] = [];
+	let sidebarSections: string[] = [];
+
+	const safeSectionOrder = store.sectionOrder || [];
+	const safeSectionPlacement = store.sectionPlacement || {};
+
+	if (layoutCaps.supportsSidebar) {
+		mainSections = safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "main" : ["experience", "education", "projects"].includes(k));
+		sidebarSections = [...safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "sidebar" : ["summary", "skills", "certifications"].includes(k)), "languages"];
+	} else {
+		mainSections = [...safeSectionOrder, "languages"];
+		sidebarSections = [];
+	}
 
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
@@ -141,8 +277,8 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	return {
 		picture: {
-			hidden: true, // We don't have a picture field in CvBuilderStore currently
-			url: "",
+			hidden: !store.photoUrl,
+			url: store.photoUrl || "",
 			size: 64,
 			rotation: 0,
 			aspectRatio: 1,
@@ -183,6 +319,32 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 							},
 						]
 					: []),
+				...(store.profileLinks ?? [])
+					.filter((profile) => profile.visible !== false && hasText(profile.url))
+					.map((profile) => {
+						const network = profile.network || profile.label || "Link";
+						const networkKey = network.toLowerCase();
+						return {
+							id: profile.id,
+							icon: networkKey.includes("linkedin")
+								? "linkedin-logo"
+								: networkKey.includes("github")
+									? "github-logo"
+									: networkKey.includes("portfolio") || networkKey.includes("website")
+										? "globe"
+										: "link",
+							text: profile.label || network || profile.url,
+							link: profile.url,
+						};
+					}),
+				...(store.customFields ?? [])
+					.filter((field) => hasText(field.name, field.value))
+					.map((field) => ({
+						id: field.id,
+						icon: field.icon || "list",
+						text: [field.name, field.value].filter(Boolean).join(": "),
+						link: "",
+					})),
 			],
 		},
 		summary: {
@@ -275,14 +437,24 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				title: store.cvLanguage === "vi" ? "Ngôn ngữ" : "Languages",
 				icon: "globe",
 				columns: 1,
-				hidden: store.languages.length === 0, // Languages isn't in visibility toggle yet
-				items: store.languages.map((lang, index) => ({
-					id: stableId("language", index, lang),
-					hidden: false,
-					language: lang,
-					fluency: "",
-					level: 0,
-				})),
+				hidden: (store.languageDetails?.length || store.languages?.length || 0) === 0,
+				items: store.languageDetails?.length
+					? store.languageDetails
+							.filter((lang) => hasText(lang.name, lang.proficiency))
+							.map((lang) => ({
+								id: lang.id,
+								hidden: false,
+								language: lang.name,
+								fluency: lang.proficiency,
+								level: 0,
+							}))
+					: (store.languages ?? []).map((lang, index) => ({
+							id: stableId("language", index, lang),
+							hidden: false,
+							language: lang,
+							fluency: "",
+							level: 0,
+						})),
 			},
 			interests: {
 				title: "Interests",
@@ -329,22 +501,23 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 		},
 		customSections: [],
 		metadata: {
-			template: resolveTemplate(store.template),
+			template: templateName,
 			layout: {
-				sidebarWidth: 30,
+				sidebarWidth: layoutCaps.supportsSidebar ? sidebarWidth : 0,
+				sidebarPosition: layoutCaps.supportsSidebarPosition && store.resumeSidebarPosition === "right" ? "right" : "left",
 				pages: [
 					{
 						fullWidth: false,
-						main: store.sectionOrder ? store.sectionOrder.filter(k => ["experience", "education", "projects"].includes(k)) : ["experience", "education", "projects"],
-						sidebar: [...(store.sectionOrder ? store.sectionOrder.filter(k => ["summary", "skills", "certifications"].includes(k)) : ["summary", "skills", "certifications"]), "languages"],
+						main: mainSections,
+						sidebar: sidebarSections,
 					},
 				],
 			},
 			page: {
-				gapX: density.gap,
-				gapY: density.gap,
-				marginX: density.margin,
-				marginY: density.margin,
+				gapX: spacing,
+				gapY: spacing,
+				marginX: margin,
+				marginY: margin,
 				format: "a4",
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
 				hideLinkUnderline: false,
@@ -354,10 +527,11 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 			design: {
 				level: { icon: "star", type: "hidden" },
 				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
+				dividerStyle: store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line",
 			},
 			typography: {
-				body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: fontScale.body, lineHeight: 1.5 },
-				heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: 1.5 },
+				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: fontScale.body, lineHeight: lineHeight },
+				heading: { fontFamily: fontFamily, fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: lineHeight },
 			},
 			notes: "",
 			styleRules: [],
@@ -577,6 +751,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 			template: "onyx",
 			layout: {
 				sidebarWidth: 30,
+				sidebarPosition: "left",
 				pages: [
 					{
 						fullWidth: false,
@@ -586,7 +761,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 				],
 			},
 			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false },
-			design: { level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
+			design: { dividerStyle: "line", level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
 			typography: { body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 }, heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 } },
 			notes: "",
 			styleRules: [],

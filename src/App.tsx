@@ -79,6 +79,7 @@ const App = () => (
               <Route path="/dashboard" element={<Pages.Dashboard />} />
               <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
+              <Route path="/cv-studio" element={<Pages.ResumeLibrary />} />
               <Route path="/learning" element={<Pages.Learning />} />
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
               <Route path="/practice" element={<Navigate to="/interview" replace />} />

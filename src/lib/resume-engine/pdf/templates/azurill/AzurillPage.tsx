@@ -20,7 +20,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight, resolvePlacementColor } from "../shared/styles";
+import { composeStyles, headerNameLineHeight, resolvePlacementColor  } from "../shared/styles";
 
 type AzurillStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;

@@ -16,8 +16,8 @@ export function CertificationsSection() {
   return (
     <div className="space-y-6">
       {certifications.length > 0 ? certifications.map((cert, index) => {
-        const title = cert.name || t("builder.ph.certName", { defaultValue: "Certification Name" });
-        const subtitle = cert.organization || t("builder.entry.certification", { defaultValue: "Certification" });
+        const title = cert.name || t("builder.ph.certName");
+        const subtitle = cert.organization || t("builder.entry.certification");
 
         return (
           <div key={cert.id} id={`certifications-${cert.id}`}>
@@ -62,8 +62,8 @@ export function CertificationsSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <Award className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.certificationsTitle", { defaultValue: "No certifications" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.certificationsDesc", { defaultValue: "Add professional certificates." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.certificationsTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.certificationsDesc")}</p>
           <Button onClick={addCertification} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.certification")}

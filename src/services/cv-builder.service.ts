@@ -66,6 +66,7 @@ import type {
 // ── Snapshot của builder store (subset service cần) ────────────────
 
 export interface BuilderSnapshot {
+  resumeTitle: string;
   fullName: string;
   email: string;
   phone: string;
