@@ -1,9 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, normalizeToBulletText } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, RotateCcw, LayoutTemplate } from "lucide-react";
+import { Plus, Sparkles, RotateCcw, LayoutTemplate, List as ListIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -119,6 +119,11 @@ export function ProjectsSection() {
     setNotice(null);
   };
 
+  const handleConvertToBullets = (id: string, currentText: string) => {
+    if (!currentText.trim()) return;
+    updateProject(id, "description", normalizeToBulletText(currentText));
+  };
+
   return (
     <div className="space-y-6">
       {projects.length > 0 ? projects.map((proj, index) => {
@@ -221,12 +226,23 @@ export function ProjectsSection() {
                       ? t("builder.generating")
                       : t("builder.turnIntoBullets")}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+                    onClick={() => handleConvertToBullets(proj.id, proj.description)}
+                    title={t("builder.richText.convertToBullets")}
+                    aria-label={t("builder.richText.convertToBullets")}
+                  >
+                    <ListIcon className="w-3 h-3" />
+                    <span>{t("builder.richText.convertToBullets")}</span>
+                  </Button>
                 </div>
-                <Textarea
+                <RichTextEditor
                   value={proj.description}
-                  onChange={(e) => updateProject(proj.id, "description", e.target.value)}
+                  onChange={(val) => updateProject(proj.id, "description", val)}
                   placeholder={t("builder.ph.projectDescription")}
-                  className="text-[13px] resize-none h-20"
+                  className="text-[13px] min-h-[96px] font-sans"
                 />
 
                 {/* Input-gate hint / fallback note */}

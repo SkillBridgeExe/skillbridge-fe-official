@@ -1,8 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, normalizeToBulletText } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, GraduationCap } from "lucide-react";
+import { Plus, GraduationCap, List as ListIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { SectionItemCard } from "./SectionItemCard";
@@ -13,6 +13,11 @@ export function EducationSection() {
   const { t } = useTranslation("diagnosis");
 
   useScrollToNewItem(education, "education");
+
+  const handleConvertToBullets = (id: string, currentText: string) => {
+    if (!currentText.trim()) return;
+    updateEducation(id, "achievements", normalizeToBulletText(currentText));
+  };
 
   return (
     <div className="space-y-6">
@@ -62,13 +67,26 @@ export function EducationSection() {
                 <Label>{t("builder.fields.gpa")}</Label>
                 <Input value={edu.gpa} onChange={(e) => updateEducation(edu.id, "gpa", e.target.value)} placeholder={t("builder.ph.gpa")} />
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("builder.fields.eduAchievements")}</Label>
-                <Textarea
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>{t("builder.fields.eduAchievements")}</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+                    onClick={() => handleConvertToBullets(edu.id, edu.achievements)}
+                    title={t("builder.richText.convertToBullets")}
+                    aria-label={t("builder.richText.convertToBullets")}
+                  >
+                    <ListIcon className="w-3 h-3" />
+                    <span>{t("builder.richText.convertToBullets")}</span>
+                  </Button>
+                </div>
+                <RichTextEditor
                   value={edu.achievements}
-                  onChange={(e) => updateEducation(edu.id, "achievements", e.target.value)}
+                  onChange={(val) => updateEducation(edu.id, "achievements", val)}
                   placeholder={t("builder.ph.eduAchievements")}
-                  className="text-[13px] resize-none h-20"
+                  className="text-[13px] min-h-[96px] font-sans"
                 />
               </div>
             </div>

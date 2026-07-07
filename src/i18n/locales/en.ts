@@ -2520,6 +2520,8 @@ export default {
       rendering: "Preparing PDF...",
       headerSubtitle:
         "Build a professional, ATS-friendly CV from your profile.",
+      collapseSection: "Collapse section",
+      expandSection: "Expand section",
       saveDraft: "Save Draft",
       downloadCv: "Download CV",
       analyzeCv: "Analyze CV",
@@ -2555,6 +2557,17 @@ export default {
       toastAiSuggestFailed: "AI suggestion failed",
       toastSomethingWrong: "Something went wrong.",
       turnIntoBullets: "Rewrite as CV bullets",
+      richText: {
+        bold: "Bold",
+        italic: "Italic",
+        convertToBullets: "Convert to bullets",
+        addLink: "Add link",
+        clearFormatting: "Clear formatting",
+        linkUrl: "Link URL",
+        apply: "Apply",
+        sampleText: "text",
+        helper: "Safe resume formatting: bullets, bold, italic, and links are stored as plain text.",
+      },
       noCerts: "No certifications added yet.",
       remove: "Remove",
       review: {

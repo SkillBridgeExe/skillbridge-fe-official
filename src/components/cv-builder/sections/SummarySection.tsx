@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Sparkles, Edit3, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -273,18 +273,18 @@ export function SummarySection() {
           )}
         </div>
         <div className="relative">
-          <Textarea
-            className="min-h-[120px] resize-none text-[13px] pb-7"
+          <RichTextEditor
+            className="min-h-[120px] pb-7"
             placeholder={
               summaryMode === "ai"
                 ? t("builder.summaryAiPlaceholder")
                 : t("builder.summaryManualPlaceholder")
             }
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={(val) => setSummary(val)}
           />
           <div className={cn(
-            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors",
+            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors pointer-events-none",
             summary.length > 500 ? "text-amber-500" : "text-slate-400"
           )}>
             {summary.length} {t("builder.characters")}

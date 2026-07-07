@@ -274,6 +274,19 @@ describe("useCvBuilderStore.structure", () => {
     expect(useCvBuilderStore.getState().sectionOrder[1]).toBe("summary");
   });
 
+  it("tracks collapsed section state without changing section content", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.getState().setSummary("Built APIs");
+
+    useCvBuilderStore.getState().toggleSectionCollapse("summary");
+    expect(useCvBuilderStore.getState().collapsedSections.summary).toBe(true);
+    expect(useCvBuilderStore.getState().summary).toBe("Built APIs");
+
+    useCvBuilderStore.getState().setSectionCollapsed("summary", false);
+    expect(useCvBuilderStore.getState().collapsedSections.summary).toBe(false);
+    expect(useCvBuilderStore.getState().summary).toBe("Built APIs");
+  });
+
   it("resets section order to default", () => {
     useCvBuilderStore.getState().reset();
     useCvBuilderStore.getState().moveSection("experience", "up");

@@ -101,6 +101,66 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.summary.content).toBe("<p>React &lt; Node &amp; Express</p>");
 	});
 
+	it("converts plain-text bullets into safe resume HTML lists", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "- Built REST APIs\n- Reduced load time",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toBe("<ul><li>Built REST APIs</li><li>Reduced load time</li></ul>");
+	});
+
+	it("normalizes legacy builder HTML before sending content to the PDF renderer", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "<ul><li>Built REST APIs</li><li>Reduced load time</li></ul><script>alert(1)</script>",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toBe("<ul><li>Built REST APIs</li><li>Reduced load time</li></ul>");
+		expect(result.summary.content).not.toContain("<script>");
+		expect(result.summary.content).not.toContain("alert");
+	});
+
+	it("renders markdown-lite formatting while escaping unsupported HTML", () => {
+		const mockStore = {
+			fullName: "",
+			summary: "**React** _intern_ [repo](https://github.com/acme/app) <script>alert(1)</script>",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		expect(result.summary.content).toContain("<strong>React</strong>");
+		expect(result.summary.content).toContain("<em>intern</em>");
+		expect(result.summary.content).toContain('<a href="https://github.com/acme/app">repo</a>');
+		expect(result.summary.content).not.toContain("<script>");
+		expect(result.summary.content).not.toContain("alert");
+	});
+
 	it("falls back legacy builder templates to a valid resume-engine template", () => {
 		const mockStore = {
 			fullName: "Legacy Template User",

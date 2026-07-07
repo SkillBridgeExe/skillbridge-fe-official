@@ -89,16 +89,91 @@ const normalizeIdPart = (value: unknown): string =>
 const stableId = (prefix: string, ...parts: unknown[]): string =>
 	[prefix, ...parts.map(normalizeIdPart)].join("_");
 
+const stripBuilderHtml = (value: string): string =>
+	value
+		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+		.replace(/<li\b[^>]*>/gi, "- ")
+		.replace(/<\/li>/gi, "\n")
+		.replace(/<br\s*\/?>/gi, "\n")
+		.replace(/<\/p>/gi, "\n")
+		.replace(/<[^>]*>/g, "")
+		.replace(/&nbsp;/g, " ")
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.trim();
+
+const isAllowedLink = (url: string): boolean => {
+	try {
+		const parsed = new URL(url);
+		return parsed.protocol === "https:" || parsed.protocol === "http:";
+	} catch {
+		return false;
+	}
+};
+
+const renderInlineText = (value: string): string => {
+	let escaped = escapeHtml(value);
+	escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_match, label, url) => {
+		const safeUrl = String(url);
+		if (!isAllowedLink(safeUrl)) return escapeHtml(String(label));
+		return `<a href="${escapeHtml(safeUrl)}">${String(label)}</a>`;
+	});
+	escaped = escaped.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+	escaped = escaped.replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>");
+	return escaped;
+};
+
+const bulletPattern = /^\s*[-•*]\s+(.+)$/;
+
+const renderPlainBlock = (lines: string[]): string => {
+	if (lines.every((line) => bulletPattern.test(line))) {
+		const items = lines
+			.map((line) => line.match(bulletPattern)?.[1]?.trim() ?? "")
+			.filter(Boolean)
+			.map((line) => `<li>${renderInlineText(line)}</li>`)
+			.join("");
+		return items ? `<ul>${items}</ul>` : "";
+	}
+
+	return `<p>${lines.map(renderInlineText).join("<br/>")}</p>`;
+};
+
+const plainTextToHtml = (text: string): string => {
+	const normalizedText = text.replace(/\r\n/g, "\n");
+	if (!normalizedText.split("\n").some((line) => bulletPattern.test(line))) {
+		return `<p>${normalizedText.split("\n").map(renderInlineText).join("<br/>")}</p>`;
+	}
+
+	const blocks: string[][] = [];
+	let current: string[] = [];
+
+	for (const line of normalizedText.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			if (current.length) blocks.push(current);
+			current = [];
+			continue;
+		}
+		current.push(trimmed);
+	}
+
+	if (current.length) blocks.push(current);
+
+	return blocks.map(renderPlainBlock).join("");
+};
+
 /**
- * Wraps simple text with HTML paragraphs if it's not already HTML,
- * because Resume Engine expects HTML content.
+ * Wraps builder plain text with HTML for the Resume Engine renderer.
+ * Builder state intentionally stores text/markdown-lite, not raw HTML.
  */
 function toHtml(text: string | undefined): string {
 	if (!text) return "";
-	if (text.includes("<p>") || text.includes("<ul>") || text.includes("<li>")) return text;
-	
-	// Convert newlines to paragraphs/breaks or simply wrap in <p>
-	return `<p>${escapeHtml(text).replace(/\n/g, "<br/>")}</p>`;
+
+	return plainTextToHtml(stripBuilderHtml(text));
 }
 
 /**

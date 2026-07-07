@@ -64,7 +64,7 @@ export function SectionItemCard({
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
-          <div className={cn("flex items-center gap-0.5", !expanded && "opacity-0 group-hover:opacity-100 transition-opacity")}>
+          <div className="flex items-center gap-0.5">
             {onMoveUp && (
               <Button
                 variant="ghost"
@@ -102,7 +102,7 @@ export function SectionItemCard({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-7 w-7 text-slate-400 hover:text-primary transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
+              className="h-7 w-7 text-slate-400 hover:text-primary transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
@@ -117,7 +117,7 @@ export function SectionItemCard({
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7 text-slate-400 hover:text-red-500 transition-opacity", !expanded && "opacity-0 group-hover:opacity-100")}
+            className="h-7 w-7 text-slate-400 hover:text-red-500 transition-colors"
             onClick={handleRemove}
             disabled={!canRemove}
             aria-label={t("builder.actions.remove")}

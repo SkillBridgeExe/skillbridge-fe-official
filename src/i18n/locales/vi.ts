@@ -2494,6 +2494,8 @@ export default {
       rendering: "Đang tạo PDF...",
       headerSubtitle:
         "Tạo CV chuyên nghiệp, thân thiện với ATS từ hồ sơ của bạn.",
+      collapseSection: "Thu gọn mục",
+      expandSection: "Mở rộng mục",
       saveDraft: "Lưu nháp",
       downloadCv: "Tải CV",
       analyzeCv: "Phân tích CV",
@@ -2529,6 +2531,17 @@ export default {
       toastAiSuggestFailed: "AI đề xuất thất bại",
       toastSomethingWrong: "Đã có lỗi xảy ra.",
       turnIntoBullets: "Viết lại thành bullet CV",
+      richText: {
+        bold: "In đậm",
+        italic: "In nghiêng",
+        convertToBullets: "Chuyển thành bullet",
+        addLink: "Thêm liên kết",
+        clearFormatting: "Xóa định dạng",
+        linkUrl: "URL liên kết",
+        apply: "Áp dụng",
+        sampleText: "văn bản",
+        helper: "Định dạng CV an toàn: bullet, đậm, nghiêng và link được lưu dạng text thuần.",
+      },
       noCerts: "Chưa thêm chứng chỉ nào.",
       remove: "Xóa",
       review: {

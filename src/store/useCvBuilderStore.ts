@@ -160,6 +160,7 @@ export interface CvBuilderState {
   sectionVisibility: Record<CvBuilderSectionKey, boolean>;
   sectionOrder: CvBuilderSectionKey[];
   sectionPlacement: Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
+  collapsedSections: Record<string, boolean>;
 
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
@@ -233,6 +234,8 @@ export interface CvBuilderState {
   moveSectionWithinGroup: (section: CvBuilderSectionKey, direction: "up" | "down", group: CvBuilderSectionKey[]) => void;
   resetSectionOrder: () => void;
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
+  toggleSectionCollapse: (sectionId: string) => void;
+  setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -317,6 +320,7 @@ const initialState = {
   } as Record<CvBuilderSectionKey, boolean>,
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   sectionPlacement: {} as Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>,
+  collapsedSections: {} as Record<string, boolean>,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
@@ -419,6 +423,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     sectionEvaluations: {},
     sectionFixFeedback: {},
     activeSection: 0,
+    collapsedSections: {},
     seededFromDiagnosis: true,
     seedSourceCvId: null,
   };
@@ -558,6 +563,12 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
 
   // UI
   setActiveSection: (section) => set({ activeSection: section }),
+  toggleSectionCollapse: (sectionId) => set((s) => ({
+    collapsedSections: { ...s.collapsedSections, [sectionId]: !s.collapsedSections[sectionId] }
+  })),
+  setSectionCollapsed: (sectionId, collapsed) => set((s) => ({
+    collapsedSections: { ...s.collapsedSections, [sectionId]: collapsed }
+  })),
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
     set((s) => {
