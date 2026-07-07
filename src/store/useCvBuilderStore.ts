@@ -14,7 +14,9 @@ export type CareerLevel = "student" | "intern" | "fresher" | "junior" | "mid-lev
 export type SummaryMode = "manual" | "ai";
 export type CvLanguage = "en" | "vi";
 export type ResumeFontScale = "small" | "normal" | "large";
-export type ResumeDensity = "compact" | "comfortable";
+export type ResumeFontFamily = "inter" | "serif" | "roboto" | "merriweather" | "mono";
+export type ResumeLineHeight = "tight" | "normal" | "relaxed";
+export type ResumeSpacing = "compact" | "normal" | "spacious";
 
 export interface Education {
   id: string;
@@ -146,11 +148,15 @@ export interface CvBuilderState {
   template: string;
   cvLanguage: CvLanguage;
   resumeAccentColor: string;
+  resumeFontFamily: ResumeFontFamily;
   resumeFontScale: ResumeFontScale;
-  resumeDensity: ResumeDensity;
+  resumeLineHeight: ResumeLineHeight;
+  resumePageMargin: ResumeSpacing;
+  resumeSectionSpacing: ResumeSpacing;
   resumeHideSectionIcons: boolean;
   sectionVisibility: Record<CvBuilderSectionKey, boolean>;
   sectionOrder: CvBuilderSectionKey[];
+  sectionPlacement: Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
 
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
@@ -210,13 +216,17 @@ export interface CvBuilderState {
   setTemplate: (template: string) => void;
   setCvLanguage: (lang: CvLanguage) => void;
   setResumeAccentColor: (color: string) => void;
+  setResumeFontFamily: (family: ResumeFontFamily) => void;
   setResumeFontScale: (scale: ResumeFontScale) => void;
-  setResumeDensity: (density: ResumeDensity) => void;
+  setResumeLineHeight: (lineHeight: ResumeLineHeight) => void;
+  setResumePageMargin: (margin: ResumeSpacing) => void;
+  setResumeSectionSpacing: (spacing: ResumeSpacing) => void;
   setResumeHideSectionIcons: (hide: boolean) => void;
   setSectionVisibility: (section: CvBuilderSectionKey, visible: boolean) => void;
   moveSection: (section: CvBuilderSectionKey, direction: "up" | "down") => void;
   moveSectionWithinGroup: (section: CvBuilderSectionKey, direction: "up" | "down", group: CvBuilderSectionKey[]) => void;
   resetSectionOrder: () => void;
+  setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
 
   // Actions — BE draft (W5)
   setDraftId: (id: string | null) => void;
@@ -282,8 +292,11 @@ const initialState = {
   template: "azurill",
   cvLanguage: "en" as CvLanguage,
   resumeAccentColor: "#0f172a",
+  resumeFontFamily: "inter" as ResumeFontFamily,
   resumeFontScale: "normal" as ResumeFontScale,
-  resumeDensity: "comfortable" as ResumeDensity,
+  resumeLineHeight: "normal" as ResumeLineHeight,
+  resumePageMargin: "normal" as ResumeSpacing,
+  resumeSectionSpacing: "normal" as ResumeSpacing,
   resumeHideSectionIcons: false,
   sectionVisibility: {
     summary: true,
@@ -294,6 +307,7 @@ const initialState = {
     certifications: true,
   } as Record<CvBuilderSectionKey, boolean>,
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
+  sectionPlacement: {} as Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
@@ -586,16 +600,20 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
       return { 
         template,
         resumeAccentColor: meta.accent,
-        resumeDensity: meta.density,
         resumeFontScale: meta.fontScale,
+        resumePageMargin: meta.pageMargin,
+        resumeSectionSpacing: meta.sectionSpacing,
       };
     }
     return { template };
   }),
   setCvLanguage: (cvLanguage) => set({ cvLanguage }),
   setResumeAccentColor: (resumeAccentColor) => set({ resumeAccentColor }),
+  setResumeFontFamily: (resumeFontFamily) => set({ resumeFontFamily }),
   setResumeFontScale: (resumeFontScale) => set({ resumeFontScale }),
-  setResumeDensity: (resumeDensity) => set({ resumeDensity }),
+  setResumeLineHeight: (resumeLineHeight) => set({ resumeLineHeight }),
+  setResumePageMargin: (resumePageMargin) => set({ resumePageMargin }),
+  setResumeSectionSpacing: (resumeSectionSpacing) => set({ resumeSectionSpacing }),
   setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
   setSectionVisibility: (section, visible) => set((s) => ({
     sectionVisibility: { ...s.sectionVisibility, [section]: visible },
@@ -628,7 +646,11 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   }),
   resetSectionOrder: () => set({
     sectionOrder: [...initialState.sectionOrder],
+    sectionPlacement: {},
   }),
+  setSectionPlacement: (section, placement) => set((s) => ({
+    sectionPlacement: { ...s.sectionPlacement, [section]: placement },
+  })),
 
   // Computed
   getResumeData: () => adaptCvBuilderStoreToResumeData(get()),

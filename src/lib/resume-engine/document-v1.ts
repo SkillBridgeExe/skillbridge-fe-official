@@ -74,8 +74,12 @@ export interface ResumeDocumentV1 {
   };
   metadata: {
     templateId: string;
+    resumeFontFamily?: "inter" | "serif" | "roboto" | "merriweather" | "mono";
     resumeFontScale: "small" | "normal" | "large";
-    resumeDensity: "compact" | "comfortable";
+    resumeLineHeight?: "tight" | "normal" | "relaxed";
+    resumeDensity?: "compact" | "comfortable";
+    resumePageMargin?: "compact" | "normal" | "spacious";
+    resumeSectionSpacing?: "compact" | "normal" | "spacious";
     resumeAccentColor: string;
     resumeHideSectionIcons: boolean;
     sectionVisibility: Record<string, boolean>;
@@ -116,8 +120,11 @@ export function createDefaultResumeDocumentV1(): ResumeDocumentV1 {
     },
     metadata: {
       templateId: "onyx",
+      resumeFontFamily: "inter",
       resumeFontScale: "normal",
-      resumeDensity: "comfortable",
+      resumeLineHeight: "normal",
+      resumePageMargin: "normal",
+      resumeSectionSpacing: "normal",
       resumeAccentColor: "#0f172a",
       resumeHideSectionIcons: false,
       sectionVisibility: {

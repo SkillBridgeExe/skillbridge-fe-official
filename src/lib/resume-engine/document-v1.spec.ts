@@ -98,7 +98,8 @@ function richBuilderState(): CvBuilderState {
     cvLanguage: "vi",
     resumeAccentColor: "#1f6b57",
     resumeFontScale: "large",
-    resumeDensity: "compact",
+    resumePageMargin: "compact",
+    resumeSectionSpacing: "compact",
     resumeHideSectionIcons: true,
     sectionVisibility: {
       summary: true,
@@ -160,7 +161,8 @@ describe("ResumeDocumentV1 contract", () => {
     expect(restored.template).toBe("bronzor");
     expect(restored.resumeAccentColor).toBe("#1f6b57");
     expect(restored.resumeFontScale).toBe("large");
-    expect(restored.resumeDensity).toBe("compact");
+    expect(restored.resumePageMargin).toBe("compact");
+    expect(restored.resumeSectionSpacing).toBe("compact");
     expect(restored.resumeHideSectionIcons).toBe(true);
     expect(restored.sectionVisibility?.projects).toBe(false);
     expect(restored.sectionOrder).toEqual([

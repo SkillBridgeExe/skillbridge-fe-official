@@ -3,8 +3,10 @@ import type {
   CareerLevel,
   CvBuilderSectionKey,
   CvBuilderState,
-  ResumeDensity,
   ResumeFontScale,
+  ResumeFontFamily,
+  ResumeLineHeight,
+  ResumeSpacing,
 } from "@/store/useCvBuilderStore";
 import type { ResumeDocumentV1 } from "./document-v1";
 import { createDefaultResumeDocumentV1 } from "./document-v1";
@@ -28,7 +30,9 @@ const CAREER_LEVELS = new Set<CareerLevel>([
 ]);
 
 const FONT_SCALES = new Set<ResumeFontScale>(["small", "normal", "large"]);
-const DENSITIES = new Set<ResumeDensity>(["compact", "comfortable"]);
+const FONT_FAMILIES = new Set<ResumeFontFamily>(["inter", "serif", "roboto", "merriweather", "mono"]);
+const LINE_HEIGHTS = new Set<ResumeLineHeight>(["tight", "normal", "relaxed"]);
+const SPACINGS = new Set<ResumeSpacing>(["compact", "normal", "spacious"]);
 
 function hashString(input: string): string {
   let hash = 2166136261;
@@ -47,12 +51,22 @@ function stableItemId(section: string, index: number, fields: Array<string | nul
   return `cv_${section}_${hashString(signature || `${section}-${index}`)}`;
 }
 
-function asResumeFontScale(value: string): ResumeFontScale {
+function asResumeFontScale(value: string | undefined): ResumeFontScale {
   return FONT_SCALES.has(value as ResumeFontScale) ? (value as ResumeFontScale) : "normal";
 }
 
-function asResumeDensity(value: string): ResumeDensity {
-  return DENSITIES.has(value as ResumeDensity) ? (value as ResumeDensity) : "comfortable";
+function asResumeFontFamily(value: string | undefined): ResumeFontFamily {
+  return FONT_FAMILIES.has(value as ResumeFontFamily) ? (value as ResumeFontFamily) : "inter";
+}
+
+function asResumeLineHeight(value: string | undefined): ResumeLineHeight {
+  return LINE_HEIGHTS.has(value as ResumeLineHeight) ? (value as ResumeLineHeight) : "normal";
+}
+
+function asResumeSpacing(value: string | undefined, fallbackDensity?: "compact" | "comfortable"): ResumeSpacing {
+  if (SPACINGS.has(value as ResumeSpacing)) return value as ResumeSpacing;
+  if (fallbackDensity === "compact") return "compact";
+  return "normal";
 }
 
 function asCareerLevel(value: string): CareerLevel | "" {
@@ -178,8 +192,11 @@ export function builderStateToResumeDocumentV1(state: CvBuilderState): ResumeDoc
 
   doc.metadata = {
     templateId: state.template || "onyx",
+    resumeFontFamily: state.resumeFontFamily || "inter",
     resumeFontScale: state.resumeFontScale || "normal",
-    resumeDensity: state.resumeDensity || "comfortable",
+    resumeLineHeight: state.resumeLineHeight || "normal",
+    resumePageMargin: state.resumePageMargin || "normal",
+    resumeSectionSpacing: state.resumeSectionSpacing || "normal",
     resumeAccentColor: state.resumeAccentColor || "#0f172a",
     resumeHideSectionIcons: state.resumeHideSectionIcons || false,
     sectionVisibility: { ...(state.sectionVisibility || {}) },
@@ -222,8 +239,11 @@ export function resumeDocumentV1ToBuilderState(doc: ResumeDocumentV1): Partial<C
     certifications: doc.sections.certifications.items.map(item => ({ ...item })),
 
     template: doc.metadata.templateId,
+    resumeFontFamily: asResumeFontFamily(doc.metadata.resumeFontFamily),
     resumeFontScale: asResumeFontScale(doc.metadata.resumeFontScale),
-    resumeDensity: asResumeDensity(doc.metadata.resumeDensity),
+    resumeLineHeight: asResumeLineHeight(doc.metadata.resumeLineHeight),
+    resumePageMargin: asResumeSpacing(doc.metadata.resumePageMargin, doc.metadata.resumeDensity),
+    resumeSectionSpacing: asResumeSpacing(doc.metadata.resumeSectionSpacing, doc.metadata.resumeDensity),
     resumeAccentColor: doc.metadata.resumeAccentColor,
     resumeHideSectionIcons: doc.metadata.resumeHideSectionIcons,
     sectionVisibility: asSectionVisibility(doc.metadata.sectionVisibility),

@@ -1,19 +1,35 @@
 import type { ReactNode } from "react";
-import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw } from "lucide-react";
+import type { Template } from "@/lib/resume-engine/schema/templates";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { TemplateGallery } from "../preview/TemplatePicker";
-import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type ResumeDensity, type ResumeFontScale } from "@/store/useCvBuilderStore";
+import { resolveBuilderTemplate, TemplateGallery, TemplateThumbnail } from "../preview/TemplatePicker";
+import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type ResumeFontScale, type ResumeFontFamily, type ResumeLineHeight, type ResumeSpacing } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import { TEMPLATE_PREVIEWS, getTemplateLayoutCapabilities } from "@/lib/resume-engine/template-meta";
 import { cn } from "@/lib/utils";
 
-const DENSITY_OPTIONS: Array<{ value: ResumeDensity; labelKey: string; hintKey: string }> = [
-  { value: "comfortable", labelKey: "comfortableLabel", hintKey: "comfortableHint" },
-  { value: "compact", labelKey: "compactLabel", hintKey: "compactHint" },
+const SPACING_OPTIONS: Array<{ value: ResumeSpacing; labelKey: string }> = [
+  { value: "compact", labelKey: "compactLabel" },
+  { value: "normal", labelKey: "normalLabel" },
+  { value: "spacious", labelKey: "spaciousLabel" },
+];
+
+const LINE_HEIGHT_OPTIONS: Array<{ value: ResumeLineHeight; labelKey: string }> = [
+  { value: "tight", labelKey: "tightLabel" },
+  { value: "normal", labelKey: "normalLabel" },
+  { value: "relaxed", labelKey: "relaxedLabel" },
+];
+
+const FONT_FAMILY_OPTIONS: Array<{ value: ResumeFontFamily; labelKey: string }> = [
+  { value: "inter", labelKey: "fontInter" },
+  { value: "serif", labelKey: "fontSerif" },
+  { value: "roboto", labelKey: "fontRoboto" },
+  { value: "merriweather", labelKey: "fontMerriweather" },
+  { value: "mono", labelKey: "fontMono" },
 ];
 
 const FONT_SCALE_OPTIONS: Array<{ value: ResumeFontScale; labelKey: string }> = [
@@ -31,8 +47,8 @@ const ACCENT_COLORS = [
   { value: "#d97706", label: "Amber" },
 ];
 
-const MAIN_STRUCTURE_SECTIONS: CvBuilderSectionKey[] = ["experience", "education", "projects"];
-const SIDEBAR_STRUCTURE_SECTIONS: CvBuilderSectionKey[] = ["summary", "skills", "certifications"];
+const DEFAULT_MAIN_SECTIONS: CvBuilderSectionKey[] = ["summary", "experience", "education", "projects"];
+const DEFAULT_SIDEBAR_SECTIONS: CvBuilderSectionKey[] = ["skills", "certifications"];
 
 function SegmentedButton({
   active,
@@ -62,6 +78,7 @@ function SegmentedButton({
 export function StudioInspector() {
   const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
+  const currentTemplate = resolveBuilderTemplate(store.template);
   const sectionLabels: Record<CvBuilderSectionKey, string> = {
     summary: t("builder.tabSummary"),
     experience: t("builder.tabExperience"),
@@ -74,6 +91,8 @@ export function StudioInspector() {
   const renderStructureGroup = (
     title: string,
     sections: CvBuilderSectionKey[],
+    groupId: "main" | "sidebar" | "single",
+    supportsSidebar: boolean
   ) => {
     const orderedSections = store.sectionOrder.filter((key) => sections.includes(key));
 
@@ -82,6 +101,8 @@ export function StudioInspector() {
         <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{title}</p>
         {orderedSections.map((key, index, arr) => {
           const isVisible = store.sectionVisibility[key] ?? true;
+          const targetPlacement = groupId === "main" ? "sidebar" : "main";
+          const moveTitle = groupId === "main" ? t("builder.inspector.moveToSidebar") : t("builder.inspector.moveToMain");
 
           return (
             <div
@@ -114,6 +135,18 @@ export function StudioInspector() {
               </div>
 
               <div className="flex items-center gap-0.5">
+                {supportsSidebar && groupId !== "single" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-slate-400 hover:text-sky-600 mr-1"
+                    onClick={() => store.setSectionPlacement(key, targetPlacement)}
+                    title={moveTitle}
+                    aria-label={moveTitle}
+                  >
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -191,20 +224,18 @@ export function StudioInspector() {
                 </h3>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm flex flex-col gap-3">
-                  <div className="flex gap-3">
-                    {/* Small thumbnail representation */}
-                    <div className="w-10 h-14 rounded bg-slate-100 border border-slate-200 shadow-sm shrink-0 overflow-hidden relative" style={{ backgroundColor: TEMPLATE_PREVIEWS[store.template]?.background }}>
-                      <div className="absolute top-1.5 left-1 right-1 h-0.5 rounded-full" style={{ backgroundColor: TEMPLATE_PREVIEWS[store.template]?.accent }} />
-                      <div className="absolute top-3 left-1 right-2 space-y-0.5">
-                        <div className="h-0.5 bg-slate-300 w-full rounded-full" />
-                        <div className="h-0.5 bg-slate-300 w-3/4 rounded-full" />
-                        <div className="h-0.5 bg-slate-300 w-5/6 rounded-full" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-800">{TEMPLATE_PREVIEWS[store.template]?.name}</div>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {TEMPLATE_PREVIEWS[store.template]?.tags.slice(0, 2).map(tag => (
+                  <div className="flex gap-4">
+                    <TemplateThumbnail
+                      template={currentTemplate}
+                      className="shrink-0"
+                    />
+                    <div className="flex flex-col py-1">
+                      <div className="text-[14px] font-bold text-slate-800">{TEMPLATE_PREVIEWS[currentTemplate]?.name}</div>
+                      <p className="text-[11px] text-slate-500 mt-1 mb-2.5 leading-relaxed">
+                        {t(`builder.template.${currentTemplate}.desc`)}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 mt-auto">
+                        {TEMPLATE_PREVIEWS[currentTemplate]?.tags.map(tag => (
                           <span key={tag} className="text-[9px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
                             {t(`builder.templateTag.${tag}`)}
                           </span>
@@ -263,10 +294,35 @@ export function StudioInspector() {
                   {t("builder.inspector.reset")}
                 </Button>
               </div>
-
               <div className="space-y-3">
-                {renderStructureGroup(t("builder.inspector.mainColumn"), MAIN_STRUCTURE_SECTIONS)}
-                {renderStructureGroup(t("builder.inspector.sidebar"), SIDEBAR_STRUCTURE_SECTIONS)}
+                {(() => {
+                  const capabilities = getTemplateLayoutCapabilities(store.template as Template);
+
+                  if (!capabilities.supportsSidebar) {
+                    return (
+                      <>
+                        <div className="p-2 mb-2 bg-slate-50 border border-slate-100 rounded-md text-[11px] text-slate-500">
+                          {t("builder.inspector.oneColumnHelper")}
+                        </div>
+                        {renderStructureGroup(t("builder.inspector.mainColumn"), store.sectionOrder, "single", false)}
+                      </>
+                    );
+                  }
+
+                  const mainSections = store.sectionOrder.filter(k =>
+                    store.sectionPlacement[k] ? store.sectionPlacement[k] === "main" : DEFAULT_MAIN_SECTIONS.includes(k)
+                  );
+                  const sidebarSections = store.sectionOrder.filter(k =>
+                    store.sectionPlacement[k] ? store.sectionPlacement[k] === "sidebar" : DEFAULT_SIDEBAR_SECTIONS.includes(k)
+                  );
+
+                  return (
+                    <>
+                      {renderStructureGroup(t("builder.inspector.mainColumn"), mainSections, "main", true)}
+                      {renderStructureGroup(t("builder.inspector.sidebar"), sidebarSections, "sidebar", true)}
+                    </>
+                  );
+                })()}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -283,21 +339,38 @@ export function StudioInspector() {
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="space-y-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                    {t("builder.inspector.contentDensity")}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DENSITY_OPTIONS.map((option) => (
-                      <SegmentedButton
-                        key={option.value}
-                        active={store.resumeDensity === option.value}
-                        onClick={() => store.setResumeDensity(option.value)}
-                      >
-                        <span className="block">{t(`builder.inspector.${option.labelKey}`)}</span>
-                        <span className="mt-0.5 block text-[10px] font-medium opacity-70">{t(`builder.inspector.${option.hintKey}`)}</span>
-                      </SegmentedButton>
-                    ))}
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                      {t("builder.inspector.pageMargin")}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {SPACING_OPTIONS.map((option) => (
+                        <SegmentedButton
+                          key={option.value}
+                          active={store.resumePageMargin === option.value}
+                          onClick={() => store.setResumePageMargin(option.value)}
+                        >
+                          <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
+                        </SegmentedButton>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                      {t("builder.inspector.sectionSpacing")}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {SPACING_OPTIONS.map((option) => (
+                        <SegmentedButton
+                          key={option.value}
+                          active={store.resumeSectionSpacing === option.value}
+                          onClick={() => store.setResumeSectionSpacing(option.value)}
+                        >
+                          <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
+                        </SegmentedButton>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -331,20 +404,55 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  {t("builder.inspector.fontSize")}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {FONT_SCALE_OPTIONS.map((option) => (
-                    <SegmentedButton
-                      key={option.value}
-                      active={store.resumeFontScale === option.value}
-                      onClick={() => store.setResumeFontScale(option.value)}
-                    >
-                      <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
-                    </SegmentedButton>
-                  ))}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {t("builder.inspector.fontFamily")}
+                  </p>
+                  <Select value={store.resumeFontFamily} onValueChange={(v) => store.setResumeFontFamily(v as ResumeFontFamily)}>
+                    <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
+                      <SelectValue placeholder={t("builder.inspector.selectFont")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_FAMILY_OPTIONS.map((font) => (
+                        <SelectItem key={font.value} value={font.value}>
+                          {t(`builder.inspector.${font.labelKey}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {t("builder.inspector.fontSize")}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FONT_SCALE_OPTIONS.map((option) => (
+                      <SegmentedButton
+                        key={option.value}
+                        active={store.resumeFontScale === option.value}
+                        onClick={() => store.setResumeFontScale(option.value)}
+                      >
+                        <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
+                      </SegmentedButton>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {t("builder.inspector.lineHeight")}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {LINE_HEIGHT_OPTIONS.map((option) => (
+                      <SegmentedButton
+                        key={option.value}
+                        active={store.resumeLineHeight === option.value}
+                        onClick={() => store.setResumeLineHeight(option.value)}
+                      >
+                        <span className="block text-center">{t(`builder.inspector.${option.labelKey}`)}</span>
+                      </SegmentedButton>
+                    ))}
+                  </div>
                 </div>
               </div>
             </AccordionContent>

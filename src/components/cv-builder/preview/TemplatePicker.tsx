@@ -15,8 +15,9 @@ export function resolveBuilderTemplate(template: string): Template {
   return BUILDER_TEMPLATES.includes(template as Template) ? (template as Template) : "azurill";
 }
 
-function TemplateThumbnail({ template, className }: { template: Template; className?: string }) {
-  const meta = TEMPLATE_PREVIEWS[template];
+export function TemplateThumbnail({ template, className }: { template: string; className?: string }) {
+  const resolvedTemplate = resolveBuilderTemplate(template);
+  const meta = TEMPLATE_PREVIEWS[resolvedTemplate];
   const line = "h-[3px] rounded-full bg-slate-200/80";
 
   return (
@@ -90,29 +91,27 @@ export function TemplateGallery() {
             key={template}
             onClick={() => store.setTemplate(template)}
             className={cn(
-              "group relative flex flex-col text-left rounded-2xl bg-white transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+              "group relative flex flex-col text-left rounded-2xl bg-white transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
               isSelected
-                ? "shadow-[0_8px_30px_rgb(0,0,0,0.06)] ring-1 ring-primary/40 -translate-y-0.5"
-                : "shadow-sm ring-1 ring-slate-200/60 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:ring-slate-300 hover:-translate-y-0.5"
+                ? "ring-2 ring-primary bg-primary/[0.02]"
+                : "ring-1 ring-slate-200 hover:ring-slate-300"
             )}
           >
             {isSelected && (
-              <div className="absolute top-3 right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white shadow-md animate-in zoom-in duration-200">
+              <div className="absolute top-3 right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white shadow-sm animate-in zoom-in duration-200">
                 <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
               </div>
             )}
 
             <div className={cn(
-              "relative flex w-full items-center justify-center overflow-hidden rounded-t-2xl border-b p-6 transition-colors duration-300",
-              isSelected ? "bg-primary/[0.03] border-primary/10" : "bg-slate-50/50 border-slate-100 group-hover:bg-slate-50"
+              "relative flex w-full items-center justify-center overflow-hidden rounded-t-2xl border-b p-6 transition-colors duration-200",
+              isSelected ? "bg-transparent border-primary/20" : "bg-slate-50 border-slate-100 group-hover:bg-slate-50/70"
             )}>
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:12px_12px] opacity-20" />
-
               <TemplateThumbnail
                 template={template}
                 className={cn(
-                  "relative z-10 scale-[1.15] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-hover:scale-[1.25] group-hover:shadow-md",
-                  isSelected && "scale-[1.2] shadow-md"
+                  "relative z-10 transition-transform duration-200 ease-out shadow-sm",
+                  isSelected && "shadow-md scale-[1.02]"
                 )}
               />
             </div>
