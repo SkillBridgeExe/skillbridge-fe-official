@@ -7,7 +7,7 @@ import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type Resu
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { TEMPLATE_PREVIEWS, getTemplateLayoutCapabilities } from "@/lib/resume-engine/template-meta";
 import { cn } from "@/lib/utils";
 
@@ -262,9 +262,9 @@ export function StudioInspector() {
                         <DialogTitle className="text-lg font-bold text-slate-800">
                           {t("builder.inspector.templateLibrary")}
                         </DialogTitle>
-                        <p className="text-sm text-slate-500">
+                        <DialogDescription className="text-sm text-slate-500">
                           {t("builder.inspector.templateLibraryDesc")}
-                        </p>
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar">
                         <TemplateGallery />

@@ -4,6 +4,16 @@ import { Trash2, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SectionItemCardProps {
   title: string;
@@ -37,21 +47,21 @@ export function SectionItemCard({
   defaultExpanded = false
 }: SectionItemCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const { t } = useTranslation("diagnosis");
 
-  const handleRemove = (e: React.MouseEvent) => {
+  const handleRemoveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (requireConfirmOnRemove) {
-      if (window.confirm(t("builder.confirmRemove"))) {
-        onRemove();
-      }
+      setShowRemoveDialog(true);
     } else {
       onRemove();
     }
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
+    <>
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
       <div 
         className={cn("flex items-center justify-between p-4 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
         onClick={() => setExpanded(!expanded)}
@@ -118,7 +128,7 @@ export function SectionItemCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-slate-400 hover:text-red-500 transition-colors"
-            onClick={handleRemove}
+            onClick={handleRemoveClick}
             disabled={!canRemove}
             aria-label={t("builder.actions.remove")}
             title={t("builder.actions.remove")}
@@ -146,5 +156,23 @@ export function SectionItemCard({
         )}
       </AnimatePresence>
     </div>
+      
+      <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.confirmRemoveTitle") || "Remove item?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.confirmRemove")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemove} className="bg-red-600 hover:bg-red-700">
+              {t("builder.actions.remove")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

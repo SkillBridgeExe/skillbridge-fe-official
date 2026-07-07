@@ -2668,6 +2668,7 @@ export default {
         remove: "Remove item",
         unnamedItem: "Untitled item",
       },
+      confirmRemoveTitle: "Remove item?",
       confirmRemove: "Are you sure you want to remove this item? This action cannot be undone.",
       characters: "chars",
       level: {

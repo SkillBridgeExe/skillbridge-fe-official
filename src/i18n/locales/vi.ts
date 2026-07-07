@@ -2640,6 +2640,7 @@ export default {
         remove: "Xóa mục",
         unnamedItem: "Mục chưa đặt tên",
       },
+      confirmRemoveTitle: "Xoá mục này?",
       confirmRemove: "Bạn có chắc chắn muốn xóa mục này không? Thao tác này không thể hoàn tác.",
       characters: "ký tự",
       level: {
