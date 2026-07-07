@@ -2324,7 +2324,7 @@ export default {
     insights: {
       fixFirst: "Sửa những điều này trước",
       skillsTitle: "Kỹ năng tìm thấy trong CV",
-      skillsHint: "Di chuột vào kỹ năng để xem dẫn chứng AI trích ra.",
+      skillsHint: "Bấm vào kỹ năng để xem dẫn chứng AI trích ra.",
       relevanceTitle: "Độ liên quan kỹ năng",
       relevanceHint: "Kỹ năng của bạn so với yêu cầu của vai trò mục tiêu.",
       matched: "Khớp",

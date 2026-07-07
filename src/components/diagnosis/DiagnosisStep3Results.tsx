@@ -448,7 +448,7 @@ export function DiagnosisStep3Results() {
           }
           verdictMessage={scoreMessage}
           isJdMode={isJdMode}
-          rubricBand={jdMatch?.rubric_band}
+          rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
           bandTooltip={t("band.tooltip")}
         />
 

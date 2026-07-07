@@ -2348,7 +2348,7 @@ export default {
     insights: {
       fixFirst: "Fix these first",
       skillsTitle: "Skills found in your CV",
-      skillsHint: "Hover a skill to see the evidence the AI extracted.",
+      skillsHint: "Tap a skill to see the evidence the AI extracted.",
       relevanceTitle: "Skill relevance",
       relevanceHint: "Your skills vs. the target role's requirements.",
       matched: "Matched",

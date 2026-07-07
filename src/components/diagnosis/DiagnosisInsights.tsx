@@ -255,7 +255,7 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
   const { t } = useTranslation("diagnosis");
 
   const RELEVANCE_GROUPS: {
-    key: keyof SkillsRelevanceBreakdown;
+    key: "matched" | "partial" | "missing";
     label: string;
     hint?: string;
     dot: string;
