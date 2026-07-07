@@ -139,8 +139,8 @@ export class OpenAIRealtimeSession {
             type: "input_text",
             text:
               language === "vi"
-                ? `Hãy đọc câu hỏi phỏng vấn chính thức sau bằng tiếng Việt tự nhiên. Chỉ đọc câu hỏi, không thêm điểm số hoặc lời giải thích: ${trimmed}`
-                : `Ask this official interview question in natural English. Only read the question; do not add scoring or explanation: ${trimmed}`,
+                ? `Hãy đọc lượt phỏng vấn chính thức sau bằng tiếng Việt tự nhiên. Chỉ đọc đúng nội dung này, không thêm điểm số, coaching hoặc lời giải thích: ${trimmed}`
+                : `Read this official interviewer turn in natural English. Read only this content; do not add scoring, coaching, or explanation: ${trimmed}`,
           },
         ],
       },
@@ -149,6 +149,22 @@ export class OpenAIRealtimeSession {
       type: "response.create",
       response: {
         output_modalities: ["audio"],
+      },
+    });
+  }
+
+  explainOfficialQuestion(question: string, language: "vi" | "en"): void {
+    const trimmed = question.trim().normalize("NFC");
+    if (!trimmed) return;
+
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+        instructions:
+          language === "vi"
+            ? `Giải thích thật ngắn bằng tiếng Việt câu hỏi phỏng vấn hiện tại sau đây, không trả lời thay ứng viên và không hỏi câu mới: ${trimmed}`
+            : `Briefly clarify this current interview question in English. Do not answer for the candidate and do not ask a new question: ${trimmed}`,
       },
     });
   }

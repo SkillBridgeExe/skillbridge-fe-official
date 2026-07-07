@@ -10,6 +10,7 @@ export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
 export type PlatformInterviewModality = "TEXT" | "AUDIO";
+export type InterviewContextMode = "ROLE_ONLY" | "CV_ONLY" | "CV_JD_MATCH";
 export type PlatformInterviewVoice =
   | "alloy"
   | "ash"
@@ -36,6 +37,7 @@ export interface InterviewSessionDto {
   cvId: string | null;
   cvMatchId: string | null;
   jobDescriptionId: string | null;
+  contextMode?: InterviewContextMode;
   targetRole: string;
   language: PlatformInterviewLanguage | string;
   mode: PlatformInterviewMode;
@@ -70,6 +72,7 @@ export interface InterviewTurnDto {
   topicPhase?: string | null;
   modality: PlatformInterviewModality;
   aiRequestId: string | null;
+  interviewerMessage?: string | null;
   interviewerQuestion: string;
   userAnswerText: string | null;
   userAnswerTranscript: string | null;
@@ -138,6 +141,9 @@ export interface AnswerInterviewResponseDto {
   aiMessage: string;
   nextQuestion: string | null;
   finished: boolean;
+  turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
+  finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
+  nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
 }
 
 export interface InterviewDetailResponseDto extends InterviewSessionDto {

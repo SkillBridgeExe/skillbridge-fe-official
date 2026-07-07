@@ -73,7 +73,8 @@ import {
   buildInterviewInitialMessages,
   buildInterviewNextMessages,
   buildInterviewStartRequest,
-  buildServerOwnedRealtimeTurnRequest,
+  buildBufferedRealtimeTurnRequest,
+  classifyRealtimeTranscriptIntent,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   createQuestionAudioRequestGuard,
@@ -101,6 +102,8 @@ import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime
 import { acquireInterviewMedia } from "@/lib/interview-media";
 
 type EndReason = "manual" | "timer" | "finished";
+const REALTIME_MIC_REOPEN_DELAY_MS = 450;
+const REALTIME_ANSWER_BUFFER_IDLE_MS = 1300;
 
 interface LiveReviewTurn {
   id: string;
@@ -178,6 +181,7 @@ export default function Interview() {
   const liveSessionRef = useRef<OpenAIRealtimeSession | null>(null);
   const activeSessionRef = useRef<InterviewSessionDto | null>(null);
   const currentQuestionRef = useRef("");
+  const currentInterviewerMessageRef = useRef("");
   const questionAudioRef = useRef<HTMLAudioElement | null>(null);
   const questionAudioUrlRef = useRef<string | null>(null);
   const questionAudioGuardRef = useRef(createQuestionAudioRequestGuard());
@@ -188,6 +192,10 @@ export default function Interview() {
   const liveLastQuestionRef = useRef("");
   const isRealtimeTurnSubmittingRef = useRef(false);
   const submitRealtimeTranscriptRef = useRef<(transcript: string) => void>(() => undefined);
+  const micReopenTimerRef = useRef<number | null>(null);
+  const realtimeAnswerBufferRef = useRef<string[]>([]);
+  const realtimeAnswerFlushTimerRef = useRef<number | null>(null);
+  const submittedRealtimeQuestionRef = useRef<string | null>(null);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
   const liveClosingRequestedRef = useRef(false);
@@ -388,7 +396,26 @@ export default function Interview() {
     setIsQuestionAudioPlaying(false);
   }, []);
 
+  const clearMicReopenTimer = useCallback(() => {
+    if (micReopenTimerRef.current === null) return;
+    window.clearTimeout(micReopenTimerRef.current);
+    micReopenTimerRef.current = null;
+  }, []);
+
+  const clearRealtimeAnswerFlushTimer = useCallback(() => {
+    if (realtimeAnswerFlushTimerRef.current === null) return;
+    window.clearTimeout(realtimeAnswerFlushTimerRef.current);
+    realtimeAnswerFlushTimerRef.current = null;
+  }, []);
+
+  const resetRealtimeAnswerBuffer = useCallback(() => {
+    clearRealtimeAnswerFlushTimer();
+    realtimeAnswerBufferRef.current = [];
+  }, [clearRealtimeAnswerFlushTimer]);
+
   const disconnectRealtime = useCallback(() => {
+    clearMicReopenTimer();
+    resetRealtimeAnswerBuffer();
     liveSessionRef.current?.disconnect();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
@@ -397,9 +424,11 @@ export default function Interview() {
     acceptsUserSpeechRef.current = false;
     liveAiMessageIdRef.current = null;
     liveQuestionBufferRef.current = "";
-  }, []);
+  }, [clearMicReopenTimer, resetRealtimeAnswerBuffer]);
 
   const setVoiceFallback = useCallback((reason: string) => {
+    clearMicReopenTimer();
+    resetRealtimeAnswerBuffer();
     liveSessionRef.current?.disconnect();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
@@ -410,7 +439,7 @@ export default function Interview() {
     liveQuestionBufferRef.current = "";
     setIsVoiceFallback(true);
     setVoiceFallbackReason(reason);
-  }, []);
+  }, [clearMicReopenTimer, resetRealtimeAnswerBuffer]);
 
   const requestSessionMedia = useCallback(
     async (): Promise<MediaStream | null> => {
@@ -474,6 +503,8 @@ export default function Interview() {
             acceptsUserSpeechRef.current = false;
             break;
           case "disconnected":
+            clearMicReopenTimer();
+            resetRealtimeAnswerBuffer();
             setIsLiveConnected(false);
             setIsMicActive(false);
             break;
@@ -490,6 +521,8 @@ export default function Interview() {
             break;
           }
           case "ai_speaking":
+            clearMicReopenTimer();
+            clearRealtimeAnswerFlushTimer();
             acceptsUserSpeechRef.current = false;
             liveSessionRef.current?.setMicEnabled(false);
             setIsMicActive(false);
@@ -499,9 +532,20 @@ export default function Interview() {
             setIsAiSpeaking(false);
             if (liveConversation) {
               questionStartedAtRef.current = new Date();
-              acceptsUserSpeechRef.current = true;
-              liveSessionRef.current?.setMicEnabled(true);
-              setIsMicActive(true);
+              clearMicReopenTimer();
+              micReopenTimerRef.current = window.setTimeout(() => {
+                micReopenTimerRef.current = null;
+                if (
+                  !liveSessionRef.current?.isConnected ||
+                  isRealtimeTurnSubmittingRef.current ||
+                  endingRef.current
+                ) {
+                  return;
+                }
+                acceptsUserSpeechRef.current = true;
+                liveSessionRef.current.setMicEnabled(true);
+                setIsMicActive(true);
+              }, REALTIME_MIC_REOPEN_DELAY_MS);
             }
             break;
           case "error":
@@ -519,7 +563,14 @@ export default function Interview() {
       acceptsUserSpeechRef.current = false;
       setIsMicActive(false);
     },
-    [appendLiveAssistantTranscript, setVoiceFallback, t],
+    [
+      appendLiveAssistantTranscript,
+      clearMicReopenTimer,
+      clearRealtimeAnswerFlushTimer,
+      resetRealtimeAnswerBuffer,
+      setVoiceFallback,
+      t,
+    ],
   );
 
   const playQuestionAudio = useCallback(
@@ -572,6 +623,7 @@ export default function Interview() {
     stopQuestionAudio();
     activeSessionRef.current = null;
     currentQuestionRef.current = "";
+    currentInterviewerMessageRef.current = "";
     isRealtimeTurnSubmittingRef.current = false;
     setActiveSession(null);
     setResultDetail(null);
@@ -600,6 +652,7 @@ export default function Interview() {
     liveAiMessageIdRef.current = null;
     liveQuestionBufferRef.current = "";
     liveLastQuestionRef.current = "";
+    submittedRealtimeQuestionRef.current = null;
   }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
 
   const openHistoryDetail = useCallback(
@@ -755,6 +808,7 @@ export default function Interview() {
 
       activeSessionRef.current = started;
       currentQuestionRef.current = started.firstQuestion;
+      currentInterviewerMessageRef.current = started.firstMessage ?? "";
       setActiveSession(started);
       setCurrentQuestion(started.firstQuestion);
       setCurrentQuestionMeta(
@@ -804,7 +858,12 @@ export default function Interview() {
         acceptsUserSpeechRef.current = false;
         liveSessionRef.current?.setMicEnabled(false);
         setIsMicActive(false);
-        speakOfficialRealtimeQuestion(liveSessionRef.current, started.firstQuestion, selectedLanguage);
+        speakOfficialRealtimeQuestion(
+          liveSessionRef.current,
+          started.firstQuestion,
+          selectedLanguage,
+          started.firstMessage,
+        );
       } else if (shouldRequestQuestionAudio(interviewMode)) {
         void playQuestionAudio(started.id);
       }
@@ -887,25 +946,41 @@ export default function Interview() {
     ],
   );
 
-  const submitRealtimeTranscript = useCallback(
-    async (transcript: string) => {
+  const flushRealtimeAnswerBuffer = useCallback(
+    async () => {
+      clearRealtimeAnswerFlushTimer();
       if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
 
       const session = activeSessionRef.current;
+      const currentQuestionKey = currentQuestionRef.current.trim().normalize("NFC");
+      if (!session || !currentQuestionKey || submittedRealtimeQuestionRef.current === currentQuestionKey) {
+        resetRealtimeAnswerBuffer();
+        return;
+      }
       const now = new Date();
       const durationSeconds = questionStartedAtRef.current
         ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
         : undefined;
-      const payload = session
-        ? buildServerOwnedRealtimeTurnRequest({
-            sessionId: session.id,
-            transcript,
-            durationSeconds,
-          })
-        : null;
-      if (!payload) return;
+      const payload = buildBufferedRealtimeTurnRequest({
+        sessionId: session.id,
+        currentQuestion: currentQuestionKey,
+        transcripts: realtimeAnswerBufferRef.current,
+        durationSeconds,
+      });
+      if (!payload) {
+        resetRealtimeAnswerBuffer();
+        if (liveSessionRef.current?.isConnected && !endingRef.current) {
+          acceptsUserSpeechRef.current = true;
+          liveSessionRef.current.setMicEnabled(true);
+          setIsMicActive(true);
+        }
+        return;
+      }
 
       isRealtimeTurnSubmittingRef.current = true;
+      submittedRealtimeQuestionRef.current = currentQuestionKey;
+      resetRealtimeAnswerBuffer();
+      clearMicReopenTimer();
       stopQuestionAudio();
       acceptsUserSpeechRef.current = false;
       liveSessionRef.current?.setMicEnabled(false);
@@ -923,7 +998,10 @@ export default function Interview() {
         setActiveSession(response.session);
 
         const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
+        const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
         currentQuestionRef.current = nextQuestion;
+        currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
+        submittedRealtimeQuestionRef.current = null;
         if (nextQuestion) {
           setCurrentQuestion(nextQuestion);
           setCurrentQuestionMeta(
@@ -935,7 +1013,7 @@ export default function Interview() {
           setCurrentQuestionMeta(null);
         }
 
-        const nextMessages = buildInterviewNextMessages(nextQuestion).map((content) => ({
+        const nextMessages = buildInterviewNextMessages(nextAiMessage, nextQuestion).map((content) => ({
           role: "ai" as const,
           content,
           timestamp: new Date(),
@@ -954,8 +1032,9 @@ export default function Interview() {
         acceptsUserSpeechRef.current = false;
         liveSessionRef.current?.setMicEnabled(false);
         setIsMicActive(false);
-        speakOfficialRealtimeQuestion(liveSessionRef.current, nextQuestion, selectedLanguage);
+        speakOfficialRealtimeQuestion(liveSessionRef.current, nextQuestion, selectedLanguage, nextAiMessage);
       } catch (error) {
+        submittedRealtimeQuestionRef.current = null;
         setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
         acceptsUserSpeechRef.current = true;
         liveSessionRef.current?.setMicEnabled(true);
@@ -965,11 +1044,91 @@ export default function Interview() {
         isRealtimeTurnSubmittingRef.current = false;
       }
     },
-    [finishInterview, selectedLanguage, stopQuestionAudio, submitTurnMutation, t],
+    [
+      clearMicReopenTimer,
+      clearRealtimeAnswerFlushTimer,
+      finishInterview,
+      resetRealtimeAnswerBuffer,
+      selectedLanguage,
+      stopQuestionAudio,
+      submitTurnMutation,
+      t,
+    ],
   );
-  submitRealtimeTranscriptRef.current = (transcript: string) => {
-    void submitRealtimeTranscript(transcript);
-  };
+
+  const scheduleRealtimeAnswerFlush = useCallback(() => {
+    clearRealtimeAnswerFlushTimer();
+    realtimeAnswerFlushTimerRef.current = window.setTimeout(() => {
+      realtimeAnswerFlushTimerRef.current = null;
+      void flushRealtimeAnswerBuffer();
+    }, REALTIME_ANSWER_BUFFER_IDLE_MS);
+  }, [clearRealtimeAnswerFlushTimer, flushRealtimeAnswerBuffer]);
+
+  const handleRealtimeTranscript = useCallback(
+    (transcript: string) => {
+      if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
+      const intent = classifyRealtimeTranscriptIntent(transcript);
+      if (intent !== "answer") {
+        resetRealtimeAnswerBuffer();
+      }
+
+      if (intent === "repeat_question") {
+        acceptsUserSpeechRef.current = false;
+        liveSessionRef.current?.setMicEnabled(false);
+        setIsMicActive(false);
+        speakOfficialRealtimeQuestion(
+          liveSessionRef.current,
+          currentQuestionRef.current,
+          selectedLanguage,
+          currentInterviewerMessageRef.current,
+        );
+        return;
+      }
+
+      if (intent === "clarify_question") {
+        acceptsUserSpeechRef.current = false;
+        liveSessionRef.current?.setMicEnabled(false);
+        setIsMicActive(false);
+        liveSessionRef.current?.explainOfficialQuestion(currentQuestionRef.current, selectedLanguage);
+        return;
+      }
+
+      if (intent === "pause") {
+        clearRealtimeAnswerFlushTimer();
+        acceptsUserSpeechRef.current = false;
+        liveSessionRef.current?.setMicEnabled(false);
+        setIsMicActive(false);
+        return;
+      }
+
+      if (intent === "end_interview") {
+        void finishInterview("manual");
+        return;
+      }
+
+      if (intent === "skip_question" || intent === "off_topic") {
+        if (liveSessionRef.current?.isConnected && !endingRef.current) {
+          acceptsUserSpeechRef.current = true;
+          liveSessionRef.current.setMicEnabled(true);
+          setIsMicActive(true);
+        }
+        return;
+      }
+
+      const questionKey = currentQuestionRef.current.trim().normalize("NFC");
+      if (!questionKey || submittedRealtimeQuestionRef.current === questionKey) return;
+      realtimeAnswerBufferRef.current = [...realtimeAnswerBufferRef.current, transcript];
+      scheduleRealtimeAnswerFlush();
+    },
+    [
+      clearRealtimeAnswerFlushTimer,
+      finishInterview,
+      resetRealtimeAnswerBuffer,
+      scheduleRealtimeAnswerFlush,
+      selectedLanguage,
+    ],
+  );
+  submitRealtimeTranscriptRef.current = handleRealtimeTranscript;
 
   const handleSubmitAnswer = async () => {
     if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
@@ -1005,7 +1164,9 @@ export default function Interview() {
       activeSessionRef.current = response.session;
       setActiveSession(response.session);
       const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
+      const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
       currentQuestionRef.current = nextQuestion;
+      currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
         setCurrentQuestionMeta(
@@ -1017,7 +1178,7 @@ export default function Interview() {
         setCurrentQuestionMeta(null);
       }
 
-      const nextMessages = buildInterviewNextMessages(nextQuestion).map((content) => ({
+      const nextMessages = buildInterviewNextMessages(nextAiMessage, nextQuestion).map((content) => ({
         role: "ai" as const,
         content,
         timestamp: new Date(),
