@@ -7,6 +7,7 @@ import {
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
   buildServerOwnedRealtimeTurnRequest,
+  buildValidatedRealtimeTurnRequest,
   createQuestionAudioRequestGuard,
   getLiveTranscriptWarnings,
   getInterviewEndIntent,
@@ -419,7 +420,7 @@ describe("interview view model", () => {
     });
   });
 
-  it("marks the five seeded IT role families as curated question-bank roles", () => {
+  it("marks the seeded UI role families as curated question-bank roles", () => {
     expect(getInterviewQuestionBankSourceKind("backend_developer")).toBe(
       "curated",
     );
@@ -429,11 +430,17 @@ describe("interview view model", () => {
     expect(getInterviewQuestionBankSourceKind("fullstack_developer")).toBe(
       "curated",
     );
+    expect(getInterviewQuestionBankSourceKind("mobile_developer")).toBe(
+      "curated",
+    );
     expect(getInterviewQuestionBankSourceKind("devops_engineer")).toBe(
       "curated",
     );
     expect(getInterviewQuestionBankSourceKind("qa_tester")).toBe("curated");
-    expect(getInterviewQuestionBankSourceKind("data_analyst")).toBe("fallback");
+    expect(getInterviewQuestionBankSourceKind("data_analyst")).toBe("curated");
+    expect(getInterviewQuestionBankSourceKind("ai_ml_engineer")).toBe(
+      "curated",
+    );
   });
 
   it("keeps prefixed and specialized IT roles on the curated question-bank path", () => {
@@ -641,6 +648,53 @@ describe("interview view model", () => {
       userTranscript: "I used Postgres transactions.",
       modality: "AUDIO",
       durationSeconds: 42,
+    });
+  });
+
+  it("does not auto-submit noisy realtime transcripts", () => {
+    const base = {
+      sessionId: "session-1",
+      currentQuestion: "Describe a REST API you built.",
+    };
+
+    expect(
+      buildValidatedRealtimeTurnRequest({
+        ...base,
+        transcript: "test",
+      }),
+    ).toBeNull();
+    expect(
+      buildValidatedRealtimeTurnRequest({
+        ...base,
+        transcript: "Describe a REST API you built.",
+      }),
+    ).toBeNull();
+    expect(
+      buildValidatedRealtimeTurnRequest({
+        ...base,
+        transcript:
+          "Cuá»™c phá»ng váº¥n báº±ng tiáº¿ng Viá»‡t. English interview. Preserve technical terms.",
+      }),
+    ).toBeNull();
+  });
+
+  it("auto-submits meaningful realtime transcripts", () => {
+    expect(
+      buildValidatedRealtimeTurnRequest({
+        sessionId: "session-1",
+        currentQuestion: "Describe a REST API you built.",
+        transcript:
+          "I built a REST API with validation, authentication, and Postgres transactions.",
+        durationSeconds: 37,
+      }),
+    ).toEqual({
+      sessionId: "session-1",
+      userAnswer:
+        "I built a REST API with validation, authentication, and Postgres transactions.",
+      userTranscript:
+        "I built a REST API with validation, authentication, and Postgres transactions.",
+      modality: "AUDIO",
+      durationSeconds: 37,
     });
   });
 

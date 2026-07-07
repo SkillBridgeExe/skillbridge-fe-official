@@ -95,20 +95,34 @@ const CURATED_QUESTION_BANK_ROLE_KEYS = new Set([
   "backend_developer",
   "frontend_developer",
   "fullstack_developer",
+  "mobile_developer",
   "devops_engineer",
+  "data_analyst",
   "qa_engineer",
   "qa_tester",
+  "ai_ml_engineer",
 ]);
 
 const CURATED_QUESTION_BANK_ROLE_TOKENS = new Set([
   "backend",
   "frontend",
   "fullstack",
+  "mobile",
+  "ios",
+  "android",
+  "flutter",
   "devops",
   "sre",
+  "data",
+  "analyst",
+  "analytics",
+  "bi",
   "qa",
   "tester",
   "sdet",
+  "ai",
+  "ml",
+  "llm",
 ]);
 
 export type InterviewHistoryState =
@@ -163,6 +177,10 @@ export interface ServerOwnedRealtimeTurnInput {
   sessionId: string;
   transcript: string;
   durationSeconds?: number;
+}
+
+export interface ValidatedRealtimeTurnInput extends ServerOwnedRealtimeTurnInput {
+  currentQuestion?: string | null;
 }
 
 export interface QuestionAudioRequestGuard {
@@ -306,6 +324,20 @@ export function buildServerOwnedRealtimeTurnRequest({
     modality: "AUDIO",
     durationSeconds,
   };
+}
+
+export function buildValidatedRealtimeTurnRequest({
+  currentQuestion,
+  ...input
+}: ValidatedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
+  const normalized = input.transcript.trim().normalize("NFC");
+  if (!normalized) return null;
+  if (getLiveTranscriptWarnings(normalized).length > 0) return null;
+  if (!isMeaningfulRealtimeTranscript(normalized, currentQuestion)) return null;
+  return buildServerOwnedRealtimeTurnRequest({
+    ...input,
+    transcript: normalized,
+  });
 }
 
 export function createQuestionAudioRequestGuard(): QuestionAudioRequestGuard {
@@ -605,6 +637,35 @@ export function getLiveTranscriptWarnings(
     warnings.push("promptLeak");
   }
   return warnings;
+}
+
+function isMeaningfulRealtimeTranscript(
+  transcript: string,
+  currentQuestion: string | null | undefined,
+): boolean {
+  const compactLength = transcript.replace(/\s+/g, "").length;
+  if (compactLength < 4) return false;
+  if (
+    currentQuestion &&
+    normalizeForTranscriptComparison(transcript) ===
+      normalizeForTranscriptComparison(currentQuestion)
+  ) {
+    return false;
+  }
+  return tokenizeTranscript(transcript).length >= 2;
+}
+
+function tokenizeTranscript(value: string): string[] {
+  return value.match(/[\p{L}\p{N}+#.]+/gu) ?? [];
+}
+
+function normalizeForTranscriptComparison(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
+    .trim();
 }
 
 function isTimeoutError(error: unknown): boolean {
