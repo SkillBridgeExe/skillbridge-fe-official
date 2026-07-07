@@ -128,7 +128,7 @@ export function SkillsSection() {
       {/* Language Details */}
       <div className="space-y-3 pt-4 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <Label className="font-semibold">{t("builder.skills.languages") || "Languages"}</Label>
+          <Label className="font-semibold">{t("builder.skills.languages")}</Label>
           <button
             type="button"
             onClick={addLanguageDetail}
@@ -138,17 +138,17 @@ export function SkillsSection() {
             {t("builder.actions.addItem")}
           </button>
         </div>
-        {(languageDetails || []).map((lang) => (
+        {languageDetails.map((lang) => (
           <div key={lang.id} className="flex items-center gap-2">
             <Input
               className="flex-1"
-              placeholder={t("builder.skills.languageNamePlaceholder") || "Language (e.g. English)"}
+              placeholder={t("builder.skills.languageNamePlaceholder")}
               value={lang.name}
               onChange={(e) => updateLanguageDetail(lang.id, "name", e.target.value)}
             />
             <Input
               className="w-1/3"
-              placeholder={t("builder.skills.proficiencyPlaceholder") || "Proficiency (e.g. Native)"}
+              placeholder={t("builder.skills.proficiencyPlaceholder")}
               value={lang.proficiency}
               onChange={(e) => updateLanguageDetail(lang.id, "proficiency", e.target.value)}
             />

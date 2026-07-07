@@ -1,19 +1,49 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type CvBuilderState } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { createBuilderDraftApi } from "@/api/cv/builder";
+
+type ImportedResumeBackup = Record<string, unknown> & {
+  $schema: "skillbridge-cv-v1";
+  exportedAt?: string;
+  education: unknown[];
+  experience: unknown[];
+  projects: unknown[];
+};
+
+const isImportedResumeBackup = (value: unknown): value is ImportedResumeBackup => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.$schema === "skillbridge-cv-v1" &&
+    Array.isArray(candidate.education) &&
+    Array.isArray(candidate.experience) &&
+    Array.isArray(candidate.projects)
+  );
+};
+
 export function StudioTopBar() {
   const { t } = useTranslation("diagnosis");
   const hasApiSession = useHasApiSession();
@@ -25,6 +55,8 @@ export function StudioTopBar() {
   const renderPdfMutation = useRenderBuilderPdfMutation();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
+  const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
+  const [importSectionsCount, setImportSectionsCount] = useState(0);
 
   const showLocalActionToast = () => {
     toast({
@@ -185,36 +217,20 @@ export function StudioTopBar() {
         const content = event.target?.result as string;
         const data = JSON.parse(content);
 
-        if (!data.$schema || !data.education || !data.experience) {
+        if (!isImportedResumeBackup(data)) {
           throw new Error("Invalid format");
         }
 
         const sectionsCount =
-          (data.experience?.length || 0) +
-          (data.education?.length || 0) +
-          (data.projects?.length || 0);
+          data.experience.length +
+          data.education.length +
+          data.projects.length;
 
-        const confirmMessage = [
-          t("builder.import.confirmTitle"),
-          t("builder.import.confirmDesc"),
-          t("builder.import.stats", { sections: sectionsCount }),
-        ].join("\n\n");
-
-        if (window.confirm(confirmMessage)) {
-          const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = data;
-          useCvBuilderStore.getState().importState(stateToImport);
-          toast({
-            title: t("builder.import.success", "Backup imported successfully."),
-          });
-          // Clear draftId if we want to save it as a new draft, but spec says "overwrite your current resume data".
-          // So we trigger a save to the current draftId.
-          if (triggerSaveRef.current) {
-            await triggerSaveRef.current();
-          }
-        }
+        setImportCandidate(data);
+        setImportSectionsCount(sectionsCount);
       } catch {
         toast({
-          title: t("builder.import.invalidFormat", "Invalid backup file format."),
+          title: t("builder.import.invalidFormat"),
           variant: "destructive",
         });
       }
@@ -224,11 +240,26 @@ export function StudioTopBar() {
     };
     reader.onerror = () => {
       toast({
-        title: t("builder.import.readError", "Failed to read backup file."),
+        title: t("builder.import.readError"),
         variant: "destructive",
       });
     };
     reader.readAsText(file);
+  };
+
+  const applyImportedBackup = async () => {
+    if (!importCandidate) return;
+    const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
+    useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
+    setImportCandidate(null);
+    setImportSectionsCount(0);
+    toast({
+      title: t("builder.import.success"),
+    });
+
+    if (triggerSaveRef.current) {
+      await triggerSaveRef.current();
+    }
   };
 
   const handleDuplicate = async () => {
@@ -242,7 +273,7 @@ export function StudioTopBar() {
 
     toast({
       title: t("builder.actions.duplicateResume"),
-      description: "Duplicating...",
+      description: t("builder.actions.duplicateInProgress"),
     });
 
     try {
@@ -291,7 +322,7 @@ export function StudioTopBar() {
 
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
-    diagnosisStore.setBuilderCvName(title || "CV Builder draft");
+    diagnosisStore.setBuilderCvName(title || t("builder.studio.defaultCvName"));
 
     if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
       diagnosisStore.setStep("input");
@@ -299,7 +330,7 @@ export function StudioTopBar() {
         state: {
           source: "builder",
           cvId: draftId,
-          cvName: title || "CV Builder draft",
+          cvName: title || t("builder.studio.defaultCvName"),
         },
       });
       return;
@@ -561,7 +592,7 @@ export function StudioTopBar() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-              aria-label={t("builder.actions.more", "More actions")}
+              aria-label={t("builder.actions.more")}
             >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
@@ -574,11 +605,11 @@ export function StudioTopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportJson} className="gap-2">
               <FileJson className="w-4 h-4 text-slate-500" />
-              <span>{t("builder.actions.exportJson", "Export JSON Backup")}</span>
+              <span>{t("builder.actions.exportJson")}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2">
               <Upload className="w-4 h-4 text-slate-500" />
-              <span>{t("builder.actions.importJson", "Import JSON Backup")}</span>
+              <span>{t("builder.actions.importJson")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -591,6 +622,22 @@ export function StudioTopBar() {
           onChange={handleImportJson}
         />
       </div>
+      <AlertDialog open={!!importCandidate} onOpenChange={(open) => !open && setImportCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.import.confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.import.confirmDesc")}
+              <br />
+              {t("builder.import.stats", { sections: importSectionsCount })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={applyImportedBackup}>{t("builder.import.apply")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

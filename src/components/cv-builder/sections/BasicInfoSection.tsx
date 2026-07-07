@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Plus, X } from "lucide-react";
 
 export function BasicInfoSection() {
@@ -17,9 +18,8 @@ export function BasicInfoSection() {
   return (
     <div className="space-y-6 p-4">
       <div className="grid grid-cols-1 gap-4">
-        {/* Photo URL */}
         <div className="space-y-1.5">
-          <Label htmlFor="photoUrl">{t("builder.fields.photoUrl") || "Profile Photo URL"}</Label>
+          <Label htmlFor="photoUrl">{t("builder.fields.photoUrl")}</Label>
           <Input id="photoUrl" value={photoUrl || ""} onChange={(e) => setBasicInfo("photoUrl", e.target.value)} placeholder="https://..." />
         </div>
 
@@ -55,10 +55,9 @@ export function BasicInfoSection() {
         </div>
       </div>
 
-      {/* Dynamic Profile Links */}
       <div className="space-y-3 pt-4 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <Label className="font-semibold">{t("builder.fields.additionalLinks") || "Additional Links"}</Label>
+          <Label className="font-semibold">{t("builder.fields.additionalLinks")}</Label>
           <Button variant="outline" size="sm" onClick={addProfileLink} className="h-8 gap-1">
             <Plus className="w-3.5 h-3.5" />
             {t("builder.actions.addItem")}
@@ -67,7 +66,16 @@ export function BasicInfoSection() {
         {(profileLinks || []).map((link) => (
           <div key={link.id} className="flex items-center gap-2">
             <Input className="w-1/3" placeholder={t("builder.fields.linkNetworkPlaceholder")} value={link.network} onChange={(e) => updateProfileLink(link.id, "network", e.target.value)} />
-            <Input className="flex-1" placeholder="URL" value={link.url} onChange={(e) => updateProfileLink(link.id, "url", e.target.value)} />
+            <Input className="flex-1" placeholder={t("builder.fields.urlPlaceholder")} value={link.url} onChange={(e) => updateProfileLink(link.id, "url", e.target.value)} />
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 px-2 py-1.5">
+              <Switch
+                checked={link.visible !== false}
+                onCheckedChange={(checked) => updateProfileLink(link.id, "visible", checked)}
+                aria-label={t("builder.fields.profileLinkVisible")}
+                className="h-5 w-9"
+              />
+              <span className="hidden text-xs text-slate-500 sm:inline">{t("builder.fields.visible")}</span>
+            </div>
             <Button variant="ghost" size="icon" onClick={() => removeProfileLink(link.id)} className="shrink-0 text-slate-400 hover:text-red-500">
               <X className="w-4 h-4" />
             </Button>
@@ -75,10 +83,9 @@ export function BasicInfoSection() {
         ))}
       </div>
 
-      {/* Dynamic Custom Fields */}
       <div className="space-y-3 pt-4 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <Label className="font-semibold">{t("builder.fields.customFields") || "Custom Fields"}</Label>
+          <Label className="font-semibold">{t("builder.fields.customFields")}</Label>
           <Button variant="outline" size="sm" onClick={addCustomField} className="h-8 gap-1">
             <Plus className="w-3.5 h-3.5" />
             {t("builder.actions.addItem")}
