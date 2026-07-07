@@ -6,8 +6,10 @@ import {
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
+  buildBufferedRealtimeTurnRequest,
   buildServerOwnedRealtimeTurnRequest,
   buildValidatedRealtimeTurnRequest,
+  classifyRealtimeTranscriptIntent,
   createQuestionAudioRequestGuard,
   getLiveTranscriptWarnings,
   getInterviewEndIntent,
@@ -514,11 +516,19 @@ describe("interview view model", () => {
     ).toEqual(["Welcome.\n\nTell me about your project."]);
   });
 
-  it("shows only the official next question after an answered turn", () => {
-    expect(buildInterviewNextMessages("What trade-off did you make?")).toEqual([
+  it("combines the interviewer bridge and official next question after an answered turn", () => {
+    expect(
+      buildInterviewNextMessages(
+        "Thanks, I want to go one level deeper.",
+        "What trade-off did you make?",
+      ),
+    ).toEqual([
+      "Thanks, I want to go one level deeper.\n\nWhat trade-off did you make?",
+    ]);
+    expect(buildInterviewNextMessages("", "What trade-off did you make?")).toEqual([
       "What trade-off did you make?",
     ]);
-    expect(buildInterviewNextMessages(null)).toEqual([]);
+    expect(buildInterviewNextMessages(null, null)).toEqual([]);
   });
 
   it.each([
@@ -610,7 +620,7 @@ describe("interview view model", () => {
     expect(shouldRequestQuestionAudio("guided")).toBe(true);
   });
 
-  it("speaks the backend official question when realtime starts", () => {
+  it("speaks the backend interviewer bridge and official question when realtime starts", () => {
     const session = { speakOfficialQuestion: vi.fn() };
 
     expect(
@@ -618,11 +628,12 @@ describe("interview view model", () => {
         session,
         "  Describe a backend API you built.  ",
         "en",
+        "Thanks, let's go deeper.",
       ),
     ).toBe(true);
 
     expect(session.speakOfficialQuestion).toHaveBeenCalledWith(
-      "Describe a backend API you built.",
+      "Thanks, let's go deeper.\n\nDescribe a backend API you built.",
       "en",
     );
   });
@@ -696,6 +707,49 @@ describe("interview view model", () => {
       modality: "AUDIO",
       durationSeconds: 37,
     });
+  });
+
+  it("builds one realtime /turn payload from multiple buffered STT final transcripts", () => {
+    expect(
+      buildBufferedRealtimeTurnRequest({
+        sessionId: "session-1",
+        currentQuestion: "Describe a REST API you built.",
+        transcripts: [
+          "I built a REST API with authentication",
+          "and added Postgres transactions plus validation.",
+        ],
+        durationSeconds: 52,
+      }),
+    ).toEqual({
+      sessionId: "session-1",
+      userAnswer:
+        "I built a REST API with authentication and added Postgres transactions plus validation.",
+      userTranscript:
+        "I built a REST API with authentication and added Postgres transactions plus validation.",
+      modality: "AUDIO",
+      durationSeconds: 52,
+    });
+  });
+
+  it("classifies realtime command transcripts before deciding whether to submit /turn", () => {
+    expect(classifyRealtimeTranscriptIntent("nhắc lại câu hỏi giúp em")).toBe(
+      "repeat_question",
+    );
+    expect(classifyRealtimeTranscriptIntent("ý câu này là sao vậy")).toBe(
+      "clarify_question",
+    );
+    expect(classifyRealtimeTranscriptIntent("skip câu này")).toBe(
+      "skip_question",
+    );
+    expect(classifyRealtimeTranscriptIntent("tạm dừng chút")).toBe("pause");
+    expect(classifyRealtimeTranscriptIntent("kết thúc phỏng vấn")).toBe(
+      "end_interview",
+    );
+    expect(
+      classifyRealtimeTranscriptIntent(
+        "I built a REST API with authentication and validation.",
+      ),
+    ).toBe("answer");
   });
 
   it.each([

@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Bot,
   Clock,
-  Database,
   Maximize2,
   Mic,
   MicOff,
@@ -26,7 +25,6 @@ import { type ChatMessage, type InterviewMode } from "./types";
 import {
   getInterviewModeLabelKey,
   getRealtimeMicStatusKey,
-  hasVisibleInterviewQuestionMetadata,
   type InterviewQuestionBankSourceKind,
 } from "./interview-view-model";
 
@@ -75,8 +73,8 @@ export function InterviewSession({
   timeRemainingLabel,
   secondsRemaining,
   maxDurationSeconds,
-  currentQuestionNumber,
-  totalQuestionsPlanned,
+  currentQuestionNumber: _currentQuestionNumber,
+  totalQuestionsPlanned: _totalQuestionsPlanned,
   answeredCount,
   isEnding,
   interviewMode,
@@ -88,7 +86,7 @@ export function InterviewSession({
   isQuestionAudioPlaying,
   questionAudioError,
   currentQuestion,
-  currentQuestionMeta,
+  currentQuestionMeta: _currentQuestionMeta,
   chatHistory,
   isLoading,
   userAnswer,
@@ -125,31 +123,6 @@ export function InterviewSession({
           Math.min(100, (secondsRemaining / maxDurationSeconds) * 100),
         )
       : 0;
-  const remainingQuestions =
-    totalQuestionsPlanned == null
-      ? null
-      : Math.max(totalQuestionsPlanned - answeredCount, 0);
-  const questionMetaChips = [
-    currentQuestionMeta?.topicPhase
-      ? {
-          label: t("interview.session.questionMeta.phase"),
-          value: formatMetaLabel(currentQuestionMeta.topicPhase),
-        }
-      : null,
-    currentQuestionMeta?.skillCanonical
-      ? {
-          label: t("interview.session.questionMeta.skill"),
-          value: formatMetaLabel(currentQuestionMeta.skillCanonical),
-        }
-      : null,
-    currentQuestionMeta?.currentThread
-      ? {
-          label: t("interview.session.questionMeta.thread"),
-          value: currentQuestionMeta.currentThread,
-        }
-      : null,
-  ].filter((chip): chip is { label: string; value: string } => chip !== null);
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, isLoading]);
@@ -197,15 +170,7 @@ export function InterviewSession({
 
               <div className="flex flex-wrap items-center gap-3">
                 <Badge variant="secondary" className="rounded-full">
-                  Q{currentQuestionNumber}
-                  {totalQuestionsPlanned ? `/${totalQuestionsPlanned}` : ""}
-                </Badge>
-                <Badge variant="outline" className="rounded-full">
-                  {remainingQuestions == null
-                    ? t("interview.session.answered", { count: answeredCount })
-                    : t("interview.session.left", {
-                        count: remainingQuestions,
-                      })}
+                  {t("interview.session.answered", { count: answeredCount })}
                 </Badge>
                 <Badge
                   variant={isVoiceConnected ? "default" : "outline"}
@@ -213,21 +178,6 @@ export function InterviewSession({
                 >
                   {modeLabel}
                 </Badge>
-                {currentQuestionMeta && (
-                  <Badge
-                    variant={
-                      currentQuestionMeta.sourceKind === "curated"
-                        ? "default"
-                        : "secondary"
-                    }
-                    className="rounded-full gap-1"
-                  >
-                    <Database className="h-3 w-3" />
-                    {t(
-                      `interview.session.questionMeta.${currentQuestionMeta.sourceKind}`,
-                    )}
-                  </Badge>
-                )}
                 <Button
                   size="sm"
                   variant="destructive"
@@ -253,30 +203,6 @@ export function InterviewSession({
             {maxDurationSeconds > 0 && (
               <Progress value={progress} className="h-1.5" />
             )}
-
-            {currentQuestionMeta &&
-              hasVisibleInterviewQuestionMetadata(currentQuestionMeta) && (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
-                  <span className="font-bold uppercase tracking-wider text-slate-400">
-                    {t("interview.session.questionMeta.title")}
-                  </span>
-                  {questionMetaChips.map((chip) => (
-                    <span
-                      key={`${chip.label}-${chip.value}`}
-                      className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700"
-                    >
-                      {chip.label}: {chip.value}
-                    </span>
-                  ))}
-                  {currentQuestionMeta.questionBankKey && (
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
-                      {t("interview.session.questionMeta.bankKey", {
-                        key: currentQuestionMeta.questionBankKey,
-                      })}
-                    </span>
-                  )}
-                </div>
-              )}
 
             <div
               className={cn(
@@ -564,8 +490,3 @@ export function InterviewSession({
   );
 }
 
-function formatMetaLabel(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}

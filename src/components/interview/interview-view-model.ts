@@ -153,6 +153,14 @@ export type RealtimeMicStatusKey =
   | "submitting"
   | "listening"
   | "paused";
+export type RealtimeTranscriptIntent =
+  | "answer"
+  | "repeat_question"
+  | "clarify_question"
+  | "skip_question"
+  | "pause"
+  | "end_interview"
+  | "off_topic";
 
 interface RealtimeMicStatusOptions {
   isLiveRealtime: boolean;
@@ -181,6 +189,13 @@ export interface ServerOwnedRealtimeTurnInput {
 
 export interface ValidatedRealtimeTurnInput extends ServerOwnedRealtimeTurnInput {
   currentQuestion?: string | null;
+}
+
+export interface BufferedRealtimeTurnInput {
+  sessionId: string;
+  currentQuestion?: string | null;
+  transcripts: string[];
+  durationSeconds?: number;
 }
 
 export interface QuestionAudioRequestGuard {
@@ -263,9 +278,11 @@ export function buildInterviewInitialMessages(
 }
 
 export function buildInterviewNextMessages(
+  aiMessage: string | null | undefined,
   nextQuestion: string | null | undefined,
 ): string[] {
-  return uniqueNonEmptyStrings([nextQuestion]);
+  const content = interviewerTurnText(aiMessage, nextQuestion);
+  return content ? [content] : [];
 }
 
 interface BuildInterviewStartRequestInput extends InterviewVoicePreference {
@@ -303,8 +320,9 @@ export function speakOfficialRealtimeQuestion(
   session: RealtimeOfficialQuestionSpeaker | null | undefined,
   question: string | null | undefined,
   language: "vi" | "en",
+  aiMessage?: string | null,
 ): boolean {
-  const trimmed = question?.trim().normalize("NFC");
+  const trimmed = interviewerTurnText(aiMessage, question);
   if (!session || !trimmed) return false;
   session.speakOfficialQuestion(trimmed, language);
   return true;
@@ -338,6 +356,65 @@ export function buildValidatedRealtimeTurnRequest({
     ...input,
     transcript: normalized,
   });
+}
+
+export function buildBufferedRealtimeTurnRequest({
+  sessionId,
+  currentQuestion,
+  transcripts,
+  durationSeconds,
+}: BufferedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
+  const transcript = transcripts
+    .map((item) => item.trim().normalize("NFC"))
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return buildValidatedRealtimeTurnRequest({
+    sessionId,
+    currentQuestion,
+    transcript,
+    durationSeconds,
+  });
+}
+
+export function classifyRealtimeTranscriptIntent(
+  transcript: string,
+): RealtimeTranscriptIntent {
+  const normalized = normalizeCommandText(transcript);
+  if (!normalized) return "off_topic";
+  if (getLiveTranscriptWarnings(transcript).length > 0) return "off_topic";
+  if (
+    /\b(repeat|say again|read again|ask again|nhac lai|doc lai|noi lai)\b/.test(
+      normalized,
+    ) ||
+    /nhac lai cau hoi/.test(normalized)
+  ) {
+    return "repeat_question";
+  }
+  if (
+    /\b(clarify|explain|what do you mean|i don't understand|i do not understand)\b/.test(
+      normalized,
+    ) ||
+    /(y cau nay|giai thich|em chua hieu|khong hieu)/.test(normalized)
+  ) {
+    return "clarify_question";
+  }
+  if (/\b(skip|next question|bo qua|cau khac)\b/.test(normalized)) {
+    return "skip_question";
+  }
+  if (/\b(pause|wait|tam dung|dung mot chut|cho em)\b/.test(normalized)) {
+    return "pause";
+  }
+  if (
+    /\b(end interview|finish interview|stop interview|ket thuc|dung phong van)\b/.test(
+      normalized,
+    )
+  ) {
+    return "end_interview";
+  }
+  if (tokenizeTranscript(transcript).length < 2) return "off_topic";
+  return "answer";
 }
 
 export function createQuestionAudioRequestGuard(): QuestionAudioRequestGuard {
@@ -668,6 +745,17 @@ function normalizeForTranscriptComparison(value: string): string {
     .trim();
 }
 
+function normalizeCommandText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/[^\p{L}\p{N}']+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function isTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const value = error as { code?: unknown; message?: unknown };
@@ -693,6 +781,13 @@ function uniqueNonEmptyStrings(
   return Array.from(
     new Set(messages.map((message) => message?.trim()).filter(Boolean)),
   ) as string[];
+}
+
+function interviewerTurnText(
+  aiMessage: string | null | undefined,
+  question: string | null | undefined,
+): string {
+  return uniqueNonEmptyStrings([aiMessage, question]).join("\n\n").normalize("NFC");
 }
 
 function score(value: number | null | undefined): number | null {

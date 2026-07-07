@@ -72,6 +72,7 @@ export interface InterviewTurnDto {
   topicPhase?: string | null;
   modality: PlatformInterviewModality;
   aiRequestId: string | null;
+  interviewerMessage?: string | null;
   interviewerQuestion: string;
   userAnswerText: string | null;
   userAnswerTranscript: string | null;
@@ -140,6 +141,9 @@ export interface AnswerInterviewResponseDto {
   aiMessage: string;
   nextQuestion: string | null;
   finished: boolean;
+  turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
+  finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
+  nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
 }
 
 export interface InterviewDetailResponseDto extends InterviewSessionDto {
