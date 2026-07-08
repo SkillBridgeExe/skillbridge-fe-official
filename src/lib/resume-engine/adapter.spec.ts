@@ -261,6 +261,35 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.page.hideSectionIcons).toBe(true);
 	});
 
+	it("maps ATS Safe Mode overrides into resume metadata", () => {
+		const mockStore = {
+			fullName: "ATS User",
+			template: "onyx",
+			cvLanguage: "en",
+			resumeAccentColor: "#2563eb",
+			resumeHideSectionIcons: false,
+			resumeAtsSafeMode: true,
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		// ATS mode overrides
+		expect(result.metadata.design.colors.primary).toBe("#000000");
+		expect(result.metadata.design.colors.text).toBe("#000000");
+		expect(result.metadata.page.hideIcons).toBe(true);
+		expect(result.metadata.page.hideSectionIcons).toBe(true);
+		expect(result.metadata.design.dividerStyle).toBe("line");
+	});
+
 	it("maps bounded layout controls into resume metadata for sidebar templates", () => {
 		const mockStore = {
 			fullName: "Layout User",

@@ -427,9 +427,28 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-3">
+              <div className="space-y-5">
+                
+                {/* ATS Safe Mode */}
+                <div className="flex items-center justify-between bg-amber-50 p-3 rounded-md border border-amber-100">
+                  <div className="space-y-0.5">
+                    <label htmlFor="ats-safe-mode" className="text-[12px] font-bold text-amber-900 cursor-pointer flex items-center gap-1.5">
+                      ATS Safe Mode
+                    </label>
+                    <p className="text-[10px] text-amber-700/80 leading-relaxed max-w-[200px]">
+                      {t("builder.inspector.atsSafeModeDesc", "Optimize for Applicant Tracking Systems by using standard layouts, disabling icons, and forcing high contrast.")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="ats-safe-mode"
+                    checked={store.resumeAtsSafeMode}
+                    onCheckedChange={(checked) => store.setResumeAtsSafeMode(checked)}
+                    className="data-[state=checked]:bg-amber-600"
+                  />
+                </div>
+
                 <div className="space-y-4">
-                  <div>
+                  <div className={cn(!layoutCapabilities.supportsSpacing && "opacity-50 pointer-events-none")}>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                       {t("builder.inspector.pageMargin")}
                     </p>
@@ -445,7 +464,7 @@ export function StudioInspector() {
                       ))}
                     </div>
                   </div>
-                  <div>
+                  <div className={cn(!layoutCapabilities.supportsSpacing && "opacity-50 pointer-events-none")}>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                       {t("builder.inspector.sectionSpacing")}
                     </p>
@@ -462,23 +481,53 @@ export function StudioInspector() {
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    {t("builder.inspector.densityHelper")}
+                    {!layoutCapabilities.supportsSpacing 
+                      ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
+                      : t("builder.inspector.densityHelper")}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className={cn("flex items-center justify-between", 
+                  (!layoutCapabilities.supportsSectionIcons || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+                )}>
                   <div className="space-y-0.5">
                     <label htmlFor="hide-section-icons" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
                       {t("builder.inspector.showSectionIcons")}
                     </label>
                     <p className="text-[10px] text-slate-400">
-                      {t("builder.inspector.iconCompatibilityHint")}
+                      {store.resumeAtsSafeMode 
+                        ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
+                        : !layoutCapabilities.supportsSectionIcons
+                          ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
+                          : t("builder.inspector.iconCompatibilityHint")}
                     </p>
                   </div>
                   <Switch
                     id="hide-section-icons"
-                    checked={!store.resumeHideSectionIcons}
+                    checked={!store.resumeHideSectionIcons && !store.resumeAtsSafeMode}
                     onCheckedChange={(checked) => store.setResumeHideSectionIcons(!checked)}
+                  />
+                </div>
+
+                <div className={cn("flex items-center justify-between", 
+                  (!layoutCapabilities.supportsAvatar || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+                )}>
+                  <div className="space-y-0.5">
+                    <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
+                      {t("builder.inspector.showAvatar", "Show Avatar")}
+                    </label>
+                    <p className="text-[10px] text-slate-400">
+                      {store.resumeAtsSafeMode 
+                        ? t("builder.inspector.atsDisabledAvatar", "ATS Safe Mode hides avatars for better parsing and compliance.")
+                        : !layoutCapabilities.supportsAvatar
+                          ? t("builder.inspector.unsupportedFeature", "This template does not support avatars.")
+                          : t("builder.inspector.avatarHint", "Toggle your profile picture.")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-avatar"
+                    checked={store.resumeShowPicture !== false && !store.resumeAtsSafeMode}
+                    onCheckedChange={(checked) => store.setResumeShowPicture(checked)}
                   />
                 </div>
 
@@ -529,11 +578,16 @@ export function StudioInspector() {
                   </div>
                 )}
 
-                <div className="space-y-1.5">
+                <div className={cn("space-y-1.5", 
+                  (!layoutCapabilities.supportsDividerStyle || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+                )}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {t("builder.inspector.dividerStyle")}
                   </p>
-                  <Select value={store.resumeDividerStyle} onValueChange={(v) => store.setResumeDividerStyle(v as typeof store.resumeDividerStyle)}>
+                  <Select 
+                    value={store.resumeAtsSafeMode ? "line" : store.resumeDividerStyle} 
+                    onValueChange={(v) => store.setResumeDividerStyle(v as typeof store.resumeDividerStyle)}
+                  >
                     <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
                       <SelectValue placeholder={t("builder.inspector.selectDivider")} />
                     </SelectTrigger>
@@ -544,6 +598,13 @@ export function StudioInspector() {
                       <SelectItem value="none">{t("builder.inspector.dividerNone")}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                      {store.resumeAtsSafeMode 
+                        ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
+                        : !layoutCapabilities.supportsDividerStyle
+                          ? t("builder.inspector.unsupportedFeature", "This template does not support custom divider styles.")
+                          : ""}
+                  </p>
                 </div>
               </div>
             </AccordionContent>
@@ -560,7 +621,7 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-4">
+              <div className={cn("space-y-4", !layoutCapabilities.supportsTypography && "opacity-50 pointer-events-none")}>
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {t("builder.inspector.fontFamily")}
@@ -613,6 +674,11 @@ export function StudioInspector() {
                     ))}
                   </div>
                 </div>
+                {!layoutCapabilities.supportsTypography && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t("builder.inspector.unsupportedFeature", "This template does not support custom typography.")}
+                  </p>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -628,7 +694,9 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-1.5">
+              <div className={cn("space-y-1.5", 
+                (!layoutCapabilities.supportsAccentColor || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+              )}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   {t("builder.inspector.accentColor")}
                 </p>
@@ -642,14 +710,20 @@ export function StudioInspector() {
                       onClick={() => store.setResumeAccentColor(color.value)}
                       className={cn(
                         "h-8 rounded-full border-2 transition-transform hover:scale-105",
-                        store.resumeAccentColor === color.value ? "border-sky-400 ring-2 ring-sky-100" : "border-white shadow-sm",
+                        (store.resumeAtsSafeMode ? color.value === "#0f172a" : store.resumeAccentColor === color.value) 
+                          ? "border-sky-400 ring-2 ring-sky-100" 
+                          : "border-white shadow-sm",
                       )}
-                      style={{ backgroundColor: color.value }}
+                      style={{ backgroundColor: store.resumeAtsSafeMode ? "#0f172a" : color.value }}
                     />
                   ))}
                 </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    {t("builder.inspector.accentColorHelper")}
+                    {store.resumeAtsSafeMode
+                      ? t("builder.inspector.atsDisabledColor", "ATS Safe Mode forces black & white colors.")
+                      : !layoutCapabilities.supportsAccentColor
+                        ? t("builder.inspector.unsupportedFeature", "This template does not support custom accent colors.")
+                        : t("builder.inspector.accentColorHelper")}
                   </p>
                 </div>
               </AccordionContent>
