@@ -2565,6 +2565,7 @@ export default {
       previewTemporaryError: "Lỗi tạm thời",
       previewErrorTitle: "Không thể hiển thị bản xem trước",
       previewErrorDesc: "CV đang gặp lỗi định dạng. Vui lòng kiểm tra lại thông tin vừa nhập.",
+      previewFallbackTitle: "Bản xem trước CV",
       previewTechnicalDetails: "Chi tiết kỹ thuật",
       previewUnknownError: "Lỗi xem trước không xác định",
       previewRetry: "Thử lại",

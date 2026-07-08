@@ -2589,6 +2589,7 @@ export default {
       previewTemporaryError: "Temporary error",
       previewErrorTitle: "Preview could not be displayed",
       previewErrorDesc: "The CV preview hit a formatting issue. Check the latest content and try again.",
+      previewFallbackTitle: "CV preview",
       previewTechnicalDetails: "Technical details",
       previewUnknownError: "Unknown preview error",
       previewRetry: "Retry",

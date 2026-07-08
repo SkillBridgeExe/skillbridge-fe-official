@@ -1,4 +1,4 @@
-const PDF_WORKER_CACHE_KEY = "mjs-mime-20260706";
+const PDF_WORKER_CACHE_KEY = "mjs-mime-20260708";
 
 export const withPdfWorkerCacheKey = (workerSrc: string) => {
 	const url = new URL(workerSrc);

@@ -18,12 +18,12 @@ import { useTranslation } from "react-i18next";
 import { useCvBuilderStore, type CvBuilderState } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
-import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
 import { useRef, useState } from "react";
 import { createBuilderDraftApi } from "@/api/cv/builder";
+import { createStudioResumePdfBlob } from "./download-resume-pdf";
 
 type ImportedResumeBackup = Record<string, unknown> & {
   $schema: "skillbridge-cv-v1";
@@ -53,13 +53,13 @@ export function StudioTopBar() {
   const draftId = useCvBuilderStore((s) => s.draftId);
   const title = useCvBuilderStore((s) => s.resumeTitle);
   const fullName = useCvBuilderStore((s) => s.fullName);
-  const renderPdfMutation = useRenderBuilderPdfMutation();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
   const [importSectionsCount, setImportSectionsCount] = useState(0);
   const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
   const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
+  const [isRenderingPdf, setIsRenderingPdf] = useState(false);
 
   const showLocalActionToast = () => {
     toast({
@@ -119,31 +119,32 @@ export function StudioTopBar() {
       description: t("builder.toastRenderingDesc"),
     });
 
-    renderPdfMutation.mutate(draftId, {
-      onSuccess: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        const safeTitle = (title || fullName || "skillbridge-cv")
-          .trim()
-          .replace(/[^a-z0-9]/gi, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, "")
-          .toLowerCase() || "skillbridge-cv";
-        a.download = `${safeTitle}-skillbridge.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      },
-      onError: (err: Error) => {
-        toast({
-          title: t("builder.toastDownloadFailedTitle"),
-          description: err?.message || t("builder.toastDownloadFailedDesc"),
-          variant: "destructive",
-        });
-      },
-    });
+    setIsRenderingPdf(true);
+    try {
+      const blob = await createStudioResumePdfBlob(useCvBuilderStore.getState());
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeTitle = (title || fullName || "skillbridge-cv")
+        .trim()
+        .replace(/[^a-z0-9]/gi, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "skillbridge-cv";
+      a.download = `${safeTitle}-skillbridge.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({
+        title: t("builder.toastDownloadFailedTitle"),
+        description: err instanceof Error ? err.message : t("builder.toastDownloadFailedDesc"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsRenderingPdf(false);
+    }
   };
 
   const handleBackToDiagnosis = () => {
@@ -576,11 +577,11 @@ export function StudioTopBar() {
           size="sm"
           onClick={handleDownload}
           className="gap-2 h-8 rounded-full text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
-          disabled={renderPdfMutation.isPending}
+          disabled={isRenderingPdf}
           aria-label={t("builder.downloadCv")}
           title={t("builder.downloadCv")}
         >
-          {renderPdfMutation.isPending ? (
+          {isRenderingPdf ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Download className="w-3.5 h-3.5" />

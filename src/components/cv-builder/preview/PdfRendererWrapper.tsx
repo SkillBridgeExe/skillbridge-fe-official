@@ -13,11 +13,34 @@ export interface PdfRendererWrapperProps {
   format?: "a4" | "letter";
 }
 
+function NativePdfFallback({ blob, title }: { blob: Blob; title: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [blob]);
+
+  if (!url) return null;
+
+  return (
+    <iframe
+      src={url}
+      title={title}
+      className="h-[1123px] w-[794px] border-0 bg-white shadow-md"
+    />
+  );
+}
+
 export default function PdfRendererWrapper({ data, template }: PdfRendererWrapperProps) {
   const { t } = useTranslation("diagnosis");
   const [layers, setLayers] = useState<{ id: string; blob: Blob }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
+  const [canvasFailedLayerIds, setCanvasFailedLayerIds] = useState<Set<string>>(() => new Set());
   const renderedPagesRef = useRef<Record<string, Set<number>>>({});
 
   const handleLayerReady = (id: string) => {
@@ -64,6 +87,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
             // Keep at most the current active layer and the new pending one
             return [prev[0], newLayer];
           });
+          setCanvasFailedLayerIds(new Set());
           setIsRendering(false);
         }
       } catch (err: unknown) {
@@ -172,8 +196,21 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
             }
             aria-hidden={isPending ? "true" : "false"}
           >
-            <PdfErrorBoundary>
-              <PdfCanvasDocument file={layer.blob} onLoadSuccess={() => {}}>
+              <PdfErrorBoundary>
+              {canvasFailedLayerIds.has(layer.id) ? (
+                <NativePdfFallback blob={layer.blob} title={t("builder.previewFallbackTitle")} />
+              ) : (
+                <PdfCanvasDocument
+                  file={layer.blob}
+                  onLoadError={(loadError) => {
+                    setError(loadError instanceof Error ? loadError.message : String(loadError));
+                    setCanvasFailedLayerIds((prev) => new Set(prev).add(layer.id));
+                    if (isPending) {
+                      setLayers((prev) => prev.filter((item) => item.id !== layer.id));
+                    }
+                  }}
+                  onLoadSuccess={() => {}}
+                >
                 {(doc) => (
                   <div className="flex flex-col gap-8 items-center">
                     {Array.from({ length: doc.numPages }, (_, i) => (
@@ -195,7 +232,8 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                     ))}
                   </div>
                 )}
-              </PdfCanvasDocument>
+                </PdfCanvasDocument>
+              )}
             </PdfErrorBoundary>
           </div>
         );

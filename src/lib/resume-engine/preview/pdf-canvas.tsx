@@ -19,6 +19,7 @@ GlobalWorkerOptions.workerSrc = withPdfWorkerCacheKey(
 type PdfCanvasDocumentProps = {
 	children: (document: PDFDocumentProxy) => ReactNode;
 	file: Blob;
+	onLoadError?: (error: unknown) => void;
 	onLoadSuccess: (document: PDFDocumentProxy) => void;
 };
 
@@ -38,10 +39,15 @@ const isRenderingCancelledError = (error: unknown) =>
 	error instanceof RenderingCancelledException ||
 	(typeof error === "object" && error !== null && "name" in error && error.name === "RenderingCancelledException");
 
-export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDocumentProps) {
+export function PdfCanvasDocument({ children, file, onLoadError, onLoadSuccess }: PdfCanvasDocumentProps) {
 	const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
+	const onLoadErrorRef = useRef(onLoadError);
 	const onLoadSuccessRef = useRef(onLoadSuccess);
 	const documentRef = useRef<PDFDocumentProxy | null>(null);
+
+	useEffect(() => {
+		onLoadErrorRef.current = onLoadError;
+	}, [onLoadError]);
 
 	useEffect(() => {
 		onLoadSuccessRef.current = onLoadSuccess;
@@ -77,6 +83,7 @@ export function PdfCanvasDocument({ children, file, onLoadSuccess }: PdfCanvasDo
 			if (isCancelled) return;
 
 			console.error("Failed to load PDF document", error);
+			onLoadErrorRef.current?.(error);
 		});
 
 		return () => {
