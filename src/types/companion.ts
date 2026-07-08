@@ -12,6 +12,11 @@ export interface AssistantAnalyzeRequest {
   /** Dotted path to the field, e.g. "projects[0].bullets[0]". */
   field_path?: string;
   locale: "vi" | "en";
+  /**
+   * Optional action-chip intent. Prevents explicit user actions such as
+   * "add evidence" from degrading into a generic "already strong" no-op.
+   */
+  requested_action?: "analyze" | "add_evidence" | "make_ats_friendly" | "turn_into_impact";
 }
 
 export interface AssistantQuestionOption {
@@ -74,6 +79,8 @@ export interface AssistantRewriteRequest {
    * an older BE ignores the unknown field.
    */
   tone?: "softer";
+  /** Action-chip rewrite intent. BE may rewrite safely or return NEEDS_DETAIL. */
+  intent?: "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence";
 }
 
 export type AssistantRewriteReason =

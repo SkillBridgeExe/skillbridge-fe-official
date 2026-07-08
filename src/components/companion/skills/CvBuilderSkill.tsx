@@ -238,7 +238,7 @@ export function CvBuilderSkill({
   // ── Trigger smart-questions (Turn-1, LLM role-aware) — rule analyze fallback on error ──
   // Same request shape as analyze (current_value/section/field_path/locale) — no target_role,
   // BE reads the real role server-side from the owned CV record.
-  const handleSmartQuestions = useCallback(() => {
+  const handleSmartQuestions = useCallback((requestedAction: "analyze" | "add_evidence" | "make_ats_friendly" | "turn_into_impact" = "analyze") => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
 
     // Claim this field as THE active companion session.
@@ -258,6 +258,7 @@ export function CvBuilderSkill({
         section,
         field_path: fieldPath,
         locale: askLocale,
+        requested_action: requestedAction,
       },
       {
         onSuccess: (turn) => {
@@ -453,7 +454,7 @@ export function CvBuilderSkill({
     ],
   );
 
-  const fireDirectIntentRewrite = useCallback((intentKey: string) => {
+  const fireDirectIntentRewrite = useCallback((intentKey: "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence") => {
     if (!draftId || rewriteMutation.isPending) return;
 
     setCompanionField(fieldPath, section);
@@ -466,14 +467,15 @@ export function CvBuilderSkill({
     setIsApplied(false);
 
     rewriteMutation.mutate(
-      {
-        draftId,
-        before: currentValue,
-        answers: [{ gap: "rewrite_intent", detail: intentKey }],
-        target: fieldPath ?? "",
-        kind: section === "summary" ? "summary" : "bullet",
-        locale: outputLocale,
-      },
+        {
+          draftId,
+          before: currentValue,
+          answers: [],
+          target: fieldPath ?? "",
+          kind: section === "summary" ? "summary" : "bullet",
+          locale: outputLocale,
+          intent: intentKey,
+        },
       {
         onSuccess: (res) => {
           if (res.ok && res.field_patch) {
@@ -485,7 +487,7 @@ export function CvBuilderSkill({
               message: res.message ?? t("companion.needMoreInfo"),
               questions: [
                 {
-                  gap: res.gap ?? "detail",
+                  gap: res.gap ?? "result",
                   prompt: res.message ?? t("companion.needMoreInfo"),
                   options: [],
                   allows_free_text: true,
@@ -645,11 +647,17 @@ export function CvBuilderSkill({
               <button
                 key={chip.id}
                 onClick={() => {
-                  const needsUserFacts = ["analyze", "evidence", "impact", "ats"].includes(chip.id);
-                  if (needsUserFacts) {
-                    handleSmartQuestions();
-                  } else {
-                    fireDirectIntentRewrite(chip.id);
+                  const rewriteIntent = {
+                    improve: "improve",
+                    evidence: "add_evidence",
+                    ats: "make_ats_friendly",
+                    shorten: "shorten",
+                    impact: "turn_into_impact",
+                  }[chip.id] as "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence" | undefined;
+                  if (chip.id === "analyze") {
+                    handleSmartQuestions("analyze");
+                  } else if (rewriteIntent) {
+                    fireDirectIntentRewrite(rewriteIntent);
                   }
                 }}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-[#FBFBFA] text-[#2F3437] border-[#EAEAEA] hover:border-primary/20 hover:bg-primary/5"
