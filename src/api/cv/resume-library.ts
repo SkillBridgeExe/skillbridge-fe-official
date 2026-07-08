@@ -1,6 +1,8 @@
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
+import { getCvDetailApi } from "@/api/cv/list";
+import { updateBuilderDraftApi } from "@/api/cv/builder";
 import type { CvDto, CvListItemDto, Paginated } from "@shared/api";
 
 /** GET /api/cvs — list user's CVs. Optionally filter by cvKind. */
@@ -32,4 +34,21 @@ export async function duplicateResumeApi(
     "Failed to duplicate the CV.",
   );
   return envelope.data;
+}
+
+/** Rename a CV. */
+export async function renameResumeApi(
+  id: string,
+  title: string,
+): Promise<CvDto> {
+  const detail = await getCvDetailApi(id);
+  if (!detail.parsedJson) {
+    throw new Error("Cannot rename a CV without builder data.");
+  }
+  return updateBuilderDraftApi(id, {
+    parsedJson: detail.parsedJson,
+    targetRole: detail.targetRole ?? undefined,
+    language: detail.language === "vi" || detail.language === "en" ? detail.language : undefined,
+    title,
+  });
 }

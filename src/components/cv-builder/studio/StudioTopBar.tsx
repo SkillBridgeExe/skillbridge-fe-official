@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -602,6 +602,12 @@ export function StudioTopBar() {
             <DropdownMenuItem onClick={handleDuplicate} className="gap-2">
               <Copy className="w-4 h-4 text-slate-500" />
               <span>{t("builder.actions.duplicateResume")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="gap-2 opacity-50 cursor-not-allowed" title={t("builder.actions.versionHistoryDesc")}>
+              <RefreshCw className="w-4 h-4 text-slate-400" />
+              <span>{t("builder.actions.versionHistory")}</span>
+              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportJson} className="gap-2">

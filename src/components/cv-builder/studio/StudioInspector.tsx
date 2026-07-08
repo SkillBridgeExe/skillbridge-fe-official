@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, ChevronUp, ChevronDown, Layers, RotateCcw, ArrowRightLeft } from "lucide-react";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate, TemplateGallery, TemplateThumbnail } from "../preview/TemplatePicker";
@@ -10,6 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { TEMPLATE_PREVIEWS, getTemplateLayoutCapabilities } from "@/lib/resume-engine/template-meta";
 import { cn } from "@/lib/utils";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const SPACING_OPTIONS: Array<{ value: ResumeSpacing; labelKey: string }> = [
   { value: "compact", labelKey: "compactLabel" },
@@ -80,12 +83,138 @@ function SegmentedButton({
   );
 }
 
+function SortableSectionItem({
+  id,
+  isVisible,
+  sectionLabel,
+  supportsSidebar,
+  groupId,
+  onToggleVisibility,
+  onMovePlacement,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: {
+  id: string;
+  isVisible: boolean;
+  sectionLabel: string;
+  supportsSidebar: boolean;
+  groupId: "main" | "sidebar" | "single";
+  onToggleVisibility: () => void;
+  onMovePlacement: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
+  };
+  const { t } = useTranslation("diagnosis");
+  const moveTitle = groupId === "main" ? t("builder.inspector.moveToSidebar") : t("builder.inspector.moveToMain");
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center justify-between rounded-md border p-2 text-sm transition-colors relative bg-white",
+        isVisible
+          ? "border-slate-200 shadow-sm"
+          : "border-dashed border-slate-100 bg-slate-50 text-slate-400",
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-1.5">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 outline-none p-0.5 -ml-1 rounded transition-colors hover:bg-slate-100"
+          aria-label={t("builder.inspector.dragToReorder", { section: sectionLabel })}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 shrink-0",
+            isVisible ? "text-slate-400 hover:text-slate-600" : "text-slate-300 hover:text-slate-400",
+          )}
+          onClick={onToggleVisibility}
+          aria-label={
+            isVisible
+              ? t("builder.inspector.hideSection", { section: sectionLabel })
+              : t("builder.inspector.showSection", { section: sectionLabel })
+          }
+        >
+          {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </Button>
+        <span className="truncate font-medium">{sectionLabel}</span>
+      </div>
+
+      <div className="flex items-center gap-0.5">
+        {supportsSidebar && groupId !== "single" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-slate-400 hover:text-sky-600 mr-1"
+            onClick={onMovePlacement}
+            title={moveTitle}
+            aria-label={moveTitle}
+          >
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          aria-label={t("builder.inspector.moveUp", { section: sectionLabel })}
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
+          onClick={onMoveDown}
+          disabled={isLast}
+          aria-label={t("builder.inspector.moveDown", { section: sectionLabel })}
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function StudioInspector() {
   const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
   const currentTemplate = resolveBuilderTemplate(store.template);
   const layoutCapabilities = getTemplateLayoutCapabilities(currentTemplate);
-  
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // We only reorder within the global array for now since they are all one array
+    store.reorderSection(active.id as CvBuilderSectionKey, over.id as CvBuilderSectionKey);
+  };
+
   const sectionLabels: Record<CvBuilderSectionKey, string> = {
     summary: t("builder.tabSummary"),
     experience: t("builder.tabExperience"),
@@ -106,78 +235,29 @@ export function StudioInspector() {
     return (
       <div className="space-y-1.5">
         <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{title}</p>
-        {orderedSections.map((key, index, arr) => {
-          const isVisible = store.sectionVisibility[key] ?? true;
-          const targetPlacement = groupId === "main" ? "sidebar" : "main";
-          const moveTitle = groupId === "main" ? t("builder.inspector.moveToSidebar") : t("builder.inspector.moveToMain");
-
-          return (
-            <div
-              key={key}
-              className={cn(
-                "flex items-center justify-between rounded-md border p-2 text-sm transition-colors",
-                isVisible
-                  ? "border-slate-200 bg-white shadow-sm"
-                  : "border-dashed border-slate-100 bg-slate-50 text-slate-400",
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6 shrink-0",
-                    isVisible ? "text-slate-400 hover:text-slate-600" : "text-slate-300 hover:text-slate-400",
-                  )}
-                  onClick={() => store.setSectionVisibility(key, !isVisible)}
-                  aria-label={
-                    isVisible
-                      ? t("builder.inspector.hideSection", { section: sectionLabels[key] })
-                      : t("builder.inspector.showSection", { section: sectionLabels[key] })
-                  }
-                >
-                  {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                </Button>
-                <span className="truncate font-medium">{sectionLabels[key]}</span>
-              </div>
-
-              <div className="flex items-center gap-0.5">
-                {supportsSidebar && groupId !== "single" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-slate-400 hover:text-sky-600 mr-1"
-                    onClick={() => store.setSectionPlacement(key, targetPlacement)}
-                    title={moveTitle}
-                    aria-label={moveTitle}
-                  >
-                    <ArrowRightLeft className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-slate-400 hover:text-slate-600"
-                  onClick={() => store.moveSectionWithinGroup(key, "up", sections)}
-                  disabled={index === 0}
-                  aria-label={t("builder.inspector.moveUp", { section: sectionLabels[key] })}
-                >
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-slate-400 hover:text-slate-600"
-                  onClick={() => store.moveSectionWithinGroup(key, "down", sections)}
-                  disabled={index === arr.length - 1}
-                  aria-label={t("builder.inspector.moveDown", { section: sectionLabels[key] })}
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+        <SortableContext items={orderedSections} strategy={verticalListSortingStrategy}>
+          <div className="space-y-1.5">
+            {orderedSections.map((key, index, arr) => {
+              const isVisible = store.sectionVisibility[key] ?? true;
+              return (
+                <SortableSectionItem
+                  key={key}
+                  id={key}
+                  isVisible={isVisible}
+                  sectionLabel={sectionLabels[key]}
+                  supportsSidebar={supportsSidebar}
+                  groupId={groupId}
+                  onToggleVisibility={() => store.setSectionVisibility(key, !isVisible)}
+                  onMovePlacement={() => store.setSectionPlacement(key, groupId === "main" ? "sidebar" : "main")}
+                  onMoveUp={() => store.moveSectionWithinGroup(key, "up", sections)}
+                  onMoveDown={() => store.moveSectionWithinGroup(key, "down", sections)}
+                  isFirst={index === 0}
+                  isLast={index === arr.length - 1}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
       </div>
     );
   };
@@ -301,36 +381,38 @@ export function StudioInspector() {
                   {t("builder.inspector.reset")}
                 </Button>
               </div>
-              <div className="space-y-3">
-                {(() => {
-                  const capabilities = layoutCapabilities;
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <div className="space-y-3">
+                  {(() => {
+                    const capabilities = layoutCapabilities;
 
-                  if (!capabilities.supportsSidebar) {
+                    if (!capabilities.supportsSidebar) {
+                      return (
+                        <>
+                          <div className="p-2 mb-2 bg-slate-50 border border-slate-100 rounded-md text-[11px] text-slate-500">
+                            {t("builder.inspector.oneColumnHelper")}
+                          </div>
+                          {renderStructureGroup(t("builder.inspector.mainColumn"), store.sectionOrder, "single", false)}
+                        </>
+                      );
+                    }
+
+                    const mainSections = store.sectionOrder.filter(k =>
+                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "main" : DEFAULT_MAIN_SECTIONS.includes(k)
+                    );
+                    const sidebarSections = store.sectionOrder.filter(k =>
+                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "sidebar" : DEFAULT_SIDEBAR_SECTIONS.includes(k)
+                    );
+
                     return (
                       <>
-                        <div className="p-2 mb-2 bg-slate-50 border border-slate-100 rounded-md text-[11px] text-slate-500">
-                          {t("builder.inspector.oneColumnHelper")}
-                        </div>
-                        {renderStructureGroup(t("builder.inspector.mainColumn"), store.sectionOrder, "single", false)}
+                        {renderStructureGroup(t("builder.inspector.mainColumn"), mainSections, "main", true)}
+                        {renderStructureGroup(t("builder.inspector.sidebar"), sidebarSections, "sidebar", true)}
                       </>
                     );
-                  }
-
-                  const mainSections = store.sectionOrder.filter(k =>
-                    store.sectionPlacement[k] ? store.sectionPlacement[k] === "main" : DEFAULT_MAIN_SECTIONS.includes(k)
-                  );
-                  const sidebarSections = store.sectionOrder.filter(k =>
-                    store.sectionPlacement[k] ? store.sectionPlacement[k] === "sidebar" : DEFAULT_SIDEBAR_SECTIONS.includes(k)
-                  );
-
-                  return (
-                    <>
-                      {renderStructureGroup(t("builder.inspector.mainColumn"), mainSections, "main", true)}
-                      {renderStructureGroup(t("builder.inspector.sidebar"), sidebarSections, "sidebar", true)}
-                    </>
-                  );
-                })()}
-              </div>
+                  })()}
+                </div>
+              </DndContext>
             </AccordionContent>
           </AccordionItem>
 

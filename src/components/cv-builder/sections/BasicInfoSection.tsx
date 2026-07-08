@@ -76,7 +76,7 @@ export function BasicInfoSection() {
               />
               <span className="hidden text-xs text-slate-500 sm:inline">{t("builder.fields.visible")}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => removeProfileLink(link.id)} className="shrink-0 text-slate-400 hover:text-red-500" aria-label={t("builder.actions.remove", "Remove")}>
+            <Button variant="ghost" size="icon" onClick={() => removeProfileLink(link.id)} className="shrink-0 text-slate-400 hover:text-red-500" aria-label={t("builder.actions.remove")}>
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -95,7 +95,7 @@ export function BasicInfoSection() {
           <div key={field.id} className="flex items-center gap-2">
             <Input className="w-1/3" placeholder={t("builder.fields.customFieldNamePlaceholder")} value={field.name} onChange={(e) => updateCustomField(field.id, "name", e.target.value)} />
             <Input className="flex-1" placeholder={t("builder.fields.customFieldValuePlaceholder")} value={field.value} onChange={(e) => updateCustomField(field.id, "value", e.target.value)} />
-            <Button variant="ghost" size="icon" onClick={() => removeCustomField(field.id)} className="shrink-0 text-slate-400 hover:text-red-500" aria-label={t("builder.actions.remove", "Remove")}>
+            <Button variant="ghost" size="icon" onClick={() => removeCustomField(field.id)} className="shrink-0 text-slate-400 hover:text-red-500" aria-label={t("builder.actions.remove")}>
               <X className="w-4 h-4" />
             </Button>
           </div>

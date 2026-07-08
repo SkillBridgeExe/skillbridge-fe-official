@@ -291,7 +291,7 @@ export function StoryReviewPanel({
                             variant="ghost"
                             className="h-7 w-7"
                             onClick={() => updateProject(idx, { editingName: false })}
-                            aria-label={t("common.save", "Save")}
+                            aria-label={t("common.save")}
                           >
                             <Check className="h-3.5 w-3.5" />
                           </Button>
@@ -307,7 +307,7 @@ export function StoryReviewPanel({
                             variant="ghost"
                             className="h-6 w-6 shrink-0"
                             onClick={() => updateProject(idx, { editingName: true })}
-                            aria-label={t("common.edit", "Edit")}
+                            aria-label={t("common.edit")}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
@@ -389,7 +389,7 @@ export function StoryReviewPanel({
                             onClick={() =>
                               updateProject(idx, { editingBullets: true })
                             }
-                            aria-label={t("common.edit", "Edit")}
+                            aria-label={t("common.edit")}
                           >
                             <Pencil className="h-2.5 w-2.5" />
                           </Button>
@@ -456,7 +456,7 @@ export function StoryReviewPanel({
                         variant="ghost"
                         className="h-7 w-7"
                         onClick={() => updateCert(idx, { editingName: false })}
-                        aria-label={t("common.save", "Save")}
+                        aria-label={t("common.save")}
                       >
                         <Check className="h-3.5 w-3.5" />
                       </Button>
@@ -472,7 +472,7 @@ export function StoryReviewPanel({
                         variant="ghost"
                         className="h-6 w-6 shrink-0"
                         onClick={() => updateCert(idx, { editingName: true })}
-                        aria-label={t("common.edit", "Edit")}
+                        aria-label={t("common.edit")}
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>

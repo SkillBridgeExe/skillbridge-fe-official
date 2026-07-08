@@ -3,6 +3,7 @@ import {
   listResumesApi,
   deleteResumeApi,
   duplicateResumeApi,
+  renameResumeApi,
 } from "@/api/cv/resume-library";
 
 const RESUME_LIST_KEY = ["resume-library", "list"] as const;
@@ -31,6 +32,16 @@ export function useDuplicateResumeMutation() {
   return useMutation({
     mutationFn: ({ sourceCvId, title }: { sourceCvId: string; title: string }) =>
       duplicateResumeApi(sourceCvId, title),
+    onSuccess: () => qc.invalidateQueries({ queryKey: RESUME_LIST_KEY }),
+  });
+}
+
+/** Rename a CV and invalidate the list cache. */
+export function useRenameResumeMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      renameResumeApi(id, title),
     onSuccess: () => qc.invalidateQueries({ queryKey: RESUME_LIST_KEY }),
   });
 }
