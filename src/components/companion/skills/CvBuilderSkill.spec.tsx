@@ -4,7 +4,7 @@
 // No spec pre-existed for CvBuilderSkill (grepped — none), so this covers ONLY the new
 // transitions rather than re-testing the whole analyze→asking→thinking flow.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, act } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { CvBuilderSkill } from "./CvBuilderSkill";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
@@ -19,10 +19,12 @@ vi.mock("react-i18next", () => ({
 
 // Hook-level mock: full sync control over mutate()/isPending, no react-query/network needed.
 const mutateAnalyze = vi.fn();
+const mutateSmartQuestions = vi.fn();
 const mutateRewrite = vi.fn();
 let rewritePending = false;
 vi.mock("@/hooks/use-cv-builder", () => ({
   useAssistantAnalyzeMutation: () => ({ mutate: mutateAnalyze, isPending: false }),
+  useAssistantSmartQuestionsMutation: () => ({ mutate: mutateSmartQuestions, isPending: false }),
   useAssistantRewriteMutation: () => ({ mutate: mutateRewrite, isPending: rewritePending }),
 }));
 
@@ -30,6 +32,7 @@ afterEach(() => {
   cleanup();
   useCvBuilderStore.getState().resetCompanion();
   mutateAnalyze.mockReset();
+  mutateSmartQuestions.mockReset();
   mutateRewrite.mockReset();
   rewritePending = false;
 });
@@ -199,5 +202,72 @@ describe("CvBuilderSkill — Task M4 (Viết lại nhẹ hơn / Hỏi thêm đ�
     expect(after.mascotState).toBe("presenting");
     expect(after.companionMessage).toBe("companion.patchRejected"); // from mock translation
     expect(after.companionPatch?.after).toBe("new bullet");
+  });
+});
+
+describe("CvBuilderSkill — Task 6a + W83 (smart-questions behind fact-needed chips)", () => {
+  it("on open, renders intent chips without spending a smart-question call; fact-needed chip fetches role-aware questions", () => {
+    renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
+
+    expect(screen.getByText("companion.idlePrompt")).toBeInTheDocument();
+    expect(screen.getByText("companion.intent.analyze")).toBeInTheDocument();
+    expect(mutateSmartQuestions).not.toHaveBeenCalled();
+    expect(mutateAnalyze).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("companion.intent.analyze"));
+
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateAnalyze).not.toHaveBeenCalled();
+    const [req] = mutateSmartQuestions.mock.calls[0];
+    expect(req.draftId).toBe("draft-1");
+    expect(req.current_value).toBe("Fixed bugs in the payment flow.");
+    expect(req.section).toBe("experience");
+    expect(req.field_path).toBe(FIELD);
+    expect(req).not.toHaveProperty("target_role");
+
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+    act(() => handlers.onSuccess(TURN));
+
+    expect(useCvBuilderStore.getState().mascotState).toBe("asking");
+    expect(screen.getByText("Which tech?")).toBeInTheDocument();
+  });
+
+  it("smart-questions error from a fact-needed chip falls back to the rule analyze mutation — no blank companion", () => {
+    renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
+
+    fireEvent.click(screen.getByText("companion.intent.evidence"));
+
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    const [, smartHandlers] = mutateSmartQuestions.mock.calls[0];
+    act(() => smartHandlers.onError(new Error("timeout")));
+
+    expect(mutateAnalyze).toHaveBeenCalledTimes(1);
+    const [, analyzeHandlers] = mutateAnalyze.mock.calls[0];
+    act(() => analyzeHandlers.onSuccess(TURN));
+
+    expect(useCvBuilderStore.getState().mascotState).toBe("asking");
+    expect(screen.getByText("Which tech?")).toBeInTheDocument();
+  });
+
+  it("smart-questions returns questions: [] (already strong / no role) — renders no question chips", () => {
+    renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
+
+    fireEvent.click(screen.getByText("companion.intent.ats"));
+
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+    act(() =>
+      handlers.onSuccess({
+        message: "Dòng này đã ổn.",
+        questions: [],
+        requires_user_confirmation: false,
+        field_patch: null,
+      }),
+    );
+
+    expect(useCvBuilderStore.getState().mascotState).toBe("presenting");
+    expect(screen.queryByText("Which tech?")).not.toBeInTheDocument();
+    expect(screen.queryByText("React")).not.toBeInTheDocument();
+    // The "already strong" affordance shows the message (may render twice: header + strong-state line).
+    expect(screen.getAllByText("Dòng này đã ổn.").length).toBeGreaterThan(0);
   });
 });

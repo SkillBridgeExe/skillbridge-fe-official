@@ -14,6 +14,7 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import {
   useAssistantAnalyzeMutation,
+  useAssistantSmartQuestionsMutation,
   useAssistantRewriteMutation,
 } from "@/hooks/use-cv-builder";
 import { useTranslation } from "react-i18next";
@@ -174,6 +175,7 @@ export function CvBuilderSkill({
   const isActiveField = !!fieldPath && companionField === fieldPath;
 
   const analyzeMutation = useAssistantAnalyzeMutation();
+  const smartQuestionsMutation = useAssistantSmartQuestionsMutation();
   const rewriteMutation = useAssistantRewriteMutation();
 
   // Per-question answers: { [gap]: { optionId, freeText } }
@@ -233,8 +235,51 @@ export function CvBuilderSkill({
     setCompanionMessage, clearCompanionAnswers,
   ]);
 
-  // Auto-trigger analyze on mount when this is a fresh field (the shell only mounts
-  // the skill for the active context, so analyze runs when the bubble opens).
+  // ── Trigger smart-questions (Turn-1, LLM role-aware) — rule analyze fallback on error ──
+  // Same request shape as analyze (current_value/section/field_path/locale) — no target_role,
+  // BE reads the real role server-side from the owned CV record.
+  const handleSmartQuestions = useCallback(() => {
+    if (!draftId || !currentValue.trim() || !fieldPath) return;
+
+    // Claim this field as THE active companion session.
+    setCompanionField(fieldPath, section);
+    setMascotState("idle");
+    setCompanionTurn(null);
+    setCompanionPatch(null);
+    setCompanionMessage(null);
+    clearCompanionAnswers();
+    setAnswers({});
+    setIsApplied(false);
+
+    smartQuestionsMutation.mutate(
+      {
+        draftId,
+        current_value: currentValue,
+        section,
+        field_path: fieldPath,
+        locale: askLocale,
+      },
+      {
+        onSuccess: (turn) => {
+          setCompanionTurn(turn);
+          setCompanionMessage(turn.message);
+          setMascotState(turn.questions.length === 0 ? "presenting" : "asking");
+        },
+        onError: () => {
+          // LLM path failed (network/timeout/rate-limit) — fall back to the rule
+          // analyze so the user still gets chips, never a blank companion.
+          handleAnalyze();
+        },
+      },
+    );
+  }, [
+    draftId, currentValue, section, fieldPath, askLocale,
+    smartQuestionsMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
+    setCompanionMessage, clearCompanionAnswers, handleAnalyze,
+  ]);
+
+  // Auto-trigger smart-questions on mount when this is a fresh field (the shell only mounts
+  // the skill for the active context, so the fetch runs when the bubble opens/"tap").
   const hasTriggered = useRef(false);
   useEffect(() => {
     if (hasTriggered.current) return;
@@ -245,7 +290,7 @@ export function CvBuilderSkill({
     } else if (isActiveField && mascotState === "idle" && !companionTurn && !analyzeMutation.isPending) {
       hasTriggered.current = true;
     }
-  }, [isActiveField, fieldPath, draftId, currentValue, mascotState, companionTurn, analyzeMutation.isPending, setCompanionField, section]);
+  }, [isActiveField, fieldPath, draftId, currentValue, mascotState, companionTurn, analyzeMutation.isPending, setCompanionField, setMascotState, section]);
 
   // ── Route a re-ask dead-end INTO the intake coaching loop (no dead-end) ──
   // The current bullet seeds the narrative; the discarded res.gap selects the
@@ -534,8 +579,8 @@ export function CvBuilderSkill({
     useCompanionStore.getState().dismissActive();
   }, [resetCompanion]);
 
-  // ── Loading state for analyze ──
-  if (analyzeMutation.isPending) {
+  // ── Loading state for analyze / smart-questions ──
+  if (analyzeMutation.isPending || smartQuestionsMutation.isPending) {
     return (
       <div className="py-2">
         <ThinkingDots label={t("companion.analyzing")} />
@@ -602,7 +647,7 @@ export function CvBuilderSkill({
                 onClick={() => {
                   const needsUserFacts = ["analyze", "evidence", "impact", "ats"].includes(chip.id);
                   if (needsUserFacts) {
-                    handleAnalyze();
+                    handleSmartQuestions();
                   } else {
                     fireDirectIntentRewrite(chip.id);
                   }

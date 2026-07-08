@@ -1,4 +1,5 @@
 import type { PreviewPageSize } from "./preview.shared";
+import { withPdfWorkerCacheKey } from "./pdf-worker";
 import { getResumeThumbnailRenderSize, RESUME_THUMBNAIL_TARGET_WIDTH } from "./resume-thumbnail.shared";
 
 const canvasToBlob = async (canvas: HTMLCanvasElement) => {
@@ -16,7 +17,9 @@ const canvasToBlob = async (canvas: HTMLCanvasElement) => {
 
 export const createPdfFirstPageImageUrl = async (file: Blob) => {
 	const { AnnotationMode, GlobalWorkerOptions, getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-	GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
+	GlobalWorkerOptions.workerSrc = withPdfWorkerCacheKey(
+		new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString(),
+	);
 
 	const arrayBuffer = await file.arrayBuffer();
 	const loadingTask = getDocument({ data: new Uint8Array(arrayBuffer) });

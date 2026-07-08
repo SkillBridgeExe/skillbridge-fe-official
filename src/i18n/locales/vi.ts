@@ -1151,7 +1151,7 @@ export default {
           dataSource: "Nguồn dữ liệu câu hỏi",
           roleOnly: {
             title: "Chỉ dùng Vai trò",
-            desc: "Phỏng vấn ngẫu nhiên theo bộ câu hỏi chuẩn."
+            desc: "Luyện tập generic theo vai trò; không dùng ngữ cảnh CV/JD."
           },
           cv: {
             title: "Dùng CV của tôi",
@@ -2902,6 +2902,7 @@ export default {
     companion: {
       analyze: "Trợ lý AI",
       analyzing: "Đang phân tích...",
+      nudgeSuggestions: "gợi ý",
       send: "Gửi",
       apply: "Áp dụng",
       discard: "Bỏ",

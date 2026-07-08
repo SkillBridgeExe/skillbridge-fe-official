@@ -1154,7 +1154,7 @@ export default {
           dataSource: "Question Data Source",
           roleOnly: {
             title: "Role Only",
-            desc: "Random questions from the standard question bank."
+            desc: "Generic role practice from the rubric; no CV/JD context."
           },
           cv: {
             title: "Use My CV",
@@ -2930,6 +2930,7 @@ export default {
     companion: {
       analyze: "AI Assistant",
       analyzing: "Analyzing...",
+      nudgeSuggestions: "suggestions",
       send: "Send",
       apply: "Apply",
       discard: "Discard",
