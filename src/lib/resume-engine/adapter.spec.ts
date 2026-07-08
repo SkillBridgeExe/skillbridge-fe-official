@@ -263,7 +263,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 	it("maps bounded layout controls into resume metadata for sidebar templates", () => {
 		const mockStore = {
 			fullName: "Layout User",
-			template: "bronzor",
+			template: "gengar",
 			cvLanguage: "en",
 			resumeSidebarPosition: "right",
 			resumeSidebarWidth: "wide",
@@ -286,16 +286,62 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.design.dividerStyle).toBe("accent");
 	});
 
+	it("uses renderer sidebar sections for templates that actually render side columns", () => {
+		const mockStore = {
+			fullName: "Column User",
+			template: "azurill",
+			cvLanguage: "en",
+			resumeSidebarWidth: "wide",
+			summary: "Frontend developer with React experience.",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: ["React", "TypeScript"],
+			softSkills: [],
+			tools: [],
+			languages: [{ id: "lang-1", language: "English", proficiency: "B2" }],
+			certifications: [{ id: "cert-1", name: "TOEIC", organization: "", issueDate: "", credentialUrl: "" }],
+			sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"],
+			sectionPlacement: {},
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		expect(result.metadata.layout.sidebarWidth).toBe(42);
+		expect(result.metadata.layout.pages[0]?.main).toEqual(["experience", "education", "projects"]);
+		expect(result.metadata.layout.pages[0]?.sidebar).toEqual(["summary", "certifications", "skills", "languages"]);
+	});
+
 	it("does not advertise sidebar position controls for split templates until templates apply position", () => {
 		expect(getTemplateLayoutCapabilities("chikorita")).toMatchObject({
 			supportsSidebar: true,
+			usesSidebarSections: true,
 			supportsSidebarWidth: true,
 			supportsSidebarPosition: false,
 		});
-		expect(getTemplateLayoutCapabilities("bronzor")).toMatchObject({
+		expect(getTemplateLayoutCapabilities("gengar")).toMatchObject({
 			supportsSidebar: true,
+			usesSidebarSections: true,
 			supportsSidebarWidth: true,
 			supportsSidebarPosition: true,
+		});
+		expect(getTemplateLayoutCapabilities("bronzor")).toMatchObject({
+			supportsSidebar: false,
+			usesSidebarSections: true,
+			supportsSidebarWidth: false,
+			supportsSidebarPosition: false,
+		});
+		expect(getTemplateLayoutCapabilities("azurill")).toMatchObject({
+			supportsSidebar: true,
+			usesSidebarSections: true,
+			supportsSidebarWidth: true,
+			supportsSidebarPosition: false,
+		});
+		expect(getTemplateLayoutCapabilities("onyx")).toMatchObject({
+			supportsSidebar: false,
+			usesSidebarSections: true,
+			supportsSidebarWidth: false,
+			supportsSidebarPosition: false,
 		});
 	});
 

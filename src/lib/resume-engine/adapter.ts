@@ -208,8 +208,9 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	const safeSectionOrder = store.sectionOrder || [];
 	const safeSectionPlacement = store.sectionPlacement || {};
+	const usesSidebarSections = layoutCaps.usesSidebarSections;
 
-	if (layoutCaps.supportsSidebar) {
+	if (usesSidebarSections) {
 		mainSections = safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "main" : ["experience", "education", "projects"].includes(k));
 		sidebarSections = [...safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "sidebar" : ["summary", "skills", "certifications"].includes(k)), "languages"];
 	} else {
@@ -503,7 +504,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 		metadata: {
 			template: templateName,
 			layout: {
-				sidebarWidth: layoutCaps.supportsSidebar ? sidebarWidth : 0,
+				sidebarWidth: usesSidebarSections ? sidebarWidth : 0,
 				sidebarPosition: layoutCaps.supportsSidebarPosition && store.resumeSidebarPosition === "right" ? "right" : "left",
 				pages: [
 					{
