@@ -1,11 +1,12 @@
 import { useCvBuilderStore, type Education, type WorkExperience, type Project, type Certification } from "@/store/useCvBuilderStore";
 import { useTranslation } from "react-i18next";
-import { 
-  User, Target, FileText, GraduationCap, Briefcase, 
-  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw
+import {
+  User, Target, FileText, GraduationCap, Briefcase,
+  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import * as Sections from "./sections";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -136,15 +137,33 @@ const isSectionDirty = (sectionId: string, state: ReturnType<typeof useCvBuilder
   }
 };
 
+const STATUS_INDEX_MAP: Record<string, number> = {
+  "basic-info": 0,
+  "career-target": 1,
+  "summary": 2,
+  "education": 3,
+  "experience": 4,
+  "projects": 5,
+  "skills": 6,
+  "certifications": 7,
+};
+
 export function CvFormPanel() {
   const { t, i18n } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
-  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, sectionFixFeedback } = store;
+  const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, sectionFixFeedback, collapsedSections, toggleSectionCollapse, sectionOrder } = store;
   const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
   const isLoggedIn = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.authSource === "api",
   );
+
+  const orderedSections = useMemo(() => [
+    SECTIONS.find(s => s.id === "basic-info")!,
+    SECTIONS.find(s => s.id === "career-target")!,
+    ...sectionOrder.map(id => SECTIONS.find(s => s.id === id)).filter(Boolean) as typeof SECTIONS[0][],
+    SECTIONS.find(s => s.id === "review")!,
+  ], [sectionOrder]);
 
   // Intersection Observer for scroll tracking
   useEffect(() => {
@@ -178,7 +197,7 @@ export function CvFormPanel() {
     elements.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
-  }, []);
+  }, [orderedSections]);
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
@@ -229,7 +248,7 @@ export function CvFormPanel() {
 
     if (!isLoggedIn || !draftId) return;
 
-    const prevSection = SECTIONS[prevIdx];
+    const prevSection = orderedSections[prevIdx];
     if (!prevSection) return;
 
     const beSection = sectionUiToBeMap[prevSection.id];
@@ -243,7 +262,7 @@ export function CvFormPanel() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [activeSection, draftId, handleEvaluateSection, isLoggedIn]);
+  }, [activeSection, draftId, handleEvaluateSection, isLoggedIn, orderedSections]);
 
   const renderEvaluateChip = (beSection: BuilderSection, sectionId: string) => {
     const evaluation = sectionEvaluations[beSection];
@@ -295,7 +314,7 @@ export function CvFormPanel() {
             <h5 className="font-bold text-slate-800 text-xs mb-3 border-b border-slate-100 pb-1.5 uppercase tracking-wider">
               {sectionTitleMap[sectionId][currentLang]}
             </h5>
-            
+
             <div className="space-y-2 mb-3">
               {checklist && checklist.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-xs">
@@ -343,14 +362,15 @@ export function CvFormPanel() {
 
   return (
     <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-6">
-      {SECTIONS.map((section, index) => {
+      {orderedSections.map((section, index) => {
         const Icon = section.icon;
-        const status = index < 8 ? statuses[index]?.status : null;
+        const statusIdx = STATUS_INDEX_MAP[section.id];
+        const status = statusIdx !== undefined ? statuses[statusIdx]?.status : null;
         const title = sectionTitleMap[section.id][currentLang];
         const beSection = sectionUiToBeMap[section.id];
         const isReview = section.id === "review";
         const isHidden = (["summary", "experience", "education", "projects", "skills", "certifications"].includes(section.id)) && store.sectionVisibility[section.id as keyof typeof store.sectionVisibility] === false;
-        
+
         // Add active highlighting style
         const isActive = activeSection === index;
 
@@ -366,7 +386,13 @@ export function CvFormPanel() {
               "border rounded-xl shadow-sm"
             )}
           >
-            <div className={cn("px-4 py-2.5 border-b transition-colors", isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 border-slate-100")}>
+            <div
+              className={cn(
+                "px-4 py-2.5 border-b transition-colors cursor-pointer select-none group",
+                isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-100"
+              )}
+              onClick={() => toggleSectionCollapse(section.id)}
+            >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isHidden ? "bg-slate-100/50 text-slate-400" : isActive ? "bg-primary/10 text-primary" : "bg-white border border-slate-200 text-slate-500 shadow-sm")}>
@@ -381,9 +407,12 @@ export function CvFormPanel() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Status Chip / Score Chip */}
-                <div>
+                <div
+                  className="flex items-center gap-3"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   {!isReview && (isLoggedIn && beSection ? (
                     renderEvaluateChip(beSection, section.id)
                   ) : (
@@ -409,12 +438,35 @@ export function CvFormPanel() {
                       </div>
                     )
                   ))}
+
+                  {/* Collapse Toggle */}
+                  <button
+                    type="button"
+                    className="text-slate-400 transition-colors group-hover:text-slate-600"
+                    onClick={() => toggleSectionCollapse(section.id)}
+                    aria-label={collapsedSections[section.id] ? t("builder.expandSection") : t("builder.collapseSection")}
+                    title={collapsedSections[section.id] ? t("builder.expandSection") : t("builder.collapseSection")}
+                  >
+                    {collapsedSections[section.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </div>
-            <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
-              <section.component />
-            </div>
+
+            <AnimatePresence initial={false}>
+              {!collapsedSections[section.id] && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                >
+                  <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
+                    <section.component />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}

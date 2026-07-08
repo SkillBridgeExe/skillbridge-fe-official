@@ -1,16 +1,48 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useCvBuilderStore, type CvBuilderState } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useRenderBuilderPdfMutation } from "@/hooks/use-cv-builder";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
+import { useRef, useState } from "react";
+import { createBuilderDraftApi } from "@/api/cv/builder";
+
+type ImportedResumeBackup = Record<string, unknown> & {
+  $schema: "skillbridge-cv-v1";
+  exportedAt?: string;
+  education: unknown[];
+  experience: unknown[];
+  projects: unknown[];
+};
+
+const isImportedResumeBackup = (value: unknown): value is ImportedResumeBackup => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.$schema === "skillbridge-cv-v1" &&
+    Array.isArray(candidate.education) &&
+    Array.isArray(candidate.experience) &&
+    Array.isArray(candidate.projects)
+  );
+};
 
 export function StudioTopBar() {
   const { t } = useTranslation("diagnosis");
@@ -19,10 +51,15 @@ export function StudioTopBar() {
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
   const draftId = useCvBuilderStore((s) => s.draftId);
-  const title = useCvBuilderStore((s) => s.fullName);
+  const title = useCvBuilderStore((s) => s.resumeTitle);
+  const fullName = useCvBuilderStore((s) => s.fullName);
   const renderPdfMutation = useRenderBuilderPdfMutation();
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
+  const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
+  const [importSectionsCount, setImportSectionsCount] = useState(0);
+  const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
+  const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
 
   const showLocalActionToast = () => {
     toast({
@@ -87,7 +124,7 @@ export function StudioTopBar() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const safeTitle = (title || "skillbridge-cv")
+        const safeTitle = (title || fullName || "skillbridge-cv")
           .trim()
           .replace(/[^a-z0-9]/gi, '-')
           .replace(/-+/g, '-')
@@ -124,6 +161,158 @@ export function StudioTopBar() {
     navigate("/diagnosis");
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportJson = () => {
+    const state = useCvBuilderStore.getState();
+    const excludedKeys = new Set([
+      "draftId",
+      "sectionEvaluations",
+      "sectionFixFeedback",
+      "mascotState",
+      "companionField",
+      "companionSection",
+      "companionTurn",
+      "companionAnswers",
+      "companionPatch",
+      "companionMessage",
+      "companionReaskCount",
+      "pendingProveIt",
+    ]);
+    const exportData = Object.fromEntries(
+      Object.entries(state).filter(([key, value]) => !excludedKeys.has(key) && typeof value !== "function"),
+    );
+
+    // Add version schema indicator for W64 requirements
+    const payload = {
+      $schema: "skillbridge-cv-v1",
+      exportedAt: new Date().toISOString(),
+      ...exportData
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    const safeTitle = (title || fullName || "skillbridge-cv")
+      .trim()
+      .replace(/[^a-z0-9]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, "")
+      .toLowerCase() || "skillbridge-cv";
+
+    const date = new Date().toISOString().split("T")[0];
+    a.download = `${safeTitle}-${date}.skillbridge-resume.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const data = JSON.parse(content);
+
+        if (!isImportedResumeBackup(data)) {
+          throw new Error("Invalid format");
+        }
+
+        const sectionsCount =
+          data.experience.length +
+          data.education.length +
+          data.projects.length;
+
+        setImportCandidate(data);
+        setImportSectionsCount(sectionsCount);
+      } catch {
+        toast({
+          title: t("builder.import.invalidFormat"),
+          variant: "destructive",
+        });
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.onerror = () => {
+      toast({
+        title: t("builder.import.readError"),
+        variant: "destructive",
+      });
+    };
+    reader.readAsText(file);
+  };
+
+  const applyImportedBackup = async () => {
+    if (!importCandidate) return;
+    const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
+    useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
+    setImportCandidate(null);
+    setImportSectionsCount(0);
+    toast({
+      title: t("builder.import.success"),
+    });
+
+    if (triggerSaveRef.current) {
+      await triggerSaveRef.current();
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
+
+    // Check if there are unsaved changes
+    if (!(await flushDraftChanges())) return;
+
+    toast({
+      title: t("builder.actions.duplicateResume"),
+      description: t("builder.actions.duplicateInProgress"),
+    });
+
+    try {
+      const state = useCvBuilderStore.getState();
+      const newTitle = t("builder.actions.copyOf", { title: title || fullName || t("builder.actions.untitledResume") });
+
+      // Call create builder draft to get a new ID
+      const newDraft = await createBuilderDraftApi({
+        title: newTitle,
+        language: state.cvLanguage,
+        targetRole: useDiagnosisStore.getState().targetRole || undefined,
+      });
+
+      // Update store with new draftId and title
+      state.setDraftId(newDraft.id);
+
+      // Save full canonical document to the new draft
+      if (triggerSaveRef.current) {
+         await triggerSaveRef.current();
+      }
+
+      toast({
+        title: t("builder.actions.duplicateSuccess"),
+        description: t("builder.actions.duplicateSuccessDesc", { title: newTitle }),
+      });
+
+      navigate("/diagnosis?mode=builder", { replace: true });
+    } catch (error) {
+      toast({
+        title: t("builder.actions.duplicateFailed"),
+        description: getApiErrorMessage(error, t("builder.actions.duplicateFailedDesc")),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAnalyze = async () => {
     const diagnosisStore = useDiagnosisStore.getState();
 
@@ -136,7 +325,7 @@ export function StudioTopBar() {
 
     diagnosisStore.setIsFromBuilder(true);
     diagnosisStore.setBuilderCvId(draftId);
-    diagnosisStore.setBuilderCvName(title || "CV Builder draft");
+    diagnosisStore.setBuilderCvName(title || fullName || t("builder.studio.defaultCvName"));
 
     if (!diagnosisStore.targetRole || !diagnosisStore.consentAccepted) {
       diagnosisStore.setStep("input");
@@ -144,7 +333,7 @@ export function StudioTopBar() {
         state: {
           source: "builder",
           cvId: draftId,
-          cvName: title || "CV Builder draft",
+          cvName: title || fullName || t("builder.studio.defaultCvName"),
         },
       });
       return;
@@ -297,7 +486,7 @@ export function StudioTopBar() {
             value={title || ""}
             placeholder={t("builder.studio.untitledResume")}
             aria-label={t("builder.studio.resumeNameLabel")}
-            onChange={(e) => useCvBuilderStore.getState().setBasicInfo("fullName", e.target.value)}
+            onChange={(e) => useCvBuilderStore.getState().setResumeTitle(e.target.value)}
           />
           <PenLine className="w-3.5 h-3.5 text-slate-400 absolute right-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
         </div>
@@ -398,7 +587,103 @@ export function StudioTopBar() {
           )}
           <span className="hidden sm:inline">{t("builder.downloadCv")}</span>
         </Button>
+
+        {/* More Options Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+              aria-label={t("builder.actions.more")}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handleDuplicate} className="gap-2">
+              <Copy className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.duplicateResume")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowVersionPlaceholder(true)} className="gap-2">
+              <RefreshCw className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.versionHistory")}</span>
+              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleExportJson} className="gap-2">
+              <FileJson className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.exportJson")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2">
+              <Upload className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.importJson")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowSharePlaceholder(true)} className="gap-2">
+              <Share2 className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.shareResume")}</span>
+              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept=".json,application/json"
+          onChange={handleImportJson}
+        />
       </div>
+      <AlertDialog open={!!importCandidate} onOpenChange={(open) => !open && setImportCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.import.confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.import.confirmDesc")}
+              <br />
+              {t("builder.import.stats", { sections: importSectionsCount })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={applyImportedBackup}>{t("builder.import.apply")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showVersionPlaceholder} onOpenChange={setShowVersionPlaceholder}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.actions.versionHistoryPlaceholderDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showSharePlaceholder} onOpenChange={setShowSharePlaceholder}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.actions.shareResumeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isLocalMode || !draftId
+                ? t("builder.actions.shareResumePlaceholderDescDraft")
+                : t("builder.actions.shareResumePlaceholderDesc")
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSharePlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

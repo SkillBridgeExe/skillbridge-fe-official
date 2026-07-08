@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { Sparkles, Edit3, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
+import { useFieldNudge } from "@/hooks/use-field-nudge";
+import { FieldNudge } from "@/components/companion/FieldNudge";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const GENERATE_SUMMARY_INSTRUCTION =
@@ -68,7 +70,8 @@ type SummaryHint = AiGateCode | "LOCAL_ONLY";
 export function SummarySection() {
   const { summary, summaryMode, setSummary, setSummaryMode, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
+  const locale = (i18n.language.startsWith("vi") ? "vi" : "en") as "vi" | "en";
 
   // AI Suggest states
   const [suggestionText, setSuggestionText] = useState<string | null>(null);
@@ -186,6 +189,37 @@ export function SummarySection() {
     setIsFallback(false);
   };
 
+  /** Activate path for the companion — shared by the trigger button and the on-blur nudge. */
+  const openCompanion = () => {
+    const id = "cvbuilder:summary";
+    useCompanionStore.getState().registerContext({
+      id,
+      getTurn: () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath: id,
+          section: "summary",
+          currentValue: summary,
+          onApply: (after: string) => {
+            setSummary(after);
+            clearSectionEvaluation("summary");
+          },
+        },
+      }),
+    });
+    useCompanionStore.getState().activateContext(id);
+    useCompanionStore.setState({ bubbleOpen: true });
+  };
+
+  const { count: nudgeCount, handleBlur: handleSummaryBlur } = useFieldNudge({
+    draftId,
+    section: "summary",
+    currentValue: summary,
+    fieldPath: "cvbuilder:summary",
+    locale,
+  });
+
   /**
    * "Tạo tóm tắt" THẬT: gom dữ kiện đã điền → FE gate (instant) → BE rewrite
    * mode 'custom'. Không còn template giả — AI chỉ viết từ thông tin thật.
@@ -272,19 +306,25 @@ export function SummarySection() {
             </Button>
           )}
         </div>
-        <div className="relative">
-          <Textarea
-            className="min-h-[120px] resize-none text-[13px] pb-7"
+        <div
+          className="relative"
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            handleSummaryBlur();
+          }}
+        >
+          <RichTextEditor
+            className="min-h-[120px] pb-7"
             placeholder={
               summaryMode === "ai"
                 ? t("builder.summaryAiPlaceholder")
                 : t("builder.summaryManualPlaceholder")
             }
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={(val) => setSummary(val)}
           />
           <div className={cn(
-            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors",
+            "absolute bottom-2.5 right-3 text-[10px] font-medium transition-colors pointer-events-none",
             summary.length > 500 ? "text-amber-500" : "text-slate-400"
           )}>
             {summary.length} {t("builder.characters")}
@@ -395,38 +435,21 @@ export function SummarySection() {
         </div>
       )}
 
-      {/* Companion AI trigger for summary */}
+      {/* Companion AI trigger for summary + on-blur nudge (same activate path) */}
       {isLoggedIn && draftId && summary.trim() && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-          disabled={!draftId || !summary.trim()}
-          onClick={() => {
-            const id = "cvbuilder:summary";
-            useCompanionStore.getState().registerContext({
-              id,
-              getTurn: () => ({
-                skill: "cv_builder",
-                props: {
-                  draftId,
-                  fieldPath: id,
-                  section: "summary",
-                  currentValue: summary,
-                  onApply: (after: string) => {
-                    setSummary(after);
-                    clearSectionEvaluation("summary");
-                  },
-                },
-              }),
-            });
-            useCompanionStore.getState().activateContext(id);
-            useCompanionStore.setState({ bubbleOpen: true });
-          }}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t("companion.analyze")}</span>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+            disabled={!draftId || !summary.trim()}
+            onClick={openCompanion}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t("companion.analyze")}</span>
+          </Button>
+          <FieldNudge count={nudgeCount} onClick={openCompanion} />
+        </div>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 export const getBuilderSnapshot = (
   state: ReturnType<typeof useCvBuilderStore.getState>,
 ): BuilderSnapshot => ({
+  resumeTitle: state.resumeTitle,
   fullName: state.fullName,
   email: state.email,
   phone: state.phone,

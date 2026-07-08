@@ -21,6 +21,7 @@ import {
   intakeProjectFromStoryApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
+  assistantSmartQuestionsApi,
   assistantRewriteApi,
   assistantSkillsNudgeApi,
   assistantExtractApi,
@@ -65,6 +66,7 @@ import type {
 // ── Snapshot của builder store (subset service cần) ────────────────
 
 export interface BuilderSnapshot {
+  resumeTitle: string;
   fullName: string;
   email: string;
   phone: string;
@@ -402,6 +404,15 @@ export async function assistantAnalyze(
 ): Promise<CvAssistantTurn> {
   requireSession();
   return assistantAnalyzeApi(draftId, input);
+}
+
+/** Turn-1, LLM role-aware sibling of analyze (KHÔNG gửi target_role — BE tự đọc role từ CV owned). */
+export async function assistantSmartQuestions(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<CvAssistantTurn> {
+  requireSession();
+  return assistantSmartQuestionsApi(draftId, input);
 }
 
 /** Turn-2: viết lại từ câu trả lời (LLM, tốn quota CHỈ khi ok). */

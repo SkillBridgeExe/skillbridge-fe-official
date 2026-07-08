@@ -6,6 +6,7 @@ import {
   rewriteField,
   saveBuilderDraft,
   assistantAnalyze,
+  assistantSmartQuestions,
   assistantRewrite,
   assistantSkillsNudge,
   assistantExtract,
@@ -104,6 +105,14 @@ export function useAssistantAnalyzeMutation() {
   return useMutation({
     mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantAnalyzeRequest) =>
       assistantAnalyze(draftId, input),
+  });
+}
+
+/** Turn-1, LLM role-aware — mutation vì user trigger thủ công (mở companion). Rule fallback ở CvBuilderSkill. */
+export function useAssistantSmartQuestionsMutation() {
+  return useMutation({
+    mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantAnalyzeRequest) =>
+      assistantSmartQuestions(draftId, input),
   });
 }
 

@@ -1,9 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { Plus, Sparkles, RotateCcw, LayoutTemplate } from "lucide-react";
+import { RichTextEditor, normalizeToBulletText } from "@/components/ui/rich-text-editor";
+import { useCvBuilderStore, type Project } from "@/store/useCvBuilderStore";
+import { Plus, Sparkles, RotateCcw, LayoutTemplate, List as ListIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAiRewrite } from "@/hooks/use-cv-builder";
@@ -14,6 +14,8 @@ import { useTranslation } from "react-i18next";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { SectionItemCard } from "./SectionItemCard";
 import { useScrollToNewItem } from "@/hooks/use-scroll-to-new-item";
+import { useFieldNudge } from "@/hooks/use-field-nudge";
+import { FieldNudge } from "@/components/companion/FieldNudge";
 
 /** Instruction cho mode 'custom' của BE rewrite (≤500 ký tự). */
 const BULLETS_INSTRUCTION =
@@ -21,10 +23,159 @@ const BULLETS_INSTRUCTION =
 
 type ProjectNotice = AiGateCode | "LOCAL_ONLY" | "FALLBACK";
 
+/**
+ * Description field for ONE project entry: AI-suggest bullets + convert-to-bullets
+ * + the companion trigger + its on-blur nudge. Extracted to its own component
+ * (not inline in the parent's .map()) so `useFieldNudge` obeys the Rules of Hooks
+ * regardless of how many projects are in the array.
+ */
+function ProjectDescriptionField({
+  proj,
+  index,
+  draftId,
+  locale,
+  isLoggedIn,
+  isPending,
+  notice,
+  noticeText,
+  backup,
+  onChange,
+  onSuggestBullets,
+  onConvertToBullets,
+  onUndo,
+}: {
+  proj: Project;
+  index: number;
+  draftId: string | null;
+  locale: "vi" | "en";
+  isLoggedIn: boolean;
+  isPending: boolean;
+  notice: ProjectNotice | null;
+  noticeText: (kind: ProjectNotice) => string;
+  backup: string | undefined;
+  onChange: (value: string) => void;
+  onSuggestBullets: () => void;
+  onConvertToBullets: () => void;
+  onUndo: () => void;
+}) {
+  const { t } = useTranslation("diagnosis");
+  const { updateProject, clearSectionEvaluation } = useCvBuilderStore();
+  const fieldPath = `cvbuilder:projects[${index}].description`;
+
+  /** Activate path for the companion — shared by the trigger button and the on-blur nudge. */
+  const openCompanion = () => {
+    useCompanionStore.getState().registerContext({
+      id: fieldPath,
+      getTurn: () => ({
+        skill: "cv_builder",
+        props: {
+          draftId,
+          fieldPath,
+          section: "projects",
+          currentValue: proj.description,
+          onApply: (after: string) => {
+            updateProject(proj.id, "description", after);
+            clearSectionEvaluation("projects");
+          },
+        },
+      }),
+    });
+    useCompanionStore.getState().activateContext(fieldPath);
+    useCompanionStore.setState({ bubbleOpen: true });
+  };
+
+  const { count: nudgeCount, handleBlur } = useFieldNudge({
+    draftId,
+    section: "projects",
+    currentValue: proj.description,
+    fieldPath,
+    locale,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{t("builder.fields.projectDescription")}</Label>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-primary"
+          onClick={onSuggestBullets}
+          disabled={isPending}
+        >
+          <Sparkles className="w-3 h-3 mr-1" />
+          {isPending ? t("builder.generating") : t("builder.turnIntoBullets")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1 px-1.5"
+          onClick={onConvertToBullets}
+          title={t("builder.richText.convertToBullets")}
+          aria-label={t("builder.richText.convertToBullets")}
+        >
+          <ListIcon className="w-3 h-3" />
+          <span>{t("builder.richText.convertToBullets")}</span>
+        </Button>
+      </div>
+      <div
+        onBlur={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          handleBlur();
+        }}
+      >
+        <RichTextEditor
+          value={proj.description}
+          onChange={onChange}
+          placeholder={t("builder.ph.projectDescription")}
+          className="text-[13px] min-h-[96px] font-sans"
+        />
+      </div>
+
+      {/* Input-gate hint / fallback note */}
+      {notice && (
+        <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
+          {noticeText(notice)}
+        </div>
+      )}
+
+      {/* Hoàn tác sau khi áp bản viết lại của AI */}
+      {backup !== undefined && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onUndo}
+          className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>{t("builder.undo")}</span>
+        </Button>
+      )}
+
+      {/* Companion AI trigger for project description + on-blur nudge (same activate path) */}
+      {isLoggedIn && draftId && proj.description.trim() && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
+            onClick={openCompanion}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t("companion.analyze")}</span>
+          </Button>
+          <FieldNudge count={nudgeCount} onClick={openCompanion} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProjectsSection() {
   const { projects, addProject, updateProject, removeProject, duplicateProject, moveProject, draftId, clearSectionEvaluation } = useCvBuilderStore();
   const { toast } = useToast();
-  const { t } = useTranslation("diagnosis");
+  const { t, i18n } = useTranslation("diagnosis");
+  const locale = (i18n.language.startsWith("vi") ? "vi" : "en") as "vi" | "en";
 
   // Per-entry trạng thái: hint gate/fallback + backup để hoàn tác sau khi áp AI
   const [notice, setNotice] = useState<{ id: string; kind: ProjectNotice } | null>(null);
@@ -119,11 +270,16 @@ export function ProjectsSection() {
     setNotice(null);
   };
 
+  const handleConvertToBullets = (id: string, currentText: string) => {
+    if (!currentText.trim()) return;
+    updateProject(id, "description", normalizeToBulletText(currentText));
+  };
+
   return (
     <div className="space-y-6">
       {projects.length > 0 ? projects.map((proj, index) => {
-        const title = proj.name || t("builder.ph.projectName", { defaultValue: "Project Name" });
-        const subtitle = proj.role || t("builder.entry.project", { defaultValue: "Project" });
+        const title = proj.name || t("builder.ph.projectName");
+        const subtitle = proj.role || t("builder.entry.project");
 
         return (
           <div key={proj.id} id={`projects-${proj.id}`}>
@@ -179,7 +335,7 @@ export function ProjectsSection() {
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="leading-none">{t("companion.projectIntake.trigger", { defaultValue: "tell a story about this project" })}</span>
+                  <span className="leading-none">{t("companion.projectIntake.trigger")}</span>
                 </Button>
               )}
             </div>
@@ -206,83 +362,21 @@ export function ProjectsSection() {
                   placeholder={t("builder.ph.projectLink")}
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>{t("builder.fields.projectDescription")}</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-primary"
-                    onClick={() => suggestBullets(proj.id, proj.description)}
-                    disabled={aiRewrite.isPending && pendingId === proj.id}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    {aiRewrite.isPending && pendingId === proj.id
-                      ? t("builder.generating")
-                      : t("builder.turnIntoBullets")}
-                  </Button>
-                </div>
-                <Textarea
-                  value={proj.description}
-                  onChange={(e) => updateProject(proj.id, "description", e.target.value)}
-                  placeholder={t("builder.ph.projectDescription")}
-                  className="text-[13px] resize-none h-20"
-                />
-
-                {/* Input-gate hint / fallback note */}
-                {notice?.id === proj.id && (
-                  <div className="text-[11px] text-[#8C6D1F] bg-[#FBF3DB]/60 border border-[#F2E5BC] rounded-lg p-2.5 leading-relaxed">
-                    {noticeText(notice.kind)}
-                  </div>
-                )}
-
-                {/* Hoàn tác sau khi áp bản viết lại của AI */}
-                {backupMap[proj.id] !== undefined && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleUndo(proj.id)}
-                    className="h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 gap-1"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>{t("builder.undo")}</span>
-                  </Button>
-                )}
-
-                {/* Companion AI trigger for project description */}
-                {isLoggedIn && draftId && proj.description.trim() && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-primary hover:bg-primary/5 flex items-center gap-1 px-2"
-                    disabled={!draftId || !proj.description.trim()}
-                    onClick={() => {
-                      const id = `cvbuilder:projects[${index}].description`;
-                      useCompanionStore.getState().registerContext({
-                        id,
-                        getTurn: () => ({
-                          skill: "cv_builder",
-                          props: {
-                            draftId,
-                            fieldPath: id,
-                            section: "projects",
-                            currentValue: proj.description,
-                            onApply: (after: string) => {
-                              updateProject(proj.id, "description", after);
-                              clearSectionEvaluation("projects");
-                            },
-                          },
-                        }),
-                      });
-                      useCompanionStore.getState().activateContext(id);
-                      useCompanionStore.setState({ bubbleOpen: true });
-                    }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("companion.analyze", { defaultValue: "AI Assistant" })}</span>
-                  </Button>
-                )}
-              </div>
+              <ProjectDescriptionField
+                proj={proj}
+                index={index}
+                draftId={draftId}
+                locale={locale}
+                isLoggedIn={isLoggedIn}
+                isPending={aiRewrite.isPending && pendingId === proj.id}
+                notice={notice?.id === proj.id ? notice.kind : null}
+                noticeText={noticeText}
+                backup={backupMap[proj.id]}
+                onChange={(value) => updateProject(proj.id, "description", value)}
+                onSuggestBullets={() => suggestBullets(proj.id, proj.description)}
+                onConvertToBullets={() => handleConvertToBullets(proj.id, proj.description)}
+                onUndo={() => handleUndo(proj.id)}
+              />
             </div>
           </SectionItemCard>
           </div>
@@ -292,8 +386,8 @@ export function ProjectsSection() {
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
             <LayoutTemplate className="w-6 h-6 text-slate-400" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle", { defaultValue: "No projects added" })}</h4>
-          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc", { defaultValue: "Add notable projects you've worked on." })}</p>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">{t("builder.empty.projectsTitle")}</h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-[240px]">{t("builder.empty.projectsDesc")}</p>
           <Button onClick={addProject} size="sm" variant="outline" className="h-8 gap-1.5 bg-white text-slate-700 hover:bg-slate-50 border-slate-200">
             <Plus className="w-3.5 h-3.5"/>
             {t("builder.add.project")}

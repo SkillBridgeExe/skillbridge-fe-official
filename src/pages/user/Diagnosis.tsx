@@ -115,6 +115,7 @@ export default function Diagnosis() {
   const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
   const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
+    resumeTitle: state.resumeTitle,
     fullName: state.fullName,
     email: state.email,
     phone: state.phone,
@@ -178,7 +179,7 @@ export default function Diagnosis() {
         {
           sourceCvId: builderSeed.seedSourceCvId,
           language: builderSeed.cvLanguage,
-          title: builderSeed.fullName || "CV Builder draft",
+          title: builderSeed.resumeTitle || builderSeed.fullName || t("builder.studio.untitledResume"),
           targetRole: useDiagnosisStore.getState().targetRole,
         },
         {
@@ -224,7 +225,7 @@ export default function Diagnosis() {
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(latestBuilder),
-                title: latestBuilder.fullName || "CV Builder draft",
+                title: latestBuilder.resumeTitle || latestBuilder.fullName || t("builder.studio.untitledResume"),
                 targetRole: useDiagnosisStore.getState().targetRole,
               }, {
                 onSuccess: markSaved,

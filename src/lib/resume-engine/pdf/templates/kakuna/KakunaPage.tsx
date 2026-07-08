@@ -14,7 +14,7 @@ import { hasTemplatePicture } from "../shared/picture";
 import { Heading, Icon, Link, Text } from "../shared/primitives";
 import { createRtlStyleHelpers } from "../shared/rtl";
 import { Section } from "../shared/sections";
-import { composeStyles, headerNameLineHeight } from "../shared/styles";
+import { composeStyles, headerNameLineHeight , resolveDividerStyles } from "../shared/styles";
 
 type KakunaStyles = Omit<TemplateStyleSlots, "page"> & {
 	page: Style;
@@ -210,9 +210,12 @@ const useKakunaTemplate = (): KakunaTemplate => {
 			sectionHeading: {
 				color: primary,
 				textAlign: "center",
-				borderBottomWidth: 1,
-				borderBottomColor: primary,
 				paddingBottom: metrics.gapY(0.125),
+				...resolveDividerStyles({
+					dividerStyle: metadata.design.dividerStyle,
+					accentColor: primary,
+					textColor: foreground,
+				}),
 			},
 			item: {
 				rowGap: metrics.gapY(0.125),
