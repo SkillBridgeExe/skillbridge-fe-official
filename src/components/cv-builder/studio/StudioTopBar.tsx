@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -58,6 +58,8 @@ export function StudioTopBar() {
   const isLocalMode = saveStatus === "local";
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
   const [importSectionsCount, setImportSectionsCount] = useState(0);
+  const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
+  const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
 
   const showLocalActionToast = () => {
     toast({
@@ -604,6 +606,12 @@ export function StudioTopBar() {
               <span>{t("builder.actions.duplicateResume")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowVersionPlaceholder(true)} className="gap-2">
+              <RefreshCw className="w-4 h-4 text-slate-500" />
+              <span>{t("builder.actions.versionHistory")}</span>
+              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportJson} className="gap-2">
               <FileJson className="w-4 h-4 text-slate-500" />
               <span>{t("builder.actions.exportJson")}</span>
@@ -613,8 +621,8 @@ export function StudioTopBar() {
               <span>{t("builder.actions.importJson")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled className="gap-2 opacity-50 cursor-not-allowed">
-              <Share2 className="w-4 h-4 text-slate-400" />
+            <DropdownMenuItem onClick={() => setShowSharePlaceholder(true)} className="gap-2">
+              <Share2 className="w-4 h-4 text-slate-500" />
               <span>{t("builder.actions.shareResume")}</span>
               <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
             </DropdownMenuItem>
@@ -642,6 +650,37 @@ export function StudioTopBar() {
           <AlertDialogFooter>
             <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={applyImportedBackup}>{t("builder.import.apply")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showVersionPlaceholder} onOpenChange={setShowVersionPlaceholder}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.actions.versionHistoryPlaceholderDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showSharePlaceholder} onOpenChange={setShowSharePlaceholder}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.actions.shareResumeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isLocalMode || !draftId
+                ? t("builder.actions.shareResumePlaceholderDescDraft")
+                : t("builder.actions.shareResumePlaceholderDesc")
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSharePlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

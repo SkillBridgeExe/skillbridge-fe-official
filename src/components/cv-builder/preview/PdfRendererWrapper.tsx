@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { createResumePdfBlob } from "@resume-engine/pdf/browser";
 import { PdfCanvasDocument, PdfCanvasPage } from "@resume-engine/preview/pdf-canvas";
+import { PdfErrorBoundary } from "./PdfErrorBoundary";
 import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
@@ -17,6 +18,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
   const [layers, setLayers] = useState<{ id: string; blob: Blob }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
+  const renderedPagesRef = useRef<Record<string, Set<number>>>({});
 
   const handleLayerReady = (id: string) => {
     // Wait a brief moment for the canvas to paint the page
@@ -29,7 +31,22 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
         }
         return prev;
       });
-    }, 150);
+    }, 50);
+  };
+
+  const handlePageRendered = (layerId: string, pageNumber: number, totalPages: number) => {
+    if (!renderedPagesRef.current[layerId]) {
+      renderedPagesRef.current[layerId] = new Set();
+    }
+    renderedPagesRef.current[layerId].add(pageNumber);
+
+    if (renderedPagesRef.current[layerId].size === totalPages) {
+      handleLayerReady(layerId);
+      // Cleanup old layer tracking
+      Object.keys(renderedPagesRef.current).forEach((key) => {
+        if (key !== layerId) delete renderedPagesRef.current[key];
+      });
+    }
   };
 
   useEffect(() => {
@@ -155,31 +172,31 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
             }
             aria-hidden={isPending ? "true" : "false"}
           >
-            <PdfCanvasDocument
-              file={layer.blob}
-              onLoadSuccess={() => {
-                if (isPending) {
-                  handleLayerReady(layer.id);
-                }
-              }}
-            >
-              {(doc) => (
-                <div className="flex flex-col gap-8 items-center">
-                  {Array.from({ length: doc.numPages }, (_, i) => (
-                    <div key={i + 1} className="relative bg-white shadow-md overflow-hidden ring-1 ring-slate-900/5 shrink-0">
-                      <PdfCanvasPage
-                        document={doc}
-                        pageNumber={i + 1}
-                        pageScale={1.5}
-                        totalPages={doc.numPages}
-                        showPageNumbers={false}
-                        onLoadSuccess={() => {}}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </PdfCanvasDocument>
+            <PdfErrorBoundary>
+              <PdfCanvasDocument file={layer.blob} onLoadSuccess={() => {}}>
+                {(doc) => (
+                  <div className="flex flex-col gap-8 items-center">
+                    {Array.from({ length: doc.numPages }, (_, i) => (
+                      <div key={i + 1} className="relative bg-white shadow-md overflow-hidden ring-1 ring-slate-900/5 shrink-0">
+                        <PdfCanvasPage
+                          document={doc}
+                          pageNumber={i + 1}
+                          pageScale={1.5}
+                          totalPages={doc.numPages}
+                          showPageNumbers={false}
+                          onLoadSuccess={() => {}}
+                          onRenderSuccess={() => {
+                            if (isPending) {
+                              handlePageRendered(layer.id, i + 1, doc.numPages);
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </PdfCanvasDocument>
+            </PdfErrorBoundary>
           </div>
         );
       })}

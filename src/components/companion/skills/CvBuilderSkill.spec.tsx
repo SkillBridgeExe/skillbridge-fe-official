@@ -46,6 +46,16 @@ const TURN: CvAssistantTurn = {
   field_patch: null,
 };
 
+const EVIDENCE_TURN: CvAssistantTurn = {
+  message: "",
+  questions: [
+    { gap: "tech", prompt: "Which tech?", options: [{ id: "react", label: "React" }], allows_free_text: true },
+    { gap: "result", prompt: "What changed?", options: [{ id: "fewer_errors", label: "Fewer errors" }], allows_free_text: true },
+  ],
+  requires_user_confirmation: false,
+  field_patch: null,
+};
+
 /** Seed the store directly into the PRESENTING state with an already-accepted patch. */
 function seedPresenting() {
   const s = useCvBuilderStore.getState();
@@ -205,9 +215,16 @@ describe("CvBuilderSkill — Task M4 (Viết lại nhẹ hơn / Hỏi thêm đ�
   });
 });
 
-describe("CvBuilderSkill — Task 6a (smart-questions on open, rule fallback)", () => {
-  it("on open, fetches smart questions (LLM role-aware) instead of rule analyze; renders chips on success", () => {
+describe("CvBuilderSkill — Task 6a + W83 (intent-aware action chips)", () => {
+  it("on open, renders intent chips without spending a smart-question call; fact-needed chip fetches role-aware questions", () => {
     renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
+
+    expect(screen.getByText("companion.idlePrompt")).toBeInTheDocument();
+    expect(screen.getByText("companion.intent.analyze")).toBeInTheDocument();
+    expect(mutateSmartQuestions).not.toHaveBeenCalled();
+    expect(mutateAnalyze).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("companion.intent.analyze"));
 
     expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
     expect(mutateAnalyze).not.toHaveBeenCalled();
@@ -216,6 +233,7 @@ describe("CvBuilderSkill — Task 6a (smart-questions on open, rule fallback)", 
     expect(req.current_value).toBe("Fixed bugs in the payment flow.");
     expect(req.section).toBe("experience");
     expect(req.field_path).toBe(FIELD);
+    expect(req).not.toHaveProperty("requested_action");
     expect(req).not.toHaveProperty("target_role");
 
     const [, handlers] = mutateSmartQuestions.mock.calls[0];
@@ -225,8 +243,10 @@ describe("CvBuilderSkill — Task 6a (smart-questions on open, rule fallback)", 
     expect(screen.getByText("Which tech?")).toBeInTheDocument();
   });
 
-  it("smart-questions error falls back to the rule analyze mutation — no blank companion", () => {
+  it("smart-questions error from analyze chip falls back to the rule analyze mutation — no blank companion", () => {
     renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
+
+    fireEvent.click(screen.getByText("companion.intent.analyze"));
 
     expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
     const [, smartHandlers] = mutateSmartQuestions.mock.calls[0];
@@ -240,23 +260,47 @@ describe("CvBuilderSkill — Task 6a (smart-questions on open, rule fallback)", 
     expect(screen.getByText("Which tech?")).toBeInTheDocument();
   });
 
-  it("smart-questions returns questions: [] (already strong / no role) — renders no chips", () => {
+  it("add-evidence chip asks for evidence first and carries intent into the rewrite", () => {
     renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
 
-    const [, handlers] = mutateSmartQuestions.mock.calls[0];
-    act(() =>
-      handlers.onSuccess({
-        message: "Dòng này đã ổn.",
-        questions: [],
-        requires_user_confirmation: false,
-        field_patch: null,
-      }),
-    );
+    fireEvent.click(screen.getByText("companion.intent.evidence"));
 
-    expect(useCvBuilderStore.getState().mascotState).toBe("presenting");
-    expect(screen.queryByText("Which tech?")).not.toBeInTheDocument();
-    expect(screen.queryByText("React")).not.toBeInTheDocument();
-    // The "already strong" affordance shows the message (may render twice: header + strong-state line).
-    expect(screen.getAllByText("Dòng này đã ổn.").length).toBeGreaterThan(0);
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("add_evidence");
+    expect(mutateRewrite).not.toHaveBeenCalled();
+
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+    act(() => handlers.onSuccess(EVIDENCE_TURN));
+    fireEvent.click(screen.getByText("React"));
+    fireEvent.click(screen.getByText("Fewer errors"));
+    fireEvent.click(screen.getByText("companion.send"));
+
+    expect(mutateRewrite).toHaveBeenCalledTimes(1);
+    const [req] = mutateRewrite.mock.calls[0];
+    expect(req.intent).toBe("add_evidence");
+    expect(req.answers).toEqual([
+      expect.objectContaining({ gap: "tech" }),
+      expect.objectContaining({ gap: "result" }),
+    ]);
+  });
+
+  it("ATS chip goes through smart questions instead of direct rewrite", () => {
+    renderSkill(vi.fn(), "Built React dashboard components.");
+
+    fireEvent.click(screen.getByText("companion.intent.ats"));
+
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("make_ats_friendly");
+    expect(mutateRewrite).not.toHaveBeenCalled();
+  });
+
+  it("impact chip goes through smart questions instead of direct rewrite", () => {
+    renderSkill(vi.fn(), "Built React dashboard components.");
+
+    fireEvent.click(screen.getByText("companion.intent.impact"));
+
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("turn_into_impact");
+    expect(mutateRewrite).not.toHaveBeenCalled();
   });
 });

@@ -260,6 +260,7 @@ export interface CvBuilderState {
   moveSection: (section: CvBuilderSectionKey, direction: "up" | "down") => void;
   moveSectionWithinGroup: (section: CvBuilderSectionKey, direction: "up" | "down", group: CvBuilderSectionKey[]) => void;
   resetSectionOrder: () => void;
+  reorderSection: (activeId: CvBuilderSectionKey, overId: CvBuilderSectionKey) => void;
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
@@ -759,6 +760,15 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   resetSectionOrder: () => set({
     sectionOrder: [...initialState.sectionOrder],
     sectionPlacement: {},
+  }),
+  reorderSection: (activeId, overId) => set((s) => {
+    const oldIndex = s.sectionOrder.indexOf(activeId);
+    const newIndex = s.sectionOrder.indexOf(overId);
+    if (oldIndex < 0 || newIndex < 0) return {};
+    const newOrder = [...s.sectionOrder];
+    const [moved] = newOrder.splice(oldIndex, 1);
+    newOrder.splice(newIndex, 0, moved);
+    return { sectionOrder: newOrder };
   }),
   setSectionPlacement: (section, placement) => set((s) => ({
     sectionPlacement: { ...s.sectionPlacement, [section]: placement },

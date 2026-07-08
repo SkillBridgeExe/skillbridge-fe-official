@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Send, Check, X, MessageCircle, Loader2, ArrowRight,
-  Lightbulb, PenLine,
+  Lightbulb, PenLine, Wand2
 } from "lucide-react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useCompanionStore } from "@/store/useCompanionStore";
@@ -34,6 +34,9 @@ const EMPTY_ENTRY = {
   company: "", position: "", startDate: "", endDate: "",
   description: "", achievements: "",
 } as const;
+
+type RewriteIntent = "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence";
+type QuestionIntent = "analyze" | "add_evidence" | "make_ats_friendly" | "turn_into_impact";
 
 /* ── Sub-components ── */
 
@@ -78,7 +81,7 @@ function QuestionChips({
           type="text"
           value={freeText}
           onChange={(e) => onFreeTextChange(e.target.value)}
-          placeholder={t("companion.freeTextPlaceholder", { defaultValue: "Hoặc nhập chi tiết..." })}
+          placeholder={t("companion.freeTextPlaceholder")}
           className="w-full px-3 py-2 text-xs border border-[#EAEAEA] rounded-lg bg-white focus:border-primary/40 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
         />
       )}
@@ -102,7 +105,7 @@ function DiffView({
       <div className="space-y-2">
         <div className="rounded-lg border border-red-100 bg-red-50/30 p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-1">
-            {t("companion.before", { defaultValue: "Trước" })}
+            {t("companion.before")}
           </p>
           <p className="text-xs text-[#2F3437] leading-relaxed line-through decoration-red-300">
             {before}
@@ -110,7 +113,7 @@ function DiffView({
         </div>
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 mb-1">
-            {t("companion.after", { defaultValue: "Sau" })}
+            {t("companion.after")}
           </p>
           <p className="text-xs text-[#2F3437] leading-relaxed font-medium">
             {after}
@@ -190,6 +193,7 @@ export function CvBuilderSkill({
   // free-text question instead of the original chip set.
   const [askMoreActive, setAskMoreActive] = useState(false);
   const [askMoreText, setAskMoreText] = useState("");
+  const [activeIntent, setActiveIntent] = useState<RewriteIntent | null>(null);
 
   // ── Trigger analyze (Turn-1) ──
   const handleAnalyze = useCallback(() => {
@@ -203,6 +207,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setActiveIntent(null);
     setIsApplied(false);
 
     analyzeMutation.mutate(
@@ -238,7 +243,7 @@ export function CvBuilderSkill({
   // ── Trigger smart-questions (Turn-1, LLM role-aware) — rule analyze fallback on error ──
   // Same request shape as analyze (current_value/section/field_path/locale) — no target_role,
   // BE reads the real role server-side from the owned CV record.
-  const handleSmartQuestions = useCallback(() => {
+  const handleSmartQuestions = useCallback((requestedAction: QuestionIntent = "analyze") => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
 
     // Claim this field as THE active companion session.
@@ -249,16 +254,20 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setActiveIntent(requestedAction === "analyze" ? null : requestedAction);
     setIsApplied(false);
 
+    const request = {
+      draftId,
+      current_value: currentValue,
+      section,
+      field_path: fieldPath,
+      locale: askLocale,
+      ...(requestedAction === "analyze" ? {} : { requested_action: requestedAction }),
+    };
+
     smartQuestionsMutation.mutate(
-      {
-        draftId,
-        current_value: currentValue,
-        section,
-        field_path: fieldPath,
-        locale: askLocale,
-      },
+      request,
       {
         onSuccess: (turn) => {
           setCompanionTurn(turn);
@@ -285,17 +294,12 @@ export function CvBuilderSkill({
     if (hasTriggered.current) return;
     if (!isActiveField && fieldPath && draftId && currentValue.trim()) {
       hasTriggered.current = true;
-      handleSmartQuestions();
-    } else if (
-      isActiveField && mascotState === "idle" && !companionTurn && !smartQuestionsMutation.isPending
-    ) {
+      setCompanionField(fieldPath, section);
+      setMascotState("idle");
+    } else if (isActiveField && mascotState === "idle" && !companionTurn && !analyzeMutation.isPending) {
       hasTriggered.current = true;
-      handleSmartQuestions();
     }
-  }, [
-    isActiveField, fieldPath, draftId, currentValue, mascotState, companionTurn,
-    smartQuestionsMutation.isPending, handleSmartQuestions,
-  ]);
+  }, [isActiveField, fieldPath, draftId, currentValue, mascotState, companionTurn, analyzeMutation.isPending, setCompanionField, setMascotState, section]);
 
   // ── Route a re-ask dead-end INTO the intake coaching loop (no dead-end) ──
   // The current bullet seeds the narrative; the discarded res.gap selects the
@@ -371,6 +375,7 @@ export function CvBuilderSkill({
         target: fieldPath ?? "",
         kind: section === "summary" ? "summary" : "bullet",
         locale: outputLocale,
+        ...(activeIntent ? { intent: activeIntent } : {}),
       },
       {
         onSuccess: (res) => {
@@ -391,13 +396,13 @@ export function CvBuilderSkill({
               setMascotState("asking");
             }
           } else {
-            setCompanionMessage(res.message ?? t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }));
+            setCompanionMessage(res.message ?? t("companion.error.unknown"));
             setCompanionPatch(null);
             setMascotState("presenting");
           }
         },
         onError: () => {
-          setCompanionMessage(t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }));
+          setCompanionMessage(t("companion.error.unknown"));
           setMascotState("presenting");
         },
       },
@@ -405,7 +410,7 @@ export function CvBuilderSkill({
   }, [
     draftId, companionTurn, answers, buildAnswerList, currentValue, fieldPath, section, outputLocale,
     rewriteMutation, setMascotState, setCompanionPatch,
-    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach,
+    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach, activeIntent,
   ]);
 
   // ── Follow-up rewrites from the PRESENTING state (Task M4) ──
@@ -431,6 +436,7 @@ export function CvBuilderSkill({
           target: fieldPath ?? "",
           kind: section === "summary" ? "summary" : "bullet",
           locale: outputLocale,
+          ...(activeIntent ? { intent: activeIntent } : {}),
           ...(opts.tone ? { tone: opts.tone } : {}),
         },
         {
@@ -440,13 +446,13 @@ export function CvBuilderSkill({
               setCompanionMessage(null);
             } else {
               setCompanionMessage(
-                res.message ?? t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }),
+                res.message ?? t("companion.error.unknown"),
               );
             }
             setMascotState("presenting");
           },
           onError: () => {
-            setCompanionMessage(t("companion.error.unknown", { defaultValue: "Đã xảy ra lỗi. Thử lại sau." }));
+            setCompanionMessage(t("companion.error.unknown"));
             setMascotState("presenting");
           },
         },
@@ -454,9 +460,72 @@ export function CvBuilderSkill({
     },
     [
       draftId, companionTurn, rewriteMutation, buildAnswerList, answers, currentValue, fieldPath,
-      section, outputLocale, setMascotState, setCompanionPatch, setCompanionMessage, t,
+      section, outputLocale, activeIntent, setMascotState, setCompanionPatch, setCompanionMessage, t,
     ],
   );
+
+  const fireDirectIntentRewrite = useCallback((intentKey: Extract<RewriteIntent, "improve" | "shorten">) => {
+    if (!draftId || rewriteMutation.isPending) return;
+
+    setCompanionField(fieldPath, section);
+    setMascotState("thinking");
+    setCompanionTurn(null);
+    setCompanionPatch(null);
+    setCompanionMessage(null);
+    clearCompanionAnswers();
+    setAnswers({});
+    setActiveIntent(intentKey);
+    setIsApplied(false);
+
+    rewriteMutation.mutate(
+        {
+          draftId,
+          before: currentValue,
+          answers: [],
+          target: fieldPath ?? "",
+          kind: section === "summary" ? "summary" : "bullet",
+          locale: outputLocale,
+          intent: intentKey,
+        },
+      {
+        onSuccess: (res) => {
+          if (res.ok && res.field_patch) {
+            setCompanionPatch(res.field_patch);
+            setCompanionMessage(null);
+            setMascotState("presenting");
+          } else if (res.reason === "NEEDS_DETAIL") {
+            setCompanionTurn({
+              message: res.message ?? t("companion.needMoreInfo"),
+              questions: [
+                {
+                  gap: res.gap ?? "result",
+                  prompt: res.message ?? t("companion.needMoreInfo"),
+                  options: [],
+                  allows_free_text: true,
+                }
+              ],
+              requires_user_confirmation: false,
+              field_patch: null,
+            });
+            setCompanionMessage(res.message ?? t("companion.needMoreInfo"));
+            setMascotState("asking");
+          } else {
+            setCompanionMessage(
+              res.message ?? t("companion.error.unknown"),
+            );
+            setMascotState("presenting");
+          }
+        },
+        onError: () => {
+          setCompanionMessage(t("companion.error.unknown"));
+          setMascotState("presenting");
+        },
+      }
+    );
+  }, [
+    draftId, rewriteMutation, currentValue, fieldPath, section, outputLocale,
+    setCompanionField, setMascotState, setCompanionPatch, setCompanionMessage, setCompanionTurn, clearCompanionAnswers, t
+  ]);
 
   // ── "Viết lại nhẹ hơn" ──
   const handleRewriteSofter = useCallback(() => {
@@ -500,9 +569,7 @@ export function CvBuilderSkill({
       setIsApplied(true);
     } catch {
       setCompanionMessage(
-        t("companion.patchRejected", {
-          defaultValue: "Mình chưa thể áp dụng thay đổi này an toàn. Hãy thử lại hoặc sửa thủ công nhé.",
-        })
+        t("companion.patchRejected")
       );
       setMascotState("presenting");
     }
@@ -523,19 +590,21 @@ export function CvBuilderSkill({
     setAskMoreText("");
     resetCompanion();
     useCompanionStore.getState().dismissActive();
+    setActiveIntent(null);
   }, [resetCompanion]);
 
   // ── Loading state for analyze / smart-questions ──
   if (analyzeMutation.isPending || smartQuestionsMutation.isPending) {
     return (
       <div className="py-2">
-        <ThinkingDots label={t("companion.analyzing", { defaultValue: "Đang phân tích..." })} />
+        <ThinkingDots label={t("companion.analyzing")} />
       </div>
     );
   }
 
-  // If no session is active for this field yet, show nothing (the shell handles the idle state).
-  if (!isActiveField || (mascotState === "idle" && !companionTurn)) {
+  // If no session is active for this field yet, wait for shell to handle idle state
+  // But wait, the skill IS active if we are here.
+  if (!isActiveField) {
     return null;
   }
 
@@ -545,14 +614,16 @@ export function CvBuilderSkill({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+            {mascotState === "idle" && <Wand2 className="w-3.5 h-3.5 text-primary" />}
             {mascotState === "asking" && <MessageCircle className="w-3.5 h-3.5 text-primary" />}
             {mascotState === "thinking" && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />}
             {mascotState === "presenting" && <PenLine className="w-3.5 h-3.5 text-primary" />}
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-primary/60">
-            {mascotState === "asking" && t("companion.stateAsking", { defaultValue: "Trợ lý hỏi" })}
-            {mascotState === "thinking" && t("companion.stateThinking", { defaultValue: "Đang suy nghĩ..." })}
-            {mascotState === "presenting" && t("companion.statePresenting", { defaultValue: "Đề xuất" })}
+            {mascotState === "idle" && t("companion.stateIdle")}
+            {mascotState === "asking" && t("companion.stateAsking")}
+            {mascotState === "thinking" && t("companion.stateThinking")}
+            {mascotState === "presenting" && t("companion.statePresenting")}
           </span>
         </div>
         <button
@@ -568,6 +639,50 @@ export function CvBuilderSkill({
         <p className="text-[13px] text-[#2F3437] leading-relaxed">
           {companionMessage}
         </p>
+      )}
+
+      {/* ── STATE: IDLE (Action Chips) ── */}
+      {mascotState === "idle" && !companionTurn && (
+        <div className="space-y-3">
+          <p className="text-[13px] font-medium text-[#2F3437] leading-relaxed">
+            {t("companion.idlePrompt")}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: "analyze", label: t("companion.intent.analyze") },
+              { id: "improve", label: t("companion.intent.improve") },
+              { id: "evidence", label: t("companion.intent.evidence") },
+              { id: "ats", label: t("companion.intent.ats") },
+              { id: "shorten", label: t("companion.intent.shorten") },
+              { id: "impact", label: t("companion.intent.impact") },
+            ].map((chip) => (
+              <button
+                key={chip.id}
+                onClick={() => {
+                  const rewriteIntent = {
+                    improve: "improve",
+                    shorten: "shorten",
+                  }[chip.id] as Extract<RewriteIntent, "improve" | "shorten"> | undefined;
+                  const questionIntent = {
+                    evidence: "add_evidence",
+                    ats: "make_ats_friendly",
+                    impact: "turn_into_impact",
+                  }[chip.id] as Exclude<QuestionIntent, "analyze"> | undefined;
+                  if (chip.id === "analyze") {
+                    handleSmartQuestions("analyze");
+                  } else if (questionIntent) {
+                    handleSmartQuestions(questionIntent);
+                  } else if (rewriteIntent) {
+                    fireDirectIntentRewrite(rewriteIntent);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-[#FBFBFA] text-[#2F3437] border-[#EAEAEA] hover:border-primary/20 hover:bg-primary/5"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── STATE: ASKING (original chip questions) ── */}
@@ -604,7 +719,7 @@ export function CvBuilderSkill({
             className="h-8 text-xs bg-primary hover:bg-primary/90 text-white gap-1.5"
           >
             <Send className="w-3 h-3" />
-            {t("companion.send", { defaultValue: "Gửi" })}
+            {t("companion.send")}
           </Button>
         </div>
       )}
@@ -613,14 +728,14 @@ export function CvBuilderSkill({
       {mascotState === "asking" && askMoreActive && (
         <div className="space-y-2">
           <p className="text-[13px] font-medium text-[#2F3437] leading-relaxed">
-            {t("companion.askMorePrompt", { defaultValue: "Cho mình biết thêm để viết chính xác hơn nhé." })}
+            {t("companion.askMorePrompt")}
           </p>
           <input
             type="text"
             autoFocus
             value={askMoreText}
             onChange={(e) => setAskMoreText(e.target.value)}
-            placeholder={t("companion.freeTextPlaceholder", { defaultValue: "Hoặc nhập chi tiết..." })}
+            placeholder={t("companion.freeTextPlaceholder")}
             className="w-full px-3 py-2 text-xs border border-[#EAEAEA] rounded-lg bg-white focus:border-primary/40 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
           />
           <Button
@@ -630,7 +745,7 @@ export function CvBuilderSkill({
             className="h-8 text-xs bg-primary hover:bg-primary/90 text-white gap-1.5"
           >
             <Send className="w-3 h-3" />
-            {t("companion.send", { defaultValue: "Gửi" })}
+            {t("companion.send")}
           </Button>
         </div>
       )}
@@ -638,7 +753,7 @@ export function CvBuilderSkill({
       {/* ── STATE: THINKING ── */}
       {mascotState === "thinking" && (
         <div className="space-y-2 py-2">
-          <ThinkingDots label={t("companion.thinking", { defaultValue: "Đang viết lại... (có thể mất vài giây)" })} />
+          <ThinkingDots label={t("companion.thinking")} />
           <div className="space-y-1.5">
             <div className="h-3 bg-slate-100 rounded-full w-full animate-pulse" />
             <div className="h-3 bg-slate-100 rounded-full w-5/6 animate-pulse" style={{ animationDelay: "100ms" }} />
@@ -683,7 +798,7 @@ export function CvBuilderSkill({
                   className="h-8 text-xs bg-primary hover:bg-primary/90 text-white gap-1.5"
                 >
                   <Check className="w-3 h-3" />
-                  {t("companion.apply", { defaultValue: "Áp dụng" })}
+                  {t("companion.apply")}
                 </Button>
                 <Button
                   size="sm"
@@ -693,7 +808,7 @@ export function CvBuilderSkill({
                   className="h-8 text-xs gap-1.5"
                 >
                   <PenLine className="w-3 h-3" />
-                  {t("companion.rewriteSofter", { defaultValue: "Viết lại nhẹ hơn" })}
+                  {t("companion.rewriteSofter")}
                 </Button>
                 <Button
                   size="sm"
@@ -703,7 +818,7 @@ export function CvBuilderSkill({
                   className="h-8 text-xs gap-1.5"
                 >
                   <MessageCircle className="w-3 h-3" />
-                  {t("companion.askMore", { defaultValue: "Hỏi thêm để rõ hơn" })}
+                  {t("companion.askMore")}
                 </Button>
                 <Button
                   size="sm"
@@ -711,7 +826,7 @@ export function CvBuilderSkill({
                   onClick={handleDiscard}
                   className="h-8 text-xs text-[#787774] hover:text-[#2F3437]"
                 >
-                  {t("companion.discard", { defaultValue: "Bỏ" })}
+                  {t("companion.discard")}
                 </Button>
               </div>
             </>
@@ -733,7 +848,7 @@ export function CvBuilderSkill({
                   className="h-8 text-xs gap-1.5"
                 >
                   <ArrowRight className="w-3 h-3" />
-                  {t("companion.retry", { defaultValue: "Thử lại" })}
+                  {t("companion.retry")}
                 </Button>
               )}
             </div>
