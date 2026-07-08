@@ -287,7 +287,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	return {
 		picture: {
-			hidden: !store.photoUrl || store.resumePictureVisible === false || !layoutCaps.supportsAvatar,
+			hidden: !store.photoUrl || store.resumePictureVisible === false || !layoutCaps.supportsAvatar || !!store.resumeAtsSafeMode,
 			url: store.photoUrl || "",
 			size: store.resumePictureSize ?? 64,
 			rotation: 0,
@@ -535,6 +535,7 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				hideLinkUnderline: store.resumeAtsSafeMode ? false : false,
 				hideIcons: store.resumeAtsSafeMode,
 				hideSectionIcons: store.resumeAtsSafeMode || (store.resumeHideSectionIcons ?? false),
+				simplifyDecorations: store.resumeAtsSafeMode,
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },
@@ -772,7 +773,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 					},
 				],
 			},
-			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false },
+			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false, simplifyDecorations: false },
 			design: { dividerStyle: "line", level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
 			typography: { body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 }, heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 } },
 			notes: "",

@@ -561,6 +561,7 @@ export const sampleResumeData: ResumeData = {
 			hideLinkUnderline: false,
 			hideIcons: false,
 			hideSectionIcons: false,
+			simplifyDecorations: false,
 		},
 		design: {
 			dividerStyle: "line",

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -27,15 +27,23 @@ const MockStudioInspector = () => (
   </TooltipProvider>
 );
 
+const mockBuilderStore = useCvBuilderStore as unknown as {
+  mockReturnValue: (value: unknown) => void;
+};
+
 describe("StudioInspector ATS Safe Mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renders the ATS Safe Mode toggle and updates the store", () => {
     const setResumeAtsSafeModeMock = vi.fn();
     
-    (useCvBuilderStore as any).mockReturnValue({
+    mockBuilderStore.mockReturnValue({
       template: "onyx",
       sectionOrder: [],
       sectionVisibility: {},
@@ -57,8 +65,7 @@ describe("StudioInspector ATS Safe Mode", () => {
     render(<MockStudioInspector />);
     
     // Open the Layout accordion
-    const layoutTab = screen.getAllByText("builder.tabLayout")[0];
-    fireEvent.click(layoutTab);
+    fireEvent.click(screen.getByRole("button", { name: /builder.tabLayout/i }));
     
     // Find ATS switch (since we use a label "ATS Safe Mode")
     const label = screen.getAllByText(/ATS Safe Mode/i)[0];
@@ -71,5 +78,55 @@ describe("StudioInspector ATS Safe Mode", () => {
     // Toggle ATS safe mode
     fireEvent.click(atsSwitch);
     expect(setResumeAtsSafeModeMock).toHaveBeenCalledWith(true);
+  });
+
+  it("keeps avatar URL editable while ATS mode hides the avatar preview", () => {
+    const setBasicInfoMock = vi.fn();
+    const setResumeAtsSafeModeMock = vi.fn();
+
+    mockBuilderStore.mockReturnValue({
+      template: "azurill",
+      sectionOrder: [],
+      sectionVisibility: {},
+      sectionPlacement: {},
+      cvLanguage: "en",
+      photoUrl: "",
+      resumeAtsSafeMode: true,
+      resumePageMargin: "normal",
+      resumeSectionSpacing: "normal",
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
+      resumeFontFamily: "inter",
+      resumeFontScale: "normal",
+      resumeLineHeight: "normal",
+      resumeAccentColor: "#000000",
+      resumeHideSectionIcons: false,
+      resumePictureVisible: true,
+      resumePictureShape: "circle",
+      resumePictureSize: 64,
+      resumePictureBorderWidth: 0,
+      resumePictureBorderColor: "rgba(0,0,0,0)",
+      setBasicInfo: setBasicInfoMock,
+      setResumeAtsSafeMode: setResumeAtsSafeModeMock,
+      setResumePictureVisible: vi.fn(),
+      setResumePictureShape: vi.fn(),
+      setResumePictureSize: vi.fn(),
+      setResumePictureBorderWidth: vi.fn(),
+      setResumePictureBorderColor: vi.fn(),
+    });
+
+    render(<MockStudioInspector />);
+
+    fireEvent.click(screen.getByRole("button", { name: /builder.tabLayout/i }));
+
+    expect(screen.getByText("Saved, but hidden while ATS Safe Mode is on. Turn ATS off to preview the photo.")).toBeDefined();
+
+    const photoInput = screen.getByRole("textbox", { name: /Profile photo URL/i });
+    fireEvent.change(photoInput, { target: { value: "https://example.com/avatar.png" } });
+    expect(setBasicInfoMock).toHaveBeenCalledWith("photoUrl", "https://example.com/avatar.png");
+
+    fireEvent.click(screen.getByRole("button", { name: /Turn off ATS to preview avatar/i }));
+    expect(setResumeAtsSafeModeMock).toHaveBeenCalledWith(false);
   });
 });

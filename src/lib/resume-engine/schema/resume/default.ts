@@ -139,6 +139,7 @@ export const defaultResumeData: ResumeData = {
 			hideLinkUnderline: false,
 			hideIcons: false,
 			hideSectionIcons: true,
+			simplifyDecorations: false,
 		},
 		design: {
 			dividerStyle: "line",

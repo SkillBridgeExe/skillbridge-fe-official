@@ -14,6 +14,7 @@ type SectionTimelineInput = {
 	sectionTimeline: boolean;
 	placement: TemplatePlacement;
 	columns: unknown;
+	simplifyDecorations?: boolean;
 };
 
 export type SectionItemsLayout = {
@@ -74,6 +75,11 @@ export const getSectionItemRows = <T>(items: T[], columns: unknown): T[][] => {
 	return rows;
 };
 
-export const shouldUseSectionTimeline = ({ sectionTimeline, placement, columns }: SectionTimelineInput): boolean => {
-	return sectionTimeline && placement === "main" && normalizeSectionColumns(columns) === 1;
+export const shouldUseSectionTimeline = ({
+	sectionTimeline,
+	placement,
+	columns,
+	simplifyDecorations = false,
+}: SectionTimelineInput): boolean => {
+	return !simplifyDecorations && sectionTimeline && placement === "main" && normalizeSectionColumns(columns) === 1;
 };

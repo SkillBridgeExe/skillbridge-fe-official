@@ -55,6 +55,21 @@ const ACCENT_COLORS = [
   { value: "#d97706", label: "Amber" },
 ];
 
+const TEXT_COLORS = [
+  { value: "#334155", label: "Slate" },
+  { value: "#1e3a8a", label: "Navy" },
+  { value: "#14532d", label: "Forest" },
+  { value: "#000000", label: "Black" },
+  { value: "#4c0519", label: "Burgundy" },
+  { value: "#312e81", label: "Indigo" },
+];
+
+const AVATAR_SHAPES = [
+  { value: "circle", labelKey: "shapeCircle" },
+  { value: "rounded", labelKey: "shapeRounded" },
+  { value: "square", labelKey: "shapeSquare" },
+] as const;
+
 const DEFAULT_MAIN_SECTIONS: CvBuilderSectionKey[] = ["summary", "experience", "education", "projects"];
 const DEFAULT_SIDEBAR_SECTIONS: CvBuilderSectionKey[] = ["skills", "certifications"];
 
@@ -430,12 +445,12 @@ export function StudioInspector() {
               <div className="space-y-5">
                 
                 {/* ATS Safe Mode */}
-                <div className="flex items-center justify-between bg-amber-50 p-3 rounded-md border border-amber-100">
+                <div className="flex items-center justify-between bg-sky-50 p-3 rounded-md border border-sky-100">
                   <div className="space-y-0.5">
-                    <label htmlFor="ats-safe-mode" className="text-[12px] font-bold text-amber-900 cursor-pointer flex items-center gap-1.5">
-                      ATS Safe Mode
+                    <label htmlFor="ats-safe-mode" className="text-[12px] font-bold text-sky-950 cursor-pointer flex items-center gap-1.5">
+                      {t("builder.inspector.atsSafeMode", "ATS Safe Mode")}
                     </label>
-                    <p className="text-[10px] text-amber-700/80 leading-relaxed max-w-[200px]">
+                    <p className="text-[10px] text-sky-800/80 leading-relaxed max-w-[200px]">
                       {t("builder.inspector.atsSafeModeDesc", "Optimize for Applicant Tracking Systems by using standard layouts, disabling icons, and forcing high contrast.")}
                     </p>
                   </div>
@@ -443,7 +458,7 @@ export function StudioInspector() {
                     id="ats-safe-mode"
                     checked={store.resumeAtsSafeMode}
                     onCheckedChange={(checked) => store.setResumeAtsSafeMode(checked)}
-                    className="data-[state=checked]:bg-amber-600"
+                    className="data-[state=checked]:bg-sky-600"
                   />
                 </div>
 
@@ -510,7 +525,7 @@ export function StudioInspector() {
                 </div>
 
                 <div className={cn("flex items-center justify-between", 
-                  (!layoutCapabilities.supportsAvatar || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+                  !layoutCapabilities.supportsAvatar && "opacity-50 pointer-events-none"
                 )}>
                   <div className="space-y-0.5">
                     <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
@@ -526,9 +541,157 @@ export function StudioInspector() {
                   </div>
                   <Switch
                     id="show-avatar"
-                    checked={store.resumeShowPicture !== false && !store.resumeAtsSafeMode}
-                    onCheckedChange={(checked) => store.setResumeShowPicture(checked)}
+                    checked={store.resumePictureVisible !== false && !store.resumeAtsSafeMode}
+                    onCheckedChange={(checked) => store.setResumePictureVisible(checked)}
+                    disabled={store.resumeAtsSafeMode}
                   />
+                </div>
+
+                <div className={cn("space-y-3 pt-2 border-t border-slate-100", !layoutCapabilities.supportsAvatar && "opacity-50")}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {t("builder.inspector.avatarUrl", "Profile photo URL")}
+                      </p>
+                      {store.photoUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => store.setBasicInfo("photoUrl", "")}
+                          disabled={!layoutCapabilities.supportsAvatar}
+                          className="text-[11px] font-semibold text-sky-600 transition-colors hover:text-sky-700 disabled:pointer-events-none disabled:text-slate-300"
+                        >
+                          {t("builder.inspector.clearAvatar", "Clear")}
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      type="url"
+                      value={store.photoUrl || ""}
+                      onChange={(event) => store.setBasicInfo("photoUrl", event.target.value)}
+                      disabled={!layoutCapabilities.supportsAvatar}
+                      placeholder="https://..."
+                      aria-label={t("builder.inspector.avatarUrl", "Profile photo URL")}
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                    <p className="text-[10px] leading-relaxed text-slate-400">
+                      {store.resumeAtsSafeMode
+                        ? t("builder.inspector.avatarHiddenByAts", "Saved, but hidden while ATS Safe Mode is on. Turn ATS off to preview the photo.")
+                        : !layoutCapabilities.supportsAvatar
+                          ? t("builder.inspector.unsupportedAvatar", "This template does not support avatars.")
+                          : t("builder.inspector.avatarUrlHint", "Paste an image URL. The selected template must support avatars.")}
+                    </p>
+                    {store.resumeAtsSafeMode && layoutCapabilities.supportsAvatar ? (
+                      <button
+                        type="button"
+                        onClick={() => store.setResumeAtsSafeMode(false)}
+                        className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition-colors hover:border-sky-300 hover:bg-sky-100"
+                      >
+                        {t("builder.inspector.turnOffAtsForAvatar", "Turn off ATS to preview avatar")}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {store.resumePictureVisible !== false && (
+                    <div className={cn("space-y-4 pt-2 border-t border-slate-100", 
+                      (store.resumeAtsSafeMode || !layoutCapabilities.supportsAvatar) && "opacity-50 pointer-events-none"
+                    )}>
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {t("builder.inspector.avatarShape", "Avatar Shape")}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {AVATAR_SHAPES.map((option) => (
+                          <SegmentedButton
+                            key={option.value}
+                            active={store.resumePictureShape === option.value}
+                            onClick={() => store.setResumePictureShape(option.value)}
+                          >
+                            <span className="block text-center">{t(`builder.inspector.${option.labelKey}`, option.value)}</span>
+                          </SegmentedButton>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {t("builder.inspector.avatarSize", "Avatar Size")}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="48"
+                          max="128"
+                          step="4"
+                          value={store.resumePictureSize}
+                          onChange={(e) => store.setResumePictureSize(Number(e.target.value))}
+                          className="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                        />
+                        <span className="text-xs font-medium text-slate-600 w-8 text-right">
+                          {store.resumePictureSize}px
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {t("builder.inspector.avatarBorder", "Avatar Border")}
+                      </p>
+                      <div className="grid grid-cols-6 gap-2">
+                        <button
+                          type="button"
+                          aria-label={t("builder.inspector.noBorder", "No Border")}
+                          title="No Border"
+                          onClick={() => {
+                            store.setResumePictureBorderColor("rgba(0,0,0,0)");
+                            store.setResumePictureBorderWidth(0);
+                          }}
+                          className={cn(
+                            "h-6 rounded-full border-2 transition-transform hover:scale-105 flex items-center justify-center bg-slate-50",
+                            store.resumePictureBorderColor === "rgba(0,0,0,0)" || store.resumePictureBorderWidth === 0
+                              ? "border-sky-400 ring-2 ring-sky-100" 
+                              : "border-slate-200 shadow-sm",
+                          )}
+                        >
+                          <EyeOff className="w-3 h-3 text-slate-400" />
+                        </button>
+                        {ACCENT_COLORS.slice(0, 5).map((color) => (
+                          <button
+                            key={color.value}
+                            type="button"
+                            aria-label={t("builder.inspector.chooseColor", { color: color.label })}
+                            title={color.label}
+                            onClick={() => {
+                              store.setResumePictureBorderColor(color.value);
+                              if (store.resumePictureBorderWidth === 0) store.setResumePictureBorderWidth(2);
+                            }}
+                            className={cn(
+                              "h-6 rounded-full border-2 transition-transform hover:scale-105",
+                              store.resumePictureBorderColor === color.value && store.resumePictureBorderWidth > 0
+                                ? "border-sky-400 ring-2 ring-sky-100" 
+                                : "border-white shadow-sm",
+                            )}
+                            style={{ backgroundColor: color.value }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs text-slate-500">{t("builder.inspector.borderWidth", "Width")}</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="8"
+                          step="1"
+                          value={store.resumePictureBorderWidth}
+                          onChange={(e) => store.setResumePictureBorderWidth(Number(e.target.value))}
+                          className="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                        />
+                        <span className="text-xs font-medium text-slate-600 w-6 text-right">
+                          {store.resumePictureBorderWidth}px
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  )}
                 </div>
 
                 {layoutCapabilities.supportsSidebar ? (
@@ -725,6 +888,32 @@ export function StudioInspector() {
                         ? t("builder.inspector.unsupportedFeature", "This template does not support custom accent colors.")
                         : t("builder.inspector.accentColorHelper")}
                   </p>
+                </div>
+
+                <div className={cn("space-y-1.5 mt-6", 
+                  (!layoutCapabilities.supportsTypography || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
+                )}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {t("builder.inspector.textColor", "Text Color")}
+                  </p>
+                  <div className="grid grid-cols-6 gap-2">
+                    {TEXT_COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        aria-label={t("builder.inspector.chooseColor", { color: color.label })}
+                        title={color.label}
+                        onClick={() => store.setResumeTextColor(color.value)}
+                        className={cn(
+                          "h-8 rounded-full border-2 transition-transform hover:scale-105",
+                          (store.resumeAtsSafeMode ? color.value === "#000000" : store.resumeTextColor === color.value) 
+                            ? "border-sky-400 ring-2 ring-sky-100" 
+                            : "border-white shadow-sm",
+                        )}
+                        style={{ backgroundColor: store.resumeAtsSafeMode ? "#000000" : color.value }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

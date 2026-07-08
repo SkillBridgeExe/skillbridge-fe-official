@@ -287,7 +287,9 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.design.colors.text).toBe("#000000");
 		expect(result.metadata.page.hideIcons).toBe(true);
 		expect(result.metadata.page.hideSectionIcons).toBe(true);
+		expect(result.metadata.page.simplifyDecorations).toBe(true);
 		expect(result.metadata.design.dividerStyle).toBe("line");
+		expect(result.picture.hidden).toBe(true);
 	});
 
 	it("maps bounded layout controls into resume metadata for sidebar templates", () => {

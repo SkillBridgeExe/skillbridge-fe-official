@@ -242,6 +242,7 @@ const SectionItems = ({ children, columns = 1 }: SectionItemsProps) => {
 		sectionTimeline,
 		placement,
 		columns: layout.columns,
+		simplifyDecorations: data.metadata.page.simplifyDecorations,
 	});
 	const context = { itemStyle: layout.itemStyle, useTimeline };
 	const rtlRowStyle = createRtlStyleHelpers(data.rtl).gridRowStyle;

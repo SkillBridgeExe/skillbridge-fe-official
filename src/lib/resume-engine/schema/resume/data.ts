@@ -479,6 +479,10 @@ export const pageSchema = z.object({
 		.boolean()
 		.describe("Whether to hide the section heading icons displayed before section titles.")
 		.catch(true),
+	simplifyDecorations: z
+		.boolean()
+		.describe("Whether to simplify decorative template elements such as timelines for ATS-safe rendering.")
+		.catch(false),
 });
 
 export const levelDesignSchema = z.object({
