@@ -426,6 +426,7 @@ export interface CvListItemDto {
   originalFileName: string | null;
   fileType: string | null;
   fileSize: number | null;
+  cvKind: "UPLOADED" | "BUILT";
   language: string | null;
   targetRole: string | null;
   isOcrOnly: boolean;
