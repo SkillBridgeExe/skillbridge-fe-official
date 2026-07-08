@@ -17,11 +17,11 @@ import { downloadCvFileApi } from "@/api/cv/file";
 import {
   generateInterviewPlanFromMatchApi,
   generateRoadmapFromMatchApi,
-  getGapReportApi,
   getGithubEvidenceApi,
   getInterviewPlanApi,
   type DiagnosisLang,
 } from "@/api/cv/diagnosis-addons";
+import { getGapReportApi } from "@/api/cv/gap-report";
 import { getNextStepsApi } from "@/api/cv/next-steps";
 import { deleteChatThreadApi, getChatThreadApi } from "@/api/cv/chat-thread";
 import { askCvDiagnosisChatApi, askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
@@ -429,13 +429,14 @@ export async function getInterviewPlan({
 }
 
 export async function getGapReport(
-  input: { matchId: string; lang?: DiagnosisLang } | string,
+  input: { matchId: string; lang?: DiagnosisLang; github?: { username: string; consent: boolean } } | string,
   fallbackLang: DiagnosisLang = "vi",
 ): Promise<GapReportResponse> {
   requireSession();
   const matchId = typeof input === "string" ? input : input.matchId;
   const lang = typeof input === "string" ? fallbackLang : input.lang;
-  return getGapReportApi(matchId, lang);
+  const github = typeof input === "string" ? undefined : input.github;
+  return getGapReportApi(matchId, lang, github);
 }
 
 /**

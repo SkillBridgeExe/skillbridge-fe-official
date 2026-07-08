@@ -4,10 +4,10 @@ import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import type { JobRecommendationDto } from "@shared/api";
 import { FitBadge } from "./FitBadge";
+import { InfoPopover } from "./InfoPopover";
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
@@ -52,23 +52,24 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
       <div className="flex items-start justify-between gap-3">
         <h4 className="text-[13px] font-semibold text-[#2F3437] leading-snug line-clamp-2">{job.title}</h4>
         {job.seniority_factor && job.seniority_factor < 1 ? (
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={cn("cursor-help shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
-                  {recScore}%
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                {t("diagnosis.jobs.seniorityTooltip", {
-                  defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
-                  match: job.match_score,
-                  factor: job.seniority_factor.toFixed(2),
-                  level: job.level_gap ?? 0,
-                })}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <InfoPopover
+            align="right"
+            label={t("jobs.seniorityLabel", { defaultValue: "Vì sao điểm bị điều chỉnh" })}
+            trigger={
+              <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border underline decoration-dotted underline-offset-2", matchBand(recScore))}>
+                {recScore}%
+              </span>
+            }
+          >
+            <p className="text-xs leading-relaxed text-[#2F3437]">
+              {t("diagnosis.jobs.seniorityTooltip", {
+                defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
+                match: job.match_score,
+                factor: job.seniority_factor.toFixed(2),
+                level: job.level_gap ?? 0,
+              })}
+            </p>
+          </InfoPopover>
         ) : (
           <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
             {recScore}%

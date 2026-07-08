@@ -26,7 +26,7 @@ import {
   useCvHistoryQuery,
   useLoadCvFromHistoryMutation,
 } from "@/hooks/use-diagnosis";
-import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
@@ -259,9 +259,11 @@ export function DiagnosisStep1Upload() {
     } catch (error) {
       const gateCode = extractAiGateCode(error);
       const message =
-        gateCode === "CV_CONTENT_INSUFFICIENT"
-          ? t("aiGate.cvUnreadable")
-          : getApiErrorMessage(error, t("upload.errorAnalyze"));
+        isThrottledError(error)
+          ? t("upload.throttled")
+          : gateCode === "CV_CONTENT_INSUFFICIENT"
+            ? t("aiGate.cvUnreadable")
+            : getApiErrorMessage(error, t("upload.errorAnalyze"));
       posthog?.capture("cv_scan_failed", {
         ...scanProperties,
         error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",
@@ -321,11 +323,13 @@ export function DiagnosisStep1Upload() {
     } catch (error) {
       const gateCode = extractAiGateCode(error);
       const message =
-        gateCode === "CV_CONTENT_INSUFFICIENT"
-          ? t("aiGate.cvUnreadable")
-          : gateCode === "JD_CONTENT_INSUFFICIENT"
-            ? t("aiGate.jdThin")
-            : getApiErrorMessage(error, t("upload.errorCompare"));
+        isThrottledError(error)
+          ? t("upload.throttled")
+          : gateCode === "CV_CONTENT_INSUFFICIENT"
+            ? t("aiGate.cvUnreadable")
+            : gateCode === "JD_CONTENT_INSUFFICIENT"
+              ? t("aiGate.jdThin")
+              : getApiErrorMessage(error, t("upload.errorCompare"));
       posthog?.capture("cv_scan_failed", {
         ...scanProperties,
         error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",

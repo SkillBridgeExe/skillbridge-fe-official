@@ -134,6 +134,33 @@ export function ProgressBanner({
         </p>
       )}
 
+      {/* W43: Learning completed — pending verification on next scan */}
+      {data.learning_completed && data.learning_completed.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[11px] font-medium text-[#787774]">
+            {t("progress.learningCompleted")}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {data.learning_completed.slice(0, 8).map((slug) => (
+              <span
+                key={slug}
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#F6F4FB] text-[#6943C7] border border-[#E2D9F3]"
+              >
+                {slug}
+              </span>
+            ))}
+            {data.learning_completed.length > 8 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                +{data.learning_completed.length - 8}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-[#787774] leading-relaxed">
+            {t("progress.learningCompletedHint")}
+          </p>
+        </div>
+      )}
+
       {newGapsShown.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {newGapsShown.map((tr) => (

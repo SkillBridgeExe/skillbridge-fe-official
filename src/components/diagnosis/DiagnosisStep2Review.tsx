@@ -18,11 +18,11 @@ import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
-import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoPopover } from "./InfoPopover";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
@@ -120,32 +120,30 @@ function DimensionCard({
               {t("review.priorityCount", { count: issues.length })}
             </span>
             {dim.provenance && (
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className={cn(
-                      "cursor-help rounded-full border px-2.5 py-1 text-[10px] font-bold",
-                      dim.provenance.source === "deterministic"
-                        ? "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]"
-                        : "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]"
-                    )}>
-                      {t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs max-w-[280px]">
-                    <div className="space-y-1.5">
-                      <p className="font-semibold">{t(`provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
-                      {dim.provenance.evidence.length > 0 && (
-                        <ul className="list-disc pl-4 space-y-0.5 text-[#787774] max-h-32 overflow-y-auto">
-                          {dim.provenance.evidence.map((ev, i) => (
-                            <li key={i}>{ev}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <InfoPopover
+                label={t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
+                trigger={
+                  <span className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-bold underline decoration-dotted underline-offset-2",
+                    dim.provenance.source === "deterministic"
+                      ? "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]"
+                      : "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]"
+                  )}>
+                    {t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
+                  </span>
+                }
+              >
+                <div className="space-y-1.5 text-xs">
+                  <p className="font-semibold text-[#2F3437]">{t(`provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
+                  {dim.provenance.evidence.length > 0 && (
+                    <ul className="list-disc pl-4 space-y-0.5 text-[#787774] max-h-40 overflow-y-auto">
+                      {dim.provenance.evidence.map((ev, i) => (
+                        <li key={i}>{ev}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </InfoPopover>
             )}
           </div>
 
@@ -281,11 +279,13 @@ export function DiagnosisStep2Review() {
     } catch (error) {
       const gateCode = extractAiGateCode(error);
       const message =
-        gateCode === "JD_CONTENT_INSUFFICIENT"
-          ? t("aiGate.jdThin")
-          : gateCode === "CV_CONTENT_INSUFFICIENT"
-            ? t("aiGate.cvUnreadable")
-            : getApiErrorMessage(error, "Failed to compare CV with job description.");
+        isThrottledError(error)
+          ? t("upload.throttled")
+          : gateCode === "JD_CONTENT_INSUFFICIENT"
+            ? t("aiGate.jdThin")
+            : gateCode === "CV_CONTENT_INSUFFICIENT"
+              ? t("aiGate.cvUnreadable")
+              : getApiErrorMessage(error, "Failed to compare CV with job description.");
       posthog?.capture("cv_scan_failed", {
         ...scanProperties,
         error_code: gateCode ?? getApiErrorCode(error) ?? "unknown",
@@ -470,6 +470,7 @@ export function DiagnosisStep2Review() {
         verdictMessage={scoreMessage}
         isJdMode={false}
         breakdown={reviewData?.breakdown}
+        rubricBand={reviewData?.skills_relevance_breakdown?.rubric_band}
       />
 
       {/* ── Metadata & Actions ── */}

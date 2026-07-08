@@ -161,6 +161,8 @@ export interface SkillsRelevanceBreakdown {
   matched: RelevanceSkillItem[];
   partial: RelevanceSkillItem[];
   missing: RelevanceSkillItem[];
+  /** W44: seniority band the skills were scored against (default "fresher") — for CV-only band framing. */
+  rubric_band?: string | null;
 }
 
 /** ③ Lead "sửa N việc này trước" — BE tính từ dim thấp nhất + ATS fail nặng nhất. */
@@ -1472,6 +1474,8 @@ export interface ProgressReportDto {
   strengths_kept: string[];
   required_coverage_delta: number | null;
   template_changed: boolean;
+  /** W43: Slugs of lessons the user completed since last scan — pending next-scan verification. */
+  learning_completed?: string[];
 }
 
 export interface ChatThreadTurnDto {

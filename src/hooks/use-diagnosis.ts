@@ -28,6 +28,7 @@ import type { CvListQuery } from "@/api/cv/list";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
 import { ENABLE_DIAGNOSIS_ADDONS, ENABLE_GITHUB_EVIDENCE } from "@/lib/runtime-config";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { QUERY_KEYS } from "@/constants/app";
 import type { TailorAction } from "@shared/api";
@@ -141,10 +142,16 @@ export function useInterviewPlanQuery(
 
 export function useGapReportQuery(matchId?: string | null, lang?: "vi" | "en") {
   const canUseApi = useHasApiSession();
+  // W41: read github credentials from store (persisted via session)
+  const githubUsername = useDiagnosisStore((s) => s.githubUsername);
+  const githubConsent = useDiagnosisStore((s) => s.githubConsent);
+  const github = githubConsent && githubUsername
+    ? { username: githubUsername, consent: true }
+    : undefined;
 
   return useQuery({
-    queryKey: ["gap-report", matchId ?? "none", lang ?? "auto"],
-    queryFn: () => getGapReport({ matchId: matchId!, lang }),
+    queryKey: ["gap-report", matchId ?? "none", lang ?? "auto", githubUsername ?? ""],
+    queryFn: () => getGapReport({ matchId: matchId!, lang, github }),
     enabled: ENABLE_DIAGNOSIS_ADDONS && Boolean(matchId) && canUseApi,
     staleTime: 10 * 60_000,
     retry: false,

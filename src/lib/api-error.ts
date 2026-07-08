@@ -77,3 +77,14 @@ export function getApiErrorCode(error: unknown): string | null {
 
   return null;
 }
+
+/** W44: Detect 429 / ABUSE_THROTTLED — the BE signals "too fast, wait a moment". */
+export function isThrottledError(error: unknown): boolean {
+  const code = getApiErrorCode(error);
+  if (code === "ABUSE_THROTTLED") return true;
+  if (isRecord(error) && isRecord(error.response)) {
+    const status = error.response.status;
+    if (status === 429) return true;
+  }
+  return false;
+}

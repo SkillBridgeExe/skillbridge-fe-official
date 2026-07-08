@@ -308,10 +308,22 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         {gap.evidence.map((ev, evIdx) => (
                           <div key={evIdx} className="pl-2 border-l-2 border-slate-200">
                             <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
-                                {t(`gapReport.evidenceKind.${ev.kind}`, { defaultValue: ev.kind })}
-                              </span>
-                              <span className="text-[10px] text-slate-400">{ev.ref}</span>
+                              {/* W41: GitHub corroboration chip — special style */}
+                              {ev.kind === "github" ? (
+                                <span
+                                  title={t("gapReport.githubCorrobTooltip", { defaultValue: "This skill has a public GitHub repo backing it — evidence risk lowered" })}
+                                  className="text-[10px] font-medium px-1.5 py-0.5 bg-[#EDF3EC] text-[#346538] border border-[#DCE9D7] rounded inline-flex items-center gap-1"
+                                >
+                                  ✓ GitHub: {ev.ref}
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                                    {t(`gapReport.evidenceKind.${ev.kind}`, { defaultValue: ev.kind })}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">{ev.ref}</span>
+                                </>
+                              )}
                             </div>
                             {ev.quote && (
                               <p className="text-[12px] italic text-slate-600 line-clamp-2 mt-0.5">

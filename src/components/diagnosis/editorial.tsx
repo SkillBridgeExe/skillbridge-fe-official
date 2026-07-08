@@ -216,7 +216,7 @@ export const VerdictHero = memo(function VerdictHero({
     <div className="flex flex-col items-center pt-8 pb-4 space-y-6" role="img" aria-label={`${label}: ${target}%`}>
       {/* Premium SVG Gauge Chart */}
       {!isJdMode && breakdown ? (
-        <CvBreakdownPopover breakdown={breakdown} overallScore={target}>
+        <CvBreakdownPopover breakdown={breakdown} overallScore={target} rubricBand={rubricBand}>
           {gaugeContent}
         </CvBreakdownPopover>
       ) : (

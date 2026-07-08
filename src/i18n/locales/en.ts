@@ -1640,7 +1640,8 @@ export default {
       title: "CV score breakdown ({{score}}/100)",
       note: "Based on system rules and AI-assisted evaluation",
       skills: "Skills",
-      experience: "Experience"
+      experience: "Experience",
+      bandFraming: "Skills scored against the {{band}} standard — changing the bar will change the score.",
     },
     bulletFeedback: {
       title: "Bullet feedback",
@@ -1742,6 +1743,7 @@ export default {
       toastAnalysisFailedTitle: "Analysis failed",
       errorAnalyze: "Failed to analyze CV.",
       errorCompare: "Failed to compare CV with JD.",
+      throttled: "You're sending requests too quickly. Please wait a moment and try again.",
       consentLabel:
         "I agree to the processing of the personal data in this CV for analysis purposes.",
       errorFileTooLarge: "The file exceeds 5MB. Please upload a smaller file.",
@@ -1897,6 +1899,7 @@ export default {
       jdHighlightTitle: "See the keywords in your JD",
       dimensionDetails: "Detailed analysis",
       keywordFreqTooltip: "Appears: CV {{cv}} times / JD {{jd}} times",
+      scoreDistinction: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
     },
     roadmapWizard: {
       title: "Roadmap buddy",
@@ -2062,6 +2065,13 @@ export default {
         textNotInCvTitle: "Anchor bullet mismatch",
         textNotInCvDesc: "The bullet text has changed in your CV since the analysis was run.",
       },
+      impact: {
+        points: "+{{min}}~{{max}} pts",
+        pointsSingle: "+{{max}} pts",
+        riskReduction: "Lowers evidence risk",
+        riskReductionTooltip: "This action reinforces credibility — it doesn't change the match score.",
+        disclaimer: "Per SkillBridge's scoring model — not an interview guarantee",
+      },
     },
     market: {
       title: "This JD vs the market",
@@ -2210,6 +2220,7 @@ export default {
         skills_list: "Skill list",
         other: "Other",
       },
+      githubCorrobTooltip: "This skill has a public GitHub repo backing it — evidence risk lowered",
     },
     jdIntel: {
       title: "JD Requirements (beyond skills)",
@@ -2338,7 +2349,7 @@ export default {
     insights: {
       fixFirst: "Fix these first",
       skillsTitle: "Skills found in your CV",
-      skillsHint: "Hover a skill to see the evidence the AI extracted.",
+      skillsHint: "Tap a skill to see the evidence the AI extracted.",
       relevanceTitle: "Skill relevance",
       relevanceHint: "Your skills vs. the target role's requirements.",
       matched: "Matched",
@@ -3227,6 +3238,8 @@ export default {
       newGaps: "New gap appeared",
       explain: "Explain more",
       templateChanged: "Your last scan used an older scoring template — only gap status is comparable, not the score.",
+      learningCompleted: "Lessons completed",
+      learningCompletedHint: "Completed — will be verified on your next CV scan",
     },
   },
 } as const;

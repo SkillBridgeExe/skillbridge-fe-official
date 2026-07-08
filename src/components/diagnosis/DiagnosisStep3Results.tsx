@@ -448,9 +448,18 @@ export function DiagnosisStep3Results() {
           }
           verdictMessage={scoreMessage}
           isJdMode={isJdMode}
-          rubricBand={jdMatch?.rubric_band}
+          rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
           bandTooltip={t("band.tooltip")}
         />
+
+        {/* W44: Microcopy — honest distinction between CV score and JD match score */}
+        {isJdMode && (
+          <p className="text-[11px] text-[#787774] text-center max-w-md mt-2 leading-relaxed">
+            {t("results.scoreDistinction", {
+              defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
+            })}
+          </p>
+        )}
 
         {/* Ribbon — inline stats + deal-breaker chips */}
         {isJdMode && (

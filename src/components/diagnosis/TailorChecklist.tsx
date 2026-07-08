@@ -123,6 +123,34 @@ export function TailorChecklist({
                           {t("review.actionList.impact", { severity: action.gap_severity.toFixed(2) })}
                         </span>
                       )}
+                      {/* W41: expected_impact badge — honest framing */}
+                      {action.expected_impact && (() => {
+                        const { score_min, score_max, severity_drop } = action.expected_impact;
+                        if (score_max > 0) {
+                          const label = score_min === score_max
+                            ? t("tailor.impact.pointsSingle", { max: score_max })
+                            : t("tailor.impact.points", { min: score_min, max: score_max });
+                          return (
+                            <span
+                              title={t("tailor.impact.disclaimer")}
+                              className="rounded-full border border-[#BEE3F8] bg-[#E1F3FE] px-2 py-0.5 text-[11px] font-bold text-[#1F6C9F]"
+                            >
+                              {label}
+                            </span>
+                          );
+                        }
+                        if (score_min === 0 && score_max === 0 && (severity_drop ?? 0) > 0) {
+                          return (
+                            <span
+                              title={t("tailor.impact.riskReductionTooltip")}
+                              className="rounded-full border border-[#EAEAEA] bg-[#F1F1EF] px-2 py-0.5 text-[11px] font-bold text-[#787774]"
+                            >
+                              {t("tailor.impact.riskReduction")}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     <h4 className="mt-2 text-sm font-bold text-[#2F3437]">{action.display_name}</h4>
                     <p className="mt-1 text-xs leading-relaxed text-[#787774]">{action.why}</p>
