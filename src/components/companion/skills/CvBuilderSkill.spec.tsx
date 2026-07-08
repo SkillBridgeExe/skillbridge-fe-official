@@ -46,6 +46,16 @@ const TURN: CvAssistantTurn = {
   field_patch: null,
 };
 
+const EVIDENCE_TURN: CvAssistantTurn = {
+  message: "",
+  questions: [
+    { gap: "tech", prompt: "Which tech?", options: [{ id: "react", label: "React" }], allows_free_text: true },
+    { gap: "result", prompt: "What changed?", options: [{ id: "fewer_errors", label: "Fewer errors" }], allows_free_text: true },
+  ],
+  requires_user_confirmation: false,
+  field_patch: null,
+};
+
 /** Seed the store directly into the PRESENTING state with an already-accepted patch. */
 function seedPresenting() {
   const s = useCvBuilderStore.getState();
@@ -250,33 +260,47 @@ describe("CvBuilderSkill — Task 6a + W83 (intent-aware action chips)", () => {
     expect(screen.getByText("Which tech?")).toBeInTheDocument();
   });
 
-  it("add-evidence chip uses rewrite intent instead of a fake answer gap", () => {
+  it("add-evidence chip asks for evidence first and carries intent into the rewrite", () => {
     renderSkill(vi.fn(), "Fixed bugs in the payment flow.");
 
     fireEvent.click(screen.getByText("companion.intent.evidence"));
 
-    expect(mutateSmartQuestions).not.toHaveBeenCalled();
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("add_evidence");
+    expect(mutateRewrite).not.toHaveBeenCalled();
+
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+    act(() => handlers.onSuccess(EVIDENCE_TURN));
+    fireEvent.click(screen.getByText("React"));
+    fireEvent.click(screen.getByText("Fewer errors"));
+    fireEvent.click(screen.getByText("companion.send"));
+
     expect(mutateRewrite).toHaveBeenCalledTimes(1);
     const [req] = mutateRewrite.mock.calls[0];
-    expect(req.answers).toEqual([]);
     expect(req.intent).toBe("add_evidence");
+    expect(req.answers).toEqual([
+      expect.objectContaining({ gap: "tech" }),
+      expect.objectContaining({ gap: "result" }),
+    ]);
   });
 
-  it("ATS chip maps to an explicit rewrite intent", () => {
+  it("ATS chip goes through smart questions instead of direct rewrite", () => {
     renderSkill(vi.fn(), "Built React dashboard components.");
 
     fireEvent.click(screen.getByText("companion.intent.ats"));
 
-    expect(mutateRewrite).toHaveBeenCalledTimes(1);
-    expect(mutateRewrite.mock.calls[0][0].intent).toBe("make_ats_friendly");
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("make_ats_friendly");
+    expect(mutateRewrite).not.toHaveBeenCalled();
   });
 
-  it("impact chip maps to an explicit rewrite intent", () => {
+  it("impact chip goes through smart questions instead of direct rewrite", () => {
     renderSkill(vi.fn(), "Built React dashboard components.");
 
     fireEvent.click(screen.getByText("companion.intent.impact"));
 
-    expect(mutateRewrite).toHaveBeenCalledTimes(1);
-    expect(mutateRewrite.mock.calls[0][0].intent).toBe("turn_into_impact");
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    expect(mutateSmartQuestions.mock.calls[0][0].requested_action).toBe("turn_into_impact");
+    expect(mutateRewrite).not.toHaveBeenCalled();
   });
 });

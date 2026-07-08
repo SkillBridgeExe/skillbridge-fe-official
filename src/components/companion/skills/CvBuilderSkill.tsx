@@ -35,6 +35,9 @@ const EMPTY_ENTRY = {
   description: "", achievements: "",
 } as const;
 
+type RewriteIntent = "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence";
+type QuestionIntent = "analyze" | "add_evidence" | "make_ats_friendly" | "turn_into_impact";
+
 /* ── Sub-components ── */
 
 /** Chip picker for a single question. */
@@ -190,6 +193,7 @@ export function CvBuilderSkill({
   // free-text question instead of the original chip set.
   const [askMoreActive, setAskMoreActive] = useState(false);
   const [askMoreText, setAskMoreText] = useState("");
+  const [activeIntent, setActiveIntent] = useState<RewriteIntent | null>(null);
 
   // ── Trigger analyze (Turn-1) ──
   const handleAnalyze = useCallback(() => {
@@ -203,6 +207,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setActiveIntent(null);
     setIsApplied(false);
 
     analyzeMutation.mutate(
@@ -238,7 +243,7 @@ export function CvBuilderSkill({
   // ── Trigger smart-questions (Turn-1, LLM role-aware) — rule analyze fallback on error ──
   // Same request shape as analyze (current_value/section/field_path/locale) — no target_role,
   // BE reads the real role server-side from the owned CV record.
-  const handleSmartQuestions = useCallback((requestedAction: "analyze" | "add_evidence" | "make_ats_friendly" | "turn_into_impact" = "analyze") => {
+  const handleSmartQuestions = useCallback((requestedAction: QuestionIntent = "analyze") => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
 
     // Claim this field as THE active companion session.
@@ -249,6 +254,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setActiveIntent(requestedAction === "analyze" ? null : requestedAction);
     setIsApplied(false);
 
     const request = {
@@ -369,6 +375,7 @@ export function CvBuilderSkill({
         target: fieldPath ?? "",
         kind: section === "summary" ? "summary" : "bullet",
         locale: outputLocale,
+        ...(activeIntent ? { intent: activeIntent } : {}),
       },
       {
         onSuccess: (res) => {
@@ -403,7 +410,7 @@ export function CvBuilderSkill({
   }, [
     draftId, companionTurn, answers, buildAnswerList, currentValue, fieldPath, section, outputLocale,
     rewriteMutation, setMascotState, setCompanionPatch,
-    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach,
+    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach, activeIntent,
   ]);
 
   // ── Follow-up rewrites from the PRESENTING state (Task M4) ──
@@ -429,6 +436,7 @@ export function CvBuilderSkill({
           target: fieldPath ?? "",
           kind: section === "summary" ? "summary" : "bullet",
           locale: outputLocale,
+          ...(activeIntent ? { intent: activeIntent } : {}),
           ...(opts.tone ? { tone: opts.tone } : {}),
         },
         {
@@ -452,11 +460,11 @@ export function CvBuilderSkill({
     },
     [
       draftId, companionTurn, rewriteMutation, buildAnswerList, answers, currentValue, fieldPath,
-      section, outputLocale, setMascotState, setCompanionPatch, setCompanionMessage, t,
+      section, outputLocale, activeIntent, setMascotState, setCompanionPatch, setCompanionMessage, t,
     ],
   );
 
-  const fireDirectIntentRewrite = useCallback((intentKey: "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence") => {
+  const fireDirectIntentRewrite = useCallback((intentKey: Extract<RewriteIntent, "improve" | "shorten">) => {
     if (!draftId || rewriteMutation.isPending) return;
 
     setCompanionField(fieldPath, section);
@@ -466,6 +474,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
+    setActiveIntent(intentKey);
     setIsApplied(false);
 
     rewriteMutation.mutate(
@@ -581,6 +590,7 @@ export function CvBuilderSkill({
     setAskMoreText("");
     resetCompanion();
     useCompanionStore.getState().dismissActive();
+    setActiveIntent(null);
   }, [resetCompanion]);
 
   // ── Loading state for analyze / smart-questions ──
@@ -651,13 +661,17 @@ export function CvBuilderSkill({
                 onClick={() => {
                   const rewriteIntent = {
                     improve: "improve",
+                    shorten: "shorten",
+                  }[chip.id] as Extract<RewriteIntent, "improve" | "shorten"> | undefined;
+                  const questionIntent = {
                     evidence: "add_evidence",
                     ats: "make_ats_friendly",
-                    shorten: "shorten",
                     impact: "turn_into_impact",
-                  }[chip.id] as "improve" | "shorten" | "make_ats_friendly" | "turn_into_impact" | "add_evidence" | undefined;
+                  }[chip.id] as Exclude<QuestionIntent, "analyze"> | undefined;
                   if (chip.id === "analyze") {
                     handleSmartQuestions("analyze");
+                  } else if (questionIntent) {
+                    handleSmartQuestions(questionIntent);
                   } else if (rewriteIntent) {
                     fireDirectIntentRewrite(rewriteIntent);
                   }
