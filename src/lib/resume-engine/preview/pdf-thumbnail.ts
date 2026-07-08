@@ -15,7 +15,7 @@ const canvasToBlob = async (canvas: HTMLCanvasElement) => {
 	});
 };
 
-export const createPdfFirstPageImageUrl = async (file: Blob) => {
+export const createPdfFirstPageImageUrl = async (file: Blob, targetWidth = RESUME_THUMBNAIL_TARGET_WIDTH) => {
 	const { AnnotationMode, GlobalWorkerOptions, getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 	GlobalWorkerOptions.workerSrc = withPdfWorkerCacheKey(
 		new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString(),
@@ -34,7 +34,7 @@ export const createPdfFirstPageImageUrl = async (file: Blob) => {
 			const pageSize: PreviewPageSize = { height: baseViewport.height, width: baseViewport.width };
 			const renderSize = getResumeThumbnailRenderSize(
 				pageSize,
-				RESUME_THUMBNAIL_TARGET_WIDTH,
+				targetWidth,
 				window.devicePixelRatio || 1,
 			);
 

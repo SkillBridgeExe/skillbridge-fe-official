@@ -40,7 +40,8 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			linkedin: "https://linkedin.com/in/johndoe",
 			github: "https://github.com/johndoe",
 			cvLanguage: "en",
-			template: "onyx",
+			template: "gengar",
+			resumePictureVisible: true,
 			summary: "",
 			education: [],
 			experience: [],
@@ -82,7 +83,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			],
 			customFields: [{ id: "field-1", name: "Work authorization", value: "Vietnam", icon: "passport" }],
 			cvLanguage: "en",
-			template: "onyx",
+			template: "gengar",
 			summary: "",
 			education: [],
 			experience: [],
@@ -284,6 +285,43 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.layout.sidebarPosition).toBe("right");
 		expect(result.metadata.layout.sidebarWidth).toBe(42);
 		expect(result.metadata.design.dividerStyle).toBe("accent");
+	});
+
+	it("hides profile photo when the selected template does not support avatars", () => {
+		const result = adaptCvBuilderStoreToResumeData({
+			fullName: "John Doe",
+			photoUrl: "https://example.com/photo.jpg",
+			template: "onyx",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState);
+
+		expect(result.picture.hidden).toBe(true);
+	});
+
+	it("hides profile photo when the user disables avatar visibility", () => {
+		const result = adaptCvBuilderStoreToResumeData({
+			fullName: "John Doe",
+			photoUrl: "https://example.com/photo.jpg",
+			template: "gengar",
+			resumePictureVisible: false,
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState);
+
+		expect(result.picture.hidden).toBe(true);
 	});
 
 	it("uses renderer sidebar sections for templates that actually render side columns", () => {

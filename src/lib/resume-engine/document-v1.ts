@@ -76,6 +76,8 @@ export interface ResumeDocumentV1 {
     templateId: string;
     resumeFontFamily?: "inter" | "serif" | "roboto" | "merriweather" | "mono";
     resumeFontScale: "small" | "normal" | "large";
+    resumeHeadingScale?: "match" | "prominent" | "subtle";
+    resumeBaseFontSize?: number;
     resumeLineHeight?: "tight" | "normal" | "relaxed";
     resumeDensity?: "compact" | "comfortable";
     resumePageMargin?: "compact" | "normal" | "spacious";
@@ -85,6 +87,13 @@ export interface ResumeDocumentV1 {
     resumeDividerStyle?: "none" | "line" | "accent" | "subtle";
     resumeAccentColor: string;
     resumeHideSectionIcons: boolean;
+    resumeAtsSafeMode?: boolean;
+    resumeTextColor?: string;
+    resumePictureVisible?: boolean;
+    resumePictureShape?: "circle" | "rounded" | "square";
+    resumePictureSize?: number;
+    resumePictureBorderWidth?: number;
+    resumePictureBorderColor?: string;
     sectionVisibility: Record<string, boolean>;
     sectionOrder: string[];
     careerLevel: string;

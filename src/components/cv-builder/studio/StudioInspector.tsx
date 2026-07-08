@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { resolveBuilderTemplate, TemplateGallery, TemplateThumbnail } from "../preview/TemplatePicker";
+import { resolveBuilderTemplate, TemplateGallery, StaticTemplateThumbnail } from "../preview/TemplatePicker";
 import { useCvBuilderStore, type CvBuilderSectionKey, type CvLanguage, type ResumeFontScale, type ResumeFontFamily, type ResumeLineHeight, type ResumeSpacing } from "@/store/useCvBuilderStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -312,9 +312,9 @@ export function StudioInspector() {
 
                 <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm flex flex-col gap-3">
                   <div className="flex gap-4">
-                    <TemplateThumbnail
+                    <StaticTemplateThumbnail
                       template={currentTemplate}
-                      className="shrink-0"
+                      className="w-[86px] h-[116px] shrink-0"
                     />
                     <div className="flex flex-col py-1">
                       <div className="text-[14px] font-bold text-slate-800">{TEMPLATE_PREVIEWS[currentTemplate]?.name}</div>
