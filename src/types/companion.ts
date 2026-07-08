@@ -75,8 +75,8 @@ export interface AssistantRewriteRequest {
   locale: "vi" | "en";
   /**
    * Task M4 — set ONLY when the user clicks "Viết lại nhẹ hơn" on an already-presented
-   * patch (re-fires the SAME answers/target, asking BE for a gentler tone). Additive:
-   * an older BE ignores the unknown field.
+   * patch (re-fires the SAME answers/target, asking BE for a gentler tone).
+   * Requires a BE DTO that declares the field because the API rejects unknown properties.
    */
   tone?: "softer";
   /** Action-chip rewrite intent. BE may rewrite safely or return NEEDS_DETAIL. */

@@ -251,15 +251,17 @@ export function CvBuilderSkill({
     setAnswers({});
     setIsApplied(false);
 
+    const request = {
+      draftId,
+      current_value: currentValue,
+      section,
+      field_path: fieldPath,
+      locale: askLocale,
+      ...(requestedAction === "analyze" ? {} : { requested_action: requestedAction }),
+    };
+
     smartQuestionsMutation.mutate(
-      {
-        draftId,
-        current_value: currentValue,
-        section,
-        field_path: fieldPath,
-        locale: askLocale,
-        requested_action: requestedAction,
-      },
+      request,
       {
         onSuccess: (turn) => {
           setCompanionTurn(turn);

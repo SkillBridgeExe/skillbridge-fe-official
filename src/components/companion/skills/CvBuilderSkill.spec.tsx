@@ -223,7 +223,7 @@ describe("CvBuilderSkill — Task 6a + W83 (intent-aware action chips)", () => {
     expect(req.current_value).toBe("Fixed bugs in the payment flow.");
     expect(req.section).toBe("experience");
     expect(req.field_path).toBe(FIELD);
-    expect(req.requested_action).toBe("analyze");
+    expect(req).not.toHaveProperty("requested_action");
     expect(req).not.toHaveProperty("target_role");
 
     const [, handlers] = mutateSmartQuestions.mock.calls[0];
