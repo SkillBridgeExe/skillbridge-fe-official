@@ -2682,6 +2682,35 @@ export default {
       aiNeedsContentDesc: "Hãy nhập Summary, Project hoặc Experience trước, rồi mở AI ở đúng mục để nhận đề xuất có thể áp dụng.",
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
       commonSkillsSuggest: "Kỹ năng thường gặp cho {{role}}",
+      lengthGuard: {
+        title: "Độ dài & trọng tâm CV",
+        statusPages: "Độ dài ước tính: {{estimated}} trang",
+        targetPages: "Mục tiêu cho cấp độ của bạn: {{target}} trang",
+        headline: {
+          good: "Độ dài & trọng tâm tốt",
+          watch: "Cần tinh chỉnh",
+          tooLong: "Quá dài",
+        },
+        explain: {
+          good: "Độ dài CV của bạn phù hợp với cấp độ mục tiêu.",
+          watch: "Với CV intern/fresher, độ dài này bắt đầu trở nên dài. Hãy giữ lại những minh chứng mạnh nhất và lược bỏ những gì không chứng minh năng lực cho vị trí mục tiêu.",
+          tooLong: "CV này quá dài so với cấp độ mục tiêu. Hãy tập trung vào những nội dung liên quan nhất.",
+        },
+        reason: {
+          summaryLong: "Tóm tắt dài dòng",
+          manyProjects: "Quá nhiều dự án",
+          weakBullets: "Mật độ bullet yếu",
+          manySkills: "Nhồi nhét kỹ năng",
+          manyCerts: "Quá nhiều chứng chỉ",
+        },
+        action: {
+          summaryShorten: "Giữ 2-3 câu súc tích",
+          keepBestProjects: "Giữ 2-3 dự án tiêu biểu và liên quan nhất",
+          improveBullets: "Viết lại với động từ hành động và số liệu",
+          focusSkills: "Chỉ giữ kỹ năng liên quan và có bằng chứng trong dự án/kinh nghiệm",
+          trimCerts: "Chuyển xuống dưới hoặc xóa bớt chứng chỉ phụ",
+        }
+      },
       skills: {
         technicalSkills: "Kỹ năng kỹ thuật",
         softSkills: "Kỹ năng mềm",

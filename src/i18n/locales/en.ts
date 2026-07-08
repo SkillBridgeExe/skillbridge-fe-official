@@ -2710,6 +2710,35 @@ export default {
       aiNeedsContentDesc: "Add Summary, Project, or Experience content first, then open AI on that section for an applicable suggestion.",
       skillInputPlaceholder: "Type a skill and press Enter...",
       commonSkillsSuggest: "Common skills for {{role}}",
+      lengthGuard: {
+        title: "CV length & focus",
+        statusPages: "Estimated length: {{estimated}} page(s)",
+        targetPages: "Target for your level: {{target}} page(s)",
+        headline: {
+          good: "Good length and focus",
+          watch: "Needs refinement",
+          tooLong: "Too long",
+        },
+        explain: {
+          good: "Your CV length matches expectations for your level.",
+          watch: "For an intern/fresher CV, this is starting to read long. Keep the strongest evidence and trim anything that does not prove the target role.",
+          tooLong: "This is too long for the target level. Focus on role-relevant content.",
+        },
+        reason: {
+          summaryLong: "Summary is verbose",
+          manyProjects: "Too many projects",
+          weakBullets: "Weak bullet density",
+          manySkills: "Skill stuffing",
+          manyCerts: "Too many certifications",
+        },
+        action: {
+          summaryShorten: "Keep 2-3 concise sentences",
+          keepBestProjects: "Keep strongest 2-3 role-relevant projects",
+          improveBullets: "Rewrite with action verbs and impact",
+          focusSkills: "Keep role-relevant skills and prove key ones",
+          trimCerts: "Move lower or remove minor certs",
+        }
+      },
       skills: {
         technicalSkills: "Technical Skills",
         softSkills: "Soft Skills",

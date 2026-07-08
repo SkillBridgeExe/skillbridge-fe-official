@@ -46,6 +46,14 @@ afterEach(() => {
 });
 
 describe("ReviewSection W55 re-check ledger", () => {
+  it("renders the CV length and focus guard", () => {
+    render(<ReviewSection />);
+
+    expect(screen.getByText("builder.lengthGuard.headline.good")).toBeInTheDocument();
+    expect(screen.getByText("builder.lengthGuard.statusPages")).toBeInTheDocument();
+    expect(screen.getByText("builder.lengthGuard.targetPages")).toBeInTheDocument();
+  });
+
   it("renders a per-section re-check CTA for stale assistant edits", () => {
     useAuthStore.getState().setAuthenticated(USER, "api");
     seedStaleSummary();
