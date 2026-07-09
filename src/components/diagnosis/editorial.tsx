@@ -155,7 +155,7 @@ export const VerdictHero = memo(function VerdictHero({
   const arcPath = `M ${strokeWidth/2} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - strokeWidth/2} ${radius}`;
 
   const gaugeContent = (
-      <div className={cn("relative flex flex-col items-center justify-end", !isJdMode && breakdown && "cursor-pointer hover:opacity-90 transition-opacity")} style={{ width: radius * 2, height: radius + strokeWidth }}>
+      <div className={cn("relative z-20 flex flex-col items-center justify-end", !isJdMode && breakdown && "cursor-pointer hover:opacity-90 transition-opacity")} style={{ width: radius * 2, height: radius + strokeWidth }}>
         <svg
           height={radius + strokeWidth}
           width={radius * 2}
@@ -297,7 +297,7 @@ export function Ribbon({
         <span className="font-mono text-[15px] font-bold">{missing}</span> {t("results.missing")}
       </span>
       {coverage != null && (
-        <span className="text-[#787774]">
+        <span className="inline-flex items-center rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-2.5 py-1 text-[12px] text-[#787774] shadow-sm">
           {t("editorial.coverage", { pct: coverage })}
         </span>
       )}

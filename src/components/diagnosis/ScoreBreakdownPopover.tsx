@@ -49,8 +49,8 @@ export function ScoreBreakdownPopover({ jdMatch, children }: Props) {
             role="dialog"
             aria-label={t("companion.scoreBreakdown.title")}
             className={cn(
-              "absolute z-[71] top-full left-1/2 -translate-x-1/2 mt-2",
-              "w-[min(340px,85vw)] rounded-xl border border-[#EAEAEA] bg-white p-4 shadow-xl",
+              "absolute z-[71] top-full left-1/2 -translate-x-1/2 mt-2 md:top-1/2 md:left-full md:-translate-y-1/2 md:-translate-x-0 md:mt-0 md:ml-4",
+              "w-[min(340px,85vw)] rounded-xl border border-[#EAEAEA] bg-white p-4 shadow-xl text-left",
               "animate-in fade-in zoom-in-95 duration-200",
             )}
           >

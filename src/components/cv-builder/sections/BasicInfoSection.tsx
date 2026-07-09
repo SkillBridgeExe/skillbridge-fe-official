@@ -19,11 +19,6 @@ export function BasicInfoSection() {
     <div className="space-y-6 p-4">
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1.5">
-          <Label htmlFor="photoUrl">{t("builder.fields.photoUrl")}</Label>
-          <Input id="photoUrl" value={photoUrl || ""} onChange={(e) => setBasicInfo("photoUrl", e.target.value)} placeholder="https://..." />
-        </div>
-
-        <div className="space-y-1.5">
           <Label htmlFor="fullName">{t("builder.fields.fullName")} *</Label>
           <Input id="fullName" value={fullName} onChange={(e) => setBasicInfo("fullName", e.target.value)} placeholder={t("builder.ph.fullName")} />
         </div>

@@ -177,6 +177,21 @@ export interface CvBuilderState {
   sectionPlacement: Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
   collapsedSections: Record<string, boolean>;
 
+  // W87: Avatar customization
+  resumePictureVisible: boolean;
+  resumePictureShape: "circle" | "rounded" | "square";
+  resumePictureSize: number;
+  resumePictureBorderWidth: number;
+  resumePictureBorderColor: string;
+
+  // W88: Typography
+  resumeHeadingScale: "match" | "prominent" | "subtle";
+  resumeBaseFontSize: number;
+
+  // W89: Theme & Density
+  resumeAtsSafeMode: boolean;
+  resumeTextColor: string;
+
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
   sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
@@ -264,6 +279,16 @@ export interface CvBuilderState {
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
+  setResumePictureVisible: (visible: boolean) => void;
+  setResumePictureShape: (shape: "circle" | "rounded" | "square") => void;
+  setResumePictureSize: (size: number) => void;
+  setResumePictureBorderWidth: (width: number) => void;
+  setResumePictureBorderColor: (color: string) => void;
+  setResumeHeadingScale: (scale: "match" | "prominent" | "subtle") => void;
+  setResumeBaseFontSize: (size: number) => void;
+  setResumeAtsSafeMode: (safeMode: boolean) => void;
+  setResumeTextColor: (color: string) => void;
+  
   /** W69: Reset accent/font/density/icons to template defaults. */
   resetStyle: () => void;
 
@@ -345,6 +370,16 @@ const initialState = {
   resumeSidebarWidth: "normal" as const,
   resumeDividerStyle: "line" as const,
   resumeHideSectionIcons: false,
+  resumePictureVisible: true,
+  resumePictureShape: "circle" as const,
+  resumePictureSize: 64,
+  resumePictureBorderWidth: 0,
+  resumePictureBorderColor: "rgba(0,0,0,0)",
+  resumeHeadingScale: "match" as const,
+  resumeBaseFontSize: 11,
+  resumeAtsSafeMode: false,
+  resumeTextColor: "#334155",
+  
   sectionVisibility: {
     summary: true,
     education: true,
@@ -647,17 +682,6 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     collapsedSections: { ...s.collapsedSections, [sectionId]: collapsed }
   })),
 
-  // W69: Reset style to template defaults
-  resetStyle: () => set((s) => {
-    const meta = TEMPLATE_PREVIEWS[s.template as keyof typeof TEMPLATE_PREVIEWS];
-    return {
-      resumeAccentColor: meta?.accent ?? "#0f172a",
-      resumeFontScale: (meta?.fontScale ?? "normal") as ResumeFontScale,
-      resumePageMargin: (meta?.pageMargin ?? "normal") as ResumeSpacing,
-      resumeSectionSpacing: (meta?.sectionSpacing ?? "normal") as ResumeSpacing,
-      resumeHideSectionIcons: false,
-    };
-  }),
 
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
@@ -728,6 +752,39 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setResumeSidebarWidth: (resumeSidebarWidth) => set({ resumeSidebarWidth }),
   setResumeDividerStyle: (resumeDividerStyle) => set({ resumeDividerStyle }),
   setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
+  setResumePictureVisible: (resumePictureVisible) => set({ resumePictureVisible }),
+  setResumePictureShape: (resumePictureShape) => set({ resumePictureShape }),
+  setResumePictureSize: (resumePictureSize) => set({ resumePictureSize }),
+  setResumePictureBorderWidth: (resumePictureBorderWidth) => set({ resumePictureBorderWidth }),
+  setResumePictureBorderColor: (resumePictureBorderColor) => set({ resumePictureBorderColor }),
+  setResumeHeadingScale: (resumeHeadingScale) => set({ resumeHeadingScale }),
+  setResumeBaseFontSize: (resumeBaseFontSize) => set({ resumeBaseFontSize }),
+  setResumeAtsSafeMode: (resumeAtsSafeMode) => set({ resumeAtsSafeMode }),
+  setResumeTextColor: (resumeTextColor) => set({ resumeTextColor }),
+  resetStyle: () => set((s) => {
+    const meta = TEMPLATE_PREVIEWS[s.template as Template];
+    return {
+      resumeAccentColor: meta?.accent ?? "#0f172a",
+      resumeFontFamily: "inter",
+      resumeFontScale: meta?.fontScale ?? "normal",
+      resumeLineHeight: "normal",
+      resumePageMargin: meta?.pageMargin ?? "normal",
+      resumeSectionSpacing: meta?.sectionSpacing ?? "normal",
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
+      resumeHideSectionIcons: false,
+      resumePictureVisible: true,
+      resumePictureShape: "circle",
+      resumePictureSize: 64,
+      resumePictureBorderWidth: 0,
+      resumePictureBorderColor: "rgba(0,0,0,0)",
+      resumeHeadingScale: "match",
+      resumeBaseFontSize: 11,
+      resumeAtsSafeMode: false,
+      resumeTextColor: "#334155",
+    };
+  }),
   setSectionVisibility: (section, visible) => set((s) => ({
     sectionVisibility: { ...s.sectionVisibility, [section]: visible },
   })),

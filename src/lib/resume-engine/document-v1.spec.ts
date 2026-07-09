@@ -98,9 +98,22 @@ function richBuilderState(): CvBuilderState {
     cvLanguage: "vi",
     resumeAccentColor: "#1f6b57",
     resumeFontScale: "large",
+    resumeHeadingScale: "prominent",
+    resumeBaseFontSize: 12,
+    resumeLineHeight: "relaxed",
     resumePageMargin: "compact",
     resumeSectionSpacing: "compact",
+    resumeSidebarPosition: "right",
+    resumeSidebarWidth: "wide",
+    resumeDividerStyle: "accent",
     resumeHideSectionIcons: true,
+    resumeAtsSafeMode: true,
+    resumeTextColor: "#111827",
+    resumePictureVisible: true,
+    resumePictureShape: "rounded",
+    resumePictureSize: 88,
+    resumePictureBorderWidth: 2,
+    resumePictureBorderColor: "#2563eb",
     sectionVisibility: {
       summary: true,
       experience: true,
@@ -161,9 +174,22 @@ describe("ResumeDocumentV1 contract", () => {
     expect(restored.template).toBe("bronzor");
     expect(restored.resumeAccentColor).toBe("#1f6b57");
     expect(restored.resumeFontScale).toBe("large");
+    expect(restored.resumeHeadingScale).toBe("prominent");
+    expect(restored.resumeBaseFontSize).toBe(12);
+    expect(restored.resumeLineHeight).toBe("relaxed");
     expect(restored.resumePageMargin).toBe("compact");
     expect(restored.resumeSectionSpacing).toBe("compact");
+    expect(restored.resumeSidebarPosition).toBe("right");
+    expect(restored.resumeSidebarWidth).toBe("wide");
+    expect(restored.resumeDividerStyle).toBe("accent");
     expect(restored.resumeHideSectionIcons).toBe(true);
+    expect(restored.resumeAtsSafeMode).toBe(true);
+    expect(restored.resumeTextColor).toBe("#111827");
+    expect(restored.resumePictureVisible).toBe(true);
+    expect(restored.resumePictureShape).toBe("rounded");
+    expect(restored.resumePictureSize).toBe(88);
+    expect(restored.resumePictureBorderWidth).toBe(2);
+    expect(restored.resumePictureBorderColor).toBe("#2563eb");
     expect(restored.sectionVisibility?.projects).toBe(false);
     expect(restored.sectionOrder).toEqual([
       "summary",

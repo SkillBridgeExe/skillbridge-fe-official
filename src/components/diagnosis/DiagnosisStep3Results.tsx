@@ -454,7 +454,7 @@ export function DiagnosisStep3Results() {
 
         {/* W44: Microcopy — honest distinction between CV score and JD match score */}
         {isJdMode && (
-          <p className="text-[11px] text-[#787774] text-center max-w-md mt-2 leading-relaxed">
+          <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto mt-2 leading-relaxed">
             {t("results.scoreDistinction", {
               defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
             })}

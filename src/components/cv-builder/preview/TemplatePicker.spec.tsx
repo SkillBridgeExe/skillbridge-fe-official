@@ -1,11 +1,25 @@
 // @vitest-environment jsdom
 
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { TemplateThumbnail } from "./TemplatePicker";
+import { describe, expect, it, vi } from "vitest";
 
-describe("TemplateThumbnail", () => {
-  it("falls back safely when a legacy builder template id is provided", () => {
-    expect(() => render(<TemplateThumbnail template="ats-modern" />)).not.toThrow();
+const createResumePdfBlobMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@resume-engine/pdf/browser", () => ({
+  createResumePdfBlob: createResumePdfBlobMock,
+}));
+
+import { TemplateGallery } from "./TemplatePicker";
+
+describe("TemplateGallery", () => {
+  it("does not call createResumePdfBlob when rendering the gallery (prevents OOM/lag)", () => {
+    const { container } = render(<TemplateGallery />);
+    
+    // Ensure the gallery renders the thumbnails as images
+    const images = container.querySelectorAll("img");
+    expect(images.length).toBeGreaterThan(0);
+    
+    // But it should NEVER call the heavy PDF renderer for the gallery itself
+    expect(createResumePdfBlobMock).not.toHaveBeenCalled();
   });
 });

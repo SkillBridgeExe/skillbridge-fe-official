@@ -196,6 +196,15 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 	const fontFamily = resolveFontFamily(store.resumeFontFamily);
 	const fontScale = resolveFontScale(store.resumeFontScale);
 	const lineHeight = resolveLineHeight(store.resumeLineHeight);
+	const bodyFontSize = store.resumeBaseFontSize ?? fontScale.body;
+	const headingBaseFontSize = Math.max(
+		bodyFontSize + 2,
+		fontScale.heading + (bodyFontSize - fontScale.body),
+	);
+	const headingFontSize = Math.max(
+		bodyFontSize + 1,
+		headingBaseFontSize + (store.resumeHeadingScale === "prominent" ? 2 : store.resumeHeadingScale === "subtle" ? -1 : 0),
+	);
 	const margin = resolvePageMargin(store.resumePageMargin);
 	const spacing = resolveSectionSpacing(store.resumeSectionSpacing);
 	const sidebarWidth = resolveSidebarWidth(store.resumeSidebarWidth);
@@ -278,14 +287,16 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	return {
 		picture: {
-			hidden: !store.photoUrl,
+			hidden: !store.photoUrl || store.resumePictureVisible === false || !layoutCaps.supportsAvatar || !!store.resumeAtsSafeMode,
 			url: store.photoUrl || "",
-			size: 64,
+			size: store.resumePictureSize ?? 64,
 			rotation: 0,
 			aspectRatio: 1,
-			borderRadius: 0,
-			borderColor: "rgba(0, 0, 0, 0)",
-			borderWidth: 0,
+			borderRadius: store.resumePictureShape === "circle" 
+				? (store.resumePictureSize ?? 64) / 2 
+				: store.resumePictureShape === "rounded" ? 8 : 0,
+			borderColor: store.resumePictureBorderColor ?? "rgba(0, 0, 0, 0)",
+			borderWidth: store.resumePictureBorderWidth ?? 0,
 			shadowColor: "rgba(0, 0, 0, 0)",
 			shadowWidth: 0,
 		},
@@ -521,18 +532,19 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				marginY: margin,
 				format: "a4",
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
-				hideLinkUnderline: false,
-				hideIcons: false,
-				hideSectionIcons: store.resumeHideSectionIcons ?? false,
+				hideLinkUnderline: store.resumeAtsSafeMode ? false : false,
+				hideIcons: store.resumeAtsSafeMode,
+				hideSectionIcons: store.resumeAtsSafeMode || (store.resumeHideSectionIcons ?? false),
+				simplifyDecorations: store.resumeAtsSafeMode,
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },
-				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
-				dividerStyle: store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line",
+				colors: { primary: store.resumeAtsSafeMode ? "#000000" : accentColor, text: store.resumeAtsSafeMode ? "#000000" : (store.resumeTextColor ?? "#334155"), background: "#ffffff" },
+				dividerStyle: store.resumeAtsSafeMode ? "line" : (store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line"),
 			},
 			typography: {
-				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: fontScale.body, lineHeight: lineHeight },
-				heading: { fontFamily: fontFamily, fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: lineHeight },
+				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: bodyFontSize, lineHeight: lineHeight },
+				heading: { fontFamily: fontFamily, fontWeights: ["700"], fontSize: headingFontSize, lineHeight: lineHeight },
 			},
 			notes: "",
 			styleRules: [],
@@ -761,7 +773,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 					},
 				],
 			},
-			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false },
+			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false, simplifyDecorations: false },
 			design: { dividerStyle: "line", level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
 			typography: { body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 }, heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 } },
 			notes: "",

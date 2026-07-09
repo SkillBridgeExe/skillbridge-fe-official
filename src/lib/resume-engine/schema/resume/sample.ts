@@ -3,7 +3,7 @@ import type { ResumeData } from "./data";
 export const sampleResumeData: ResumeData = {
 	picture: {
 		hidden: false,
-		url: "/photos/sample-picture.jpg",
+		url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
 		size: 100,
 		rotation: 0,
 		aspectRatio: 1,
@@ -561,6 +561,7 @@ export const sampleResumeData: ResumeData = {
 			hideLinkUnderline: false,
 			hideIcons: false,
 			hideSectionIcons: false,
+			simplifyDecorations: false,
 		},
 		design: {
 			dividerStyle: "line",
