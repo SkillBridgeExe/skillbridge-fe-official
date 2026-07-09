@@ -176,10 +176,17 @@ export default function Diagnosis() {
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
       const urlParams = new URLSearchParams(window.location.search);
-      const urlDraftId = urlParams.get("draftId");
+      // Recover an existing CV by whichever id the URL carries — the draft working
+      // copy (draftId) or the library id (cvId). ResumeLibrary opens resumes with
+      // ?cvId=X and relies on the store already holding the draftId from the soft
+      // navigation; on a full reload / deep-link that store state is gone, so without
+      // also honouring cvId here the builder spawns a brand-new draft instead of
+      // re-opening CV X — orphaning its versions, resetting the title to "Untitled",
+      // and duplicating the CV row.
+      const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
 
-      if (urlDraftId) {
-        getCvDetailApi(urlDraftId)
+      if (recoverId) {
+        getCvDetailApi(recoverId)
           .then((detail) => {
             const builder = useCvBuilderStore.getState();
             if (detail.parsedJson) {
