@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import type { ComponentType, ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
 import Tilt from "react-parallax-tilt";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Briefcase, FileText, GraduationCap, LayoutDashboard, MessageSquare, Users,
 } from "lucide-react";
@@ -65,6 +66,8 @@ export default function DemoShell({
   overlay,
   children,
 }: DemoShellProps) {
+  const isMobile = useIsMobile();
+
   return (
     <div ref={containerRef} className="w-full relative z-10 px-2">
       {/* Scan line chạy bằng CSS thuần (compositor thread, 0 JS/frame) */}
@@ -83,21 +86,22 @@ export default function DemoShell({
 
       {/* Parallax Tilt Container */}
       <Tilt
-        glareEnable={true}
+        glareEnable={!isMobile}
         glareMaxOpacity={0.04}
         glarePosition="all"
+        tiltEnable={!isMobile}
         tiltMaxAngleX={2.5}
         tiltMaxAngleY={2.5}
         scale={1.008}
         transitionSpeed={2500}
-        className="w-full relative z-20 rounded-[2.2rem] p-[3px] shadow-[0_50px_100px_-20px_rgba(15,23,42,0.12),0_30px_60px_-30px_rgba(0,0,0,0.15)] transition-all duration-300"
+        className="w-full relative z-20 rounded-[1.6rem] p-[2px] shadow-[0_28px_70px_-28px_rgba(15,23,42,0.25)] transition-all duration-300 sm:rounded-[2.2rem] sm:p-[3px] sm:shadow-[0_50px_100px_-20px_rgba(15,23,42,0.12),0_30px_60px_-30px_rgba(0,0,0,0.15)]"
         style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.15), rgba(56,189,248,0.1), rgba(99,102,241,0.08))" }}
       >
         <motion.div
           ref={cardRef}
           animate={{ opacity }}
           transition={{ duration: 0.4 }}
-          className="w-full rounded-[2rem] bg-white/95 backdrop-blur-md overflow-hidden relative"
+          className="w-full rounded-[1.45rem] bg-white/95 backdrop-blur-md overflow-hidden relative sm:rounded-[2rem]"
         >
           {/* Subtle light scan line running over the dashboard */}
           <div className="demo-scanline absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent z-30 pointer-events-none will-change-transform [animation:demo-scanline_6s_linear_infinite]" />
@@ -106,21 +110,21 @@ export default function DemoShell({
           {overlay}
 
           {/* Browser top-bar */}
-          <div className="bg-slate-50/95 backdrop-blur-sm px-6 py-3 flex items-center justify-between border-b border-slate-100">
-            <div className="flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-slate-300" />
-              <div className="w-3 h-3 rounded-full bg-slate-300" />
-              <div className="w-3 h-3 rounded-full bg-slate-300" />
+          <div className="bg-slate-50/95 backdrop-blur-sm px-3 py-2 sm:px-6 sm:py-3 flex items-center justify-between gap-2 border-b border-slate-100">
+            <div className="flex shrink-0 gap-1.5 sm:gap-2">
+              <div className="h-2.5 w-2.5 rounded-full bg-slate-300 sm:h-3 sm:w-3" />
+              <div className="h-2.5 w-2.5 rounded-full bg-slate-300 sm:h-3 sm:w-3" />
+              <div className="h-2.5 w-2.5 rounded-full bg-slate-300 sm:h-3 sm:w-3" />
             </div>
-            <div className="text-xs text-slate-400 font-mono bg-white px-6 py-1.5 rounded-lg border border-slate-100/80 shadow-inner flex items-center gap-1.5">
-              <UrlIcon className="w-3.5 h-3.5 text-blue-500" />
-              {url}
+            <div className="min-w-0 max-w-[68%] text-[10px] text-slate-400 font-mono bg-white px-3 py-1.5 rounded-lg border border-slate-100/80 shadow-inner flex items-center gap-1.5 sm:max-w-none sm:px-6 sm:text-xs">
+              <UrlIcon className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+              <span className="truncate">{url}</span>
             </div>
-            <div className="w-12" />
+            <div className="hidden w-12 sm:block" />
           </div>
 
           {/* UI Inner body - Split Layout: Sidebar + Content */}
-          <div className="flex min-h-[360px] text-left">
+          <div className="flex min-h-[320px] text-left sm:min-h-[360px]">
             {/* Sidebar — đúng điều hướng web thật, mọi demo dùng chung */}
             <div className="hidden sm:flex flex-col justify-between w-48 bg-slate-50/50 border-r border-slate-100 p-3.5 flex-shrink-0">
               <div className="space-y-5">

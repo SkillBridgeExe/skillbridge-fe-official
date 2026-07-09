@@ -188,7 +188,7 @@ export default function HeroInterviewDemo() {
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Position</div>
                 <div className="text-sm font-bold text-slate-800">React Frontend Developer</div>
-                <div className="text-[9px] text-slate-400 font-semibold">10 technical questions · 15 minutes</div>
+                <div className="text-[9px] text-slate-400 font-semibold">10 technical questions / 15 minutes</div>
               </div>
               <div
                 ref={startButtonRef}
@@ -239,7 +239,7 @@ export default function HeroInterviewDemo() {
                           />
                         ))}
                       </div>
-                      <span>Recording · Transcribing...</span>
+                      <span>Recording / Transcribing...</span>
                     </div>
                     <p className="text-[10px] font-semibold text-slate-600 leading-relaxed italic">
                       "{typedAnswer}"
@@ -328,7 +328,7 @@ export default function HeroInterviewDemo() {
           </div>
           <p className="text-xs leading-relaxed font-medium">
             {phase === "nav" && (
-              <span className="italic text-slate-400">Ready — open AI Interview to practice with the voice examiner.</span>
+              <span className="italic text-slate-400">Ready - open AI Interview to practice with the voice examiner.</span>
             )}
             {phase === "intro" && (
               <span className="italic text-slate-400">Start the session to begin the real-time AI voice evaluation.</span>

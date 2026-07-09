@@ -217,11 +217,11 @@ export default function Index() {
           />
         </div>
 
-        <section className="relative min-h-[calc(100dvh-76px)] flex items-center pt-24 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 lg:px-16 max-w-[1600px] mx-auto z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 xl:gap-16 items-center w-full">
+        <section className="relative min-h-[calc(100dvh-76px)] flex items-center px-4 pb-14 pt-24 sm:px-6 md:px-12 md:pb-24 md:pt-28 lg:px-16 max-w-[1600px] mx-auto z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 xl:gap-16 items-center w-full">
             
             {/* Left Column: Hero Content */}
-            <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left space-y-8">
+            <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 md:space-y-8">
               {/* Top Badge */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -238,16 +238,16 @@ export default function Index() {
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.22] text-slate-900 [text-wrap:balance]"
+                className="font-display text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.14] sm:leading-[1.22] text-slate-900 [text-wrap:balance]"
               >
                 {t("hero.titleLead")}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient sm:whitespace-nowrap">
                   {t("hero.titleSkills")}
                 </span>
                 <br className="hidden lg:inline" />
                 <span>
                   {t("hero.titleMid")}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient whitespace-nowrap">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient sm:whitespace-nowrap">
                     {t("hero.titleDream")}
                   </span>
                 </span>
@@ -270,12 +270,12 @@ export default function Index() {
                 transition={{ duration: 0.8, delay: 0.3 }}
                 className="w-full space-y-4"
               >
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                  <Link to="/diagnosis">
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
+                  <Link to="/diagnosis" className="w-full sm:w-auto">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="relative group h-16 rounded-2xl px-8 text-base text-white font-bold overflow-hidden shadow-lg flex items-center justify-center gap-2 min-w-[200px] transition-transform"
+                      className="relative group h-14 w-full rounded-xl px-6 text-base text-white font-bold overflow-hidden shadow-lg flex items-center justify-center gap-2 transition-transform sm:h-16 sm:w-auto sm:min-w-[200px] sm:rounded-2xl sm:px-8"
                       style={{
                         background: "linear-gradient(135deg, #2563eb, #38bdf8)",
                         boxShadow: "0 10px 30px -5px rgba(37,99,235,0.3)"
@@ -290,11 +290,11 @@ export default function Index() {
                     </motion.button>
                   </Link>
 
-                  <Link to="/diagnosis?mode=builder">
+                  <Link to="/diagnosis?mode=builder" className="w-full sm:w-auto">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="group h-16 rounded-2xl px-8 text-base font-bold border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300 flex items-center justify-center gap-2 text-slate-700 shadow-sm min-w-[200px]"
+                      className="group h-14 w-full rounded-xl px-6 text-base font-bold border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300 flex items-center justify-center gap-2 text-slate-700 shadow-sm sm:h-16 sm:w-auto sm:min-w-[200px] sm:rounded-2xl sm:px-8"
                     >
                       <Sparkles className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform duration-300" />
                       {t("hero.ctaBuild")}
@@ -314,7 +314,7 @@ export default function Index() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="inline-flex max-w-full overflow-x-auto p-1 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/50 shadow-sm relative z-30"
+                className="relative z-30 inline-flex w-full max-w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-white/70 p-1 shadow-sm backdrop-blur-md sm:w-auto"
               >
                 {[
                   { id: "cv", label: t("hero.tabs.cv"), icon: FileText },
@@ -350,7 +350,7 @@ export default function Index() {
               </motion.div>
 
               {/* Demo Showcase Container with smooth exit/enter animations */}
-              <div className="w-full min-h-[420px] flex justify-center items-center">
+              <div className="w-full min-h-[360px] sm:min-h-[420px] flex justify-center items-center">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -434,9 +434,9 @@ export default function Index() {
                   01
                 </span>
                 {/* Glow nền theo identity */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-blue-200/25 blur-3xl pointer-events-none" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-200/25 blur-3xl sm:h-[340px] sm:w-[340px]" />
 
-                <div className="relative z-10 w-[300px] md:w-[340px] h-[400px] flex items-center justify-center select-none">
+                <div className="relative z-10 flex h-[360px] w-full max-w-[300px] items-center justify-center select-none md:h-[400px] md:max-w-[340px]">
                   {/* CV nền trái — xòe ra khi hover */}
                   <div className="absolute w-[250px] h-[350px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(15,23,42,0.05)] border border-slate-100 p-5 -rotate-[6deg] -translate-x-[40px] translate-y-[14px] opacity-50 scale-[0.9] transition-all duration-500 ease-out group-hover/stack:-rotate-[13deg] group-hover/stack:-translate-x-[78px] group-hover/stack:translate-y-[22px] group-hover/stack:opacity-70">
                     <div className="w-10 h-10 rounded-full bg-slate-100 mb-4" />
@@ -536,13 +536,15 @@ export default function Index() {
                 <span aria-hidden className="pointer-events-none select-none absolute -top-14 -left-2 font-display font-black text-[120px] lg:text-[150px] leading-none text-transparent bg-clip-text bg-gradient-to-b from-indigo-100 to-transparent z-0">
                   02
                 </span>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-indigo-200/25 blur-3xl pointer-events-none" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-200/25 blur-3xl sm:h-[320px] sm:w-[320px]" />
 
                 {/* Card lộ trình — HOVER ĐỂ MỞ KHOÁ node 3 */}
-                <div className="relative z-10 w-full max-w-[340px] bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_20px_45px_rgba(15,23,42,0.08)] text-left transition-all duration-500 group-hover/road:scale-[1.03] group-hover/road:-translate-y-2 group-hover/road:shadow-[0_30px_60px_rgba(99,102,241,0.18)]">
+                <div className="relative z-10 w-full max-w-[340px] bg-white border border-slate-100 p-5 sm:p-6 rounded-2xl shadow-[0_20px_45px_rgba(15,23,42,0.08)] text-left transition-all duration-500 group-hover/road:scale-[1.03] group-hover/road:-translate-y-2 group-hover/road:shadow-[0_30px_60px_rgba(99,102,241,0.18)]">
                   {/* Node 1 — done */}
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[11px] font-bold text-emerald-600 shrink-0">✓</div>
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </div>
                     <span className="text-xs font-bold text-slate-700 line-through decoration-emerald-300">TypeScript Principles</span>
                   </div>
                   <motion.div
@@ -633,7 +635,7 @@ export default function Index() {
                 <span aria-hidden className="pointer-events-none select-none absolute -top-14 -right-2 font-display font-black text-[120px] lg:text-[150px] leading-none text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 to-transparent z-0">
                   03
                 </span>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-cyan-200/25 blur-3xl pointer-events-none" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200/25 blur-3xl sm:h-[320px] sm:w-[320px]" />
 
                 {/* Phòng phỏng vấn AI */}
                 <div className="relative z-10 w-full max-w-[340px] bg-white border border-slate-100 rounded-2xl shadow-[0_20px_45px_rgba(15,23,42,0.08)] overflow-hidden transition-all duration-500 group-hover/voice:scale-[1.03] group-hover/voice:-translate-y-2 group-hover/voice:shadow-[0_30px_60px_rgba(6,182,212,0.18)]">
@@ -659,7 +661,7 @@ export default function Index() {
                         ))}
                       </div>
                       <span className="text-[10px] font-semibold text-slate-400">
-                        <span className="hidden group-hover/voice:inline text-cyan-600">Listening…</span>
+                        <span className="hidden group-hover/voice:inline text-cyan-600">Listening...</span>
                         <span className="group-hover/voice:hidden">Hover to answer</span>
                       </span>
                       <div className="ml-auto flex items-center gap-1.5 text-[9px] font-mono font-bold text-slate-400">
@@ -672,7 +674,7 @@ export default function Index() {
                 {/* Floating chip */}
                 <div className="animate-float absolute bottom-2 right-0 z-20 bg-white border border-cyan-100 rounded-full px-3 py-1.5 shadow-[0_10px_24px_-8px_rgba(6,182,212,0.35)] flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-cyan-700">Voice · Realtime</span>
+                  <span className="text-[10px] font-bold text-cyan-700">Voice / Realtime</span>
                 </div>
               </div>
             </div>
@@ -758,8 +760,8 @@ export default function Index() {
                 {/* Job chips — artwork */}
                 <div className="flex flex-col gap-2 pt-1">
                   {[
-                    { title: "Frontend Intern — HCMC", match: 86 },
-                    { title: "Fresher Backend — Remote", match: 78 },
+                    { title: "Frontend Intern - HCMC", match: 86 },
+                    { title: "Fresher Backend - Remote", match: 78 },
                   ].map((j) => (
                     <div key={j.title} className="flex items-center justify-between bg-white border border-slate-100 rounded-xl px-3 py-2 shadow-sm">
                       <span className="text-[11px] font-bold text-slate-700">{j.title}</span>

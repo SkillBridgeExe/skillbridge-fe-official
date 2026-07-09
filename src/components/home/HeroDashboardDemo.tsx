@@ -320,7 +320,7 @@ export default function HeroDashboardDemo() {
                     uploadStep === "carry" ? "text-blue-500" : "text-slate-300"
                   )} />
                   <div className="text-xs font-bold text-slate-700">Drag & drop your CV here</div>
-                  <div className="text-[9px] text-slate-400 font-semibold">PDF · DOCX — max 5MB</div>
+                  <div className="text-[9px] text-slate-400 font-semibold">PDF / DOCX - max 5MB</div>
                 </>
               ) : (
                 <motion.div
@@ -475,13 +475,13 @@ export default function HeroDashboardDemo() {
           </div>
           <p className="text-xs leading-relaxed font-medium">
             {phase === "idle" && (
-              <span className="italic text-slate-400">Ready — open CV Diagnosis to benchmark this profile against real job descriptions.</span>
+              <span className="italic text-slate-400">Ready - open CV Diagnosis to benchmark this profile against real job descriptions.</span>
             )}
             {phase === "upload" && (
               <span className="italic text-slate-400">
                 {uploadStep === "dropped"
                   ? "CV received. Preparing the analysis engine..."
-                  : "Waiting for a CV file — drag & drop to start the scan..."}
+                  : "Waiting for a CV file - drag & drop to start the scan..."}
               </span>
             )}
             {phase === "scan" && (

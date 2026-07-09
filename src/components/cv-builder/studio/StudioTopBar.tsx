@@ -534,8 +534,8 @@ export function StudioTopBar() {
   };
 
   return (
-    <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10 pr-4 xl:pr-6 pl-0 sticky top-0 shadow-sm">
-      <div className="flex h-full items-center gap-0 flex-1">
+    <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10 pr-2 sm:pr-4 xl:pr-6 pl-0 sticky top-0 shadow-sm">
+      <div className="flex h-full min-w-0 items-center gap-0 flex-1">
 
         {/* Back Button (aligned with 56px sidebar) */}
         <div className="w-[56px] h-full flex items-center justify-center shrink-0">
@@ -552,7 +552,7 @@ export function StudioTopBar() {
         <div className="h-6 w-px bg-slate-200 mx-2" />
 
         {/* Document Title - Editable */}
-        <div className="flex items-center gap-1.5 max-w-[200px] sm:max-w-[300px] group relative">
+        <div className="group relative flex min-w-0 max-w-[150px] items-center gap-1.5 min-[420px]:max-w-[210px] sm:max-w-[300px]">
           <input
             type="text"
             className="font-semibold text-[15px] text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-primary/20 rounded-md px-2.5 py-1 w-full truncate hover:bg-slate-100 transition-colors placeholder:text-slate-400 focus:bg-white"
@@ -597,14 +597,14 @@ export function StudioTopBar() {
       </div>
 
       {/* Right - Actions */}
-      <div className="flex h-full items-center gap-2 flex-1 justify-end">
+      <div className="flex h-full items-center gap-1.5 flex-1 justify-end sm:gap-2">
 
         {/* AI Assistant Button */}
         <Button
           onClick={handleSaveDraft}
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          className="hidden gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 sm:inline-flex"
           disabled={saveStatus === "saving"}
           aria-label={t("builder.saveDraft")}
           title={t("builder.saveDraft")}
@@ -621,7 +621,7 @@ export function StudioTopBar() {
           onClick={handleOpenAiAssistant}
           variant="secondary"
           size="sm"
-          className="gap-1.5 h-8 rounded-full text-[13px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
+          className="hidden gap-1.5 h-8 rounded-full text-[13px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors sm:inline-flex"
           aria-label={t("builder.aiAssistant")}
           title={t("builder.aiAssistant")}
         >
@@ -634,7 +634,7 @@ export function StudioTopBar() {
           onClick={handleAnalyze}
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          className="hidden gap-2 h-8 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 sm:inline-flex"
           disabled={analyzeCvMutation.isPending}
           aria-label={t("builder.analyzeCv")}
           title={t("builder.analyzeCv")}
@@ -652,7 +652,7 @@ export function StudioTopBar() {
           variant="default"
           size="sm"
           onClick={handleDownload}
-          className="gap-2 h-8 rounded-full text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+          className="hidden gap-2 h-8 rounded-full text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm sm:inline-flex"
           disabled={isRenderingPdf}
           aria-label={t("builder.downloadCv")}
           title={t("builder.downloadCv")}
@@ -678,6 +678,35 @@ export function StudioTopBar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handleSaveDraft} disabled={saveStatus === "saving"} className="gap-2 sm:hidden">
+              {saveStatus === "saving" ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              ) : (
+                <Save className="w-4 h-4 text-slate-500" />
+              )}
+              <span>{t("builder.saveDraft")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleOpenAiAssistant} className="gap-2 sm:hidden">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>{t("builder.aiAssistant")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAnalyze} disabled={analyzeCvMutation.isPending} className="gap-2 sm:hidden">
+              {analyzeCvMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              ) : (
+                <Wand2 className="w-4 h-4 text-slate-500" />
+              )}
+              <span>{analyzeCvMutation.isPending ? t("loading.scoring") : t("builder.analyzeCv")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownload} disabled={isRenderingPdf} className="gap-2 sm:hidden">
+              {isRenderingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              ) : (
+                <Download className="w-4 h-4 text-slate-500" />
+              )}
+              <span>{t("builder.downloadCv")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="sm:hidden" />
             <DropdownMenuItem onClick={handleDuplicate} className="gap-2">
               <Copy className="w-4 h-4 text-slate-500" />
               <span>{t("builder.actions.duplicateResume")}</span>

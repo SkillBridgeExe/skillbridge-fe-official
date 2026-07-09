@@ -345,7 +345,7 @@ export default function HeroRoadmapDemo() {
           </div>
           <p className="text-xs leading-relaxed font-medium">
             {phase === "nav" && (
-              <span className="italic text-slate-400">Ready — open Learning Roadmaps to map a curriculum for your dream role.</span>
+              <span className="italic text-slate-400">Ready - open Learning Roadmaps to map a curriculum for your dream role.</span>
             )}
             {(phase === "focus" || phase === "typing") && (
               <span className="italic text-slate-400">Select a target job position to generate a skill-focused curriculum.</span>

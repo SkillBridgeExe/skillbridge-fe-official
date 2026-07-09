@@ -76,8 +76,8 @@ export default function OverviewTab() {
           { label: "Book Mock Interview", icon: Video, href: "/interview", variant: "outline" as const, className: "bg-white text-slate-700 border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5" },
           { label: "Upload New CV", icon: Upload, href: "/diagnosis", variant: "outline" as const, className: "bg-white text-slate-700 border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5" },
         ].map((action) => (
-          <Link key={action.label} to={action.href}>
-            <Button variant={action.variant} className={cn("rounded-xl font-bold text-sm h-10 px-5 transition-all", action.className)}>
+          <Link key={action.label} to={action.href} className="w-full sm:w-auto">
+            <Button variant={action.variant} className={cn("h-10 w-full rounded-xl px-5 text-sm font-bold transition-all sm:w-auto", action.className)}>
               <action.icon className="w-4 h-4 mr-2" /> {action.label}
             </Button>
           </Link>
