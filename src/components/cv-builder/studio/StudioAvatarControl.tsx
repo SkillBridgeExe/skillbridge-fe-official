@@ -24,8 +24,7 @@ const ACCENT_COLORS = [
 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 
 interface StudioAvatarControlProps {
   layoutCapabilities: TemplateCapabilities;
@@ -47,9 +46,6 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
-  
-  // Local state for URL input to prevent store spamming
-  const [urlInput, setUrlInput] = useState(store.photoUrl || "");
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -82,7 +78,6 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
   const onCropComplete = (croppedFile: File) => {
     readFileAsDataUrl(croppedFile).then((dataUrl) => {
       store.setBasicInfo("photoUrl", dataUrl);
-      setUrlInput(dataUrl);
       setCropDialogOpen(false);
       setCropImageSrc(null);
     });
@@ -90,20 +85,9 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
 
   const handleRemove = () => {
     store.setBasicInfo("photoUrl", "");
-    setUrlInput("");
   };
 
-  const handleUrlBlur = () => {
-    // Basic validation
-    if (urlInput && !urlInput.match(/^(https?:\/\/|data:image\/)/)) {
-      toast({
-        title: t("builder.inspector.invalidUrl", "Invalid URL"),
-        variant: "destructive",
-      });
-      return;
-    }
-    store.setBasicInfo("photoUrl", urlInput);
-  };
+
 
   const avatarShapeClass =
     store.resumePictureShape === "circle"
@@ -221,23 +205,7 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
             )}
           </div>
 
-          <div className="flex-1 space-y-1.5 pt-1">
-            <Label htmlFor="studio-avatar-image-url" className="text-[11px] font-semibold text-slate-700">{t("builder.inspector.imageUrl") || "URL"}</Label>
-            <Input
-              id="studio-avatar-image-url"
-              type="url"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onBlur={handleUrlBlur}
-              className="h-8 text-xs bg-white"
-              placeholder="https://..."
-            />
-            {store.photoUrl && !store.photoUrl.startsWith("data:image/") ? (
-              <p className="text-[10px] text-slate-400 leading-tight mt-1">
-                {t("builder.inspector.remoteImageUrlHelper")}
-              </p>
-            ) : null}
-          </div>
+
         </div>
       </div>
 

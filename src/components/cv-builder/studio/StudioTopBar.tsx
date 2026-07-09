@@ -17,6 +17,12 @@ import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore, type CvBuilderState } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import {
+  useCvVersionsQuery,
+  useCreateVersionMutation,
+  useRestoreVersionMutation,
+} from "@/hooks/use-cv-versions";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -56,16 +62,65 @@ export function StudioTopBar() {
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
-  const [importSectionsCount, setImportSectionsCount] = useState(0);
+  const [importSectionsCount, setImportSectionsCount] = useState<number>(0);
+
+  const { confirmLeave } = useUnsavedGuard();
+
   const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
   const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
   const [isRenderingPdf, setIsRenderingPdf] = useState(false);
+
+  // P2 version history — fetch only while the dialog is open.
+  const versionsQuery = useCvVersionsQuery(draftId, showVersionPlaceholder);
+  const createVersionMutation = useCreateVersionMutation(draftId);
+  const restoreVersionMutation = useRestoreVersionMutation(draftId);
 
   const showLocalActionToast = () => {
     toast({
       title: t("builder.toastLocalActionTitle"),
       description: t("builder.localOnly"),
       variant: "destructive",
+    });
+  };
+
+  const originLabel = (origin: string) =>
+    origin === "AUTO_PRE_RESTORE"
+      ? t("builder.actions.versionAutoRestore", "Auto — before restore")
+      : origin === "AUTO_PRE_IMPORT"
+        ? t("builder.actions.versionAutoImport", "Auto — before import")
+        : t("builder.actions.versionManual", "Manual save");
+
+  const handleSaveVersion = () => {
+    if (!draftId) {
+      showLocalActionToast();
+      return;
+    }
+    createVersionMutation.mutate(undefined, {
+      onSuccess: () => toast({ title: t("builder.actions.versionSaved", "Version saved") }),
+      onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }),
+    });
+  };
+
+  const handleRestoreVersion = (versionId: string) => {
+    if (
+      !window.confirm(
+        t(
+          "builder.actions.restoreConfirm",
+          "Restore this version? Your current draft is snapshotted first, so you can undo.",
+        ),
+      )
+    ) {
+      return;
+    }
+    restoreVersionMutation.mutate(versionId, {
+      onSuccess: (cv) => {
+        const builder = useCvBuilderStore.getState();
+        if (cv.parsedJson) builder.hydrateFromCanonical(cv.parsedJson, { preserveDraft: true });
+        builder.setDraftId(cv.id);
+        toast({ title: t("builder.actions.versionRestored", "Version restored") });
+        setShowVersionPlaceholder(false);
+      },
+      onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }),
     });
   };
 
@@ -148,6 +203,8 @@ export function StudioTopBar() {
   };
 
   const handleBackToDiagnosis = () => {
+    if (!confirmLeave()) return;
+    
     const diagnosisStore = useDiagnosisStore.getState();
     diagnosisStore.setIsFromBuilder(false);
 
@@ -609,8 +666,7 @@ export function StudioTopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShowVersionPlaceholder(true)} className="gap-2">
               <RefreshCw className="w-4 h-4 text-slate-500" />
-              <span>{t("builder.actions.versionHistory")}</span>
-              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
+              <span>{t("builder.actions.versionHistory", "Version History")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportJson} className="gap-2">
@@ -656,15 +712,70 @@ export function StudioTopBar() {
       </AlertDialog>
 
       <AlertDialog open={showVersionPlaceholder} onOpenChange={setShowVersionPlaceholder}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle", "Version History")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("builder.actions.versionHistoryPlaceholderDesc")}
+              {t("builder.actions.versionHistoryPlaceholderDesc", "View and restore previous snapshots of this resume.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2 max-h-[52vh] overflow-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSaveVersion}
+              disabled={createVersionMutation.isPending || !draftId}
+              className="justify-center gap-2"
+            >
+              {createVersionMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {t("builder.actions.versionSaveCurrent", "Save current version")}
+            </Button>
+
+            {versionsQuery.isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              </div>
+            ) : versionsQuery.isError ? (
+              <p className="py-6 text-center text-sm text-red-500">
+                {t("builder.actions.versionsError", "Couldn't load version history.")}
+              </p>
+            ) : (versionsQuery.data?.items.length ?? 0) === 0 ? (
+              <p className="py-8 text-center text-sm italic text-slate-500">
+                {t("builder.actions.noVersions", "No saved versions yet.")}
+              </p>
+            ) : (
+              versionsQuery.data?.items.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800">
+                      {v.label || originLabel(v.origin)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {new Date(v.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 text-xs"
+                    onClick={() => handleRestoreVersion(v.id)}
+                    disabled={restoreVersionMutation.isPending}
+                  >
+                    {t("builder.actions.restore", "Restore")}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close", "Close")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
