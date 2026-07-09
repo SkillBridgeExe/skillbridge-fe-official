@@ -17,6 +17,7 @@ import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore, type CvBuilderState } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -56,7 +57,11 @@ export function StudioTopBar() {
   const analyzeCvMutation = useAnalyzeCvMutation();
   const isLocalMode = saveStatus === "local";
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
-  const [importSectionsCount, setImportSectionsCount] = useState(0);
+  const [importSectionsCount, setImportSectionsCount] = useState<number>(0);
+
+  const { confirmLeave } = useUnsavedGuard();
+
+  // "Coming soon" state
   const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
   const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
   const [isRenderingPdf, setIsRenderingPdf] = useState(false);
@@ -148,6 +153,8 @@ export function StudioTopBar() {
   };
 
   const handleBackToDiagnosis = () => {
+    if (!confirmLeave()) return;
+    
     const diagnosisStore = useDiagnosisStore.getState();
     diagnosisStore.setIsFromBuilder(false);
 
@@ -609,8 +616,7 @@ export function StudioTopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShowVersionPlaceholder(true)} className="gap-2">
               <RefreshCw className="w-4 h-4 text-slate-500" />
-              <span>{t("builder.actions.versionHistory")}</span>
-              <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{t("builder.actions.comingSoon")}</span>
+              <span>{t("builder.actions.versionHistory", "Version History")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleExportJson} className="gap-2">
@@ -656,15 +662,29 @@ export function StudioTopBar() {
       </AlertDialog>
 
       <AlertDialog open={showVersionPlaceholder} onOpenChange={setShowVersionPlaceholder}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>{t("builder.actions.versionHistoryTitle", "Version History")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("builder.actions.versionHistoryPlaceholderDesc")}
+              {t("builder.actions.versionHistoryPlaceholderDesc", "View and restore previous snapshots of this resume.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            {/* Fake list for now since API isn't ready */}
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50">
+               <div>
+                 <p className="text-sm font-medium text-slate-800">Current Draft</p>
+                 <p className="text-[11px] text-slate-500">{t("builder.unsavedChangesPrompt", "Unsaved changes")}</p>
+               </div>
+               <Button size="sm" variant="outline" className="h-7 text-xs">{t("builder.saveDraft", "Save version")}</Button>
+            </div>
+            
+            <div className="text-center py-8 text-sm text-slate-500 italic">
+               {t("builder.actions.noVersions", "No other versions found.")}
+            </div>
+          </div>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close", "Close")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

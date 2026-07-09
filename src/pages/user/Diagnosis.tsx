@@ -23,6 +23,8 @@ import {
   type BuilderSnapshot,
   type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
+import { getCvDetailApi } from "@/api/cv/list";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 
 const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -63,6 +65,7 @@ export default function Diagnosis() {
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
   const posthog = usePostHog();
+  useUnsavedGuard();
 
   useEffect(() => {
     setCompanionSuspended(isAnalyzing);
@@ -172,6 +175,28 @@ export default function Diagnosis() {
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlDraftId = urlParams.get("draftId");
+
+      if (urlDraftId) {
+        getCvDetailApi(urlDraftId)
+          .then((detail) => {
+            if (detail.parsedJson) {
+              const builder = useCvBuilderStore.getState();
+              builder.hydrateFromCanonical(detail.parsedJson);
+              builder.setDraftId(detail.id);
+              builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
+              builder.setSeedSourceCvId(null);
+              useAutosaveStore.getState().setSaveStatus("saved");
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to recover draft", err);
+            useAutosaveStore.getState().setSaveStatus("local");
+          });
+        return;
+      }
+
       const builderSeed = useCvBuilderStore.getState();
       builderSaveSourceRef.current = resolveCvBuilderSavedSource(builderSeed);
       const snapshotAtDraftRequest = getBuilderSnapshot(builderSeed);
@@ -203,6 +228,11 @@ export default function Diagnosis() {
             const builder = useCvBuilderStore.getState();
             builder.setDraftId(data.id);
             builder.setSeedSourceCvId(null);
+            
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set("draftId", data.id);
+            window.history.replaceState({}, "", newUrl.toString());
+
             const markSaved = () => {
               useAutosaveStore.getState().setSaveStatus("saved");
               const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
@@ -282,7 +312,7 @@ export default function Diagnosis() {
         await saveDraftMutation.mutateAsync({
           draftId,
           snapshot,
-          title: "CV Builder draft",
+          title: state.resumeTitle || state.fullName || t("builder.studio.untitledResume"),
           targetRole: useDiagnosisStore.getState().targetRole,
         });
         useAutosaveStore.getState().setSaveStatus("saved");
