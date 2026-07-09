@@ -23,6 +23,7 @@ import {
   useCreateVersionMutation,
   useRestoreVersionMutation,
 } from "@/hooks/use-cv-versions";
+import { useRenameResumeMutation } from "@/hooks/use-resume-library";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { useAnalyzeCvMutation } from "@/hooks/use-diagnosis";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -74,6 +75,9 @@ export function StudioTopBar() {
   const versionsQuery = useCvVersionsQuery(draftId, showVersionPlaceholder);
   const createVersionMutation = useCreateVersionMutation(draftId);
   const restoreVersionMutation = useRestoreVersionMutation(draftId);
+  // Inline title edits persist via rename (autosave no longer owns the title — W97).
+  const renameMutation = useRenameResumeMutation();
+  const titleAtFocusRef = useRef<string>("");
 
   const showLocalActionToast = () => {
     toast({
@@ -89,6 +93,17 @@ export function StudioTopBar() {
       : origin === "AUTO_PRE_IMPORT"
         ? t("builder.actions.versionAutoImport", "Auto — before import")
         : t("builder.actions.versionManual", "Manual save");
+
+  // Persist an inline title edit via the rename endpoint on blur (only when it actually changed).
+  const handleTitleBlur = () => {
+    const current = (useCvBuilderStore.getState().resumeTitle || "").trim();
+    if (!draftId || isLocalMode || !current) return;
+    if (current === titleAtFocusRef.current.trim()) return;
+    renameMutation.mutate(
+      { id: draftId, title: current },
+      { onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }) },
+    );
+  };
 
   const handleSaveVersion = () => {
     if (!draftId) {
@@ -545,6 +560,10 @@ export function StudioTopBar() {
             placeholder={t("builder.studio.untitledResume")}
             aria-label={t("builder.studio.resumeNameLabel")}
             onChange={(e) => useCvBuilderStore.getState().setResumeTitle(e.target.value)}
+            onFocus={() => {
+              titleAtFocusRef.current = title || "";
+            }}
+            onBlur={handleTitleBlur}
           />
           <PenLine className="w-3.5 h-3.5 text-slate-400 absolute right-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
         </div>
