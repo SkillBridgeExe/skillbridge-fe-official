@@ -80,7 +80,7 @@ describe("StudioInspector ATS Safe Mode", () => {
     expect(setResumeAtsSafeModeMock).toHaveBeenCalledWith(true);
   });
 
-  it("keeps avatar URL editable while ATS mode hides the avatar preview", () => {
+  it("hides the avatar preview in ATS safe mode (avatar is upload-only)", () => {
     const setBasicInfoMock = vi.fn();
     const setResumeAtsSafeModeMock = vi.fn();
 
@@ -121,12 +121,8 @@ describe("StudioInspector ATS Safe Mode", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /builder.inspector.pictureAvatar/i }));
 
+    // ATS safe mode hides the avatar preview → the "hidden" hint is shown. The raw URL input was
+    // removed in W96 in favour of file-upload + crop, so we no longer assert URL editing here.
     expect(screen.getAllByText("builder.inspector.atsHiddenAvatarDesc").length).toBeGreaterThan(0);
-
-    const photoInput = screen.getByRole("textbox", { name: /builder.inspector.imageUrl/i });
-    fireEvent.change(photoInput, { target: { value: "https://example.com/avatar.png" } });
-    fireEvent.blur(photoInput);
-
-    expect(setBasicInfoMock).toHaveBeenCalledWith("photoUrl", "https://example.com/avatar.png");
   });
 });
