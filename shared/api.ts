@@ -442,6 +442,20 @@ export interface Paginated<T> {
   limit: number;
 }
 
+// ── CV version snapshots (P2 — /api/cvs/:id/versions) ──────────────────────
+export interface CvVersionSummary {
+  id: string;
+  label: string | null;
+  /** MANUAL | AUTO_PRE_RESTORE | AUTO_PRE_IMPORT */
+  origin: string;
+  title: string | null;
+  createdAt: string;
+}
+
+export interface CvVersionDetail extends CvVersionSummary {
+  snapshot: CanonicalCvDocument;
+}
+
 // ── CV × JD match (POST /api/cvs/:cvId/match) ──────────────────────────────
 
 export interface BeMatchedSkill {
