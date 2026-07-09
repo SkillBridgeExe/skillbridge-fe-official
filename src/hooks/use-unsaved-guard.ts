@@ -4,8 +4,7 @@ import { useAutosaveStore } from "@/store/useAutosaveStore";
 
 export function useUnsavedGuard() {
   const { t } = useTranslation("diagnosis");
-  const saveStatus = useAutosaveStore((state) => state.saveStatus);
-  const isDirty = saveStatus === "saving" || saveStatus === "error";
+  const isDirty = useAutosaveStore((state) => state.isDirty);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

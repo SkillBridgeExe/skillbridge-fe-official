@@ -181,14 +181,14 @@ export default function Diagnosis() {
       if (urlDraftId) {
         getCvDetailApi(urlDraftId)
           .then((detail) => {
+            const builder = useCvBuilderStore.getState();
             if (detail.parsedJson) {
-              const builder = useCvBuilderStore.getState();
               builder.hydrateFromCanonical(detail.parsedJson);
-              builder.setDraftId(detail.id);
-              builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
-              builder.setSeedSourceCvId(null);
-              useAutosaveStore.getState().setSaveStatus("saved");
             }
+            builder.setDraftId(detail.id);
+            builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
+            builder.setSeedSourceCvId(null);
+            useAutosaveStore.getState().setSaveStatus("saved");
           })
           .catch((err) => {
             console.error("Failed to recover draft", err);
@@ -235,6 +235,7 @@ export default function Diagnosis() {
 
             const markSaved = () => {
               useAutosaveStore.getState().setSaveStatus("saved");
+              useAutosaveStore.getState().setIsDirty(false);
               const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
               useAutosaveStore.getState().setLastSavedTime(timeStr);
               captureCvBuilderSaved(useCvBuilderStore.getState());
@@ -255,7 +256,6 @@ export default function Diagnosis() {
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(latestBuilder),
-                title: latestBuilder.resumeTitle || latestBuilder.fullName || t("builder.studio.untitledResume"),
                 targetRole: useDiagnosisStore.getState().targetRole,
               }, {
                 onSuccess: markSaved,
@@ -312,10 +312,10 @@ export default function Diagnosis() {
         await saveDraftMutation.mutateAsync({
           draftId,
           snapshot,
-          title: state.resumeTitle || state.fullName || t("builder.studio.untitledResume"),
           targetRole: useDiagnosisStore.getState().targetRole,
         });
         useAutosaveStore.getState().setSaveStatus("saved");
+        useAutosaveStore.getState().setIsDirty(false);
         const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
         useAutosaveStore.getState().setLastSavedTime(timeStr);
         captureCvBuilderSaved(useCvBuilderStore.getState());
@@ -339,6 +339,7 @@ export default function Diagnosis() {
       if (currentSnapshotJson !== lastSnapshotJson) {
         lastSnapshotJson = currentSnapshotJson;
 
+        useAutosaveStore.getState().setIsDirty(true);
         useAutosaveStore.getState().setSaveStatus("saving");
 
         if (timeoutId) clearTimeout(timeoutId);
