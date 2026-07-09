@@ -1,3 +1,4 @@
+import { breakPdfWord } from "../shared/contact";
 import type { Style } from "@react-pdf/types";
 import type { ReactNode } from "react";
 import type { TemplatePageProps } from "../../document";
@@ -88,7 +89,7 @@ const Header = ({ styles }: RhyhornHeaderProps) => {
 			content: (
 				<Link src={`mailto:${basics.email}`} style={styles.contactItemContent}>
 					<Icon name="envelope" />
-					<Text>{basics.email}</Text>
+					<Text>{breakPdfWord(basics.email)}</Text>
 				</Link>
 			),
 		});
@@ -100,7 +101,7 @@ const Header = ({ styles }: RhyhornHeaderProps) => {
 			content: (
 				<Link src={`tel:${basics.phone}`} style={styles.contactItemContent}>
 					<Icon name="phone" />
-					<Text>{basics.phone}</Text>
+					<Text>{breakPdfWord(basics.phone)}</Text>
 				</Link>
 			),
 		});
@@ -342,3 +343,4 @@ const useRhyhornTemplate = (): RhyhornTemplate => {
 		};
 	}, [picture, metadata, rtl]);
 };
+

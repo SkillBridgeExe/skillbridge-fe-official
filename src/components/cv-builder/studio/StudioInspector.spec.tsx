@@ -90,7 +90,7 @@ describe("StudioInspector ATS Safe Mode", () => {
       sectionVisibility: {},
       sectionPlacement: {},
       cvLanguage: "en",
-      photoUrl: "",
+      photoUrl: "https://example.com/old-avatar.png",
       resumeAtsSafeMode: true,
       resumePageMargin: "normal",
       resumeSectionSpacing: "normal",
@@ -114,19 +114,19 @@ describe("StudioInspector ATS Safe Mode", () => {
       setResumePictureSize: vi.fn(),
       setResumePictureBorderWidth: vi.fn(),
       setResumePictureBorderColor: vi.fn(),
+
     });
 
     render(<MockStudioInspector />);
 
-    fireEvent.click(screen.getByRole("button", { name: /builder.tabLayout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.pictureAvatar/i }));
 
-    expect(screen.getByText("Saved, but hidden while ATS Safe Mode is on. Turn ATS off to preview the photo.")).toBeDefined();
+    expect(screen.getAllByText("builder.inspector.atsHiddenAvatarDesc").length).toBeGreaterThan(0);
 
-    const photoInput = screen.getByRole("textbox", { name: /Profile photo URL/i });
+    const photoInput = screen.getByRole("textbox", { name: /builder.inspector.imageUrl/i });
     fireEvent.change(photoInput, { target: { value: "https://example.com/avatar.png" } });
-    expect(setBasicInfoMock).toHaveBeenCalledWith("photoUrl", "https://example.com/avatar.png");
+    fireEvent.blur(photoInput);
 
-    fireEvent.click(screen.getByRole("button", { name: /Turn off ATS to preview avatar/i }));
-    expect(setResumeAtsSafeModeMock).toHaveBeenCalledWith(false);
+    expect(setBasicInfoMock).toHaveBeenCalledWith("photoUrl", "https://example.com/avatar.png");
   });
 });

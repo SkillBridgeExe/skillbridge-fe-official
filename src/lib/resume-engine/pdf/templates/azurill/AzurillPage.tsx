@@ -1,3 +1,4 @@
+import { breakPdfWord } from "../shared/contact";
 import type { Style } from "@react-pdf/types";
 import type { TemplatePageProps } from "../../document";
 import type {
@@ -111,13 +112,13 @@ const Header = ({ styles }: AzurillHeaderProps) => {
 				{Boolean(basics.email) && (
 					<Link src={`mailto:${basics.email}`} style={styles.headerContactItem}>
 						<Icon name="envelope" />
-						<Text>{basics.email}</Text>
+						<Text>{breakPdfWord(basics.email)}</Text>
 					</Link>
 				)}
 				{Boolean(basics.phone) && (
 					<Link src={`tel:${basics.phone}`} style={styles.headerContactItem}>
 						<Icon name="phone" />
-						<Text>{basics.phone}</Text>
+						<Text>{breakPdfWord(basics.phone)}</Text>
 					</Link>
 				)}
 				{Boolean(basics.location) && (
@@ -363,3 +364,4 @@ const useAzurillTemplate = (): AzurillTemplate => {
 		};
 	}, [picture, metadata, rtl]);
 };
+
