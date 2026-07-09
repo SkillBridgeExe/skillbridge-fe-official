@@ -222,8 +222,9 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
           </div>
 
           <div className="flex-1 space-y-1.5 pt-1">
-            <Label className="text-[11px] font-semibold text-slate-700">{t("builder.inspector.imageUrl") || "URL"}</Label>
+            <Label htmlFor="studio-avatar-image-url" className="text-[11px] font-semibold text-slate-700">{t("builder.inspector.imageUrl") || "URL"}</Label>
             <Input
+              id="studio-avatar-image-url"
               type="url"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
