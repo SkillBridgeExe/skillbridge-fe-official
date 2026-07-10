@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
@@ -77,6 +78,16 @@ function LayoutPagesPanel({ sectionLabels }: { sectionLabels: Record<string, str
   const store = useCvBuilderStore();
   const pages = store.layoutPages;
   const multiPage = pages.length > 1;
+  // "Fit to one page" only touches density/spacing/font within safe bounds
+  // (never deletes content); keep the previous values so it is reversible.
+  const [fitBackup, setFitBackup] = useState<{
+    resumePageMargin: ResumeSpacing;
+    resumeSectionSpacing: ResumeSpacing;
+    resumeFontScale: ResumeFontScale;
+    resumeLineHeight: ResumeLineHeight;
+  } | null>(null);
+  const overflowing =
+    store.renderedPageCount !== null && store.renderedPageCount > pages.length;
   const assignableSections: Array<{ id: string; label: string }> = [
     ...store.sectionOrder.map((key) => ({ id: key as string, label: sectionLabels[key] ?? key })),
     ...store.customSections.map((section) => ({ id: section.id, label: section.title })),
@@ -87,6 +98,56 @@ function LayoutPagesPanel({ sectionLabels }: { sectionLabels: Record<string, str
       <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
         {t("builder.inspector.pages")}
       </p>
+
+      {overflowing && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 space-y-1.5">
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            {t("builder.inspector.pageOverflowWarning", {
+              planned: pages.length,
+              actual: store.renderedPageCount,
+            })}
+          </p>
+          {pages.length === 1 && !fitBackup && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 w-full text-[10px] border-amber-200 bg-white text-amber-800 hover:bg-amber-100"
+              onClick={() => {
+                setFitBackup({
+                  resumePageMargin: store.resumePageMargin,
+                  resumeSectionSpacing: store.resumeSectionSpacing,
+                  resumeFontScale: store.resumeFontScale,
+                  resumeLineHeight: store.resumeLineHeight,
+                });
+                store.setResumePageMargin("compact");
+                store.setResumeSectionSpacing("compact");
+                store.setResumeFontScale("small");
+                store.setResumeLineHeight("tight");
+              }}
+            >
+              {t("builder.inspector.fitToOnePage")}
+            </Button>
+          )}
+        </div>
+      )}
+      {fitBackup && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-full text-[10px] text-slate-500 hover:text-slate-700"
+          onClick={() => {
+            store.setResumePageMargin(fitBackup.resumePageMargin);
+            store.setResumeSectionSpacing(fitBackup.resumeSectionSpacing);
+            store.setResumeFontScale(fitBackup.resumeFontScale);
+            store.setResumeLineHeight(fitBackup.resumeLineHeight);
+            setFitBackup(null);
+          }}
+        >
+          <RotateCcw className="w-3 h-3 mr-1" />
+          {t("builder.inspector.undoFitToOnePage")}
+        </Button>
+      )}
+
       <div className="space-y-1.5">
         {pages.map((page, index) => {
           const pageLabel = page.name || t("builder.inspector.pageDefaultName", { index: index + 1 });

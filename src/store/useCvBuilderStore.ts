@@ -183,6 +183,8 @@ export interface CvBuilderState {
   /** sectionId (builtin key or custom id) -> layoutPages[].id; missing = first page. */
   sectionPage: Record<string, string>;
   customSections: CustomSection[];
+  /** Transient: real page count of the last rendered preview PDF (overflow honesty). */
+  renderedPageCount: number | null;
 
   // W87: Avatar customization
   resumePictureVisible: boolean;
@@ -298,6 +300,7 @@ export interface CvBuilderState {
   updateCustomSection: (id: string, patch: Partial<Omit<CustomSection, "id">>) => void;
   removeCustomSection: (id: string) => void;
   moveCustomSection: (id: string, direction: "up" | "down") => void;
+  setRenderedPageCount: (count: number | null) => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
   setResumePictureVisible: (visible: boolean) => void;
@@ -415,6 +418,7 @@ const initialState = {
   layoutPages: [{ id: "page_1" }] as Array<{ id: string; name?: string; fullWidth?: boolean }>,
   sectionPage: {} as Record<string, string>,
   customSections: [] as CustomSection[],
+  renderedPageCount: null as number | null,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
@@ -971,6 +975,7 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
     [sections[idx], sections[targetIdx]] = [sections[targetIdx], sections[idx]];
     return { customSections: sections };
   }),
+  setRenderedPageCount: (renderedPageCount) => set({ renderedPageCount }),
 
   importState: (newState) => set((s) => {
     const cleanState = Object.fromEntries(

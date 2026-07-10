@@ -6,6 +6,7 @@ import { PdfErrorBoundary } from "./PdfErrorBoundary";
 import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 
 export interface PdfRendererWrapperProps {
   data: ResumeData;
@@ -209,7 +210,11 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                       setLayers((prev) => prev.filter((item) => item.id !== layer.id));
                     }
                   }}
-                  onLoadSuccess={() => {}}
+                  onLoadSuccess={(doc) => {
+                    // Overflow honesty: the Pages panel compares the real
+                    // rendered page count against the planned page count.
+                    useCvBuilderStore.getState().setRenderedPageCount(doc.numPages);
+                  }}
                 >
                 {(doc) => (
                   <div className="flex flex-col gap-8 items-center">

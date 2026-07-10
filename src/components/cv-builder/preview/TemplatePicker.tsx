@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
-import { Check, Info, LayoutTemplate } from "lucide-react";
-import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import { Check, Info, LayoutTemplate, X } from "lucide-react";
+import { TEMPLATE_PREVIEWS, getTemplateCapabilities } from "@/lib/resume-engine/template-meta";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -212,6 +212,21 @@ export function TemplateGallery() {
             const meta = TEMPLATE_PREVIEWS[previewTemplate];
             const isCurrent = currentTemplate === previewTemplate;
             const isAtsFriendly = meta.tags.includes("ATS");
+            const caps = getTemplateCapabilities(previewTemplate);
+            const capabilityItems = [
+              { key: "twoColumn", ok: caps.supportsTwoColumn },
+              { key: "avatar", ok: caps.supportsAvatar },
+              { key: "customSections", ok: caps.supportsCustomSections },
+              { key: "multiPage", ok: caps.supportsMultiPage },
+              { key: "sidebarPosition", ok: caps.supportsSidebarPosition },
+            ];
+            // Settings the user has actually configured that this template
+            // cannot show — they are kept in the document, just inactive.
+            const retainedInactive =
+              (!!store.photoUrl && !caps.supportsAvatar) ||
+              (store.customSections.length > 0 && !caps.supportsCustomSections) ||
+              (store.resumeSidebarPosition === "right" && !caps.supportsSidebarPosition) ||
+              (!caps.supportsSidebar && Object.values(store.sectionPlacement).some(Boolean));
 
             return (
               <>
@@ -237,6 +252,30 @@ export function TemplateGallery() {
                       </span>
                     ))}
                   </div>
+
+                  <div className="flex flex-wrap justify-center gap-1.5 mt-4 max-w-[90%]">
+                    {capabilityItems.map(({ key, ok }) => (
+                      <span
+                        key={key}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium",
+                          ok ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-400 line-through decoration-slate-300",
+                        )}
+                      >
+                        {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                        {t(`builder.templateCapability.${key}`)}
+                      </span>
+                    ))}
+                  </div>
+
+                  {retainedInactive && (
+                    <Alert className="mt-4 bg-slate-50 border-slate-200 text-slate-600">
+                      <Info className="h-4 w-4 text-slate-500" />
+                      <AlertDescription className="text-xs ml-2">
+                        {t("builder.templateKeepsSettings")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   {!isAtsFriendly && (
                     <Alert className="mt-6 bg-amber-50 border-amber-200 text-amber-800">

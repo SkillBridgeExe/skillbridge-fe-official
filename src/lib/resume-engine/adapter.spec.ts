@@ -502,6 +502,84 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.layout.pages[0].sidebar).toEqual(["skills", "summary", "certifications", "languages"]);
 	});
 
+	it("maps the planned pages and custom sections into renderer layout for representative templates", () => {
+		// One per layout family: split, sidebar, minimal/grouped, timeline, ATS-compact.
+		const representatives = ["azurill", "gengar", "onyx", "kakuna", "glalie"] as const;
+
+		for (const template of representatives) {
+			const mockStore = {
+				fullName: "Layout User",
+				template,
+				cvLanguage: "en",
+				summary: "Summary.",
+				sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+				sectionVisibility: { summary: true, education: true, experience: true, projects: true, skills: true, certifications: true },
+				sectionPlacement: {},
+				layoutPages: [{ id: "pg_1", name: "Main" }, { id: "pg_2" }],
+				sectionPage: { education: "pg_2", custom_extra: "pg_2" },
+				customSections: [
+					{
+						id: "custom_extra",
+						title: "Hoạt động",
+						placement: "main",
+						visible: true,
+						items: [{ id: "i1", heading: "CLB <Guitar>", body: "Trưởng nhóm 2024" }],
+					},
+				],
+				education: [],
+				experience: [],
+				projects: [],
+				technicalSkills: [],
+				softSkills: [],
+				tools: [],
+				languages: [],
+				certifications: [],
+			} as unknown as CvBuilderState;
+
+			const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+			// Same page plan drives preview and download (they share this data),
+			// so logical page-count parity is structural.
+			expect(result.metadata.layout.pages, template).toHaveLength(2);
+			expect(result.metadata.layout.pages[1].main, template).toContain("education");
+			expect(result.metadata.layout.pages[1].main, template).toContain("custom_extra");
+			expect(result.metadata.layout.pages[0].main, template).not.toContain("education");
+
+			const custom = result.customSections.find((section) => section.id === "custom_extra");
+			expect(custom, template).toBeDefined();
+			expect(custom?.type, template).toBe("summary");
+			expect(custom?.hidden, template).toBe(false);
+			const item = custom?.items[0] as { content: string } | undefined;
+			// Heading is escaped user text — markup cannot be injected.
+			expect(item?.content, template).toContain("<strong>CLB &lt;Guitar&gt;</strong>");
+			expect(item?.content, template).toContain("Trưởng nhóm 2024");
+		}
+	});
+
+	it("keeps hidden custom sections out of the rendered output but in the data", () => {
+		const mockStore = {
+			fullName: "",
+			template: "onyx",
+			summary: "",
+			sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+			customSections: [
+				{ id: "custom_hidden", title: "Ẩn", placement: "main", visible: false, items: [{ id: "i1", body: "x" }] },
+			],
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		const custom = result.customSections.find((section) => section.id === "custom_hidden");
+		expect(custom?.hidden).toBe(true);
+	});
+
 	it("does not turn empty builder placeholder rows into fake resume entries", () => {
 		const mockStore = {
 			fullName: "",
