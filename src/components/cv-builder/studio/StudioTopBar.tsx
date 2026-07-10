@@ -30,6 +30,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { useCompanionStore, type CompanionContextReg } from "@/store/useCompanionStore";
 import { useRef, useState } from "react";
 import { createBuilderDraftApi } from "@/api/cv/builder";
+import { createVersionApi } from "@/api/cv/versions";
 import { createStudioResumePdfBlob } from "./download-resume-pdf";
 
 type ImportedResumeBackup = Record<string, unknown> & {
@@ -99,24 +100,38 @@ export function StudioTopBar() {
     const current = (useCvBuilderStore.getState().resumeTitle || "").trim();
     if (!draftId || isLocalMode || !current) return;
     if (current === titleAtFocusRef.current.trim()) return;
+    const previousTitle = titleAtFocusRef.current;
     renameMutation.mutate(
       { id: draftId, title: current },
-      { onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }) },
+      {
+        onError: (e) => {
+          // Revert the store so the UI never shows a title the server rejected.
+          useCvBuilderStore.getState().setResumeTitle(previousTitle);
+          toast({ title: getApiErrorMessage(e), variant: "destructive" });
+        },
+      },
     );
   };
 
-  const handleSaveVersion = () => {
-    if (!draftId) {
+  const handleSaveVersion = async () => {
+    if (isLocalMode || !draftId) {
       showLocalActionToast();
       return;
     }
+    // The server snapshots ITS current doc — flush the 1.5s debounced autosave first so the
+    // version includes the user's last keystrokes.
+    if (!(await flushDraftChanges())) return;
     createVersionMutation.mutate(undefined, {
       onSuccess: () => toast({ title: t("builder.actions.versionSaved", "Version saved") }),
       onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }),
     });
   };
 
-  const handleRestoreVersion = (versionId: string) => {
+  const handleRestoreVersion = async (versionId: string) => {
+    if (isLocalMode || !draftId) {
+      showLocalActionToast();
+      return;
+    }
     if (
       !window.confirm(
         t(
@@ -127,6 +142,9 @@ export function StudioTopBar() {
     ) {
       return;
     }
+    // Flush pending edits so the AUTO_PRE_RESTORE undo snapshot captures them — otherwise
+    // restoring silently loses whatever was typed in the last debounce window.
+    if (!(await flushDraftChanges())) return;
     restoreVersionMutation.mutate(versionId, {
       onSuccess: (cv) => {
         const builder = useCvBuilderStore.getState();
@@ -325,6 +343,22 @@ export function StudioTopBar() {
 
   const applyImportedBackup = async () => {
     if (!importCandidate) return;
+    // Contract: a destructive import-overwrite backs up the current server doc first
+    // (AUTO_PRE_IMPORT). If the backup can't be taken, don't destroy — cancel the import.
+    if (!isLocalMode && draftId) {
+      // Flush the debounced autosave first so the backup captures the exact pre-import state.
+      // The confirm modal blocks further edits, so nothing can change between flush and backup.
+      if (!(await flushDraftChanges())) return;
+      try {
+        await createVersionApi(draftId, undefined, "AUTO_PRE_IMPORT");
+      } catch (error) {
+        toast({
+          title: getApiErrorMessage(error, t("builder.import.backupFailed")),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
     useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
     setImportCandidate(null);
@@ -725,7 +759,15 @@ export function StudioTopBar() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={applyImportedBackup}>{t("builder.import.apply")}</AlertDialogAction>
+            {/* preventDefault keeps the dialog open when the pre-import backup fails. */}
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void applyImportedBackup();
+              }}
+            >
+              {t("builder.import.apply")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -15,10 +15,20 @@ export async function listVersionsApi(
   return envelope.data;
 }
 
-/** POST /api/cvs/:id/versions — snapshot the current document ("Save version"). */
-export async function createVersionApi(cvId: string, label?: string): Promise<CvVersionSummary> {
+/**
+ * POST /api/cvs/:id/versions — snapshot the current document ("Save version").
+ * origin AUTO_PRE_IMPORT marks the automatic backup taken before a destructive import.
+ */
+export async function createVersionApi(
+  cvId: string,
+  label?: string,
+  origin?: "MANUAL" | "AUTO_PRE_IMPORT",
+): Promise<CvVersionSummary> {
   const envelope = await unwrapEnvelope<ApiEnvelope<CvVersionSummary>>(
-    httpClient.post(API_ROUTES.CV.VERSIONS(cvId), label ? { label } : {}),
+    httpClient.post(API_ROUTES.CV.VERSIONS(cvId), {
+      ...(label ? { label } : {}),
+      ...(origin ? { origin } : {}),
+    }),
     "Failed to save version.",
   );
   return envelope.data;

@@ -34,12 +34,12 @@ export async function duplicateResumeApi(
   return envelope.data;
 }
 
-/** Rename a CV using PATCH. */
+/** Rename a CV using PATCH. The BE returns a slim {id,title,updatedAt} — no canonical doc. */
 export async function renameResumeApi(
   id: string,
   title: string,
-): Promise<CvDto> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<CvDto>>(
+): Promise<Pick<CvDto, "id" | "title" | "updatedAt">> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<Pick<CvDto, "id" | "title" | "updatedAt">>>(
     httpClient.patch(API_ROUTES.CV.DETAIL(id), { title }),
     "Failed to rename the CV.",
   );

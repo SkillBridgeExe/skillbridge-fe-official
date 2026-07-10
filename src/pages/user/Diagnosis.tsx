@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -154,6 +154,9 @@ export default function Diagnosis() {
   // W22-A fix: gate draft creation with a ref so it only attempts ONCE per builder entry.
   // A permanent 402 (quota exhausted) must NOT retry — fall back to local mode instead of looping.
   const draftAttemptRef = useRef(false);
+  // Blocks builder editing while an existing CV is being recovered (reload / deep-link) so the
+  // async hydrate can't clobber keystrokes typed during the fetch.
+  const [isRecoveringCv, setIsRecoveringCv] = useState(false);
 
   useEffect(() => {
     if (step !== "builder") {
@@ -186,6 +189,10 @@ export default function Diagnosis() {
       const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
 
       if (recoverId) {
+        // Gate the builder while the server doc loads: hydrateFromCanonical below overwrites
+        // the whole store, so anything typed during a slow fetch (BE cold-start can take
+        // 5-25s) would be silently clobbered. The overlay blocks editing until recovery ends.
+        setIsRecoveringCv(true);
         getCvDetailApi(recoverId)
           .then((detail) => {
             const builder = useCvBuilderStore.getState();
@@ -200,6 +207,9 @@ export default function Diagnosis() {
           .catch((err) => {
             console.error("Failed to recover draft", err);
             useAutosaveStore.getState().setSaveStatus("local");
+          })
+          .finally(() => {
+            setIsRecoveringCv(false);
           });
         return;
       }
@@ -361,6 +371,14 @@ export default function Diagnosis() {
     return () => {
       unsubscribe();
       if (timeoutId) clearTimeout(timeoutId);
+      // A pending debounced save must not die with this effect: SPA navigation away (browser
+      // back, sidebar links) isn't blocked by any router guard, so flush instead of losing the
+      // last <=1.5s of typing. The PUT keeps running after unmount.
+      if (useAutosaveStore.getState().isDirty && useCvBuilderStore.getState().draftId) {
+        void saveDraft().catch(() => {
+          // Nothing to surface — the page is unmounting; autosave state already marks the error.
+        });
+      }
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
     // mutateAsync is stable for this usage; excluding the mutation object avoids
@@ -373,7 +391,13 @@ export default function Diagnosis() {
     return (
       <Layout hideFooter hideNavbar>
         <Suspense fallback={<PageLoader />}>
-          <div id="cv-builder-anchor" className="h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+          <div id="cv-builder-anchor" className="relative h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+            {isRecoveringCv && (
+              <div className="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                <p className="text-sm font-medium text-slate-500">{t("builder.recoveringDraft")}</p>
+              </div>
+            )}
             <StudioTopBar />
             <div className="flex-1 flex overflow-hidden">
               
