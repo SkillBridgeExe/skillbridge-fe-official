@@ -203,8 +203,78 @@ export function CvBuilderSkill({
   // W98: Intake coach offer state for experience dead ends
   const [offeredIntakeGap, setOfferedIntakeGap] = useState<string | null>(null);
 
-  // ── Trigger analyze (Turn-1) ──
-  const handleAnalyze = useCallback(() => {
+  // ── Direct transform rewrite (no questions) — improve/shorten chips fire this straight
+  // away; evidence/ats/impact land here when Turn-1 finds nothing to ask (P3-4: an intent
+  // with no missing facts owes the user a SAFE transform, never an "already strong" no-op).
+  const fireDirectIntentRewrite = useCallback((intentKey: RewriteIntent) => {
+    if (!draftId || rewriteMutation.isPending) return;
+
+    setCompanionField(fieldPath, section);
+    setMascotState("thinking");
+    setCompanionTurn(null);
+    setCompanionPatch(null);
+    setCompanionMessage(null);
+    clearCompanionAnswers();
+    setAnswers({});
+    setActiveIntent(intentKey);
+    setIsApplied(false);
+    setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
+
+    rewriteMutation.mutate(
+        {
+          draftId,
+          before: currentValue,
+          answers: [],
+          target: fieldPath ?? "",
+          kind: section === "summary" ? "summary" : "bullet",
+          locale: askLocale,
+          output_lang: outputLocale,
+          intent: intentKey,
+        },
+      {
+        onSuccess: (res) => {
+          if (res.ok && res.field_patch) {
+            setCompanionPatch(res.field_patch);
+            setCompanionMessage(null);
+            setMascotState("presenting");
+          } else if (res.reason === "NEEDS_DETAIL") {
+            setCompanionTurn({
+              message: res.message ?? t("companion.needMoreInfo"),
+              questions: [
+                {
+                  gap: res.gap ?? "result",
+                  prompt: res.message ?? t("companion.needMoreInfo"),
+                  options: [],
+                  allows_free_text: true,
+                }
+              ],
+              requires_user_confirmation: false,
+              field_patch: null,
+            });
+            setCompanionMessage(res.message ?? t("companion.needMoreInfo"));
+            setMascotState("asking");
+          } else {
+            setCompanionMessage(
+              res.message ?? t("companion.error.unknown"),
+            );
+            setMascotState("presenting");
+          }
+        },
+        onError: () => {
+          setCompanionMessage(t("companion.error.unknown"));
+          setMascotState("presenting");
+        },
+      }
+    );
+  }, [
+    draftId, rewriteMutation, currentValue, fieldPath, section, askLocale, outputLocale,
+    setCompanionField, setMascotState, setCompanionPatch, setCompanionMessage, setCompanionTurn, clearCompanionAnswers, t
+  ]);
+
+  // ── Trigger analyze (Turn-1) ── Also the deterministic fallback for smart-questions:
+  // it accepts the SAME requested_action so a chip's intent survives an LLM outage.
+  const handleAnalyze = useCallback((requestedAction: QuestionIntent = "analyze") => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
 
     // Claim this field as THE active companion session.
@@ -215,7 +285,7 @@ export function CvBuilderSkill({
     setCompanionMessage(null);
     clearCompanionAnswers();
     setAnswers({});
-    setActiveIntent(null);
+    setActiveIntent(requestedAction === "analyze" ? null : requestedAction);
     setIsApplied(false);
     setOfferedIntakeGap(null);
     setCompanionExplanation(null);
@@ -227,9 +297,15 @@ export function CvBuilderSkill({
         section,
         field_path: fieldPath,
         locale: askLocale,
+        ...(requestedAction === "analyze" ? {} : { requested_action: requestedAction }),
       },
       {
         onSuccess: (turn) => {
+          if (turn.questions.length === 0 && requestedAction !== "analyze") {
+            // Nothing to ask — the chip still owes the user a safe transform.
+            fireDirectIntentRewrite(requestedAction);
+            return;
+          }
           setCompanionTurn(turn);
           if (turn.questions.length === 0) {
             setCompanionMessage(turn.message);
@@ -247,7 +323,7 @@ export function CvBuilderSkill({
   }, [
     draftId, currentValue, section, fieldPath, askLocale,
     analyzeMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
-    setCompanionMessage, clearCompanionAnswers,
+    setCompanionMessage, clearCompanionAnswers, fireDirectIntentRewrite,
   ]);
 
   // ── Trigger smart-questions (Turn-1, LLM role-aware) — rule analyze fallback on error ──
@@ -282,21 +358,26 @@ export function CvBuilderSkill({
       request,
       {
         onSuccess: (turn) => {
+          if (turn.questions.length === 0 && requestedAction !== "analyze") {
+            // Nothing to ask — evidence/ats/impact must still deliver a safe transform.
+            fireDirectIntentRewrite(requestedAction);
+            return;
+          }
           setCompanionTurn(turn);
           setCompanionMessage(turn.message);
           setMascotState(turn.questions.length === 0 ? "presenting" : "asking");
         },
         onError: () => {
           // LLM path failed (network/timeout/rate-limit) — fall back to the rule
-          // analyze so the user still gets chips, never a blank companion.
-          handleAnalyze();
+          // analyze WITH the same requested_action so the chip's intent survives.
+          handleAnalyze(requestedAction);
         },
       },
     );
   }, [
     draftId, currentValue, section, fieldPath, askLocale,
     smartQuestionsMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
-    setCompanionMessage, clearCompanionAnswers, handleAnalyze,
+    setCompanionMessage, clearCompanionAnswers, handleAnalyze, fireDirectIntentRewrite,
   ]);
 
   // ── Trigger Explain ──
@@ -542,72 +623,6 @@ export function CvBuilderSkill({
       section, askLocale, outputLocale, activeIntent, setMascotState, setCompanionPatch, setCompanionMessage, t,
     ],
   );
-
-  const fireDirectIntentRewrite = useCallback((intentKey: Extract<RewriteIntent, "improve" | "shorten">) => {
-    if (!draftId || rewriteMutation.isPending) return;
-
-    setCompanionField(fieldPath, section);
-    setMascotState("thinking");
-    setCompanionTurn(null);
-    setCompanionPatch(null);
-    setCompanionMessage(null);
-    clearCompanionAnswers();
-    setAnswers({});
-    setActiveIntent(intentKey);
-    setIsApplied(false);
-    setOfferedIntakeGap(null);
-    setCompanionExplanation(null);
-
-    rewriteMutation.mutate(
-        {
-          draftId,
-          before: currentValue,
-          answers: [],
-          target: fieldPath ?? "",
-          kind: section === "summary" ? "summary" : "bullet",
-          locale: askLocale,
-          output_lang: outputLocale,
-          intent: intentKey,
-        },
-      {
-        onSuccess: (res) => {
-          if (res.ok && res.field_patch) {
-            setCompanionPatch(res.field_patch);
-            setCompanionMessage(null);
-            setMascotState("presenting");
-          } else if (res.reason === "NEEDS_DETAIL") {
-            setCompanionTurn({
-              message: res.message ?? t("companion.needMoreInfo"),
-              questions: [
-                {
-                  gap: res.gap ?? "result",
-                  prompt: res.message ?? t("companion.needMoreInfo"),
-                  options: [],
-                  allows_free_text: true,
-                }
-              ],
-              requires_user_confirmation: false,
-              field_patch: null,
-            });
-            setCompanionMessage(res.message ?? t("companion.needMoreInfo"));
-            setMascotState("asking");
-          } else {
-            setCompanionMessage(
-              res.message ?? t("companion.error.unknown"),
-            );
-            setMascotState("presenting");
-          }
-        },
-        onError: () => {
-          setCompanionMessage(t("companion.error.unknown"));
-          setMascotState("presenting");
-        },
-      }
-    );
-  }, [
-    draftId, rewriteMutation, currentValue, fieldPath, section, askLocale, outputLocale,
-    setCompanionField, setMascotState, setCompanionPatch, setCompanionMessage, setCompanionTurn, clearCompanionAnswers, t
-  ]);
 
   // ── "Viết lại nhẹ hơn" ──
   const handleRewriteSofter = useCallback(() => {
@@ -991,7 +1006,7 @@ export function CvBuilderSkill({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleAnalyze}
+                  onClick={() => handleAnalyze()}
                   className="h-8 text-xs gap-1.5"
                 >
                   <ArrowRight className="w-3 h-3" />

@@ -424,6 +424,47 @@ describe("CvBuilderSkill — W98 Batch A (Dead-ends and Undo)", () => {
   });
 });
 
+describe("CvBuilderSkill — P3-4 intent semantics (Codex round-2)", () => {
+  it("evidence chip with nothing to ask fires a SAFE transform rewrite, not an 'already strong' no-op", () => {
+    renderSkill(vi.fn(), "Optimized queries and reduced latency by 30%.");
+
+    fireEvent.click(screen.getByText("companion.intent.evidence"));
+    expect(mutateSmartQuestions).toHaveBeenCalledTimes(1);
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+
+    act(() =>
+      handlers.onSuccess({
+        message: "Already strong.",
+        questions: [],
+        requires_user_confirmation: false,
+        field_patch: null,
+      }),
+    );
+
+    // No dead end: the intent converts into a direct rewrite with the same intent.
+    expect(mutateRewrite).toHaveBeenCalledTimes(1);
+    expect(mutateRewrite.mock.calls[0][0]).toMatchObject({
+      intent: "add_evidence",
+      answers: [],
+    });
+    expect(useCvBuilderStore.getState().mascotState).toBe("thinking");
+  });
+
+  it("smart-questions failure falls back to analyze WITH the same requested_action", () => {
+    renderSkill(vi.fn(), "Did stuff");
+
+    fireEvent.click(screen.getByText("companion.intent.ats"));
+    const [, handlers] = mutateSmartQuestions.mock.calls[0];
+
+    act(() => handlers.onError(new Error("rate limited")));
+
+    expect(mutateAnalyze).toHaveBeenCalledTimes(1);
+    expect(mutateAnalyze.mock.calls[0][0]).toMatchObject({
+      requested_action: "make_ats_friendly",
+    });
+  });
+});
+
 describe("CvBuilderSkill — W98 Batch B (Explain)", () => {
   it("renders explain chip, triggers explain mutation, and shows explanation UI", () => {
     renderSkill(vi.fn(), "Fixed some bugs", FIELD, "experience");
