@@ -975,7 +975,12 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
     [sections[idx], sections[targetIdx]] = [sections[targetIdx], sections[idx]];
     return { customSections: sections };
   }),
-  setRenderedPageCount: (renderedPageCount) => set({ renderedPageCount }),
+  // Guard against render loops: the preview reports its page count on every
+  // load; writing an unchanged value would re-notify store subscribers, which
+  // re-derives resume data and re-renders the preview, forever.
+  setRenderedPageCount: (renderedPageCount) => {
+    if (get().renderedPageCount !== renderedPageCount) set({ renderedPageCount });
+  },
 
   importState: (newState) => set((s) => {
     const cleanState = Object.fromEntries(
