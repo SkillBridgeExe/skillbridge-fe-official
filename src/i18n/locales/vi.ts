@@ -3056,6 +3056,11 @@ export default {
       error: {
         unknown: "Đã xảy ra lỗi. Thử lại sau.",
       },
+      deadEnd: {
+        experienceMessage: "Mình cần thêm bối cảnh để viết phần này ấn tượng hơn.",
+        tellStoryButton: "Kể lại chi tiết",
+      },
+      undo: "Hoàn tác",
       results: {
         ctaRoadmap: "Xem lộ trình học",
         ctaBuilder: "Bổ sung bằng chứng",

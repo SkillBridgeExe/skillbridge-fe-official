@@ -195,6 +195,9 @@ export function CvBuilderSkill({
   const [askMoreText, setAskMoreText] = useState("");
   const [activeIntent, setActiveIntent] = useState<RewriteIntent | null>(null);
 
+  // W98: Intake coach offer state for experience dead ends
+  const [offeredIntakeGap, setOfferedIntakeGap] = useState<string | null>(null);
+
   // ── Trigger analyze (Turn-1) ──
   const handleAnalyze = useCallback(() => {
     if (!draftId || !currentValue.trim() || !fieldPath) return;
@@ -209,6 +212,7 @@ export function CvBuilderSkill({
     setAnswers({});
     setActiveIntent(null);
     setIsApplied(false);
+    setOfferedIntakeGap(null);
 
     analyzeMutation.mutate(
       {
@@ -256,6 +260,7 @@ export function CvBuilderSkill({
     setAnswers({});
     setActiveIntent(requestedAction === "analyze" ? null : requestedAction);
     setIsApplied(false);
+    setOfferedIntakeGap(null);
 
     const request = {
       draftId,
@@ -386,11 +391,27 @@ export function CvBuilderSkill({
           } else if (res.reason === "NEEDS_DETAIL") {
             incrementReask();
             if (companionReaskCount + 1 >= MAX_REASK) {
-              // No dead-end: instead of "edit it yourself", route into the intake
-              // coaching loop seeded with the current bullet + the discarded res.gap.
-              // The user re-tells the story; generation re-runs through the SAME
-              // extract→computeIntakeFields pipeline (anti-fab — no new path).
-              routeToIntakeCoach(res.gap ?? null);
+              if (section === "experience") {
+                setCompanionMessage(res.message ?? t("companion.deadEnd.experienceMessage"));
+                setOfferedIntakeGap(res.gap ?? "result");
+                setMascotState("asking");
+              } else {
+                setCompanionTurn({
+                  message: res.message ?? t("companion.needMoreInfo"),
+                  questions: [
+                    {
+                      gap: res.gap ?? "result",
+                      prompt: res.message ?? t("companion.needMoreInfo"),
+                      options: [],
+                      allows_free_text: true,
+                    }
+                  ],
+                  requires_user_confirmation: false,
+                  field_patch: null,
+                });
+                setCompanionMessage(res.message ?? t("companion.needMoreInfo"));
+                setMascotState("asking");
+              }
             } else {
               setCompanionMessage(res.message ?? null);
               setMascotState("asking");
@@ -476,6 +497,7 @@ export function CvBuilderSkill({
     setAnswers({});
     setActiveIntent(intentKey);
     setIsApplied(false);
+    setOfferedIntakeGap(null);
 
     rewriteMutation.mutate(
         {
@@ -588,6 +610,7 @@ export function CvBuilderSkill({
   const handleDiscard = useCallback(() => {
     setAskMoreActive(false);
     setAskMoreText("");
+    setOfferedIntakeGap(null);
     resetCompanion();
     useCompanionStore.getState().dismissActive();
     setActiveIntent(null);
@@ -724,6 +747,22 @@ export function CvBuilderSkill({
         </div>
       )}
 
+      {/* ── STATE: ASKING (intake coach offer) ── */}
+      {mascotState === "asking" && offeredIntakeGap !== null && (
+        <div className="space-y-3">
+          <Button
+            size="sm"
+            onClick={() => {
+              routeToIntakeCoach(offeredIntakeGap);
+              setOfferedIntakeGap(null);
+            }}
+            className="w-full h-8 text-xs bg-primary hover:bg-primary/90 text-white gap-1.5"
+          >
+            {t("companion.deadEnd.tellStoryButton")}
+          </Button>
+        </div>
+      )}
+
       {/* ── STATE: ASKING (user-initiated "Hỏi thêm để rõ hơn" — ONE free-text question) ── */}
       {mascotState === "asking" && askMoreActive && (
         <div className="space-y-2">
@@ -771,16 +810,31 @@ export function CvBuilderSkill({
                 <Check className="w-4 h-4 shrink-0" />
                 {t("builder.review.applySuccess")}
               </p>
-              <Button
-                size="sm"
-                onClick={() => {
-                  resetCompanion();
-                  useCompanionStore.getState().closeBubble();
-                }}
-                className="w-full mt-3 h-8 text-[11px] bg-[#10B981] hover:bg-[#059669] text-white"
-              >
-                {t("builder.review.close")}
-              </Button>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (companionPatch) {
+                      onApply(companionPatch.before);
+                      setIsApplied(false);
+                    }
+                  }}
+                  variant="outline"
+                  className="flex-1 h-8 text-[11px] border-[#10B981] text-[#059669] hover:bg-[#D1FAE5]"
+                >
+                  {t("companion.undo")}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    resetCompanion();
+                    useCompanionStore.getState().closeBubble();
+                  }}
+                  className="flex-1 h-8 text-[11px] bg-[#10B981] hover:bg-[#059669] text-white"
+                >
+                  {t("builder.review.close")}
+                </Button>
+              </div>
             </div>
           )}
 

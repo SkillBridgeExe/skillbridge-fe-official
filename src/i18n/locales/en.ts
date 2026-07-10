@@ -3084,6 +3084,11 @@ export default {
       error: {
         unknown: "Something went wrong. Try again later.",
       },
+      deadEnd: {
+        experienceMessage: "I need more context to make this impressive.",
+        tellStoryButton: "Tell the full story",
+      },
+      undo: "Undo",
       results: {
         ctaRoadmap: "See learning roadmap",
         ctaBuilder: "Add evidence",
