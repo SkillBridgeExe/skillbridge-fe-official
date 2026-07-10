@@ -158,7 +158,6 @@ export function CvBuilderSkill({
     companionTurn,
     companionPatch,
     companionMessage,
-    companionReaskCount,
     setMascotState,
     setCompanionField,
     setCompanionTurn,
@@ -446,8 +445,7 @@ export function CvBuilderSkill({
           } else if (res.reason === "NEEDS_DETAIL") {
             incrementReask();
             // Read the count back from the store — the closure value is stale after increment.
-            const currentReaskCount = useCvBuilderStore.getState().companionReaskCount;
-            if (currentReaskCount >= MAX_REASK) {
+            if (useCvBuilderStore.getState().companionReaskCount >= MAX_REASK) {
               if (section === "experience") {
                 setCompanionMessage(res.message ?? t("companion.deadEnd.experienceMessage"));
                 setOfferedIntakeGap(res.gap ?? "result");
@@ -488,9 +486,9 @@ export function CvBuilderSkill({
       },
     );
   }, [
-    draftId, companionTurn, answers, buildAnswerList, currentValue, fieldPath, section, outputLocale,
-    rewriteMutation, setMascotState, setCompanionPatch,
-    setCompanionMessage, incrementReask, companionReaskCount, t, routeToIntakeCoach, activeIntent,
+    draftId, companionTurn, answers, buildAnswerList, currentValue, fieldPath, section, outputLocale, askLocale,
+    rewriteMutation, setMascotState, setCompanionPatch, setCompanionTurn,
+    setCompanionMessage, incrementReask, t, activeIntent,
   ]);
 
   // ── Follow-up rewrites from the PRESENTING state (Task M4) ──
@@ -541,7 +539,7 @@ export function CvBuilderSkill({
     },
     [
       draftId, companionTurn, rewriteMutation, buildAnswerList, answers, currentValue, fieldPath,
-      section, outputLocale, activeIntent, setMascotState, setCompanionPatch, setCompanionMessage, t,
+      section, askLocale, outputLocale, activeIntent, setMascotState, setCompanionPatch, setCompanionMessage, t,
     ],
   );
 
@@ -607,7 +605,7 @@ export function CvBuilderSkill({
       }
     );
   }, [
-    draftId, rewriteMutation, currentValue, fieldPath, section, outputLocale,
+    draftId, rewriteMutation, currentValue, fieldPath, section, askLocale, outputLocale,
     setCompanionField, setMascotState, setCompanionPatch, setCompanionMessage, setCompanionTurn, clearCompanionAnswers, t
   ]);
 

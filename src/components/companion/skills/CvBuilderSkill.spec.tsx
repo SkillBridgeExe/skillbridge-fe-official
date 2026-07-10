@@ -329,7 +329,7 @@ describe("CvBuilderSkill — W98 Batch A (Dead-ends and Undo)", () => {
     s.setMascotState("asking");
     s.setCompanionTurn(TURN); // setup Turn 1 response
 
-    renderSkill(vi.fn(), "A summary", "summary", "summary" as any);
+    renderSkill(vi.fn(), "A summary", "summary", "summary");
     
     // Fill in a free text answer so "send" is enabled
     fireEvent.change(screen.getByPlaceholderText("companion.freeTextPlaceholder"), {
@@ -360,7 +360,7 @@ describe("CvBuilderSkill — W98 Batch A (Dead-ends and Undo)", () => {
     s.setMascotState("asking");
     s.setCompanionTurn(TURN); 
 
-    renderSkill(vi.fn(), "Did stuff", FIELD, "experience" as any);
+    renderSkill(vi.fn(), "Did stuff", FIELD, "experience");
     
     // Fill in a free text answer so "send" is enabled
     fireEvent.change(screen.getByPlaceholderText("companion.freeTextPlaceholder"), {
@@ -426,7 +426,7 @@ describe("CvBuilderSkill — W98 Batch A (Dead-ends and Undo)", () => {
 
 describe("CvBuilderSkill — W98 Batch B (Explain)", () => {
   it("renders explain chip, triggers explain mutation, and shows explanation UI", () => {
-    renderSkill(vi.fn(), "Fixed some bugs", FIELD, "experience" as any);
+    renderSkill(vi.fn(), "Fixed some bugs", FIELD, "experience");
 
     // Initial state: idle, show intent chips
     const explainChip = screen.getByText("companion.intent.explain");
