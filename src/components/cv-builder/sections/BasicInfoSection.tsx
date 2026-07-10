@@ -9,7 +9,7 @@ import { Plus, X } from "lucide-react";
 export function BasicInfoSection() {
   const {
     fullName, email, phone, location, linkedin, portfolio, github,
-    photoUrl, profileLinks, customFields,
+    profileLinks, customFields,
     setBasicInfo, addProfileLink, updateProfileLink, removeProfileLink,
     addCustomField, updateCustomField, removeCustomField
   } = useCvBuilderStore();

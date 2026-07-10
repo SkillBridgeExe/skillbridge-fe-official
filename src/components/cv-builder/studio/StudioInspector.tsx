@@ -92,6 +92,10 @@ function LayoutPagesPanel({
     resumeFontScale: ResumeFontScale;
     resumeLineHeight: ResumeLineHeight;
   } | null>(null);
+  // ponytail: null = "count unknown" (pdf.js failed -> iframe fallback), so this
+  // banner stays silent there rather than reporting a stale number — the user
+  // sees the real PDF in the fallback, and CvLengthGuard's heuristic length
+  // warning still runs independently of this count.
   const overflowing =
     store.renderedPageCount !== null && store.renderedPageCount > pages.length;
   const assignableSections: Array<{ id: string; label: string }> = [

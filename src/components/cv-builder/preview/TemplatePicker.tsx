@@ -51,10 +51,9 @@ export function LivePdfPreview({ template, className }: { template: string; clas
         const resolvedTemplate = resolveBuilderTemplate(template);
         const meta = TEMPLATE_PREVIEWS[resolvedTemplate];
         
-        const data = JSON.parse(JSON.stringify(sampleResumeData));
-        if (!data.metadata) data.metadata = {} as any;
-        if (!data.metadata.design) data.metadata.design = {} as any;
-        if (!data.metadata.design.colors) data.metadata.design.colors = {} as any;
+        // sampleResumeData is a complete ResumeData — a deep clone keeps every
+        // nested object, so the accent override needs no defensive scaffolding.
+        const data: typeof sampleResumeData = JSON.parse(JSON.stringify(sampleResumeData));
         data.metadata.design.colors.primary = meta.accent;
 
         const [{ createResumePdfBlob }, { createPdfFirstPageImageUrl }] = await Promise.all([

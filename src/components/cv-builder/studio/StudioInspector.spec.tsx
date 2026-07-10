@@ -12,7 +12,7 @@ vi.mock("@/store/useCvBuilderStore", () => ({
 // Mock translations
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallbackOrOptions: any) => {
+    t: (key: string, fallbackOrOptions?: unknown) => {
       if (typeof fallbackOrOptions === "string") return fallbackOrOptions;
       return key;
     },
