@@ -227,7 +227,7 @@ export default function ResumeLibrary() {
         const initialTitle = detail.title || item.title || t("builder.studio.untitledResume");
         const builder = useCvBuilderStore.getState();
         builder.reset();
-        builder.hydrateFromCanonical(detail.parsedJson);
+        builder.hydrateFromCanonical(detail.parsedJson, { cvId: detail.id });
         const hydrated = useCvBuilderStore.getState();
         hydrated.setDraftId(detail.id);
         hydrated.setResumeTitle(initialTitle);

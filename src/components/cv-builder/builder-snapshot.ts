@@ -22,5 +22,6 @@ export const getBuilderSnapshot = (
   tools: state.tools,
   languages: state.languages,
   certifications: state.certifications,
+  customSections: state.customSections,
   cvLanguage: state.cvLanguage,
 });

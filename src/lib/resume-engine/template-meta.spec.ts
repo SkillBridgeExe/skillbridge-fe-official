@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { templateSchema } from "./schema/templates";
 import { getTemplateCapabilities, TEMPLATE_PREVIEWS } from "./template-meta";
@@ -5,9 +7,18 @@ import { getTemplateCapabilities, TEMPLATE_PREVIEWS } from "./template-meta";
 describe("Template Metadata", () => {
   it("should have a preview definition for every valid template", () => {
     const templates = templateSchema.options;
-    
+
     for (const template of templates) {
       expect(TEMPLATE_PREVIEWS[template]).toBeDefined();
+    }
+  });
+
+  it("ships a real static thumbnail asset for every template (no blank gallery cards)", () => {
+    for (const template of templateSchema.options) {
+      const meta = TEMPLATE_PREVIEWS[template];
+      expect(meta.thumbnailUrl, `${template} thumbnailUrl`).toMatch(/^\/resume-templates\/.+\.(png|webp|jpg)$/);
+      expect(existsSync(join(process.cwd(), "public", meta.thumbnailUrl)), `${template} thumbnail file`).toBe(true);
+      expect(meta.tags.length, `${template} tags`).toBeGreaterThan(0);
     }
   });
 
@@ -25,6 +36,8 @@ describe("Template Metadata", () => {
       expect(typeof caps.supportsSpacing).toBe("boolean");
       expect(typeof caps.supportsDenseMode).toBe("boolean");
       expect(typeof caps.supportsCustomSectionOrder).toBe("boolean");
+      expect(typeof caps.supportsCustomSections).toBe("boolean");
+      expect(typeof caps.supportsMultiPage).toBe("boolean");
     }
   });
 

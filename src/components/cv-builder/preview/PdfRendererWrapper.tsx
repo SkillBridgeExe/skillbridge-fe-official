@@ -6,6 +6,7 @@ import { PdfErrorBoundary } from "./PdfErrorBoundary";
 import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 
 export interface PdfRendererWrapperProps {
   data: ResumeData;
@@ -37,11 +38,27 @@ function NativePdfFallback({ blob, title }: { blob: Blob; title: string }) {
 
 export default function PdfRendererWrapper({ data, template }: PdfRendererWrapperProps) {
   const { t } = useTranslation("diagnosis");
-  const [layers, setLayers] = useState<{ id: string; blob: Blob }[]>([]);
+  const [layers, setLayers] = useState<{ id: string; blob: Blob; seq: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [canvasFailedLayerIds, setCanvasFailedLayerIds] = useState<Set<string>>(() => new Set());
   const renderedPagesRef = useRef<Record<string, Set<number>>>({});
+  // Overflow honesty: only the NEWEST layer may report its page count — a
+  // slower older layer finishing late must not overwrite a fresher count.
+  const layerSeqRef = useRef(0);
+  const reportedSeqRef = useRef(0);
+
+  const reportPageCount = (seq: number, count: number | null) => {
+    if (seq < reportedSeqRef.current) return;
+    reportedSeqRef.current = seq;
+    useCvBuilderStore.getState().setRenderedPageCount(count);
+  };
+
+  useEffect(() => {
+    // Leaving the preview invalidates the count — a stale number would keep
+    // the Pages-panel overflow warning arguing about a PDF nobody can see.
+    return () => useCvBuilderStore.getState().setRenderedPageCount(null);
+  }, []);
 
   const handleLayerReady = (id: string) => {
     // Wait a brief moment for the canvas to paint the page
@@ -82,7 +99,11 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
         const blob = await createResumePdfBlob({ data, template });
         if (!cancelled) {
           setLayers((prev) => {
-            const newLayer = { id: Date.now().toString() + Math.random().toString(36).substring(2), blob };
+            const newLayer = {
+              id: Date.now().toString() + Math.random().toString(36).substring(2),
+              blob,
+              seq: ++layerSeqRef.current,
+            };
             if (prev.length === 0) return [newLayer];
             // Keep at most the current active layer and the new pending one
             return [prev[0], newLayer];
@@ -94,6 +115,9 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
           setIsRendering(false);
+          // The preview no longer reflects the current document — an overflow
+          // warning computed from the previous render would be a lie.
+          reportPageCount(++layerSeqRef.current, null);
         }
       }
     };
@@ -132,7 +156,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
               setIsRendering(true);
               createResumePdfBlob({ data, template })
                 .then((blob) => {
-                  setLayers([{ id: Date.now().toString(), blob }]);
+                  setLayers([{ id: Date.now().toString(), blob, seq: ++layerSeqRef.current }]);
                 })
                 .catch(err => setError(err instanceof Error ? err.message : String(err)))
                 .finally(() => setIsRendering(false));
@@ -205,11 +229,16 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                   onLoadError={(loadError) => {
                     setError(loadError instanceof Error ? loadError.message : String(loadError));
                     setCanvasFailedLayerIds((prev) => new Set(prev).add(layer.id));
+                    reportPageCount(layer.seq, null);
                     if (isPending) {
                       setLayers((prev) => prev.filter((item) => item.id !== layer.id));
                     }
                   }}
-                  onLoadSuccess={() => {}}
+                  onLoadSuccess={(doc) => {
+                    // Overflow honesty: the Pages panel compares the real
+                    // rendered page count against the planned page count.
+                    reportPageCount(layer.seq, doc.numPages);
+                  }}
                 >
                 {(doc) => (
                   <div className="flex flex-col gap-8 items-center">

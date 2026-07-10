@@ -12,7 +12,7 @@ vi.mock("@/store/useCvBuilderStore", () => ({
 // Mock translations
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallbackOrOptions: any) => {
+    t: (key: string, fallbackOrOptions?: unknown) => {
       if (typeof fallbackOrOptions === "string") return fallbackOrOptions;
       return key;
     },
@@ -129,5 +129,96 @@ describe("StudioInspector ATS Safe Mode", () => {
     fireEvent.blur(photoInput);
 
     expect(setBasicInfoMock).toHaveBeenCalledWith("photoUrl", "https://example.com/avatar.png");
+  });
+});
+
+describe("StudioInspector P4 pages panel", () => {
+  const basePagesStore = (overrides: Record<string, unknown> = {}) => ({
+    template: "gengar",
+    sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"],
+    sectionVisibility: {},
+    sectionPlacement: {},
+    layoutPages: [{ id: "page_1" }],
+    sectionPage: {},
+    customSections: [],
+    cvLanguage: "en",
+    resumeAtsSafeMode: false,
+    resumePageMargin: "normal",
+    resumeSectionSpacing: "normal",
+    resumeSidebarPosition: "left",
+    resumeSidebarWidth: "normal",
+    resumeDividerStyle: "line",
+    resumeFontFamily: "inter",
+    resumeFontScale: "normal",
+    resumeLineHeight: "normal",
+    resumeAccentColor: "#000000",
+    addLayoutPage: vi.fn(),
+    removeLayoutPage: vi.fn(),
+    renameLayoutPage: vi.fn(),
+    moveLayoutPage: vi.fn(),
+    setLayoutPageFullWidth: vi.fn(),
+    assignSectionToPage: vi.fn(),
+    addCustomSection: vi.fn(),
+    updateCustomSection: vi.fn(),
+    removeCustomSection: vi.fn(),
+    moveCustomSection: vi.fn(),
+    setSectionVisibility: vi.fn(),
+    setSectionPlacement: vi.fn(),
+    moveSectionWithinGroup: vi.fn(),
+    reorderSection: vi.fn(),
+    resetSectionOrder: vi.fn(),
+    ...overrides,
+  });
+
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => cleanup());
+
+  it("adds a page and renames an existing one", () => {
+    const store = basePagesStore();
+    mockBuilderStore.mockReturnValue(store);
+
+    render(<MockStudioInspector />);
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.structure/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.addPage/i }));
+    expect(store.addLayoutPage).toHaveBeenCalled();
+
+    const renameInput = screen.getByRole("textbox", { name: /builder.inspector.renamePage/i });
+    fireEvent.change(renameInput, { target: { value: "Trang phụ" } });
+    expect(store.renameLayoutPage).toHaveBeenCalledWith("page_1", "Trang phụ");
+  });
+
+  it("shows per-section page assignment only with 2+ pages", () => {
+    mockBuilderStore.mockReturnValue(basePagesStore());
+    const { unmount } = render(<MockStudioInspector />);
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.structure/i }));
+    expect(screen.queryByText("builder.inspector.assignSections")).toBeNull();
+    unmount();
+
+    mockBuilderStore.mockReturnValue(
+      basePagesStore({ layoutPages: [{ id: "page_1" }, { id: "page_2", name: "Extras" }] }),
+    );
+    render(<MockStudioInspector />);
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.structure/i }));
+    expect(screen.getAllByText("builder.inspector.assignSections").length).toBeGreaterThan(0);
+    // One page selector per assignable section.
+    expect(screen.getAllByRole("combobox", { name: /builder.inspector.assignSectionToPage/i })).toHaveLength(6);
+  });
+
+  it("groups sections with the same default split the PDF adapter uses (summary defaults to sidebar)", () => {
+    mockBuilderStore.mockReturnValue(basePagesStore());
+    render(<MockStudioInspector />);
+    fireEvent.click(screen.getByRole("button", { name: /builder.inspector.structure/i }));
+
+    const mainHeader = screen.getByText("builder.inspector.mainColumn");
+    const sidebarHeader = screen.getByText("builder.inspector.sidebar");
+    const summaryLabel = screen.getByText("builder.tabSummary");
+    const experienceLabel = screen.getByText("builder.tabExperience");
+
+    // Main group renders before the sidebar header; summary (default sidebar
+    // in the PDF adapter) must appear AFTER the sidebar header, experience before it.
+    expect(sidebarHeader.compareDocumentPosition(summaryLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(experienceLabel.compareDocumentPosition(sidebarHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mainHeader).toBeDefined();
   });
 });
