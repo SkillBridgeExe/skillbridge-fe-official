@@ -16,15 +16,25 @@ import {
 
 export interface AuthAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
+  _retry503?: number;
   skipAuth?: boolean;
   skipAuthRefresh?: boolean;
 }
 
 interface AuthInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
+  _retry503?: number;
   skipAuth?: boolean;
   skipAuthRefresh?: boolean;
 }
+
+/**
+ * Backoff for 503 retries on idempotent GETs. Cloud Run scales to zero, so
+ * the first hit after idle can 503 before an instance is up; two spaced
+ * retries absorb the short cold starts. Long ones (5-25s) still surface an
+ * error — the per-feature retry UI owns those.
+ */
+const RETRY_503_DELAYS_MS = [1_000, 3_000];
 
 type RefreshPayload = {
   accessToken: string;
@@ -189,6 +199,22 @@ httpClient.interceptors.response.use(
           detail: { code: data?.errorCode ?? null },
         }),
       );
+    }
+
+    // Retry idempotent GETs on 503 (Cloud Run cold start). Mutations are never
+    // auto-retried — a duplicated POST/PUT is worse than a visible error.
+    if (
+      status === 503 &&
+      originalRequest &&
+      (originalRequest.method ?? "get").toLowerCase() === "get"
+    ) {
+      const attempt = originalRequest._retry503 ?? 0;
+      const delay = RETRY_503_DELAYS_MS[attempt];
+      if (delay !== undefined) {
+        originalRequest._retry503 = attempt + 1;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return httpClient(originalRequest);
+      }
     }
 
     if (status && status >= 500) {

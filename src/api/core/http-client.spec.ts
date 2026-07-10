@@ -28,6 +28,16 @@ function unauthorized(config: InternalAxiosRequestConfig) {
   );
 }
 
+function serviceUnavailable(config: InternalAxiosRequestConfig) {
+  return new AxiosError(
+    "Service Unavailable",
+    AxiosError.ERR_BAD_RESPONSE,
+    config,
+    undefined,
+    response(config, 503, { success: false, message: "Service Unavailable", data: null }),
+  );
+}
+
 function stubLocalStorage() {
   const values = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -199,5 +209,65 @@ describe("httpClient refresh handling", () => {
     expect(refreshCalls).toBe(1);
     expect(useAuthStore.getState().authStatus).toBe("anonymous");
     expect(useAuthStore.getState().authSource).toBeNull();
+  });
+});
+
+describe("httpClient 503 cold-start retry", () => {
+  beforeEach(() => {
+    stubLocalStorage();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    httpClient.defaults.adapter = undefined;
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("retries an idempotent GET twice with backoff and succeeds", async () => {
+    let attempts = 0;
+    httpClient.defaults.adapter = vi.fn(async (config) => {
+      attempts += 1;
+      if (attempts < 3) throw serviceUnavailable(config);
+      return response(config, 200, { success: true, message: "OK", data: { ok: true }, errors: null });
+    }) as AxiosAdapter;
+
+    const resultPromise = httpClient.get("/api/cvs/cv-1/versions");
+    await vi.advanceTimersByTimeAsync(1_000); // first backoff
+    await vi.advanceTimersByTimeAsync(3_000); // second backoff
+    const result = await resultPromise;
+
+    expect(attempts).toBe(3);
+    expect(result.data.data).toEqual({ ok: true });
+  });
+
+  it("gives up after the retry budget and surfaces the 503", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    let attempts = 0;
+    httpClient.defaults.adapter = vi.fn(async (config) => {
+      attempts += 1;
+      throw serviceUnavailable(config);
+    }) as AxiosAdapter;
+
+    const resultPromise = httpClient.get("/api/cvs/cv-1/versions").catch((error) => error);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(3_000);
+    const error = await resultPromise;
+
+    expect(attempts).toBe(3); // original + 2 retries, then stop
+    expect((error as AxiosError).response?.status).toBe(503);
+  });
+
+  it("never auto-retries a mutation on 503 (double-POST risk)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    let attempts = 0;
+    httpClient.defaults.adapter = vi.fn(async (config) => {
+      attempts += 1;
+      throw serviceUnavailable(config);
+    }) as AxiosAdapter;
+
+    await expect(httpClient.post("/api/cvs/cv-1/versions", {})).rejects.toThrow();
+    expect(attempts).toBe(1);
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -130,7 +130,6 @@ describe("resume lifecycle: rename, duplicate, versions, import, download", () =
     }));
     URL.createObjectURL = vi.fn(() => "blob:fake");
     URL.revokeObjectURL = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     server = installFakeApiServer({
@@ -261,18 +260,49 @@ describe("resume lifecycle: rename, duplicate, versions, import, download", () =
     await openVersionDialog();
 
     const restoreButtons = await screen.findAllByText("Restore");
-    const start = server.calls.length;
     fireEvent.click(restoreButtons[0]);
+
+    // window.confirm is gone (compositor freeze + automation blocker) — a real
+    // dialog confirms the restore now.
+    const confirmButton = await screen.findByText("Restore version");
+    const start = server.calls.length;
+    fireEvent.click(confirmButton);
 
     await waitFor(() =>
       expect(useCvBuilderStore.getState().fullName).toBe(canonicalDocB.contact.name),
     );
-    expect(window.confirm).toHaveBeenCalled();
     expect(mutationsSince(start)).toEqual([
       PUT_BUILDER, // flush so AUTO_PRE_RESTORE captures the last keystrokes
       `POST /api/cvs/${CV_ID}/versions/${versionSummaries[0].id}/restore`,
     ]);
     expect(useCvBuilderStore.getState().draftId).toBe(CV_ID);
+  });
+
+  it("cancelling the restore confirmation touches nothing", async () => {
+    renderTopBar();
+    await openVersionDialog();
+
+    const restoreButtons = await screen.findAllByText("Restore");
+    fireEvent.click(restoreButtons[0]);
+    await screen.findByText("Restore this version?");
+
+    const start = server.calls.length;
+    fireEvent.click(screen.getByText("Cancel"));
+
+    await waitFor(() => expect(screen.queryByText("Restore this version?")).not.toBeInTheDocument());
+    expect(mutationsSince(start)).toEqual([]);
+    expect(useCvBuilderStore.getState().fullName).toBe(canonicalDocA.contact.name);
+  });
+
+  it("asks before leaving the editor with unsaved changes, via a dialog", async () => {
+    renderTopBar();
+    act(() => useAutosaveStore.getState().setIsDirty(true));
+
+    fireEvent.click(screen.getByRole("button", { name: "builder.backToDiagnosis" }));
+
+    expect(await screen.findByText("Leave the editor?")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Keep editing"));
+    await waitFor(() => expect(screen.queryByText("Leave the editor?")).not.toBeInTheDocument());
   });
 
   // ── Step 8: import JSON ────────────────────────────────────────────────────

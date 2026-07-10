@@ -66,11 +66,15 @@ export function StudioTopBar() {
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
   const [importSectionsCount, setImportSectionsCount] = useState<number>(0);
 
-  const { confirmLeave } = useUnsavedGuard();
+  const { isDirty } = useUnsavedGuard();
 
   const [showVersionPlaceholder, setShowVersionPlaceholder] = useState(false);
   const [showSharePlaceholder, setShowSharePlaceholder] = useState(false);
   const [isRenderingPdf, setIsRenderingPdf] = useState(false);
+  // Proper dialogs instead of window.confirm: the native modal freezes the
+  // compositor next to the PDF preview and blocks automation.
+  const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   // P2 version history — fetch only while the dialog is open.
   const versionsQuery = useCvVersionsQuery(draftId, showVersionPlaceholder);
@@ -127,21 +131,18 @@ export function StudioTopBar() {
     });
   };
 
-  const handleRestoreVersion = async (versionId: string) => {
+  const handleRestoreVersion = (versionId: string) => {
     if (isLocalMode || !draftId) {
       showLocalActionToast();
       return;
     }
-    if (
-      !window.confirm(
-        t(
-          "builder.actions.restoreConfirm",
-          "Restore this version? Your current draft is snapshotted first, so you can undo.",
-        ),
-      )
-    ) {
-      return;
-    }
+    setPendingRestoreId(versionId);
+  };
+
+  const confirmRestoreVersion = async () => {
+    const versionId = pendingRestoreId;
+    setPendingRestoreId(null);
+    if (!versionId) return;
     // Flush pending edits so the AUTO_PRE_RESTORE undo snapshot captures them — otherwise
     // restoring silently loses whatever was typed in the last debounce window.
     if (!(await flushDraftChanges())) return;
@@ -236,8 +237,14 @@ export function StudioTopBar() {
   };
 
   const handleBackToDiagnosis = () => {
-    if (!confirmLeave()) return;
-    
+    if (isDirty) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    navigateBackToDiagnosis();
+  };
+
+  const navigateBackToDiagnosis = () => {
     const diagnosisStore = useDiagnosisStore.getState();
     diagnosisStore.setIsFromBuilder(false);
 
@@ -801,9 +808,14 @@ export function StudioTopBar() {
                 <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
               </div>
             ) : versionsQuery.isError ? (
-              <p className="py-6 text-center text-sm text-red-500">
-                {t("builder.actions.versionsError", "Couldn't load version history.")}
-              </p>
+              <div className="flex flex-col items-center gap-2 py-6">
+                <p className="text-center text-sm text-red-500">
+                  {t("builder.actions.versionsError", "Couldn't load version history.")}
+                </p>
+                <Button size="sm" variant="outline" onClick={() => void versionsQuery.refetch()}>
+                  {t("builder.actions.versionsRetry", "Retry")}
+                </Button>
+              </div>
             ) : (versionsQuery.data?.items.length ?? 0) === 0 ? (
               <p className="py-8 text-center text-sm italic text-slate-500">
                 {t("builder.actions.noVersions", "No saved versions yet.")}
@@ -837,6 +849,43 @@ export function StudioTopBar() {
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setShowVersionPlaceholder(false)}>{t("builder.review.close", "Close")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingRestoreId} onOpenChange={(open) => !open && setPendingRestoreId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.actions.restoreConfirmTitle", "Restore this version?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "builder.actions.restoreConfirm",
+                "Restore this version? Your current draft is snapshotted first, so you can undo.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.actions.restoreConfirmCancel", "Cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmRestoreVersion()}>
+              {t("builder.actions.restoreConfirmAction", "Restore version")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("builder.leaveConfirmTitle", "Leave the editor?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("builder.unsavedChangesPrompt", "You have unsaved changes. Are you sure you want to leave?")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("builder.leaveConfirmStay", "Keep editing")}</AlertDialogCancel>
+            <AlertDialogAction onClick={navigateBackToDiagnosis}>
+              {t("builder.leaveConfirmLeave", "Leave")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
