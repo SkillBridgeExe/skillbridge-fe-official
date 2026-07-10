@@ -28,6 +28,8 @@ export type TemplateCapabilities = {
   supportsSpacing: boolean;
   supportsDenseMode: boolean;
   supportsCustomSectionOrder: boolean;
+  supportsCustomSections: boolean;
+  supportsMultiPage: boolean;
 };
 
 export const TEMPLATE_PREVIEWS: Record<Template, TemplatePreviewMeta> = {
@@ -103,6 +105,11 @@ export function getTemplateCapabilities(template: Template): TemplateCapabilitie
     supportsSpacing: true,
     supportsDenseMode: true,
     supportsCustomSectionOrder: true,
+    // Every template resolves sections generically through shared
+    // filterSections(page.main/page.sidebar) and document.tsx maps
+    // layout.pages, so custom sections and multi-page work everywhere.
+    supportsCustomSections: true,
+    supportsMultiPage: true,
   };
 }
 
