@@ -1,4 +1,4 @@
-import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon } from "lucide-react";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate, TemplateGallery, StaticTemplateThumbnail } from "../preview/TemplatePicker";
@@ -8,7 +8,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { TEMPLATE_PREVIEWS, getTemplateLayoutCapabilities } from "@/lib/resume-engine/template-meta";
+import { defaultSectionPlacement } from "@/lib/resume-engine/layout-plan";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { CustomSectionEditor } from "./CustomSectionEditor";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -65,8 +68,108 @@ const TEXT_COLORS = [
   { value: "#312e81", label: "Indigo" },
 ];
 
-const DEFAULT_MAIN_SECTIONS: CvBuilderSectionKey[] = ["summary", "experience", "education", "projects"];
-const DEFAULT_SIDEBAR_SECTIONS: CvBuilderSectionKey[] = ["skills", "certifications"];
+/**
+ * Pages panel: rename/reorder/remove pages and, with 2+ pages, assign each
+ * section to a page. Assignment lives here (not per row) to keep rows light.
+ */
+function LayoutPagesPanel({ sectionLabels }: { sectionLabels: Record<string, string> }) {
+  const { t } = useTranslation("diagnosis");
+  const store = useCvBuilderStore();
+  const pages = store.layoutPages;
+  const multiPage = pages.length > 1;
+  const assignableSections: Array<{ id: string; label: string }> = [
+    ...store.sectionOrder.map((key) => ({ id: key as string, label: sectionLabels[key] ?? key })),
+    ...store.customSections.map((section) => ({ id: section.id, label: section.title })),
+  ];
+
+  return (
+    <div className="space-y-1.5">
+      <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        {t("builder.inspector.pages")}
+      </p>
+      <div className="space-y-1.5">
+        {pages.map((page, index) => {
+          const pageLabel = page.name || t("builder.inspector.pageDefaultName", { index: index + 1 });
+          return (
+            <div key={page.id} className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white p-2 shadow-sm">
+              <span className="text-[10px] font-semibold text-slate-400 w-4 text-center shrink-0">{index + 1}</span>
+              <Input
+                value={page.name ?? ""}
+                placeholder={t("builder.inspector.pageDefaultName", { index: index + 1 })}
+                onChange={(e) => store.renameLayoutPage(page.id, e.target.value)}
+                className="h-6 flex-1 min-w-0 border-none bg-transparent px-1 text-xs shadow-none focus-visible:ring-1"
+                aria-label={t("builder.inspector.renamePage", { page: pageLabel })}
+              />
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                onClick={() => store.moveLayoutPage(page.id, "up")}
+                disabled={index === 0}
+                aria-label={t("builder.inspector.movePageUp", { page: pageLabel })}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                onClick={() => store.moveLayoutPage(page.id, "down")}
+                disabled={index === pages.length - 1}
+                aria-label={t("builder.inspector.movePageDown", { page: pageLabel })}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500"
+                onClick={() => store.removeLayoutPage(page.id)}
+                disabled={pages.length <= 1}
+                aria-label={t("builder.inspector.removePage", { page: pageLabel })}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <Button
+        variant="outline" size="sm"
+        className="w-full h-7 text-[11px] border-dashed border-slate-200 text-slate-500 hover:text-slate-700"
+        onClick={() => store.addLayoutPage()}
+      >
+        <Plus className="w-3 h-3 mr-1" />
+        {t("builder.inspector.addPage")}
+      </Button>
+
+      {multiPage && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            {t("builder.inspector.assignSections")}
+          </p>
+          {assignableSections.map(({ id, label }) => (
+            <div key={id} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1">
+              <span className="truncate text-[11px] text-slate-600">{label}</span>
+              <Select
+                value={store.sectionPage[id] ?? pages[0].id}
+                onValueChange={(pageId) => store.assignSectionToPage(id, pageId)}
+              >
+                <SelectTrigger
+                  className="h-6 w-[110px] shrink-0 text-[11px] bg-white border-slate-200"
+                  aria-label={t("builder.inspector.assignSectionToPage", { section: label })}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pages.map((page, index) => (
+                    <SelectItem key={page.id} value={page.id} className="text-xs">
+                      {page.name || t("builder.inspector.pageDefaultName", { index: index + 1 })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SortableSectionItem({
   id,
@@ -425,11 +528,13 @@ export function StudioInspector() {
                       );
                     }
 
+                    // Same default split as the PDF adapter — the groups shown
+                    // here must match where sections actually render.
                     const mainSections = store.sectionOrder.filter(k =>
-                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "main" : DEFAULT_MAIN_SECTIONS.includes(k)
+                      (store.sectionPlacement[k] ?? defaultSectionPlacement(k)) === "main"
                     );
                     const sidebarSections = store.sectionOrder.filter(k =>
-                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "sidebar" : DEFAULT_SIDEBAR_SECTIONS.includes(k)
+                      (store.sectionPlacement[k] ?? defaultSectionPlacement(k)) === "sidebar"
                     );
 
                     return (
@@ -441,6 +546,12 @@ export function StudioInspector() {
                   })()}
                 </div>
               </DndContext>
+
+              <LayoutPagesPanel sectionLabels={sectionLabels} />
+              <CustomSectionEditor
+                supportsCustomSections={layoutCapabilities.supportsCustomSections}
+                supportsSidebar={layoutCapabilities.supportsSidebar}
+              />
             </AccordionContent>
           </AccordionItem>
 
