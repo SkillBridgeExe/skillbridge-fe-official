@@ -169,6 +169,25 @@ describe("sanitizeCustomSections", () => {
     expect(second).toEqual(first);
   });
 
+  it("keeps a section whose title was cleared mid-edit under a fallback title instead of dropping its items", () => {
+    const sections = sanitizeCustomSections([
+      { id: "c1", title: "", visible: true, items: [{ id: "i1", body: "Nội dung quan trọng" }] },
+    ]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0].title).toBe("Untitled");
+    expect(sections[0].items[0].body).toBe("Nội dung quan trọng");
+  });
+
+  it("caps item heading/body length so a hostile backup cannot blow the localStorage quota", () => {
+    const sections = sanitizeCustomSections([
+      { id: "c1", title: "Big", visible: true, items: [{ id: "i1", heading: "h".repeat(500), body: "x".repeat(100_000) }] },
+    ]);
+
+    expect(sections[0].items[0].heading!.length).toBeLessThanOrEqual(200);
+    expect(sections[0].items[0].body.length).toBeLessThanOrEqual(4000);
+  });
+
   it("coerces junk shapes instead of throwing (import trust boundary)", () => {
     const sections = sanitizeCustomSections([
       null,

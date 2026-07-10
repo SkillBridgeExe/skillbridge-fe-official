@@ -13,6 +13,7 @@ import { createDefaultResumeDocumentV1 } from "./document-v1";
 import {
   buildLayoutPlanFromState,
   decomposeLayoutPlan,
+  hashString,
   normalizeLayoutPlan,
   sanitizeCustomSections,
 } from "./layout-plan";
@@ -39,15 +40,6 @@ const FONT_SCALES = new Set<ResumeFontScale>(["small", "normal", "large"]);
 const FONT_FAMILIES = new Set<ResumeFontFamily>(["inter", "serif", "roboto", "merriweather", "mono"]);
 const LINE_HEIGHTS = new Set<ResumeLineHeight>(["tight", "normal", "relaxed"]);
 const SPACINGS = new Set<ResumeSpacing>(["compact", "normal", "spacious"]);
-
-function hashString(input: string): string {
-  let hash = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-}
 
 function stableItemId(section: string, index: number, fields: Array<string | null | undefined>): string {
   const signature = fields

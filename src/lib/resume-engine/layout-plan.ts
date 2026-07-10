@@ -2,6 +2,12 @@ import type { CustomSection, CustomSectionItem, LayoutPage, ResumeLayoutPlan } f
 import type { TemplateCapabilities } from "./template-meta";
 
 const MAX_CUSTOM_SECTION_TITLE = 120;
+const MAX_CUSTOM_ITEM_HEADING = 200;
+// Import/persist write the whole store to localStorage (~5MB quota); an
+// unbounded body from a hostile backup would kill presentation persistence.
+const MAX_CUSTOM_ITEM_BODY = 4000;
+/** Sections cleared mid-edit must not vanish from the doc while they still have content. */
+export const UNTITLED_CUSTOM_SECTION = "Untitled";
 
 /**
  * Shared chokepoint for every path that loads or renders a layout plan
@@ -17,7 +23,8 @@ export type NormalizeLayoutPlanOptions = {
   preferredPlacement?: Record<string, "main" | "sidebar">;
 };
 
-function hashString(input: string): string {
+/** FNV-1a — the one hash used for every deterministic fallback id in resume-engine. */
+export function hashString(input: string): string {
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
@@ -134,6 +141,14 @@ export function buildLayoutPlanFromState(state: StudioLayoutState): ResumeLayout
     ? state.layoutPages
     : [{ id: "page_1" } as StudioLayoutState["layoutPages"][number]];
   const firstPageId = pages[0].id;
+  const pageIds = new Set(pages.map((page) => page.id));
+  // An assignment pointing at a page that no longer exists resolves to the
+  // first page — the same thing the Pages-panel Select displays — so the
+  // rendered PDF and the inspector never disagree.
+  const pageOf = (sectionId: string): string => {
+    const assigned = state.sectionPage[sectionId];
+    return assigned && pageIds.has(assigned) ? assigned : firstPageId;
+  };
 
   const entries = [
     ...state.sectionOrder.map((id) => ({
@@ -149,10 +164,10 @@ export function buildLayoutPlanFromState(state: StudioLayoutState): ResumeLayout
       ...(page.name ? { name: page.name } : {}),
       ...(page.fullWidth ? { fullWidth: true } : {}),
       main: entries
-        .filter((entry) => entry.placement === "main" && (state.sectionPage[entry.id] ?? firstPageId) === page.id)
+        .filter((entry) => entry.placement === "main" && pageOf(entry.id) === page.id)
         .map((entry) => entry.id),
       sidebar: entries
-        .filter((entry) => entry.placement === "sidebar" && (state.sectionPage[entry.id] ?? firstPageId) === page.id)
+        .filter((entry) => entry.placement === "sidebar" && pageOf(entry.id) === page.id)
         .map((entry) => entry.id),
     })),
   };
@@ -203,9 +218,15 @@ export function projectCustomSectionsToActivities(
   sections: CustomSection[],
 ): Array<{ org: string; role: null; bullets: string[] }> {
   return sections
-    .filter((section) => section.visible && section.title.trim())
+    .filter(
+      (section) =>
+        section.visible &&
+        (section.title.trim() || section.items.some((item) => (item.heading ?? item.body).trim())),
+    )
     .map((section) => ({
-      org: section.title.trim(),
+      // A title cleared mid-edit must not drop the section's items from the
+      // server doc — fall back instead of filtering the whole section out.
+      org: section.title.trim() || UNTITLED_CUSTOM_SECTION,
       role: null,
       bullets: section.items
         .map((item) => (item.heading ? `${item.heading}: ${item.body}` : item.body).trim())
@@ -227,12 +248,19 @@ export function sanitizeLayoutPages(input: unknown): Array<{ id: string; name?: 
   return pages.length ? pages : [{ id: "page_1" }];
 }
 
-/** Trust boundary companion for import: keep only string->string page assignments. */
-export function sanitizeSectionPage(input: unknown): Record<string, string> {
+/**
+ * Trust boundary companion for import: keep only string->string page
+ * assignments, and (when the page list is known) only assignments that point
+ * at a real page — an orphan id would render blank in the page Select while
+ * the plan silently re-homes the section.
+ */
+export function sanitizeSectionPage(input: unknown, validPageIds?: string[]): Record<string, string> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const valid = validPageIds ? new Set(validPageIds) : null;
   return Object.fromEntries(
     Object.entries(input as Record<string, unknown>).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0,
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" && entry[1].length > 0 && (!valid || valid.has(entry[1])),
     ),
   );
 }
@@ -252,24 +280,30 @@ export function sanitizeCustomSections(input: unknown): CustomSection[] {
     if (!raw || typeof raw !== "object") continue;
     const candidate = raw as Partial<CustomSection>;
 
-    const title = typeof candidate.title === "string" ? candidate.title.trim().slice(0, MAX_CUSTOM_SECTION_TITLE) : "";
-    if (!title) continue;
+    const rawTitle =
+      typeof candidate.title === "string" ? candidate.title.trim().slice(0, MAX_CUSTOM_SECTION_TITLE) : "";
 
     const items: CustomSectionItem[] = [];
     if (Array.isArray(candidate.items)) {
       for (const [itemIndex, rawItem] of candidate.items.entries()) {
         if (!rawItem || typeof rawItem !== "object") continue;
         const item = rawItem as Partial<CustomSectionItem>;
-        const heading = typeof item.heading === "string" ? item.heading.trim() : "";
-        const body = typeof item.body === "string" ? item.body.trim() : "";
+        const heading =
+          typeof item.heading === "string" ? item.heading.trim().slice(0, MAX_CUSTOM_ITEM_HEADING) : "";
+        const body = typeof item.body === "string" ? item.body.trim().slice(0, MAX_CUSTOM_ITEM_BODY) : "";
         if (!heading && !body) continue;
         const itemId =
           typeof item.id === "string" && item.id.trim()
             ? item.id.trim()
-            : `custom_item_${hashString(`${title}|${itemIndex}|${heading}|${body}`)}`;
+            : `custom_item_${hashString(`${rawTitle}|${itemIndex}|${heading}|${body}`)}`;
         items.push({ id: itemId, ...(heading ? { heading } : {}), body });
       }
     }
+
+    // No title AND no content -> junk, drop. Content without a title (user
+    // cleared it mid-edit) keeps the section under a fallback title.
+    if (!rawTitle && items.length === 0) continue;
+    const title = rawTitle || UNTITLED_CUSTOM_SECTION;
 
     let id =
       typeof candidate.id === "string" && candidate.id.trim()

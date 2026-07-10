@@ -191,6 +191,14 @@ export const useAuthStore = create<AuthState>()(
           clearAccessToken();
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
+          // The studio persist key holds CV content (custom sections) — it
+          // must not survive into another account's session on this machine.
+          // Key literal matches useCvBuilderStore's persist `name`.
+          try {
+            localStorage.removeItem("skillbridge-cv-studio");
+          } catch {
+            // storage unavailable — nothing persisted to clear
+          }
           set({
             authStatus: "anonymous",
             authSource: null,

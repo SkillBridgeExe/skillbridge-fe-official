@@ -11,6 +11,7 @@ import {
   sanitizeCustomSections,
   sanitizeLayoutPages,
   sanitizeSectionPage,
+  UNTITLED_CUSTOM_SECTION,
 } from "@/lib/resume-engine/layout-plan";
 import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
@@ -189,6 +190,11 @@ export interface CvBuilderState {
   /** sectionId (builtin key or custom id) -> layoutPages[].id; missing = first page. */
   sectionPage: Record<string, string>;
   customSections: CustomSection[];
+  /**
+   * Which CV the persisted customSections belong to. Hydrating a DIFFERENT
+   * CV must never inherit them (they contain content, not just layout).
+   */
+  customSectionsCvId: string | null;
   /** Transient: real page count of the last rendered preview PDF (overflow honesty). */
   renderedPageCount: number | null;
 
@@ -330,7 +336,7 @@ export interface CvBuilderState {
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
-  hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean }) => void;
+  hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean; cvId?: string | null }) => void;
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
 
@@ -424,6 +430,7 @@ const initialState = {
   layoutPages: [{ id: "page_1" }] as Array<{ id: string; name?: string; fullWidth?: boolean }>,
   sectionPage: {} as Record<string, string>,
   customSections: [] as CustomSection[],
+  customSectionsCvId: null as string | null,
   renderedPageCount: null as number | null,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
@@ -606,6 +613,7 @@ const PRESENTATION_KEYS = [
   "layoutPages",
   "sectionPage",
   "customSections",
+  "customSectionsCvId",
 ] as const satisfies ReadonlyArray<keyof CvBuilderState>;
 
 export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => ({
@@ -798,14 +806,16 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
   hydrateFromCanonical: (doc, opts) =>
     set((state) => {
       const next = canonicalToBuilderState(doc);
-      // Local custom sections are the exact copy (headings intact); the
-      // activities-derived ones are a lossy projection. Keep local ONLY when
-      // they still project to the incoming activities — same content, richer
-      // structure. When they differ, the document wins: that covers opening
-      // another CV, restoring a version, and cross-device edits.
-      const localCustomSectionsMatch =
-        state.customSections.length > 0 &&
-        JSON.stringify(projectCustomSectionsToActivities(state.customSections)) ===
+      const incomingCvId = opts?.cvId ?? null;
+      // Local custom sections may only survive a hydrate of the SAME CV —
+      // for any other (or unknown) CV the document wins outright, so content
+      // persisted on this device can never bleed into another resume.
+      const sameCv = incomingCvId !== null && incomingCvId === state.customSectionsCvId;
+
+      let customSections = next.customSections;
+      if (sameCv && state.customSections.length > 0) {
+        const projectionMatches =
+          JSON.stringify(projectCustomSectionsToActivities(state.customSections)) ===
           JSON.stringify(
             (doc.activities ?? []).map((activity) => ({
               org: (activity.org ?? "").trim(),
@@ -813,7 +823,32 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
               bullets: (activity.bullets ?? []).map((bullet) => bullet.trim()).filter(Boolean),
             })),
           );
-      const customSections = localCustomSectionsMatch ? state.customSections : next.customSections;
+        if (projectionMatches) {
+          // Same content — the local copy is richer (headings, hidden
+          // sections, stable ids), keep it wholesale.
+          customSections = state.customSections;
+        } else {
+          // Server content wins (version restore, cross-device edit), but
+          // reuse local presentation by title and keep local hidden sections
+          // — they are never written to the server by design.
+          const localByTitle = new Map(
+            state.customSections.map((section) => [section.title.trim() || UNTITLED_CUSTOM_SECTION, section]),
+          );
+          customSections = next.customSections.map((derived) => {
+            const local = localByTitle.get(derived.title);
+            return local ? { ...derived, id: local.id, placement: local.placement } : derived;
+          });
+          const derivedTitles = new Set(customSections.map((section) => section.title));
+          customSections = [
+            ...customSections,
+            ...state.customSections.filter(
+              (section) => !section.visible && !derivedTitles.has(section.title.trim() || UNTITLED_CUSTOM_SECTION),
+            ),
+          ];
+        }
+      }
+
+      const customSectionsCvId = incomingCvId ?? (opts?.preserveDraft ? state.customSectionsCvId : null);
 
       // preserveDraft: reflect new canonical content in the form WITHOUT resetting the active
       // editing session. The default (fresh Diagnosis seed) nulls draftId — doing that inside an
@@ -822,6 +857,7 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
         ? {
             ...next,
             customSections,
+            customSectionsCvId,
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
@@ -829,7 +865,7 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
           }
-        : { ...next, customSections };
+        : { ...next, customSections, customSectionsCvId };
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
@@ -971,22 +1007,29 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
     return { sectionPage: { ...s.sectionPage, [sectionId]: pageId } };
   }),
 
-  // P4 custom sections
+  // P4 custom sections — every edit stamps which CV the sections belong to,
+  // so hydrating a different CV later can refuse to inherit them.
   addCustomSection: (title) => set((s) => ({
     customSections: [
       ...s.customSections,
       { id: `custom_${uid()}`, title: title.trim() || "Untitled", placement: "main", items: [], visible: true },
     ],
+    customSectionsCvId: s.draftId ?? s.customSectionsCvId,
   })),
   updateCustomSection: (id, patch) => set((s) => ({
     customSections: s.customSections.map((section) =>
       section.id === id ? { ...section, ...patch, id: section.id } : section,
     ),
+    customSectionsCvId: s.draftId ?? s.customSectionsCvId,
   })),
   removeCustomSection: (id) => set((s) => {
     const sectionPage = { ...s.sectionPage };
     delete sectionPage[id];
-    return { customSections: s.customSections.filter((section) => section.id !== id), sectionPage };
+    return {
+      customSections: s.customSections.filter((section) => section.id !== id),
+      sectionPage,
+      customSectionsCvId: s.draftId ?? s.customSectionsCvId,
+    };
   }),
   moveCustomSection: (id, direction) => set((s) => {
     const idx = s.customSections.findIndex((section) => section.id === id);
@@ -1011,10 +1054,15 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
 
     // Trust boundary: backups are arbitrary JSON. The structural P4 fields
     // feed .map()/[0].id accesses all over the studio UI, so junk shapes
-    // here would crash the inspector.
-    if ("customSections" in cleanState) cleanState.customSections = sanitizeCustomSections(cleanState.customSections);
-    if ("layoutPages" in cleanState) cleanState.layoutPages = sanitizeLayoutPages(cleanState.layoutPages);
-    if ("sectionPage" in cleanState) cleanState.sectionPage = sanitizeSectionPage(cleanState.sectionPage);
+    // here would crash the inspector. ALWAYS assigned (not only when the key
+    // exists): an import is a whole-document overwrite, so a pre-P4 backup
+    // without these keys must clear them, not inherit the current CV's.
+    cleanState.customSections = sanitizeCustomSections(cleanState.customSections);
+    cleanState.layoutPages = sanitizeLayoutPages(cleanState.layoutPages);
+    cleanState.sectionPage = sanitizeSectionPage(
+      cleanState.sectionPage,
+      cleanState.layoutPages.map((page) => page.id),
+    );
 
     return {
       ...cleanState,
@@ -1144,4 +1192,17 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
   version: 1,
   partialize: (state) =>
     Object.fromEntries(PRESENTATION_KEYS.map((key) => [key, state[key]])) as Partial<CvBuilderState>,
+  // Rehydrate runs through the same trust boundary as import: localStorage
+  // can hold stale schemas (older deploys) or hand-edited junk, and the
+  // studio UI dereferences these shapes without guards.
+  merge: (persisted, current) => {
+    const incoming = { ...((persisted ?? {}) as Partial<CvBuilderState>) };
+    incoming.customSections = sanitizeCustomSections(incoming.customSections);
+    incoming.layoutPages = sanitizeLayoutPages(incoming.layoutPages);
+    incoming.sectionPage = sanitizeSectionPage(
+      incoming.sectionPage,
+      incoming.layoutPages.map((page) => page.id),
+    );
+    return { ...current, ...incoming };
+  },
 }));

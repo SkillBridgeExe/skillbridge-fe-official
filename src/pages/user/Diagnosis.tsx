@@ -175,7 +175,7 @@ export default function Diagnosis() {
           .then((detail) => {
             const builder = useCvBuilderStore.getState();
             if (detail.parsedJson) {
-              builder.hydrateFromCanonical(detail.parsedJson);
+              builder.hydrateFromCanonical(detail.parsedJson, { cvId: detail.id });
             }
             builder.setDraftId(detail.id);
             builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
@@ -217,7 +217,7 @@ export default function Diagnosis() {
             const wasSeededFromDiagnosis = builderBeforeHydrate.seededFromDiagnosis;
 
             if (data.parsedJson && canHydrateServerDocument) {
-              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson);
+              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson, { cvId: data.id });
             }
 
             const builder = useCvBuilderStore.getState();

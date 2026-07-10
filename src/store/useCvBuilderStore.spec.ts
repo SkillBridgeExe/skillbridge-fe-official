@@ -483,7 +483,7 @@ describe("useCvBuilderStore P4 custom sections and layout", () => {
     activities,
   });
 
-  it("keeps local custom sections (headings intact) when they still project to the incoming activities", () => {
+  it("keeps local custom sections (headings intact) when hydrating the SAME CV with matching content", () => {
     useCvBuilderStore.getState().reset();
     const local = [
       {
@@ -494,13 +494,57 @@ describe("useCvBuilderStore P4 custom sections and layout", () => {
         items: [{ id: "i1", heading: "CLB Guitar", body: "Trưởng nhóm 2024" }],
       },
     ];
-    useCvBuilderStore.setState({ customSections: local, draftId: "draft-1" });
+    useCvBuilderStore.setState({ customSections: local, customSectionsCvId: "cv-1", draftId: "cv-1" });
 
-    // Recover after refresh: server activities == local projection -> local wins.
+    // Recover after refresh: same CV + server activities == local projection -> local wins.
     useCvBuilderStore.getState().hydrateFromCanonical(
       baseDoc([{ org: "Hoạt động", role: null, bullets: ["CLB Guitar: Trưởng nhóm 2024"] }]),
+      { cvId: "cv-1" },
     );
     expect(useCvBuilderStore.getState().customSections).toEqual(local);
+  });
+
+  it("never bleeds hidden local sections into a DIFFERENT CV (empty projection is not a match)", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      customSections: [
+        { id: "custom_1", title: "Bí mật CV A", placement: "main", visible: false, items: [{ id: "i1", body: "riêng tư" }] },
+      ],
+      customSectionsCvId: "cv-A",
+    });
+
+    // Open CV B (deep link, no reset): both projections are [] but the CV differs.
+    useCvBuilderStore.getState().hydrateFromCanonical(baseDoc([]), { cvId: "cv-B" });
+
+    expect(useCvBuilderStore.getState().customSections).toEqual([]);
+    expect(useCvBuilderStore.getState().customSectionsCvId).toBe("cv-B");
+  });
+
+  it("keeps hidden sections and reuses placement by title when the same CV's server content wins", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      customSections: [
+        { id: "custom_vis", title: "Hoạt động", placement: "sidebar", visible: true, items: [{ id: "i1", body: "cũ" }] },
+        { id: "custom_hid", title: "Nháp", placement: "main", visible: false, items: [{ id: "i2", body: "đang soạn" }] },
+      ],
+      customSectionsCvId: "cv-1",
+      draftId: "cv-1",
+    });
+
+    // Same CV, server content changed (cross-device edit).
+    useCvBuilderStore.getState().hydrateFromCanonical(
+      baseDoc([{ org: "Hoạt động", role: null, bullets: ["mới từ máy khác"] }]),
+      { cvId: "cv-1", preserveDraft: true },
+    );
+
+    const sections = useCvBuilderStore.getState().customSections;
+    const visible = sections.find((section) => section.title === "Hoạt động");
+    // Server content wins but local id/placement survive the title match.
+    expect(visible?.items[0].body).toBe("mới từ máy khác");
+    expect(visible?.id).toBe("custom_vis");
+    expect(visible?.placement).toBe("sidebar");
+    // Hidden sections are local-only by design — they must not be wiped.
+    expect(sections.some((section) => section.id === "custom_hid")).toBe(true);
   });
 
   it("lets the document win when activities differ (version restore / cross-device edit)", () => {
@@ -538,6 +582,37 @@ describe("useCvBuilderStore P4 custom sections and layout", () => {
     expect(state.layoutPages.every((page) => typeof page.id === "string" && page.id)).toBe(true);
     expect(state.layoutPages.find((page) => page.id === "pg_2")?.fullWidth).toBeUndefined();
     expect(state.sectionPage).toEqual({ experience: "pg_2" });
+  });
+
+  it("import of a pre-P4 backup (no structural keys) clears the current CV's layout and custom sections", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      customSections: [
+        { id: "custom_1", title: "Của CV hiện tại", placement: "main", visible: true, items: [{ id: "i1", body: "x" }] },
+      ],
+      layoutPages: [{ id: "pg_1" }, { id: "pg_2" }],
+      sectionPage: { education: "pg_2" },
+    });
+
+    // A backup exported before P4 has none of the structural keys.
+    useCvBuilderStore.getState().importState({ fullName: "Imported User" });
+
+    const state = useCvBuilderStore.getState();
+    expect(state.fullName).toBe("Imported User");
+    expect(state.customSections).toEqual([]);
+    expect(state.layoutPages).toEqual([{ id: "page_1" }]);
+    expect(state.sectionPage).toEqual({});
+  });
+
+  it("drops imported page assignments that point at nonexistent pages", () => {
+    useCvBuilderStore.getState().reset();
+
+    useCvBuilderStore.getState().importState({
+      layoutPages: [{ id: "pg_1" }],
+      sectionPage: { education: "pg_ghost", skills: "pg_1" },
+    } as never);
+
+    expect(useCvBuilderStore.getState().sectionPage).toEqual({ skills: "pg_1" });
   });
 
   it("removing a page reassigns its sections to the first remaining page", () => {

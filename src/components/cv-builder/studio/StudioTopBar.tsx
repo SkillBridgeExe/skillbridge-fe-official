@@ -148,7 +148,7 @@ export function StudioTopBar() {
     restoreVersionMutation.mutate(versionId, {
       onSuccess: (cv) => {
         const builder = useCvBuilderStore.getState();
-        if (cv.parsedJson) builder.hydrateFromCanonical(cv.parsedJson, { preserveDraft: true });
+        if (cv.parsedJson) builder.hydrateFromCanonical(cv.parsedJson, { preserveDraft: true, cvId: cv.id });
         builder.setDraftId(cv.id);
         toast({ title: t("builder.actions.versionRestored", "Version restored") });
         setShowVersionPlaceholder(false);

@@ -228,7 +228,10 @@ function LayoutPagesPanel({
             <div key={id} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1">
               <span className="truncate text-[11px] text-slate-600">{label}</span>
               <Select
-                value={store.sectionPage[id] ?? pages[0].id}
+                value={
+                  // Orphan assignments resolve to page 1 — same rule as the renderer.
+                  pages.some((page) => page.id === store.sectionPage[id]) ? store.sectionPage[id] : pages[0].id
+                }
                 onValueChange={(pageId) => store.assignSectionToPage(id, pageId)}
               >
                 <SelectTrigger

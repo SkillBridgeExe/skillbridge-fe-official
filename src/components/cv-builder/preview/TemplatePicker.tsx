@@ -226,7 +226,9 @@ export function TemplateGallery() {
               (!!store.photoUrl && !caps.supportsAvatar) ||
               (store.customSections.length > 0 && !caps.supportsCustomSections) ||
               (store.resumeSidebarPosition === "right" && !caps.supportsSidebarPosition) ||
-              (!caps.supportsSidebar && Object.values(store.sectionPlacement).some(Boolean));
+              // usesSidebarSections, not supportsSidebar: grouped templates
+              // (bronzor, onyx...) still APPLY main/sidebar placement.
+              (!caps.usesSidebarSections && Object.values(store.sectionPlacement).some(Boolean));
 
             return (
               <>
