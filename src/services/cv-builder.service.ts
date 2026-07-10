@@ -21,6 +21,7 @@ import {
   intakeProjectFromStoryApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
+  assistantExplainApi,
   assistantSmartQuestionsApi,
   assistantRewriteApi,
   assistantSkillsNudgeApi,
@@ -29,6 +30,7 @@ import {
 import { requireSession } from "@/services/diagnosis.service";
 import type {
   AssistantAnalyzeRequest,
+  AssistantExplanation,
   AssistantRewriteRequest,
   AssistantRewriteResponse,
   CvAssistantTurn,
@@ -440,4 +442,13 @@ export async function assistantExtract(
 ): Promise<ExtractResponse> {
   requireSession();
   return assistantExtractApi(draftId, input);
+}
+
+/** Read-only guidance explanation (deterministic, no quota). */
+export async function assistantExplain(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<AssistantExplanation> {
+  requireSession();
+  return assistantExplainApi(draftId, input);
 }
