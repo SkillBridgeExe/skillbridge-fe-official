@@ -6,6 +6,7 @@ import {
   rewriteField,
   saveBuilderDraft,
   assistantAnalyze,
+  assistantExplain,
   assistantSmartQuestions,
   assistantRewrite,
   assistantSkillsNudge,
@@ -105,6 +106,14 @@ export function useAssistantAnalyzeMutation() {
   return useMutation({
     mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantAnalyzeRequest) =>
       assistantAnalyze(draftId, input),
+  });
+}
+
+/** Read-only guidance explanation. */
+export function useAssistantExplainMutation() {
+  return useMutation({
+    mutationFn: ({ draftId, ...input }: { draftId: string } & AssistantAnalyzeRequest) =>
+      assistantExplain(draftId, input),
   });
 }
 
