@@ -346,6 +346,9 @@ export function StudioTopBar() {
     // Contract: a destructive import-overwrite backs up the current server doc first
     // (AUTO_PRE_IMPORT). If the backup can't be taken, don't destroy — cancel the import.
     if (!isLocalMode && draftId) {
+      // Flush the debounced autosave first so the backup captures the exact pre-import state.
+      // The confirm modal blocks further edits, so nothing can change between flush and backup.
+      if (!(await flushDraftChanges())) return;
       try {
         await createVersionApi(draftId, undefined, "AUTO_PRE_IMPORT");
       } catch (error) {
