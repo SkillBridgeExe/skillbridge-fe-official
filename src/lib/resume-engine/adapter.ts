@@ -246,13 +246,17 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	// "languages" is a renderer-only pseudo section (not part of the stored
 	// plan); keep its historical spot on the last page.
+	// A full-width page suppresses the sidebar column in the templates, so its
+	// sidebar sections must fold into main here — never silently disappear.
+	// The stored plan keeps the user's sidebar assignment for when the page
+	// stops being full-width.
 	const rendererPages = layoutPlan.pages.map((page) => ({
 		fullWidth: page.fullWidth ?? false,
-		main: [...page.main],
-		sidebar: [...page.sidebar],
+		main: page.fullWidth ? [...page.main, ...page.sidebar] : [...page.main],
+		sidebar: page.fullWidth ? [] : [...page.sidebar],
 	}));
 	const lastPage = rendererPages[rendererPages.length - 1];
-	if (usesSidebarSections) lastPage.sidebar.push("languages");
+	if (usesSidebarSections && !lastPage.fullWidth) lastPage.sidebar.push("languages");
 	else lastPage.main.push("languages");
 
 	const educationItems = store.education

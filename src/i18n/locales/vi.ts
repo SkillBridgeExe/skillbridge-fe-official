@@ -2432,6 +2432,8 @@ export default {
         renamePage: "Đổi tên {{page}}",
         movePageUp: "Chuyển {{page}} lên",
         movePageDown: "Chuyển {{page}} xuống",
+        toggleFullWidthPage: "Bật/tắt toàn chiều ngang cho {{page}}",
+        fullWidthPageHint: "Trang toàn chiều ngang (không cột phụ)",
         assignSections: "Mục thuộc trang",
         assignSectionToPage: "Chọn trang cho {{section}}",
         pageOverflowWarning: "Nội dung đang tràn: kế hoạch {{planned}} trang nhưng PDF thực tế có {{actual}} trang. Không có nội dung nào bị cắt — hãy rút gọn nội dung, thêm trang, hoặc dùng nút bên dưới.",

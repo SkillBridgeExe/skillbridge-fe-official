@@ -2456,6 +2456,8 @@ export default {
         renamePage: "Rename {{page}}",
         movePageUp: "Move {{page}} up",
         movePageDown: "Move {{page}} down",
+        toggleFullWidthPage: "Toggle full width for {{page}}",
+        fullWidthPageHint: "Full-width page (no sidebar)",
         assignSections: "Section pages",
         assignSectionToPage: "Choose page for {{section}}",
         pageOverflowWarning: "Content overflows: the plan has {{planned}} page(s) but the rendered PDF has {{actual}}. Nothing is cut off — trim content, add a page, or use the button below.",

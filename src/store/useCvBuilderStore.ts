@@ -6,6 +6,12 @@ import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
 import type { CustomSection, ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import {
+  projectCustomSectionsToActivities,
+  sanitizeCustomSections,
+  sanitizeLayoutPages,
+  sanitizeSectionPage,
+} from "@/lib/resume-engine/layout-plan";
 import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import type { Template } from "@/lib/resume-engine/schema/templates";
@@ -517,7 +523,9 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
 
   // Custom sections project into canonical `activities` (org=title, bullets=items);
   // the inverse restores them one-bullet-per-item. Item headings were joined into
-  // the bullet text on the way out and are not split back apart.
+  // the bullet text on the way out and are not split back apart — which is why
+  // hydrateFromCanonical prefers the local sections when they still project to
+  // the same activities (see localCustomSectionsMatch).
   const customSections: CustomSection[] = (doc.activities ?? [])
     .filter((activity) => (activity.org ?? "").trim())
     .map((activity) => ({
@@ -790,16 +798,30 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
   hydrateFromCanonical: (doc, opts) =>
     set((state) => {
       const next = canonicalToBuilderState(doc);
+      // Local custom sections are the exact copy (headings intact); the
+      // activities-derived ones are a lossy projection. Keep local ONLY when
+      // they still project to the incoming activities — same content, richer
+      // structure. When they differ, the document wins: that covers opening
+      // another CV, restoring a version, and cross-device edits.
+      const localCustomSectionsMatch =
+        state.customSections.length > 0 &&
+        JSON.stringify(projectCustomSectionsToActivities(state.customSections)) ===
+          JSON.stringify(
+            (doc.activities ?? []).map((activity) => ({
+              org: (activity.org ?? "").trim(),
+              role: null,
+              bullets: (activity.bullets ?? []).map((bullet) => bullet.trim()).filter(Boolean),
+            })),
+          );
+      const customSections = localCustomSectionsMatch ? state.customSections : next.customSections;
+
       // preserveDraft: reflect new canonical content in the form WITHOUT resetting the active
       // editing session. The default (fresh Diagnosis seed) nulls draftId — doing that inside an
       // active draft would break every draftId-gated builder action (save/evaluate/rewrite/PDF).
       return opts?.preserveDraft
         ? {
             ...next,
-            // The locally persisted custom sections are the exact copy; the
-            // activities-derived ones are a lossy projection. Prefer local
-            // when this draft already has them (fresh device -> use derived).
-            customSections: state.customSections.length ? state.customSections : next.customSections,
+            customSections,
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
@@ -807,7 +829,7 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
           }
-        : next;
+        : { ...next, customSections };
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
@@ -986,6 +1008,13 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
     const cleanState = Object.fromEntries(
       Object.entries(newState).filter(([, value]) => typeof value !== "function"),
     ) as Partial<CvBuilderState>;
+
+    // Trust boundary: backups are arbitrary JSON. The structural P4 fields
+    // feed .map()/[0].id accesses all over the studio UI, so junk shapes
+    // here would crash the inspector.
+    if ("customSections" in cleanState) cleanState.customSections = sanitizeCustomSections(cleanState.customSections);
+    if ("layoutPages" in cleanState) cleanState.layoutPages = sanitizeLayoutPages(cleanState.layoutPages);
+    if ("sectionPage" in cleanState) cleanState.sectionPage = sanitizeSectionPage(cleanState.sectionPage);
 
     return {
       ...cleanState,

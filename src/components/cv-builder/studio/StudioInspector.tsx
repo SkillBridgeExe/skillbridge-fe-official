@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon, Plus, Trash2 } from "lucide-react";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon, Plus, Trash2, RectangleHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate, TemplateGallery, StaticTemplateThumbnail } from "../preview/TemplatePicker";
@@ -73,7 +73,13 @@ const TEXT_COLORS = [
  * Pages panel: rename/reorder/remove pages and, with 2+ pages, assign each
  * section to a page. Assignment lives here (not per row) to keep rows light.
  */
-function LayoutPagesPanel({ sectionLabels }: { sectionLabels: Record<string, string> }) {
+function LayoutPagesPanel({
+  sectionLabels,
+  supportsSidebar,
+}: {
+  sectionLabels: Record<string, string>;
+  supportsSidebar: boolean;
+}) {
   const { t } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
   const pages = store.layoutPages;
@@ -177,6 +183,21 @@ function LayoutPagesPanel({ sectionLabels }: { sectionLabels: Record<string, str
               >
                 <ChevronDown className="h-3.5 w-3.5" />
               </Button>
+              {supportsSidebar && (
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn(
+                    "h-6 w-6",
+                    page.fullWidth ? "text-sky-600 hover:text-sky-700" : "text-slate-400 hover:text-slate-600",
+                  )}
+                  onClick={() => store.setLayoutPageFullWidth(page.id, !page.fullWidth)}
+                  aria-label={t("builder.inspector.toggleFullWidthPage", { page: pageLabel })}
+                  aria-pressed={!!page.fullWidth}
+                  title={t("builder.inspector.fullWidthPageHint")}
+                >
+                  <RectangleHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button
                 variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500"
                 onClick={() => store.removeLayoutPage(page.id)}
@@ -608,7 +629,7 @@ export function StudioInspector() {
                 </div>
               </DndContext>
 
-              <LayoutPagesPanel sectionLabels={sectionLabels} />
+              <LayoutPagesPanel sectionLabels={sectionLabels} supportsSidebar={layoutCapabilities.supportsSidebar} />
               <CustomSectionEditor
                 supportsCustomSections={layoutCapabilities.supportsCustomSections}
                 supportsSidebar={layoutCapabilities.supportsSidebar}

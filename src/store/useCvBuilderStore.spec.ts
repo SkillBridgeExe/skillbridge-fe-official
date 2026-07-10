@@ -469,3 +469,88 @@ describe("useCvBuilderStore.structure", () => {
     expect(useCvBuilderStore.getState().experience).toEqual([]);
   });
 });
+
+describe("useCvBuilderStore P4 custom sections and layout", () => {
+  const baseDoc = (activities: CanonicalCvDocument["activities"]): CanonicalCvDocument => ({
+    language: "vi",
+    contact: { name: "A", email: "", phone: "", location: "", links: [] },
+    summary: "",
+    education: [],
+    experience: [],
+    projects: [],
+    skills: { technical: [], soft: [], languages: [], tools: [] },
+    certifications: [],
+    activities,
+  });
+
+  it("keeps local custom sections (headings intact) when they still project to the incoming activities", () => {
+    useCvBuilderStore.getState().reset();
+    const local = [
+      {
+        id: "custom_1",
+        title: "Hoạt động",
+        placement: "main" as const,
+        visible: true,
+        items: [{ id: "i1", heading: "CLB Guitar", body: "Trưởng nhóm 2024" }],
+      },
+    ];
+    useCvBuilderStore.setState({ customSections: local, draftId: "draft-1" });
+
+    // Recover after refresh: server activities == local projection -> local wins.
+    useCvBuilderStore.getState().hydrateFromCanonical(
+      baseDoc([{ org: "Hoạt động", role: null, bullets: ["CLB Guitar: Trưởng nhóm 2024"] }]),
+    );
+    expect(useCvBuilderStore.getState().customSections).toEqual(local);
+  });
+
+  it("lets the document win when activities differ (version restore / cross-device edit)", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      customSections: [
+        { id: "custom_1", title: "Cũ", placement: "main", visible: true, items: [{ id: "i1", body: "nội dung cũ" }] },
+      ],
+      draftId: "draft-1",
+    });
+
+    useCvBuilderStore.getState().hydrateFromCanonical(
+      baseDoc([{ org: "Giải thưởng", role: null, bullets: ["Học bổng kỳ 1"] }]),
+      { preserveDraft: true },
+    );
+
+    const sections = useCvBuilderStore.getState().customSections;
+    expect(sections).toHaveLength(1);
+    expect(sections[0].title).toBe("Giải thưởng");
+    expect(sections[0].items[0].body).toBe("Học bổng kỳ 1");
+  });
+
+  it("sanitizes structural fields coming from an imported backup", () => {
+    useCvBuilderStore.getState().reset();
+
+    useCvBuilderStore.getState().importState({
+      customSections: [{ title: "OK", items: [{ body: "text" }], visible: true }, 42, null] as never,
+      layoutPages: [{ id: "" }, "junk", { id: "pg_2", fullWidth: "yes" }] as never,
+      sectionPage: { experience: "pg_2", skills: 7, nested: { a: 1 } } as never,
+    });
+
+    const state = useCvBuilderStore.getState();
+    expect(state.customSections).toHaveLength(1);
+    expect(state.customSections[0].id).toMatch(/^custom_/);
+    expect(state.layoutPages.every((page) => typeof page.id === "string" && page.id)).toBe(true);
+    expect(state.layoutPages.find((page) => page.id === "pg_2")?.fullWidth).toBeUndefined();
+    expect(state.sectionPage).toEqual({ experience: "pg_2" });
+  });
+
+  it("removing a page reassigns its sections to the first remaining page", () => {
+    useCvBuilderStore.getState().reset();
+    useCvBuilderStore.setState({
+      layoutPages: [{ id: "pg_1" }, { id: "pg_2" }],
+      sectionPage: { education: "pg_2", skills: "pg_1" },
+    });
+
+    useCvBuilderStore.getState().removeLayoutPage("pg_2");
+
+    const state = useCvBuilderStore.getState();
+    expect(state.layoutPages).toEqual([{ id: "pg_1" }]);
+    expect(state.sectionPage.education).toBe("pg_1");
+  });
+});

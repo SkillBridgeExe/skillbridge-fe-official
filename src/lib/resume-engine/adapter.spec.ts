@@ -556,6 +556,36 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		}
 	});
 
+	it("folds sidebar sections into main on full-width pages instead of dropping them", () => {
+		const mockStore = {
+			fullName: "",
+			template: "gengar",
+			summary: "Text",
+			sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+			sectionPlacement: { summary: "sidebar", skills: "sidebar" },
+			layoutPages: [{ id: "pg_1", fullWidth: true }],
+			sectionPage: {},
+			customSections: [],
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: ["React"],
+			softSkills: [],
+			tools: [],
+			languages: ["English"],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		const page = result.metadata.layout.pages[0];
+
+		// Templates suppress the sidebar column on full-width pages; nothing
+		// assigned there may silently vanish (languages included).
+		expect(page.fullWidth).toBe(true);
+		expect(page.sidebar).toEqual([]);
+		expect(page.main).toEqual(expect.arrayContaining(["summary", "skills", "languages"]));
+	});
+
 	it("keeps hidden custom sections out of the rendered output but in the data", () => {
 		const mockStore = {
 			fullName: "",

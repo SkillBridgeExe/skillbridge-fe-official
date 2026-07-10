@@ -195,6 +195,49 @@ export function decomposeLayoutPlan(plan: ResumeLayoutPlan): {
 }
 
 /**
+ * The single definition of how custom sections project into canonical
+ * `activities` (BE autosave). Hydrate compares against this projection to
+ * decide whether the local sections still describe the server content.
+ */
+export function projectCustomSectionsToActivities(
+  sections: CustomSection[],
+): Array<{ org: string; role: null; bullets: string[] }> {
+  return sections
+    .filter((section) => section.visible && section.title.trim())
+    .map((section) => ({
+      org: section.title.trim(),
+      role: null,
+      bullets: section.items
+        .map((item) => (item.heading ? `${item.heading}: ${item.body}` : item.body).trim())
+        .filter(Boolean),
+    }));
+}
+
+/** Trust boundary companion for import: coerce an arbitrary layoutPages value into a safe page list. */
+export function sanitizeLayoutPages(input: unknown): Array<{ id: string; name?: string; fullWidth?: boolean }> {
+  if (!Array.isArray(input)) return [{ id: "page_1" }];
+  const used = new Set<string>();
+  const pages = input
+    .filter((page): page is Record<string, unknown> => !!page && typeof page === "object")
+    .map((page, index) => ({
+      id: uniquePageId(page.id, index, used),
+      ...(typeof page.name === "string" && page.name.trim() ? { name: page.name.trim() } : {}),
+      ...(page.fullWidth === true ? { fullWidth: true } : {}),
+    }));
+  return pages.length ? pages : [{ id: "page_1" }];
+}
+
+/** Trust boundary companion for import: keep only string->string page assignments. */
+export function sanitizeSectionPage(input: unknown): Record<string, string> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  return Object.fromEntries(
+    Object.entries(input as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0,
+    ),
+  );
+}
+
+/**
  * Trust boundary for custom sections: import/restore accept arbitrary JSON.
  * Coerces shapes, drops empty items, and keeps IDs opaque and deterministic
  * (missing IDs are re-derived from content, never random).
