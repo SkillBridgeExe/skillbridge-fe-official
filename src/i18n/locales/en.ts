@@ -3076,6 +3076,21 @@ export default {
         ats: "Optimize ATS keywords",
         shorten: "Shorten",
         impact: "Emphasize impact",
+        explain: "Why is this weak?",
+      },
+      explanation: {
+        assessment: "Assessment",
+        weakSignals: "Missing or Weak",
+        strongSignals: "Strong",
+        back: "Back",
+      },
+      signals: {
+        missing_action: "Missing action verb",
+        missing_role: "Role context unclear",
+        missing_tech: "Missing technology/tools",
+        missing_result: "No measurable result",
+        weak_evidence: "Weak evidence",
+        ats_readability: "Poor ATS readability",
       },
       reaskLimit:
         "Try editing this manually — the assistant couldn't gather enough detail.",
@@ -3086,6 +3101,7 @@ export default {
       },
       deadEnd: {
         experienceMessage: "I need more context to make this impressive.",
+        summaryMessage: "I still need a bit more detail — tell me in your own words.",
         tellStoryButton: "Tell the full story",
       },
       undo: "Undo",

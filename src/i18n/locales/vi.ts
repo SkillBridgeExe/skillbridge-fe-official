@@ -3048,6 +3048,21 @@ export default {
         ats: "Tối ưu từ khoá ATS",
         shorten: "Rút gọn",
         impact: "Nhấn mạnh kết quả",
+        explain: "Vì sao phần này yếu?",
+      },
+      explanation: {
+        assessment: "Đánh giá",
+        weakSignals: "Thiếu hoặc Yếu",
+        strongSignals: "Tốt",
+        back: "Quay lại",
+      },
+      signals: {
+        missing_action: "Thiếu động từ hành động",
+        missing_role: "Chưa rõ vai trò",
+        missing_tech: "Thiếu công nghệ/công cụ",
+        missing_result: "Thiếu kết quả đo lường được",
+        weak_evidence: "Bằng chứng yếu",
+        ats_readability: "Khó đọc cho hệ thống ATS",
       },
       reaskLimit:
         "Hãy thử sửa tay phần này — trợ lý chưa thu thập đủ chi tiết.",
@@ -3058,6 +3073,7 @@ export default {
       },
       deadEnd: {
         experienceMessage: "Mình cần thêm bối cảnh để viết phần này ấn tượng hơn.",
+        summaryMessage: "Mình vẫn cần thêm chút chi tiết — bạn kể bằng lời của mình nhé.",
         tellStoryButton: "Kể lại chi tiết",
       },
       undo: "Hoàn tác",

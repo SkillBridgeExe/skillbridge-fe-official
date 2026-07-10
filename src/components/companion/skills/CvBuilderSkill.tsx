@@ -16,9 +16,10 @@ import {
   useAssistantAnalyzeMutation,
   useAssistantSmartQuestionsMutation,
   useAssistantRewriteMutation,
+  useAssistantExplainMutation,
 } from "@/hooks/use-cv-builder";
 import { useTranslation } from "react-i18next";
-import type { AssistantAnswer, AssistantQuestion } from "@/types/companion";
+import type { AssistantAnswer, AssistantQuestion, AssistantExplanation } from "@/types/companion";
 import { assistantLocales } from "./assistant-locale";
 import { ThinkingDots } from "../ThinkingDots";
 import { openIntakeCoach } from "./open-intake-coach";
@@ -81,6 +82,7 @@ function QuestionChips({
           type="text"
           value={freeText}
           onChange={(e) => onFreeTextChange(e.target.value)}
+          maxLength={200}
           placeholder={t("companion.freeTextPlaceholder")}
           className="w-full px-3 py-2 text-xs border border-[#EAEAEA] rounded-lg bg-white focus:border-primary/40 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
         />
@@ -180,6 +182,7 @@ export function CvBuilderSkill({
   const analyzeMutation = useAssistantAnalyzeMutation();
   const smartQuestionsMutation = useAssistantSmartQuestionsMutation();
   const rewriteMutation = useAssistantRewriteMutation();
+  const explainMutation = useAssistantExplainMutation();
 
   // Per-question answers: { [gap]: { optionId, freeText } }
   const [answers, setAnswers] = useState<
@@ -194,6 +197,9 @@ export function CvBuilderSkill({
   const [askMoreActive, setAskMoreActive] = useState(false);
   const [askMoreText, setAskMoreText] = useState("");
   const [activeIntent, setActiveIntent] = useState<RewriteIntent | null>(null);
+
+  // W98: Explanation state for Batch B
+  const [companionExplanation, setCompanionExplanation] = useState<AssistantExplanation | null>(null);
 
   // W98: Intake coach offer state for experience dead ends
   const [offeredIntakeGap, setOfferedIntakeGap] = useState<string | null>(null);
@@ -213,6 +219,7 @@ export function CvBuilderSkill({
     setActiveIntent(null);
     setIsApplied(false);
     setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
 
     analyzeMutation.mutate(
       {
@@ -261,6 +268,7 @@ export function CvBuilderSkill({
     setActiveIntent(requestedAction === "analyze" ? null : requestedAction);
     setIsApplied(false);
     setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
 
     const request = {
       draftId,
@@ -290,6 +298,47 @@ export function CvBuilderSkill({
     draftId, currentValue, section, fieldPath, askLocale,
     smartQuestionsMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
     setCompanionMessage, clearCompanionAnswers, handleAnalyze,
+  ]);
+
+  // ── Trigger Explain ──
+  const handleExplain = useCallback(() => {
+    if (!draftId || !currentValue.trim() || !fieldPath) return;
+
+    setCompanionField(fieldPath, section);
+    setMascotState("thinking");
+    setCompanionTurn(null);
+    setCompanionPatch(null);
+    setCompanionMessage(null);
+    clearCompanionAnswers();
+    setAnswers({});
+    setActiveIntent(null);
+    setIsApplied(false);
+    setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
+
+    explainMutation.mutate(
+      {
+        draftId,
+        current_value: currentValue,
+        section,
+        field_path: fieldPath,
+        locale: askLocale,
+      },
+      {
+        onSuccess: (explanation) => {
+          setCompanionExplanation(explanation);
+          setMascotState("idle");
+        },
+        onError: () => {
+          setCompanionMessage(t("companion.error.unknown"));
+          setMascotState("idle");
+        },
+      }
+    );
+  }, [
+    draftId, currentValue, section, fieldPath, askLocale,
+    explainMutation, setMascotState, setCompanionField, setCompanionTurn, setCompanionPatch,
+    setCompanionMessage, clearCompanionAnswers, t
   ]);
 
   // Auto-trigger smart-questions on mount when this is a fresh field (the shell only mounts
@@ -356,7 +405,12 @@ export function CvBuilderSkill({
         };
       });
       const clarify = answersSnapshot[EXTRA_CLARIFY_GAP];
-      if (clarify?.freeText?.trim()) {
+      // Skip when a synthesized dead-end question already carries the clarify gap —
+      // the map above has emitted this answer and BE must not see it twice.
+      if (
+        clarify?.freeText?.trim() &&
+        !companionTurn.questions.some((q) => q.gap === EXTRA_CLARIFY_GAP)
+      ) {
         list.push({ gap: EXTRA_CLARIFY_GAP, option_id: "other", detail: clarify.freeText.trim() });
       }
       return list;
@@ -379,7 +433,8 @@ export function CvBuilderSkill({
         answers: answerList,
         target: fieldPath ?? "",
         kind: section === "summary" ? "summary" : "bullet",
-        locale: outputLocale,
+        locale: askLocale,
+        output_lang: outputLocale,
         ...(activeIntent ? { intent: activeIntent } : {}),
       },
       {
@@ -390,18 +445,22 @@ export function CvBuilderSkill({
             setMascotState("presenting");
           } else if (res.reason === "NEEDS_DETAIL") {
             incrementReask();
-            if (companionReaskCount + 1 >= MAX_REASK) {
+            // Read the count back from the store — the closure value is stale after increment.
+            const currentReaskCount = useCvBuilderStore.getState().companionReaskCount;
+            if (currentReaskCount >= MAX_REASK) {
               if (section === "experience") {
                 setCompanionMessage(res.message ?? t("companion.deadEnd.experienceMessage"));
                 setOfferedIntakeGap(res.gap ?? "result");
                 setMascotState("asking");
               } else {
                 setCompanionTurn({
-                  message: res.message ?? t("companion.needMoreInfo"),
+                  message: res.message ?? t("companion.deadEnd.summaryMessage"),
                   questions: [
                     {
-                      gap: res.gap ?? "result",
-                      prompt: res.message ?? t("companion.needMoreInfo"),
+                      // BE's generic NEEDS_DETAIL carries no gap — fall back to the synthetic
+                      // clarify gap, the only free-text gap the BE whitelist accepts.
+                      gap: res.gap ?? EXTRA_CLARIFY_GAP,
+                      prompt: t("companion.needMoreInfo"),
                       options: [],
                       allows_free_text: true,
                     }
@@ -409,7 +468,7 @@ export function CvBuilderSkill({
                   requires_user_confirmation: false,
                   field_patch: null,
                 });
-                setCompanionMessage(res.message ?? t("companion.needMoreInfo"));
+                setCompanionMessage(res.message ?? t("companion.deadEnd.summaryMessage"));
                 setMascotState("asking");
               }
             } else {
@@ -456,7 +515,8 @@ export function CvBuilderSkill({
           answers: answerList,
           target: fieldPath ?? "",
           kind: section === "summary" ? "summary" : "bullet",
-          locale: outputLocale,
+          locale: askLocale,
+          output_lang: outputLocale,
           ...(activeIntent ? { intent: activeIntent } : {}),
           ...(opts.tone ? { tone: opts.tone } : {}),
         },
@@ -498,6 +558,7 @@ export function CvBuilderSkill({
     setActiveIntent(intentKey);
     setIsApplied(false);
     setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
 
     rewriteMutation.mutate(
         {
@@ -506,7 +567,8 @@ export function CvBuilderSkill({
           answers: [],
           target: fieldPath ?? "",
           kind: section === "summary" ? "summary" : "bullet",
-          locale: outputLocale,
+          locale: askLocale,
+          output_lang: outputLocale,
           intent: intentKey,
         },
       {
@@ -611,13 +673,14 @@ export function CvBuilderSkill({
     setAskMoreActive(false);
     setAskMoreText("");
     setOfferedIntakeGap(null);
+    setCompanionExplanation(null);
     resetCompanion();
     useCompanionStore.getState().dismissActive();
     setActiveIntent(null);
   }, [resetCompanion]);
 
   // ── Loading state for analyze / smart-questions ──
-  if (analyzeMutation.isPending || smartQuestionsMutation.isPending) {
+  if (analyzeMutation.isPending || smartQuestionsMutation.isPending || explainMutation.isPending) {
     return (
       <div className="py-2">
         <ThinkingDots label={t("companion.analyzing")} />
@@ -678,6 +741,7 @@ export function CvBuilderSkill({
               { id: "ats", label: t("companion.intent.ats") },
               { id: "shorten", label: t("companion.intent.shorten") },
               { id: "impact", label: t("companion.intent.impact") },
+              { id: "explain", label: t("companion.intent.explain") },
             ].map((chip) => (
               <button
                 key={chip.id}
@@ -695,6 +759,8 @@ export function CvBuilderSkill({
                     handleSmartQuestions("analyze");
                   } else if (questionIntent) {
                     handleSmartQuestions(questionIntent);
+                  } else if (chip.id === "explain") {
+                    handleExplain();
                   } else if (rewriteIntent) {
                     fireDirectIntentRewrite(rewriteIntent);
                   }
@@ -705,6 +771,34 @@ export function CvBuilderSkill({
               </button>
             ))}
           </div>
+          
+          {/* Explanation Read-Only UI */}
+          {companionExplanation && (
+            <div className="mt-4 p-3 bg-[#FBFBFA] border border-[#EAEAEA] rounded-lg">
+              <h4 className="text-xs font-semibold text-[#2F3437] mb-2">{t("companion.explanation.assessment")}</h4>
+              <p className="text-xs text-[#2F3437] mb-3">{companionExplanation.message}</p>
+              
+              {companionExplanation.citedSignals.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  <h4 className="text-[10px] w-full font-bold uppercase tracking-wider text-red-500 mb-1">{t("companion.explanation.weakSignals")}</h4>
+                  {companionExplanation.citedSignals.map((s, idx) => (
+                    <span key={idx} className="px-2 py-1 rounded bg-red-50 text-red-600 text-[11px] font-medium border border-red-100">
+                      {t(`companion.signals.${s}`)}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCompanionExplanation(null)}
+                className="w-full mt-3 h-7 text-[11px]"
+              >
+                {t("companion.explanation.back")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -774,6 +868,7 @@ export function CvBuilderSkill({
             autoFocus
             value={askMoreText}
             onChange={(e) => setAskMoreText(e.target.value)}
+            maxLength={200}
             placeholder={t("companion.freeTextPlaceholder")}
             className="w-full px-3 py-2 text-xs border border-[#EAEAEA] rounded-lg bg-white focus:border-primary/40 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
           />

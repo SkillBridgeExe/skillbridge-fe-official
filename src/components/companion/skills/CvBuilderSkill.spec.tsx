@@ -21,12 +21,19 @@ vi.mock("react-i18next", () => ({
 const mutateAnalyze = vi.fn();
 const mutateSmartQuestions = vi.fn();
 const mutateRewrite = vi.fn();
+const mutateExplain = vi.fn();
 let rewritePending = false;
 vi.mock("@/hooks/use-cv-builder", () => ({
   useAssistantAnalyzeMutation: () => ({ mutate: mutateAnalyze, isPending: false }),
   useAssistantSmartQuestionsMutation: () => ({ mutate: mutateSmartQuestions, isPending: false }),
   useAssistantRewriteMutation: () => ({ mutate: mutateRewrite, isPending: rewritePending }),
+  useAssistantExplainMutation: () => ({ mutate: mutateExplain, isPending: false }),
 }));
+
+vi.mock("./open-intake-coach", () => ({
+  openIntakeCoach: vi.fn(),
+}));
+import { openIntakeCoach } from "./open-intake-coach";
 
 afterEach(() => {
   cleanup();
@@ -34,6 +41,7 @@ afterEach(() => {
   mutateAnalyze.mockReset();
   mutateSmartQuestions.mockReset();
   mutateRewrite.mockReset();
+  mutateExplain.mockReset();
   rewritePending = false;
 });
 
@@ -65,12 +73,17 @@ function seedPresenting() {
   s.setMascotState("presenting");
 }
 
-function renderSkill(onApply = vi.fn(), currentValue = "old bullet", customFieldPath = FIELD) {
+function renderSkill(
+  onApply = vi.fn(), 
+  currentValue = "old bullet", 
+  customFieldPath = FIELD, 
+  section: "experience" | "summary" | "projects" = "experience"
+) {
   return render(
     <CvBuilderSkill
       draftId="draft-1"
       fieldPath={customFieldPath}
-      section="experience"
+      section={section}
       currentValue={currentValue}
       onApply={onApply}
     />,
@@ -304,3 +317,152 @@ describe("CvBuilderSkill — Task 6a + W83 (intent-aware action chips)", () => {
     expect(mutateRewrite).not.toHaveBeenCalled();
   });
 });
+
+describe("CvBuilderSkill — W98 Batch A (Dead-ends and Undo)", () => {
+  it("summary dead end (2x NEEDS_DETAIL) does NOT call openIntakeCoach and shows free-text follow-up", () => {
+    // Seed exactly 1 previous re-ask (companionReaskCount = 1)
+    let s = useCvBuilderStore.getState();
+    s.setCompanionField("summary", "summary");
+    s.incrementReask();
+    s = useCvBuilderStore.getState();
+    expect(s.companionReaskCount).toBe(1);
+    s.setMascotState("asking");
+    s.setCompanionTurn(TURN); // setup Turn 1 response
+
+    renderSkill(vi.fn(), "A summary", "summary", "summary" as any);
+    
+    // Fill in a free text answer so "send" is enabled
+    fireEvent.change(screen.getByPlaceholderText("companion.freeTextPlaceholder"), {
+      target: { value: "some detail" },
+    });
+    // simulate sending an answer -> Turn 2 rewrite mutation fires
+    fireEvent.click(screen.getByText("companion.send"));
+
+    const [, handlers] = mutateRewrite.mock.calls[0];
+
+    act(() => handlers.onSuccess({ ok: false, reason: "NEEDS_DETAIL", message: "Still not enough" }));
+
+    s = useCvBuilderStore.getState();
+    expect(s.mascotState).toBe("asking");
+    expect(vi.mocked(openIntakeCoach)).not.toHaveBeenCalled();
+    expect(screen.queryByText("companion.deadEnd.tellStoryButton")).not.toBeInTheDocument();
+    // Fallback free-text prompt is provided
+    expect(screen.getByText("Still not enough")).toBeInTheDocument();
+    // The synthesized follow-up must carry a BE-legal gap (user_clarify), never an invented one.
+    expect(s.companionTurn?.questions[0]?.gap).toBe("user_clarify");
+  });
+
+  it("experience dead end shows the offer button and openIntakeCoach fires only on click", () => {
+    let s = useCvBuilderStore.getState();
+    s.setCompanionField(FIELD, "experience");
+    s.incrementReask();
+    s = useCvBuilderStore.getState();
+    s.setMascotState("asking");
+    s.setCompanionTurn(TURN); 
+
+    renderSkill(vi.fn(), "Did stuff", FIELD, "experience" as any);
+    
+    // Fill in a free text answer so "send" is enabled
+    fireEvent.change(screen.getByPlaceholderText("companion.freeTextPlaceholder"), {
+      target: { value: "some detail" },
+    });
+    fireEvent.click(screen.getByText("companion.send"));
+
+    const [, handlers] = mutateRewrite.mock.calls[0];
+    act(() => handlers.onSuccess({ ok: false, reason: "NEEDS_DETAIL", message: "Need more info" }));
+
+    const after = useCvBuilderStore.getState();
+    // Reask limit hit -> Experience offers the intake coach button
+    expect(after.mascotState).toBe("asking");
+    expect(vi.mocked(openIntakeCoach)).not.toHaveBeenCalled();
+    const tellStoryBtn = screen.getByText("companion.deadEnd.tellStoryButton");
+    expect(tellStoryBtn).toBeInTheDocument();
+
+    // Click it -> fires openIntakeCoach
+    fireEvent.click(tellStoryBtn);
+    expect(vi.mocked(openIntakeCoach)).toHaveBeenCalledTimes(1);
+  });
+
+  it("apply -> Undo calls onApply with before and fires no rewrite mutation", () => {
+    seedPresenting();
+    const mockOnApply = vi.fn();
+    renderSkill(mockOnApply);
+
+    // Apply
+    fireEvent.click(screen.getByText("companion.apply"));
+    expect(mockOnApply).toHaveBeenCalledWith("new bullet");
+    expect(screen.getByText("companion.undo")).toBeInTheDocument();
+
+    // Undo
+    mockOnApply.mockClear();
+    fireEvent.click(screen.getByText("companion.undo"));
+    
+    expect(mockOnApply).toHaveBeenCalledWith("old bullet"); // reverted
+    expect(mutateRewrite).not.toHaveBeenCalled(); // No API call
+    expect(useCvBuilderStore.getState().mascotState).toBe("presenting"); // back to presenting
+  });
+
+  it("apply -> Undo on a summary field restores the exact before value", () => {
+    const s = useCvBuilderStore.getState();
+    s.setCompanionField("summary", "summary");
+    s.setCompanionTurn(TURN);
+    s.setCompanionPatch({ target: "summary", before: "old summary", after: "new summary", why: "sharper" });
+    s.setMascotState("presenting");
+
+    const mockOnApply = vi.fn();
+    renderSkill(mockOnApply, "old summary", "summary", "summary");
+
+    fireEvent.click(screen.getByText("companion.apply"));
+    expect(mockOnApply).toHaveBeenCalledWith("new summary");
+
+    mockOnApply.mockClear();
+    fireEvent.click(screen.getByText("companion.undo"));
+
+    expect(mockOnApply).toHaveBeenCalledWith("old summary");
+    expect(mutateRewrite).not.toHaveBeenCalled();
+    expect(useCvBuilderStore.getState().mascotState).toBe("presenting");
+  });
+});
+
+describe("CvBuilderSkill — W98 Batch B (Explain)", () => {
+  it("renders explain chip, triggers explain mutation, and shows explanation UI", () => {
+    renderSkill(vi.fn(), "Fixed some bugs", FIELD, "experience" as any);
+
+    // Initial state: idle, show intent chips
+    const explainChip = screen.getByText("companion.intent.explain");
+    expect(explainChip).toBeInTheDocument();
+
+    // Click explain
+    fireEvent.click(explainChip);
+
+    // Expect mutation to be called
+    expect(mutateExplain).toHaveBeenCalledTimes(1);
+    const [req, handlers] = mutateExplain.mock.calls[0];
+    expect(req.draftId).toBe("draft-1");
+    expect(req.current_value).toBe("Fixed some bugs");
+    
+    // Simulate BE response
+    act(() => handlers.onSuccess({
+      type: "explanation",
+      message: "A bit too brief",
+      citedSignals: ["missing_result", "weak_evidence"]
+    }));
+
+    // Expect the read-only UI to show up
+    expect(screen.getByText("companion.explanation.assessment")).toBeInTheDocument();
+    expect(screen.getByText("A bit too brief")).toBeInTheDocument();
+
+    expect(screen.getByText("companion.explanation.weakSignals")).toBeInTheDocument();
+    expect(screen.getByText("companion.signals.missing_result")).toBeInTheDocument();
+    expect(screen.getByText("companion.signals.weak_evidence")).toBeInTheDocument();
+
+    // Read-only contract: no Apply/diff controls anywhere in the explanation state.
+    expect(screen.queryByText("companion.apply")).not.toBeInTheDocument();
+
+    // Click back
+    fireEvent.click(screen.getByText("companion.explanation.back"));
+    // Back to idle intent chips
+    expect(screen.getByText("companion.intent.explain")).toBeInTheDocument();
+  });
+});
+
