@@ -25,6 +25,7 @@ import {
 import { getBuilderSnapshot } from "@/components/cv-builder/builder-snapshot";
 import { getCvDetailApi } from "@/api/cv/list";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
 
 const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -171,6 +172,7 @@ export default function Diagnosis() {
         // the whole store, so anything typed during a slow fetch (BE cold-start can take
         // 5-25s) would be silently clobbered. The overlay blocks editing until recovery ends.
         setIsRecoveringCv(true);
+        const recoverStartedAt = performance.now();
         getCvDetailApi(recoverId)
           .then((detail) => {
             const builder = useCvBuilderStore.getState();
@@ -181,10 +183,20 @@ export default function Diagnosis() {
             builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
             builder.setSeedSourceCvId(null);
             useAutosaveStore.getState().setSaveStatus("saved");
+            captureStudioEvent("builder_recover", {
+              outcome: "success",
+              latencyMs: performance.now() - recoverStartedAt,
+              templateId: useCvBuilderStore.getState().template,
+            });
           })
           .catch((err) => {
             console.error("Failed to recover draft", err);
             useAutosaveStore.getState().setSaveStatus("local");
+            captureStudioEvent("builder_recover", {
+              outcome: "failure",
+              latencyMs: performance.now() - recoverStartedAt,
+              errorCode: studioErrorCode(err),
+            });
           })
           .finally(() => {
             setIsRecoveringCv(false);
@@ -266,6 +278,7 @@ export default function Diagnosis() {
           onError: (err: Error) => {
             // Graceful degradation: keep editing locally, surface the reason ONCE.
             useAutosaveStore.getState().setSaveStatus("local");
+            captureStudioEvent("builder_create", { outcome: "failure", errorCode: studioErrorCode(err) });
             toast({
               title: t("builder.toastDraftErrorTitle"),
               description: err?.message || t("builder.toastDraftErrorDesc"),
@@ -303,6 +316,7 @@ export default function Diagnosis() {
 
       useAutosaveStore.getState().setSaveStatus("saving");
 
+      const saveStartedAt = performance.now();
       try {
         await saveDraftMutation.mutateAsync({
           draftId,
@@ -316,6 +330,12 @@ export default function Diagnosis() {
         captureCvBuilderSaved(useCvBuilderStore.getState());
       } catch (error) {
         useAutosaveStore.getState().setSaveStatus("error");
+        // Failures only — a success event per 1.5s autosave would be noise.
+        captureStudioEvent("builder_save", {
+          outcome: "failure",
+          latencyMs: performance.now() - saveStartedAt,
+          errorCode: studioErrorCode(error),
+        });
         throw error;
       }
     };

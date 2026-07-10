@@ -32,6 +32,13 @@ import { useRef, useState } from "react";
 import { createBuilderDraftApi } from "@/api/cv/builder";
 import { createVersionApi } from "@/api/cv/versions";
 import { createStudioResumePdfBlob } from "./download-resume-pdf";
+import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
+
+/** Low-cardinality context every studio event carries. */
+const studioEventContext = () => {
+  const state = useCvBuilderStore.getState();
+  return { templateId: state.template, atsMode: Boolean(state.resumeAtsSafeMode) };
+};
 
 type ImportedResumeBackup = Record<string, unknown> & {
   $schema: "skillbridge-cv-v1";
@@ -126,8 +133,14 @@ export function StudioTopBar() {
     // version includes the user's last keystrokes.
     if (!(await flushDraftChanges())) return;
     createVersionMutation.mutate(undefined, {
-      onSuccess: () => toast({ title: t("builder.actions.versionSaved", "Version saved") }),
-      onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }),
+      onSuccess: () => {
+        captureStudioEvent("version_save", { outcome: "success", ...studioEventContext() });
+        toast({ title: t("builder.actions.versionSaved", "Version saved") });
+      },
+      onError: (e) => {
+        captureStudioEvent("version_save", { outcome: "failure", errorCode: studioErrorCode(e) });
+        toast({ title: getApiErrorMessage(e), variant: "destructive" });
+      },
     });
   };
 
@@ -151,10 +164,14 @@ export function StudioTopBar() {
         const builder = useCvBuilderStore.getState();
         if (cv.parsedJson) builder.hydrateFromCanonical(cv.parsedJson, { preserveDraft: true, cvId: cv.id });
         builder.setDraftId(cv.id);
+        captureStudioEvent("version_restore", { outcome: "success", ...studioEventContext() });
         toast({ title: t("builder.actions.versionRestored", "Version restored") });
         setShowVersionPlaceholder(false);
       },
-      onError: (e) => toast({ title: getApiErrorMessage(e), variant: "destructive" }),
+      onError: (e) => {
+        captureStudioEvent("version_restore", { outcome: "failure", errorCode: studioErrorCode(e) });
+        toast({ title: getApiErrorMessage(e), variant: "destructive" });
+      },
     });
   };
 
@@ -209,8 +226,14 @@ export function StudioTopBar() {
     });
 
     setIsRenderingPdf(true);
+    const renderStartedAt = performance.now();
     try {
       const blob = await createStudioResumePdfBlob(useCvBuilderStore.getState());
+      captureStudioEvent("pdf_download", {
+        outcome: "success",
+        latencyMs: performance.now() - renderStartedAt,
+        ...studioEventContext(),
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -226,6 +249,12 @@ export function StudioTopBar() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
+      captureStudioEvent("pdf_download", {
+        outcome: "failure",
+        latencyMs: performance.now() - renderStartedAt,
+        errorCode: studioErrorCode(err),
+        ...studioEventContext(),
+      });
       toast({
         title: t("builder.toastDownloadFailedTitle"),
         description: err instanceof Error ? err.message : t("builder.toastDownloadFailedDesc"),
@@ -359,6 +388,7 @@ export function StudioTopBar() {
       try {
         await createVersionApi(draftId, undefined, "AUTO_PRE_IMPORT");
       } catch (error) {
+        captureStudioEvent("version_import", { outcome: "failure", errorCode: studioErrorCode(error) });
         toast({
           title: getApiErrorMessage(error, t("builder.import.backupFailed")),
           variant: "destructive",
@@ -370,6 +400,7 @@ export function StudioTopBar() {
     useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
     setImportCandidate(null);
     setImportSectionsCount(0);
+    captureStudioEvent("version_import", { outcome: "success", ...studioEventContext() });
     toast({
       title: t("builder.import.success"),
     });
