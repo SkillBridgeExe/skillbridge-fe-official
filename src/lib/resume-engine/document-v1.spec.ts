@@ -201,6 +201,66 @@ describe("ResumeDocumentV1 contract", () => {
     ]);
   });
 
+  it("round-trips placement, page plan and custom sections losslessly (P4)", () => {
+    const source = richBuilderState();
+    source.sectionPlacement = { summary: "sidebar", experience: "main", skills: "main" };
+    source.layoutPages = [{ id: "pg_a", name: "Trang chính" }, { id: "pg_b", fullWidth: true }];
+    source.sectionPage = { education: "pg_b", custom_act: "pg_b" };
+    source.customSections = [
+      {
+        id: "custom_act",
+        title: "Hoạt động",
+        placement: "sidebar",
+        visible: true,
+        items: [{ id: "i1", heading: "CLB Guitar", body: "Trưởng nhóm 2024" }],
+      },
+    ];
+
+    const doc = builderStateToResumeDocumentV1(source);
+    expect(doc.metadata.layout?.pages.map((page) => page.id)).toEqual(["pg_a", "pg_b"]);
+    expect(doc.metadata.layout?.pages[1].fullWidth).toBe(true);
+    expect(doc.metadata.layout?.pages[1].main).toContain("education");
+    expect(doc.metadata.layout?.pages[1].sidebar).toContain("custom_act");
+    expect(doc.sections.custom).toHaveLength(1);
+
+    const restored = resumeDocumentV1ToBuilderState(doc);
+    expect(restored.sectionPlacement?.summary).toBe("sidebar");
+    expect(restored.sectionPlacement?.skills).toBe("main");
+    expect(restored.sectionPage?.education).toBe("pg_b");
+    expect(restored.layoutPages).toEqual([{ id: "pg_a", name: "Trang chính" }, { id: "pg_b", fullWidth: true }]);
+    expect(restored.customSections).toEqual(source.customSections);
+
+    // Second round-trip is stable (no drift).
+    const again = resumeDocumentV1ToBuilderState(
+      builderStateToResumeDocumentV1({ ...source, ...restored } as CvBuilderState),
+    );
+    expect(again.layoutPages).toEqual(restored.layoutPages);
+    expect(again.sectionPlacement).toEqual(restored.sectionPlacement);
+    expect(again.customSections).toEqual(restored.customSections);
+  });
+
+  it("derives the historical split for docs saved before the layout plan existed", () => {
+    const doc = builderStateToResumeDocumentV1(richBuilderState());
+    delete doc.metadata.layout;
+    delete doc.sections.custom;
+
+    const restored = resumeDocumentV1ToBuilderState(doc);
+    expect(restored.layoutPages).toEqual([{ id: "page_1" }]);
+    expect(restored.sectionPlacement?.experience).toBe("main");
+    expect(restored.sectionPlacement?.summary).toBe("sidebar");
+    expect(restored.sectionPlacement?.certifications).toBe("sidebar");
+    expect(restored.customSections).toEqual([]);
+    // Legacy mirror still drives the order.
+    expect(restored.sectionOrder).toEqual([
+      "summary",
+      "projects",
+      "experience",
+      "education",
+      "skills",
+      "certifications",
+    ]);
+  });
+
   it("preserves existing ids and deterministically creates missing ids", () => {
     const state = richBuilderState();
     state.projects = [

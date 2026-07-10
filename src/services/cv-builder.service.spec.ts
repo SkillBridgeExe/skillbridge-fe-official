@@ -82,6 +82,25 @@ const snapshot: BuilderSnapshot = {
       credentialUrl: "https://freecodecamp.org/cert/1",
     },
   ],
+  customSections: [
+    {
+      id: "custom_1",
+      title: "Hoạt động ngoại khóa",
+      placement: "main",
+      visible: true,
+      items: [
+        { id: "ci_1", heading: "CLB Guitar", body: "Trưởng nhóm sự kiện 2024" },
+        { id: "ci_2", body: "Tình nguyện Mùa hè xanh" },
+      ],
+    },
+    {
+      id: "custom_2",
+      title: "Ẩn",
+      placement: "sidebar",
+      visible: false,
+      items: [{ id: "ci_3", body: "Không được gửi lên BE" }],
+    },
+  ],
   cvLanguage: "en",
 };
 
@@ -107,7 +126,14 @@ describe("mapStoreToCanonical", () => {
     expect(doc.education[0].field).toBe("Software Engineering");
     expect(doc.education[0].highlights).toEqual(["Web Development", "Database Systems"]);
     expect(doc.certifications[0].issuer).toBe("freeCodeCamp");
-    expect(doc.activities).toEqual([]);
+    // P4: custom section hiện → activities (heading gộp vào bullet); section ẩn bị lọc
+    expect(doc.activities).toEqual([
+      {
+        org: "Hoạt động ngoại khóa",
+        role: null,
+        bullets: ["CLB Guitar: Trưởng nhóm sự kiện 2024", "Tình nguyện Mùa hè xanh"],
+      },
+    ]);
   });
 });
 

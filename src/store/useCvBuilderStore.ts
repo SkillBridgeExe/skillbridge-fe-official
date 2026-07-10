@@ -1,10 +1,11 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
 import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/types/companion";
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
-import type { ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import type { CustomSection, ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
 import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import type { Template } from "@/lib/resume-engine/schema/templates";
@@ -177,6 +178,12 @@ export interface CvBuilderState {
   sectionPlacement: Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
   collapsedSections: Record<string, boolean>;
 
+  // P4: canonical layout plan projection (pages + per-section page assignment + custom sections)
+  layoutPages: Array<{ id: string; name?: string; fullWidth?: boolean }>;
+  /** sectionId (builtin key or custom id) -> layoutPages[].id; missing = first page. */
+  sectionPage: Record<string, string>;
+  customSections: CustomSection[];
+
   // W87: Avatar customization
   resumePictureVisible: boolean;
   resumePictureShape: "circle" | "rounded" | "square";
@@ -277,6 +284,20 @@ export interface CvBuilderState {
   resetSectionOrder: () => void;
   reorderSection: (activeId: CvBuilderSectionKey, overId: CvBuilderSectionKey) => void;
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
+
+  // Actions — P4 layout pages
+  addLayoutPage: () => void;
+  removeLayoutPage: (pageId: string) => void;
+  renameLayoutPage: (pageId: string, name: string) => void;
+  moveLayoutPage: (pageId: string, direction: "up" | "down") => void;
+  setLayoutPageFullWidth: (pageId: string, fullWidth: boolean) => void;
+  assignSectionToPage: (sectionId: string, pageId: string) => void;
+
+  // Actions — P4 custom sections
+  addCustomSection: (title: string) => void;
+  updateCustomSection: (id: string, patch: Partial<Omit<CustomSection, "id">>) => void;
+  removeCustomSection: (id: string) => void;
+  moveCustomSection: (id: string, direction: "up" | "down") => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
   setResumePictureVisible: (visible: boolean) => void;
@@ -391,6 +412,9 @@ const initialState = {
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   sectionPlacement: {} as Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>,
   collapsedSections: {} as Record<string, boolean>,
+  layoutPages: [{ id: "page_1" }] as Array<{ id: string; name?: string; fullWidth?: boolean }>,
+  sectionPage: {} as Record<string, string>,
+  customSections: [] as CustomSection[],
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
@@ -487,6 +511,21 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     proficiency: "",
   }));
 
+  // Custom sections project into canonical `activities` (org=title, bullets=items);
+  // the inverse restores them one-bullet-per-item. Item headings were joined into
+  // the bullet text on the way out and are not split back apart.
+  const customSections: CustomSection[] = (doc.activities ?? [])
+    .filter((activity) => (activity.org ?? "").trim())
+    .map((activity) => ({
+      id: `custom_${uid()}`,
+      title: activity.org.trim(),
+      placement: "main" as const,
+      items: (activity.bullets ?? [])
+        .filter((bullet) => bullet.trim())
+        .map((bullet) => ({ id: `custom_item_${uid()}`, body: bullet.trim() })),
+      visible: true,
+    }));
+
   return {
     fullName: doc.contact?.name ?? "",
     email: doc.contact?.email ?? "",
@@ -509,6 +548,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     languages: doc.skills?.languages ?? [],
     languageDetails,
     certifications,
+    customSections,
     cvLanguage: (doc.language === "vi" ? "vi" : "en") as CvLanguage,
     // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
     draftId: null,
@@ -521,7 +561,42 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
   };
 }
 
-export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
+/**
+ * P4: presentation state (template/style/layout/custom sections) persists in
+ * localStorage. The BE autosave only stores CONTENT (CanonicalCvDocument), so
+ * without this every refresh silently reset template, colors and placement.
+ * Content stays out of here — the server draft is its source of truth.
+ */
+const PRESENTATION_KEYS = [
+  "template",
+  "resumeAccentColor",
+  "resumeFontFamily",
+  "resumeFontScale",
+  "resumeLineHeight",
+  "resumePageMargin",
+  "resumeSectionSpacing",
+  "resumeSidebarPosition",
+  "resumeSidebarWidth",
+  "resumeDividerStyle",
+  "resumeHideSectionIcons",
+  "resumePictureVisible",
+  "resumePictureShape",
+  "resumePictureSize",
+  "resumePictureBorderWidth",
+  "resumePictureBorderColor",
+  "resumeHeadingScale",
+  "resumeBaseFontSize",
+  "resumeAtsSafeMode",
+  "resumeTextColor",
+  "sectionVisibility",
+  "sectionOrder",
+  "sectionPlacement",
+  "layoutPages",
+  "sectionPage",
+  "customSections",
+] as const satisfies ReadonlyArray<keyof CvBuilderState>;
+
+export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => ({
   ...initialState,
 
   // Basic Info
@@ -717,6 +792,10 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
       return opts?.preserveDraft
         ? {
             ...next,
+            // The locally persisted custom sections are the exact copy; the
+            // activities-derived ones are a lossy projection. Prefer local
+            // when this draft already has them (fresh device -> use derived).
+            customSections: state.customSections.length ? state.customSections : next.customSections,
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
@@ -817,6 +896,8 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   resetSectionOrder: () => set({
     sectionOrder: [...initialState.sectionOrder],
     sectionPlacement: {},
+    layoutPages: [{ id: "page_1" }],
+    sectionPage: {},
   }),
   reorderSection: (activeId, overId) => set((s) => {
     const oldIndex = s.sectionOrder.indexOf(activeId);
@@ -830,6 +911,66 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setSectionPlacement: (section, placement) => set((s) => ({
     sectionPlacement: { ...s.sectionPlacement, [section]: placement },
   })),
+
+  // P4 layout pages
+  addLayoutPage: () => set((s) => ({ layoutPages: [...s.layoutPages, { id: uid() }] })),
+  removeLayoutPage: (pageId) => set((s) => {
+    if (s.layoutPages.length <= 1) return {};
+    const remaining = s.layoutPages.filter((p) => p.id !== pageId);
+    if (remaining.length === s.layoutPages.length) return {};
+    // Sections on the removed page fall back to the first remaining page.
+    const fallbackId = remaining[0].id;
+    const sectionPage = Object.fromEntries(
+      Object.entries(s.sectionPage).map(([sectionId, pid]) => [sectionId, pid === pageId ? fallbackId : pid]),
+    );
+    return { layoutPages: remaining, sectionPage };
+  }),
+  renameLayoutPage: (pageId, name) => set((s) => ({
+    layoutPages: s.layoutPages.map((p) => (p.id === pageId ? { ...p, name: name.trim() || undefined } : p)),
+  })),
+  moveLayoutPage: (pageId, direction) => set((s) => {
+    const idx = s.layoutPages.findIndex((p) => p.id === pageId);
+    if (idx < 0) return {};
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= s.layoutPages.length) return {};
+    const pages = [...s.layoutPages];
+    [pages[idx], pages[targetIdx]] = [pages[targetIdx], pages[idx]];
+    return { layoutPages: pages };
+  }),
+  setLayoutPageFullWidth: (pageId, fullWidth) => set((s) => ({
+    layoutPages: s.layoutPages.map((p) => (p.id === pageId ? { ...p, fullWidth: fullWidth || undefined } : p)),
+  })),
+  assignSectionToPage: (sectionId, pageId) => set((s) => {
+    if (!s.layoutPages.some((p) => p.id === pageId)) return {};
+    return { sectionPage: { ...s.sectionPage, [sectionId]: pageId } };
+  }),
+
+  // P4 custom sections
+  addCustomSection: (title) => set((s) => ({
+    customSections: [
+      ...s.customSections,
+      { id: `custom_${uid()}`, title: title.trim() || "Untitled", placement: "main", items: [], visible: true },
+    ],
+  })),
+  updateCustomSection: (id, patch) => set((s) => ({
+    customSections: s.customSections.map((section) =>
+      section.id === id ? { ...section, ...patch, id: section.id } : section,
+    ),
+  })),
+  removeCustomSection: (id) => set((s) => {
+    const sectionPage = { ...s.sectionPage };
+    delete sectionPage[id];
+    return { customSections: s.customSections.filter((section) => section.id !== id), sectionPage };
+  }),
+  moveCustomSection: (id, direction) => set((s) => {
+    const idx = s.customSections.findIndex((section) => section.id === id);
+    if (idx < 0) return {};
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= s.customSections.length) return {};
+    const sections = [...s.customSections];
+    [sections[idx], sections[targetIdx]] = [sections[targetIdx], sections[idx]];
+    return { customSections: sections };
+  }),
 
   importState: (newState) => set((s) => {
     const cleanState = Object.fromEntries(
@@ -959,4 +1100,9 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     companionReaskCount: 0,
     pendingProveIt: null,
   }),
+}), {
+  name: "skillbridge-cv-studio",
+  version: 1,
+  partialize: (state) =>
+    Object.fromEntries(PRESENTATION_KEYS.map((key) => [key, state[key]])) as Partial<CvBuilderState>,
 }));

@@ -63,9 +63,12 @@ export function normalizeLayoutPlan(
   }));
 
   if (pages.length === 0) {
-    pages.push({ id: uniquePageId("page_1", 0, usedPageIds), main: takeSections(options.fallbackOrder), sidebar: [] });
+    pages.push({ id: uniquePageId("page_1", 0, usedPageIds), main: [], sidebar: [] });
   }
 
+  // Known-but-unplaced sections (legacy docs without a plan, or new sections)
+  // land on the last page using their preferred/default placement — this must
+  // reproduce the historical main/sidebar split for docs saved before P4.
   const lastPage = pages[pages.length - 1];
   const orderedKnown = [
     ...options.fallbackOrder.filter((id) => known.has(id)),
@@ -74,7 +77,8 @@ export function normalizeLayoutPlan(
   for (const id of orderedKnown) {
     if (seen.has(id)) continue;
     seen.add(id);
-    if (options.preferredPlacement?.[id] === "sidebar") lastPage.sidebar.push(id);
+    const placement = options.preferredPlacement?.[id] ?? defaultSectionPlacement(id);
+    if (placement === "sidebar") lastPage.sidebar.push(id);
     else lastPage.main.push(id);
   }
 
@@ -96,6 +100,97 @@ export function applyLayoutCapabilities(plan: ResumeLayoutPlan, caps: TemplateCa
       main: [...page.main, ...page.sidebar],
       sidebar: [],
     })),
+  };
+}
+
+/** Builder sections that default to the main column when the user has not chosen a placement (mirrors the historical adapter split). */
+export const DEFAULT_MAIN_SECTIONS = new Set(["experience", "education", "projects"]);
+
+export function defaultSectionPlacement(sectionId: string): "main" | "sidebar" {
+  return DEFAULT_MAIN_SECTIONS.has(sectionId) ? "main" : "sidebar";
+}
+
+/**
+ * Structural slice of the builder store that owns layout editing. Kept as its
+ * own type (not CvBuilderState) so this module stays free of store imports.
+ */
+export type StudioLayoutState = {
+  sectionOrder: string[];
+  sectionPlacement: Partial<Record<string, "main" | "sidebar">>;
+  layoutPages: Array<{ id: string; name?: string; fullWidth?: boolean }>;
+  sectionPage: Record<string, string>;
+  customSections: CustomSection[];
+};
+
+/**
+ * Store (editing projection) -> canonical layout plan. Custom sections keep
+ * their own relative order and always follow the builtin sections within a
+ * placement.
+ */
+// ponytail: custom sections cannot interleave between builtin sections; lift
+// sectionOrder to string[] if that ever becomes a real ask.
+export function buildLayoutPlanFromState(state: StudioLayoutState): ResumeLayoutPlan {
+  const pages = state.layoutPages.length
+    ? state.layoutPages
+    : [{ id: "page_1" } as StudioLayoutState["layoutPages"][number]];
+  const firstPageId = pages[0].id;
+
+  const entries = [
+    ...state.sectionOrder.map((id) => ({
+      id,
+      placement: state.sectionPlacement[id] ?? defaultSectionPlacement(id),
+    })),
+    ...state.customSections.map((section) => ({ id: section.id, placement: section.placement })),
+  ];
+
+  return {
+    pages: pages.map((page) => ({
+      id: page.id,
+      ...(page.name ? { name: page.name } : {}),
+      ...(page.fullWidth ? { fullWidth: true } : {}),
+      main: entries
+        .filter((entry) => entry.placement === "main" && (state.sectionPage[entry.id] ?? firstPageId) === page.id)
+        .map((entry) => entry.id),
+      sidebar: entries
+        .filter((entry) => entry.placement === "sidebar" && (state.sectionPage[entry.id] ?? firstPageId) === page.id)
+        .map((entry) => entry.id),
+    })),
+  };
+}
+
+/** Canonical layout plan -> store editing projection (inverse of buildLayoutPlanFromState). */
+export function decomposeLayoutPlan(plan: ResumeLayoutPlan): {
+  layoutPages: StudioLayoutState["layoutPages"];
+  sectionPage: Record<string, string>;
+  sectionPlacement: Record<string, "main" | "sidebar">;
+  flatOrder: string[];
+} {
+  const sectionPage: Record<string, string> = {};
+  const sectionPlacement: Record<string, "main" | "sidebar"> = {};
+  const flatOrder: string[] = [];
+
+  for (const page of plan.pages) {
+    for (const id of page.main) {
+      sectionPage[id] = page.id;
+      sectionPlacement[id] = "main";
+      flatOrder.push(id);
+    }
+    for (const id of page.sidebar) {
+      sectionPage[id] = page.id;
+      sectionPlacement[id] = "sidebar";
+      flatOrder.push(id);
+    }
+  }
+
+  return {
+    layoutPages: plan.pages.map((page) => ({
+      id: page.id,
+      ...(page.name ? { name: page.name } : {}),
+      ...(page.fullWidth ? { fullWidth: true } : {}),
+    })),
+    sectionPage,
+    sectionPlacement,
+    flatOrder,
   };
 }
 

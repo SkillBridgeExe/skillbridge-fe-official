@@ -5,15 +5,15 @@ import { getTemplateCapabilities } from "./template-meta";
 const BUILTIN = ["summary", "experience", "education", "projects", "skills", "certifications"];
 
 describe("normalizeLayoutPlan", () => {
-  it("builds a single default page from fallback order when the doc has no layout", () => {
+  it("builds a single default page with the historical main/sidebar split when the doc has no layout", () => {
     const plan = normalizeLayoutPlan(undefined, {
       knownSectionIds: BUILTIN,
       fallbackOrder: ["summary", "projects", "experience", "education", "skills", "certifications"],
     });
 
     expect(plan.pages).toHaveLength(1);
-    expect(plan.pages[0].main).toEqual(["summary", "projects", "experience", "education", "skills", "certifications"]);
-    expect(plan.pages[0].sidebar).toEqual([]);
+    expect(plan.pages[0].main).toEqual(["projects", "experience", "education"]);
+    expect(plan.pages[0].sidebar).toEqual(["summary", "skills", "certifications"]);
   });
 
   it("dedupes section ids across pages, first occurrence wins", () => {
@@ -29,23 +29,19 @@ describe("normalizeLayoutPlan", () => {
 
     expect(plan.pages[0].main).toEqual(["summary", "experience"]);
     expect(plan.pages[0].sidebar).toEqual(["skills"]);
-    expect(plan.pages[1].main).toEqual(["education", "projects", "certifications"]);
+    // Missing sections land on the last page by their default placement.
+    expect(plan.pages[1].main).toEqual(["education", "projects"]);
+    expect(plan.pages[1].sidebar).toEqual(["certifications"]);
   });
 
-  it("drops unknown ids and appends missing known sections to the last page", () => {
+  it("drops unknown ids and appends missing known sections by default placement", () => {
     const plan = normalizeLayoutPlan(
       { pages: [{ id: "p1", main: ["summary", "ghost_section"], sidebar: [] }] },
       { knownSectionIds: BUILTIN, fallbackOrder: BUILTIN },
     );
 
-    expect(plan.pages[0].main).toEqual([
-      "summary",
-      "experience",
-      "education",
-      "projects",
-      "skills",
-      "certifications",
-    ]);
+    expect(plan.pages[0].main).toEqual(["summary", "experience", "education", "projects"]);
+    expect(plan.pages[0].sidebar).toEqual(["skills", "certifications"]);
   });
 
   it("appends missing custom sections to their preferred placement", () => {

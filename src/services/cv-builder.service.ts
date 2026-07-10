@@ -43,6 +43,7 @@ import type {
   Project,
   WorkExperience,
 } from "@/store/useCvBuilderStore";
+import type { CustomSection } from "@/lib/resume-engine/document-v1";
 import type {
   BuilderSection,
   BuilderSectionContent,
@@ -84,6 +85,7 @@ export interface BuilderSnapshot {
   tools: string[];
   languages: string[];
   certifications: Certification[];
+  customSections: CustomSection[];
   cvLanguage: CvLanguage;
 }
 
@@ -213,7 +215,18 @@ export function mapStoreToCanonical(snapshot: BuilderSnapshot): CanonicalCvDocum
         issuer: orNull(entry.organization),
         date: orNull(entry.issueDate),
       })),
-    activities: [],
+    // P4: visible custom sections are real CV content — project them into
+    // `activities` so diagnosis/AI see them and they survive server-side.
+    // Layout/visibility stay local; item headings join into the bullet text.
+    activities: (snapshot.customSections ?? [])
+      .filter((section) => section.visible && section.title.trim())
+      .map((section) => ({
+        org: section.title.trim(),
+        role: null,
+        bullets: section.items
+          .map((item) => (item.heading ? `${item.heading}: ${item.body}` : item.body).trim())
+          .filter(Boolean),
+      })),
   };
 }
 
