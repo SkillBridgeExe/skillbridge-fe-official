@@ -411,7 +411,7 @@ export default function Diagnosis() {
                   <CvSectionNav variant="horizontal" />
                 </div>
                 {/* Editor Content */}
-                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar motion-safe:scroll-smooth">
                   <CvFormPanel />
                 </div>
               </div>

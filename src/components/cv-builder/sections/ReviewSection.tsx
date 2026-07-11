@@ -129,7 +129,8 @@ export function ReviewSection() {
     setTimeout(() => {
       const sectionEl = document.getElementById(focusId);
       if (!sectionEl) return;
-      sectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      sectionEl.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
       // After scroll settles, focus the first editable field in the section
       setTimeout(() => {
         const firstInput = sectionEl.querySelector<HTMLElement>(
