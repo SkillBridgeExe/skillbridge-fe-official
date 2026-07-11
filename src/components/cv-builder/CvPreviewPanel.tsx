@@ -95,6 +95,8 @@ export function CvPreviewPanel() {
     <div className="flex flex-col h-full w-full relative bg-[#f3f4f6]" ref={containerRef}>
       {/* A4 Page container */}
       <div className="flex-1 overflow-auto relative custom-scrollbar shadow-inner">
+        {/* Canvas Area */}
+
         {isEmpty ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="bg-white border border-slate-200 rounded-2xl p-10 max-w-[420px] shadow-sm text-center">
@@ -164,6 +166,11 @@ export function CvPreviewPanel() {
           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={handleFitPage} title={t("builder.previewFitPage")} aria-label={t("builder.previewFitPage")}>
             <ArrowUpDown className="w-3.5 h-3.5" />
           </Button>
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+          <div className="text-[11px] font-semibold text-zinc-300 select-none px-2 flex items-center gap-1.5" title={t("builder.previewPageCount", { defaultValue: "Pages" })}>
+            <LayoutTemplate className="w-3.5 h-3.5 opacity-50" />
+            {store.renderedPageCount || 1}
+          </div>
           <div className="w-px h-4 bg-zinc-700 mx-1" />
           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={toggleFullscreen} title={isFullscreen ? t("builder.previewExitFullscreen") : t("builder.previewFullscreen")} aria-label={isFullscreen ? t("builder.previewExitFullscreen") : t("builder.previewFullscreen")}>
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}

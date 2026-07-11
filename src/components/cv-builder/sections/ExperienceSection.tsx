@@ -551,8 +551,8 @@ export function ExperienceSection() {
           <div key={exp.id} id={`experience-${exp.id}`}>
           <SectionItemCard
             key={exp.id}
-            title={exp.position || exp.company || t("builder.fields.newExperience")}
-            subtitle={exp.startDate || exp.endDate ? `${exp.startDate} - ${exp.endDate}` : undefined}
+            title={exp.position && exp.company ? `${exp.position} • ${exp.company}` : exp.position || exp.company || t("builder.fields.newExperience")}
+            subtitle={exp.startDate || exp.endDate ? `${exp.startDate || ""} - ${exp.endDate || ""}`.replace(/^\s*-\s*|\s*-\s*$/g, "") : undefined}
             onRemove={() => removeExperience(exp.id)}
             canRemove={true}
             requireConfirmOnRemove={!!exp.company || !!exp.position || !!exp.description || !!exp.achievements}
@@ -610,12 +610,12 @@ export function ExperienceSection() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>{t("builder.fields.company")} *</Label>
                 <Input value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} placeholder={t("builder.ph.company")} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>{t("builder.fields.position")} *</Label>
                 <Input value={exp.position} onChange={(e) => updateExperience(exp.id, "position", e.target.value)} placeholder={t("builder.ph.position")} />
               </div>

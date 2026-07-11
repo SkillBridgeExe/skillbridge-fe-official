@@ -624,7 +624,7 @@ export function StudioTopBar() {
         <div className="h-6 w-px bg-slate-200 mx-2" />
 
         {/* Document Title - Editable */}
-        <div className="flex items-center gap-1.5 max-w-[200px] sm:max-w-[300px] group relative">
+        <div className="flex items-center gap-1.5 min-w-0 max-w-[200px] sm:max-w-[300px] group relative shrink">
           <input
             type="text"
             className="font-semibold text-[15px] text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-primary/20 rounded-md px-2.5 py-1 w-full truncate hover:bg-slate-100 transition-colors placeholder:text-slate-400 focus:bg-white"
@@ -643,8 +643,8 @@ export function StudioTopBar() {
       </div>
 
       {/* Center - Save Status */}
-      <div className="hidden md:flex items-center justify-center flex-1">
-        <div className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 text-slate-400">
+      <div className="hidden md:flex items-center justify-center flex-1 shrink-0">
+        <div className="flex items-center justify-center gap-2 text-xs font-medium px-3 py-1.5 text-slate-400 w-[180px]">
           {isLocalMode ? (
             <span className="text-slate-500">
               {hasApiSession ? t("builder.localOnlyAuthed") : t("builder.localOnly")}
