@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw, AlertCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -658,6 +658,11 @@ export function StudioTopBar() {
             <>
               <Save className="w-3 h-3 text-slate-400" />
               <span>{t("builder.savedAt", { time: lastSavedTime })}</span>
+            </>
+          ) : saveStatus === "error" ? (
+            <>
+              <AlertCircle className="w-3 h-3 text-red-500" />
+              <span className="text-red-500 font-semibold">{t("builder.saveError")}</span>
             </>
           ) : (
             <>

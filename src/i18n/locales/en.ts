@@ -2737,6 +2737,7 @@ export default {
       collapseSection: "Collapse section",
       expandSection: "Expand section",
       saveDraft: "Save Draft",
+      saveError: "Save error",
       downloadCv: "Download CV",
       analyzeCv: "Analyze CV",
       toastSavedTitle: "Draft saved",

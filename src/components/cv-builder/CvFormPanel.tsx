@@ -4,7 +4,7 @@ import {
   User, Target, FileText, GraduationCap, Briefcase,
   FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as Sections from "./sections";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
@@ -151,6 +151,7 @@ const STATUS_INDEX_MAP: Record<string, number> = {
 export function CvFormPanel() {
   const { t, i18n } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
+  const prefersReducedMotion = useReducedMotion();
   const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, sectionFixFeedback, collapsedSections, toggleSectionCollapse, sectionOrder } = store;
   const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
@@ -456,10 +457,10 @@ export function CvFormPanel() {
             <AnimatePresence initial={false}>
               {!collapsedSections[section.id] && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+                  exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
                 >
                   <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
                     <section.component />

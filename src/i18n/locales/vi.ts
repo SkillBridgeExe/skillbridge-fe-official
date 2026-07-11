@@ -2711,6 +2711,7 @@ export default {
       collapseSection: "Thu gọn mục",
       expandSection: "Mở rộng mục",
       saveDraft: "Lưu nháp",
+      saveError: "Lỗi lưu",
       downloadCv: "Tải CV",
       analyzeCv: "Phân tích CV",
       toastSavedTitle: "Đã lưu nháp",
