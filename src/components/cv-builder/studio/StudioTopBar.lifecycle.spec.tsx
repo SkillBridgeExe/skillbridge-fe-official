@@ -345,6 +345,29 @@ describe("resume lifecycle: rename, duplicate, versions, import, download", () =
     expect(screen.getByText("builder.import.confirmTitle")).toBeInTheDocument();
   });
 
+  it("keeps the dialog open with an error when the post-import save fails (no false success)", async () => {
+    hydrateStore(canonicalDocB, "Doc B before import");
+    let putCount = 0;
+    server.routes[PUT_BUILDER] = () => {
+      putCount += 1;
+      // flush-before-backup succeeds; persisting the imported document fails
+      return putCount === 1 ? { data: cvDtoA } : { status: 500, message: "save failed" };
+    };
+    renderTopBar();
+
+    importFile(buildImportBackupValid());
+    await screen.findByText("builder.import.confirmTitle");
+    fireEvent.click(screen.getByText("builder.import.apply"));
+
+    await waitFor(() => expect(putCount).toBe(2));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The server never stored the imported doc — the dialog must stay open and
+    // surface the failure instead of announcing success.
+    expect(screen.getByText("builder.import.confirmTitle")).toBeInTheDocument();
+    // errorHeading is called with a defaultValue, so the untranslated fallback renders
+    expect(screen.getByText("Import Failed")).toBeInTheDocument();
+  });
+
   it("rejects an invalid backup file without touching the server or the store", async () => {
     hydrateStore(canonicalDocB, "Doc B before import");
     renderTopBar();

@@ -412,6 +412,12 @@ export function StudioTopBar() {
     try {
       const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
       useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
+      // Persist BEFORE announcing success: closing the dialog on a failed PUT
+      // would show "imported" while the server still holds the old document,
+      // so a reload could silently drop the imported content.
+      if (triggerSaveRef.current) {
+        await triggerSaveRef.current();
+      }
       setImportCandidate(null);
       setImportSectionsCount(0);
       setImportError(null);
@@ -419,11 +425,8 @@ export function StudioTopBar() {
       toast({
         title: t("builder.import.success"),
       });
-
-      if (triggerSaveRef.current) {
-        await triggerSaveRef.current();
-      }
     } catch (error) {
+      captureStudioEvent("version_import", { outcome: "failure", errorCode: studioErrorCode(error) });
       setImportError(getApiErrorMessage(error, t("builder.import.importError", "Failed to import CV.")));
     } finally {
       setIsImporting(false);
