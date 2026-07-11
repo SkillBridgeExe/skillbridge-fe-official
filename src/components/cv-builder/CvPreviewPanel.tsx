@@ -1,9 +1,10 @@
-import { useState, Suspense, lazy, useEffect, useRef } from "react";
+import { useState, Suspense, lazy, useEffect, useRef, MouseEvent as ReactMouseEvent } from "react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { ZoomIn, ZoomOut, Maximize, Minimize, LayoutTemplate, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate } from "./preview/TemplatePicker";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function useDebounce<T>(value: T, delay: number, stableKey: string): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -38,7 +39,39 @@ export function CvPreviewPanel() {
 
   const [scale, setScale] = useState(0.75);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // --- Panning Logic ---
+  const [isPanning, setIsPanning] = useState(false);
+  const panningInfo = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleMouseDown = (e: ReactMouseEvent) => {
+    // Only pan on left click (0) or middle click (1)
+    if (e.button !== 0 && e.button !== 1) return;
+    if (!scrollContainerRef.current) return;
+    
+    setIsPanning(true);
+    panningInfo.current = {
+      startX: e.pageX,
+      startY: e.pageY,
+      scrollLeft: scrollContainerRef.current.scrollLeft,
+      scrollTop: scrollContainerRef.current.scrollTop
+    };
+  };
+
+  const handleMouseMove = (e: ReactMouseEvent) => {
+    if (!isPanning || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const dx = e.pageX - panningInfo.current.startX;
+    const dy = e.pageY - panningInfo.current.startY;
+    scrollContainerRef.current.scrollLeft = panningInfo.current.scrollLeft - dx;
+    scrollContainerRef.current.scrollTop = panningInfo.current.scrollTop - dy;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (isPanning) setIsPanning(false);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -94,7 +127,19 @@ export function CvPreviewPanel() {
   return (
     <div className="flex flex-col h-full w-full relative bg-[#f3f4f6]" ref={containerRef}>
       {/* A4 Page container */}
-      <div className="flex-1 overflow-auto relative custom-scrollbar shadow-inner">
+      <div 
+        ref={scrollContainerRef}
+        className={cn(
+          "flex-1 overflow-auto relative custom-scrollbar shadow-inner",
+          isPanning ? "cursor-grabbing select-none" : "cursor-grab"
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUpOrLeave}
+        onMouseLeave={handleMouseUpOrLeave}
+      >
+        {/* Canvas Area */}
+
         {isEmpty ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="bg-white border border-slate-200 rounded-2xl p-10 max-w-[420px] shadow-sm text-center">
@@ -118,12 +163,21 @@ export function CvPreviewPanel() {
           <div className="min-h-full py-12 px-4 flex justify-center w-full relative">
             <div
               style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "top center",
-                transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+                width: `${794 * scale}px`,
+                height: `${(store.renderedPageCount || 1) * 1123 * scale + ((store.renderedPageCount || 1) - 1) * 32 * scale}px`, // approximate height including gap
+                transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
-              className="flex justify-center"
+              className="relative shrink-0"
             >
+              <div
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                  transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                  width: "794px"
+                }}
+                className="absolute top-0 left-0"
+              >
               <Suspense fallback={
                 <div className="w-[794px] h-[1123px] bg-white shadow-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-slate-900/5 rounded-sm">
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
@@ -142,6 +196,7 @@ export function CvPreviewPanel() {
                   <PdfRendererWrapper data={debouncedData} template={template} />
                 </div>
               </Suspense>
+              </div>
             </div>
           </div>
         )}
@@ -164,6 +219,11 @@ export function CvPreviewPanel() {
           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={handleFitPage} title={t("builder.previewFitPage")} aria-label={t("builder.previewFitPage")}>
             <ArrowUpDown className="w-3.5 h-3.5" />
           </Button>
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+          <div className="text-[11px] font-semibold text-zinc-300 select-none px-2 flex items-center gap-1.5" title={t("builder.previewPageCount", { defaultValue: "Pages" })}>
+            <LayoutTemplate className="w-3.5 h-3.5 opacity-50" />
+            {store.renderedPageCount || 1}
+          </div>
           <div className="w-px h-4 bg-zinc-700 mx-1" />
           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" onClick={toggleFullscreen} title={isFullscreen ? t("builder.previewExitFullscreen") : t("builder.previewFullscreen")} aria-label={isFullscreen ? t("builder.previewExitFullscreen") : t("builder.previewFullscreen")}>
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}

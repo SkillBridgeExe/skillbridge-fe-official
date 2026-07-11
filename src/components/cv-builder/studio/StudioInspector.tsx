@@ -533,49 +533,6 @@ export function StudioInspector() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Picture / Avatar Accordion */}
-          <AccordionItem value="picture" className="border-b-slate-100">
-            <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-slate-500" />
-                <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.inspector.pictureAvatar")}
-                </span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-4">
-                <div
-                  className={cn(
-                    "flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3",
-                    !layoutCapabilities.supportsAvatar && "opacity-50 pointer-events-none",
-                  )}
-                >
-                  <div className="space-y-0.5">
-                    <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
-                      {t("builder.inspector.showAvatar", "Show Avatar")}
-                    </label>
-                    <p className="text-[10px] text-slate-400">
-                      {store.resumeAtsSafeMode
-                        ? t("builder.inspector.atsDisabledAvatar", "ATS Safe Mode hides avatars for better parsing and compliance.")
-                        : !layoutCapabilities.supportsAvatar
-                          ? t("builder.inspector.unsupportedFeature", "This template does not support avatars.")
-                          : t("builder.inspector.avatarHint", "Toggle your profile picture.")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="show-avatar"
-                    checked={store.resumePictureVisible !== false && !store.resumeAtsSafeMode}
-                    onCheckedChange={(checked) => store.setResumePictureVisible(checked)}
-                    disabled={store.resumeAtsSafeMode}
-                  />
-                </div>
-
-                <StudioAvatarControl layoutCapabilities={layoutCapabilities} />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
           {/* Structure Accordion */}
           <AccordionItem value="structure" className="border-b-slate-100">
             <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
@@ -961,6 +918,49 @@ export function StudioInspector() {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+          {/* Picture / Avatar Accordion */}
+          <AccordionItem value="picture" className="border-b-slate-100">
+            <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-slate-500" />
+                <span className="font-semibold text-slate-800 text-sm">
+                  {t("builder.inspector.pictureAvatar")}
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 pt-1">
+              <div className="space-y-4">
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3",
+                    !layoutCapabilities.supportsAvatar && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  <div className="space-y-0.5">
+                    <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
+                      {t("builder.inspector.showAvatar", "Show Avatar")}
+                    </label>
+                    <p className="text-[10px] text-slate-400">
+                      {store.resumeAtsSafeMode
+                        ? t("builder.inspector.atsDisabledAvatar", "ATS Safe Mode hides avatars for better parsing and compliance.")
+                        : !layoutCapabilities.supportsAvatar
+                          ? t("builder.inspector.unsupportedFeature", "This template does not support avatars.")
+                          : t("builder.inspector.avatarHint", "Toggle your profile picture.")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-avatar"
+                    checked={store.resumePictureVisible !== false && !store.resumeAtsSafeMode}
+                    onCheckedChange={(checked) => store.setResumePictureVisible(checked)}
+                    disabled={store.resumeAtsSafeMode}
+                  />
+                </div>
+
+                <StudioAvatarControl layoutCapabilities={layoutCapabilities} />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
           </Accordion>
 

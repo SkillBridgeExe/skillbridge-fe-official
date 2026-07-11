@@ -405,7 +405,7 @@ export default function Diagnosis() {
               </div>
               
               {/* Zone 2: Editor (Scrollable Column) */}
-              <div className="w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
+              <div className="w-full lg:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
                 {/* Mobile Nav */}
                 <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-200 shrink-0 shadow-sm">
                   <CvSectionNav variant="horizontal" />

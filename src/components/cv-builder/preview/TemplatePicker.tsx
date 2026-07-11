@@ -215,7 +215,7 @@ export function TemplateGallery() {
 
       {/* Preview Dialog */}
       <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto">
           {previewTemplate && (() => {
             const meta = TEMPLATE_PREVIEWS[previewTemplate];
             const isCurrent = currentTemplate === previewTemplate;

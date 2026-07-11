@@ -22,8 +22,8 @@ export function EducationSection() {
   return (
     <div className="space-y-6">
       {education.length > 0 ? education.map((edu, index) => {
-        const title = edu.school || t("builder.ph.school");
-        const subtitle = edu.degree && edu.major ? `${edu.degree} - ${edu.major}` : edu.major || edu.degree;
+        const title = edu.school && edu.degree ? `${edu.degree} • ${edu.school}` : edu.school || t("builder.fields.newEducation");
+        const subtitle = [edu.major, edu.startYear || edu.endYear ? `${edu.startYear || ""} - ${edu.endYear || ""}`.replace(/^\s*-\s*|\s*-\s*$/g, "") : null].filter(Boolean).join(" | ");
         
         return (
           <div key={edu.id} id={`education-${edu.id}`}>
@@ -42,8 +42,8 @@ export function EducationSection() {
             canMoveDown={index < education.length - 1}
             defaultExpanded={index === 0 || !edu.school}
           >
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>{t("builder.fields.school")} *</Label>
                 <Input value={edu.school} onChange={(e) => updateEducation(edu.id, "school", e.target.value)} placeholder={t("builder.ph.school")} />
               </div>
@@ -63,11 +63,11 @@ export function EducationSection() {
                 <Label>{t("builder.fields.endYear")}</Label>
                 <Input value={edu.endYear} onChange={(e) => updateEducation(edu.id, "endYear", e.target.value)} placeholder={t("builder.ph.endYear")} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>{t("builder.fields.gpa")}</Label>
                 <Input value={edu.gpa} onChange={(e) => updateEducation(edu.id, "gpa", e.target.value)} placeholder={t("builder.ph.gpa")} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <div className="flex items-center justify-between">
                   <Label>{t("builder.fields.eduAchievements")}</Label>
                   <Button

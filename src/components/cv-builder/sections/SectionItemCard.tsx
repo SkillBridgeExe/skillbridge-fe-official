@@ -62,9 +62,9 @@ export function SectionItemCard({
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden transition-all group">
       <div 
-        className={cn("flex items-center justify-between p-4 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
+        className={cn("flex items-center justify-between px-3 py-2 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex-1 min-w-0 pr-4">
@@ -150,7 +150,7 @@ export function SectionItemCard({
             exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
           >
-            <div className="p-4 pt-5 bg-white">
+            <div className="p-3 bg-white">
               {children}
             </div>
           </motion.div>
