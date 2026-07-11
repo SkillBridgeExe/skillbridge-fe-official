@@ -362,7 +362,7 @@ export function CvFormPanel() {
   };
 
   return (
-    <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-6">
+    <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-4">
       {orderedSections.map((section, index) => {
         const Icon = section.icon;
         const statusIdx = STATUS_INDEX_MAP[section.id];
@@ -383,14 +383,14 @@ export function CvFormPanel() {
             className={cn(
               "cv-section-card overflow-hidden transition-all duration-300 scroll-mt-6",
               isHidden ? "bg-slate-50/50 opacity-60" : "bg-white",
-              isActive ? "ring-1 ring-primary/20 border-primary/20" : "border-slate-100",
-              "border rounded-xl shadow-sm"
+              isActive ? "ring-1 ring-primary/20 border-primary/20" : "border-slate-200",
+              "border rounded-lg"
             )}
           >
             <div
               className={cn(
-                "px-4 py-2.5 border-b transition-colors cursor-pointer select-none group",
-                isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-100"
+                "px-3 py-2 border-b transition-colors cursor-pointer select-none group",
+                isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-200"
               )}
               onClick={() => toggleSectionCollapse(section.id)}
             >
@@ -462,7 +462,7 @@ export function CvFormPanel() {
                   exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
                   transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
                 >
-                  <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
+                  <div className={cn("p-3 pt-3", isHidden && "pointer-events-none")}>
                     <section.component />
                   </div>
                 </motion.div>

@@ -245,8 +245,9 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               key={section.id}
               onClick={() => handleNavClick(index, section.id)}
               title={title}
+              aria-label={title}
               className={cn(
-                "relative w-10 h-10 mx-auto flex items-center justify-center rounded-lg transition-all duration-200 group outline-none",
+                "relative w-10 h-10 mx-auto flex items-center justify-center rounded-lg transition-all duration-200 group focus-visible:ring-2 focus-visible:ring-primary/40 outline-none",
                 isSelected
                   ? "bg-primary/10 text-primary"
                   : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800"
