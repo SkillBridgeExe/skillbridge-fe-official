@@ -341,7 +341,8 @@ export function ExperienceSection() {
 
     const match = findBulletWithSkill(experience, pendingProveIt);
     if (!match) {
-      document.getElementById("experience")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      document.getElementById("experience")?.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
       toast({
         title: t("builder.proveit.pickBullet", { skill: pendingProveIt.displayName }),
       });

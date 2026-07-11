@@ -191,7 +191,7 @@ export function CvFormPanel() {
           useCvBuilderStore.getState().setActiveSection(mostVisibleSectionIdx);
         }
       },
-      { root: null, rootMargin: "-10% 0px -60% 0px", threshold: [0, 0.5, 1] }
+      { root: null, rootMargin: "-10% 0px -60% 0px", threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
     );
 
     const elements = document.querySelectorAll(".cv-section-card");
@@ -271,7 +271,7 @@ export function CvFormPanel() {
 
     if (isEvaluating) {
       return (
-        <div className="w-16 h-6 bg-slate-100 animate-pulse rounded-full shrink-0" />
+        <div className="w-16 h-7 bg-slate-100 animate-pulse rounded-full shrink-0" />
       );
     }
 
@@ -389,7 +389,7 @@ export function CvFormPanel() {
           >
             <div
               className={cn(
-                "px-3 py-2 border-b transition-colors cursor-pointer select-none group",
+                "px-3 py-2 min-h-[52px] flex flex-col justify-center border-b transition-colors cursor-pointer select-none group",
                 isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-200"
               )}
               onClick={() => toggleSectionCollapse(section.id)}

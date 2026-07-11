@@ -8,6 +8,7 @@ import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { captureStudioEvent } from "@/lib/studio-telemetry";
+import { cn } from "@/lib/utils";
 
 export interface PdfRendererWrapperProps {
   data: ResumeData;
@@ -197,16 +198,29 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
     );
   }
 
+  // W105: derive a "still updating" signal that covers both blob generation
+  // and the period while the canvas pages of a new layer paint.
+  const hasPendingLayer = layers.length > 1;
+  const isUpdating = (isRendering || hasPendingLayer) && !error;
+
   return (
     <div className="relative shrink-0">
-      {isRendering && !error && (
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none transition-opacity">
-          <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-            {t("builder.previewUpdating")}
-          </span>
-        </div>
-      )}
+      {/* W105: Always-rendered updating badge — uses opacity transition for
+          smooth fade-in/fade-out instead of hard mount/unmount. */}
+      <div
+        className={cn(
+          "absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none transition-opacity duration-300",
+          isUpdating ? "opacity-100" : "opacity-0"
+        )}
+        aria-hidden={!isUpdating}
+      >
+        {/* spin only while visible — a perpetual animation on the hidden badge
+            would keep the compositor busy for nothing */}
+        <Loader2 className={cn("w-3.5 h-3.5 text-slate-400", isUpdating && "animate-spin")} />
+        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+          {t("builder.previewUpdating")}
+        </span>
+      </div>
       {error && layers.length > 0 && (
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-amber-50/95 backdrop-blur-sm border border-amber-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none">
           <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
@@ -224,7 +238,12 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
             key={layer.id}
             className={
               isActive
-                ? "relative opacity-100 transition-opacity duration-300"
+                ? cn(
+                    "relative transition-opacity duration-300",
+                    // W105: Subtle dimming when a newer layer is painting —
+                    // signals "update in progress" without hiding content.
+                    hasPendingLayer ? "opacity-[0.92]" : "opacity-100"
+                  )
                 : "absolute top-0 left-0 right-0 opacity-0 pointer-events-none"
             }
             aria-hidden={isPending ? "true" : "false"}

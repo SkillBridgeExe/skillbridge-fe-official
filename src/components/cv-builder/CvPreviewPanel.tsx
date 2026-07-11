@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy, useEffect, useRef, MouseEvent as ReactMouseEvent } from "react";
+import { useState, Suspense, lazy, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { ZoomIn, ZoomOut, Maximize, Minimize, LayoutTemplate, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -32,8 +32,21 @@ export function CvPreviewPanel() {
   const { t } = useTranslation("diagnosis");
 
   const resumeData = store.getResumeData();
-  const resumeDataKey = JSON.stringify(resumeData);
   const template = resolveBuilderTemplate(store.template);
+
+  // W105: Memoize the serialized key so JSON.stringify only runs when the
+  // reference object changes, and the debounce stableKey only updates when
+  // the serialised content is actually different from the previous render.
+  const dataSeqRef = useRef(0);
+  const prevKeyRef = useRef<string>("");
+  const resumeDataKey = useMemo(() => {
+    const key = JSON.stringify(resumeData);
+    if (key !== prevKeyRef.current) {
+      prevKeyRef.current = key;
+      dataSeqRef.current += 1;
+    }
+    return String(dataSeqRef.current);
+  }, [resumeData]);
 
   const debouncedData = useDebounce(resumeData, 800, resumeDataKey);
 
