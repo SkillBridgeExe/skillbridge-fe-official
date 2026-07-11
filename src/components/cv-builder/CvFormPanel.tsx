@@ -294,20 +294,29 @@ export function CvFormPanel() {
       };
     }
     if (sectionId === "experience") {
-      const idx = experience.findIndex((e) => (e.description || "").trim());
-      const exp = idx >= 0 ? experience[idx] : experience[0];
-      if (!exp || !exp.description?.trim()) return null;
-      const expPath = resumeDocumentPaths.experienceDescription(exp.id);
-      const expBefore = exp.description || "";
+      // Prefer the first entry with a description; an entry that only has
+      // achievements is still improvable — target that field instead.
+      let idx = experience.findIndex((e) => (e.description || "").trim());
+      let expField: "description" | "achievements" = "description";
+      if (idx < 0) {
+        idx = experience.findIndex((e) => (e.achievements || "").trim());
+        expField = "achievements";
+      }
+      if (idx < 0) return null;
+      const exp = experience[idx];
+      const expPath = expField === "description"
+        ? resumeDocumentPaths.experienceDescription(exp.id)
+        : resumeDocumentPaths.experienceAchievements(exp.id);
+      const expBefore = exp[expField] || "";
       return {
-        contextId: `cvbuilder:experience[${idx >= 0 ? idx : 0}].description`,
+        contextId: `cvbuilder:experience[${idx}].${expField}`,
         skill: "cv_builder" as const,
         props: {
           draftId: did,
           fieldPath: expPath,
           section: "experience",
           currentValue: expBefore,
-          onApply: (after: string) => { updateExperience(exp.id, "description", after); recheckAfterPatch("experience", expPath, expBefore, after); },
+          onApply: (after: string) => { updateExperience(exp.id, expField, after); recheckAfterPatch("experience", expPath, expBefore, after); },
         },
       };
     }

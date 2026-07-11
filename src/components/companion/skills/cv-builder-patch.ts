@@ -18,9 +18,17 @@ export function companionTargetToResumePath(
   document: ResumeDocumentV1,
   target: Pick<CvBuilderPatchTarget, "section" | "fieldPath">,
 ): string | null {
-  const { section, fieldPath } = target;
+  const { section, fieldPath: rawFieldPath } = target;
 
-  if (!fieldPath) return null;
+  if (!rawFieldPath) return null;
+
+  // Companion contexts register field identities with a "cvbuilder:" namespace prefix
+  // (e.g. ProjectsSection uses "cvbuilder:projects[0].description"). Strip it before
+  // mapping — the anchored legacy regexes below never match a prefixed path, which
+  // used to send every such Apply into patchRejected.
+  const fieldPath = rawFieldPath.startsWith("cvbuilder:")
+    ? rawFieldPath.slice("cvbuilder:".length)
+    : rawFieldPath;
 
   // 1. If it's already a W52 absolute path, return it directly.
   if (fieldPath.startsWith("/sections/")) {
