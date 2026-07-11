@@ -1689,6 +1689,7 @@ export default {
       coldStart:
         "Yêu cầu đầu tiên có thể chậm thêm ~15 giây do máy chủ đang khởi động.",
       elapsed: "Đã chạy {{seconds}} giây",
+      failed: "Không tải được",
     },
     authBanner: {
       message:
@@ -2711,6 +2712,7 @@ export default {
       collapseSection: "Thu gọn mục",
       expandSection: "Mở rộng mục",
       saveDraft: "Lưu nháp",
+      saveError: "Lỗi lưu",
       downloadCv: "Tải CV",
       analyzeCv: "Phân tích CV",
       toastSavedTitle: "Đã lưu nháp",
@@ -2879,14 +2881,22 @@ export default {
         versionRestored: "Đã khôi phục phiên bản",
         restore: "Khôi phục",
         restoreConfirm: "Khôi phục phiên bản này? Bản nháp hiện tại sẽ được lưu lại trước để bạn có thể hoàn tác.",
+        restoreConfirmTitle: "Khôi phục phiên bản này?",
+        restoreConfirmAction: "Khôi phục phiên bản",
+        restoreConfirmCancel: "Hủy",
         noVersions: "Chưa có phiên bản nào được lưu.",
         versionsError: "Không tải được lịch sử phiên bản.",
+        versionsRetry: "Thử lại",
         versionManual: "Lưu thủ công",
         versionAutoRestore: "Tự động — trước khi khôi phục",
         versionAutoImport: "Tự động — trước khi nhập",
       },
       confirmRemoveTitle: "Xoá mục này?",
       confirmRemove: "Bạn có chắc chắn muốn xóa mục này không? Thao tác này không thể hoàn tác.",
+      unsavedChangesPrompt: "Bạn có thay đổi chưa lưu. Bạn có chắc muốn rời đi?",
+      leaveConfirmTitle: "Rời trình soạn thảo?",
+      leaveConfirmStay: "Tiếp tục chỉnh sửa",
+      leaveConfirmLeave: "Rời đi",
       characters: "ký tự",
       level: {
         placeholder: "Chọn cấp độ",

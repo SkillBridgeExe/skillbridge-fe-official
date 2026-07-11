@@ -7,6 +7,7 @@ import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { captureStudioEvent } from "@/lib/studio-telemetry";
 
 export interface PdfRendererWrapperProps {
   data: ResumeData;
@@ -53,6 +54,14 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
     reportedSeqRef.current = seq;
     useCvBuilderStore.getState().setRenderedPageCount(count);
   };
+
+  // One chokepoint for all preview failure paths (blob render, canvas load):
+  // the error message itself is prose and stays out of telemetry.
+  useEffect(() => {
+    if (error) {
+      captureStudioEvent("preview_render", { outcome: "failure", errorCode: "preview_error", templateId: template });
+    }
+  }, [error, template]);
 
   useEffect(() => {
     // Leaving the preview invalidates the count — a stale number would keep

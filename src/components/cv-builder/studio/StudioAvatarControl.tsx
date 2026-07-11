@@ -205,6 +205,7 @@ export function StudioAvatarControl({ layoutCapabilities }: StudioAvatarControlP
                       handleRemove();
                     }}
                     title={t("builder.inspector.avatarRemove")}
+                    aria-label={t("builder.inspector.avatarRemove")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

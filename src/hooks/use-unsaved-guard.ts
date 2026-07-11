@@ -17,13 +17,7 @@ export function useUnsavedGuard() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty, t]);
 
-  return {
-    isDirty,
-    confirmLeave: () => {
-      if (isDirty) {
-        return window.confirm(t("builder.unsavedChangesPrompt", "You have unsaved changes. Are you sure you want to leave?"));
-      }
-      return true;
-    }
-  };
+  // In-app leave confirmation is a proper dialog owned by the caller
+  // (StudioTopBar) — window.confirm blocks the compositor and automation.
+  return { isDirty };
 }

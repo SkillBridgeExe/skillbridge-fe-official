@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
@@ -48,6 +48,7 @@ export function SectionItemCard({
 }: SectionItemCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
   const { t } = useTranslation("diagnosis");
 
   const handleRemoveClick = (e: React.MouseEvent) => {
@@ -144,10 +145,10 @@ export function SectionItemCard({
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
           >
             <div className="p-4 pt-5 bg-white">
               {children}

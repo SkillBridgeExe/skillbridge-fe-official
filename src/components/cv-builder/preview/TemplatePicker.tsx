@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
-import { Check, Info, LayoutTemplate, X } from "lucide-react";
+import { Check, Info, LayoutTemplate, X, Loader2 } from "lucide-react";
 import { TEMPLATE_PREVIEWS, getTemplateCapabilities } from "@/lib/resume-engine/template-meta";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sampleResumeData } from "@/lib/resume-engine/schema/resume/sample";
@@ -41,6 +42,8 @@ export function StaticTemplateThumbnail({ template, className }: { template: str
 // Live preview for the dialog - renders one at a time and properly revokes blob URLs
 export function LivePdfPreview({ template, className }: { template: string; className?: string }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const { t } = useTranslation("diagnosis");
   
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +73,7 @@ export function LivePdfPreview({ template, className }: { template: string; clas
         }
       } catch (err) {
         console.error("Failed to render live preview for", template, err);
+        if (!cancelled) setError(true);
       }
     };
     render();
@@ -86,9 +90,14 @@ export function LivePdfPreview({ template, className }: { template: string; clas
     <div className={cn("relative overflow-hidden rounded-md border border-slate-200/50 shadow-sm bg-slate-50", className)}>
       {imageUrl ? (
         <img src={imageUrl} alt={`${template} live preview`} className="w-full h-full object-cover bg-white animate-in fade-in duration-300" />
+      ) : error ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+           <AlertCircle className="w-5 h-5 text-slate-300" />
+           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{t("loading.failed", "Failed")}</span>
+        </div>
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
+          <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
         </div>
       )}
     </div>
