@@ -41,3 +41,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # W118 deploy guard: the bundle must carry a working PDF worker wiring
+      # (asset emitted, referenced by a chunk, current cache key) before it can
+      # reach main / the auto-deploy. Catches the recurring blank-preview class.
+      - name: Verify build (PDF worker guard)
+        run: npm run verify:build
