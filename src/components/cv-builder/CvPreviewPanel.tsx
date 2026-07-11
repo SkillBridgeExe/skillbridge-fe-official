@@ -1,9 +1,10 @@
-import { useState, Suspense, lazy, useEffect, useRef } from "react";
+import { useState, Suspense, lazy, useEffect, useRef, MouseEvent as ReactMouseEvent } from "react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { ZoomIn, ZoomOut, Maximize, Minimize, LayoutTemplate, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate } from "./preview/TemplatePicker";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function useDebounce<T>(value: T, delay: number, stableKey: string): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -38,7 +39,39 @@ export function CvPreviewPanel() {
 
   const [scale, setScale] = useState(0.75);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // --- Panning Logic ---
+  const [isPanning, setIsPanning] = useState(false);
+  const panningInfo = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleMouseDown = (e: ReactMouseEvent) => {
+    // Only pan on left click (0) or middle click (1)
+    if (e.button !== 0 && e.button !== 1) return;
+    if (!scrollContainerRef.current) return;
+    
+    setIsPanning(true);
+    panningInfo.current = {
+      startX: e.pageX,
+      startY: e.pageY,
+      scrollLeft: scrollContainerRef.current.scrollLeft,
+      scrollTop: scrollContainerRef.current.scrollTop
+    };
+  };
+
+  const handleMouseMove = (e: ReactMouseEvent) => {
+    if (!isPanning || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const dx = e.pageX - panningInfo.current.startX;
+    const dy = e.pageY - panningInfo.current.startY;
+    scrollContainerRef.current.scrollLeft = panningInfo.current.scrollLeft - dx;
+    scrollContainerRef.current.scrollTop = panningInfo.current.scrollTop - dy;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (isPanning) setIsPanning(false);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -94,7 +127,17 @@ export function CvPreviewPanel() {
   return (
     <div className="flex flex-col h-full w-full relative bg-[#f3f4f6]" ref={containerRef}>
       {/* A4 Page container */}
-      <div className="flex-1 overflow-auto relative custom-scrollbar shadow-inner">
+      <div 
+        ref={scrollContainerRef}
+        className={cn(
+          "flex-1 overflow-auto relative custom-scrollbar shadow-inner",
+          isPanning ? "cursor-grabbing select-none" : "cursor-grab"
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUpOrLeave}
+        onMouseLeave={handleMouseUpOrLeave}
+      >
         {/* Canvas Area */}
 
         {isEmpty ? (
