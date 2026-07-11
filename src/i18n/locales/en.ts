@@ -1693,6 +1693,7 @@ export default {
       coldStart:
         "First request can take ~15 extra seconds while the server wakes up.",
       elapsed: "{{seconds}}s elapsed",
+      failed: "Failed to load",
     },
     authBanner: {
       message: "Sign in to save your CV analysis and JD match history.",

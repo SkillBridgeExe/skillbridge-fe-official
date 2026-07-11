@@ -1,6 +1,7 @@
 import posthog from "posthog-js";
 import { isAxiosError } from "axios";
 import { ApiError } from "@/lib/api-error";
+import { POSTHOG_PROJECT_TOKEN } from "@/lib/runtime-config";
 
 /**
  * Non-PII telemetry for Resume Studio (P5-5). Every event is built through a
@@ -75,9 +76,12 @@ export function buildStudioEventProperties(input: StudioEventInput): StudioEvent
 
 /** Fire-and-forget: telemetry must never break a user flow. */
 export function captureStudioEvent(operation: StudioOperation, input: StudioEventInput): void {
+  // No PostHog project provisioned (App.tsx only inits when the token is set)
+  // → telemetry is dormant: clean no-op, nothing sent anywhere.
+  if (!POSTHOG_PROJECT_TOKEN) return;
   try {
     posthog.capture(`studio_${operation}`, buildStudioEventProperties(input));
   } catch {
-    // PostHog unavailable (tests, blocked, not initialized) — drop silently.
+    // PostHog unavailable (tests, blocked) — drop silently.
   }
 }

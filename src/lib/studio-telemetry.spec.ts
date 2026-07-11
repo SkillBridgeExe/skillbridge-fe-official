@@ -9,6 +9,9 @@ import {
 } from "./studio-telemetry";
 
 vi.mock("posthog-js", () => ({ default: { capture: vi.fn() } }));
+// Simulate a provisioned PostHog project; the no-token dormant path is
+// asserted separately below via the real runtime-config default ("").
+vi.mock("@/lib/runtime-config", () => ({ POSTHOG_PROJECT_TOKEN: "phc_test_token" }));
 import posthog from "posthog-js";
 
 describe("studio telemetry", () => {

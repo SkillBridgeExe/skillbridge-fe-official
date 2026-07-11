@@ -1689,6 +1689,7 @@ export default {
       coldStart:
         "Yêu cầu đầu tiên có thể chậm thêm ~15 giây do máy chủ đang khởi động.",
       elapsed: "Đã chạy {{seconds}} giây",
+      failed: "Không tải được",
     },
     authBanner: {
       message:
