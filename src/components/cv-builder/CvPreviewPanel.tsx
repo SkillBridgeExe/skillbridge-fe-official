@@ -163,12 +163,21 @@ export function CvPreviewPanel() {
           <div className="min-h-full py-12 px-4 flex justify-center w-full relative">
             <div
               style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "top center",
-                transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+                width: `${794 * scale}px`,
+                height: `${(store.renderedPageCount || 1) * 1123 * scale + ((store.renderedPageCount || 1) - 1) * 32 * scale}px`, // approximate height including gap
+                transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
-              className="flex justify-center"
+              className="relative shrink-0"
             >
+              <div
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                  transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                  width: "794px"
+                }}
+                className="absolute top-0 left-0"
+              >
               <Suspense fallback={
                 <div className="w-[794px] h-[1123px] bg-white shadow-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-slate-900/5 rounded-sm">
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
@@ -187,6 +196,7 @@ export function CvPreviewPanel() {
                   <PdfRendererWrapper data={debouncedData} template={template} />
                 </div>
               </Suspense>
+              </div>
             </div>
           </div>
         )}
