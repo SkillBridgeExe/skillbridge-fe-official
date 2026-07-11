@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { createResumePdfBlob } from "@resume-engine/pdf/browser";
 import { PdfCanvasDocument, PdfCanvasPage } from "@resume-engine/preview/pdf-canvas";
+import { PDF_POINT_TO_CSS_PX } from "@resume-engine/preview/preview.shared";
 import { PdfErrorBoundary } from "./PdfErrorBoundary";
 import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
@@ -275,7 +276,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                         <PdfCanvasPage
                           document={doc}
                           pageNumber={i + 1}
-                          pageScale={1.5}
+                          pageScale={PDF_POINT_TO_CSS_PX}
                           totalPages={doc.numPages}
                           showPageNumbers={false}
                           onLoadSuccess={() => {}}

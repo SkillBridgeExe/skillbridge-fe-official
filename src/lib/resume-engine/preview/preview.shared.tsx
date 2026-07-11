@@ -64,6 +64,21 @@ export const DEFAULT_PDF_PAGE_SIZE: PreviewPageSize = {
 	width: 595.28,
 };
 
+// CSS px per PDF point (96dpi screen / 72dpi PDF). Canvas pages rendered at
+// this pageScale get a CSS box equal to the page's true CSS-pixel size —
+// pairing any other pageScale with fixed CSS-px page constants clips the
+// preview edges (595.28pt × 1.5 = 893px inside a 794px A4 box).
+export const PDF_POINT_TO_CSS_PX = 96 / 72;
+
+// Page box per supported format in CSS px (A4 210×297mm, Letter 8.5×11in @96dpi).
+// The builder preview sizes its zoom/pan wrapper from these so the canvas is
+// never wider than its clipping box.
+export const PAGE_CSS_SIZE = {
+	a4: { width: 794, height: 1123 },
+	letter: { width: 816, height: 1056 },
+} as const;
+export type PageCssFormat = keyof typeof PAGE_CSS_SIZE;
+
 export const normalizeResumePreviewProps = ({
 	pageGap = 16,
 	pageLayout = "horizontal",

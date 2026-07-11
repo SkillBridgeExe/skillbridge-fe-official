@@ -1,8 +1,9 @@
-import { useState, Suspense, lazy, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
+import { useState, Suspense, lazy, useEffect, useRef, useMemo, useCallback, MouseEvent as ReactMouseEvent } from "react";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { ZoomIn, ZoomOut, Maximize, Minimize, LayoutTemplate, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate } from "./preview/TemplatePicker";
+import { PAGE_CSS_SIZE, type PageCssFormat } from "@resume-engine/preview/preview.shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,13 @@ export function CvPreviewPanel() {
 
   const debouncedData = useDebounce(resumeData, 800, resumeDataKey);
 
+  // Size the zoom/pan wrapper from the document's real page format — the canvas
+  // renders at the page's CSS-pixel size, and a mismatched fixed box clips the
+  // page edges symmetrically (the "CV bị cắt hai mép" bug).
+  const pageFormat: PageCssFormat =
+    debouncedData?.metadata?.page?.format === "letter" ? "letter" : "a4";
+  const pageCss = PAGE_CSS_SIZE[pageFormat];
+
   const [scale, setScale] = useState(0.75);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -94,26 +102,26 @@ export function CvPreviewPanel() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const handleFitWidth = () => {
+  const handleFitWidth = useCallback(() => {
     if (containerRef.current) {
       const padding = 32; // px-4 = 16px * 2
       const availableWidth = containerRef.current.clientWidth - padding;
-      const newScale = availableWidth / 794;
+      const newScale = availableWidth / pageCss.width;
       setScale(Math.max(0.2, Math.min(newScale, 2)));
     }
-  };
+  }, [pageCss]);
 
-  const handleFitPage = () => {
+  const handleFitPage = useCallback(() => {
     if (containerRef.current) {
       const paddingY = 96; // py-12 = 48px * 2
       const availableHeight = containerRef.current.clientHeight - paddingY;
-      const newScale = availableHeight / 1123;
+      const newScale = availableHeight / pageCss.height;
       setScale(Math.max(0.2, Math.min(newScale, 2)));
     }
-  };
+  }, [pageCss]);
 
   useEffect(() => {
-    // Initial fit on mount
+    // Initial fit on mount; re-fits when the page format (A4/Letter) changes.
     const timer = setTimeout(() => {
       handleFitPage();
     }, 50);
@@ -125,7 +133,7 @@ export function CvPreviewPanel() {
       clearTimeout(timer);
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [handleFitPage]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -176,8 +184,8 @@ export function CvPreviewPanel() {
           <div className="min-h-full py-12 px-4 flex justify-center w-full relative">
             <div
               style={{
-                width: `${794 * scale}px`,
-                height: `${(store.renderedPageCount || 1) * 1123 * scale + ((store.renderedPageCount || 1) - 1) * 32 * scale}px`, // approximate height including gap
+                width: `${pageCss.width * scale}px`,
+                height: `${(store.renderedPageCount || 1) * pageCss.height * scale + ((store.renderedPageCount || 1) - 1) * 32 * scale}px`, // approximate height including gap
                 transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
               }}
               className="relative shrink-0"
@@ -187,7 +195,7 @@ export function CvPreviewPanel() {
                   transform: `scale(${scale})`,
                   transformOrigin: "top left",
                   transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                  width: "794px"
+                  width: `${pageCss.width}px`
                 }}
                 className="absolute top-0 left-0"
               >
