@@ -2493,6 +2493,8 @@ export default {
         showSection: "Hiện {{section}}",
         moveUp: "Di chuyển {{section}} lên",
         moveDown: "Di chuyển {{section}} xuống",
+        dragToReorder: "Kéo {{section}} để thay đổi thứ tự",
+        dragToReorderHint: "Kéo để đổi thứ tự. Nhấn Spacebar và phím mũi tên để di chuyển khi đang chọn.",
         // W69: Inspector polish
         resetStyle: "Đặt lại mặc định",
         resetStyleDesc: "Khôi phục màu, cỡ chữ và khoảng cách về mặc định của mẫu",

@@ -13,7 +13,7 @@ import { defaultSectionPlacement } from "@/lib/resume-engine/layout-plan";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { CustomSectionEditor } from "./CustomSectionEditor";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { StudioAvatarControl } from "./StudioAvatarControl";
@@ -272,6 +272,8 @@ function SortableSectionItem({
   onMoveDown,
   isFirst,
   isLast,
+  isAnyDragging,
+  prefersReducedMotion,
 }: {
   id: string;
   isVisible: boolean;
@@ -284,13 +286,15 @@ function SortableSectionItem({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  isAnyDragging?: boolean;
+  prefersReducedMotion?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1 : 0,
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transition: prefersReducedMotion ? undefined : transition,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 10 : 1,
   };
   const { t } = useTranslation("diagnosis");
   const moveTitle = groupId === "main" ? t("builder.inspector.moveToSidebar") : t("builder.inspector.moveToMain");
@@ -300,10 +304,12 @@ function SortableSectionItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between rounded-md border p-2 text-sm transition-colors relative bg-white",
-        isVisible
-          ? "border-slate-200 shadow-sm"
-          : "border-dashed border-slate-100 bg-slate-50 text-slate-400",
+        "flex items-center justify-between rounded-md border p-2 text-sm transition-all duration-200 relative bg-white select-none",
+        isDragging
+          ? "border-dashed border-sky-300 bg-sky-50/20 shadow-inner"
+          : isVisible
+            ? "border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md"
+            : "border-dashed border-slate-100 bg-slate-50 text-slate-400 opacity-60",
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
@@ -311,8 +317,13 @@ function SortableSectionItem({
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 outline-none p-0.5 -ml-1 rounded transition-colors hover:bg-slate-100"
+          disabled={isAnyDragging && !isDragging}
+          className={cn(
+            "cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 outline-none p-0.5 -ml-1 rounded transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-sky-500 focus-visible:bg-slate-100",
+            (isAnyDragging && !isDragging) && "pointer-events-none opacity-30"
+          )}
           aria-label={t("builder.inspector.dragToReorder", { section: sectionLabel })}
+          title={t("builder.inspector.dragToReorderHint")}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -324,6 +335,7 @@ function SortableSectionItem({
             isVisible ? "text-slate-400 hover:text-slate-600" : "text-slate-300 hover:text-slate-400",
           )}
           onClick={onToggleVisibility}
+          disabled={isAnyDragging}
           aria-label={
             isVisible
               ? t("builder.inspector.hideSection", { section: sectionLabel })
@@ -344,6 +356,7 @@ function SortableSectionItem({
             onClick={onMovePlacement}
             title={moveTitle}
             aria-label={moveTitle}
+            disabled={isAnyDragging}
           >
             <ArrowRightLeft className="h-3.5 w-3.5" />
           </Button>
@@ -353,7 +366,7 @@ function SortableSectionItem({
           size="icon"
           className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
           onClick={onMoveUp}
-          disabled={isFirst}
+          disabled={isFirst || isAnyDragging}
           aria-label={t("builder.inspector.moveUp", { section: sectionLabel })}
         >
           <ChevronUp className="h-3.5 w-3.5" />
@@ -363,7 +376,7 @@ function SortableSectionItem({
           size="icon"
           className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
           onClick={onMoveDown}
-          disabled={isLast}
+          disabled={isLast || isAnyDragging}
           aria-label={t("builder.inspector.moveDown", { section: sectionLabel })}
         >
           <ChevronDown className="h-3.5 w-3.5" />
@@ -384,8 +397,18 @@ export function StudioInspector() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const prefersReducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
     if (!over || active.id === over.id) return;
 
     // We only reorder within the global array for now since they are all one array
@@ -430,6 +453,8 @@ export function StudioInspector() {
                   onMoveDown={() => store.moveSectionWithinGroup(key, "down", sections)}
                   isFirst={index === 0}
                   isLast={index === arr.length - 1}
+                  isAnyDragging={activeId !== null}
+                  prefersReducedMotion={prefersReducedMotion}
                 />
               );
             })}
@@ -558,7 +583,13 @@ export function StudioInspector() {
                   {t("builder.inspector.reset")}
                 </Button>
               </div>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCenter} 
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveId(null)}
+              >
                 <div className="space-y-3">
                   {(() => {
                     const capabilities = layoutCapabilities;
@@ -591,6 +622,35 @@ export function StudioInspector() {
                     );
                   })()}
                 </div>
+
+                <DragOverlay adjustScale={true}>
+                  {activeId ? (
+                    <div 
+                      className={cn(
+                        "flex items-center justify-between rounded-md border border-sky-400 bg-white p-2 text-sm shadow-md cursor-grabbing select-none scale-[1.02]",
+                        prefersReducedMotion ? "transform-none transition-none" : "transform transition-transform duration-100 ease-out"
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-1.5 opacity-90">
+                        <GripVertical className="h-4 w-4 text-sky-500" />
+                        <span className="truncate font-medium text-slate-800">{sectionLabels[activeId as CvBuilderSectionKey] || activeId}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 opacity-40">
+                        {layoutCapabilities.supportsSidebar && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" disabled>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
 
               <LayoutPagesPanel sectionLabels={sectionLabels} supportsSidebar={layoutCapabilities.supportsSidebar} />

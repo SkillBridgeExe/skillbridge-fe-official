@@ -2517,6 +2517,8 @@ export default {
         showSection: "Show {{section}}",
         moveUp: "Move {{section}} up",
         moveDown: "Move {{section}} down",
+        dragToReorder: "Drag {{section}} to reorder",
+        dragToReorderHint: "Drag to reorder. Use Spacebar and arrow keys to move when focused.",
         // W69: Inspector polish
         resetStyle: "Reset to defaults",
         resetStyleDesc: "Restore accent, font, and density to template defaults",
