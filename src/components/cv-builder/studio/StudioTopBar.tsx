@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw, AlertCircle } from "lucide-react";
+import { ArrowLeft, Download, Save, Loader2, Sparkles, Wand2, PenLine, MoreHorizontal, FileJson, Copy, Upload, Share2, RefreshCw, AlertCircle, History } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -72,6 +72,8 @@ export function StudioTopBar() {
   const isLocalMode = saveStatus === "local";
   const [importCandidate, setImportCandidate] = useState<ImportedResumeBackup | null>(null);
   const [importSectionsCount, setImportSectionsCount] = useState<number>(0);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const { isDirty } = useUnsavedGuard();
 
@@ -358,6 +360,8 @@ export function StudioTopBar() {
 
         setImportCandidate(data);
         setImportSectionsCount(sectionsCount);
+        setImportError(null);
+        setIsImporting(false);
       } catch {
         toast({
           title: t("builder.import.invalidFormat"),
@@ -377,36 +381,52 @@ export function StudioTopBar() {
     reader.readAsText(file);
   };
 
-  const applyImportedBackup = async () => {
+  const applyImportedBackup = async (skipBackup = false) => {
     if (!importCandidate) return;
+    setIsImporting(true);
+    setImportError(null);
     // Contract: a destructive import-overwrite backs up the current server doc first
     // (AUTO_PRE_IMPORT). If the backup can't be taken, don't destroy — cancel the import.
-    if (!isLocalMode && draftId) {
+    if (!isLocalMode && draftId && !skipBackup) {
       // Flush the debounced autosave first so the backup captures the exact pre-import state.
       // The confirm modal blocks further edits, so nothing can change between flush and backup.
-      if (!(await flushDraftChanges())) return;
+      if (!(await flushDraftChanges())) {
+        setIsImporting(false);
+        setImportError(t("builder.import.flushFailed", "Failed to save current draft changes before backup."));
+        return;
+      }
       try {
         await createVersionApi(draftId, undefined, "AUTO_PRE_IMPORT");
       } catch (error) {
         captureStudioEvent("version_import", { outcome: "failure", errorCode: studioErrorCode(error) });
+        const errMsg = getApiErrorMessage(error, t("builder.import.backupFailed"));
+        setImportError(errMsg);
+        setIsImporting(false);
         toast({
-          title: getApiErrorMessage(error, t("builder.import.backupFailed")),
+          title: errMsg,
           variant: "destructive",
         });
         return;
       }
     }
-    const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
-    useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
-    setImportCandidate(null);
-    setImportSectionsCount(0);
-    captureStudioEvent("version_import", { outcome: "success", ...studioEventContext() });
-    toast({
-      title: t("builder.import.success"),
-    });
+    try {
+      const { $schema: _schema, exportedAt: _exportedAt, ...stateToImport } = importCandidate;
+      useCvBuilderStore.getState().importState(stateToImport as Partial<CvBuilderState>);
+      setImportCandidate(null);
+      setImportSectionsCount(0);
+      setImportError(null);
+      captureStudioEvent("version_import", { outcome: "success", ...studioEventContext() });
+      toast({
+        title: t("builder.import.success"),
+      });
 
-    if (triggerSaveRef.current) {
-      await triggerSaveRef.current();
+      if (triggerSaveRef.current) {
+        await triggerSaveRef.current();
+      }
+    } catch (error) {
+      setImportError(getApiErrorMessage(error, t("builder.import.importError", "Failed to import CV.")));
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -660,10 +680,15 @@ export function StudioTopBar() {
               <span>{t("builder.savedAt", { time: lastSavedTime })}</span>
             </>
           ) : saveStatus === "error" ? (
-            <>
-              <AlertCircle className="w-3 h-3 text-red-500" />
-              <span className="text-red-500 font-semibold">{t("builder.saveError")}</span>
-            </>
+            <button
+              onClick={handleSaveDraft}
+              className="flex items-center gap-1.5 text-red-500 hover:text-red-600 transition-colors focus:outline-none cursor-pointer"
+              title={t("builder.retrySave", "Retry saving")}
+              type="button"
+            >
+              <AlertCircle className="w-3 h-3" />
+              <span className="font-semibold underline decoration-dotted">{t("builder.saveError")}</span>
+            </button>
           ) : (
             <>
               <Save className="w-3 h-3 text-slate-300" />
@@ -790,27 +815,87 @@ export function StudioTopBar() {
           onChange={handleImportJson}
         />
       </div>
-      <AlertDialog open={!!importCandidate} onOpenChange={(open) => !open && setImportCandidate(null)}>
+      <AlertDialog open={!!importCandidate} onOpenChange={(open) => {
+        if (!isImporting) {
+          if (!open) {
+            setImportCandidate(null);
+            setImportError(null);
+          }
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("builder.import.confirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("builder.import.confirmDesc")}
-              <br />
-              {t("builder.import.stats", { sections: importSectionsCount })}
-            </AlertDialogDescription>
+            {/* Keep AlertDialogDescription so Radix wires aria-describedby; extra
+                blocks live outside it because it renders a <p>. */}
+            <AlertDialogDescription>{t("builder.import.confirmDesc")}</AlertDialogDescription>
+            <div className="text-sm text-slate-500 space-y-3">
+              <p className="font-semibold text-slate-700">
+                {t("builder.import.stats", { sections: importSectionsCount })}
+              </p>
+
+              {importError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 space-y-1">
+                  <p className="font-bold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {t("builder.import.errorHeading", "Import Failed")}
+                  </p>
+                  <p className="font-mono text-left max-h-24 overflow-auto">{importError}</p>
+                </div>
+              )}
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("builder.import.cancel")}</AlertDialogCancel>
-            {/* preventDefault keeps the dialog open when the pre-import backup fails. */}
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void applyImportedBackup();
-              }}
-            >
-              {t("builder.import.apply")}
-            </AlertDialogAction>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isImporting} onClick={() => {
+              setImportCandidate(null);
+              setImportError(null);
+            }}>
+              {t("builder.import.cancel")}
+            </AlertDialogCancel>
+
+            {importError && !isLocalMode && draftId ? (
+              <>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  size="sm"
+                  disabled={isImporting}
+                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 text-xs shrink-0"
+                  onClick={() => void applyImportedBackup(true)}
+                >
+                  {t("builder.import.skipBackup", "Skip backup")}
+                </Button>
+                <AlertDialogAction
+                  disabled={isImporting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void applyImportedBackup(false);
+                  }}
+                  className="gap-1.5"
+                >
+                  {isImporting ? (
+                    <Loader2 className={`w-3.5 h-3.5 ${window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "" : "animate-spin"}`} />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  )}
+                  {t("builder.import.retry", "Retry")}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                disabled={isImporting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void applyImportedBackup(false);
+                }}
+                className="gap-1.5"
+              >
+                {isImporting && (
+                  <Loader2 className={`w-3.5 h-3.5 ${window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "" : "animate-spin"}`} />
+                )}
+                {isImporting ? t("builder.import.importing", "Importing...") : t("builder.import.apply")}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -840,22 +925,49 @@ export function StudioTopBar() {
             </Button>
 
             {versionsQuery.isLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              <div className="flex flex-col gap-2 py-1">
+                {[1, 2, 3].map((i) => {
+                  const isReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/50"
+                    >
+                      <div className="flex-1 space-y-2">
+                        <div className={`h-4 bg-slate-200 rounded w-2/3 ${isReduced ? "" : "animate-pulse"}`} />
+                        <div className={`h-3 bg-slate-200 rounded w-1/3 ${isReduced ? "" : "animate-pulse"}`} />
+                      </div>
+                      <div className={`h-7 w-16 bg-slate-200 rounded shrink-0 ${isReduced ? "" : "animate-pulse"}`} />
+                    </div>
+                  );
+                })}
               </div>
             ) : versionsQuery.isError ? (
-              <div className="flex flex-col items-center gap-2 py-6">
-                <p className="text-center text-sm text-red-500">
-                  {t("builder.actions.versionsError", "Couldn't load version history.")}
-                </p>
-                <Button size="sm" variant="outline" onClick={() => void versionsQuery.refetch()}>
+              <div className="flex flex-col items-center gap-3 py-6 px-4 border border-dashed border-red-100 bg-red-50/50 rounded-lg">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+                <div className="space-y-1 text-center">
+                  <p className="text-sm font-semibold text-red-700">
+                    {t("builder.actions.versionsError", "Couldn't load version history.")}
+                  </p>
+                  <p className="text-xs font-mono text-red-600 max-h-24 overflow-auto max-w-[320px]">
+                    {getApiErrorMessage(versionsQuery.error)}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => void versionsQuery.refetch()} className="gap-1.5 mt-1 border-red-200 text-red-700 hover:bg-red-100">
+                  <RefreshCw className="w-3.5 h-3.5" />
                   {t("builder.actions.versionsRetry", "Retry")}
                 </Button>
               </div>
             ) : (versionsQuery.data?.items.length ?? 0) === 0 ? (
-              <p className="py-8 text-center text-sm italic text-slate-500">
-                {t("builder.actions.noVersions", "No saved versions yet.")}
-              </p>
+              <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
+                <History className="w-8 h-8 text-slate-300 mb-2" />
+                <p className="text-center text-sm font-semibold text-slate-600">
+                  {t("builder.actions.noVersions", "No saved versions yet.")}
+                </p>
+                <p className="text-center text-xs text-slate-400 max-w-[280px] mt-1">
+                  {t("builder.actions.noVersionsDesc", "Create a version manually or wait for auto-saves before restoring.")}
+                </p>
+              </div>
             ) : (
               versionsQuery.data?.items.map((v) => (
                 <div
