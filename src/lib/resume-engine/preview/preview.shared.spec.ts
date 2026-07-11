@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PDF_PAGE_SIZE, getPreviewCanvasScale } from "./preview.shared";
+import {
+  DEFAULT_PDF_PAGE_SIZE,
+  getPreviewCanvasScale,
+  PAGE_CSS_SIZE,
+  PDF_POINT_TO_CSS_PX,
+} from "./preview.shared";
 
 const MAX_DIMENSION = 4096;
+
+describe("page unit parity (preview clipping regression)", () => {
+  it("an A4 page rendered at PDF_POINT_TO_CSS_PX fits the A4 CSS box exactly", () => {
+    // 595.28pt × (96/72) ≈ 793.7px — must never exceed the 794px wrapper,
+    // and must not undershoot it by more than a hairline (the old 1.5
+    // pageScale produced 893px inside a 794px box → both edges clipped).
+    const cssWidth = DEFAULT_PDF_PAGE_SIZE.width * PDF_POINT_TO_CSS_PX;
+    const cssHeight = DEFAULT_PDF_PAGE_SIZE.height * PDF_POINT_TO_CSS_PX;
+    expect(cssWidth).toBeLessThanOrEqual(PAGE_CSS_SIZE.a4.width);
+    expect(cssWidth).toBeGreaterThan(PAGE_CSS_SIZE.a4.width - 1);
+    expect(cssHeight).toBeLessThanOrEqual(PAGE_CSS_SIZE.a4.height);
+    expect(cssHeight).toBeGreaterThan(PAGE_CSS_SIZE.a4.height - 1);
+  });
+
+  it("a Letter page (612×792pt) fits the Letter CSS box exactly", () => {
+    expect(612 * PDF_POINT_TO_CSS_PX).toBeCloseTo(PAGE_CSS_SIZE.letter.width, 5);
+    expect(792 * PDF_POINT_TO_CSS_PX).toBeCloseTo(PAGE_CSS_SIZE.letter.height, 5);
+  });
+});
 
 describe("getPreviewCanvasScale", () => {
   it("renders at screen density with mild headroom, never the old fixed 4x", () => {
