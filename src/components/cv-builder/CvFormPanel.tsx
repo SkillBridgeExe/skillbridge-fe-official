@@ -2,7 +2,7 @@ import { useCvBuilderStore, type Education, type WorkExperience, type Project, t
 import { useTranslation } from "react-i18next";
 import {
   User, Target, FileText, GraduationCap, Briefcase,
-  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp
+  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp, Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as Sections from "./sections";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BuilderSection } from "@shared/api";
 import { getBuilderSnapshot } from "./builder-snapshot";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -202,6 +203,7 @@ export function CvFormPanel() {
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
+  const [scorePopoverKey, setScorePopoverKey] = useState<string | null>(null);
 
   // Companion is builder-scoped: clear the floating dolphin + its context registry when the builder
   // unmounts, so it doesn't follow the user onto unrelated pages (anti-Clippy).
@@ -265,6 +267,80 @@ export function CvFormPanel() {
     return () => clearTimeout(timer);
   }, [activeSection, draftId, handleEvaluateSection, isLoggedIn, orderedSections]);
 
+  /** Resolve companion context for the "Improve with AI" button. Returns null for unsupported/empty sections. */
+  const getImproveWithAiTarget = (sectionId: string) => {
+    const { summary, experience, projects, draftId: did, setSummary, updateExperience, updateProject, markSectionNeedsRecheck } = useCvBuilderStore.getState();
+    // An applied AI patch marks the score stale as assistant_patch (same shape the
+    // section components use) so ReviewSection attributes the change correctly.
+    const recheckAfterPatch = (section: BuilderSection, fieldPath: string, before: string, after: string) =>
+      markSectionNeedsRecheck(section, {
+        source: "assistant_patch",
+        fieldPath,
+        beforePreview: before.substring(0, 100),
+        afterPreview: after.substring(0, 100),
+      });
+    if (sectionId === "summary") {
+      if (!summary.trim()) return null;
+      return {
+        contextId: "cvbuilder:summary",
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: "cvbuilder:summary",
+          section: "summary",
+          currentValue: summary,
+          onApply: (after: string) => { setSummary(after); recheckAfterPatch("summary", "cvbuilder:summary", summary, after); },
+        },
+      };
+    }
+    if (sectionId === "experience") {
+      // Prefer the first entry with a description; an entry that only has
+      // achievements is still improvable — target that field instead.
+      let idx = experience.findIndex((e) => (e.description || "").trim());
+      let expField: "description" | "achievements" = "description";
+      if (idx < 0) {
+        idx = experience.findIndex((e) => (e.achievements || "").trim());
+        expField = "achievements";
+      }
+      if (idx < 0) return null;
+      const exp = experience[idx];
+      const expPath = expField === "description"
+        ? resumeDocumentPaths.experienceDescription(exp.id)
+        : resumeDocumentPaths.experienceAchievements(exp.id);
+      const expBefore = exp[expField] || "";
+      return {
+        contextId: `cvbuilder:experience[${idx}].${expField}`,
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: expPath,
+          section: "experience",
+          currentValue: expBefore,
+          onApply: (after: string) => { updateExperience(exp.id, expField, after); recheckAfterPatch("experience", expPath, expBefore, after); },
+        },
+      };
+    }
+    if (sectionId === "projects") {
+      const idx = projects.findIndex((p) => (p.description || "").trim());
+      const proj = idx >= 0 ? projects[idx] : projects[0];
+      if (!proj || !proj.description?.trim()) return null;
+      const projPath = `cvbuilder:projects[${idx >= 0 ? idx : 0}].description`;
+      const projBefore = proj.description || "";
+      return {
+        contextId: projPath,
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: projPath,
+          section: "projects",
+          currentValue: projBefore,
+          onApply: (after: string) => { updateProject(proj.id, "description", after); recheckAfterPatch("projects", projPath, projBefore, after); },
+        },
+      };
+    }
+    return null;
+  };
+
   const renderEvaluateChip = (beSection: BuilderSection, sectionId: string) => {
     const evaluation = sectionEvaluations[beSection];
     const isEvaluating = evaluatingMap[beSection];
@@ -303,8 +379,10 @@ export function CvFormPanel() {
         badgeClass = "border border-slate-200 text-slate-500 bg-[#FBFBFA] hover:bg-slate-55";
       }
 
+      const aiTarget = getImproveWithAiTarget(sectionId);
+
       return (
-        <Popover>
+        <Popover open={scorePopoverKey === sectionId} onOpenChange={(open) => setScorePopoverKey(open ? sectionId : null)}>
           <PopoverTrigger asChild>
             <button className={cn("px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm", badgeClass)}>
               <span>{score}%</span>
@@ -342,6 +420,26 @@ export function CvFormPanel() {
                   ))}
                 </ul>
               </div>
+            )}
+
+            {aiTarget && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3 h-8 text-xs gap-1.5 text-primary hover:text-primary"
+                onClick={() => {
+                  setScorePopoverKey(null);
+                  useCompanionStore.getState().registerContext({
+                    id: aiTarget.contextId,
+                    getTurn: () => ({ skill: aiTarget.skill, props: aiTarget.props }),
+                  });
+                  useCompanionStore.getState().activateContext(aiTarget.contextId);
+                  useCompanionStore.setState({ bubbleOpen: true });
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {t("builder.improveWithAi")}
+              </Button>
             )}
           </PopoverContent>
         </Popover>

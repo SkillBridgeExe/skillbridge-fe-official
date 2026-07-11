@@ -76,6 +76,32 @@ describe("CvBuilder Patch Mapping", () => {
     expect(path).toBe("/sections/projects/items/proj_1/description");
   });
 
+  it("strips the cvbuilder: namespace prefix (ProjectsSection registers paths this way)", () => {
+    const doc = createDefaultResumeDocumentV1();
+    doc.sections.projects.items.push({
+      id: "proj_1", name: "", role: "", link: "", description: "old", tools: "", contribution: "", result: ""
+    });
+    doc.sections.experience.items.push({
+      id: "exp_1", company: "", position: "", startDate: "", endDate: "",
+      description: "old", responsibilities: "", achievements: "", aiRewrite: "",
+    });
+
+    expect(companionTargetToResumePath(doc, {
+      section: "projects",
+      fieldPath: "cvbuilder:projects[0].description",
+    })).toBe("/sections/projects/items/proj_1/description");
+
+    expect(companionTargetToResumePath(doc, {
+      section: "experience",
+      fieldPath: "cvbuilder:experience[0].description",
+    })).toBe("/sections/experience/items/exp_1/description");
+
+    expect(companionTargetToResumePath(doc, {
+      section: "summary",
+      fieldPath: "cvbuilder:summary",
+    })).toBe("/sections/summary/content");
+  });
+
   it("returns null for missing index", () => {
     const doc = createDefaultResumeDocumentV1();
     // No items pushed
