@@ -104,9 +104,11 @@ const App = () => (
               <Route path="/roadmap-generator" element={<Navigate to="/diagnosis" replace />} />
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
-              {import.meta.env.DEV ? (
-                <Route path="/dev/resume-smoke" element={<Pages.ResumeSmoke />} />
-              ) : null}
+              {/* Deploy-verification harness (W118): renders the static sample CV
+                  through every template/format — read-only, no API, no user data.
+                  Deliberately available in production so post-deploy smoke can
+                  prove the PDF worker + renderer on the exact deployed bundle. */}
+              <Route path="/dev/resume-smoke" element={<Pages.ResumeSmoke />} />
 
               <Route path="/business" element={<AuthGuard requiredRole="business"><Pages.BusinessDashboard /></AuthGuard>}/>
               <Route path="/business/profile" element={<AuthGuard requiredRole="business"><Pages.BusinessProfile /></AuthGuard>}/>
