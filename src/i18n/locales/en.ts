@@ -2728,6 +2728,7 @@ export default {
       backToDiagnosis: "Back to Diagnosis",
       evaluateNow: "Score this section",
       missingTitle: "Needs adding",
+      improveWithAi: "Improve with AI",
       aiSuggest: "AI suggest",
       aiSuggestLabel: "AI suggestion",
       useIt: "Use it",

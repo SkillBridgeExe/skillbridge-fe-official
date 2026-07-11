@@ -2703,6 +2703,7 @@ export default {
       backToDiagnosis: "Quay lại Chẩn đoán",
       evaluateNow: "Chấm mục này",
       missingTitle: "Cần bổ sung",
+      improveWithAi: "Cải thiện với AI",
       aiSuggest: "AI đề xuất",
       aiSuggestLabel: "AI đề xuất",
       useIt: "Sử dụng",
