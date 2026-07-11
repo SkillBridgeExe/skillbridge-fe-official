@@ -583,9 +583,9 @@ export function StudioInspector() {
                   {t("builder.inspector.reset")}
                 </Button>
               </div>
-              <DndContext 
-                sensors={sensors} 
-                collisionDetection={closestCenter} 
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onDragCancel={() => setActiveId(null)}
@@ -625,7 +625,7 @@ export function StudioInspector() {
 
                 <DragOverlay adjustScale={true}>
                   {activeId ? (
-                    <div 
+                    <div
                       className={cn(
                         "flex items-center justify-between rounded-md border border-sky-400 bg-white p-2 text-sm shadow-md cursor-grabbing select-none scale-[1.02]",
                         prefersReducedMotion ? "transform-none transition-none" : "transform transition-transform duration-100 ease-out"
@@ -673,7 +673,7 @@ export function StudioInspector() {
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="space-y-5">
-                
+
                 {/* ATS Safe Mode */}
                 <div className="flex items-center justify-between bg-sky-50 p-3 rounded-md border border-sky-100">
                   <div className="space-y-0.5">
@@ -726,13 +726,13 @@ export function StudioInspector() {
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    {!layoutCapabilities.supportsSpacing 
+                    {!layoutCapabilities.supportsSpacing
                       ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
                       : t("builder.inspector.densityHelper")}
                   </p>
                 </div>
 
-                <div className={cn("flex items-center justify-between", 
+                <div className={cn("flex items-center justify-between",
                   (!layoutCapabilities.supportsSectionIcons || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <div className="space-y-0.5">
@@ -740,7 +740,7 @@ export function StudioInspector() {
                       {t("builder.inspector.showSectionIcons")}
                     </label>
                     <p className="text-[10px] text-slate-400">
-                      {store.resumeAtsSafeMode 
+                      {store.resumeAtsSafeMode
                         ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
                         : !layoutCapabilities.supportsSectionIcons
                           ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
@@ -802,14 +802,14 @@ export function StudioInspector() {
                   </div>
                 )}
 
-                <div className={cn("space-y-1.5", 
+                <div className={cn("space-y-1.5",
                   (!layoutCapabilities.supportsDividerStyle || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {t("builder.inspector.dividerStyle")}
                   </p>
-                  <Select 
-                    value={store.resumeAtsSafeMode ? "line" : store.resumeDividerStyle} 
+                  <Select
+                    value={store.resumeAtsSafeMode ? "line" : store.resumeDividerStyle}
                     onValueChange={(v) => store.setResumeDividerStyle(v as typeof store.resumeDividerStyle)}
                   >
                     <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
@@ -823,7 +823,7 @@ export function StudioInspector() {
                     </SelectContent>
                   </Select>
                   <p className="text-[10px] text-slate-400 mt-1">
-                      {store.resumeAtsSafeMode 
+                      {store.resumeAtsSafeMode
                         ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
                         : !layoutCapabilities.supportsDividerStyle
                           ? t("builder.inspector.unsupportedFeature", "This template does not support custom divider styles.")
@@ -918,7 +918,7 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className={cn("space-y-1.5", 
+              <div className={cn("space-y-1.5",
                 (!layoutCapabilities.supportsAccentColor || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
               )}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -934,8 +934,8 @@ export function StudioInspector() {
                       onClick={() => store.setResumeAccentColor(color.value)}
                       className={cn(
                         "h-8 rounded-full border-2 transition-transform hover:scale-105",
-                        (store.resumeAtsSafeMode ? color.value === "#0f172a" : store.resumeAccentColor === color.value) 
-                          ? "border-sky-400 ring-2 ring-sky-100" 
+                        (store.resumeAtsSafeMode ? color.value === "#0f172a" : store.resumeAccentColor === color.value)
+                          ? "border-sky-400 ring-2 ring-sky-100"
                           : "border-white shadow-sm",
                       )}
                       style={{ backgroundColor: store.resumeAtsSafeMode ? "#0f172a" : color.value }}
@@ -951,7 +951,7 @@ export function StudioInspector() {
                   </p>
                 </div>
 
-                <div className={cn("space-y-1.5 mt-6", 
+                <div className={cn("space-y-1.5 mt-6",
                   (!layoutCapabilities.supportsTypography || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -967,8 +967,8 @@ export function StudioInspector() {
                         onClick={() => store.setResumeTextColor(color.value)}
                         className={cn(
                           "h-8 rounded-full border-2 transition-transform hover:scale-105",
-                          (store.resumeAtsSafeMode ? color.value === "#000000" : store.resumeTextColor === color.value) 
-                            ? "border-sky-400 ring-2 ring-sky-100" 
+                          (store.resumeAtsSafeMode ? color.value === "#000000" : store.resumeTextColor === color.value)
+                            ? "border-sky-400 ring-2 ring-sky-100"
                             : "border-white shadow-sm",
                         )}
                         style={{ backgroundColor: store.resumeAtsSafeMode ? "#000000" : color.value }}
