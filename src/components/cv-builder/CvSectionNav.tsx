@@ -89,7 +89,7 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
     // In studio mode, scroll the editor panel to the section anchor
     const element = document.getElementById(`cv-section-${id}`);
     if (element) {
-      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
       element.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
     }
   };
