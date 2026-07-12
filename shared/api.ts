@@ -96,10 +96,24 @@ export interface CvJdMatch {
   fell_back_to_rubric?: boolean;
   source_of_requirements?: "role_rubric" | "jd_extraction" | "none";
   unnormalized_jd_requirements?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
+  unnormalized_cv_skills?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   keyword_frequency?: KeywordFrequency[];
 }
 
 export type RubricBand = "intern" | "fresher" | "mid";
+
+/** EXPLAIN' E1 mirror — one requirement's contribution to the weighted score. */
+export interface PerSkillContribution {
+  canonical_name: string;
+  display_name: string;
+  status: "matched" | "partial" | "missing";
+  importance: "REQUIRED" | "PREFERRED" | "NICE_TO_HAVE";
+  weight: number;
+  effective_weight: number;
+  strength: number;
+  points_earned: number;
+  points_possible: number;
+}
 
 export interface ScoringBreakdown {
   total_requirements: number;
@@ -112,6 +126,7 @@ export interface ScoringBreakdown {
   required_met: number;
   raw_weighted_score: number;
   cap_applied: boolean;
+  per_skill?: PerSkillContribution[];
 }
 
 /** Job-rec partial_skills item — BE sends {display_name, importance, gap_levels} only. */

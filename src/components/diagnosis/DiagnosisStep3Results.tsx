@@ -24,7 +24,7 @@ import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import { ProgressBanner } from "./ProgressBanner";
 import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
-import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
+import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem, GapEvidenceItem, GapEmphasisItem } from "@shared/api";
 import { useNextStepsQuery, useGapReportQuery, useMatchProgressQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagnosis-results";
@@ -142,6 +142,13 @@ function MatchNarrative({
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
   const band = coverage >= 80 ? "strong" : coverage >= 60 ? "good" : coverage >= 40 ? "fair" : "low";
 
+  const hasPerSkill = !!breakdown.per_skill && breakdown.per_skill.length > 0;
+  const sortedSkills = hasPerSkill
+    ? [...breakdown.per_skill!].sort((a, b) => b.points_possible - a.points_possible)
+    : [];
+  const displaySkills = sortedSkills.slice(0, 8);
+  const remainingCount = sortedSkills.length - 8;
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.whyScore")}</h3>
@@ -157,6 +164,56 @@ function MatchNarrative({
         </p>
         <p className="text-[12px] text-[#787774] leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
       </div>
+
+      {hasPerSkill && (
+        <div className="border border-[#EAEAEA] rounded-lg bg-[#FBFBFA] p-3 space-y-2">
+          <div className="flex flex-col space-y-0.5">
+            <h4 className="text-xs font-bold text-[#2F3437]">{t("matchDepth.perSkillTitle")}</h4>
+            <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.perSkillHint")}</p>
+          </div>
+          <div className="divide-y divide-[#EAEAEA] text-xs">
+            {displaySkills.map((row, idx) => {
+              let badgeColor = "border-[#787774] text-[#787774]";
+              if (row.importance === "REQUIRED") {
+                badgeColor = "border-[#9F2F2D] text-[#9F2F2D]";
+              } else if (row.importance === "PREFERRED") {
+                badgeColor = "border-[#956400] text-[#956400]";
+              }
+
+              const earnedColor =
+                row.status === "matched"
+                  ? "text-[#346538]"
+                  : row.status === "partial"
+                  ? "text-[#956400]"
+                  : "text-[#9F2F2D]";
+
+              return (
+                <div key={idx} className="py-2 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate text-[#2F3437] font-medium" title={row.display_name}>
+                      {row.display_name}
+                    </span>
+                    <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0", badgeColor)}>
+                      {row.importance === "NICE_TO_HAVE" ? "NICE TO HAVE" : row.importance.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <div className="font-mono tabular-nums text-xs text-[#787774] shrink-0">
+                    <span className={cn("font-bold", earnedColor)}>{row.points_earned.toFixed(1)}</span>
+                    {" / "}
+                    <span>{row.points_possible.toFixed(1)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {remainingCount > 0 && (
+            <div className="pt-2 border-t border-[#EAEAEA] text-[11px] text-[#787774] italic">
+              {t("matchDepth.perSkillMore", { count: remainingCount })}
+            </div>
+          )}
+        </div>
+      )}
+
       {breakdown.cap_applied && (
         <p className="text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
       )}
@@ -190,6 +247,101 @@ function InferredSkillsBlock({
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SystemReadPanel({
+  unnormalized,
+  evidenceGaps,
+  emphasisGaps,
+  isLoading,
+  isError,
+  t,
+}: {
+  unnormalized?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
+  evidenceGaps?: GapEvidenceItem[];
+  emphasisGaps?: GapEmphasisItem[];
+  isLoading?: boolean;
+  isError?: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const hasUnnormalized = !!unnormalized && unnormalized.length > 0;
+  const hasEvidence = !isLoading && !isError && !!evidenceGaps && evidenceGaps.length > 0;
+  const hasEmphasis = !isLoading && !isError && !!emphasisGaps && emphasisGaps.length > 0;
+
+  const allEmpty = !hasUnnormalized && !hasEvidence && !hasEmphasis;
+  // undefined = legacy row, BE chưa từng trả field này → KHÔNG được claim "đọc đủ mọi kỹ năng".
+  const recognitionKnown = unnormalized !== undefined;
+
+  if (allEmpty && (isLoading || isError || !recognitionKnown)) {
+    return null;
+  }
+
+  return (
+    <div className="border border-[#EAEAEA] rounded-lg bg-[#FBFBFA] p-4 space-y-4">
+      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.systemReadTitle")}</h3>
+
+      {allEmpty && !isLoading && !isError && (
+        <p className="text-xs text-[#346538] font-medium">{t("matchDepth.systemReadAllClear")}</p>
+      )}
+
+      {hasUnnormalized && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-[#9F2F2D]">{t("matchDepth.droppedTitle")}</h4>
+          <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.droppedHint")}</p>
+          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+            {unnormalized.map((item, idx) => (
+              <li key={idx} className="leading-relaxed">
+                <span className="font-bold">{item.raw_input}</span>
+                {item.evidence_text && (
+                  <span className="text-[#787774] italic">
+                    {" "}&ldquo;{item.evidence_text}&rdquo;
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {hasEvidence && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-[#956400]">{t("matchDepth.evidenceGapsTitle")}</h4>
+          <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.evidenceGapsHint")}</p>
+          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+            {evidenceGaps.map((item, idx) => {
+              const hasLevels = item.cv_level !== null && item.required_level !== null;
+              return (
+                <li key={idx} className="leading-relaxed">
+                  <span className="font-medium">{item.display_name}</span>
+                  {hasLevels && (
+                    <span className="font-mono text-[11px] text-[#787774] bg-[#F1F1EF] px-1.5 py-0.5 rounded ml-1.5">
+                      L{item.cv_level}/L{item.required_level}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {hasEmphasis && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-[#2F3437]">{t("matchDepth.emphasisTitle")}</h4>
+          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+            {emphasisGaps.map((item, idx) => (
+              <li key={idx} className="leading-relaxed">
+                <span className="font-semibold">{item.display_name}</span>
+                <span className="text-[#787774] ml-1.5">
+                  ({t("matchDepth.emphasisCount", { jd: item.jd_count, cv: item.cv_count })})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -510,11 +662,16 @@ export function DiagnosisStep3Results() {
 
         {/* W44: Microcopy — honest distinction between CV score and JD match score */}
         {isJdMode && !isDegradedNoBasis && !isUnusable && (
-          <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto mt-2 leading-relaxed">
-            {t("results.scoreDistinction", {
-              defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
-            })}
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
+              {t("results.scoreDistinction", {
+                defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
+              })}
+            </p>
+            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
+              {t("results.notHiringPrediction")}
+            </p>
+          </div>
         )}
 
         {/* Ribbon — inline stats + deal-breaker chips */}
@@ -724,6 +881,18 @@ export function DiagnosisStep3Results() {
 
               {/* Inferred Skills */}
               {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
+
+              {/* System Read Panel */}
+              {isJdMode && (
+                <SystemReadPanel
+                  unnormalized={jdMatch?.unnormalized_cv_skills}
+                  evidenceGaps={gapReportQuery.data?.evidence_gaps}
+                  emphasisGaps={gapReportQuery.data?.jd_emphasis_gaps}
+                  isLoading={gapReportQuery.isLoading}
+                  isError={gapReportQuery.isError}
+                  t={t}
+                />
+              )}
             </div>
           )}
         </Chapter>
