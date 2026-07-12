@@ -26,7 +26,7 @@ import { getMyAvatarUrl, getSafeAvatarUrl, isProtectedAvatarUrl } from "@/servic
 const VNFlagCircle = () => (
   <svg viewBox="0 0 30 30" className="w-4 h-4 rounded-full shadow-sm border border-slate-100 flex-shrink-0">
     <circle cx="15" cy="15" r="15" fill="#da251d" />
-    <polygon points="15,6 16.65,11.08 22,11.08 17.68,14.22 19.33,19.3 15,16.18 10.67,19.3 12.32,14.22 8,11.08 13.35,11.08" fill="#ffff00" />
+    <polygon points="15,5.5 17.13,12.06 24.04,12.06 18.45,16.12 20.58,22.69 15,18.63 9.42,22.69 11.55,16.12 5.96,12.06 12.87,12.06" fill="#ffff00" />
   </svg>
 );
 
@@ -158,8 +158,8 @@ export default function Navbar() {
               size="sm"
               className="rounded-full px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-2 h-9 transition-all active:scale-95 border border-slate-100"
             >
-              {i18n.language === "vi" ? <VNFlagCircle /> : <UKFlagCircle />}
-              <span className="text-xs font-bold tracking-wider">{i18n.language === "vi" ? "VI" : "EN"}</span>
+              {i18n.language.startsWith("vi") ? <VNFlagCircle /> : <UKFlagCircle />}
+              <span className="text-xs font-bold tracking-wider">{i18n.language.startsWith("vi") ? "VI" : "EN"}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
@@ -168,7 +168,7 @@ export default function Navbar() {
               onClick={() => i18n.changeLanguage("en")}
               className={cn(
                 "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
-                i18n.language === "en" ? "bg-primary/5 text-primary" : "text-slate-600"
+                i18n.language.startsWith("en") ? "bg-primary/5 text-primary" : "text-slate-600"
               )}
             >
               <UKFlagCircle />
@@ -178,7 +178,7 @@ export default function Navbar() {
               onClick={() => i18n.changeLanguage("vi")}
               className={cn(
                 "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
-                i18n.language === "vi" ? "bg-primary/5 text-primary" : "text-slate-600"
+                i18n.language.startsWith("vi") ? "bg-primary/5 text-primary" : "text-slate-600"
               )}
             >
               <VNFlagCircle />
