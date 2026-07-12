@@ -30,6 +30,7 @@ const ACTION_CLASS: Record<TailorActionType, string> = {
   add_evidence: "bg-[#E1F3FE] text-[#1F6C9F] border-[#BEE3F8]",
   emphasize: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
   deepen_wording: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
+  advice: "bg-[#F6F3F9] text-[#6940A5] border-[#E8DEEE]",
   not_fixable_now: "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
   already_met: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
 };
@@ -154,6 +155,11 @@ export function TailorChecklist({
                     </div>
                     <h4 className="mt-2 text-sm font-bold text-[#2F3437]">{action.display_name}</h4>
                     <p className="mt-1 text-xs leading-relaxed text-[#787774]">{action.why}</p>
+                    {action.action_type === "advice" && (
+                      <p className="mt-2 text-xs font-medium text-[#6940A5]">
+                        {t("tailor.adviceNote")}
+                      </p>
+                    )}
                     {(action.cv_section || action.anchor?.ref) && (
                       <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#787774]">
                         <LocateFixed className="h-3.5 w-3.5 text-primary" />
