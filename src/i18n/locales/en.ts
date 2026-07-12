@@ -1854,6 +1854,45 @@ export default {
       },
       footerNote: "SkillBridge CV Diagnosis Report",
     },
+    report: {
+      groups: {
+        ats: "ATS Readability",
+        content: "Content Optimization",
+        skills: "Skills Alignment",
+        ai_eval: "Detailed AI Evaluation",
+        issues: "Issues to address",
+      },
+      content: {
+        action_verbs: {
+          label: "Action Verbs",
+          evidence_pass: "No weak action verbs or openers detected in CV.",
+          evidence_fail: "There are {{count}} bullet points starting with weak verbs or missing action verbs.",
+          hint: "Start each bullet point with strong, active verbs (e.g., 'Designed', 'Optimized', 'Led') to emphasize your impact.",
+        },
+        quantification: {
+          label: "Quantified Results",
+          evidence_pass: "All bullet points contain quantified achievements.",
+          evidence_fail: "Only {{x}}/{{y}} bullet points contain quantified results or metrics.",
+          hint: "Add specific metrics (%, $, time frame, project scale) to make your achievements verifiable and persuasive.",
+        },
+        buzzwords: {
+          label: "Avoid Buzzwords",
+          evidence_pass: "No generic buzzwords detected in CV.",
+          evidence_fail: "Detected {{count}} buzzwords: {{words}}",
+          hint: "Replace generic buzzwords (like 'hardworking', 'team-player') with concrete examples of what you accomplished.",
+        },
+        first_person: {
+          label: "First-Person Pronouns",
+          evidence_pass: "No first-person pronouns detected.",
+          evidence_fail: "There are {{count}} bullet points using first-person pronouns.",
+          hint: "Avoid using pronouns like 'I', 'we', 'my' in a professional CV. Use action-oriented, implicit subject statements.",
+        }
+      },
+      rail: {
+        issuesBadge: "{{count}} to fix",
+        resolved: "Passed",
+      }
+    },
     results: {
       backToReview: "Back to CV review",
       share: "Share result",

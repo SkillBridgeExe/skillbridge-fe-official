@@ -1848,6 +1848,45 @@ export default {
       },
       footerNote: "Báo cáo Chẩn đoán CV · SkillBridge",
     },
+    report: {
+      groups: {
+        ats: "Độ tương thích ATS",
+        content: "Độ tối ưu nội dung",
+        skills: "Độ phù hợp kỹ năng",
+        ai_eval: "Đánh giá chi tiết từ AI",
+        issues: "Vấn đề cần xử lý",
+      },
+      content: {
+        action_verbs: {
+          label: "Động từ hành động",
+          evidence_pass: "Không phát hiện động từ mở đầu yếu trong CV.",
+          evidence_fail: "Có {{count}} bullet point sử dụng động từ mở đầu yếu hoặc không có động từ hành động.",
+          hint: "Sử dụng các động từ hành động mạnh mẽ và tích cực ở đầu mỗi bullet để nêu bật vai trò chủ động của bạn.",
+        },
+        quantification: {
+          label: "Số liệu đo lường",
+          evidence_pass: "Tất cả các bullet point đều chứa số liệu định lượng.",
+          evidence_fail: "Chỉ có {{x}}/{{y}} bullet point chứa số liệu đo lường thành tích.",
+          hint: "Thêm số liệu cụ thể (%, $, thời gian, quy mô dự án) để tăng tính xác thực và thuyết phục cho các thành tựu của bạn.",
+        },
+        buzzwords: {
+          label: "Tránh từ sáo rỗng",
+          evidence_pass: "Không phát hiện từ ngữ sáo rỗng trong CV.",
+          evidence_fail: "Phát hiện {{count}} từ ngữ sáo rỗng: {{words}}",
+          hint: "Thay thế các từ ngữ chung chung sáo rỗng bằng các hành động và kết quả thực tế bạn đạt được.",
+        },
+        first_person: {
+          label: "Đại từ nhân xưng",
+          evidence_pass: "Không sử dụng đại từ nhân xưng ngôi thứ nhất.",
+          evidence_fail: "Có {{count}} bullet point sử dụng đại từ nhân xưng ngôi thứ nhất.",
+          hint: "Tránh dùng các từ xưng hô như 'tôi', 'chúng tôi' trong CV chuyên nghiệp. Nên dùng cấu trúc ẩn chủ ngữ.",
+        }
+      },
+      rail: {
+        issuesBadge: "{{count}} cần sửa",
+        resolved: "Đạt chuẩn",
+      }
+    },
     results: {
       backToReview: "Về màn chấm CV",
       share: "Chia sẻ kết quả",
