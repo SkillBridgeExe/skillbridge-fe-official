@@ -1961,6 +1961,12 @@ export default {
       stretch: "Vượt cấp seniority",
       severeStretch: "Vượt cấp khá xa",
       inAppSoon: "Ứng tuyển trong app sắp mở",
+      scoreBasis: {
+        skills_only: "Chấm theo kỹ năng — chưa xét cấp bậc",
+        skills_and_seniority: "Chấm theo kỹ năng + cấp bậc",
+        skills_seniority_dealbreakers: "Kỹ năng + cấp bậc + điều kiện bắt buộc",
+      },
+      interviewFlag: "Interview gần nhất lộ gap:",
     },
     aiInsight: {
       title: "AI nhận định thị trường",

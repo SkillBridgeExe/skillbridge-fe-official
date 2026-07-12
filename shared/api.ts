@@ -590,6 +590,15 @@ export interface JobRecommendationDto {
   scoring_breakdown?: ScoringBreakdown | null;
   seniority_factor?: number;
   level_gap?: number;
+  /** R2/R3: cái gì đã vào điểm hiển thị — 'skills_and_seniority' khi verdict cấp bậc thật đã áp,
+   *  'skills_only' khi seniority unknown (factor 1, seniority không đóng góp).
+   *  'skills_seniority_dealbreakers' để dành tương lai — BE hiện KHÔNG bao giờ emit.
+   *  Vắng ở response cũ. */
+  score_basis?: "skills_only" | "skills_and_seniority" | "skills_seniority_dealbreakers";
+  /** R4: kỹ năng job này mà buổi interview COMPLETED gần nhất của user đã lộ gap
+   *  (risk 0-1, worst mỗi skill; session_ref = prefix id phiên). CHỈ là chú thích tin cậy —
+   *  KHÔNG ảnh hưởng xếp hạng. Vắng khi chưa có interview / không giao yêu cầu job / lookup fail. */
+  interview_signals?: Array<{ skill_canonical: string; risk: number; session_ref: string }>;
 }
 
 export interface JobRecommendationsResponse {

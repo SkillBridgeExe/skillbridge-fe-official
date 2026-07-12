@@ -1971,6 +1971,12 @@ export default {
       stretch: "Above your level",
       severeStretch: "Far above your level",
       inAppSoon: "In-app apply coming soon",
+      scoreBasis: {
+        skills_only: "Scored on skills only — seniority not assessed",
+        skills_and_seniority: "Scored on skills + seniority",
+        skills_seniority_dealbreakers: "Skills + seniority + hard requirements",
+      },
+      interviewFlag: "Last interview flagged:",
     },
     aiInsight: {
       title: "AI market insight",
