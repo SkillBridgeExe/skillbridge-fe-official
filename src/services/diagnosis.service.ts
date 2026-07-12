@@ -272,6 +272,9 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     fell_back_to_rubric: parsed?.fell_back_to_rubric ?? false,
     source_of_requirements: parsed?.source_of_requirements ?? "none",
     unnormalized_jd_requirements: parsed?.unnormalized_jd_requirements ?? [],
+    // KHÔNG ?? [] — undefined = "parsed vắng, không biết hệ đã đọc gì" ≠ [] = "biết là đọc đủ".
+    // SystemReadPanel chỉ được claim all-clear khi field này THẬT là mảng rỗng từ BE.
+    unnormalized_cv_skills: parsed?.unnormalized_cv_skills,
     keyword_frequency: parsed?.keyword_frequency?.map(f => ({
       keyword: f.canonical_name || f.display_name,
       jd_count: f.jd_count,
