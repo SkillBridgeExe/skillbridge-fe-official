@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -8,6 +9,10 @@ interface ScoreRailProps {
   overallScore: number;
   groups: CheckGroupData[];
   breakdown?: CvScoreBreakdown;
+  /** One-line verdict under the donut (the hero is gone in report mode). */
+  verdictMessage?: string;
+  /** Action buttons under the donut — Jobscan's "Upload & rescan" slot. */
+  actions?: ReactNode;
 }
 
 const prefersReduced = () =>
@@ -35,7 +40,7 @@ const bandOf = (score: number) =>
       ? { key: "review.band.watch", chip: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", stroke: "#956400", bar: "bg-[#956400]" }
       : { key: "review.band.priority", chip: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", stroke: "#9F2F2D", bar: "bg-[#9F2F2D]" };
 
-export function ScoreRail({ overallScore, groups, breakdown }: ScoreRailProps) {
+export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, actions }: ScoreRailProps) {
   const { t } = useTranslation("diagnosis");
   const band = bandOf(overallScore);
 
@@ -61,6 +66,10 @@ export function ScoreRail({ overallScore, groups, breakdown }: ScoreRailProps) {
     <aside className="w-full">
       {/* Below xl: horizontal scrollable chip bar (at xl the sidebar gets its own grid column) */}
       <div className="xl:hidden sticky top-14 bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
+        {/* Score chip — the only score display below xl now that the hero is gone */}
+        <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shrink-0", band.chip)}>
+          <span className="font-mono text-sm font-black tabular-nums">{overallScore}</span>/100 · {t(band.key)}
+        </span>
         {groups.map((group) => (
           <button
             key={group.id}
@@ -110,6 +119,12 @@ export function ScoreRail({ overallScore, groups, breakdown }: ScoreRailProps) {
           <span className={cn("mt-3 rounded-full px-3 py-1 text-[11px] font-bold border uppercase tracking-wide", band.chip)}>
             {t(band.key)}
           </span>
+          {verdictMessage && (
+            <p className="mt-2.5 text-[13px] leading-relaxed text-[#5F666B] text-center">
+              {verdictMessage}
+            </p>
+          )}
+          {actions && <div className="mt-4 w-full">{actions}</div>}
         </div>
 
         {/* Categories — Jobscan-style rows: label · issues link · thin bar */}

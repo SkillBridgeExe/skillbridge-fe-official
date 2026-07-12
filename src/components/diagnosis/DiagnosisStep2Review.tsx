@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText } from "lucide-react";
+import { RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -16,7 +16,6 @@ import { AiTrendsInsight } from "./AiTrendsInsight";
 import { InterviewPrepPack } from "./InterviewPrepPack";
 import { GithubEvidence } from "./GithubEvidence";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
@@ -24,7 +23,7 @@ import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { CvIssue } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
-import { VerdictHero, Chapter, StatRow, EditorialTabNav } from "./editorial";
+import { Chapter, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
@@ -38,7 +37,6 @@ export function DiagnosisStep2Review() {
   const {
     reviewData,
     apiError,
-    goBack,
     reset,
     showJdInput,
     setShowJdInput,
@@ -130,7 +128,6 @@ export function DiagnosisStep2Review() {
 
 
   const overallCvScore = reviewData?.overallScore ?? 0;
-  const atsScore = reviewData?.breakdown.ats ?? 0;
   const dimensions = reviewData?.dimensions ?? [];
 
   /* ── Dynamic UX copy (HONESTY: band copy from existing keys) ── */
@@ -142,7 +139,6 @@ export function DiagnosisStep2Review() {
         ? t("review.scoreMsg.fair")
         : t("review.scoreMsg.poor");
 
-  const scoreLabel = t("review.heroTitle");
 
   /* ── Distribute issues across dim cards (shared helper = single source of
      truth; the companion's commentary reuses dimensionIssueSlice so its tips are
@@ -245,54 +241,34 @@ export function DiagnosisStep2Review() {
     { key: "market", label: t("review.tabs.market"), icon: <TrendingUp className="w-4 h-4" /> },
   ];
 
+  // Rail actions — Jobscan puts scan actions right under the donut.
+  const railActions = (
+    <div className="flex flex-col gap-2 w-full">
+      <Button
+        onClick={() => setShowJdInput(true)}
+        size="sm"
+        className="w-full rounded-full gap-2 h-9 text-[13px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white active:scale-[0.98] transition-all"
+      >
+        <Briefcase className="w-4 h-4" /> {t("review.quickPanel.compareCta")}
+      </Button>
+      <Button
+        onClick={reset}
+        size="sm"
+        variant="outline"
+        className="w-full rounded-full gap-2 h-9 text-[13px] font-bold border-[#EAEAEA] hover:bg-[#FBFBFA] text-[#2F3437] active:scale-[0.98] transition-all"
+      >
+        <RotateCcw className="w-4 h-4" /> {t("review.startOver")}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="animate-in fade-in duration-500" style={{ '--tw-translate-y': '12px' } as React.CSSProperties}>
-      {/* Back button */}
-      <button
-        onClick={goBack}
-        className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-ink-accent mb-6 transition-colors group focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded w-fit"
-      >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("review.backToUpload")}
-      </button>
-
       {apiError && (
         <div className={cn(CARD, "mb-6 border-[#F6D4D5] bg-[#FDEBEC]")}>
           <div className="p-4 text-sm text-[#9F2F2D] font-medium">{apiError}</div>
         </div>
       )}
-
-      {/* ── VerdictHero (replaces CircularScoreGauge + confetti) ── */}
-      <VerdictHero
-        target={overallCvScore}
-        label={t("review.overallScore")}
-        verdictMessage={scoreMessage}
-        isJdMode={false}
-        breakdown={reviewData?.breakdown}
-        rubricBand={reviewData?.skills_relevance_breakdown?.rubric_band}
-      />
-
-      {/* ── Metadata & Actions ── */}
-      <div className="mx-auto max-w-lg mt-1 mb-10 flex flex-col items-center gap-6">
-        <StatRow
-          score={overallCvScore}
-          atsScore={atsScore}
-          atsCheck={null} // Ngừng dùng AtsBreakdownPopover tại màn này
-          role={targetRole ? getRoleLabel(targetRole) : "N/A"}
-          scoreMessage={scoreLabel}
-          atsNote={t("review.atsNote")}
-        />
-
-        <div className="flex w-full justify-center gap-4">
-          <Button
-            onClick={() => setShowJdInput(true)}
-            size="sm"
-            variant="outline"
-            className="rounded-full gap-2 px-6 h-10 text-sm font-bold border-[#EAEAEA] hover:bg-[#FBFBFA] text-[#2F3437] active:scale-[0.98] transition-all"
-          >
-            <Briefcase className="w-4 h-4" /> {t("review.quickPanel.compareCta")}
-          </Button>
-        </div>
-      </div>
 
       {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
       <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
@@ -314,6 +290,8 @@ export function DiagnosisStep2Review() {
               overallScore={overallCvScore}
               groups={reportGroups}
               breakdown={reviewData?.breakdown}
+              verdictMessage={scoreMessage}
+              actions={railActions}
             />
           </div>
         )}
@@ -348,6 +326,7 @@ export function DiagnosisStep2Review() {
                         overallScore={overallCvScore}
                         groups={reportGroups}
                         breakdown={reviewData?.breakdown}
+                        verdictMessage={scoreMessage}
                       />
                     </div>
 

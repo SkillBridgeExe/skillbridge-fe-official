@@ -1902,6 +1902,7 @@ export default {
         showMore: "Show {{count}} more skills",
       },
       requiredCoverage: "Covers {{pct}}% of required skills",
+      topbar: { title: "CV diagnosis report" },
     },
     results: {
       backToReview: "Back to CV review",

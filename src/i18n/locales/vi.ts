@@ -1896,6 +1896,7 @@ export default {
         showMore: "Xem thêm {{count}} kỹ năng",
       },
       requiredCoverage: "Đạt {{pct}}% kỹ năng bắt buộc",
+      topbar: { title: "Kết quả chẩn đoán CV" },
     },
     results: {
       backToReview: "Về màn chấm CV",
