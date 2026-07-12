@@ -598,7 +598,7 @@ export interface JobRecommendationDto {
   /** R4: kỹ năng job này mà buổi interview COMPLETED gần nhất của user đã lộ gap
    *  (risk 0-1, worst mỗi skill; session_ref = prefix id phiên). CHỈ là chú thích tin cậy —
    *  KHÔNG ảnh hưởng xếp hạng. Vắng khi chưa có interview / không giao yêu cầu job / lookup fail. */
-  interview_signals?: Array<{ skill_canonical: string; risk: number; session_ref: string }>;
+  interview_signals?: Array<{ skill_canonical: string; risk: number; session_ref: string; display_name?: string }>;
 }
 
 export interface JobRecommendationsResponse {

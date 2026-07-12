@@ -143,7 +143,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           <span className="text-[11px] text-[#787774]">{t("jobs.interviewFlag")}</span>
           {(job.interview_signals ?? []).slice(0, 3).map((s) => (
             <span key={s.skill_canonical} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
-              {s.skill_canonical}
+              {s.display_name ?? s.skill_canonical}
             </span>
           ))}
           {(job.interview_signals ?? []).length > 3 && (
