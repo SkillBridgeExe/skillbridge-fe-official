@@ -194,7 +194,7 @@ function MatchNarrative({
                       {row.display_name}
                     </span>
                     <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0", badgeColor)}>
-                      {row.importance === "NICE_TO_HAVE" ? "NICE TO HAVE" : row.importance.replace(/_/g, " ")}
+                      {t(`jdIntel.importance.${row.importance}`, { defaultValue: row.importance.replace(/_/g, " ") })}
                     </span>
                   </div>
                   <div className="font-mono tabular-nums text-xs text-[#787774] shrink-0">
