@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, CheckCircle2, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
+import { ScoreRail } from "./report/ScoreRail";
+import { CheckGroup } from "./report/CheckGroup";
+import { buildDiagnosisReport } from "@/lib/diagnosis-report";
 import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
 import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
@@ -19,10 +22,9 @@ import { useTranslation } from "react-i18next";
 import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
-import type { ReviewDimension, CvIssue } from "@shared/api";
+import type { CvIssue } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
-import { InfoPopover } from "./InfoPopover";
-import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
+import { VerdictHero, Chapter, StatRow, EditorialTabNav } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
@@ -30,180 +32,6 @@ import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiag
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
-const SEV = {
-  high:   "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
-  medium: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
-  low:    "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]",
-} as const;
-
-/** ScoreBar for dimensions (0-20 scale, display as percentage) */
-function DimScoreBar({ score20 }: { score20: number }) {
-  const pct = Math.round(score20 * 5);
-  const color = pct >= 70 ? "bg-[#346538]" : pct >= 50 ? "bg-[#956400]" : "bg-[#9F2F2D]";
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="font-mono tabular-nums text-xs text-[#787774] w-10 text-right shrink-0">{score20}/20</span>
-    </div>
-  );
-}
-
-function dimensionTone(score20: number) {
-  const pct = Math.round(score20 * 5);
-  if (pct >= 70) {
-    return {
-      key: "review.band.strong",
-      badge: "border-[#DCE9D7] bg-[#EDF3EC] text-[#346538]",
-      rail: "border-l-[#57A773]",
-    };
-  }
-  if (pct >= 50) {
-    return {
-      key: "review.band.watch",
-      badge: "border-[#F1E5C0] bg-[#FBF3DB] text-[#956400]",
-      rail: "border-l-[#D9A441]",
-    };
-  }
-  return {
-    key: "review.band.priority",
-    badge: "border-[#F6D4D5] bg-[#FDEBEC] text-[#9F2F2D]",
-    rail: "border-l-[#D75656]",
-  };
-}
-
-/** Severity badge */
-function SeverityBadge({ severity, t }: { severity: "high" | "medium" | "low"; t: (key: string) => string }) {
-  return (
-    <span className={cn("text-[11px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0", SEV[severity])}>
-      {t(`review.severity.${severity}`)}
-    </span>
-  );
-}
-
-/** Collapsible dimension card */
-function DimensionCard({
-  dim,
-  issues,
-  index,
-  t,
-}: {
-  dim: ReviewDimension;
-  issues: CvIssue[];
-  index: number;
-  t: (key: string, options?: Record<string, unknown>) => string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const hasLongRationale = dim.rationale.length > 120;
-  const pct = Math.round(dim.score20 * 5);
-  const tone = dimensionTone(dim.score20);
-  const visibleIssues = expanded ? issues : issues.slice(0, 2);
-  const hiddenIssues = Math.max(issues.length - visibleIssues.length, 0);
-
-  return (
-    <div
-      id={`dim-${dim.key}`}
-      className={cn(CARD, "overflow-hidden border-l-4 animate-in fade-in duration-500", tone.rail)}
-      style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
-    >
-      <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center sm:p-4">
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-bold tabular-nums text-[#9AA1A6]">0{index + 1}</span>
-            <h3 className="text-[15px] font-black leading-tight text-[#2F3437]">{t(`review.dims.${dim.key}`)}</h3>
-            <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-bold", tone.badge)}>
-              {t(tone.key)}
-            </span>
-            <span className="rounded-full border border-[#EAEAEA] bg-[#FBFBFA] px-2.5 py-1 text-[11px] font-bold text-[#787774]">
-              {t("review.priorityCount", { count: issues.length })}
-            </span>
-            {dim.provenance && (
-              <InfoPopover
-                label={t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
-                trigger={
-                  <span className={cn(
-                    "rounded-full border px-2.5 py-1 text-[10px] font-bold underline decoration-dotted underline-offset-2",
-                    dim.provenance.source === "deterministic"
-                      ? "bg-[#F4F9FC] text-[#1E7497] border-[#CBE5EF]"
-                      : "bg-[#F6F4FB] text-[#6943C7] border-[#E2D9F3]"
-                  )}>
-                    {t(`provenance.source.${dim.provenance.source}`, { defaultValue: dim.provenance.source === "deterministic" ? "Dữ liệu thật" : "AI đánh giá" })}
-                  </span>
-                }
-              >
-                <div className="space-y-1.5 text-xs">
-                  <p className="font-semibold text-[#2F3437]">{t(`provenance.conf.${dim.provenance.confidence}`, { defaultValue: `Độ tin cậy: ${dim.provenance.confidence}` })}</p>
-                  {dim.provenance.evidence.length > 0 && (
-                    <ul className="list-disc pl-4 space-y-0.5 text-[#787774] max-h-40 overflow-y-auto">
-                      {dim.provenance.evidence.map((ev, i) => (
-                        <li key={i}>{ev}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </InfoPopover>
-            )}
-          </div>
-
-          <p className={cn("text-[13px] leading-relaxed text-[#5F666B]", !expanded && hasLongRationale && "line-clamp-1")}>
-            {dim.rationale}
-          </p>
-        </div>
-
-        <div>
-          <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#787774]">{t("review.scoreLabel")}</span>
-            <span className="font-mono text-lg font-black tabular-nums text-[#2F3437]">{pct}%</span>
-          </div>
-          <DimScoreBar score20={dim.score20} />
-        </div>
-      </div>
-
-      {/* Issues */}
-      {issues.length > 0 && (
-        <div className="border-t border-[#F1F1EF] bg-[#FBFBFA] px-3 py-2 sm:px-4">
-          <ul className="grid gap-2 lg:grid-cols-2">
-          {visibleIssues.map((issue, i) => (
-            <li key={i} className="min-w-0 text-[13px] text-[#2F3437]">
-              <div className="flex items-start gap-2 rounded-lg bg-white px-3 py-2">
-                <SeverityBadge severity={issue.severity} t={t} />
-                <div className="min-w-0">
-                  <p className="line-clamp-2 font-medium leading-relaxed">{issue.detail}</p>
-                  {issue.suggestion && (
-                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#787774]">
-                      <span className="font-bold text-[#2F3437]">{t("review.suggestionLabel")} </span>{issue.suggestion}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </li>
-          ))}
-          </ul>
-          {(hasLongRationale || hiddenIssues > 0) && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-2 inline-flex items-center gap-1 rounded text-xs font-bold text-ink-accent hover:underline focus-visible:ring-2 focus-visible:ring-ink-accent/40"
-            >
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {expanded ? t("review.seeLess") : hiddenIssues > 0 ? t("review.moreIssues", { count: hiddenIssues }) : t("review.seeMore")}
-            </button>
-          )}
-        </div>
-      )}
-
-      {issues.length === 0 && (
-        <div className="border-t border-[#DCE9D7] bg-[#EDF3EC] px-3 py-2 text-xs font-bold text-[#346538] sm:px-4">
-          <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          {t("review.noIssues")}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function DiagnosisStep2Review() {
   const { t, i18n } = useTranslation("diagnosis");
@@ -323,9 +151,10 @@ export function DiagnosisStep2Review() {
   const issueGroups: CvIssue[][] = dimensions.length > 0
     ? dimensions.map((_, i) => dimensionIssueSlice(reviewData, i))
     : [allIssues];
+  const reportGroups = buildDiagnosisReport(reviewData, t, issueGroups);
 
   const [rawOpen, setRawOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'audit' | 'skills' | 'market'>('audit');
+  const [activeTab, setActiveTab] = useState<'audit' | 'market'>('audit');
 
   /* ── Companion Pillar 1+2: anchored per-element issues (boundary = parse-done) ──
      The detector layer runs off reviewData (completeness/parse-quality/listed-no-evidence)
@@ -348,7 +177,7 @@ export function DiagnosisStep2Review() {
   // Tab → chat focus so the advisor's opener + answers are context-relevant to the
   // section in view. Switching tabs just swaps the opener text (same single context).
   const chatFocus: DiagnosisChatFocus =
-    activeTab === "skills" ? "skills_analysis" : activeTab === "market" ? "market_careers" : "cv_audit";
+    activeTab === "market" ? "market_careers" : "cv_audit";
   // Reveal a cited card — but NEVER auto-switch tabs. Only scroll to the card if it is
   // already mounted on the CURRENT tab. Force-switching tabs on a citation yanks the user
   // out of the section they're reading (e.g. asking a Market question and being teleported
@@ -407,7 +236,6 @@ export function DiagnosisStep2Review() {
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },
-    { key: "skills", label: t("review.tabs.skills"), icon: <Brain className="w-4 h-4" /> },
     { key: "market", label: t("review.tabs.market"), icon: <TrendingUp className="w-4 h-4" /> },
   ];
 
@@ -442,7 +270,7 @@ export function DiagnosisStep2Review() {
         <StatRow
           score={overallCvScore}
           atsScore={atsScore}
-          atsCheck={reviewData?.atsCheck}
+          atsCheck={null} // Ngừng dùng AtsBreakdownPopover tại màn này
           role={targetRole ? getRoleLabel(targetRole) : "N/A"}
           scoreMessage={scoreLabel}
           atsNote={t("review.atsNote")}
@@ -459,8 +287,6 @@ export function DiagnosisStep2Review() {
           </Button>
         </div>
       </div>
-
-      <SectionRule />
 
       {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
       <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
@@ -483,114 +309,74 @@ export function DiagnosisStep2Review() {
               <EditorialTabNav
                 tabs={tabItems}
                 active={activeTab}
-                onChange={(key) => setActiveTab(key as 'audit' | 'skills' | 'market')}
+                onChange={(key) => setActiveTab(key as 'audit' | 'market')}
               />
 
               {/* Tab Panel contents */}
               <div className="space-y-5">
                 {activeTab === 'audit' && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
-                    {/* Buzzwords warning */}
-                    {reviewData?.buzzwords_detected && reviewData.buzzwords_detected.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-2 p-3 bg-amber-50 border border-amber-200/60 rounded-xl">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span className="text-[13px] font-medium text-amber-800">
-                          {t("review.buzzwordsDetected", "Phát hiện từ ngữ sáo rỗng (cần thay bằng số liệu cụ thể):")}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {reviewData.buzzwords_detected.map((word, idx) => (
-                            <span key={idx} className="bg-white px-2 py-0.5 rounded text-xs font-semibold text-amber-700 border border-amber-200/60 shadow-sm">
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Top Summary prioritized checklist */}
-                    {reviewData?.top_summary && (
-                      <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>
-                        <TopSummaryCard summary={reviewData.top_summary} />
-                      </Chapter>
-                    )}
-
-                    <SectionRule />
-
-                    {/* Breakdown Dimension Cards */}
-                    {dimensions.length > 0 ? (
-                      <Chapter kicker={t("review.breakdownTitle")} title={t("review.breakdownDesc")}>
-                        <div className="flex items-center gap-2 -mt-2 mb-1">
-                          <span className="w-fit rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#787774] shadow-sm">
-                            {t("review.priorityCount", { count: allIssues.length })}
-                          </span>
-                        </div>
-                        <div className="grid gap-3">
-                          {dimensions.map((dim, i) => (
-                            <DimensionCard key={dim.key} dim={dim} issues={issueGroups[i] ?? []} index={i} t={t} />
-                          ))}
-                        </div>
-                      </Chapter>
-                    ) : (
-                      allIssues.length > 0 && (
-                        <div className={cn(CARD, "p-5")}>
-                          <h3 className="text-sm font-bold text-slate-800 mb-3">Issues</h3>
-                          <ul className="space-y-2">
-                            {allIssues.map((issue, i) => (
-                              <li key={i} className="flex items-start gap-2 text-[13px] text-slate-800">
-                                <SeverityBadge severity={issue.severity} t={t} />
-                                <span className="font-medium">{issue.detail}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )
-                    )}
-
-                    {/* Raw parsed accordion */}
-                    <div className={cn(CARD, "overflow-hidden hover:border-slate-350 transition-all duration-200")}>
-                      <button
-                        type="button"
-                        onClick={() => setRawOpen(!rawOpen)}
-                        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40"
-                      >
-                        <div>
-                          <h3 className="text-xs font-bold text-slate-800">{t("review.rawParsedTitle")}</h3>
-                          <p className="text-[11px] text-[#787774] mt-0.5">{t("review.rawParsedDesc")}</p>
-                        </div>
-                        {rawOpen ? <ChevronUp className="w-4 h-4 text-[#787774]" /> : <ChevronDown className="w-4 h-4 text-[#787774]" />}
-                      </button>
-                      {rawOpen && (
-                        <div className="border-t border-[#EAEAEA] p-4 bg-slate-50/30">
-                          <pre className="text-[10px] font-mono text-[#787774] leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">
-                            {JSON.stringify(reviewData?.parsedCv ?? {}, null, 2)}
-                          </pre>
-                        </div>
-                      )}
+                  <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-300">
+                    {/* ScoreRail */}
+                    <div className="w-full md:w-[180px] md:sticky md:top-24 shrink-0">
+                      <ScoreRail
+                        overallScore={overallCvScore}
+                        groups={reportGroups}
+                        breakdown={reviewData?.breakdown}
+                      />
                     </div>
-                  </div>
-                )}
 
-                {activeTab === 'skills' && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
-                    {/* Skill chips */}
-                    {reviewData?.skills_extracted && reviewData.skills_extracted.length > 0 && (
-                      <Chapter kicker={t("review.tabs.skills")} title="">
-                        <SkillsExtractedCard skills={reviewData.skills_extracted} />
-                      </Chapter>
-                    )}
+                    {/* Content Column (Groups) */}
+                    <div className="flex-1 min-w-0 space-y-8 w-full">
+                      {/* Top Summary prioritized checklist */}
+                      {reviewData?.top_summary && (
+                        <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>
+                          <TopSummaryCard summary={reviewData.top_summary} />
+                        </Chapter>
+                      )}
 
-                    {/* Skill relevance */}
-                    {reviewData?.skills_relevance_breakdown && (
-                      <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
-                    )}
+                      {/* CheckGroups */}
+                      {reportGroups.map((group) => (
+                        <CheckGroup key={group.id} group={group}>
+                          {/* Custom slot for Skills */}
+                          {group.id === "skills" && (
+                            <div className="space-y-4 mt-4">
+                              {reviewData?.skills_extracted && reviewData.skills_extracted.length > 0 && (
+                                <SkillsExtractedCard skills={reviewData.skills_extracted} />
+                              )}
+                              {reviewData?.skills_relevance_breakdown && (
+                                <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
+                              )}
+                              {reviewData?.evidence_ledger?.items?.length ? (
+                                <EvidenceLedgerCard ledger={reviewData.evidence_ledger} />
+                              ) : null}
+                              <GithubEvidence cvId={lastCvId} document={reviewData?.document} />
+                            </div>
+                          )}
+                        </CheckGroup>
+                      ))}
 
-                    {/* Evidence Ledger */}
-                    {reviewData?.evidence_ledger?.items?.length ? (
-                      <EvidenceLedgerCard ledger={reviewData.evidence_ledger} />
-                    ) : null}
-
-                    {/* GitHub Evidence */}
-                    <GithubEvidence cvId={lastCvId} document={reviewData?.document} />
+                      {/* Raw parsed accordion */}
+                      <div className={cn(CARD, "overflow-hidden hover:border-slate-350 transition-all duration-200")}>
+                        <button
+                          type="button"
+                          onClick={() => setRawOpen(!rawOpen)}
+                          className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50/50 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40"
+                        >
+                          <div>
+                            <h3 className="text-xs font-bold text-slate-800">{t("review.rawParsedTitle")}</h3>
+                            <p className="text-[11px] text-[#787774] mt-0.5">{t("review.rawParsedDesc")}</p>
+                          </div>
+                          {rawOpen ? <ChevronUp className="w-4 h-4 text-[#787774]" /> : <ChevronDown className="w-4 h-4 text-[#787774]" />}
+                        </button>
+                        {rawOpen && (
+                          <div className="border-t border-[#EAEAEA] p-4 bg-slate-50/30">
+                            <pre className="text-[10px] font-mono text-[#787774] leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">
+                              {JSON.stringify(reviewData?.parsedCv ?? {}, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 
