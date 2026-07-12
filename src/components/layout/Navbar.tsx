@@ -116,8 +116,8 @@ export default function Navbar() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full px-4 pt-4 md:pt-6 pointer-events-none">
-      <nav className="w-full max-w-6xl h-16 md:h-[4.5rem] flex items-center justify-between px-4 md:px-6 bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-900/5 rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
-        <div className="flex items-center gap-4 lg:gap-8 xl:gap-12">
+      <nav className="w-full max-w-6xl h-16 md:h-[4.5rem] flex items-center justify-between px-3 sm:px-4 lg:px-6 bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl shadow-slate-900/5 rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <div className="flex items-center gap-3 lg:gap-5 xl:gap-10">
         <Link to="/" className="flex items-center group">
           <div className="flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img
@@ -126,19 +126,19 @@ export default function Navbar() {
               className="h-[72px] w-auto max-w-none object-contain drop-shadow-sm -my-4 -ml-4 -mr-1"
             />
           </div>
-          <span className="hidden sm:inline text-[20px] font-bold tracking-tight text-slate-800">
+          <span className="hidden sm:inline md:hidden xl:inline text-[20px] font-bold tracking-tight text-slate-800">
             SkillBridge
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-3 lg:gap-6 xl:gap-8">
+        <div className="hidden md:flex items-center gap-2.5 lg:gap-4 xl:gap-6">
           {NAV_ITEMS.filter((item) => isAuthenticated || item.href !== "/dashboard").map((item) => (
             <Link
               key={item.href}
               to={item.href}
               aria-current={location.pathname === item.href ? "page" : undefined}
               className={cn(
-                "text-xs lg:text-sm font-medium transition-colors hover:text-primary relative py-1 whitespace-nowrap",
+                "text-[13px] xl:text-sm font-medium transition-colors hover:text-primary relative py-1 whitespace-nowrap",
                 location.pathname === item.href
                   ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
                   : "text-slate-600"
@@ -150,7 +150,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
