@@ -22,7 +22,7 @@ export function MascotOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/10 backdrop-blur-[6px] pointer-events-auto"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/15 backdrop-blur-[20px] pointer-events-auto"
         >
           <motion.div
             initial={{ scale: 0.85, y: 30, opacity: 0 }}
