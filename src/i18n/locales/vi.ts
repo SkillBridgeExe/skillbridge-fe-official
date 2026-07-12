@@ -1885,7 +1885,16 @@ export default {
       rail: {
         issuesBadge: "{{count}} cần sửa",
         resolved: "Đạt chuẩn",
-      }
+      },
+      keywordTable: {
+        thSkill: "Kỹ năng",
+        thCv: "Trong CV",
+        thJd: "Trong JD",
+        thImportance: "Mức độ",
+        thStatus: "Trạng thái",
+        groupLabel: "Keywords / Tần suất từ khóa",
+      },
+      requiredCoverage: "Đạt {{pct}}% kỹ năng bắt buộc",
     },
     results: {
       backToReview: "Về màn chấm CV",

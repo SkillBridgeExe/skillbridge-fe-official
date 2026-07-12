@@ -1891,7 +1891,16 @@ export default {
       rail: {
         issuesBadge: "{{count}} to fix",
         resolved: "Passed",
-      }
+      },
+      keywordTable: {
+        thSkill: "Skill",
+        thCv: "In CV",
+        thJd: "In JD",
+        thImportance: "Importance",
+        thStatus: "Status",
+        groupLabel: "Keywords / Keyword frequency",
+      },
+      requiredCoverage: "Covers {{pct}}% of required skills",
     },
     results: {
       backToReview: "Back to CV review",
