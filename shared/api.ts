@@ -1237,7 +1237,7 @@ export interface LearningChatResponse {
   history?: LearningChatMessageDto[];
 }
 
-export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording" | "not_fixable_now" | "already_met";
+export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording" | "advice" | "not_fixable_now" | "already_met";
 
 export interface GapEvidenceItem {
   skill_canonical: string;
