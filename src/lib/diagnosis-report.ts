@@ -1,4 +1,4 @@
-import type { CvReviewData, CvIssue } from "@shared/api";
+import type { CvReviewData, CvIssue, KeywordFrequency, PerSkillContribution } from "@shared/api";
 
 export interface CheckRowData {
   id: string;
@@ -233,4 +233,89 @@ export function buildDiagnosisReport(
   }
 
   return groups;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  KeywordTable — join keyword_frequency × per_skill
+ * ═══════════════════════════════════════════════════════════════════ */
+
+export interface KeywordRowData {
+  canonical_name: string;
+  display_name: string;
+  cv_count: number | null;
+  jd_count: number | null;
+  importance: "REQUIRED" | "PREFERRED" | "NICE_TO_HAVE" | null;
+  status: "matched" | "partial" | "missing" | null;
+}
+
+const STATUS_ORDER: Record<string, number> = { missing: 0, partial: 1, matched: 2 };
+const IMPORTANCE_ORDER: Record<string, number> = { REQUIRED: 0, PREFERRED: 1, NICE_TO_HAVE: 2 };
+
+/**
+ * Joins `keyword_frequency[]` with `scoring_breakdown.per_skill[]` by canonical_name.
+ * Returns null when BOTH sources are absent (old match without either field).
+ * Rows present in only one source still render with the other side blank.
+ * Sort: missing REQUIRED first → partial → matched, then by importance.
+ */
+export function buildKeywordRows(
+  keywordFrequency: KeywordFrequency[] | undefined | null,
+  perSkill: PerSkillContribution[] | undefined | null,
+): KeywordRowData[] | null {
+  const hasKf = !!keywordFrequency && keywordFrequency.length > 0;
+  const hasPs = !!perSkill && perSkill.length > 0;
+
+  if (!hasKf && !hasPs) return null;
+
+  const map = new Map<string, KeywordRowData>();
+
+  // Seed from keyword_frequency
+  if (hasKf) {
+    for (const kf of keywordFrequency!) {
+      const key = kf.keyword;
+      map.set(key, {
+        canonical_name: key,
+        display_name: key,
+        cv_count: kf.cv_count,
+        jd_count: kf.jd_count,
+        importance: null,
+        status: null,
+      });
+    }
+  }
+
+  // Merge / overlay from per_skill
+  if (hasPs) {
+    for (const ps of perSkill!) {
+      const key = ps.canonical_name;
+      const existing = map.get(key);
+      if (existing) {
+        existing.display_name = ps.display_name || existing.display_name;
+        existing.importance = ps.importance;
+        existing.status = ps.status;
+      } else {
+        map.set(key, {
+          canonical_name: key,
+          display_name: ps.display_name || key,
+          cv_count: null,
+          jd_count: null,
+          importance: ps.importance,
+          status: ps.status,
+        });
+      }
+    }
+  }
+
+  const rows = Array.from(map.values());
+
+  // Sort: missing REQUIRED first, then partial, then matched
+  rows.sort((a, b) => {
+    const sa = STATUS_ORDER[a.status ?? "matched"] ?? 2;
+    const sb = STATUS_ORDER[b.status ?? "matched"] ?? 2;
+    if (sa !== sb) return sa - sb;
+    const ia = IMPORTANCE_ORDER[a.importance ?? "NICE_TO_HAVE"] ?? 2;
+    const ib = IMPORTANCE_ORDER[b.importance ?? "NICE_TO_HAVE"] ?? 2;
+    return ia - ib;
+  });
+
+  return rows;
 }

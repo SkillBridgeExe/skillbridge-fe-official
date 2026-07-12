@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDiagnosisReport } from "./diagnosis-report";
+import { buildDiagnosisReport, buildKeywordRows } from "./diagnosis-report";
 import type { CvReviewData } from "@shared/api";
 
 describe("buildDiagnosisReport", () => {
@@ -145,5 +145,74 @@ describe("buildDiagnosisReport", () => {
 
     const report = buildDiagnosisReport(mockData, mockT);
     expect(report).toHaveLength(0);
+  });
+});
+
+describe("buildKeywordRows", () => {
+  it("returns null when both keyword_frequency and per_skill are absent", () => {
+    expect(buildKeywordRows(undefined, undefined)).toBeNull();
+    expect(buildKeywordRows(null, null)).toBeNull();
+    expect(buildKeywordRows([], [])).toBeNull();
+  });
+
+  it("joins keyword_frequency with per_skill by canonical_name", () => {
+    const kf = [
+      { keyword: "react", jd_count: 3, cv_count: 2 },
+      { keyword: "node", jd_count: 1, cv_count: 0 },
+    ];
+    const ps = [
+      { canonical_name: "react", display_name: "React", status: "matched" as const, importance: "REQUIRED" as const, weight: 1, effective_weight: 1, strength: 1, points_earned: 10, points_possible: 10 },
+      { canonical_name: "node", display_name: "Node.js", status: "missing" as const, importance: "REQUIRED" as const, weight: 1, effective_weight: 1, strength: 0, points_earned: 0, points_possible: 10 },
+    ];
+
+    const rows = buildKeywordRows(kf, ps)!;
+    expect(rows).toHaveLength(2);
+
+    // missing REQUIRED should be first
+    expect(rows[0].canonical_name).toBe("node");
+    expect(rows[0].display_name).toBe("Node.js");
+    expect(rows[0].cv_count).toBe(0);
+    expect(rows[0].jd_count).toBe(1);
+    expect(rows[0].importance).toBe("REQUIRED");
+    expect(rows[0].status).toBe("missing");
+
+    expect(rows[1].canonical_name).toBe("react");
+    expect(rows[1].status).toBe("matched");
+    expect(rows[1].cv_count).toBe(2);
+  });
+
+  it("sorts: missing REQUIRED → partial REQUIRED → matched", () => {
+    const ps = [
+      { canonical_name: "a", display_name: "A", status: "matched" as const, importance: "REQUIRED" as const, weight: 1, effective_weight: 1, strength: 1, points_earned: 10, points_possible: 10 },
+      { canonical_name: "b", display_name: "B", status: "partial" as const, importance: "REQUIRED" as const, weight: 1, effective_weight: 1, strength: 0.5, points_earned: 5, points_possible: 10 },
+      { canonical_name: "c", display_name: "C", status: "missing" as const, importance: "PREFERRED" as const, weight: 1, effective_weight: 1, strength: 0, points_earned: 0, points_possible: 10 },
+      { canonical_name: "d", display_name: "D", status: "missing" as const, importance: "REQUIRED" as const, weight: 1, effective_weight: 1, strength: 0, points_earned: 0, points_possible: 10 },
+    ];
+
+    const rows = buildKeywordRows(null, ps)!;
+    expect(rows[0].canonical_name).toBe("d"); // missing REQUIRED
+    expect(rows[1].canonical_name).toBe("c"); // missing PREFERRED
+    expect(rows[2].canonical_name).toBe("b"); // partial REQUIRED
+    expect(rows[3].canonical_name).toBe("a"); // matched REQUIRED
+  });
+
+  it("renders rows from only keyword_frequency when per_skill is absent", () => {
+    const kf = [{ keyword: "python", jd_count: 5, cv_count: 3 }];
+    const rows = buildKeywordRows(kf, null)!;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].importance).toBeNull();
+    expect(rows[0].status).toBeNull();
+    expect(rows[0].cv_count).toBe(3);
+  });
+
+  it("renders rows from only per_skill when keyword_frequency is absent", () => {
+    const ps = [
+      { canonical_name: "go", display_name: "Go", status: "matched" as const, importance: "NICE_TO_HAVE" as const, weight: 1, effective_weight: 1, strength: 1, points_earned: 5, points_possible: 5 },
+    ];
+    const rows = buildKeywordRows(null, ps)!;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].cv_count).toBeNull();
+    expect(rows[0].jd_count).toBeNull();
+    expect(rows[0].display_name).toBe("Go");
   });
 });
