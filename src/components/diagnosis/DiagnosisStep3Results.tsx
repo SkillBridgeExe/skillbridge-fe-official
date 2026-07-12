@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, RotateCcw,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -250,6 +250,11 @@ export function DiagnosisStep3Results() {
   const isDegradedNoBasis = isJdMode && (matchScore === null || jdMatch?.degraded_reasons?.includes("NO_REQUIREMENT_BASIS"));
   const isDegradedUnrecognizedSkills = isJdMode && jdMatch?.degraded_reasons?.includes("CV_SKILLS_UNRECOGNIZED");
   const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";
+  // TRUST': the whole analysis (radar, gap report, tailor, roadmap, interview) is only meaningful
+  // when we could actually score the input. When we couldn't (no requirement basis, or the CV text
+  // is unreadable), showing those sections would contradict the honest "can't trust this" banner —
+  // so gate every downstream chapter on this single flag and offer a re-scan instead.
+  const canTrustAnalysis = !isDegradedNoBasis && !isUnusable;
 
   const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
@@ -459,22 +464,30 @@ export function DiagnosisStep3Results() {
 
         {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
         {isDegradedNoBasis ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
             <h3 className="text-lg font-bold text-[#2F3437]">
               {t("degraded.noBasisTitle")}
             </h3>
             <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
               {t("degraded.noBasisBody")}
             </p>
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              {t("degraded.noBasisCta", { defaultValue: "Chọn vai trò hoặc dán JD khác" })}
+            </Button>
           </div>
         ) : isUnusable ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
             <h3 className="text-lg font-bold text-[#2F3437]">
               {t("degraded.unusableTitle")}
             </h3>
             <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
               {t("degraded.unusableBody")}
             </p>
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              {t("degraded.unusableCta", { defaultValue: "Tải lên CV rõ hơn" })}
+            </Button>
           </div>
         ) : (
           <VerdictHero
@@ -518,8 +531,8 @@ export function DiagnosisStep3Results() {
           </div>
         )}
 
-        {/* CV-only sub-scores */}
-        {!isJdMode && (
+        {/* CV-only sub-scores — hidden when the CV text is unusable (no trustworthy number). */}
+        {!isJdMode && canTrustAnalysis && (
           <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
             <span className="text-[#787774]">
               <Shield className="w-3.5 h-3.5 inline mr-1" />
@@ -533,6 +546,10 @@ export function DiagnosisStep3Results() {
         )}
       </div>
 
+      {/* TRUST': the entire analysis body renders ONLY when the input could be trusted enough to
+          score. Otherwise the masthead panel above (with its re-scan CTA) is the whole result. */}
+      {canTrustAnalysis && (
+        <>
       <SectionRule />
 
       {isJdMode && (
@@ -840,6 +857,8 @@ export function DiagnosisStep3Results() {
           softSkills={softSkills}
           t={t}
         />
+      )}
+        </>
       )}
     </div>
   );

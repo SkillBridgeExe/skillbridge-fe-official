@@ -1613,6 +1613,8 @@ export default {
       noBasisBody: "JD này không nêu yêu cầu cụ thể nào và vai trò đang chọn chưa có thước chuẩn — nên chưa thể tính điểm khớp. Hãy dán JD chi tiết hơn hoặc chọn vai trò khác.",
       unusableTitle: "Không đủ tin cậy để chấm điểm",
       unusableBody: "CV không đọc được đủ tin cậy để chấm điểm — kết quả có thể sai. Hãy tải lên bản CV rõ hơn (không phải ảnh scan mờ).",
+      noBasisCta: "Chọn vai trò hoặc dán JD khác",
+      unusableCta: "Tải lên CV rõ hơn",
       unrecognizedSkills: "Nhiều kỹ năng trong CV chưa được nhận diện — điểm có thể thấp hơn thực tế. Xem mục kỹ năng chưa nhận diện.",
       noneFoundJdIntel: "Chưa trích xuất được yêu cầu phi kỹ năng nào từ JD (cấp độ, ngôn ngữ, học vấn, lĩnh vực). JD có thể không nêu, hoặc hệ thống chưa đọc được.",
       noEligibleJdIntel: "Không tìm thấy yêu cầu phi kỹ năng nào trong JD.",
