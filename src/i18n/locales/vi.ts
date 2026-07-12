@@ -1608,6 +1608,14 @@ export default {
       body: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge, nên hệ thống tạm chấm theo chuẩn vai trò {{role}}. Yêu cầu chưa nhận diện được: {{skills}}.",
       bodyNoRole: "JD này chứa các yêu cầu nằm ngoài từ điển kỹ năng của SkillBridge nên chưa thể chấm điểm theo JD. Yêu cầu chưa nhận diện được: {{skills}}.",
     },
+    degraded: {
+      noBasisTitle: "Chưa đủ cơ sở để chấm",
+      noBasisBody: "JD này không nêu yêu cầu cụ thể nào và vai trò đang chọn chưa có thước chuẩn — nên chưa thể tính điểm khớp. Hãy dán JD chi tiết hơn hoặc chọn vai trò khác.",
+      unrecognizedSkills: "Nhiều kỹ năng trong CV chưa được nhận diện — điểm có thể thấp hơn thực tế. Xem mục kỹ năng chưa nhận diện.",
+      noneFoundJdIntel: "Chưa trích xuất được yêu cầu phi kỹ năng nào từ JD (cấp độ, ngôn ngữ, học vấn, lĩnh vực). JD có thể không nêu, hoặc hệ thống chưa đọc được.",
+      noContactAnchor: "Không tìm thấy tên/email — có thể CV bị đọc sai định dạng.",
+      throttled: "Bạn thao tác hơi nhanh, thử lại sau giây lát",
+    },
     severityBreakdown: {
       title: "Chi tiết độ nghiêm trọng",
       importance: "Độ quan trọng (JD)",
@@ -1818,6 +1826,9 @@ export default {
           "AI có thể đọc thiếu một phần CV — hãy đối chiếu lại với bản gốc để chắc kết quả đầy đủ.",
         low: "CV có thể bị lỗi font hoặc là bản scan/ảnh — kết quả có thể chưa đầy đủ, hãy kiểm tra lại bản đọc.",
         flagsLabel: "Tín hiệu",
+        flags: {
+          NO_CONTACT_ANCHOR: "Không tìm thấy tên/email — có thể CV bị đọc sai định dạng.",
+        },
       },
       quickPanel: {
         title: "Bảng điều khiển nhanh",
@@ -2139,6 +2150,9 @@ export default {
       error: "Chưa tải được báo cáo gap — thử lại sau.",
       sourceJd: "theo JD bạn dán",
       sourceRubric: "theo chuẩn role",
+      sourceJdNew: "theo JD bạn dán",
+      sourceRubricNew: "theo thước chuẩn vai trò",
+      sourceNone: "chưa có cơ sở chấm",
       actions: "Việc đáng làm trước",
       gapsExplicit: "Thiếu hẳn",
       gapsProficiency: "Thiếu cấp độ",

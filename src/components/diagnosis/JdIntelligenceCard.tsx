@@ -92,7 +92,22 @@ export function JdIntelligenceCard({
 }) {
   const { t } = useTranslation("diagnosis");
 
-  if (!data?.dimensions?.length) return null;
+  if (!data) return null;
+
+  if (data.status === "none_found" || !data.dimensions || data.dimensions.length === 0) {
+    return (
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {/* Header */}
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+          <Globe className="w-3.5 h-3.5" />
+          {t("jdIntel.title")}
+        </div>
+        <div className="text-xs text-[#787774] bg-[#FBFBFA] border border-[#E3E0D8] rounded-xl p-4 leading-relaxed shadow-sm">
+          {data.note || t("degraded.noneFoundJdIntel")}
+        </div>
+      </div>
+    );
+  }
 
   // Build lookup: dimension type → matching GapItem (first non-matched)
   const gapByType = new Map<string, GapItem>();

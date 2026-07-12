@@ -18,7 +18,7 @@ import type { CanonicalCvDocument, TailorAction, TailorActionType } from "@share
 import { JdMarketPosition } from "./JdMarketPosition";
 import { useQueryClient } from "@tanstack/react-query";
 import { ToastAction } from "@/components/ui/toast";
-import { getApiErrorCode } from "@/lib/api-error";
+import { getApiErrorCode, isThrottledError } from "@/lib/api-error";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { OPEN_TAILOR_REWRITE_EVENT, type OpenTailorRewriteEventDetail } from "@/components/companion/skills/chat-action-events";
 import { canOpenTailorRewrite } from "@/components/companion/skills/chat-action-chips";
@@ -358,6 +358,23 @@ function TailorRewriteDialog({
                         title: t("tailor.errors.textNotInCvTitle", { defaultValue: "Mất dấu gợi ý" }),
                         description: t("tailor.errors.textNotInCvDesc", { defaultValue: "Nội dung CV đã thay đổi so với lúc chấm hoặc gợi ý không khớp." }),
                         variant: "destructive",
+                      });
+                    } else if (isThrottledError(err)) {
+                      toast({
+                        title: t("degraded.throttled", { defaultValue: "Bạn thao tác hơi nhanh, thử lại sau giây lát" }),
+                        variant: "default",
+                        action: (
+                          <ToastAction
+                            altText={t("gapReport.retry", { defaultValue: "Thử lại" })}
+                            onClick={() => {
+                              rewriteMutation.mutate(
+                                { cvId, matchId, text, action }
+                              );
+                            }}
+                          >
+                            {t("gapReport.retry", { defaultValue: "Thử lại" })}
+                          </ToastAction>
+                        ),
                       });
                     } else {
                       toast({ title: t("tailor.rewriteError"), variant: "destructive" });

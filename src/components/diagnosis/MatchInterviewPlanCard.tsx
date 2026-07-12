@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useGenerateInterviewPlanFromMatchMutation } from "@/hooks/use-diagnosis";
 import { InterviewPlanAccordion } from "./InterviewPlanAccordion";
+import { isThrottledError } from "@/lib/api-error";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -15,7 +16,8 @@ const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba
 export function MatchInterviewPlanCard({ matchId }: { matchId: string }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
-  const { mutate, data, isPending, isError } = useGenerateInterviewPlanFromMatchMutation();
+  const { mutate, data, isPending, isError, error } = useGenerateInterviewPlanFromMatchMutation();
+  const isThrottled = isError && isThrottledError(error);
 
   const items = data?.items ?? [];
   const hasResult = Boolean(data);
@@ -62,8 +64,15 @@ export function MatchInterviewPlanCard({ matchId }: { matchId: string }) {
           {isPending && <InterviewPlanSkeleton />}
 
           {isError && (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <p className="text-sm font-medium text-[#9F2F2D]">{t("interviewPrep.error")}</p>
+            <div className={cn(
+              "flex flex-col items-center gap-3 py-4 text-center px-4 rounded-xl border",
+              isThrottled ? "border-[#EAEAEA] bg-[#FBFBFA]" : "border-transparent"
+            )}>
+              <p className={cn("text-sm font-medium", isThrottled ? "text-[#787774]" : "text-[#9F2F2D]")}>
+                {isThrottled 
+                  ? t("degraded.throttled", { defaultValue: "Bạn thao tác hơi nhanh, thử lại sau giây lát" })
+                  : t("interviewPrep.error")}
+              </p>
               <Button
                 variant="ghost"
                 onClick={() => mutate({ matchId, lang })}

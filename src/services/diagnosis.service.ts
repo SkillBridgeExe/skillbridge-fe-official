@@ -241,9 +241,8 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   // BE không tách hard/soft — toàn bộ vào hardSkills, tab soft trống (W3 xử lý UI).
   const breakdown = parsed?.scoring_breakdown;
   const total = breakdown?.total_requirements ?? hardSkills.length;
-  const matchScore = Math.round(
-    match.overallScore ?? parsed?.overall_score ?? match.matchRatio ?? 0,
-  );
+  const rawScore = match.overallScore ?? parsed?.overall_score ?? match.matchRatio;
+  const matchScore = rawScore !== null && rawScore !== undefined ? Math.round(rawScore) : null;
 
   return {
     matchId: match.id,
@@ -252,7 +251,9 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
       ? `Matched ${breakdown.matched_count}/${total} requirements (${breakdown.partial_count} partial, ${breakdown.missing_count} missing). Required-skill coverage: ${Math.round((parsed?.required_coverage ?? 0) * 100)}%.`
-      : `Match score ${matchScore}/100.`,
+      : matchScore !== null
+        ? `Match score ${matchScore}/100.`
+        : `Match score —/100.`,
     hardSkills,
     softSkills: [],
     radar: hardSkills.slice(0, 6).map((skill) => ({
@@ -276,6 +277,7 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
       jd_count: f.jd_count,
       cv_count: f.cv_count,
     })) ?? [],
+    degraded_reasons: parsed?.degraded_reasons ?? [],
   };
 }
 

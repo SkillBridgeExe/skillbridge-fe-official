@@ -80,7 +80,8 @@ export type FitReasonCode =
 export interface CvJdMatch {
   matchId?: string;
   match_id?: string | null;
-  matchScore: number;
+  matchScore: number | null;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
   summary: string;
   hardSkills: SkillMatchItem[];
   softSkills: SkillMatchItem[];
@@ -485,8 +486,9 @@ export interface BeMissingSkill {
 }
 
 export interface CvJdMatchParsedResponse {
-  overall_score: number;
-  match_ratio: number;
+  overall_score: number | null;
+  match_ratio: number | null;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
   matched_skills: BeMatchedSkill[];
   partial_skills: BePartialSkill[];
   missing_skills: BeMissingSkill[];
@@ -1328,7 +1330,7 @@ export type JdMarketPosition = JdMarketPositionDto;
 
 export interface GapReportDto {
   target_role: string | null;
-  overall_score: number;
+  overall_score: number | null;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
   /** Deterministic apply-verdict (fit-strategy) — always present on fresh reports. */
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
@@ -1431,6 +1433,7 @@ export interface JdIntelligenceItem {
 export interface JdIntelligenceBlock {
   dimensions: JdIntelligenceItem[];
   note: string;
+  status?: 'extracted' | 'none_found';
 }
 
 // ── Canonical gap object (Gap Engine v2) ───────────────────────────────────────
