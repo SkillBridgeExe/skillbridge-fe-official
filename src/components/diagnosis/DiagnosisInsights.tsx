@@ -91,9 +91,6 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
             </span>
           )}
         </div>
-        <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
-          {summary.headline}
-        </h2>
         {total > 0 && (
           <ol className="mt-4 space-y-3">
             {summary.prioritized_actions.map((action, idx) => {
