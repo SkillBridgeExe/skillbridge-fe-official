@@ -31,8 +31,8 @@ import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagn
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
-import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 import { FitBadge } from "./FitBadge";
+import { KeywordTable } from "./report/KeywordTable";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -642,22 +642,21 @@ export function DiagnosisStep3Results() {
             </Button>
           </div>
         ) : (
-          <VerdictHero
-            target={matchScore ?? 0}
-            label={
-              isJdMode ? (
-                <ScoreBreakdownPopover jdMatch={jdMatch}>
-                  {scoreLabel}
-                </ScoreBreakdownPopover>
-              ) : (
-                scoreLabel
-              )
-            }
-            verdictMessage={scoreMessage}
-            isJdMode={isJdMode}
-            rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
-            bandTooltip={t("band.tooltip")}
-          />
+          <>
+            <VerdictHero
+              target={matchScore ?? 0}
+              label={scoreLabel}
+              verdictMessage={scoreMessage}
+              isJdMode={isJdMode}
+              rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
+              bandTooltip={t("band.tooltip")}
+            />
+            {isJdMode && coverage !== undefined && (
+              <p className="text-xs font-semibold text-[#787774] text-center mt-1">
+                {t("report.requiredCoverage", { pct: coverage })}
+              </p>
+            )}
+          </>
         )}
 
         {/* W44: Microcopy — honest distinction between CV score and JD match score */}
@@ -878,6 +877,14 @@ export function DiagnosisStep3Results() {
                   )}
                 </div>
               </div>
+
+              {/* KeywordTable — keyword frequency × per_skill joined table (renders nothing on old matches) */}
+              {isJdMode && (
+                <KeywordTable
+                  keywordFrequency={jdMatch?.keyword_frequency}
+                  perSkill={jdMatch?.scoring_breakdown?.per_skill}
+                />
+              )}
 
               {/* Inferred Skills */}
               {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
