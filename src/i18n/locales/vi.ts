@@ -2015,6 +2015,11 @@ export default {
       noFocusTitle: "Không có khoảng trống kỹ năng cần luyện",
       noFocusDesc:
         "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV.",
+      emptyState: {
+        title: "Chuẩn bị phỏng vấn cá nhân hóa",
+        desc: "Hãy so sánh CV của bạn với một Mô tả công việc (JD) cụ thể để AI thiết kế bộ câu hỏi phỏng vấn mô phỏng dành riêng cho bạn.",
+        cta: "So sánh với JD",
+      },
     },
     roadmap: {
       generating: "Đang tạo...",

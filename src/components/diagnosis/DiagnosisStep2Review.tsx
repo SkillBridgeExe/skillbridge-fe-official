@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, RotateCcw, Briefcase, ChevronDown, ChevronUp, Brain, TrendingUp, FileText, AlertCircle } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -13,14 +13,13 @@ import { AiTrendsInsight } from "./AiTrendsInsight";
 import { InterviewPrepPack } from "./InterviewPrepPack";
 import { GithubEvidence } from "./GithubEvidence";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { getRoleLabel } from "@/constants/it-roles";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
-import type { ReviewDimension, CvIssue, CanonicalCvDocument } from "@shared/api";
+import type { ReviewDimension, CvIssue } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
 import { InfoPopover } from "./InfoPopover";
 import { VerdictHero, SectionRule, Chapter, StatRow, EditorialTabNav } from "./editorial";
@@ -300,42 +299,7 @@ export function DiagnosisStep2Review() {
     }
   };
 
-  /** "Sửa CV & tải PDF": nạp CV đã chẩn đoán vào Builder rồi mở Builder (edit → live preview → render PDF). */
-  const handleEditCv = () => {
-    const parsed = reviewData?.parsedCv;
-    const seedDoc: CanonicalCvDocument | null =
-      reviewData?.document ??
-      (parsed
-        ? {
-            language: "en",
-            contact: {
-              name: parsed.name ?? null,
-              email: parsed.email ?? null,
-              phone: parsed.phone ?? null,
-              location: null,
-              links: [],
-            },
-            summary: parsed.summary ?? "",
-            education: [],
-            experience: [],
-            projects: [],
-            skills: { technical: parsed.skills ?? [], soft: [], languages: [], tools: [] },
-            certifications: [],
-            activities: [],
-          }
-        : null);
 
-    if (!seedDoc) {
-      toast({ title: t("review.editNoDataTitle"), description: t("review.editNoDataDesc"), variant: "destructive" });
-      return;
-    }
-
-    const builder = useCvBuilderStore.getState();
-    builder.hydrateFromCanonical(seedDoc);
-    builder.setSeedSourceCvId(lastCvId ?? null);
-    if (targetRole) builder.setCareerTarget("targetPosition", getRoleLabel(targetRole));
-    setStep("builder");
-  };
 
   const overallCvScore = reviewData?.overallScore ?? 0;
   const atsScore = reviewData?.breakdown.ats ?? 0;
@@ -485,13 +449,6 @@ export function DiagnosisStep2Review() {
         />
 
         <div className="flex w-full justify-center gap-4">
-          <Button
-            onClick={handleEditCv}
-            size="sm"
-            className="rounded-full gap-2 px-6 h-10 text-sm font-bold bg-[#2F3437] text-white hover:bg-[#2F3437]/90 active:scale-[0.98] transition-all shadow-sm"
-          >
-            <Pencil className="w-4 h-4" /> {t("review.quickPanel.editCta")}
-          </Button>
           <Button
             onClick={() => setShowJdInput(true)}
             size="sm"
@@ -644,26 +601,21 @@ export function DiagnosisStep2Review() {
                       <JobRecommendations cvId={lastCvId} />
                     </Chapter>
 
-                    <SectionRule className="my-6" />
-
                     {/* AI trends insight */}
-                    <Chapter kicker="02" title="">
-                      <AiTrendsInsight cvId={lastCvId} role={targetRole} />
-                    </Chapter>
-
-                    <SectionRule className="my-6" />
+                    <AiTrendsInsight cvId={lastCvId} role={targetRole} />
 
                     {/* Skill gaps trends */}
-                    <Chapter kicker="03" title="">
-                      <SkillGapTrends cvId={lastCvId} />
-                    </Chapter>
-
-                    <SectionRule className="my-6" />
+                    <SkillGapTrends cvId={lastCvId} />
 
                     {/* Interview preparation pack */}
-                    <Chapter kicker="04" title="">
-                      <InterviewPrepPack cvId={lastCvId} role={targetRole} />
-                    </Chapter>
+                    <InterviewPrepPack
+                      cvId={lastCvId}
+                      role={targetRole}
+                      onCompareJd={() => {
+                        setShowJdInput(true);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    />
                   </div>
                 )}
               </div>

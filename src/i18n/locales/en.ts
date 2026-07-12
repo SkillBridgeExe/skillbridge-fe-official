@@ -2024,6 +2024,11 @@ export default {
       noFocusTitle: "No skill gaps to practice",
       noFocusDesc:
         "Your skills already meet this role's requirements. Any remaining gaps are about evidence/wording in your CV — see the tailoring section.",
+      emptyState: {
+        title: "Personalized Interview Prep",
+        desc: "Compare your CV with a specific Job Description (JD) to get simulated interview questions tailored just for you.",
+        cta: "Compare with JD",
+      },
     },
     roadmap: {
       generating: "Generating...",

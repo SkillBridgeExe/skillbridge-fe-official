@@ -28,7 +28,8 @@ export const SectionRule = memo(function SectionRule({ className }: { className?
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (prefersReduced()) {
+    // jsdom (vitest) has no IntersectionObserver — reveal immediately, same as reduced-motion.
+    if (prefersReduced() || typeof IntersectionObserver === "undefined") {
       setVisible(true);
       return;
     }
