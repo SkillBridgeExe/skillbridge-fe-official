@@ -590,7 +590,7 @@ export default {
         mentorDesc: "Mentor and share knowledge",
       },
       toast: {
-        loginDemoSuccess: "Demo sign-in successful as {{role}}",
+        loginDemoSuccess: "Demo sign in successful as {{role}}",
         loginSuccess: "Welcome back, {{role}}!",
         loginFailedTitle: "Login failed",
         loginFailedDesc: "Incorrect email or password.",
@@ -611,7 +611,7 @@ export default {
           "A new verification email has been sent. Please check your inbox.",
         resendFailedTitle: "Resend failed",
         resendFailedDesc: "Could not resend email.",
-        googleSuccess: "Google sign-in successful as {{role}}",
+        googleSuccess: "Google sign in successful as {{role}}",
         googleFailedTitle: "Google Login failed",
         googleFailedDesc: "Could not authenticate with Google.",
       },

@@ -33,7 +33,7 @@ export function MascotOverlay() {
           >
             {/* Free-floating large mascot sticker */}
             <div className="relative drop-shadow-[0_20px_35px_rgba(14,165,233,0.25)]">
-              <MascotSticker state={state} size={260} interactive={false} />
+              <MascotSticker state={state} size={320} interactive={false} />
             </div>
 
             {/* Premium glassmorphic text capsule */}
