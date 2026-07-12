@@ -68,7 +68,7 @@ export function MascotOverlay() {
                 className="pointer-events-auto relative overflow-hidden bg-white/95 border border-slate-100 shadow-[0_10px_30px_rgba(15,23,42,0.08)] rounded-2xl p-4 pr-10 flex items-center gap-4 max-w-sm w-full"
               >
                 <div className="flex-shrink-0">
-                  <MascotSticker state={state} size={64} interactive={false} />
+                  <MascotSticker state={state} size={96} interactive={false} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold text-primary uppercase tracking-widest leading-none mb-1">
