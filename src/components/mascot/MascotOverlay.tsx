@@ -1,15 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { MascotSticker } from "./MascotSticker";
 import { useMascotStore } from "@/store/useMascotStore";
-
-const getKickerText = (state: string, lang: string) => {
-  const isVi = lang.startsWith("vi");
-  if (state === "success") return isVi ? "Thành công" : "Success";
-  if (state === "tip") return isVi ? "Gợi ý từ AI" : "AI Suggestion";
-  return isVi ? "Thông báo" : "Notification";
-};
 
 /**
  * Global mascot overlay — mount ONCE at the app root (see App.tsx).
@@ -21,82 +12,45 @@ export function MascotOverlay() {
   const active = useMascotStore((s) => s.active);
   const state = useMascotStore((s) => s.state);
   const message = useMascotStore((s) => s.message);
-  const blocking = useMascotStore((s) => s.blocking);
-  const { i18n } = useTranslation();
-
-  const kicker = getKickerText(state, i18n.language);
 
   return (
     <AnimatePresence>
       {active && (
-        <>
-          {blocking ? (
-            /* Blocking mode: Full screen loading/scanning */
-            <motion.div
-              key="mascot-blocking-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/20 backdrop-blur-sm pointer-events-auto"
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className="bg-white/95 border border-slate-100 shadow-2xl rounded-2xl p-8 max-w-sm mx-4 flex flex-col items-center gap-4 text-center"
-              >
-                <MascotSticker state={state} size={180} interactive={false} />
-                {message && (
-                  <p className="text-lg font-bold text-slate-800 tracking-tight leading-snug">
-                    {message}
-                  </p>
-                )}
-                <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin mt-2" />
-              </motion.div>
-            </motion.div>
-          ) : (
-            /* Non-blocking mode: Floating toast at bottom-right */
-            <div className="fixed bottom-6 right-6 z-[200] pointer-events-none px-4 w-full sm:max-w-md flex justify-end">
-              <motion.div
-                key="mascot-toast"
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                className="pointer-events-auto relative overflow-hidden bg-white/95 border border-slate-100 shadow-[0_10px_30px_rgba(15,23,42,0.08)] rounded-2xl p-4 pr-10 flex items-center gap-4 max-w-sm w-full"
-              >
-                <div className="flex-shrink-0">
-                  <MascotSticker state={state} size={96} interactive={false} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest leading-none mb-1">
-                    {kicker}
-                  </p>
-                  {message && (
-                    <p className="text-sm font-semibold text-slate-800 leading-snug">
-                      {message}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => useMascotStore.getState().hide()}
-                  className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-100"
-                  aria-label="Close"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-                <motion.div
-                  initial={{ width: "100%" }}
-                  animate={{ width: "0%" }}
-                  transition={{ duration: state === "tip" ? 3.2 : 2.2, ease: "linear" }}
-                  className="absolute bottom-0 left-0 h-1 bg-primary"
-                />
-              </motion.div>
+        <motion.div
+          key="mascot-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/10 backdrop-blur-[6px] pointer-events-auto"
+        >
+          <motion.div
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.85, y: 20, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            className="flex flex-col items-center gap-6 text-center p-6 max-w-lg w-full"
+          >
+            {/* Free-floating large mascot sticker */}
+            <div className="relative drop-shadow-[0_20px_35px_rgba(14,165,233,0.25)]">
+              <MascotSticker state={state} size={260} interactive={false} />
             </div>
-          )}
-        </>
+
+            {/* Premium glassmorphic text capsule */}
+            {message && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="px-8 py-3 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-full shadow-[0_10px_30px_rgba(15,23,42,0.06)] text-slate-800 font-semibold text-sm sm:text-base tracking-wide flex items-center gap-2"
+              >
+                {state === "success" && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1" />
+                )}
+                <span>{message}</span>
+              </motion.div>
+            )}
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
