@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, RotateCcw,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -23,6 +23,7 @@ import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
 import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
 import { NextStepsCard } from "./NextStepsCard";
 import { ProgressBanner } from "./ProgressBanner";
+import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem } from "@shared/api";
 import { useNextStepsQuery, useGapReportQuery, useMatchProgressQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
@@ -245,20 +246,31 @@ export function DiagnosisStep3Results() {
     .map((item) => truncateText(item));
   const actionPlan = (reviewData?.actionPlan ?? []).slice(0, MAX_INSIGHT_ITEMS).map((item) => truncateText(item));
 
-  const matchScore = jdMatch?.matchScore ?? reviewData?.overallScore ?? 0;
+  const matchScore = jdMatch?.matchScore !== undefined ? jdMatch.matchScore : (reviewData?.overallScore ?? null);
+  const isDegradedNoBasis = isJdMode && (matchScore === null || jdMatch?.degraded_reasons?.includes("NO_REQUIREMENT_BASIS"));
+  const isDegradedUnrecognizedSkills = isJdMode && jdMatch?.degraded_reasons?.includes("CV_SKILLS_UNRECOGNIZED");
+  const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";
+  // TRUST': the whole analysis (radar, gap report, tailor, roadmap, interview) is only meaningful
+  // when we could actually score the input. When we couldn't (no requirement basis, or the CV text
+  // is unreadable), showing those sections would contradict the honest "can't trust this" banner —
+  // so gate every downstream chapter on this single flag and offer a re-scan instead.
+  const canTrustAnalysis = !isDegradedNoBasis && !isUnusable;
+
   const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
   const partialCount = hardSkills.filter((s) => s.status === "partial").length;
 
   /* ── Dynamic UX copy (HONESTY: only existing band copy, no AI text) ── */
-  const scoreMessage = matchScore >= 85
-    ? t("results.scoreMsg.excellent")
-    : matchScore >= 80
-      ? t("results.scoreMsg.strong")
-      : matchScore >= 50
-        ? t("results.scoreMsg.decent")
-        : t("results.scoreMsg.weak");
+  const scoreMessage = matchScore === null
+    ? ""
+    : matchScore >= 85
+      ? t("results.scoreMsg.excellent")
+      : matchScore >= 80
+        ? t("results.scoreMsg.strong")
+        : matchScore >= 50
+          ? t("results.scoreMsg.decent")
+          : t("results.scoreMsg.weak");
 
   /* ── Rubric Fallback Warning Strings ── */
   const unnormalizedSkillsList = jdMatch?.unnormalized_jd_requirements || [];
@@ -395,6 +407,11 @@ export function DiagnosisStep3Results() {
 
   return (
     <div className="space-y-0 animate-in fade-in duration-600">
+      {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
+        <div className="max-w-4xl mx-auto pt-6 px-4">
+          <ExtractionQualityBanner quality={reviewData.extraction_quality} />
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  MASTHEAD — kicker + actions + VerdictHero + Ribbon
@@ -434,26 +451,65 @@ export function DiagnosisStep3Results() {
           </div>
         )}
 
+        {isJdMode && isDegradedUnrecognizedSkills && (
+          <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mt-4 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
+            <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
+            <div>
+              <p className="leading-relaxed">
+                {t("degraded.unrecognizedSkills")}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
-        <VerdictHero
-          target={matchScore}
-          label={
-            isJdMode ? (
-              <ScoreBreakdownPopover jdMatch={jdMatch}>
-                {scoreLabel}
-              </ScoreBreakdownPopover>
-            ) : (
-              scoreLabel
-            )
-          }
-          verdictMessage={scoreMessage}
-          isJdMode={isJdMode}
-          rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
-          bandTooltip={t("band.tooltip")}
-        />
+        {isDegradedNoBasis ? (
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <h3 className="text-lg font-bold text-[#2F3437]">
+              {t("degraded.noBasisTitle")}
+            </h3>
+            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+              {t("degraded.noBasisBody")}
+            </p>
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              {t("degraded.noBasisCta", { defaultValue: "Chọn vai trò hoặc dán JD khác" })}
+            </Button>
+          </div>
+        ) : isUnusable ? (
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <h3 className="text-lg font-bold text-[#2F3437]">
+              {t("degraded.unusableTitle")}
+            </h3>
+            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+              {t("degraded.unusableBody")}
+            </p>
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              {t("degraded.unusableCta", { defaultValue: "Tải lên CV rõ hơn" })}
+            </Button>
+          </div>
+        ) : (
+          <VerdictHero
+            target={matchScore ?? 0}
+            label={
+              isJdMode ? (
+                <ScoreBreakdownPopover jdMatch={jdMatch}>
+                  {scoreLabel}
+                </ScoreBreakdownPopover>
+              ) : (
+                scoreLabel
+              )
+            }
+            verdictMessage={scoreMessage}
+            isJdMode={isJdMode}
+            rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
+            bandTooltip={t("band.tooltip")}
+          />
+        )}
 
         {/* W44: Microcopy — honest distinction between CV score and JD match score */}
-        {isJdMode && (
+        {isJdMode && !isDegradedNoBasis && !isUnusable && (
           <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto mt-2 leading-relaxed">
             {t("results.scoreDistinction", {
               defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
@@ -462,7 +518,7 @@ export function DiagnosisStep3Results() {
         )}
 
         {/* Ribbon — inline stats + deal-breaker chips */}
-        {isJdMode && (
+        {isJdMode && !isDegradedNoBasis && !isUnusable && (
           <div className="flex flex-col items-center justify-center gap-3 mt-4">
             <Ribbon
               matched={presentCount}
@@ -475,8 +531,8 @@ export function DiagnosisStep3Results() {
           </div>
         )}
 
-        {/* CV-only sub-scores */}
-        {!isJdMode && (
+        {/* CV-only sub-scores — hidden when the CV text is unusable (no trustworthy number). */}
+        {!isJdMode && canTrustAnalysis && (
           <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
             <span className="text-[#787774]">
               <Shield className="w-3.5 h-3.5 inline mr-1" />
@@ -490,6 +546,10 @@ export function DiagnosisStep3Results() {
         )}
       </div>
 
+      {/* TRUST': the entire analysis body renders ONLY when the input could be trusted enough to
+          score. Otherwise the masthead panel above (with its re-scan CTA) is the whole result. */}
+      {canTrustAnalysis && (
+        <>
       <SectionRule />
 
       {isJdMode && (
@@ -501,52 +561,73 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
        * ──────────────────────────────────────────────────────────────────── */}
-      <div className="py-12 md:py-16">
-        <Chapter
-          kicker={`01`}
-          title={t("editorial.chap1")}
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
-            {/* Radar */}
-            <div className="lg:col-span-3">
-              {isJdMode && radarData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                      <PolarGrid stroke="#E3E3E0" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
-                      <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
-                      <Radar name="you" dataKey="you" stroke="#00AEFF" fill="#00AEFF" fillOpacity={0.12} strokeWidth={2} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                  <div className="flex justify-center gap-6 mt-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
-                  </div>
-                </>
-              ) : (
-                <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
-              )}
-            </div>
-
-            {/* Narrative ("Vì sao điểm này") */}
-            <div className="lg:col-span-2 flex flex-col justify-center">
-              {isJdMode && <MatchNarrative jdMatch={jdMatch} t={t} />}
-              {!isJdMode && (
-                <div className="space-y-3">
-                  <p className="text-xs leading-relaxed text-[#787774]">
-                    {isJdMode ? t("results.radarDescJd") : t("results.radarDescNoJd")}
-                  </p>
+      {isJdMode && !isDegradedNoBasis && (
+        <>
+          <div className="py-12 md:py-16">
+            <Chapter
+              kicker={`01`}
+              title={t("editorial.chap1")}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
+                {/* Radar */}
+                <div className="lg:col-span-3">
+                  {radarData.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                          <PolarGrid stroke="#E3E3E0" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                          <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
+                          <Radar name="you" dataKey="you" stroke="#00AEFF" fill="#00AEFF" fillOpacity={0.12} strokeWidth={2} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-center gap-6 mt-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        </Chapter>
-      </div>
 
-      <SectionRule />
+                {/* Narrative ("Vì sao điểm này") */}
+                <div className="lg:col-span-2 flex flex-col justify-center">
+                  <MatchNarrative jdMatch={jdMatch} t={t} />
+                </div>
+              </div>
+            </Chapter>
+          </div>
+          <SectionRule />
+        </>
+      )}
+
+      {!isJdMode && (
+        <>
+          <div className="py-12 md:py-16">
+            <Chapter
+              kicker={`01`}
+              title={t("editorial.chap1")}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
+                <div className="lg:col-span-3">
+                  <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
+                </div>
+                <div className="lg:col-span-2 flex flex-col justify-center">
+                  <div className="space-y-3">
+                    <p className="text-xs leading-relaxed text-[#787774]">
+                      {t("results.radarDescNoJd")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Chapter>
+          </div>
+          <SectionRule />
+        </>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
@@ -776,6 +857,8 @@ export function DiagnosisStep3Results() {
           softSkills={softSkills}
           t={t}
         />
+      )}
+        </>
       )}
     </div>
   );

@@ -19,7 +19,7 @@ describe("diagnosis results i18n keys", () => {
   // (a missing key would render the raw i18n path to the user).
   it("en + vi define review.extractionQuality.medium / .low / .flagsLabel", () => {
     for (const loc of [enLocale, viLocale]) {
-      const eq = (loc.diagnosis.review as { extractionQuality?: Record<string, string> })
+      const eq = (loc.diagnosis.review as { extractionQuality?: Record<string, unknown> })
         .extractionQuality;
       expect(eq?.medium).toBeTruthy();
       expect(eq?.low).toBeTruthy();
