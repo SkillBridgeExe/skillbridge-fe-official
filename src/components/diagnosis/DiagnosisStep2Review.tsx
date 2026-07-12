@@ -185,7 +185,13 @@ export function DiagnosisStep2Review() {
   // cited card lives on another tab, we simply don't scroll; the answer text still names it.
   const revealCard = useCallback((anchorId: string) => {
     if (typeof document === "undefined") return;
-    document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Cited anchor may live inside a collapsed CheckGroup — ask it to open first,
+    // then scroll on the next frame once the row is mounted.
+    window.dispatchEvent(new CustomEvent("sb-reveal-anchor", { detail: anchorId }));
+    requestAnimationFrame(() => {
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    });
   }, []);
   // Pass lastCvId so the advisor works on a CV-only scan (no JD match): when there's
   // no matchId, the hook/service post to the CV-only route grounded in the CV review.
@@ -291,8 +297,28 @@ export function DiagnosisStep2Review() {
       {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
       <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)] mt-6">
-        {/* LEFT COLUMN: Tabs & Active Panel */}
+      {/* Audit tab gets the full Jobscan anatomy at xl: rail | checks | document — three
+          siblings on the page grid instead of a rail squeezed inside the tab column. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6 mt-6",
+          activeTab === "audit" && !showJdInput
+            ? "xl:grid-cols-[240px_minmax(0,1fr)_minmax(340px,380px)]"
+            : "xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]",
+        )}
+      >
+        {/* RAIL COLUMN (xl only, audit only) — below xl the rail renders inside the tab panel */}
+        {activeTab === "audit" && !showJdInput && (
+          <div className="hidden xl:block min-w-0">
+            <ScoreRail
+              overallScore={overallCvScore}
+              groups={reportGroups}
+              breakdown={reviewData?.breakdown}
+            />
+          </div>
+        )}
+
+        {/* MAIN COLUMN: Tabs & Active Panel */}
         <div className="min-w-0 space-y-5">
           {showJdInput ? (
             <div className="animate-in fade-in slide-in-from-top-3 duration-300">
@@ -315,9 +341,9 @@ export function DiagnosisStep2Review() {
               {/* Tab Panel contents */}
               <div className="space-y-5">
                 {activeTab === 'audit' && (
-                  <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-300">
-                    {/* ScoreRail */}
-                    <div className="w-full md:w-[180px] md:sticky md:top-24 shrink-0">
+                  <div className="animate-in fade-in duration-300 space-y-4">
+                    {/* ScoreRail below xl (mobile chips / md sidebar-less) — at xl it lives on the page grid */}
+                    <div className="xl:hidden">
                       <ScoreRail
                         overallScore={overallCvScore}
                         groups={reportGroups}
@@ -325,8 +351,8 @@ export function DiagnosisStep2Review() {
                       />
                     </div>
 
-                    {/* Content Column (Groups) */}
-                    <div className="flex-1 min-w-0 space-y-8 w-full">
+                    {/* Check groups */}
+                    <div className="min-w-0 space-y-4">
                       {/* Top Summary prioritized checklist */}
                       {reviewData?.top_summary && (
                         <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>

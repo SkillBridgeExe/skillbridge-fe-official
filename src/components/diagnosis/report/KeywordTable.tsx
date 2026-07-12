@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Check, AlertTriangle, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, AlertTriangle, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { buildKeywordRows } from "@/lib/diagnosis-report";
@@ -23,8 +23,12 @@ const STATUS_ICON = {
   missing: { Icon: X, color: "text-[#9F2F2D]" },
 } as const;
 
+/** Rows shown before "show more" — keeps long skill lists from stretching the page. */
+const VISIBLE_ROWS = 10;
+
 export function KeywordTable({ keywordFrequency, perSkill }: KeywordTableProps) {
   const { t } = useTranslation("diagnosis");
+  const [expanded, setExpanded] = useState(false);
 
   const rows = useMemo(
     () => buildKeywordRows(keywordFrequency, perSkill),
@@ -33,6 +37,9 @@ export function KeywordTable({ keywordFrequency, perSkill }: KeywordTableProps) 
 
   // Null when BOTH sources absent → render nothing (no orphan group heading).
   if (!rows) return null;
+
+  const visibleRows = expanded ? rows : rows.slice(0, VISIBLE_ROWS);
+  const hiddenCount = rows.length - visibleRows.length;
 
   return (
     <CheckGroup
@@ -44,7 +51,7 @@ export function KeywordTable({ keywordFrequency, perSkill }: KeywordTableProps) 
       }}
     >
     <div className="overflow-x-auto -mx-1">
-      <table className="w-full text-left text-xs border-collapse min-w-[480px]">
+      <table className="w-full text-left text-[13px] border-collapse min-w-[480px]">
         <thead>
           <tr className="border-b border-[#EAEAEA] text-[10px] font-bold uppercase tracking-wider text-[#787774]">
             <th className="py-2.5 px-3 font-bold">{t("report.keywordTable.thSkill")}</th>
@@ -55,7 +62,7 @@ export function KeywordTable({ keywordFrequency, perSkill }: KeywordTableProps) 
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {visibleRows.map((row) => {
             const statusEntry = row.status ? STATUS_ICON[row.status] : null;
 
             return (
@@ -98,6 +105,16 @@ export function KeywordTable({ keywordFrequency, perSkill }: KeywordTableProps) 
           })}
         </tbody>
       </table>
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-1 inline-flex items-center gap-1 rounded px-3 py-2 text-xs font-bold text-ink-accent hover:underline focus-visible:ring-2 focus-visible:ring-ink-accent/40"
+        >
+          <ChevronDown className="w-3.5 h-3.5" />
+          {t("report.keywordTable.showMore", { count: hiddenCount })}
+        </button>
+      )}
     </div>
     </CheckGroup>
   );

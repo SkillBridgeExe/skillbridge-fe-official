@@ -1899,6 +1899,7 @@ export default {
         thImportance: "Importance",
         thStatus: "Status",
         groupLabel: "Keywords / Keyword frequency",
+        showMore: "Show {{count}} more skills",
       },
       requiredCoverage: "Covers {{pct}}% of required skills",
     },

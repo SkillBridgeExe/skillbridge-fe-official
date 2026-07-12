@@ -1893,6 +1893,7 @@ export default {
         thImportance: "Mức độ",
         thStatus: "Trạng thái",
         groupLabel: "Keywords / Tần suất từ khóa",
+        showMore: "Xem thêm {{count}} kỹ năng",
       },
       requiredCoverage: "Đạt {{pct}}% kỹ năng bắt buộc",
     },
