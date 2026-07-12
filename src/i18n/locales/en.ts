@@ -1615,8 +1615,11 @@ export default {
     degraded: {
       noBasisTitle: "Not enough basis to score",
       noBasisBody: "This JD does not state any specific requirements and the selected role does not have standard rubrics yet — so the match score cannot be calculated. Please paste a more detailed JD or select a different role.",
+      unusableTitle: "CV not readable enough to score",
+      unusableBody: "This CV is not readable enough to score reliably — results could be incorrect. Please upload a clearer CV (not a blurry scan).",
       unrecognizedSkills: "Many skills in your CV are unrecognized — the score might be lower than actual. See unrecognized skills section.",
       noneFoundJdIntel: "No non-technical requirements (seniority, language, education, domain) could be extracted from this JD. The JD might not state them, or the system could not read them.",
+      noEligibleJdIntel: "No non-technical requirements found in this JD.",
       noContactAnchor: "Could not find name/email — the CV layout might have been read incorrectly.",
       throttled: "You are operating a bit fast, please try again in a moment",
     },

@@ -249,6 +249,7 @@ export function DiagnosisStep3Results() {
   const matchScore = jdMatch?.matchScore !== undefined ? jdMatch.matchScore : (reviewData?.overallScore ?? null);
   const isDegradedNoBasis = isJdMode && (matchScore === null || jdMatch?.degraded_reasons?.includes("NO_REQUIREMENT_BASIS"));
   const isDegradedUnrecognizedSkills = isJdMode && jdMatch?.degraded_reasons?.includes("CV_SKILLS_UNRECOGNIZED");
+  const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";
 
   const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
@@ -457,7 +458,25 @@ export function DiagnosisStep3Results() {
         )}
 
         {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
-        {!isDegradedNoBasis ? (
+        {isDegradedNoBasis ? (
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <h3 className="text-lg font-bold text-[#2F3437]">
+              {t("degraded.noBasisTitle")}
+            </h3>
+            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+              {t("degraded.noBasisBody")}
+            </p>
+          </div>
+        ) : isUnusable ? (
+          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <h3 className="text-lg font-bold text-[#2F3437]">
+              {t("degraded.unusableTitle")}
+            </h3>
+            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+              {t("degraded.unusableBody")}
+            </p>
+          </div>
+        ) : (
           <VerdictHero
             target={matchScore ?? 0}
             label={
@@ -474,19 +493,10 @@ export function DiagnosisStep3Results() {
             rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
             bandTooltip={t("band.tooltip")}
           />
-        ) : (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <h3 className="text-lg font-bold text-[#2F3437]">
-              {t("degraded.noBasisTitle")}
-            </h3>
-            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
-              {t("degraded.noBasisBody")}
-            </p>
-          </div>
         )}
 
         {/* W44: Microcopy — honest distinction between CV score and JD match score */}
-        {isJdMode && !isDegradedNoBasis && (
+        {isJdMode && !isDegradedNoBasis && !isUnusable && (
           <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto mt-2 leading-relaxed">
             {t("results.scoreDistinction", {
               defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
@@ -495,7 +505,7 @@ export function DiagnosisStep3Results() {
         )}
 
         {/* Ribbon — inline stats + deal-breaker chips */}
-        {isJdMode && !isDegradedNoBasis && (
+        {isJdMode && !isDegradedNoBasis && !isUnusable && (
           <div className="flex flex-col items-center justify-center gap-3 mt-4">
             <Ribbon
               matched={presentCount}

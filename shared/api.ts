@@ -257,6 +257,7 @@ export interface ExtractionQuality {
   confidence: ExtractionConfidence;
   /** Machine flags that fired, e.g. MOJIBAKE_HIGH / OCR_USED / THIN_CONTENT / SPARSE_SECTIONS. */
   flags: string[];
+  input_quality?: 'usable' | 'suspect' | 'unusable';
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1433,7 +1434,7 @@ export interface JdIntelligenceItem {
 export interface JdIntelligenceBlock {
   dimensions: JdIntelligenceItem[];
   note: string;
-  status?: 'extracted' | 'none_found';
+  status?: 'available' | 'no_eligible_dimension_found' | 'not_extracted' | 'not_requested';
 }
 
 // ── Canonical gap object (Gap Engine v2) ───────────────────────────────────────
