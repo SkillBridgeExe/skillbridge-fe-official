@@ -490,7 +490,7 @@ export default function Diagnosis() {
         className={cn(
           "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
           reportMode
-            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-56px)] max-h-[calc(100dvh-56px)] overflow-hidden"
+            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-100px)] max-h-[calc(100dvh-100px)] overflow-hidden"
             : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
         )}
       >

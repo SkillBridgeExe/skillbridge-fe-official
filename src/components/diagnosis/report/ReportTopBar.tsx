@@ -24,8 +24,8 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
 
-  const backLabel = step === "results" ? t("results.backToReview", { defaultValue: "Quay lại đánh giá" }) : t("review.backToUpload", { defaultValue: "Quay lại" });
-  const roleName = targetRole ? getRoleLabel(targetRole) : t("review.title", { defaultValue: "Phân tích CV" });
+  const roleName = targetRole ? getRoleLabel(targetRole) : "";
+  const backLabelText = roleName ? `${t("review.title", { defaultValue: "Phân tích CV" })} · ${roleName}` : t("review.title", { defaultValue: "Phân tích CV" });
 
   const tabItems = [
     { key: "audit" as const, label: t("review.tabAudit", { defaultValue: "Đánh giá CV" }) },
@@ -34,37 +34,68 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-white border-b border-[#EAEAEA] flex items-center justify-between select-none w-full shrink-0 px-4 md:px-6">
-      
-      {/* LEFT CLUSTER: hamburger, Back, hairline, role/title truncate */}
-      <div className="flex items-center gap-2 min-w-0 shrink-0">
-        {isAuthenticated && (
+    <div className="sticky top-0 z-30 w-full bg-white flex flex-col shrink-0 select-none">
+      {/* ROW 1: Utility bar (h-14 = 56px) */}
+      <div className="h-14 border-b border-[#EAEAEA] flex items-center justify-between px-4 md:px-6 w-full">
+        {/* Left cluster */}
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation menu"
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-slate-50 text-[#787774] shrink-0"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
           <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open navigation menu"
-            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-slate-50 text-[#787774] shrink-0"
+            onClick={goBack}
+            className="flex items-center gap-1.5 text-xs font-bold text-[#787774] hover:text-[#2F3437] transition-colors group rounded shrink-0 p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]"
           >
-            <Menu className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="truncate max-w-[200px] sm:max-w-xs" title={backLabelText}>{backLabelText}</span>
           </button>
-        )}
-        <button
-          onClick={goBack}
-          className="flex items-center gap-1.5 text-xs font-bold text-[#787774] hover:text-[#2F3437] transition-colors group rounded shrink-0 p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          <span className="hidden sm:inline">{backLabel}</span>
-        </button>
-        <span className="h-4 w-px bg-[#EAEAEA] shrink-0 mx-1" />
-        <h2 className="text-xs font-bold text-[#2F3437] truncate max-w-[120px] sm:max-w-[200px]" title={roleName}>
-          {roleName}
-        </h2>
+        </div>
+
+        {/* Right cluster */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <Button
+            onClick={reset}
+            size="sm"
+            variant="ghost"
+            className="rounded-full gap-1.5 px-2 sm:px-3 h-8 text-[12px] font-bold text-[#787774] hover:text-[#2F3437] focus-visible:ring-2 focus-visible:ring-[#00AEEF]"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{t("review.startOver", { defaultValue: "Làm lại từ đầu" })}</span>
+          </Button>
+
+          {step === "cv-review" ? (
+            <Button
+              onClick={() => setShowJdInput(true)}
+              size="sm"
+              className="rounded-full gap-1.5 px-3 sm:px-4 h-8 text-[12px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white focus-visible:ring-2 focus-visible:ring-[#00AEEF] border-0"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>{t("review.quickPanel.compareCta", { defaultValue: "So sánh JD" })}</span>
+            </Button>
+          ) : step === "results" ? (
+            <Button
+              onClick={scanAgain}
+              size="sm"
+              className="rounded-full gap-1.5 px-3 sm:px-4 h-8 text-[12px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white focus-visible:ring-2 focus-visible:ring-[#00AEEF] border-0"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>{t("results.scanAgainButton", { defaultValue: "Quét lại" })}</span>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      {/* CENTER/LEFT-OF-ACTIONS: Tabs navigation */}
-      <nav 
+      {/* ROW 2: Tab strip (h-11 = 44px) */}
+      <nav
         role="tablist"
-        className="h-full flex items-center gap-1 overflow-x-auto scrollbar-none shrink mx-2 sm:mx-4"
+        className="h-11 border-b border-[#EAEAEA] flex items-center px-4 md:px-6 w-full overflow-x-auto scrollbar-none gap-2 sm:gap-6 bg-white"
       >
         {tabItems.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -75,50 +106,20 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
               aria-selected={isActive}
               onClick={() => onTabChange(tab.key)}
               className={cn(
-                "h-full px-2 sm:px-4 text-xs font-bold transition-all relative border-b-2 flex items-center justify-center -mb-[1px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]",
+                "h-full px-1 text-[13px] font-bold transition-all relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]",
                 isActive
-                  ? "border-[#00AEEF] text-[#00AEEF]"
-                  : "border-transparent text-[#787774] hover:text-[#2F3437] hover:border-slate-200"
+                  ? "text-[#2F3437]"
+                  : "text-[#787774] hover:text-[#2F3437]"
               )}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              {isActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00AEEF]" />
+              )}
             </button>
           );
         })}
       </nav>
-
-      {/* RIGHT CLUSTER: secondary (Start over), primary CTA */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        <Button
-          onClick={reset}
-          size="sm"
-          variant="ghost"
-          className="rounded-full gap-1.5 px-2 sm:px-3 h-8 text-[12px] font-bold text-[#787774] hover:text-[#2F3437] focus-visible:ring-2 focus-visible:ring-[#00AEEF]"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">{t("review.startOver", { defaultValue: "Làm lại" })}</span>
-        </Button>
-        {step === "cv-review" ? (
-          <Button
-            onClick={() => setShowJdInput(true)}
-            size="sm"
-            className="rounded-full gap-1.5 px-3 sm:px-4 h-8 text-[12px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white focus-visible:ring-2 focus-visible:ring-[#00AEEF] border-0"
-          >
-            <Briefcase className="w-3.5 h-3.5" />
-            <span>{t("review.quickPanel.compareCta", { defaultValue: "So sánh JD" })}</span>
-          </Button>
-        ) : step === "results" ? (
-          <Button
-            onClick={scanAgain}
-            size="sm"
-            className="rounded-full gap-1.5 px-3 sm:px-4 h-8 text-[12px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white focus-visible:ring-2 focus-visible:ring-[#00AEEF] border-0"
-          >
-            <RefreshCw className="w-3.5 h-3.5 animate-none" />
-            <span>{t("results.scanAgainButton", { defaultValue: "Quét lại" })}</span>
-          </Button>
-        ) : null}
-      </div>
-
-    </header>
+    </div>
   );
 }
