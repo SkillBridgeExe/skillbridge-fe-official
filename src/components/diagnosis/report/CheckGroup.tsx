@@ -28,7 +28,7 @@ export function CheckRow({ item }: { item: CheckRowData }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between flex-wrap gap-x-3">
-          <span className="font-bold text-[15px] text-[#2F3437]">{item.label}</span>
+          <span className="font-semibold text-[14px] text-[#2F3437]">{item.label}</span>
           {item.score !== undefined && (
             <span className="font-mono text-xs text-[#787774] font-bold shrink-0">
               {item.score}/20
@@ -36,7 +36,7 @@ export function CheckRow({ item }: { item: CheckRowData }) {
           )}
         </div>
 
-        <p className="text-[15px] text-[#5F666B] leading-relaxed mt-0.5">
+        <p className="text-[13px] text-[#5F666B] leading-relaxed mt-0.5">
           {item.evidence}
         </p>
 
@@ -47,7 +47,7 @@ export function CheckRow({ item }: { item: CheckRowData }) {
         )}
 
         {!isPass && item.hint && (
-          <div className="flex items-start gap-1.5 text-[15px] font-semibold text-indigo-600 mt-1.5">
+          <div className="flex items-start gap-1.5 text-[12px] font-semibold text-indigo-600 mt-1.5">
             <ArrowRight className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>{item.hint}</span>
           </div>
@@ -57,7 +57,7 @@ export function CheckRow({ item }: { item: CheckRowData }) {
         {item.subItems && item.subItems.length > 0 && (
           <ul className="space-y-1.5 mt-2">
             {item.subItems.map((issue, i) => (
-              <li key={i} className="flex items-start gap-2 rounded-lg bg-[#FBFBFA] px-3 py-2 text-[15px] text-[#2F3437]">
+              <li key={i} className="flex items-start gap-2 rounded-lg bg-[#FBFBFA] px-3 py-2 text-[13px] text-[#2F3437]">
                 <span className={cn("text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0", SEVERITY_PASTEL[issue.severity])}>
                   {t(`review.severity.${issue.severity}`)}
                 </span>

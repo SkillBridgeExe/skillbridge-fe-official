@@ -146,7 +146,7 @@ export function GapReportCard({ matchId }: { matchId: string }) {
             </p>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="divide-y divide-[#F1F1EF] border border-[#EAEAEA] rounded-xl bg-white overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
             {[...data.gap_items]
               .filter((g) => g.cv_status !== "matched")
               .sort((a, b) => b.severity - a.severity)
@@ -193,17 +193,12 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                   <div
                     key={`${gap.requirement_id || gap.canonical_name}-${i}`}
                     id={`gap-${gap.requirement_id}`}
-                    className="p-1.5 rounded-2xl bg-slate-50 border border-slate-200/50 shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.01] hover:shadow-md group"
+                    className={cn(
+                      "px-4 py-3.5 space-y-3 hover:bg-slate-50/60 transition-colors border-l-[3px]",
+                      severityBorderColor
+                    )}
                     style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
                   >
-                    {/* Inner Core */}
-                    <div
-                      className={cn(
-                        "p-4 rounded-[calc(1rem-0.375rem)] bg-white border border-slate-100 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)] space-y-3 transition-colors duration-500",
-                        severityBorderColor,
-                        "border-l-[3px]"
-                      )}
-                    >
                     {/* Top row: Name, Type, Importance, Status, Fixability */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[13px] font-bold text-[#2F3437] mr-1">
@@ -346,10 +341,10 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         ))}
                       </div>
                     )}
-                    </div>
                   </div>
                 );
               })}
+          </div>
 
             {(() => {
               const remaining = data.gap_items!.filter((g) => g.cv_status !== "matched").length - 6;
@@ -360,7 +355,6 @@ export function GapReportCard({ matchId }: { matchId: string }) {
               ) : null;
             })()}
           </div>
-        </div>
       )}
 
       {/* Recommended actions — việc đáng làm trước, số liệu thật từ BE */}
