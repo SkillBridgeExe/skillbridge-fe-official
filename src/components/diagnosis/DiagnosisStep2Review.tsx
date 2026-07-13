@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText } from "lucide-react";
+import { RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText, AlertTriangle, RefreshCw } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -135,11 +135,12 @@ export function DiagnosisStep2Review() {
   /* ── Dynamic UX copy (HONESTY: band copy from existing keys) ── */
   const scoreMessage = overallCvScore >= 70
     ? t("review.scoreMsg.excellent")
-    : overallCvScore >= 55
+    : overallCvScore >= 50
       ? t("review.scoreMsg.good")
-      : overallCvScore >= 40
-        ? t("review.scoreMsg.fair")
-        : t("review.scoreMsg.poor");
+      : t("review.scoreMsg.fair");
+
+  /* ── A4: Unusable-quality gate (replicates Step3 pattern) ── */
+  const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";
 
 
   /* ── Distribute issues across dim cards (shared helper = single source of
@@ -277,16 +278,52 @@ export function DiagnosisStep2Review() {
   return (
     <div className="animate-in fade-in duration-500" style={{ '--tw-translate-y': '12px' } as React.CSSProperties}>
       {apiError && (
-        <div className={cn(CARD, "mb-6 border-[#F6D4D5] bg-[#FDEBEC]")}>
-          <div className="p-4 text-sm text-[#9F2F2D] font-medium">{apiError}</div>
+        <div className={cn(CARD, "mb-6 border-[#E3E0D8] bg-[#FBFBFA]")}
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#956400]" />
+            <p className="min-w-0 flex-1 text-[13px] text-[#787774] font-medium">{apiError}</p>
+            <button
+              type="button"
+              onClick={reset}
+              className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              {t("review.startOver")}
+            </button>
+          </div>
         </div>
       )}
 
       {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
       <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
 
-      {/* Audit tab gets the full Jobscan anatomy at xl: rail | checks | document — three
-          siblings on the page grid instead of a rail squeezed inside the tab column. */}
+      {/* A4: Unusable-quality gate — the CV text is too garbled to score reliably.
+          Show an honest banner + CTA rescan and suppress ALL downstream analysis
+          (ScoreRail, tabs, check groups) so the UI is consistent with Step3. */}
+      {isUnusable ? (
+        <div className={cn(CARD, "mt-6 p-6 text-center space-y-4")}
+        >
+          <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
+          <h3 className="text-sm font-bold text-[#2F3437]">
+            {t("degraded.unusableTitle")}
+          </h3>
+          <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
+            {t("degraded.unusableBody")}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reset}
+            className="gap-1.5 text-xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            {t("degraded.unusableCta", { defaultValue: "Upload a clearer CV" })}
+          </Button>
+        </div>
+      ) : (
+      /* Audit tab gets the full Jobscan anatomy at xl: rail | checks | document — three
+          siblings on the page grid instead of a rail squeezed inside the tab column. */
       <div
         className={cn(
           "grid grid-cols-1 gap-6 mt-6",
@@ -454,9 +491,10 @@ export function DiagnosisStep2Review() {
           )}
         </div>
       </div>
+      )}
 
-      {/* Small Clean Footer */}
-      {!showJdInput && (
+      {/* Small Clean Footer — also gated by unusable (A4) */}
+      {!isUnusable && !showJdInput && (
         <div className="mt-8 pt-6 border-t border-[#EAEAEA] flex items-center justify-between text-xs text-[#787774]">
           <p>{t("review.footerNote")}</p>
           <button
