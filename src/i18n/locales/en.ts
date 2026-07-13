@@ -1901,6 +1901,7 @@ export default {
         }
       },
       rail: {
+        scoreTitle: "Match Rate",
         issuesBadge: "{{count}} to fix",
         resolved: "Passed",
         askCompanion: "Ask your AI coach",

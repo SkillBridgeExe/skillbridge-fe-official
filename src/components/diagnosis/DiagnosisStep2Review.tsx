@@ -255,7 +255,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
     <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && (
-        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-y-auto custom-scrollbar h-full">
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-hidden h-full">
           <ScoreRail
             overallScore={overallCvScore}
             groups={reportGroups}

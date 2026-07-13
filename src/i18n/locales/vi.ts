@@ -1895,6 +1895,7 @@ export default {
         }
       },
       rail: {
+        scoreTitle: "Điểm tương thích",
         issuesBadge: "{{count}} cần sửa",
         resolved: "Đạt chuẩn",
         askCompanion: "Hỏi AI đồng hành",

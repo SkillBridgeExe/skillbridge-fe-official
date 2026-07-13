@@ -97,7 +97,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
   };
 
   return (
-    <aside className="w-full">
+    <aside className="w-full lg:h-full lg:flex lg:flex-col">
       {/* Below lg: horizontal scrollable chip bar (at lg the sidebar gets its own grid column) */}
       <div className="lg:hidden sticky top-14 bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
         {/* Score chip — the only score display below lg now that the hero is gone */}
@@ -125,9 +125,12 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
       </div>
 
       {/* Desktop (>=lg): report sidebar contents mapped directly inside parent aside container */}
-      <div className="hidden lg:block w-full space-y-6">
+      <div className="hidden lg:flex flex-col h-full w-full">
         {/* Donut */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center mb-5 shrink-0">
+          <h3 className="text-xs font-bold text-[#787774] uppercase tracking-wider mb-4">
+            {t("report.rail.scoreTitle", { defaultValue: "Điểm tương thích" })}
+          </h3>
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
               <circle cx={size / 2} cy={size / 2} r={radius} fill="transparent" stroke="#F1F1EF" strokeWidth={strokeWidth} />
@@ -162,7 +165,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         </div>
 
         {/* Categories — Jobscan-style rows: label · issues link · thin bar */}
-        <nav className="border-t border-[#EAEAEA] divide-y divide-[#F1F1EF] w-full">
+        <nav className="border-t border-[#EAEAEA] divide-y divide-[#F1F1EF] w-full flex-1">
           {groups.map((group) => {
             const score = getCategoryScore(group.id);
             const hasIssues = group.issueCount > 0;
@@ -171,7 +174,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
               <button
                 key={group.id}
                 onClick={() => scrollToGroup(group.id)}
-                className="w-full text-left py-3.5 hover:bg-slate-50/60 transition-colors group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-accent/40 flex flex-col"
+                className="w-full text-left py-3.5 lg:py-5 hover:bg-slate-50/60 transition-colors group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-accent/40 flex flex-col"
               >
                 <div className="flex items-center justify-between gap-2 w-full">
                   <span className="text-[13px] font-bold text-[#2F3437] group-hover:text-ink-accent truncate">
