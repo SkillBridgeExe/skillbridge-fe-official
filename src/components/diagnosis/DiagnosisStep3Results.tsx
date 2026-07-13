@@ -542,6 +542,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
       id: "diagnosis:results",
       priority: 10,
       anchorId: "gap-anchor",
+      suppressAutoOpen: true,
       getTurn: () => ({
         skill: "diagnosis_results",
         props: {
@@ -1006,7 +1007,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
               <div className="flex items-center gap-2.5">
                 <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
-                <p className="text-[15px] font-semibold text-[#2F3437]">
+                <p className="text-sm font-semibold text-[#2F3437]">
                   {(reviewData?.issues?.length ?? 0) > 0
                     ? t("review.issuesMarked", { count: reviewData?.issues?.length ?? 0, defaultValue: `Tìm thấy ${reviewData?.issues?.length ?? 0} điểm cải thiện trong CV của bạn` })
                     : t("review.noIssuesMarked", { defaultValue: "Tuyệt vời! Không phát hiện lỗi nghiêm trọng nào." })

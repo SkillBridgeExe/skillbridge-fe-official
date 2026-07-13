@@ -32,6 +32,13 @@ import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiag
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
+const bandOf = (score: number) =>
+  score >= 70
+    ? { key: "review.band.strong", chip: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]" }
+    : score >= 50
+      ? { key: "review.band.watch", chip: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]" }
+      : { key: "review.band.priority", chip: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]" };
+
 interface DiagnosisStep2ReviewProps {
   activeTab: 'audit' | 'cv' | 'market';
   setActiveTab: (tab: 'audit' | 'cv' | 'market') => void;
@@ -234,6 +241,7 @@ export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2
     store.registerContext({
       id: "diagnosis:review",
       priority: 10,
+      suppressAutoOpen: true,
       getTurn: () => ({
         skill: "diagnosis_review",
         props: {
@@ -325,9 +333,38 @@ export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2
                     <div className="min-w-0 space-y-6">
                       {/* Top Summary prioritized checklist */}
                       {reviewData?.top_summary && (
-                        <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>
-                          <TopSummaryCard summary={reviewData.top_summary} />
-                        </Chapter>
+                        <div className="space-y-4">
+                          {/* Priority strip dense line */}
+                          <div className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-[#2F3437] py-2 border-b border-[#EAEAEA] mb-2">
+                            <span className="font-mono font-black text-[15px]">{overallCvScore}/100</span>
+                            <span className={cn("px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shrink-0", bandOf(overallCvScore).chip)}>
+                              {t(bandOf(overallCvScore).key)}
+                            </span>
+                            <span className="text-[#EAEAEA] mx-1">|</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const el = document.getElementById("top-summary-checklist");
+                                if (el) {
+                                  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+                                  el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+                                }
+                              }}
+                              className="text-[#00AEEF] hover:underline font-bold"
+                            >
+                              {t("review.prioritizedActionsCount", { count: reviewData.top_summary.prioritized_actions.length, defaultValue: `${reviewData.top_summary.prioritized_actions.length} việc nên sửa trước` })}
+                            </button>
+                          </div>
+                          {reviewData.top_summary.headline && (
+                            <p className="text-[13px] text-[#787774] truncate" title={reviewData.top_summary.headline}>
+                              {reviewData.top_summary.headline}
+                            </p>
+                          )}
+                          
+                          <div id="top-summary-checklist" className="scroll-mt-24">
+                            <TopSummaryCard summary={reviewData.top_summary} />
+                          </div>
+                        </div>
                       )}
 
                       {/* CheckGroups */}
@@ -382,7 +419,7 @@ export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
                       <div className="flex items-center gap-2.5">
                         <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", issuesCount > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
-                        <p className="text-[15px] font-semibold text-[#2F3437]">
+                        <p className="text-sm font-semibold text-[#2F3437]">
                           {issuesCount > 0
                             ? t("review.issuesMarked", { count: issuesCount })
                             : t("review.noIssuesMarked")

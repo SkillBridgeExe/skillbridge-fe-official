@@ -107,7 +107,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
       {compact ? (
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-blue-600" />
+            <Briefcase className="w-5 h-5 text-[#00AEEF]" />
             <h3 className="font-bold text-base text-slate-900">{t("jdInput.titleCompact")}</h3>
           </div>
           {/* Tab toggle */}
@@ -134,8 +134,8 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                <Briefcase className="text-blue-500 w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/10 flex items-center justify-center shrink-0">
+                <Briefcase className="text-[#00AEEF] w-5 h-5" />
               </div>
               <div>
                 <CardTitle className="text-base text-slate-800">
