@@ -824,7 +824,7 @@ export function DiagnosisStep3Results() {
                           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                           <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
                           <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
-                          <Radar name="you" dataKey="you" stroke="#00AEFF" fill="#00AEFF" fillOpacity={0.12} strokeWidth={2} />
+                          <Radar name="you" dataKey="you" stroke="#00AEEF" fill="#00AEEF" fillOpacity={0.12} strokeWidth={2} />
                         </RadarChart>
                       </ResponsiveContainer>
                       <div className="flex justify-center gap-6 mt-2">
