@@ -10,6 +10,5 @@ export { default as SkillRadarChart } from "./SkillRadarChart";
 export { default as ActivityHeatmap } from "./ActivityHeatmap";
 export { default as LearningHistoryTimeline } from "./LearningHistoryTimeline";
 export { default as AIDailyBriefing } from "./AIDailyBriefing";
-export { default as AISidebar } from "./AISidebar";
 export { default as AIChatWidget } from "./AIChatWidget";
 export type { DashboardTabValue } from "./DashboardTabs";

@@ -204,6 +204,10 @@ export default function Interview() {
     (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
   );
 
+  const sidebarMode = useAuthStore(
+    (state) => state.isAuthenticated && state.currentUser?.role === "user",
+  );
+
   const interviewHistoryQuery = useInterviewHistory(canUseApi);
   const historyDetailQuery = useInterviewDetail(
     selectedHistorySessionId,
@@ -1369,7 +1373,7 @@ export default function Interview() {
 
   return (
     <Layout>
-      <div className="flex h-[calc(100dvh-80px)] overflow-hidden">
+      <div className={cn("flex overflow-hidden", sidebarMode ? "h-dvh" : "h-[calc(100dvh-80px)]")}>
         <aside
           className={cn(
             "h-full shrink-0 overflow-hidden border-r border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col transition-all duration-300",
@@ -1562,7 +1566,7 @@ export default function Interview() {
         </button>
 
         {showPracticeSetup && (
-          <main className="custom-scrollbar relative flex-1 overflow-y-auto bg-slate-50/30">
+          <main className="custom-scrollbar relative flex-1 overflow-y-auto md:overflow-hidden bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
               <InterviewSetup
                 onStart={startInterview}

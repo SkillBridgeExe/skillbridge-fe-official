@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
-  ChevronDown, ChevronUp, RotateCcw,
+  ChevronDown, ChevronUp, RotateCcw, FileText,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -557,92 +557,60 @@ export function DiagnosisStep3Results() {
     ? t("editorial.kicker", { role: targetRole })
     : t("editorial.kickerGeneric");
 
-  return (
-    <div className="space-y-0 animate-in fade-in duration-600">
-      {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
-        <div className="max-w-4xl mx-auto pt-6 px-4">
-          <ExtractionQualityBanner quality={reviewData.extraction_quality} />
-        </div>
-      )}
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
-      {/* ────────────────────────────────────────────────────────────────────
-       *  MASTHEAD — kicker + actions + VerdictHero + Ribbon
-       * ──────────────────────────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-4xl mx-auto space-y-2 pb-6">
-        {/* Top bar */}
+  return (
+    <div className="lg:grid lg:grid-cols-[300px_1fr] lg:h-full lg:overflow-hidden -mx-4 md:-mx-6 -mt-6 -mb-6 animate-in fade-in duration-600">
+      
+      {/* LEFT COLUMN: Sidebar (Fixed on desktop) */}
+      <div className="lg:border-r lg:border-[#EAEAEA] lg:bg-white lg:p-6 lg:flex lg:flex-col lg:space-y-6 lg:h-full lg:overflow-y-auto custom-scrollbar">
+        
+        {/* Back button */}
         <div className="flex items-center justify-between">
           <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-[#2F3437] transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
           </button>
-          <div className="flex items-center gap-3">
-            <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
-              <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
-            </Button>
-            <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50">
-              <Download className="w-3.5 h-3.5" /> {t("results.download")}
-            </Button>
-          </div>
         </div>
 
         {/* Kicker */}
-        <p className="text-[11px] font-bold uppercase tracking-widest text-[#787774] text-center pt-6">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-[#787774] text-center pt-2">
           {kickerText}
         </p>
 
-        {isJdMode && jdMatch?.fell_back_to_rubric && (
-          <div className="flex items-start gap-3 p-4 mx-auto max-w-2xl mt-4 bg-amber-50 border border-amber-200 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <h4 className="text-sm font-bold text-amber-900">{t("rubricFallback.title")}</h4>
-              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                {targetRole
-                  ? t("rubricFallback.body", { role: targetRole, skills: fallbackSkillsString })
-                  : t("rubricFallback.bodyNoRole", { skills: fallbackSkillsString })}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {isJdMode && isDegradedUnrecognizedSkills && (
-          <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mt-4 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
-            <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
-            <div>
-              <p className="leading-relaxed">
-                {t("degraded.unrecognizedSkills")}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
+        {/* Verdict Hero */}
         {isDegradedNoBasis ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <h3 className="text-lg font-bold text-[#2F3437]">
+          <div className="p-4 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 shadow-sm">
+            <h3 className="text-sm font-bold text-[#2F3437]">
               {t("degraded.noBasisTitle")}
             </h3>
-            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+            <p className="text-xs text-[#787774] leading-relaxed">
               {t("degraded.noBasisBody")}
             </p>
-            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              {t("degraded.noBasisCta", { defaultValue: "Chọn vai trò hoặc dán JD khác" })}
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-1.5 text-xs w-full">
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.noBasisCta", { defaultValue: "Chọn lại vai trò" })}
             </Button>
           </div>
         ) : isUnusable ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <h3 className="text-lg font-bold text-[#2F3437]">
+          <div className="p-4 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-3 shadow-sm">
+            <h3 className="text-sm font-bold text-[#2F3437]">
               {t("degraded.unusableTitle")}
             </h3>
-            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+            <p className="text-xs text-[#787774] leading-relaxed">
               {t("degraded.unusableBody")}
             </p>
-            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              {t("degraded.unusableCta", { defaultValue: "Tải lên CV rõ hơn" })}
+            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-1.5 text-xs w-full">
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.unusableCta", { defaultValue: "Tải lên CV khác" })}
             </Button>
           </div>
         ) : (
-          <>
+          <div className="space-y-4">
             <VerdictHero
               target={matchScore ?? 0}
               label={scoreLabel}
@@ -656,26 +624,46 @@ export function DiagnosisStep3Results() {
                 {t("report.requiredCoverage", { pct: coverage })}
               </p>
             )}
-          </>
-        )}
-
-        {/* W44: Microcopy — honest distinction between CV score and JD match score */}
-        {isJdMode && !isDegradedNoBasis && !isUnusable && (
-          <div className="mt-2 space-y-1">
-            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
-              {t("results.scoreDistinction", {
-                defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
-              })}
-            </p>
-            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
-              {t("results.notHiringPrediction")}
-            </p>
           </div>
         )}
 
-        {/* Ribbon — inline stats + deal-breaker chips */}
+        {/* Quick Actions (Scan Again, Share, Download) */}
+        {!isDegradedNoBasis && !isUnusable && (
+          <div className="space-y-2.5">
+            <Button
+              onClick={scanAgain}
+              className="w-full py-5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md shadow-primary/20 transition-all active:scale-[0.98] gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              {t("results.scanAgainButton", { defaultValue: "Quét lại CV mới" })}
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={handleShare}
+                variant="outline"
+                size="sm"
+                className="rounded-lg gap-1.5 text-[11px] font-semibold text-slate-700 border-slate-200 bg-white hover:bg-slate-50"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {t("results.share")}
+              </Button>
+              <Button
+                onClick={handleDownload}
+                disabled={!lastCvId}
+                variant="outline"
+                size="sm"
+                className="rounded-lg gap-1.5 text-[11px] font-semibold text-slate-700 border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {t("results.download")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Ribbon Stats / Badges */}
         {isJdMode && !isDegradedNoBasis && !isUnusable && (
-          <div className="flex flex-col items-center justify-center gap-3 mt-4">
+          <div className="flex flex-col items-center justify-center gap-2.5 pt-4 border-t border-slate-100">
             <Ribbon
               matched={presentCount}
               partial={partialCount}
@@ -687,39 +675,139 @@ export function DiagnosisStep3Results() {
           </div>
         )}
 
-        {/* CV-only sub-scores — hidden when the CV text is unusable (no trustworthy number). */}
+        {/* CV-only sub-scores */}
         {!isJdMode && canTrustAnalysis && (
-          <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
-            <span className="text-[#787774]">
-              <Shield className="w-3.5 h-3.5 inline mr-1" />
+          <div className="flex justify-center gap-6 text-[12px] font-semibold tabular-nums pt-4 border-t border-slate-100">
+            <span className="text-[#787774] flex items-center gap-1">
+              <Shield className="w-3.5 h-3.5 text-slate-500" />
               ATS <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.ats ?? 0}</span>
             </span>
-            <span className="text-[#787774]">
-              <Code className="w-3.5 h-3.5 inline mr-1" />
+            <span className="text-[#787774] flex items-center gap-1">
+              <Code className="w-3.5 h-3.5 text-slate-500" />
               {t("results.structure")} <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.structure ?? 0}</span>
             </span>
           </div>
         )}
+
+        {/* Checklist Navigator (Jobscan style) */}
+        {canTrustAnalysis && (
+          <div className="hidden lg:block space-y-1.5 pt-4 border-t border-slate-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#787774] mb-2">
+              Danh mục báo cáo
+            </p>
+            <button
+              onClick={() => scrollToSection("chapter-radar")}
+              className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                <span>So sánh Radar</span>
+              </div>
+            </button>
+            
+            {isJdMode && (
+              <button
+                onClick={() => scrollToSection("gap-anchor")}
+                className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Cải thiện ưu tiên</span>
+                </div>
+              </button>
+            )}
+            
+            <button
+              onClick={() => scrollToSection("chapter-skills")}
+              className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <Code className="w-3.5 h-3.5 text-blue-500" />
+                <span>Chi tiết kỹ năng</span>
+              </div>
+              {isJdMode && (
+                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-mono font-bold">
+                  {hardSkills.length + softSkills.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => scrollToSection("chapter-action")}
+              className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Kế hoạch hành động</span>
+              </div>
+            </button>
+
+            {isJdMode && jobDescription && (
+              <button
+                onClick={() => scrollToSection("chapter-jd")}
+                className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-2 rounded-xl transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Bôi đậm JD</span>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
+
       </div>
 
-      {/* TRUST': the entire analysis body renders ONLY when the input could be trusted enough to
-          score. Otherwise the masthead panel above (with its re-scan CTA) is the whole result. */}
-      {canTrustAnalysis && (
-        <>
-      <SectionRule />
+      {/* RIGHT COLUMN: Detail Report (Scrolls on desktop) */}
+      <div className="lg:p-8 lg:overflow-y-auto lg:h-full custom-scrollbar bg-[#FCFCFD]">
+        
+        {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
+          <div className="max-w-4xl mx-auto pb-6">
+            <ExtractionQualityBanner quality={reviewData.extraction_quality} />
+          </div>
+        )}
 
-      {isJdMode && (
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
-        </div>
-      )}
+        {isJdMode && jdMatch?.fell_back_to_rubric && (
+          <div className="flex items-start gap-3 p-4 mx-auto max-w-2xl mb-6 bg-amber-50 border border-amber-200 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-900">{t("rubricFallback.title")}</h4>
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                {targetRole
+                  ? t("rubricFallback.body", { role: targetRole, skills: fallbackSkillsString })
+                  : t("rubricFallback.bodyNoRole", { skills: fallbackSkillsString })}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isJdMode && isDegradedUnrecognizedSkills && (
+          <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mb-6 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
+            <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
+            <div>
+              <p className="leading-relaxed">
+                {t("degraded.unrecognizedSkills")}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isJdMode && (
+          <div className="relative z-10 max-w-4xl mx-auto pb-6">
+            <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
+          </div>
+        )}
+
+        {/* TRUST': actual analysis details */}
+        {canTrustAnalysis && (
+          <>
 
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
        * ──────────────────────────────────────────────────────────────────── */}
       {isJdMode && !isDegradedNoBasis && (
         <>
-          <div className="py-12 md:py-16">
+          <div id="chapter-radar" className="py-12 md:py-16">
             <Chapter
               kicker={`01`}
               title={t("editorial.chap1")}
@@ -762,7 +850,7 @@ export function DiagnosisStep3Results() {
 
       {!isJdMode && (
         <>
-          <div className="py-12 md:py-16">
+          <div id="chapter-radar" className="py-12 md:py-16">
             <Chapter
               kicker={`01`}
               title={t("editorial.chap1")}
@@ -806,7 +894,7 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 3 — Chi tiết (collapsible)
        * ──────────────────────────────────────────────────────────────────── */}
-      <div className="py-12 md:py-16">
+      <div id="chapter-skills" className="py-12 md:py-16">
         <Chapter
           kicker="03"
           title={t("editorial.chap3")}
@@ -910,7 +998,7 @@ export function DiagnosisStep3Results() {
       {/* ────────────────────────────────────────────────────────────────────
        *  CHƯƠNG 4 — Hành động (Tailor + Roadmap + Interview + Insights)
        * ──────────────────────────────────────────────────────────────────── */}
-      <div className="py-12 md:py-16">
+      <div id="chapter-action" className="py-12 md:py-16">
         <Chapter
           kicker="04"
           title={t("editorial.chap4")}
@@ -1027,15 +1115,18 @@ export function DiagnosisStep3Results() {
        *  JD HIGHLIGHT (collapse, bottom — giữ)
        * ──────────────────────────────────────────────────────────────────── */}
       {isJdMode && jobDescription && (
-        <JdHighlightBlock
-          jobDescription={jobDescription}
-          hardSkills={hardSkills}
-          softSkills={softSkills}
-          t={t}
-        />
+        <div id="chapter-jd" className="py-12 md:py-16">
+          <JdHighlightBlock
+            jobDescription={jobDescription}
+            hardSkills={hardSkills}
+            softSkills={softSkills}
+            t={t}
+          />
+        </div>
       )}
         </>
       )}
+      </div>
     </div>
   );
 }

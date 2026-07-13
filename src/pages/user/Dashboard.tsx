@@ -12,7 +12,6 @@ import {
   CareerTab,
   type DashboardTabValue,
 } from "@/components/dashboard";
-import AISidebar from "@/components/dashboard/AISidebar";
 import AIChatWidget from "@/components/dashboard/AIChatWidget";
 import { MOCK_USER } from "@/lib/mock-data/dashboard";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -61,7 +60,7 @@ function useSectionObserver(sectionIds: string[]) {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTabValue>("overview");
-  const { activeSection, setRef } = useSectionObserver(["hero", "stats", "tabs"]);
+  const { setRef } = useSectionObserver(["hero", "stats", "tabs"]);
   const { currentUser } = useAuthStore();
   const hasApiSession = useHasApiSession();
 
@@ -79,52 +78,39 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* ═══ Dashboard + AI Sidebar — flex row centered ═══ */}
-      <div className="max-w-[1700px] mx-auto flex">
-        {/* ─── AI Sidebar — sticky, attached to left of dashboard ─── */}
-        <div className="hidden xl:block flex-shrink-0 w-[300px] pt-6 pr-4">
-          <div className="sticky top-24">
-            <AISidebar activeSection={activeSection === "tabs" ? activeTab : activeSection} />
-          </div>
+      {/* ═══ Dashboard — centered layout ═══ */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-8">
+        {/* Banner */}
+        <div ref={setRef("hero")} data-section="hero">
+          <DashboardHero user={dashboardUser} isAvatarLoading={avatarQuery.isLoading} />
         </div>
 
-        {/* ─── Main Dashboard Content ─── */}
-        <div className="flex-1 min-w-0 px-4 md:px-6 py-6 space-y-8">
-          {/* Banner */}
-          <div ref={setRef("hero")} data-section="hero">
-            <DashboardHero user={dashboardUser} isAvatarLoading={avatarQuery.isLoading} />
+        {/* Ecosystem Notification Widget */}
+        <Alert className="bg-indigo-50 border-indigo-100 text-indigo-900 shadow-sm flex items-center gap-4 py-3 cursor-pointer hover:bg-indigo-100/50 transition-colors">
+          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <BellRing className="w-5 h-5 text-indigo-600 animate-pulse" />
           </div>
+          <div className="flex-1">
+            <AlertTitle className="text-base font-bold text-indigo-900 mb-0.5">Ecosystem Update</AlertTitle>
+            <AlertDescription className="text-sm text-indigo-700">
+              <strong>Mentor Alex</strong> just reviewed your React assignment and left some feedback. 
+            </AlertDescription>
+          </div>
+          <ChevronRight className="w-4 h-4 text-indigo-400" />
+        </Alert>
 
-          {/* Ecosystem Notification Widget */}
-          <Alert className="bg-indigo-50 border-indigo-100 text-indigo-900 shadow-sm flex items-center gap-4 py-3 cursor-pointer hover:bg-indigo-100/50 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-              <BellRing className="w-5 h-5 text-indigo-600 animate-pulse" />
-            </div>
-            <div className="flex-1">
-              <AlertTitle className="text-base font-bold text-indigo-900 mb-0.5">Ecosystem Update</AlertTitle>
-              <AlertDescription className="text-sm text-indigo-700">
-                <strong>Mentor Alex</strong> just reviewed your React assignment and left some feedback. 
-              </AlertDescription>
-            </div>
-            <ChevronRight className="w-4 h-4 text-indigo-400" />
-          </Alert>
-
-          {/* Main Content Area */}
-          <div ref={setRef("tabs")} data-section="tabs" className="space-y-6">
-            <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
-            
-            <div className="min-h-[500px]">
-              {activeTab === "overview" && <OverviewTab />}
-              {activeTab === "skills" && <SkillsTab />}
-              {activeTab === "learning" && <LearningProgressTab />}
-              {activeTab === "interview" && <InterviewTab />}
-              {activeTab === "career" && <CareerTab />}
-            </div>
+        {/* Main Content Area */}
+        <div ref={setRef("tabs")} data-section="tabs" className="space-y-6">
+          <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          
+          <div className="min-h-[500px]">
+            {activeTab === "overview" && <OverviewTab />}
+            {activeTab === "skills" && <SkillsTab />}
+            {activeTab === "learning" && <LearningProgressTab />}
+            {activeTab === "interview" && <InterviewTab />}
+            {activeTab === "career" && <CareerTab />}
           </div>
         </div>
-
-        {/* ─── Right Spacer — visual balance ─── */}
-        <div className="hidden xl:block flex-shrink-0 w-[210px]" />
       </div>
 
       {/* ═══ AI Chat Widget — fixed RIGHT panel ═══ */}
