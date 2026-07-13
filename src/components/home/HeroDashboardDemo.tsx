@@ -262,24 +262,24 @@ export default function HeroDashboardDemo() {
       }
     >
       {/* Main Dashboard content */}
-      <div ref={mainPanelRef} className="flex-1 p-5 md:p-6 space-y-5 flex flex-col justify-between">
+      <div ref={mainPanelRef} className="flex-1 space-y-4 p-4 sm:space-y-5 sm:p-5 md:p-6 flex flex-col justify-between min-w-0">
         {/* Header Profile Row */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex min-w-0 items-center gap-3">
             {/* Mock Avatar */}
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md border border-white/10">
               LA
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Candidate Profile</div>
-              <h4 className="text-sm font-bold text-slate-800">Hoang Long Anh</h4>
-              <p className="text-xs text-slate-500 font-medium">Target: Frontend Engineer</p>
+              <h4 className="truncate text-sm font-bold text-slate-800">Hoang Long Anh</h4>
+              <p className="truncate text-xs font-medium text-slate-500">Target: Frontend Engineer</p>
             </div>
           </div>
 
           {/* Dynamic Status Tag */}
           <div className={cn(
-            "text-xs px-2.5 py-1 rounded-full font-bold shadow-sm transition-all duration-500 border backdrop-blur-sm",
+            "shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-500 sm:px-2.5 sm:text-xs",
             phase === "idle"
               ? "bg-slate-100 border-slate-200 text-slate-500"
               : phase === "upload"
@@ -473,7 +473,7 @@ export default function HeroDashboardDemo() {
           )}>
             <Cpu className={cn("w-3.5 h-3.5", phase === "scan" && "animate-spin")} />
           </div>
-          <p className="text-xs leading-relaxed font-medium">
+          <p className="min-w-0 break-words text-xs font-medium leading-relaxed">
             {phase === "idle" && (
               <span className="italic text-slate-400">Ready - open CV Diagnosis to benchmark this profile against real job descriptions.</span>
             )}

@@ -69,7 +69,7 @@ export default function DemoShell({
   const isMobile = useIsMobile();
 
   return (
-    <div ref={containerRef} className="w-full relative z-10 px-2">
+    <div ref={containerRef} className="relative z-10 w-full px-0 sm:px-2">
       {/* Scan line chạy bằng CSS thuần (compositor thread, 0 JS/frame) */}
       <style>{`
         @keyframes demo-scanline {
@@ -82,7 +82,7 @@ export default function DemoShell({
       `}</style>
 
       {/* Glow background effects */}
-      <div className="absolute -inset-10 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 blur-[120px] rounded-full z-0 opacity-40 pointer-events-none" />
+      <div className="absolute inset-x-0 -inset-y-8 z-0 rounded-full bg-gradient-to-r from-blue-500/10 to-indigo-500/10 opacity-40 blur-[100px] pointer-events-none sm:-inset-y-10 sm:blur-[120px]" />
 
       {/* Parallax Tilt Container */}
       <Tilt
@@ -124,7 +124,7 @@ export default function DemoShell({
           </div>
 
           {/* UI Inner body - Split Layout: Sidebar + Content */}
-          <div className="flex min-h-[320px] text-left sm:min-h-[360px]">
+          <div className="flex min-h-[300px] text-left sm:min-h-[360px]">
             {/* Sidebar — đúng điều hướng web thật, mọi demo dùng chung */}
             <div className="hidden sm:flex flex-col justify-between w-48 bg-slate-50/50 border-r border-slate-100 p-3.5 flex-shrink-0">
               <div className="space-y-5">

@@ -5,6 +5,7 @@ export default function HelpCenter() {
     <PlaceholderPage 
       title="Help Center" 
       description="Find answers to common questions about our skill diagnosis, learning roadmap, and recruiter connection system." 
+      variant="help"
     />
   );
 }
