@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
@@ -48,6 +48,7 @@ export function SectionItemCard({
 }: SectionItemCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
   const { t } = useTranslation("diagnosis");
 
   const handleRemoveClick = (e: React.MouseEvent) => {
@@ -61,9 +62,9 @@ export function SectionItemCard({
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md group">
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden transition-all group">
       <div 
-        className={cn("flex items-center justify-between p-4 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
+        className={cn("flex items-center justify-between px-3 py-2 cursor-pointer select-none transition-colors", expanded ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/80")}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex-1 min-w-0 pr-4">
@@ -144,12 +145,12 @@ export function SectionItemCard({
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
           >
-            <div className="p-4 pt-5 bg-white">
+            <div className="p-3 bg-white">
               {children}
             </div>
           </motion.div>

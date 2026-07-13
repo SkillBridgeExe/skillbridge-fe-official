@@ -241,9 +241,8 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   // BE không tách hard/soft — toàn bộ vào hardSkills, tab soft trống (W3 xử lý UI).
   const breakdown = parsed?.scoring_breakdown;
   const total = breakdown?.total_requirements ?? hardSkills.length;
-  const matchScore = Math.round(
-    match.overallScore ?? parsed?.overall_score ?? match.matchRatio ?? 0,
-  );
+  const rawScore = match.overallScore ?? parsed?.overall_score ?? match.matchRatio;
+  const matchScore = rawScore !== null && rawScore !== undefined ? Math.round(rawScore) : null;
 
   return {
     matchId: match.id,
@@ -252,7 +251,9 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
       ? `Matched ${breakdown.matched_count}/${total} requirements (${breakdown.partial_count} partial, ${breakdown.missing_count} missing). Required-skill coverage: ${Math.round((parsed?.required_coverage ?? 0) * 100)}%.`
-      : `Match score ${matchScore}/100.`,
+      : matchScore !== null
+        ? `Match score ${matchScore}/100.`
+        : `Match score —/100.`,
     hardSkills,
     softSkills: [],
     radar: hardSkills.slice(0, 6).map((skill) => ({
@@ -271,11 +272,15 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     fell_back_to_rubric: parsed?.fell_back_to_rubric ?? false,
     source_of_requirements: parsed?.source_of_requirements ?? "none",
     unnormalized_jd_requirements: parsed?.unnormalized_jd_requirements ?? [],
+    // KHÔNG ?? [] — undefined = "parsed vắng, không biết hệ đã đọc gì" ≠ [] = "biết là đọc đủ".
+    // SystemReadPanel chỉ được claim all-clear khi field này THẬT là mảng rỗng từ BE.
+    unnormalized_cv_skills: parsed?.unnormalized_cv_skills,
     keyword_frequency: parsed?.keyword_frequency?.map(f => ({
       keyword: f.canonical_name || f.display_name,
       jd_count: f.jd_count,
       cv_count: f.cv_count,
     })) ?? [],
+    degraded_reasons: parsed?.degraded_reasons ?? [],
   };
 }
 

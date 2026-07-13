@@ -69,6 +69,7 @@ export const API_ROUTES = {
     // server-side from the owned CV record (never a client-sent role).
     ASSISTANT_SMART_QUESTIONS: (id: string) =>
       `${API}/cvs/${id}/builder/assistant/smart-questions`,
+    ASSISTANT_EXPLAIN: (id: string) => `${API}/cvs/${id}/builder/assistant/explain`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)

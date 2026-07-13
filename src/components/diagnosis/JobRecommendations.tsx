@@ -77,6 +77,11 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
         )}
       </div>
       {job.fit && <FitBadge fit={job.fit} className="mt-2" />}
+      {job.fit && demoted && (
+        <span className="mt-1 block text-[10px] font-mono tabular-nums text-[#787774]">
+          {t("jobs.skillMatch", { score: job.match_score })}
+        </span>
+      )}
       {!job.fit && demoted && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className={cn(
@@ -93,6 +98,9 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           {t(`matchDepth.fit.${experienceFit.verdict}`)}
           {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
         </span>
+      )}
+      {job.score_basis && (
+        <p className="mt-1 text-[10px] text-[#9B9A97]">{t(`jobs.scoreBasis.${job.score_basis}`)}</p>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[12px] text-[#787774]">
         <span className="flex items-center gap-1 min-w-0">
@@ -127,6 +135,19 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           ))}
           {missing.length > 3 && (
             <span className="text-[10px] text-[#787774]">+{missing.length - 3}</span>
+          )}
+        </div>
+      )}
+      {(job.interview_signals ?? []).length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <span className="text-[11px] text-[#787774]">{t("jobs.interviewFlag")}</span>
+          {(job.interview_signals ?? []).slice(0, 3).map((s) => (
+            <span key={s.skill_canonical} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
+              {s.skill_canonical}
+            </span>
+          ))}
+          {(job.interview_signals ?? []).length > 3 && (
+            <span className="text-[10px] text-[#787774]">+{(job.interview_signals ?? []).length - 3}</span>
           )}
         </div>
       )}

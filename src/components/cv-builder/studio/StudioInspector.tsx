@@ -1,4 +1,5 @@
-import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon } from "lucide-react";
+import { useState } from "react";
+import { Globe, Type, Palette, Layout, Wand2, Settings2, Eye, EyeOff, Layers, RotateCcw, ArrowRightLeft, ChevronUp, ChevronDown, GripVertical, ImageIcon, Plus, Trash2, RectangleHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { resolveBuilderTemplate, TemplateGallery, StaticTemplateThumbnail } from "../preview/TemplatePicker";
@@ -8,8 +9,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { TEMPLATE_PREVIEWS, getTemplateLayoutCapabilities } from "@/lib/resume-engine/template-meta";
+import { defaultSectionPlacement } from "@/lib/resume-engine/layout-plan";
 import { cn } from "@/lib/utils";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { Input } from "@/components/ui/input";
+import { CustomSectionEditor } from "./CustomSectionEditor";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { StudioAvatarControl } from "./StudioAvatarControl";
@@ -65,8 +69,196 @@ const TEXT_COLORS = [
   { value: "#312e81", label: "Indigo" },
 ];
 
-const DEFAULT_MAIN_SECTIONS: CvBuilderSectionKey[] = ["summary", "experience", "education", "projects"];
-const DEFAULT_SIDEBAR_SECTIONS: CvBuilderSectionKey[] = ["skills", "certifications"];
+/**
+ * Pages panel: rename/reorder/remove pages and, with 2+ pages, assign each
+ * section to a page. Assignment lives here (not per row) to keep rows light.
+ */
+function LayoutPagesPanel({
+  sectionLabels,
+  supportsSidebar,
+}: {
+  sectionLabels: Record<string, string>;
+  supportsSidebar: boolean;
+}) {
+  const { t } = useTranslation("diagnosis");
+  const store = useCvBuilderStore();
+  const pages = store.layoutPages;
+  const multiPage = pages.length > 1;
+  // "Fit to one page" only touches density/spacing/font within safe bounds
+  // (never deletes content); keep the previous values so it is reversible.
+  const [fitBackup, setFitBackup] = useState<{
+    resumePageMargin: ResumeSpacing;
+    resumeSectionSpacing: ResumeSpacing;
+    resumeFontScale: ResumeFontScale;
+    resumeLineHeight: ResumeLineHeight;
+  } | null>(null);
+  // ponytail: null = "count unknown" (pdf.js failed -> iframe fallback), so this
+  // banner stays silent there rather than reporting a stale number — the user
+  // sees the real PDF in the fallback, and CvLengthGuard's heuristic length
+  // warning still runs independently of this count.
+  const overflowing =
+    store.renderedPageCount !== null && store.renderedPageCount > pages.length;
+  const assignableSections: Array<{ id: string; label: string }> = [
+    ...store.sectionOrder.map((key) => ({ id: key as string, label: sectionLabels[key] ?? key })),
+    ...store.customSections.map((section) => ({ id: section.id, label: section.title })),
+  ];
+
+  return (
+    <div className="space-y-1.5">
+      <p className="pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        {t("builder.inspector.pages")}
+      </p>
+
+      {overflowing && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 space-y-1.5">
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            {t("builder.inspector.pageOverflowWarning", {
+              planned: pages.length,
+              actual: store.renderedPageCount,
+            })}
+          </p>
+          {pages.length === 1 && !fitBackup && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 w-full text-[10px] border-amber-200 bg-white text-amber-800 hover:bg-amber-100"
+              onClick={() => {
+                setFitBackup({
+                  resumePageMargin: store.resumePageMargin,
+                  resumeSectionSpacing: store.resumeSectionSpacing,
+                  resumeFontScale: store.resumeFontScale,
+                  resumeLineHeight: store.resumeLineHeight,
+                });
+                store.setResumePageMargin("compact");
+                store.setResumeSectionSpacing("compact");
+                store.setResumeFontScale("small");
+                store.setResumeLineHeight("tight");
+              }}
+            >
+              {t("builder.inspector.fitToOnePage")}
+            </Button>
+          )}
+        </div>
+      )}
+      {fitBackup && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-full text-[10px] text-slate-500 hover:text-slate-700"
+          onClick={() => {
+            store.setResumePageMargin(fitBackup.resumePageMargin);
+            store.setResumeSectionSpacing(fitBackup.resumeSectionSpacing);
+            store.setResumeFontScale(fitBackup.resumeFontScale);
+            store.setResumeLineHeight(fitBackup.resumeLineHeight);
+            setFitBackup(null);
+          }}
+        >
+          <RotateCcw className="w-3 h-3 mr-1" />
+          {t("builder.inspector.undoFitToOnePage")}
+        </Button>
+      )}
+
+      <div className="space-y-1.5">
+        {pages.map((page, index) => {
+          const pageLabel = page.name || t("builder.inspector.pageDefaultName", { index: index + 1 });
+          return (
+            <div key={page.id} className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white p-2 shadow-sm">
+              <span className="text-[10px] font-semibold text-slate-400 w-4 text-center shrink-0">{index + 1}</span>
+              <Input
+                value={page.name ?? ""}
+                placeholder={t("builder.inspector.pageDefaultName", { index: index + 1 })}
+                onChange={(e) => store.renameLayoutPage(page.id, e.target.value)}
+                className="h-6 flex-1 min-w-0 border-none bg-transparent px-1 text-xs shadow-none focus-visible:ring-1"
+                aria-label={t("builder.inspector.renamePage", { page: pageLabel })}
+              />
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                onClick={() => store.moveLayoutPage(page.id, "up")}
+                disabled={index === 0}
+                aria-label={t("builder.inspector.movePageUp", { page: pageLabel })}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                onClick={() => store.moveLayoutPage(page.id, "down")}
+                disabled={index === pages.length - 1}
+                aria-label={t("builder.inspector.movePageDown", { page: pageLabel })}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+              {supportsSidebar && (
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn(
+                    "h-6 w-6",
+                    page.fullWidth ? "text-sky-600 hover:text-sky-700" : "text-slate-400 hover:text-slate-600",
+                  )}
+                  onClick={() => store.setLayoutPageFullWidth(page.id, !page.fullWidth)}
+                  aria-label={t("builder.inspector.toggleFullWidthPage", { page: pageLabel })}
+                  aria-pressed={!!page.fullWidth}
+                  title={t("builder.inspector.fullWidthPageHint")}
+                >
+                  <RectangleHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500"
+                onClick={() => store.removeLayoutPage(page.id)}
+                disabled={pages.length <= 1}
+                aria-label={t("builder.inspector.removePage", { page: pageLabel })}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <Button
+        variant="outline" size="sm"
+        className="w-full h-7 text-[11px] border-dashed border-slate-200 text-slate-500 hover:text-slate-700"
+        onClick={() => store.addLayoutPage()}
+      >
+        <Plus className="w-3 h-3 mr-1" />
+        {t("builder.inspector.addPage")}
+      </Button>
+
+      {multiPage && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            {t("builder.inspector.assignSections")}
+          </p>
+          {assignableSections.map(({ id, label }) => (
+            <div key={id} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1">
+              <span className="truncate text-[11px] text-slate-600">{label}</span>
+              <Select
+                value={
+                  // Orphan assignments resolve to page 1 — same rule as the renderer.
+                  pages.some((page) => page.id === store.sectionPage[id]) ? store.sectionPage[id] : pages[0].id
+                }
+                onValueChange={(pageId) => store.assignSectionToPage(id, pageId)}
+              >
+                <SelectTrigger
+                  className="h-6 w-[110px] shrink-0 text-[11px] bg-white border-slate-200"
+                  aria-label={t("builder.inspector.assignSectionToPage", { section: label })}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pages.map((page, index) => (
+                    <SelectItem key={page.id} value={page.id} className="text-xs">
+                      {page.name || t("builder.inspector.pageDefaultName", { index: index + 1 })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SortableSectionItem({
   id,
@@ -80,6 +272,8 @@ function SortableSectionItem({
   onMoveDown,
   isFirst,
   isLast,
+  isAnyDragging,
+  prefersReducedMotion,
 }: {
   id: string;
   isVisible: boolean;
@@ -92,13 +286,15 @@ function SortableSectionItem({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  isAnyDragging?: boolean;
+  prefersReducedMotion?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1 : 0,
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transition: prefersReducedMotion ? undefined : transition,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 10 : 1,
   };
   const { t } = useTranslation("diagnosis");
   const moveTitle = groupId === "main" ? t("builder.inspector.moveToSidebar") : t("builder.inspector.moveToMain");
@@ -108,10 +304,12 @@ function SortableSectionItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between rounded-md border p-2 text-sm transition-colors relative bg-white",
-        isVisible
-          ? "border-slate-200 shadow-sm"
-          : "border-dashed border-slate-100 bg-slate-50 text-slate-400",
+        "flex items-center justify-between rounded-md border p-2 text-sm transition-all duration-200 relative bg-white select-none",
+        isDragging
+          ? "border-dashed border-sky-300 bg-sky-50/20 shadow-inner"
+          : isVisible
+            ? "border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md"
+            : "border-dashed border-slate-100 bg-slate-50 text-slate-400 opacity-60",
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
@@ -119,8 +317,13 @@ function SortableSectionItem({
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 outline-none p-0.5 -ml-1 rounded transition-colors hover:bg-slate-100"
+          disabled={isAnyDragging && !isDragging}
+          className={cn(
+            "cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 outline-none p-0.5 -ml-1 rounded transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-sky-500 focus-visible:bg-slate-100",
+            (isAnyDragging && !isDragging) && "pointer-events-none opacity-30"
+          )}
           aria-label={t("builder.inspector.dragToReorder", { section: sectionLabel })}
+          title={t("builder.inspector.dragToReorderHint")}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -132,6 +335,7 @@ function SortableSectionItem({
             isVisible ? "text-slate-400 hover:text-slate-600" : "text-slate-300 hover:text-slate-400",
           )}
           onClick={onToggleVisibility}
+          disabled={isAnyDragging}
           aria-label={
             isVisible
               ? t("builder.inspector.hideSection", { section: sectionLabel })
@@ -152,6 +356,7 @@ function SortableSectionItem({
             onClick={onMovePlacement}
             title={moveTitle}
             aria-label={moveTitle}
+            disabled={isAnyDragging}
           >
             <ArrowRightLeft className="h-3.5 w-3.5" />
           </Button>
@@ -161,7 +366,7 @@ function SortableSectionItem({
           size="icon"
           className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
           onClick={onMoveUp}
-          disabled={isFirst}
+          disabled={isFirst || isAnyDragging}
           aria-label={t("builder.inspector.moveUp", { section: sectionLabel })}
         >
           <ChevronUp className="h-3.5 w-3.5" />
@@ -171,7 +376,7 @@ function SortableSectionItem({
           size="icon"
           className="h-6 w-6 text-slate-400 hover:text-slate-600 hidden sm:inline-flex"
           onClick={onMoveDown}
-          disabled={isLast}
+          disabled={isLast || isAnyDragging}
           aria-label={t("builder.inspector.moveDown", { section: sectionLabel })}
         >
           <ChevronDown className="h-3.5 w-3.5" />
@@ -192,8 +397,18 @@ export function StudioInspector() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const prefersReducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
     if (!over || active.id === over.id) return;
 
     // We only reorder within the global array for now since they are all one array
@@ -238,6 +453,8 @@ export function StudioInspector() {
                   onMoveDown={() => store.moveSectionWithinGroup(key, "down", sections)}
                   isFirst={index === 0}
                   isLast={index === arr.length - 1}
+                  isAnyDragging={activeId !== null}
+                  prefersReducedMotion={prefersReducedMotion}
                 />
               );
             })}
@@ -341,49 +558,6 @@ export function StudioInspector() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Picture / Avatar Accordion */}
-          <AccordionItem value="picture" className="border-b-slate-100">
-            <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-slate-500" />
-                <span className="font-semibold text-slate-800 text-sm">
-                  {t("builder.inspector.pictureAvatar")}
-                </span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4 pt-1">
-              <div className="space-y-4">
-                <div
-                  className={cn(
-                    "flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3",
-                    !layoutCapabilities.supportsAvatar && "opacity-50 pointer-events-none",
-                  )}
-                >
-                  <div className="space-y-0.5">
-                    <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
-                      {t("builder.inspector.showAvatar", "Show Avatar")}
-                    </label>
-                    <p className="text-[10px] text-slate-400">
-                      {store.resumeAtsSafeMode
-                        ? t("builder.inspector.atsDisabledAvatar", "ATS Safe Mode hides avatars for better parsing and compliance.")
-                        : !layoutCapabilities.supportsAvatar
-                          ? t("builder.inspector.unsupportedFeature", "This template does not support avatars.")
-                          : t("builder.inspector.avatarHint", "Toggle your profile picture.")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="show-avatar"
-                    checked={store.resumePictureVisible !== false && !store.resumeAtsSafeMode}
-                    onCheckedChange={(checked) => store.setResumePictureVisible(checked)}
-                    disabled={store.resumeAtsSafeMode}
-                  />
-                </div>
-
-                <StudioAvatarControl layoutCapabilities={layoutCapabilities} />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
           {/* Structure Accordion */}
           <AccordionItem value="structure" className="border-b-slate-100">
             <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
@@ -409,7 +583,13 @@ export function StudioInspector() {
                   {t("builder.inspector.reset")}
                 </Button>
               </div>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveId(null)}
+              >
                 <div className="space-y-3">
                   {(() => {
                     const capabilities = layoutCapabilities;
@@ -425,11 +605,13 @@ export function StudioInspector() {
                       );
                     }
 
+                    // Same default split as the PDF adapter — the groups shown
+                    // here must match where sections actually render.
                     const mainSections = store.sectionOrder.filter(k =>
-                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "main" : DEFAULT_MAIN_SECTIONS.includes(k)
+                      (store.sectionPlacement[k] ?? defaultSectionPlacement(k)) === "main"
                     );
                     const sidebarSections = store.sectionOrder.filter(k =>
-                      store.sectionPlacement[k] ? store.sectionPlacement[k] === "sidebar" : DEFAULT_SIDEBAR_SECTIONS.includes(k)
+                      (store.sectionPlacement[k] ?? defaultSectionPlacement(k)) === "sidebar"
                     );
 
                     return (
@@ -440,7 +622,42 @@ export function StudioInspector() {
                     );
                   })()}
                 </div>
+
+                <DragOverlay adjustScale={true}>
+                  {activeId ? (
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-md border border-sky-400 bg-white p-2 text-sm shadow-md cursor-grabbing select-none scale-[1.02]",
+                        prefersReducedMotion ? "transform-none transition-none" : "transform transition-transform duration-100 ease-out"
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-1.5 opacity-90">
+                        <GripVertical className="h-4 w-4 text-sky-500" />
+                        <span className="truncate font-medium text-slate-800">{sectionLabels[activeId as CvBuilderSectionKey] || activeId}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 opacity-40">
+                        {layoutCapabilities.supportsSidebar && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" disabled>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
+
+              <LayoutPagesPanel sectionLabels={sectionLabels} supportsSidebar={layoutCapabilities.supportsSidebar} />
+              <CustomSectionEditor
+                supportsCustomSections={layoutCapabilities.supportsCustomSections}
+                supportsSidebar={layoutCapabilities.supportsSidebar}
+              />
             </AccordionContent>
           </AccordionItem>
 
@@ -456,7 +673,7 @@ export function StudioInspector() {
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
               <div className="space-y-5">
-                
+
                 {/* ATS Safe Mode */}
                 <div className="flex items-center justify-between bg-sky-50 p-3 rounded-md border border-sky-100">
                   <div className="space-y-0.5">
@@ -509,13 +726,13 @@ export function StudioInspector() {
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    {!layoutCapabilities.supportsSpacing 
+                    {!layoutCapabilities.supportsSpacing
                       ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
                       : t("builder.inspector.densityHelper")}
                   </p>
                 </div>
 
-                <div className={cn("flex items-center justify-between", 
+                <div className={cn("flex items-center justify-between",
                   (!layoutCapabilities.supportsSectionIcons || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <div className="space-y-0.5">
@@ -523,7 +740,7 @@ export function StudioInspector() {
                       {t("builder.inspector.showSectionIcons")}
                     </label>
                     <p className="text-[10px] text-slate-400">
-                      {store.resumeAtsSafeMode 
+                      {store.resumeAtsSafeMode
                         ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
                         : !layoutCapabilities.supportsSectionIcons
                           ? t("builder.inspector.unsupportedFeature", "This template does not support custom spacing.")
@@ -585,14 +802,14 @@ export function StudioInspector() {
                   </div>
                 )}
 
-                <div className={cn("space-y-1.5", 
+                <div className={cn("space-y-1.5",
                   (!layoutCapabilities.supportsDividerStyle || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {t("builder.inspector.dividerStyle")}
                   </p>
-                  <Select 
-                    value={store.resumeAtsSafeMode ? "line" : store.resumeDividerStyle} 
+                  <Select
+                    value={store.resumeAtsSafeMode ? "line" : store.resumeDividerStyle}
                     onValueChange={(v) => store.setResumeDividerStyle(v as typeof store.resumeDividerStyle)}
                   >
                     <SelectTrigger className="w-full h-8 text-xs bg-white border-slate-200">
@@ -606,7 +823,7 @@ export function StudioInspector() {
                     </SelectContent>
                   </Select>
                   <p className="text-[10px] text-slate-400 mt-1">
-                      {store.resumeAtsSafeMode 
+                      {store.resumeAtsSafeMode
                         ? t("builder.inspector.atsDisabled", "Disabled because ATS Safe Mode is on.")
                         : !layoutCapabilities.supportsDividerStyle
                           ? t("builder.inspector.unsupportedFeature", "This template does not support custom divider styles.")
@@ -701,7 +918,7 @@ export function StudioInspector() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1">
-              <div className={cn("space-y-1.5", 
+              <div className={cn("space-y-1.5",
                 (!layoutCapabilities.supportsAccentColor || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
               )}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -717,8 +934,8 @@ export function StudioInspector() {
                       onClick={() => store.setResumeAccentColor(color.value)}
                       className={cn(
                         "h-8 rounded-full border-2 transition-transform hover:scale-105",
-                        (store.resumeAtsSafeMode ? color.value === "#0f172a" : store.resumeAccentColor === color.value) 
-                          ? "border-sky-400 ring-2 ring-sky-100" 
+                        (store.resumeAtsSafeMode ? color.value === "#0f172a" : store.resumeAccentColor === color.value)
+                          ? "border-sky-400 ring-2 ring-sky-100"
                           : "border-white shadow-sm",
                       )}
                       style={{ backgroundColor: store.resumeAtsSafeMode ? "#0f172a" : color.value }}
@@ -734,7 +951,7 @@ export function StudioInspector() {
                   </p>
                 </div>
 
-                <div className={cn("space-y-1.5 mt-6", 
+                <div className={cn("space-y-1.5 mt-6",
                   (!layoutCapabilities.supportsTypography || store.resumeAtsSafeMode) && "opacity-50 pointer-events-none"
                 )}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -750,8 +967,8 @@ export function StudioInspector() {
                         onClick={() => store.setResumeTextColor(color.value)}
                         className={cn(
                           "h-8 rounded-full border-2 transition-transform hover:scale-105",
-                          (store.resumeAtsSafeMode ? color.value === "#000000" : store.resumeTextColor === color.value) 
-                            ? "border-sky-400 ring-2 ring-sky-100" 
+                          (store.resumeAtsSafeMode ? color.value === "#000000" : store.resumeTextColor === color.value)
+                            ? "border-sky-400 ring-2 ring-sky-100"
                             : "border-white shadow-sm",
                         )}
                         style={{ backgroundColor: store.resumeAtsSafeMode ? "#000000" : color.value }}
@@ -761,6 +978,49 @@ export function StudioInspector() {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+          {/* Picture / Avatar Accordion */}
+          <AccordionItem value="picture" className="border-b-slate-100">
+            <AccordionTrigger className="px-4 py-2.5 hover:bg-slate-50 transition-colors hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-slate-500" />
+                <span className="font-semibold text-slate-800 text-sm">
+                  {t("builder.inspector.pictureAvatar")}
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 pt-1">
+              <div className="space-y-4">
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3",
+                    !layoutCapabilities.supportsAvatar && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  <div className="space-y-0.5">
+                    <label htmlFor="show-avatar" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer">
+                      {t("builder.inspector.showAvatar", "Show Avatar")}
+                    </label>
+                    <p className="text-[10px] text-slate-400">
+                      {store.resumeAtsSafeMode
+                        ? t("builder.inspector.atsDisabledAvatar", "ATS Safe Mode hides avatars for better parsing and compliance.")
+                        : !layoutCapabilities.supportsAvatar
+                          ? t("builder.inspector.unsupportedFeature", "This template does not support avatars.")
+                          : t("builder.inspector.avatarHint", "Toggle your profile picture.")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-avatar"
+                    checked={store.resumePictureVisible !== false && !store.resumeAtsSafeMode}
+                    onCheckedChange={(checked) => store.setResumePictureVisible(checked)}
+                    disabled={store.resumeAtsSafeMode}
+                  />
+                </div>
+
+                <StudioAvatarControl layoutCapabilities={layoutCapabilities} />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
           </Accordion>
 

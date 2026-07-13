@@ -21,6 +21,7 @@ import {
   intakeProjectFromStoryApi,
   updateBuilderDraftApi,
   assistantAnalyzeApi,
+  assistantExplainApi,
   assistantSmartQuestionsApi,
   assistantRewriteApi,
   assistantSkillsNudgeApi,
@@ -29,6 +30,7 @@ import {
 import { requireSession } from "@/services/diagnosis.service";
 import type {
   AssistantAnalyzeRequest,
+  AssistantExplanation,
   AssistantRewriteRequest,
   AssistantRewriteResponse,
   CvAssistantTurn,
@@ -43,6 +45,8 @@ import type {
   Project,
   WorkExperience,
 } from "@/store/useCvBuilderStore";
+import type { CustomSection } from "@/lib/resume-engine/document-v1";
+import { projectCustomSectionsToActivities } from "@/lib/resume-engine/layout-plan";
 import type {
   BuilderSection,
   BuilderSectionContent,
@@ -84,6 +88,7 @@ export interface BuilderSnapshot {
   tools: string[];
   languages: string[];
   certifications: Certification[];
+  customSections: CustomSection[];
   cvLanguage: CvLanguage;
 }
 
@@ -213,7 +218,10 @@ export function mapStoreToCanonical(snapshot: BuilderSnapshot): CanonicalCvDocum
         issuer: orNull(entry.organization),
         date: orNull(entry.issueDate),
       })),
-    activities: [],
+    // P4: visible custom sections are real CV content — project them into
+    // `activities` so diagnosis/AI see them and they survive server-side.
+    // Layout/visibility stay local; item headings join into the bullet text.
+    activities: projectCustomSectionsToActivities(snapshot.customSections ?? []),
   };
 }
 
@@ -440,4 +448,13 @@ export async function assistantExtract(
 ): Promise<ExtractResponse> {
   requireSession();
   return assistantExtractApi(draftId, input);
+}
+
+/** Read-only guidance explanation (deterministic, no quota). */
+export async function assistantExplain(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<AssistantExplanation> {
+  requireSession();
+  return assistantExplainApi(draftId, input);
 }

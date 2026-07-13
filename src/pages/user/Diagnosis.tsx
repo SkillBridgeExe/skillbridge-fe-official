@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -20,11 +20,14 @@ import {
   resolveCvBuilderSavedSource,
   shouldHydrateServerDraft,
   shouldSaveClientSnapshotAfterDraftCreate,
-  type BuilderSnapshot,
   type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
+import { getBuilderSnapshot } from "@/components/cv-builder/builder-snapshot";
 import { getCvDetailApi } from "@/api/cv/list";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { Button } from "@/components/ui/button";
 
 const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -117,28 +120,6 @@ export default function Diagnosis() {
   const builderSaveCapturedRef = useRef(false);
   const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
-  const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
-    resumeTitle: state.resumeTitle,
-    fullName: state.fullName,
-    email: state.email,
-    phone: state.phone,
-    location: state.location,
-    linkedin: state.linkedin,
-    portfolio: state.portfolio,
-    github: state.github,
-    targetPosition: state.targetPosition,
-    summary: state.summary,
-    education: state.education,
-    experience: state.experience,
-    projects: state.projects,
-    technicalSkills: state.technicalSkills,
-    softSkills: state.softSkills,
-    tools: state.tools,
-    languages: state.languages,
-    certifications: state.certifications,
-    cvLanguage: state.cvLanguage,
-  });
-
   const captureCvBuilderSaved = useCallback((state: ReturnType<typeof useCvBuilderStore.getState>) => {
     if (builderSaveCapturedRef.current || !state.draftId) return;
 
@@ -154,6 +135,48 @@ export default function Diagnosis() {
   // W22-A fix: gate draft creation with a ref so it only attempts ONCE per builder entry.
   // A permanent 402 (quota exhausted) must NOT retry — fall back to local mode instead of looping.
   const draftAttemptRef = useRef(false);
+  // Blocks builder editing while an existing CV is being recovered (reload / deep-link) so the
+  // async hydrate can't clobber keystrokes typed during the fetch.
+  const [isRecoveringCv, setIsRecoveringCv] = useState(false);
+  const [recoverError, setRecoverError] = useState<Error | null>(null);
+
+  const recoverCvDraft = useCallback((id: string) => {
+    setIsRecoveringCv(true);
+    setRecoverError(null);
+    const recoverStartedAt = performance.now();
+    getCvDetailApi(id)
+      .then((detail) => {
+        const builder = useCvBuilderStore.getState();
+        if (detail.parsedJson) {
+          builder.hydrateFromCanonical(detail.parsedJson, { cvId: detail.id });
+        }
+        builder.setDraftId(detail.id);
+        builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
+        builder.setSeedSourceCvId(null);
+        useAutosaveStore.getState().setSaveStatus("saved");
+        captureStudioEvent("builder_recover", {
+          outcome: "success",
+          latencyMs: performance.now() - recoverStartedAt,
+          templateId: useCvBuilderStore.getState().template,
+        });
+        setIsRecoveringCv(false);
+      })
+      .catch((err) => {
+        console.error("Failed to recover draft", err);
+        setRecoverError(err instanceof Error ? err : new Error(String(err)));
+        useAutosaveStore.getState().setSaveStatus("local");
+        captureStudioEvent("builder_recover", {
+          outcome: "failure",
+          latencyMs: performance.now() - recoverStartedAt,
+          errorCode: studioErrorCode(err),
+        });
+      });
+  }, [t]);
+
+  const handleSwitchToOffline = useCallback(() => {
+    setIsRecoveringCv(false);
+    setRecoverError(null);
+  }, []);
 
   useEffect(() => {
     if (step !== "builder") {
@@ -186,21 +209,7 @@ export default function Diagnosis() {
       const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
 
       if (recoverId) {
-        getCvDetailApi(recoverId)
-          .then((detail) => {
-            const builder = useCvBuilderStore.getState();
-            if (detail.parsedJson) {
-              builder.hydrateFromCanonical(detail.parsedJson);
-            }
-            builder.setDraftId(detail.id);
-            builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
-            builder.setSeedSourceCvId(null);
-            useAutosaveStore.getState().setSaveStatus("saved");
-          })
-          .catch((err) => {
-            console.error("Failed to recover draft", err);
-            useAutosaveStore.getState().setSaveStatus("local");
-          });
+        recoverCvDraft(recoverId);
         return;
       }
 
@@ -229,7 +238,7 @@ export default function Diagnosis() {
             const wasSeededFromDiagnosis = builderBeforeHydrate.seededFromDiagnosis;
 
             if (data.parsedJson && canHydrateServerDocument) {
-              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson);
+              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson, { cvId: data.id });
             }
 
             const builder = useCvBuilderStore.getState();
@@ -278,6 +287,7 @@ export default function Diagnosis() {
           onError: (err: Error) => {
             // Graceful degradation: keep editing locally, surface the reason ONCE.
             useAutosaveStore.getState().setSaveStatus("local");
+            captureStudioEvent("builder_create", { outcome: "failure", errorCode: studioErrorCode(err) });
             toast({
               title: t("builder.toastDraftErrorTitle"),
               description: err?.message || t("builder.toastDraftErrorDesc"),
@@ -315,6 +325,7 @@ export default function Diagnosis() {
 
       useAutosaveStore.getState().setSaveStatus("saving");
 
+      const saveStartedAt = performance.now();
       try {
         await saveDraftMutation.mutateAsync({
           draftId,
@@ -328,6 +339,12 @@ export default function Diagnosis() {
         captureCvBuilderSaved(useCvBuilderStore.getState());
       } catch (error) {
         useAutosaveStore.getState().setSaveStatus("error");
+        // Failures only — a success event per 1.5s autosave would be noise.
+        captureStudioEvent("builder_save", {
+          outcome: "failure",
+          latencyMs: performance.now() - saveStartedAt,
+          errorCode: studioErrorCode(error),
+        });
         throw error;
       }
     };
@@ -361,6 +378,14 @@ export default function Diagnosis() {
     return () => {
       unsubscribe();
       if (timeoutId) clearTimeout(timeoutId);
+      // A pending debounced save must not die with this effect: SPA navigation away (browser
+      // back, sidebar links) isn't blocked by any router guard, so flush instead of losing the
+      // last <=1.5s of typing. The PUT keeps running after unmount.
+      if (useAutosaveStore.getState().isDirty && useCvBuilderStore.getState().draftId) {
+        void saveDraft().catch(() => {
+          // Nothing to surface — the page is unmounting; autosave state already marks the error.
+        });
+      }
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
     // mutateAsync is stable for this usage; excluding the mutation object avoids
@@ -373,7 +398,54 @@ export default function Diagnosis() {
     return (
       <Layout hideFooter hideNavbar>
         <Suspense fallback={<PageLoader />}>
-          <div id="cv-builder-anchor" className="h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+          <div id="cv-builder-anchor" className="relative h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+            {isRecoveringCv && (
+              <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6 text-center">
+                {recoverError ? (
+                  <div className="max-w-md p-6 bg-white border border-red-100 rounded-2xl shadow-sm flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center text-red-500">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      {t("builder.recoverErrorTitle", "Could not load CV from cloud")}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      {t("builder.recoverErrorDesc", "We encountered an issue loading your resume from the server. Check your connection and try again.")}
+                    </p>
+                    <p className="text-xs font-mono text-red-600 bg-red-50 p-3 rounded-lg w-full max-h-32 overflow-auto text-left border border-red-100/50">
+                      {getApiErrorMessage(recoverError)}
+                    </p>
+                    <div className="flex gap-2 w-full mt-2">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="flex-1 text-xs"
+                        onClick={handleSwitchToOffline}
+                      >
+                        {t("builder.recoverOffline", "Use offline mode")}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1 text-xs gap-2"
+                        onClick={() => {
+                          const urlParams = new URLSearchParams(window.location.search);
+                          const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
+                          if (recoverId) recoverCvDraft(recoverId);
+                        }}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        {t("builder.recoverRetry", "Retry")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Loader2 className={`h-8 w-8 text-slate-400 ${window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "" : "animate-spin"}`} />
+                    <p className="text-sm font-medium text-slate-500">{t("builder.recoveringDraft")}</p>
+                  </>
+                )}
+              </div>
+            )}
             <StudioTopBar />
             <div className="flex-1 flex overflow-hidden">
               
@@ -383,13 +455,13 @@ export default function Diagnosis() {
               </div>
               
               {/* Zone 2: Editor (Scrollable Column) */}
-              <div className="w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
+              <div className="w-full lg:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
                 {/* Mobile Nav */}
                 <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-200 shrink-0 shadow-sm">
                   <CvSectionNav variant="horizontal" />
                 </div>
                 {/* Editor Content */}
-                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar motion-safe:scroll-smooth">
                   <CvFormPanel />
                 </div>
               </div>

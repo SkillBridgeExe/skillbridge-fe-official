@@ -92,7 +92,33 @@ export function JdIntelligenceCard({
 }) {
   const { t } = useTranslation("diagnosis");
 
-  if (!data?.dimensions?.length) return null;
+  if (!data || !data.status || data.status === "not_requested") return null;
+
+  const isDisclosure =
+    data.status === "no_eligible_dimension_found" ||
+    data.status === "not_extracted" ||
+    !data.dimensions ||
+    data.dimensions.length === 0;
+
+  if (isDisclosure) {
+    const fallbackKey =
+      data.status === "no_eligible_dimension_found"
+        ? "degraded.noEligibleJdIntel"
+        : "degraded.noneFoundJdIntel";
+
+    return (
+      <div className="space-y-4 animate-in fade-in duration-300">
+        {/* Header */}
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+          <Globe className="w-3.5 h-3.5" />
+          {t("jdIntel.title")}
+        </div>
+        <div className="text-xs text-[#787774] bg-[#FBFBFA] border border-[#E3E0D8] rounded-xl p-4 leading-relaxed shadow-sm">
+          {data.note || t(fallbackKey)}
+        </div>
+      </div>
+    );
+  }
 
   // Build lookup: dimension type → matching GapItem (first non-matched)
   const gapByType = new Map<string, GapItem>();

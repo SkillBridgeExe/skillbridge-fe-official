@@ -118,7 +118,11 @@ export function PdfCanvasPage({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const onLoadSuccessRef = useRef(onLoadSuccess);
 	const onRenderSuccessRef = useRef(onRenderSuccess);
-	const scaledPageSize = getScaledPreviewPageSize(pageSize, pageScale);
+	// The clipping container must match the REAL page (from the PDF viewport),
+	// not the A4 default — a Letter page (612pt) inside an A4-sized (595.28pt)
+	// overflow-hidden box loses ~17pt of every line at the right edge.
+	const [measuredPageSize, setMeasuredPageSize] = useState<PreviewPageSize | null>(null);
+	const scaledPageSize = getScaledPreviewPageSize(measuredPageSize ?? pageSize, pageScale);
 
 	useEffect(() => {
 		onLoadSuccessRef.current = onLoadSuccess;
@@ -144,6 +148,9 @@ export function PdfCanvasPage({
 				const baseViewport = page.getViewport({ scale: 1 });
 				const pageSize = { height: baseViewport.height, width: baseViewport.width };
 
+				setMeasuredPageSize((prev) =>
+					prev && prev.width === pageSize.width && prev.height === pageSize.height ? prev : pageSize,
+				);
 				onLoadSuccessRef.current(pageNumber, pageSize);
 
 				const width = baseViewport.width * pageScale;

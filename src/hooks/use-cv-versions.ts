@@ -7,7 +7,8 @@ const versionsKey = (cvId: string) => ["cv-versions", cvId] as const;
 export function useCvVersionsQuery(cvId: string | null, enabled = true) {
   return useQuery({
     queryKey: versionsKey(cvId ?? ""),
-    queryFn: () => listVersionsApi(cvId as string, { limit: 50 }),
+    // 100 covers the full retention cap (20 auto + 50 manual) in one page — no load-more UI.
+    queryFn: () => listVersionsApi(cvId as string, { limit: 100 }),
     enabled: !!cvId && enabled,
     staleTime: 10_000,
   });

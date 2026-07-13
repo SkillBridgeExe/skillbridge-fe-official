@@ -2,9 +2,9 @@ import { useCvBuilderStore, type Education, type WorkExperience, type Project, t
 import { useTranslation } from "react-i18next";
 import {
   User, Target, FileText, GraduationCap, Briefcase,
-  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp
+  FolderGit2, Wrench, Award, CheckCircle, Check, X, Gauge, RotateCcw, ChevronDown, ChevronUp, Sparkles
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import * as Sections from "./sections";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BuilderSection } from "@shared/api";
 import { getBuilderSnapshot } from "./builder-snapshot";
+import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -151,6 +152,7 @@ const STATUS_INDEX_MAP: Record<string, number> = {
 export function CvFormPanel() {
   const { t, i18n } = useTranslation("diagnosis");
   const store = useCvBuilderStore();
+  const prefersReducedMotion = useReducedMotion();
   const { activeSection, draftId, sectionEvaluations, setSectionEvaluation, sectionFixFeedback, collapsedSections, toggleSectionCollapse, sectionOrder } = store;
   const statuses = store.getSectionStatuses();
   const currentLang = i18n.language.startsWith("vi") ? "vi" : "en";
@@ -190,7 +192,7 @@ export function CvFormPanel() {
           useCvBuilderStore.getState().setActiveSection(mostVisibleSectionIdx);
         }
       },
-      { root: null, rootMargin: "-10% 0px -60% 0px", threshold: [0, 0.5, 1] }
+      { root: null, rootMargin: "-10% 0px -60% 0px", threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
     );
 
     const elements = document.querySelectorAll(".cv-section-card");
@@ -201,6 +203,7 @@ export function CvFormPanel() {
 
   const [evaluatingMap, setEvaluatingMap] = useState<Record<string, boolean>>({});
   const evaluateMutation = useEvaluateSectionMutation();
+  const [scorePopoverKey, setScorePopoverKey] = useState<string | null>(null);
 
   // Companion is builder-scoped: clear the floating dolphin + its context registry when the builder
   // unmounts, so it doesn't follow the user onto unrelated pages (anti-Clippy).
@@ -264,13 +267,87 @@ export function CvFormPanel() {
     return () => clearTimeout(timer);
   }, [activeSection, draftId, handleEvaluateSection, isLoggedIn, orderedSections]);
 
+  /** Resolve companion context for the "Improve with AI" button. Returns null for unsupported/empty sections. */
+  const getImproveWithAiTarget = (sectionId: string) => {
+    const { summary, experience, projects, draftId: did, setSummary, updateExperience, updateProject, markSectionNeedsRecheck } = useCvBuilderStore.getState();
+    // An applied AI patch marks the score stale as assistant_patch (same shape the
+    // section components use) so ReviewSection attributes the change correctly.
+    const recheckAfterPatch = (section: BuilderSection, fieldPath: string, before: string, after: string) =>
+      markSectionNeedsRecheck(section, {
+        source: "assistant_patch",
+        fieldPath,
+        beforePreview: before.substring(0, 100),
+        afterPreview: after.substring(0, 100),
+      });
+    if (sectionId === "summary") {
+      if (!summary.trim()) return null;
+      return {
+        contextId: "cvbuilder:summary",
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: "cvbuilder:summary",
+          section: "summary",
+          currentValue: summary,
+          onApply: (after: string) => { setSummary(after); recheckAfterPatch("summary", "cvbuilder:summary", summary, after); },
+        },
+      };
+    }
+    if (sectionId === "experience") {
+      // Prefer the first entry with a description; an entry that only has
+      // achievements is still improvable — target that field instead.
+      let idx = experience.findIndex((e) => (e.description || "").trim());
+      let expField: "description" | "achievements" = "description";
+      if (idx < 0) {
+        idx = experience.findIndex((e) => (e.achievements || "").trim());
+        expField = "achievements";
+      }
+      if (idx < 0) return null;
+      const exp = experience[idx];
+      const expPath = expField === "description"
+        ? resumeDocumentPaths.experienceDescription(exp.id)
+        : resumeDocumentPaths.experienceAchievements(exp.id);
+      const expBefore = exp[expField] || "";
+      return {
+        contextId: `cvbuilder:experience[${idx}].${expField}`,
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: expPath,
+          section: "experience",
+          currentValue: expBefore,
+          onApply: (after: string) => { updateExperience(exp.id, expField, after); recheckAfterPatch("experience", expPath, expBefore, after); },
+        },
+      };
+    }
+    if (sectionId === "projects") {
+      const idx = projects.findIndex((p) => (p.description || "").trim());
+      const proj = idx >= 0 ? projects[idx] : projects[0];
+      if (!proj || !proj.description?.trim()) return null;
+      const projPath = `cvbuilder:projects[${idx >= 0 ? idx : 0}].description`;
+      const projBefore = proj.description || "";
+      return {
+        contextId: projPath,
+        skill: "cv_builder" as const,
+        props: {
+          draftId: did,
+          fieldPath: projPath,
+          section: "projects",
+          currentValue: projBefore,
+          onApply: (after: string) => { updateProject(proj.id, "description", after); recheckAfterPatch("projects", projPath, projBefore, after); },
+        },
+      };
+    }
+    return null;
+  };
+
   const renderEvaluateChip = (beSection: BuilderSection, sectionId: string) => {
     const evaluation = sectionEvaluations[beSection];
     const isEvaluating = evaluatingMap[beSection];
 
     if (isEvaluating) {
       return (
-        <div className="w-16 h-6 bg-slate-100 animate-pulse rounded-full shrink-0" />
+        <div className="w-16 h-7 bg-slate-100 animate-pulse rounded-full shrink-0" />
       );
     }
 
@@ -302,8 +379,10 @@ export function CvFormPanel() {
         badgeClass = "border border-slate-200 text-slate-500 bg-[#FBFBFA] hover:bg-slate-55";
       }
 
+      const aiTarget = getImproveWithAiTarget(sectionId);
+
       return (
-        <Popover>
+        <Popover open={scorePopoverKey === sectionId} onOpenChange={(open) => setScorePopoverKey(open ? sectionId : null)}>
           <PopoverTrigger asChild>
             <button className={cn("max-w-full px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm", badgeClass)}>
               <span>{score}%</span>
@@ -342,6 +421,26 @@ export function CvFormPanel() {
                 </ul>
               </div>
             )}
+
+            {aiTarget && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3 h-8 text-xs gap-1.5 text-primary hover:text-primary"
+                onClick={() => {
+                  setScorePopoverKey(null);
+                  useCompanionStore.getState().registerContext({
+                    id: aiTarget.contextId,
+                    getTurn: () => ({ skill: aiTarget.skill, props: aiTarget.props }),
+                  });
+                  useCompanionStore.getState().activateContext(aiTarget.contextId);
+                  useCompanionStore.setState({ bubbleOpen: true });
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {t("builder.improveWithAi")}
+              </Button>
+            )}
           </PopoverContent>
         </Popover>
       );
@@ -361,7 +460,7 @@ export function CvFormPanel() {
   };
 
   return (
-    <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-6">
+    <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-4">
       {orderedSections.map((section, index) => {
         const Icon = section.icon;
         const statusIdx = STATUS_INDEX_MAP[section.id];
@@ -382,14 +481,14 @@ export function CvFormPanel() {
             className={cn(
               "cv-section-card overflow-hidden transition-all duration-300 scroll-mt-6",
               isHidden ? "bg-slate-50/50 opacity-60" : "bg-white",
-              isActive ? "ring-1 ring-primary/20 border-primary/20" : "border-slate-100",
-              "border rounded-xl shadow-sm"
+              isActive ? "ring-1 ring-primary/20 border-primary/20" : "border-slate-200",
+              "border rounded-lg"
             )}
           >
             <div
               className={cn(
-                "px-4 py-2.5 border-b transition-colors cursor-pointer select-none group",
-                isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-100"
+                "px-3 py-2 min-h-[52px] flex flex-col justify-center border-b transition-colors cursor-pointer select-none group",
+                isHidden ? "bg-transparent border-slate-100" : "bg-slate-50/50 hover:bg-slate-50 border-slate-200"
               )}
               onClick={() => toggleSectionCollapse(section.id)}
             >
@@ -456,12 +555,12 @@ export function CvFormPanel() {
             <AnimatePresence initial={false}>
               {!collapsedSections[section.id] && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+                  exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
                 >
-                  <div className={cn("p-4 pt-3", isHidden && "pointer-events-none")}>
+                  <div className={cn("p-3 pt-3", isHidden && "pointer-events-none")}>
                     <section.component />
                   </div>
                 </motion.div>

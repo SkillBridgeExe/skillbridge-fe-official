@@ -80,7 +80,8 @@ export type FitReasonCode =
 export interface CvJdMatch {
   matchId?: string;
   match_id?: string | null;
-  matchScore: number;
+  matchScore: number | null;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
   summary: string;
   hardSkills: SkillMatchItem[];
   softSkills: SkillMatchItem[];
@@ -95,10 +96,24 @@ export interface CvJdMatch {
   fell_back_to_rubric?: boolean;
   source_of_requirements?: "role_rubric" | "jd_extraction" | "none";
   unnormalized_jd_requirements?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
+  unnormalized_cv_skills?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   keyword_frequency?: KeywordFrequency[];
 }
 
 export type RubricBand = "intern" | "fresher" | "mid";
+
+/** EXPLAIN' E1 mirror — one requirement's contribution to the weighted score. */
+export interface PerSkillContribution {
+  canonical_name: string;
+  display_name: string;
+  status: "matched" | "partial" | "missing";
+  importance: "REQUIRED" | "PREFERRED" | "NICE_TO_HAVE";
+  weight: number;
+  effective_weight: number;
+  strength: number;
+  points_earned: number;
+  points_possible: number;
+}
 
 export interface ScoringBreakdown {
   total_requirements: number;
@@ -111,6 +126,7 @@ export interface ScoringBreakdown {
   required_met: number;
   raw_weighted_score: number;
   cap_applied: boolean;
+  per_skill?: PerSkillContribution[];
 }
 
 /** Job-rec partial_skills item — BE sends {display_name, importance, gap_levels} only. */
@@ -256,6 +272,7 @@ export interface ExtractionQuality {
   confidence: ExtractionConfidence;
   /** Machine flags that fired, e.g. MOJIBAKE_HIGH / OCR_USED / THIN_CONTENT / SPARSE_SECTIONS. */
   flags: string[];
+  input_quality?: 'usable' | 'suspect' | 'unusable';
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -485,8 +502,9 @@ export interface BeMissingSkill {
 }
 
 export interface CvJdMatchParsedResponse {
-  overall_score: number;
-  match_ratio: number;
+  overall_score: number | null;
+  match_ratio: number | null;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
   matched_skills: BeMatchedSkill[];
   partial_skills: BePartialSkill[];
   missing_skills: BeMissingSkill[];
@@ -572,6 +590,15 @@ export interface JobRecommendationDto {
   scoring_breakdown?: ScoringBreakdown | null;
   seniority_factor?: number;
   level_gap?: number;
+  /** R2/R3: cái gì đã vào điểm hiển thị — 'skills_and_seniority' khi verdict cấp bậc thật đã áp,
+   *  'skills_only' khi seniority unknown (factor 1, seniority không đóng góp).
+   *  'skills_seniority_dealbreakers' để dành tương lai — BE hiện KHÔNG bao giờ emit.
+   *  Vắng ở response cũ. */
+  score_basis?: "skills_only" | "skills_and_seniority" | "skills_seniority_dealbreakers";
+  /** R4: kỹ năng job này mà buổi interview COMPLETED gần nhất của user đã lộ gap
+   *  (risk 0-1, worst mỗi skill; session_ref = prefix id phiên). CHỈ là chú thích tin cậy —
+   *  KHÔNG ảnh hưởng xếp hạng. Vắng khi chưa có interview / không giao yêu cầu job / lookup fail. */
+  interview_signals?: Array<{ skill_canonical: string; risk: number; session_ref: string }>;
 }
 
 export interface JobRecommendationsResponse {
@@ -1219,7 +1246,7 @@ export interface LearningChatResponse {
   history?: LearningChatMessageDto[];
 }
 
-export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording" | "not_fixable_now" | "already_met";
+export type TailorActionType = "missing_required" | "add_evidence" | "emphasize" | "deepen_wording" | "advice" | "not_fixable_now" | "already_met";
 
 export interface GapEvidenceItem {
   skill_canonical: string;
@@ -1328,7 +1355,7 @@ export type JdMarketPosition = JdMarketPositionDto;
 
 export interface GapReportDto {
   target_role: string | null;
-  overall_score: number;
+  overall_score: number | null;
   source_of_requirements: "role_rubric" | "jd_extraction" | "none";
   /** Deterministic apply-verdict (fit-strategy) — always present on fresh reports. */
   fit?: { verdict: FitVerdict; reasons: FitReasonCode[] };
@@ -1431,6 +1458,7 @@ export interface JdIntelligenceItem {
 export interface JdIntelligenceBlock {
   dimensions: JdIntelligenceItem[];
   note: string;
+  status?: 'available' | 'no_eligible_dimension_found' | 'not_extracted' | 'not_requested';
 }
 
 // ── Canonical gap object (Gap Engine v2) ───────────────────────────────────────

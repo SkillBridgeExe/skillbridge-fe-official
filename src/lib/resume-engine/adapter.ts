@@ -3,6 +3,12 @@ import type { CvBuilderState } from "@/store/useCvBuilderStore";
 import type { ResumeData } from "./schema/resume/data";
 import { templateSchema, type Template } from "./schema/templates";
 import { getTemplateLayoutCapabilities } from "./template-meta";
+import {
+  applyLayoutCapabilities,
+  buildLayoutPlanFromState,
+  normalizeLayoutPlan,
+  sanitizeCustomSections,
+} from "./layout-plan";
 
 const hasText = (...values: Array<string | null | undefined>): boolean =>
 	values.some((value) => Boolean(value?.trim()));
@@ -212,20 +218,46 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 	const templateName = resolveTemplate(store.template);
 	const layoutCaps = getTemplateLayoutCapabilities(templateName);
 
-	let mainSections: string[] = [];
-	let sidebarSections: string[] = [];
-
 	const safeSectionOrder = store.sectionOrder || [];
-	const safeSectionPlacement = store.sectionPlacement || {};
 	const usesSidebarSections = layoutCaps.usesSidebarSections;
 
-	if (usesSidebarSections) {
-		mainSections = safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "main" : ["experience", "education", "projects"].includes(k));
-		sidebarSections = [...safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "sidebar" : ["summary", "skills", "certifications"].includes(k)), "languages"];
-	} else {
-		mainSections = [...safeSectionOrder, "languages"];
-		sidebarSections = [];
-	}
+	// P4: one canonical layout plan drives every page. Capability normalization
+	// happens here at render time; the stored plan keeps the user's intent.
+	const customSections = sanitizeCustomSections(store.customSections || []);
+	const layoutPlan = applyLayoutCapabilities(
+		normalizeLayoutPlan(
+			buildLayoutPlanFromState({
+				sectionOrder: safeSectionOrder,
+				sectionPlacement: store.sectionPlacement || {},
+				layoutPages: store.layoutPages || [],
+				sectionPage: store.sectionPage || {},
+				customSections,
+			}),
+			{
+				knownSectionIds: [...safeSectionOrder, ...customSections.map((section) => section.id)],
+				fallbackOrder: safeSectionOrder,
+				preferredPlacement: Object.fromEntries(
+					customSections.map((section) => [section.id, section.placement]),
+				),
+			},
+		),
+		layoutCaps,
+	);
+
+	// "languages" is a renderer-only pseudo section (not part of the stored
+	// plan); keep its historical spot on the last page.
+	// A full-width page suppresses the sidebar column in the templates, so its
+	// sidebar sections must fold into main here — never silently disappear.
+	// The stored plan keeps the user's sidebar assignment for when the page
+	// stops being full-width.
+	const rendererPages = layoutPlan.pages.map((page) => ({
+		fullWidth: page.fullWidth ?? false,
+		main: page.fullWidth ? [...page.main, ...page.sidebar] : [...page.main],
+		sidebar: page.fullWidth ? [] : [...page.sidebar],
+	}));
+	const lastPage = rendererPages[rendererPages.length - 1];
+	if (usesSidebarSections && !lastPage.fullWidth) lastPage.sidebar.push("languages");
+	else lastPage.main.push("languages");
 
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
@@ -511,19 +543,31 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				items: [],
 			},
 		},
-		customSections: [],
+		customSections: customSections.map((section) => ({
+			id: section.id,
+			// "summary" is the generic rich-text custom type: every item renders
+			// its content through the shared RichText primitive — no user code,
+			// CSS or SVG can reach the PDF from here.
+			type: "summary" as const,
+			title: section.title,
+			icon: "",
+			columns: 1,
+			hidden: !section.visible,
+			items: section.items.map((item) => ({
+				id: item.id,
+				hidden: false,
+				content: [
+					item.heading ? `<p><strong>${escapeHtml(item.heading)}</strong></p>` : "",
+					toHtml(item.body),
+				].filter(Boolean).join(""),
+			})),
+		})),
 		metadata: {
 			template: templateName,
 			layout: {
 				sidebarWidth: usesSidebarSections ? sidebarWidth : 0,
 				sidebarPosition: layoutCaps.supportsSidebarPosition && store.resumeSidebarPosition === "right" ? "right" : "left",
-				pages: [
-					{
-						fullWidth: false,
-						main: mainSections,
-						sidebar: sidebarSections,
-					},
-				],
+				pages: rendererPages,
 			},
 			page: {
 				gapX: spacing,

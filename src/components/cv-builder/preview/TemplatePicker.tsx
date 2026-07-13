@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import type { Template } from "@resume-engine/schema/templates";
-import { Check, Info, LayoutTemplate } from "lucide-react";
-import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
+import { Check, Info, LayoutTemplate, X, Loader2 } from "lucide-react";
+import { TEMPLATE_PREVIEWS, getTemplateCapabilities } from "@/lib/resume-engine/template-meta";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sampleResumeData } from "@/lib/resume-engine/schema/resume/sample";
@@ -41,6 +42,8 @@ export function StaticTemplateThumbnail({ template, className }: { template: str
 // Live preview for the dialog - renders one at a time and properly revokes blob URLs
 export function LivePdfPreview({ template, className }: { template: string; className?: string }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const { t } = useTranslation("diagnosis");
   
   useEffect(() => {
     let cancelled = false;
@@ -51,10 +54,9 @@ export function LivePdfPreview({ template, className }: { template: string; clas
         const resolvedTemplate = resolveBuilderTemplate(template);
         const meta = TEMPLATE_PREVIEWS[resolvedTemplate];
         
-        const data = JSON.parse(JSON.stringify(sampleResumeData));
-        if (!data.metadata) data.metadata = {} as any;
-        if (!data.metadata.design) data.metadata.design = {} as any;
-        if (!data.metadata.design.colors) data.metadata.design.colors = {} as any;
+        // sampleResumeData is a complete ResumeData — a deep clone keeps every
+        // nested object, so the accent override needs no defensive scaffolding.
+        const data: typeof sampleResumeData = JSON.parse(JSON.stringify(sampleResumeData));
         data.metadata.design.colors.primary = meta.accent;
 
         const [{ createResumePdfBlob }, { createPdfFirstPageImageUrl }] = await Promise.all([
@@ -71,6 +73,7 @@ export function LivePdfPreview({ template, className }: { template: string; clas
         }
       } catch (err) {
         console.error("Failed to render live preview for", template, err);
+        if (!cancelled) setError(true);
       }
     };
     render();
@@ -87,9 +90,14 @@ export function LivePdfPreview({ template, className }: { template: string; clas
     <div className={cn("relative overflow-hidden rounded-md border border-slate-200/50 shadow-sm bg-slate-50", className)}>
       {imageUrl ? (
         <img src={imageUrl} alt={`${template} live preview`} className="w-full h-full object-cover bg-white animate-in fade-in duration-300" />
+      ) : error ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+           <AlertCircle className="w-5 h-5 text-slate-300" />
+           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{t("loading.failed", "Failed")}</span>
+        </div>
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
+          <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
         </div>
       )}
     </div>
@@ -207,11 +215,28 @@ export function TemplateGallery() {
 
       {/* Preview Dialog */}
       <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto">
           {previewTemplate && (() => {
             const meta = TEMPLATE_PREVIEWS[previewTemplate];
             const isCurrent = currentTemplate === previewTemplate;
             const isAtsFriendly = meta.tags.includes("ATS");
+            const caps = getTemplateCapabilities(previewTemplate);
+            const capabilityItems = [
+              { key: "twoColumn", ok: caps.supportsTwoColumn },
+              { key: "avatar", ok: caps.supportsAvatar },
+              { key: "customSections", ok: caps.supportsCustomSections },
+              { key: "multiPage", ok: caps.supportsMultiPage },
+              { key: "sidebarPosition", ok: caps.supportsSidebarPosition },
+            ];
+            // Settings the user has actually configured that this template
+            // cannot show — they are kept in the document, just inactive.
+            const retainedInactive =
+              (!!store.photoUrl && !caps.supportsAvatar) ||
+              (store.customSections.length > 0 && !caps.supportsCustomSections) ||
+              (store.resumeSidebarPosition === "right" && !caps.supportsSidebarPosition) ||
+              // usesSidebarSections, not supportsSidebar: grouped templates
+              // (bronzor, onyx...) still APPLY main/sidebar placement.
+              (!caps.usesSidebarSections && Object.values(store.sectionPlacement).some(Boolean));
 
             return (
               <>
@@ -237,6 +262,30 @@ export function TemplateGallery() {
                       </span>
                     ))}
                   </div>
+
+                  <div className="flex flex-wrap justify-center gap-1.5 mt-4 max-w-[90%]">
+                    {capabilityItems.map(({ key, ok }) => (
+                      <span
+                        key={key}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium",
+                          ok ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-400 line-through decoration-slate-300",
+                        )}
+                      >
+                        {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                        {t(`builder.templateCapability.${key}`)}
+                      </span>
+                    ))}
+                  </div>
+
+                  {retainedInactive && (
+                    <Alert className="mt-4 bg-slate-50 border-slate-200 text-slate-600">
+                      <Info className="h-4 w-4 text-slate-500" />
+                      <AlertDescription className="text-xs ml-2">
+                        {t("builder.templateKeepsSettings")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   {!isAtsFriendly && (
                     <Alert className="mt-6 bg-amber-50 border-amber-200 text-amber-800">

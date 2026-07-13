@@ -10,6 +10,7 @@ import type { GapReportDto } from "@shared/api";
 import { JdIntelligenceCard } from "./JdIntelligenceCard";
 import { SectionRule } from "./editorial";
 import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
+import { isThrottledError } from "@/lib/api-error";
 
 const GAP_TYPE_ICON: Record<string, React.ReactNode> = {
   hard_skill: <Code className="w-3.5 h-3.5" />,
@@ -63,16 +64,18 @@ export function GapReportCard({ matchId }: { matchId: string }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang: "vi" | "en" = i18n.language?.startsWith("vi") ? "vi" : "en";
 
-  const { data, isLoading, isError, refetch, isRefetching } = useGapReportQuery(
+  const { data, isLoading, isError, error, refetch, isRefetching } = useGapReportQuery(
     matchId,
     lang,
   ) as {
     data: GapReportDto | undefined;
     isLoading: boolean;
     isError: boolean;
+    error: unknown;
     refetch: () => void;
     isRefetching: boolean;
   };
+  const isThrottled = isError && isThrottledError(error);
 
   if (!ENABLE_DIAGNOSIS_ADDONS) {
     return null;
@@ -90,8 +93,15 @@ export function GapReportCard({ matchId }: { matchId: string }) {
     // has retry:false, so without this button the only way out of a transient error is a full
     // page reload (audited 2026-07-06: the ONE place that lacked it was the most important one).
     return (
-      <div className="text-sm text-[#9F2F2D] py-4 flex items-center gap-3">
-        <span>{t("gapReport.error")}</span>
+      <div className={cn(
+        "text-sm py-4 flex items-center gap-3 px-4 rounded-xl border w-fit",
+        isThrottled ? "border-[#EAEAEA] bg-[#FBFBFA] text-[#787774]" : "text-[#9F2F2D] border-transparent"
+      )}>
+        <span>
+          {isThrottled
+            ? t("degraded.throttled", { defaultValue: "Bạn thao tác hơi nhanh, thử lại sau giây lát" })
+            : t("gapReport.error")}
+        </span>
         <button
           type="button"
           onClick={() => refetch()}
@@ -116,8 +126,10 @@ export function GapReportCard({ matchId }: { matchId: string }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-[11px] font-mono text-[#787774]">
           {data.source_of_requirements === "jd_extraction"
-            ? t("gapReport.sourceJd")
-            : t("gapReport.sourceRubric")}
+            ? t("gapReport.sourceJdNew", { defaultValue: "theo JD bạn dán" })
+            : data.source_of_requirements === "role_rubric"
+              ? t("gapReport.sourceRubricNew", { defaultValue: "theo thước chuẩn vai trò" })
+              : t("gapReport.sourceNone", { defaultValue: "chưa có cơ sở chấm" })}
         </span>
       </div>
 

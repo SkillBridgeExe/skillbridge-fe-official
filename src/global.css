@@ -255,3 +255,21 @@ html[lang^="vi"] .font-poppins,
 html[lang^="vi"] .font-display {
   font-family: "Be Vietnam Pro", sans-serif !important;
 }
+
+/* Reduced motion: kill decorative animations/transitions globally.
+   Besides accessibility, this is load-bearing for automated QA: on an
+   occluded tab the compositor never ticks CSS animations, so a Radix
+   overlay's enter-animation next to the large PDF-preview canvases
+   deadlocks rendering (Radix Presence waits on animationend that never
+   fires). Automation runs Chrome with --force-prefers-reduced-motion to
+   take this branch. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
