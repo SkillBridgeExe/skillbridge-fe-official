@@ -585,7 +585,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
         
         {/* Tab 1: Audit Report */}
         {activeTab === 'audit' && (
-          <div className="w-full px-6 lg:px-10 space-y-6">
+          <div className="w-full px-2 lg:px-4 space-y-8">
             {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
               <div className="pb-6">
                 <ExtractionQualityBanner quality={reviewData.extraction_quality} />
@@ -944,7 +944,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
         {/* Tab 2: Your CV */}
         {activeTab === 'cv' && (
-          <div className="w-full px-6 lg:px-10 space-y-6 animate-in fade-in duration-300">
+          <div className="w-full px-2 lg:px-4 space-y-8 animate-in fade-in duration-300">
             {/* Header bar: Issues Count & Edit button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
               <div className="flex items-center gap-2.5">
@@ -973,7 +973,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
         {/* Tab 3: Market Insights */}
         {activeTab === 'market' && (
-          <div className="w-full px-6 lg:px-10 space-y-8 animate-in fade-in duration-300">
+          <div className="w-full px-2 lg:px-4 space-y-10 animate-in fade-in duration-300">
             <JobRecommendations cvId={lastCvId} />
 
             {/* AI trends insight */}
