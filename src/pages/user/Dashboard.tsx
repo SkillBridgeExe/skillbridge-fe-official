@@ -44,7 +44,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <main className="mx-auto max-w-[1400px] space-y-8 px-4 py-6 md:px-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5 md:px-6 md:py-6">
         <DashboardHero
           name={name}
           avatar={avatar}
@@ -61,9 +61,9 @@ export default function Dashboard() {
           }
         />
 
-        <section className="space-y-6">
+        <section className="space-y-5">
           <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="min-h-[500px]">
+          <div className="min-h-[420px]">
             {activeTab === "overview" && (
               <OverviewTab
                 cv={latestCv ?? null}

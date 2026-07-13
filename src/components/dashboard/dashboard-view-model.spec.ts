@@ -3,6 +3,7 @@ import {
   buildInterviewSummary,
   groupDashboardSkills,
   resolveDashboardGoal,
+  selectScoredInterviews,
 } from "./dashboard-view-model";
 
 describe("dashboard view model", () => {
@@ -45,7 +46,7 @@ describe("dashboard view model", () => {
     ]);
   });
 
-  it("summarizes only completed interviews with actual scores", () => {
+  it("summarizes only completed interviews with an overall score", () => {
     expect(
       buildInterviewSummary([
         {
@@ -68,10 +69,35 @@ describe("dashboard view model", () => {
         },
       ]),
     ).toEqual({
-      completed: 2,
+      completed: 1,
       averageOverall: 80,
-      averageSemantic: 60,
+      averageSemantic: 70,
       averageCommunication: 90,
     });
+  });
+
+  it("keeps zero scores and excludes incomplete or unscored interviews", () => {
+    expect(
+      selectScoredInterviews([
+        {
+          status: "COMPLETED",
+          overallScore: 0,
+          semanticScore: null,
+          communicationScore: null,
+        },
+        {
+          status: "COMPLETED",
+          overallScore: null,
+          semanticScore: 75,
+          communicationScore: 80,
+        },
+        {
+          status: "CANCELLED",
+          overallScore: 90,
+          semanticScore: 90,
+          communicationScore: 90,
+        },
+      ]).map((item) => item.overallScore),
+    ).toEqual([0]);
   });
 });

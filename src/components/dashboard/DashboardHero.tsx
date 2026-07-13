@@ -31,11 +31,11 @@ export default function DashboardHero({
   const showImg = avatar && !imgError && !isAvatarLoading;
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 p-5 text-white shadow-sm sm:p-6 md:p-10">
+    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 p-5 text-white shadow-sm sm:p-6 md:p-8">
       <div className="absolute -right-10 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-white/5 blur-xl" />
 
-      <div className="relative flex flex-col items-start justify-between gap-6 xl:flex-row xl:items-center">
+      <div className="relative flex flex-col items-start justify-between gap-5 xl:flex-row xl:items-center">
         <div className="flex min-w-0 items-start gap-4 md:items-center md:gap-6">
           {showImg ? (
             <img

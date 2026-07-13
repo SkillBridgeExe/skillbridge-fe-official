@@ -14,6 +14,20 @@ export interface DashboardInterviewInput {
   communicationScore: number | null;
 }
 
+export function isScoredInterview(item: DashboardInterviewInput): boolean {
+  return (
+    item.status === "COMPLETED" &&
+    typeof item.overallScore === "number" &&
+    Number.isFinite(item.overallScore)
+  );
+}
+
+export function selectScoredInterviews<T extends DashboardInterviewInput>(
+  items: T[],
+): T[] {
+  return items.filter(isScoredInterview);
+}
+
 function average(values: Array<number | null>): number | null {
   const present = values.filter(
     (value): value is number => typeof value === "number",
@@ -65,7 +79,7 @@ export function groupDashboardSkills(
 }
 
 export function buildInterviewSummary(items: DashboardInterviewInput[]) {
-  const completed = items.filter((item) => item.status === "COMPLETED");
+  const completed = selectScoredInterviews(items);
   return {
     completed: completed.length,
     averageOverall: average(completed.map((item) => item.overallScore)),
