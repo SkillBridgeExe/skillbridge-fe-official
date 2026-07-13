@@ -28,7 +28,9 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
 
   const roleName = targetRole ? getRoleLabel(targetRole) : "";
   const backLabelText = roleName ? `${t("review.title", { defaultValue: "Phân tích CV" })} · ${roleName}` : t("review.title", { defaultValue: "Phân tích CV" });
-  const cvName = cvFile?.name || builderCvName || roleName || t("review.fallbackCvName", { defaultValue: "CV của bạn" });
+  // CV identity for the row-2 heading — the file name, not "CV của bạn" (that
+  // collides with the middle tab). Role already shows in row 1's back label.
+  const cvName = cvFile?.name || builderCvName || t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" });
 
   const tabItems = [
     { key: "audit" as const, label: t("review.tabAudit", { defaultValue: "Đánh giá CV" }) },
@@ -119,15 +121,15 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
                 aria-selected={isActive}
                 onClick={() => onTabChange(tab.key)}
                 className={cn(
-                  "h-full px-1 text-[13px] font-bold transition-all relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]",
+                  "h-full px-4 text-[13px] font-bold leading-none transition-colors relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF] focus-visible:ring-inset",
                   isActive
-                    ? "text-[#2F3437]"
+                    ? "text-[#00AEEF]"
                     : "text-[#787774] hover:text-[#2F3437]"
                 )}
               >
                 <span>{tab.label}</span>
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00AEEF]" />
+                  <span className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full bg-[#00AEEF]" />
                 )}
               </button>
             );

@@ -1788,6 +1788,7 @@ export default {
         not_fixable_now: "Already met or cannot be fixed right now"
       },
       backToUpload: "Back to upload",
+      fallbackCvName: "Untitled CV",
       heroTitle: "Your CV quality score",
       badgeOutstanding: "Outstanding profile",
       exportReport: "Export report",

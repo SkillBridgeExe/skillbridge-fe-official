@@ -1785,6 +1785,7 @@ export default {
         not_fixable_now: "Đã đạt hoặc chưa xử lý được ngay"
       },
       backToUpload: "Về màn tải CV",
+      fallbackCvName: "CV chưa đặt tên",
       heroTitle: "Điểm chất lượng CV của bạn",
       badgeOutstanding: "Hồ sơ nổi bật",
       exportReport: "Xuất báo cáo",
