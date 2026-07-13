@@ -257,6 +257,10 @@ export const API_ROUTES = {
     SUBMIT: `${API}/business/company/submit`,
   },
 
+  BUSINESS_DASHBOARD: {
+    GET: `${API}/business/dashboard`,
+  },
+
   // ── §7–8 Business job editor + applicant pipeline ─────────────────────
   BUSINESS_JOBS: {
     LIST: `${API}/business/jobs`,
