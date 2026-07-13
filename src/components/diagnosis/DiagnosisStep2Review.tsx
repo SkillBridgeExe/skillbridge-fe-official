@@ -33,10 +33,10 @@ const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba
 
 const bandOf = (score: number) =>
   score >= 70
-    ? { key: "review.band.strong", chip: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]" }
+    ? { key: "review.band.strong", chip: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-sm shadow-emerald-500/5" }
     : score >= 50
-      ? { key: "review.band.watch", chip: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]" }
-      : { key: "review.band.priority", chip: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]" };
+      ? { key: "review.band.watch", chip: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-sm shadow-amber-500/5" }
+      : { key: "review.band.priority", chip: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-sm shadow-rose-500/5" };
 
 interface DiagnosisStep2ReviewProps {
   activeTab: 'audit' | 'cv' | 'market';

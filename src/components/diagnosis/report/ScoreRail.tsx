@@ -52,10 +52,10 @@ const scrollToGroup = (groupId: string) => {
 /** Same 3-band thresholds as dimensionTone/element-issues.ts (70/50). */
 const bandOf = (score: number) =>
   score >= 70
-    ? { key: "review.band.strong", chip: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", stroke: "#346538", bar: "bg-[#346538]" }
+    ? { key: "review.band.strong", chip: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-sm shadow-emerald-500/5", stroke: "#10B981", bar: "bg-emerald-500" }
     : score >= 50
-      ? { key: "review.band.watch", chip: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", stroke: "#956400", bar: "bg-[#956400]" }
-      : { key: "review.band.priority", chip: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", stroke: "#9F2F2D", bar: "bg-[#9F2F2D]" };
+      ? { key: "review.band.watch", chip: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-sm shadow-amber-500/5", stroke: "#F59E0B", bar: "bg-amber-500" }
+      : { key: "review.band.priority", chip: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-sm shadow-rose-500/5", stroke: "#EF4444", bar: "bg-rose-500" };
 
 export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, actions }: ScoreRailProps) {
   const { t } = useTranslation("diagnosis");
@@ -188,7 +188,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
                   )}
                 </div>
                 {score !== undefined && (
-                  <div className="mt-2 w-full h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+                  <div className="mt-2 w-full h-3 bg-[#E5E7EB] rounded-full overflow-hidden">
                     <div
                       className={cn("h-full rounded-full transition-all duration-700 motion-reduce:transition-none", bandOf(score).bar)}
                       style={{ width: `${score}%` }}
@@ -206,10 +206,9 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         {/* Action Buttons */}
         <div className="flex flex-col gap-2.5">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
             onClick={handleAskCompanion}
-            className="w-full justify-center gap-2 border-[#DCE9F6] bg-[#F2F7FC] text-[#00AEEF] hover:bg-[#E6F0FA] hover:text-[#0092c7] font-bold text-[13px] py-2 h-9"
+            className="w-full justify-center gap-2 bg-gradient-to-r from-sky-500 to-indigo-500 text-white hover:from-sky-600 hover:to-indigo-600 shadow-md shadow-sky-500/10 hover:shadow-lg hover:shadow-sky-500/20 transition-all font-bold text-[13px] h-10 rounded-xl border-0"
           >
             <Sparkles className="w-4 h-4" />
             {t("report.rail.askCompanion")}
@@ -218,9 +217,8 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
           {lastCvId && (
             <Button
               variant="outline"
-              size="sm"
               onClick={handleDownloadCv}
-              className="w-full justify-center gap-2 border-[#EAEAEA] text-[#5F666B] hover:bg-slate-50 font-semibold text-[13px] py-2 h-9"
+              className="w-full justify-center gap-2 border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-all font-semibold text-[13px] h-10 rounded-xl"
             >
               <Download className="w-4 h-4" />
               {t("report.rail.downloadCv")}

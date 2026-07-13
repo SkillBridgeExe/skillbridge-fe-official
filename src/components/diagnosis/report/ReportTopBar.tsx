@@ -1,4 +1,4 @@
-import { ArrowLeft, Briefcase, Menu, RotateCcw, RefreshCw } from "lucide-react";
+import { ArrowLeft, Briefcase, Menu, RotateCcw, RefreshCw, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
@@ -104,8 +104,13 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
         className="h-12 border-b border-[#EAEAEA] flex items-stretch w-full bg-white animate-in fade-in"
       >
         {/* Left: CV filename (desktop only) — same 300px as the rail */}
-        <div className="hidden lg:flex items-center lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#F1F1EF] px-6 shrink-0 min-w-0">
-          <span className="text-[13px] font-bold text-[#2F3437] truncate" title={cvName}>{cvName}</span>
+        <div className="hidden lg:flex items-center gap-2.5 lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#F1F1EF] px-6 shrink-0 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-[#00AEEF]/10 flex items-center justify-center text-[#00AEEF] shrink-0">
+            <FileText className="w-4 h-4" />
+          </div>
+          <span className="text-[13px] font-bold text-[#2F3437] truncate" title={cvName}>
+            {cvName}
+          </span>
         </div>
 
         {/* Right: Tabs — natural width, left-aligned, vertically centered */}
