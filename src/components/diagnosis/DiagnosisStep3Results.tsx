@@ -585,9 +585,9 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
         
         {/* Tab 1: Audit Report */}
         {activeTab === 'audit' && (
-          <div className="space-y-6">
+          <div className="w-full max-w-7xl mx-auto px-6 lg:px-10 space-y-6">
             {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
-              <div className="max-w-4xl mx-auto pb-6">
+              <div className="pb-6">
                 <ExtractionQualityBanner quality={reviewData.extraction_quality} />
               </div>
             )}
@@ -618,14 +618,14 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             )}
 
             {isJdMode && (
-              <div className="relative z-10 max-w-4xl mx-auto pb-6">
+              <div className="relative z-10 pb-6">
                 <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
               </div>
             )}
 
             {/* Ribbon Stats / Badges moved to the top of audit tab inside right column */}
             {isJdMode && !isDegradedNoBasis && !isUnusable && (
-              <div className="relative z-10 max-w-4xl mx-auto pb-6">
+              <div className="relative z-10 pb-6">
                 <div className="bg-white border border-[#EAEAEA] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <span className="text-xs font-semibold text-[#787774]">
                     {t("results.matchStats", { defaultValue: "Thống kê so khớp kỹ năng:" })}
@@ -944,7 +944,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
         {/* Tab 2: Your CV */}
         {activeTab === 'cv' && (
-          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+          <div className="w-full max-w-7xl mx-auto px-6 lg:px-10 space-y-6 animate-in fade-in duration-300">
             {/* Header bar: Issues Count & Edit button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
               <div className="flex items-center gap-2.5">
@@ -965,7 +965,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
               </Button>
             </div>
 
-            <div className="max-w-3xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
+            <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
               <DocumentPreview hideEditOriginal />
             </div>
           </div>
@@ -973,7 +973,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
         {/* Tab 3: Market Insights */}
         {activeTab === 'market' && (
-          <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-7xl mx-auto px-6 lg:px-10 space-y-8 animate-in fade-in duration-300">
             <JobRecommendations cvId={lastCvId} />
 
             {/* AI trends insight */}

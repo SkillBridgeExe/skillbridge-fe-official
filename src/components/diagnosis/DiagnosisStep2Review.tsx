@@ -307,7 +307,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
             </Button>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto">
+          <div className="w-full max-w-7xl mx-auto px-6 lg:px-10">
             {showJdInput ? (
               <div className="animate-in fade-in slide-in-from-top-3 duration-300">
                 <JobDescriptionInput
@@ -427,7 +427,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
                       </Button>
                     </div>
 
-                    <div className="max-w-3xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
+                    <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
                       <DocumentPreview hideEditOriginal />
                     </div>
                   </div>

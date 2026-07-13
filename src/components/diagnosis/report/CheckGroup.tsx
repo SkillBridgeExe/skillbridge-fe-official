@@ -22,13 +22,13 @@ export function CheckRow({ item }: { item: CheckRowData }) {
   const Icon = isPass ? Check : isWarn ? AlertTriangle : X;
 
   return (
-    <div id={item.anchorId} className="flex items-start gap-4 py-4.5 px-6 scroll-mt-24 hover:bg-slate-50/20 transition-all duration-200">
+    <div id={item.anchorId} className="flex items-start gap-4 py-4 px-6 scroll-mt-24 hover:bg-slate-50/20 transition-all duration-200">
       <div className={cn("w-6 h-6 rounded-full flex items-center justify-center border shrink-0 mt-0.5 shadow-sm transition-transform duration-200 hover:scale-105", colorClass)}>
         <Icon className="w-3.5 h-3.5" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between flex-wrap gap-x-3">
-          <span className="font-bold text-[14px] text-[#2F3437] tracking-tight">{item.label}</span>
+          <span className="font-bold text-[15px] text-[#2F3437] tracking-tight leading-relaxed">{item.label}</span>
           {item.score !== undefined && (
             <span className="font-mono text-xs text-[#787774] font-bold shrink-0 bg-slate-100 px-2 py-0.5 rounded-full">
               {item.score}/20
@@ -36,18 +36,18 @@ export function CheckRow({ item }: { item: CheckRowData }) {
           )}
         </div>
 
-        <p className="text-[13px] text-[#5F666B] leading-relaxed mt-1 font-medium">
+        <p className="text-[14px] text-[#5F666B] leading-relaxed mt-1 font-medium">
           {item.evidence}
         </p>
 
         {item.provenance && (
-          <p className="text-[11px] text-slate-400 font-semibold mt-1">
+          <p className="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
             {t(`provenance.source.${item.provenance.source}`)} · {t(`provenance.conf.${item.provenance.confidence}`)}
           </p>
         )}
 
         {!isPass && item.hint && (
-          <div className="flex items-start gap-1.5 text-[12px] font-bold text-[#00AEEF] hover:text-[#049bd7] mt-2 hover:underline">
+          <div className="flex items-start gap-1.5 text-[13px] font-bold text-[#00AEEF] hover:text-[#049bd7] mt-2 hover:underline leading-relaxed">
             <ArrowRight className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>{item.hint}</span>
           </div>
@@ -57,14 +57,14 @@ export function CheckRow({ item }: { item: CheckRowData }) {
         {item.subItems && item.subItems.length > 0 && (
           <ul className="space-y-2 mt-3">
             {item.subItems.map((issue, i) => (
-              <li key={i} className="flex items-start gap-2.5 rounded-xl bg-[#F8F9FA] border border-[#EAEAEA]/40 px-3.5 py-3 text-[13px] text-[#2F3437] shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:bg-[#F1F3F5]/30 transition-colors">
+              <li key={i} className="flex items-start gap-2.5 rounded-xl bg-[#F8F9FA] border border-[#EAEAEA]/40 px-3.5 py-3 text-[14px] text-[#2F3437] shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:bg-[#F1F3F5]/30 transition-colors">
                 <span className={cn("text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border shrink-0 mt-0.5 tracking-wider", SEVERITY_PASTEL[issue.severity])}>
                   {t(`review.severity.${issue.severity}`)}
                 </span>
                 <div className="min-w-0">
-                  <p className="font-semibold leading-relaxed text-[13px]">{issue.detail}</p>
+                  <p className="font-semibold leading-relaxed text-[14px]">{issue.detail}</p>
                   {issue.suggestion && (
-                    <p className="mt-1 text-xs leading-relaxed text-[#787774] font-medium">
+                    <p className="mt-1 text-[13px] leading-relaxed text-[#787774] font-medium">
                       <span className="font-bold text-[#2F3437]">{t("review.suggestionLabel")} </span>{issue.suggestion}
                     </p>
                   )}
