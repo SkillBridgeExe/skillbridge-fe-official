@@ -36,7 +36,10 @@ export default function Layout({ children, hideFooter = false, hideNavbar = fals
 
   if (sidebarMode) {
     return (
-      <div className="min-h-dvh w-full font-sans bg-[#FCFCFD] overflow-x-hidden relative selection:bg-ink-accent/20 selection:text-ink-accent">
+      <div className={cn(
+        "min-h-dvh w-full font-sans bg-[#FCFCFD] overflow-x-hidden relative selection:bg-ink-accent/20 selection:text-ink-accent",
+        hideNavbar && "h-dvh overflow-hidden"
+      )}>
         <AppSidebar />
 
         {/* Main content area — offset by sidebar width */}
@@ -45,6 +48,7 @@ export default function Layout({ children, hideFooter = false, hideNavbar = fals
             "min-h-dvh z-10 relative",
             // Desktop: push content right of sidebar
             collapsed ? "md:pl-16" : "md:pl-60",
+            hideNavbar && "h-dvh max-h-dvh overflow-hidden",
             // Smooth width transition
             !prefersReduced && "transition-[padding-left] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
           )}

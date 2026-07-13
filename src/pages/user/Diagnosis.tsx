@@ -47,6 +47,7 @@ export default function Diagnosis() {
   } = useDiagnosisStore();
 
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
   const posthog = usePostHog();
@@ -375,6 +376,12 @@ export default function Diagnosis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, canUseApi]);
 
+  // Reset active report tab on step change — must sit with the other hooks,
+  // ABOVE every early return, or hook order changes between renders.
+  useEffect(() => {
+    setActiveTab("audit");
+  }, [step]);
+
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
     return (
@@ -472,16 +479,19 @@ export default function Diagnosis() {
 
   return (
     <Layout hideNavbar={reportMode} hideFooter={reportMode}>
-      {reportMode && <ReportTopBar />}
+      {reportMode && (
+        <ReportTopBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
       <div
         id="diagnosis-root"
         className={cn(
-          "mx-auto relative flex flex-col w-full",
-          isResultsMode
-            ? "max-w-7xl px-4 md:px-6 pt-6 pb-6 lg:h-[calc(100dvh-24px)] lg:min-h-0 lg:overflow-hidden"
-            : reportMode
-              ? "max-w-7xl px-4 md:px-6 pt-6 pb-6 min-h-[calc(100dvh-24px)]"
-              : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
+          "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
+          reportMode
+            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-56px)] max-h-[calc(100dvh-56px)] overflow-hidden"
+            : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
         )}
       >
 
@@ -537,12 +547,21 @@ export default function Diagnosis() {
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 2: CV REVIEW                              */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "cv-review" && <DiagnosisStep2Review />}
+        {step === "cv-review" && (
+          <DiagnosisStep2Review
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 3: SKILL GAP RESULTS                      */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "results" && <DiagnosisStep3Results />}
+        {step === "results" && (
+          <DiagnosisStep3Results
+            activeTab={activeTab}
+          />
+        )}
 
       </div>
     </Layout>

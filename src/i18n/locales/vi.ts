@@ -1772,6 +1772,10 @@ export default {
       dropActive: "Thả CV vào đây",
     },
     review: {
+      title: "Phân tích CV",
+      tabAudit: "Đánh giá CV",
+      tabCv: "CV của bạn",
+      tabMarket: "Thị trường tuyển dụng",
       actionList: {
         rankedCaption: "Xếp theo mức ảnh hưởng tới điểm của bạn",
         impact: "Ảnh hưởng {{severity}}",
@@ -1915,8 +1919,8 @@ export default {
       downloadFailed: "Không tải được CV. Vui lòng thử lại.",
       overallMatch: "Điểm khớp tổng",
       overallScore: "Điểm CV tổng",
-      scoreLabelMatch: "Khớp",
-      scoreLabelCv: "Điểm CV",
+      scoreLabelMatch: "Tỷ lệ khớp",
+      scoreLabelCv: "Điểm số CV",
       badgeTop: "Hồ sơ nhóm đầu",
       "scoreMsg.excellent":
         "Hồ sơ xuất sắc. CV của bạn rất cạnh tranh, sẵn sàng cho các vị trí top.",

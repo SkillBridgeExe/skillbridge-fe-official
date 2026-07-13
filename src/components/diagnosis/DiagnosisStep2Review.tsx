@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RotateCcw, Briefcase, ChevronDown, ChevronUp, TrendingUp, FileText, AlertTriangle, RefreshCw } from "lucide-react";
+import { RotateCcw, Briefcase, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -29,12 +29,15 @@ import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
-import { JobscanTabNav } from "./report/JobscanTabNav";
-
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
-export function DiagnosisStep2Review() {
+interface DiagnosisStep2ReviewProps {
+  activeTab: 'audit' | 'cv' | 'market';
+  setActiveTab: (tab: 'audit' | 'cv' | 'market') => void;
+}
+
+export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2ReviewProps) {
   const { t, i18n } = useTranslation("diagnosis");
   const {
     reviewData,
@@ -153,7 +156,7 @@ export function DiagnosisStep2Review() {
   const reportGroups = buildDiagnosisReport(reviewData, t, issueGroups);
 
   const [rawOpen, setRawOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
+
 
   const issuesCount = reviewData?.bullet_feedback?.filter(fb =>
     fb.quantified === false ||
@@ -248,139 +251,78 @@ export function DiagnosisStep2Review() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completenessGap, summary.experiences, summary.skills, chatContextActive]);
 
-  const tabItems = [
-    { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },
-    { key: "cv", label: t("review.tabs.cv"), icon: <FileText className="w-4 h-4" /> },
-    { key: "market", label: t("review.tabs.market"), icon: <TrendingUp className="w-4 h-4" /> },
-  ];
-
-  // Rail actions — Jobscan puts scan actions right under the donut.
-  const railActions = (
-    <div className="flex flex-col gap-2 w-full">
-      <Button
-        onClick={() => setShowJdInput(true)}
-        size="sm"
-        className="w-full rounded-full gap-2 h-9 text-[13px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white active:scale-[0.98] transition-all"
-      >
-        <Briefcase className="w-4 h-4" /> {t("review.quickPanel.compareCta")}
-      </Button>
-      <Button
-        onClick={reset}
-        size="sm"
-        variant="outline"
-        className="w-full rounded-full gap-2 h-9 text-[13px] font-bold border-[#EAEAEA] hover:bg-[#FBFBFA] text-[#2F3437] active:scale-[0.98] transition-all"
-      >
-        <RotateCcw className="w-4 h-4" /> {t("review.startOver")}
-      </Button>
-    </div>
-  );
-
   return (
-    <div className="animate-in fade-in duration-500" style={{ '--tw-translate-y': '12px' } as React.CSSProperties}>
-      {apiError && (
-        <div className={cn(CARD, "mb-6 border-[#E3E0D8] bg-[#FBFBFA]")}
-        >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-[#956400]" />
-            <p className="min-w-0 flex-1 text-[13px] text-[#787774] font-medium">{apiError}</p>
-            <button
-              type="button"
-              onClick={reset}
-              className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              {t("review.startOver")}
-            </button>
-          </div>
-        </div>
+    <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500">
+      {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
+      {!isUnusable && (
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-y-auto custom-scrollbar h-full">
+          <ScoreRail
+            overallScore={overallCvScore}
+            groups={reportGroups}
+            breakdown={reviewData?.breakdown}
+            verdictMessage=""
+          />
+        </aside>
       )}
 
-      {/* Honest input-quality disclosure — renders only when the extracted text looks unreliable. */}
-      <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
-
-      {/* A4: Unusable-quality gate — the CV text is too garbled to score reliably.
-          Show an honest banner + CTA rescan and suppress ALL downstream analysis
-          (ScoreRail, tabs, check groups) so the UI is consistent with Step3. */}
-      {isUnusable ? (
-        <div className={cn(CARD, "mt-6 p-6 text-center space-y-4")}
-        >
-          <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
-          <h3 className="text-sm font-bold text-[#2F3437]">
-            {t("degraded.unusableTitle")}
-          </h3>
-          <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
-            {t("degraded.unusableBody")}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={reset}
-            className="gap-1.5 text-xs"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            {t("degraded.unusableCta", { defaultValue: "Upload a clearer CV" })}
-          </Button>
-        </div>
-      ) : (
-      /* Audit tab gets the full Jobscan anatomy at xl: rail | checks | document — three
-          siblings on the page grid instead of a rail squeezed inside the tab column. */
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-6 mt-6",
-          !showJdInput
-            ? "xl:grid-cols-[240px_minmax(0,1fr)]"
-            : "xl:grid-cols-1",
-        )}
-      >
-        {/* RAIL COLUMN (xl only) — below xl the rail renders inside the tab panel */}
-        {!showJdInput && (
-          <div className="hidden xl:block min-w-0 xl:sticky xl:top-24 xl:self-start">
-            <ScoreRail
-              overallScore={overallCvScore}
-              groups={reportGroups}
-              breakdown={reviewData?.breakdown}
-              verdictMessage={scoreMessage}
-              actions={railActions}
-            />
+      {/* RIGHT COLUMN: Detail Report & Interactive Content */}
+      <div className="flex-1 lg:overflow-y-auto lg:h-full custom-scrollbar bg-[#FCFCFD] p-6 lg:p-8">
+        {apiError && (
+          <div className={cn(CARD, "mb-6 border-[#E3E0D8] bg-[#FBFBFA]")}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-[#956400]" />
+              <p className="min-w-0 flex-1 text-[13px] text-[#787774] font-medium">{apiError}</p>
+              <button
+                type="button"
+                onClick={reset}
+                className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {t("review.startOver")}
+              </button>
+            </div>
           </div>
         )}
 
-        {/* MAIN COLUMN: Tabs & Active Panel */}
-        <div className="min-w-0">
-          {showJdInput ? (
-            <div className="animate-in fade-in slide-in-from-top-3 duration-300">
-              <JobDescriptionInput
-                compact
-                showActions
-                onCancel={() => setShowJdInput(false)}
-                onAnalyze={compareFromCvReview}
-              />
-            </div>
-          ) : (
-            <>
-              {/* Tab selector — Jobscan Tab Bar */}
-              <JobscanTabNav
-                tabs={tabItems}
-                active={activeTab}
-                onChange={(key) => setActiveTab(key as 'audit' | 'cv' | 'market')}
-              />
+        {/* Extraction Quality Banner */}
+        <ExtractionQualityBanner quality={reviewData?.extraction_quality} />
 
-              {/* Tab Panel contents - White background box with border */}
-              <div className="bg-white border-x border-b border-[#EAEAEA] rounded-b-xl p-5 sm:p-6 min-w-0 space-y-6">
+        {isUnusable ? (
+          <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto")}>
+            <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
+            <h3 className="text-sm font-bold text-[#2F3437]">
+              {t("degraded.unusableTitle")}
+            </h3>
+            <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
+              {t("degraded.unusableBody")}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={reset}
+              className="gap-1.5 text-xs rounded-full"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.unusableCta", { defaultValue: "Upload a clearer CV" })}
+            </Button>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            {showJdInput ? (
+              <div className="animate-in fade-in slide-in-from-top-3 duration-300">
+                <JobDescriptionInput
+                  compact
+                  showActions
+                  onCancel={() => setShowJdInput(false)}
+                  onAnalyze={compareFromCvReview}
+                />
+              </div>
+            ) : (
+              <>
                 {activeTab === 'audit' && (
-                  <div className="animate-in fade-in duration-300 space-y-4">
-                    {/* ScoreRail below xl (mobile chips / md sidebar-less) — at xl it lives on the page grid */}
-                    <div className="xl:hidden">
-                      <ScoreRail
-                        overallScore={overallCvScore}
-                        groups={reportGroups}
-                        breakdown={reviewData?.breakdown}
-                        verdictMessage={scoreMessage}
-                      />
-                    </div>
-
+                  <div className="animate-in fade-in duration-300 space-y-6">
                     {/* Check groups */}
-                    <div className="min-w-0 space-y-4">
+                    <div className="min-w-0 space-y-6">
                       {/* Top Summary prioritized checklist */}
                       {reviewData?.top_summary && (
                         <Chapter kicker={t("review.band.priority")} title={reviewData.top_summary.headline}>
@@ -437,7 +379,7 @@ export function DiagnosisStep2Review() {
                 {activeTab === 'cv' && (
                   <div className="animate-in fade-in duration-300 space-y-6">
                     {/* Header bar: Issues Count & Edit button */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#FBFBFA] rounded-xl border border-[#EAEAEA]">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
                       <div className="flex items-center gap-2.5">
                         <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", issuesCount > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
                         <p className="text-[15px] font-semibold text-[#2F3437]">
@@ -450,24 +392,21 @@ export function DiagnosisStep2Review() {
                       <Button
                         onClick={handleEditOriginal}
                         size="sm"
-                        className="bg-primary hover:bg-primary/90 text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
+                        className="bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
                       >
                         {t("preview.editOriginal")}
                       </Button>
                     </div>
 
-                    <div className="max-w-3xl mx-auto">
+                    <div className="max-w-3xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
                       <DocumentPreview hideEditOriginal />
                     </div>
                   </div>
                 )}
 
                 {activeTab === 'market' && (
-                  <div className="space-y-0 animate-in fade-in duration-300">
-                    {/* Job Recommendations */}
-                    <Chapter kicker="01" title="">
-                      <JobRecommendations cvId={lastCvId} />
-                    </Chapter>
+                  <div className="space-y-8 animate-in fade-in duration-300">
+                    <JobRecommendations cvId={lastCvId} />
 
                     {/* AI trends insight */}
                     <AiTrendsInsight cvId={lastCvId} role={targetRole} />
@@ -486,25 +425,11 @@ export function DiagnosisStep2Review() {
                     />
                   </div>
                 )}
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
-      )}
-
-      {/* Small Clean Footer — also gated by unusable (A4) */}
-      {!isUnusable && !showJdInput && (
-        <div className="mt-8 pt-6 border-t border-[#EAEAEA] flex items-center justify-between text-xs text-[#787774]">
-          <p>{t("review.footerNote")}</p>
-          <button
-            onClick={reset}
-            className="flex items-center gap-1.5 font-semibold text-[#787774] hover:text-slate-800 hover:underline transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" /> {t("review.startOver")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

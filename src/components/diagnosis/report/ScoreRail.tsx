@@ -17,19 +17,31 @@ interface ScoreRailProps {
 
 const prefersReduced = () =>
   typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 
 const scrollToGroup = (groupId: string) => {
-  const element = document.getElementById(`group-${groupId}`);
+  const targets: string[] = [];
+  if (groupId === "ats") {
+    targets.push("group-ats", "gap-anchor", "chapter-radar");
+  } else if (groupId === "content") {
+    targets.push("group-content", "chapter-radar");
+  } else if (groupId === "skills") {
+    targets.push("group-skills", "chapter-skills");
+  } else if (groupId === "ai_eval") {
+    targets.push("group-ai_eval", "chapter-action");
+  }
+  targets.push(`group-${groupId}`, `chapter-${groupId}`);
+
+  let element: HTMLElement | null = null;
+  for (const id of targets) {
+    element = document.getElementById(id);
+    if (element) break;
+  }
+
   if (!element) return;
 
   const behavior = prefersReduced() ? "auto" : "smooth";
-  const offset = 96; // sticky header offset
-  const bodyRect = document.body.getBoundingClientRect().top;
-  const elementRect = element.getBoundingClientRect().top;
-  const offsetPosition = elementRect - bodyRect - offset;
-
-  window.scrollTo({ top: offsetPosition, behavior });
+  element.scrollIntoView({ behavior, block: "center" });
 };
 
 /** Same 3-band thresholds as dimensionTone/element-issues.ts (70/50). */
@@ -64,9 +76,9 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
 
   return (
     <aside className="w-full">
-      {/* Below xl: horizontal scrollable chip bar (at xl the sidebar gets its own grid column) */}
-      <div className="xl:hidden sticky top-14 bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
-        {/* Score chip — the only score display below xl now that the hero is gone */}
+      {/* Below lg: horizontal scrollable chip bar (at lg the sidebar gets its own grid column) */}
+      <div className="lg:hidden sticky top-14 bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
+        {/* Score chip — the only score display below lg now that the hero is gone */}
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shrink-0", band.chip)}>
           <span className="font-mono text-sm font-black tabular-nums">{overallScore}</span>/100 · {t(band.key)}
         </span>
@@ -90,10 +102,10 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         ))}
       </div>
 
-      {/* Desktop (>=xl): report sidebar */}
-      <div className="hidden xl:block sticky top-24 rounded-xl border border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03)] overflow-hidden">
+      {/* Desktop (>=lg): report sidebar contents mapped directly inside parent aside container */}
+      <div className="hidden lg:block w-full space-y-6">
         {/* Donut */}
-        <div className="flex flex-col items-center px-6 pt-6 pb-5">
+        <div className="flex flex-col items-center">
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
               <circle cx={size / 2} cy={size / 2} r={radius} fill="transparent" stroke="#F1F1EF" strokeWidth={strokeWidth} />
@@ -128,7 +140,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         </div>
 
         {/* Categories — Jobscan-style rows: label · issues link · thin bar */}
-        <nav className="border-t border-[#EAEAEA] divide-y divide-[#F1F1EF]">
+        <nav className="border-t border-[#EAEAEA] divide-y divide-[#F1F1EF] w-full">
           {groups.map((group) => {
             const score = getCategoryScore(group.id);
             const hasIssues = group.issueCount > 0;
@@ -137,15 +149,15 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
               <button
                 key={group.id}
                 onClick={() => scrollToGroup(group.id)}
-                className="w-full text-left px-5 py-3.5 hover:bg-slate-50/60 transition-colors group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-accent/40"
+                className="w-full text-left py-3.5 hover:bg-slate-50/60 transition-colors group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-accent/40 flex flex-col"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 w-full">
                   <span className="text-[13px] font-bold text-[#2F3437] group-hover:text-ink-accent truncate">
                     {group.label}
                   </span>
                   {hasIssues ? (
-                    <span className="text-[12px] font-bold text-primary whitespace-nowrap tabular-nums hover:underline">
-                      {t("report.rail.issuesBadge", { count: group.issueCount })}
+                    <span className="text-[12px] font-bold text-[#00AEEF] whitespace-nowrap tabular-nums hover:underline">
+                      {t("report.rail.issuesBadge", { count: group.issueCount, defaultValue: `${group.issueCount} lỗi` })}
                     </span>
                   ) : (
                     <span className="w-4 h-4 rounded-full bg-[#EDF3EC] flex items-center justify-center border border-[#DCE9D7] shrink-0">
@@ -154,7 +166,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
                   )}
                 </div>
                 {score !== undefined && (
-                  <div className="mt-2 w-full h-2 bg-[#F1F1EF] rounded-full overflow-hidden">
+                  <div className="mt-2 w-full h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
                     <div
                       className={cn("h-full rounded-full transition-all duration-700 motion-reduce:transition-none", bandOf(score).bar)}
                       style={{ width: `${score}%` }}

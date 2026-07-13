@@ -179,7 +179,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     </>
   );
 
-  const base = cn(CARD, "block p-4 transition-all duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-slate-300");
+  const base = cn(CARD, "block p-5 border-[#EAEAEA] rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200");
   return (
     <div className={base}>
       {body}
@@ -188,16 +188,14 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           href={job.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 text-[11px] font-semibold text-primary active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
+          className="inline-flex items-center gap-1.5 mt-3.5 px-3 py-1.5 bg-[#00AEEF]/5 hover:bg-[#00AEEF]/10 text-[#00AEEF] rounded-full text-[11px] font-bold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]/40"
         >
           {t("jobs.apply")}
-          <ExternalLink className="w-3 h-3 transition-transform" />
+          <ExternalLink className="w-3 h-3" />
         </a>
       ) : job.application_mode === "NATIVE" ? (
-        // In-app apply: no /jobs/:slug route exists yet, so show an honest
-        // "coming soon" state instead of nothing (never a dead link).
         <span
-          className="inline-flex items-center gap-1 mt-2 cursor-not-allowed text-[11px] font-semibold text-[#9B9A97]"
+          className="inline-flex items-center gap-1 mt-3 px-3 py-1.5 cursor-not-allowed text-[11px] font-semibold text-[#9B9A97] bg-slate-100 rounded-full"
           title={t("jobs.inAppSoon")}
         >
           {t("jobs.inAppSoon")}
@@ -230,8 +228,8 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#F1F1EF] rounded-xl" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 bg-[#F1F1EF] animate-pulse rounded-2xl" />)}
         </div>
       ) : quotaBlocked ? (
         <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>

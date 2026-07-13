@@ -1775,6 +1775,10 @@ export default {
       dropActive: "Drop your CV here",
     },
     review: {
+      title: "CV Analysis",
+      tabAudit: "CV Audit",
+      tabCv: "Your CV",
+      tabMarket: "Market & Careers",
       actionList: {
         rankedCaption: "Ranked by impact on your score",
         impact: "Impact {{severity}}",
@@ -1921,8 +1925,8 @@ export default {
       downloadFailed: "Couldn't download your CV. Please try again.",
       overallMatch: "Overall match",
       overallScore: "Overall CV score",
-      scoreLabelMatch: "Match",
-      scoreLabelCv: "CV score",
+      scoreLabelMatch: "Match Rate",
+      scoreLabelCv: "CV Score",
       badgeTop: "Top-tier CV profile",
       "scoreMsg.excellent":
         "Outstanding profile. Your CV is highly competitive and ready for top-tier applications.",

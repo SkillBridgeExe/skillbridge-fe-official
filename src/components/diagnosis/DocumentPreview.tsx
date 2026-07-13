@@ -342,9 +342,9 @@ export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal
              <Loader2 className="w-6 h-6 animate-spin text-ink-accent" />
           </div>
         )}
-        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-slate-50 relative" style={{ maxHeight: "calc(100dvh - 16rem)" }}>
-          <div className="p-4 sm:p-6 pb-12" ref={containerRef}>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-sm">
+        <CardContent ref={scrollContainerRef} className="p-0 flex-1 overflow-y-auto scrollbar-none bg-[#F3F4F6] relative" style={{ maxHeight: "calc(100dvh - 16rem)" }}>
+          <div className="p-4 sm:p-8 pb-16 flex justify-center" ref={containerRef}>
+            <div className="bg-white w-full max-w-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-[#EAEAEA] text-sm rounded-md transition-shadow hover:shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
               {!isReal || !doc ? (
                 /* ── No data yet ── */
                 <div className="p-8 text-center text-slate-400">
