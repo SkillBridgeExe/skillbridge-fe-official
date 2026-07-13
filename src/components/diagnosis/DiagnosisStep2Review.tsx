@@ -307,7 +307,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
             </Button>
           </div>
         ) : (
-          <div className="w-full max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="w-full px-6 lg:px-10">
             {showJdInput ? (
               <div className="animate-in fade-in slide-in-from-top-3 duration-300">
                 <JobDescriptionInput
