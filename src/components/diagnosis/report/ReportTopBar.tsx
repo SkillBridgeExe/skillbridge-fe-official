@@ -109,7 +109,7 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
         </div>
 
         {/* Right: Tabs — natural width, left-aligned, vertically centered */}
-        <div className="flex-1 flex items-stretch px-4 lg:px-8 overflow-x-auto scrollbar-none">
+        <div className="flex-1 flex items-stretch overflow-x-auto scrollbar-none">
           {tabItems.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -119,7 +119,7 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
                 aria-selected={isActive}
                 onClick={() => onTabChange(tab.key)}
                 className={cn(
-                  "relative flex items-center px-5 text-[13px] font-bold transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#00AEEF]",
+                  "relative flex-1 flex items-center justify-center px-2 text-[13px] font-bold transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#00AEEF]",
                   isActive
                     ? "text-[#00AEEF]"
                     : "text-[#787774] hover:text-[#2F3437]"
