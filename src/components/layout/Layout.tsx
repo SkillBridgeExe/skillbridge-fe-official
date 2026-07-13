@@ -1,23 +1,61 @@
 import Navbar from "./Navbar";
+import { AppSidebar } from "./AppSidebar";
+import { useSidebarStore } from "@/store/useSidebarStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useLocation, Link } from "react-router-dom";
 import { GIT_SHA_SHORT, APP_VERSION } from "@/lib/version";
+import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: React.ReactNode;
   hideFooter?: boolean;
   hideNavbar?: boolean;
+  /** When true, hides the sidebar even for user role (e.g. builder full-screen). */
+  hideSidebar?: boolean;
 }
 
-export default function Layout({ children, hideFooter = false, hideNavbar = false }: LayoutProps) {
+export default function Layout({ children, hideFooter = false, hideNavbar = false, hideSidebar = false }: LayoutProps) {
   const location = useLocation();
   const isLanding = location.pathname === "/";
-  
+  const { isAuthenticated, currentUser } = useAuthStore();
+  const collapsed = useSidebarStore((s) => s.collapsed);
+
   // Hide footer on app pages automatically
   const isAppPage = ["/learning", "/diagnosis", "/dashboard", "/profile", "/billing", "/interview", "/ecosystem", "/cv-builder", "/cv-studio"].some(
     path => location.pathname.startsWith(path)
   );
   const shouldHideFooter = hideFooter || isAppPage;
 
+  // Sidebar mode: only for authenticated user role "user".
+  // hideNavbar (report mode) does NOT hide the sidebar — Teal keeps sidebar
+  // visible in analyzer/report views. Only hideSidebar (builder full-screen)
+  // explicitly removes it.
+  const sidebarMode = isAuthenticated && currentUser?.role === "user" && !hideSidebar;
+
+  const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+  if (sidebarMode) {
+    return (
+      <div className="min-h-dvh w-full font-sans bg-[#FCFCFD] overflow-x-hidden relative selection:bg-ink-accent/20 selection:text-ink-accent">
+        <AppSidebar />
+
+        {/* Main content area — offset by sidebar width */}
+        <main
+          className={cn(
+            "min-h-dvh z-10 relative",
+            // Desktop: push content right of sidebar
+            collapsed ? "md:pl-16" : "md:pl-60",
+            // Smooth width transition
+            !prefersReduced && "transition-[padding-left] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          )}
+        >
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Default: anonymous / other roles / full-screen builder
   return (
     <div className="min-h-dvh w-full flex flex-col font-sans bg-white overflow-x-hidden relative selection:bg-ink-accent/20 selection:text-ink-accent">
       
@@ -82,4 +120,3 @@ export default function Layout({ children, hideFooter = false, hideNavbar = fals
     </div>
   );
 }
-

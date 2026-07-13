@@ -378,7 +378,7 @@ export default function Diagnosis() {
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
     return (
-      <Layout hideFooter hideNavbar>
+      <Layout hideFooter hideNavbar hideSidebar>
         <Suspense fallback={<PageLoader />}>
           <div id="cv-builder-anchor" className="relative h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
             {isRecoveringCv && (
@@ -467,6 +467,7 @@ export default function Diagnosis() {
 
   // Report mode (Jobscan-style app shell): slim utility top bar instead of the
   // floating marketing navbar, no stepper, wider container.
+  const isResultsMode = step === "results";
   const reportMode = step === "cv-review" || step === "results";
 
   return (
@@ -475,8 +476,12 @@ export default function Diagnosis() {
       <div
         id="diagnosis-root"
         className={cn(
-          "mx-auto relative min-h-[calc(100dvh-80px)] flex flex-col",
-          reportMode ? "max-w-7xl px-4 md:px-6 pt-20 pb-12" : "max-w-6xl px-6 py-12",
+          "mx-auto relative flex flex-col w-full",
+          isResultsMode
+            ? "max-w-7xl px-4 md:px-6 pt-6 pb-6 lg:h-[calc(100dvh-24px)] lg:min-h-0 lg:overflow-hidden"
+            : reportMode
+              ? "max-w-7xl px-4 md:px-6 pt-6 pb-6 min-h-[calc(100dvh-24px)]"
+              : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
         )}
       >
 
@@ -514,11 +519,11 @@ export default function Diagnosis() {
 
         {/* ── Header ── */}
         {step === "input" && (
-          <header className="mb-14 text-center space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          <header className="mb-6 text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
             <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
-            <h1 className="text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-4xl md:text-5xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
               {t("header.title")}
             </h1>
           </header>

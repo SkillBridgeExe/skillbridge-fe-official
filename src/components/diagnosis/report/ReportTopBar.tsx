@@ -21,7 +21,7 @@ export function ReportTopBar() {
   const backLabel = step === "results" ? t("results.backToReview") : t("review.backToUpload");
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-white/95 backdrop-blur border-b border-[#EAEAEA]">
+    <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur border-b border-[#EAEAEA]">
       <div className="h-full max-w-7xl mx-auto px-4 md:px-6 flex items-center gap-3">
         <button
           onClick={goBack}
