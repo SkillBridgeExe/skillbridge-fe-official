@@ -545,6 +545,8 @@ export default {
       adminPanel: "Admin Panel",
       businessPortal: "Business Portal",
       mentorHub: "Mentor Hub",
+      billing: "Billing",
+      upgradePlan: "Upgrade Plan",
       logout: "Logout",
     },
     auth: {
@@ -1660,7 +1662,10 @@ export default {
       title: "Bullet feedback",
       verbFirst: "#action_verb",
       quantified: "#quantified",
-      needsWork: "needs work"
+      needsWork: "needs work",
+      missingQuantification: "missing metrics",
+      weakOpener: "weak verb",
+      firstPerson: "first person"
     },
     fit: {
       verdict: {
@@ -1832,6 +1837,8 @@ export default {
       toastFailedTitle: "Analysis failed",
       praiseHigh:
         "Strong work — this CV already beats most of the screening bar.",
+      issuesMarked: "Highlighting {{count}} points to improve in your CV",
+      noIssuesMarked: "Excellent! No issues detected in your CV.",
       extractionQuality: {
         medium:
           "AI may have missed part of your CV — double-check against the original to be sure the result is complete.",
@@ -1849,7 +1856,7 @@ export default {
       },
       tabs: {
         audit: "CV Audit",
-        skills: "Skills Analysis",
+        cv: "Your CV",
         market: "Market & Careers",
       },
       footerNote: "SkillBridge CV Diagnosis Report",

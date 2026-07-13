@@ -545,6 +545,8 @@ export default {
       adminPanel: "Trang quản trị",
       businessPortal: "Cổng doanh nghiệp",
       mentorHub: "Khu vực Mentor",
+      billing: "Thanh toán",
+      upgradePlan: "Nâng cấp gói",
       logout: "Đăng xuất",
     },
     auth: {
@@ -1656,7 +1658,10 @@ export default {
       title: "Đánh giá bullet",
       verbFirst: "#động_từ",
       quantified: "#số_liệu",
-      needsWork: "cần tối ưu"
+      needsWork: "cần tối ưu",
+      missingQuantification: "thiếu số liệu",
+      weakOpener: "động từ yếu",
+      firstPerson: "ngôi thứ nhất"
     },
     fit: {
       verdict: {
@@ -1826,6 +1831,8 @@ export default {
       toastMissingJdDesc: "Hãy dán nội dung JD trước.",
       toastFailedTitle: "Phân tích thất bại",
       praiseHigh: "Làm tốt lắm — CV này đã vượt phần lớn vòng lọc hồ sơ.",
+      issuesMarked: "Đang đánh dấu {{count}} điểm cần sửa trong CV",
+      noIssuesMarked: "Tuyệt vời! Không phát hiện lỗi nào cần sửa trong CV.",
       extractionQuality: {
         medium:
           "AI có thể đọc thiếu một phần CV — hãy đối chiếu lại với bản gốc để chắc kết quả đầy đủ.",
@@ -1842,8 +1849,8 @@ export default {
         compareCta: "So sánh JD",
       },
       tabs: {
-        audit: "Kiểm tra CV",
-        skills: "Phân tích Kỹ năng",
+        audit: "Báo cáo CV",
+        cv: "CV của bạn",
         market: "Cơ hội & Thị trường",
       },
       footerNote: "Báo cáo Chẩn đoán CV · SkillBridge",

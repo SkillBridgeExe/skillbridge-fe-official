@@ -144,7 +144,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
                     {group.label}
                   </span>
                   {hasIssues ? (
-                    <span className="text-[12px] font-bold text-[#9F2F2D] whitespace-nowrap tabular-nums">
+                    <span className="text-[12px] font-bold text-primary whitespace-nowrap tabular-nums hover:underline">
                       {t("report.rail.issuesBadge", { count: group.issueCount })}
                     </span>
                   ) : (
@@ -154,7 +154,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
                   )}
                 </div>
                 {score !== undefined && (
-                  <div className="mt-2 w-full h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+                  <div className="mt-2 w-full h-2 bg-[#F1F1EF] rounded-full overflow-hidden">
                     <div
                       className={cn("h-full rounded-full transition-all duration-700 motion-reduce:transition-none", bandOf(score).bar)}
                       style={{ width: `${score}%` }}

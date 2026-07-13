@@ -9,6 +9,7 @@ import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummar
 import { ScoreRail } from "./report/ScoreRail";
 import { CheckGroup } from "./report/CheckGroup";
 import { buildDiagnosisReport } from "@/lib/diagnosis-report";
+import { seedBuilderFromDocument } from "./edit-in-builder";
 import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
 import { JobRecommendations } from "./JobRecommendations";
 import { SkillGapTrends } from "./SkillGapTrends";
@@ -23,11 +24,12 @@ import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { CvIssue } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
-import { Chapter, EditorialTabNav } from "./editorial";
+import { Chapter } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
+import { JobscanTabNav } from "./report/JobscanTabNav";
 
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -150,7 +152,16 @@ export function DiagnosisStep2Review() {
   const reportGroups = buildDiagnosisReport(reviewData, t, issueGroups);
 
   const [rawOpen, setRawOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'audit' | 'market'>('audit');
+  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
+
+  const issuesCount = reviewData?.bullet_feedback?.filter(fb =>
+    fb.quantified === false ||
+    fb.weakOpener === true ||
+    fb.verbFirst === false ||
+    fb.firstPerson === true
+  ).length ?? 0;
+
+  const handleEditOriginal = () => seedBuilderFromDocument(reviewData?.document);
 
   /* ── Companion Pillar 1+2: anchored per-element issues (boundary = parse-done) ──
      The detector layer runs off reviewData (completeness/parse-quality/listed-no-evidence)
@@ -238,6 +249,7 @@ export function DiagnosisStep2Review() {
 
   const tabItems = [
     { key: "audit", label: t("review.tabs.audit"), icon: <FileText className="w-4 h-4" /> },
+    { key: "cv", label: t("review.tabs.cv"), icon: <FileText className="w-4 h-4" /> },
     { key: "market", label: t("review.tabs.market"), icon: <TrendingUp className="w-4 h-4" /> },
   ];
 
@@ -278,14 +290,14 @@ export function DiagnosisStep2Review() {
       <div
         className={cn(
           "grid grid-cols-1 gap-6 mt-6",
-          activeTab === "audit" && !showJdInput
-            ? "xl:grid-cols-[240px_minmax(0,1fr)_minmax(340px,380px)]"
-            : "xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]",
+          !showJdInput
+            ? "xl:grid-cols-[240px_minmax(0,1fr)]"
+            : "xl:grid-cols-1",
         )}
       >
-        {/* RAIL COLUMN (xl only, audit only) — below xl the rail renders inside the tab panel */}
-        {activeTab === "audit" && !showJdInput && (
-          <div className="hidden xl:block min-w-0">
+        {/* RAIL COLUMN (xl only) — below xl the rail renders inside the tab panel */}
+        {!showJdInput && (
+          <div className="hidden xl:block min-w-0 xl:sticky xl:top-24 xl:self-start">
             <ScoreRail
               overallScore={overallCvScore}
               groups={reportGroups}
@@ -297,7 +309,7 @@ export function DiagnosisStep2Review() {
         )}
 
         {/* MAIN COLUMN: Tabs & Active Panel */}
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0">
           {showJdInput ? (
             <div className="animate-in fade-in slide-in-from-top-3 duration-300">
               <JobDescriptionInput
@@ -309,15 +321,15 @@ export function DiagnosisStep2Review() {
             </div>
           ) : (
             <>
-              {/* Tab selector — Editorial underline */}
-              <EditorialTabNav
+              {/* Tab selector — Jobscan Tab Bar */}
+              <JobscanTabNav
                 tabs={tabItems}
                 active={activeTab}
-                onChange={(key) => setActiveTab(key as 'audit' | 'market')}
+                onChange={(key) => setActiveTab(key as 'audit' | 'cv' | 'market')}
               />
 
-              {/* Tab Panel contents */}
-              <div className="space-y-5">
+              {/* Tab Panel contents - White background box with border */}
+              <div className="bg-white border-x border-b border-[#EAEAEA] rounded-b-xl p-5 sm:p-6 min-w-0 space-y-6">
                 {activeTab === 'audit' && (
                   <div className="animate-in fade-in duration-300 space-y-4">
                     {/* ScoreRail below xl (mobile chips / md sidebar-less) — at xl it lives on the page grid */}
@@ -385,6 +397,34 @@ export function DiagnosisStep2Review() {
                   </div>
                 )}
 
+                {activeTab === 'cv' && (
+                  <div className="animate-in fade-in duration-300 space-y-6">
+                    {/* Header bar: Issues Count & Edit button */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#FBFBFA] rounded-xl border border-[#EAEAEA]">
+                      <div className="flex items-center gap-2.5">
+                        <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", issuesCount > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
+                        <p className="text-[15px] font-semibold text-[#2F3437]">
+                          {issuesCount > 0
+                            ? t("review.issuesMarked", { count: issuesCount })
+                            : t("review.noIssuesMarked")
+                          }
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleEditOriginal}
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
+                      >
+                        {t("preview.editOriginal")}
+                      </Button>
+                    </div>
+
+                    <div className="max-w-3xl mx-auto">
+                      <DocumentPreview hideEditOriginal />
+                    </div>
+                  </div>
+                )}
+
                 {activeTab === 'market' && (
                   <div className="space-y-0 animate-in fade-in duration-300">
                     {/* Job Recommendations */}
@@ -413,11 +453,6 @@ export function DiagnosisStep2Review() {
             </>
           )}
         </div>
-
-        {/* RIGHT COLUMN: Document Preview (Sticky) — W25 does NOT touch DocumentPreview internals */}
-        <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
-          <DocumentPreview />
-        </aside>
       </div>
 
       {/* Small Clean Footer */}

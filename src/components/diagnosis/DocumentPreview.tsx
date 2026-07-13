@@ -83,9 +83,9 @@ const renderHighlightedText = (text: string, search: string | null) => {
   );
 };
 
-import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { seedBuilderFromDocument } from "./edit-in-builder";
 
-export function DocumentPreview() {
+export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal?: boolean }) {
   const { t } = useTranslation("diagnosis");
   const reviewData = useDiagnosisStore((s) => s.reviewData);
   const highlightEvidence = useDiagnosisStore((s) => s.highlightEvidence);
@@ -132,40 +132,23 @@ export function DocumentPreview() {
   const doc = viewMode === "ai" && aiCv.appliedDocument ? aiCv.appliedDocument : baseDoc;
   const isReal = !!doc;
 
-  const handleEdit = (useAi: boolean) => {
-    const docToEdit = useAi && aiCv.appliedDocument ? aiCv.appliedDocument : baseDoc;
-    if (!docToEdit) return;
-
-    const seedDoc: CanonicalCvDocument = {
-      ...docToEdit,
-      skills: docToEdit.skills || { technical: [], soft: [], languages: [], tools: [] },
-      education: docToEdit.education || [],
-      experience: docToEdit.experience || [],
-      projects: docToEdit.projects || [],
-      certifications: docToEdit.certifications || [],
-      activities: docToEdit.activities || [],
-    };
-
-    const builder = useCvBuilderStore.getState();
-    builder.hydrateFromCanonical(seedDoc);
-
-    const diag = useDiagnosisStore.getState();
-    if (diag.targetRole) {
-      builder.setCareerTarget("targetPosition", diag.targetRole);
-    }
-
-    diag.setStep("builder");
-  };
+  const handleEdit = (useAi: boolean) =>
+    seedBuilderFromDocument(useAi && aiCv.appliedDocument ? aiCv.appliedDocument : baseDoc);
 
   const renderBullet = (bullet: string) => {
     const isChanged = viewMode === "ai" && aiCv.changedBullets.includes(bullet);
 
     const feedback = findBulletFeedback(bullet, reviewData?.bullet_feedback);
+    const hasQuantifiedIssue = feedback && feedback.quantified === false;
 
     const content = (
       <>
         {isChanged ? (
           <mark className="bg-[#DCE9D7] text-[#346538] rounded px-0.5 font-medium transition-colors">
+            {bullet}
+          </mark>
+        ) : hasQuantifiedIssue ? (
+          <mark className="bg-[#FBF3DB] text-[#956400] rounded px-0.5 font-medium transition-colors">
             {bullet}
           </mark>
         ) : (
@@ -175,6 +158,14 @@ export function DocumentPreview() {
     );
 
     if (feedback) {
+      const showMissingQuantified = feedback.quantified === false;
+      const showWeakOpener = feedback.weakOpener === true || feedback.verbFirst === false;
+      const showFirstPerson = feedback.firstPerson === true;
+
+      const hasAnyFlag = showMissingQuantified || showWeakOpener || showFirstPerson;
+
+      if (!hasAnyFlag) return content;
+
       return (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
@@ -182,9 +173,21 @@ export function DocumentPreview() {
               <span className="relative cursor-help group inline-block">
                 {content}
                 <span className="inline-flex ml-1.5 gap-1 align-middle opacity-80 group-hover:opacity-100 transition-opacity">
-                   {feedback.verbFirst && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 font-medium">{t("bulletFeedback.verbFirst")}</Badge>}
-                   {feedback.quantified && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-emerald-200 text-emerald-700 bg-emerald-50 font-medium">{t("bulletFeedback.quantified")}</Badge>}
-                   {(!feedback.quantified || !feedback.verbFirst) && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-200 text-amber-700 bg-amber-50 font-medium">{t("bulletFeedback.needsWork")}</Badge>}
+                   {showMissingQuantified && (
+                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-200 text-amber-700 bg-amber-50 font-medium">
+                       {t("bulletFeedback.missingQuantification")}
+                     </Badge>
+                   )}
+                   {showWeakOpener && (
+                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 font-medium">
+                       {t("bulletFeedback.weakOpener")}
+                     </Badge>
+                   )}
+                   {showFirstPerson && (
+                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-purple-200 text-purple-700 bg-purple-50 font-medium">
+                       {t("bulletFeedback.firstPerson")}
+                     </Badge>
+                   )}
                 </span>
               </span>
             </TooltipTrigger>
@@ -306,7 +309,7 @@ export function DocumentPreview() {
                   )}
                 </div>
               )}
-              {viewMode === "parsed" && (
+              {viewMode === "parsed" && !hideEditOriginal && (
                 <div className="flex justify-end px-1">
                   <button
                     onClick={() => handleEdit(false)}
@@ -320,12 +323,14 @@ export function DocumentPreview() {
           ) : (
             <div className="text-xs text-slate-500 px-1 py-0.5 flex flex-col items-center gap-2">
               <p>{t("preview.addJdNote")}</p>
-              <button
-                onClick={() => handleEdit(false)}
-                className="px-3 py-1.5 bg-primary text-white rounded-md font-bold hover:bg-primary/90 transition-colors"
-              >
-                Sửa CV gốc
-              </button>
+              {!hideEditOriginal && (
+                <button
+                  onClick={() => handleEdit(false)}
+                  className="px-3 py-1.5 bg-primary text-white rounded-md font-bold hover:bg-primary/90 transition-colors"
+                >
+                  Sửa CV gốc
+                </button>
+              )}
             </div>
           )}
         </div>
