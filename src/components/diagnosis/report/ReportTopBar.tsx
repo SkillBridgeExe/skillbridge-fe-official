@@ -97,21 +97,19 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
         </div>
       </div>
 
-      {/* ROW 2: Tab strip (h-11 = 44px) */}
+      {/* ROW 2: Tab strip (h-12 = 48px). items-stretch so each cell fills the
+          full height and centers its own text — avoids the nested h-full drift. */}
       <nav
         role="tablist"
-        className="h-11 border-b border-[#EAEAEA] flex items-center w-full bg-white overflow-hidden animate-in fade-in"
+        className="h-12 border-b border-[#EAEAEA] flex items-stretch w-full bg-white animate-in fade-in"
       >
-        {/* Left: CV filename (desktop only) */}
-        <div
-          className="hidden lg:flex items-center lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#F1F1EF] px-6 h-full text-[13px] font-bold text-[#2F3437] truncate shrink-0"
-          title={cvName}
-        >
-          <span className="truncate">{cvName}</span>
+        {/* Left: CV filename (desktop only) — same 300px as the rail */}
+        <div className="hidden lg:flex items-center lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#F1F1EF] px-6 shrink-0 min-w-0">
+          <span className="text-[13px] font-bold text-[#2F3437] truncate" title={cvName}>{cvName}</span>
         </div>
 
-        {/* Right: Tabs */}
-        <div className="flex-1 flex items-center h-full px-4 lg:px-8 overflow-x-auto scrollbar-none gap-2 sm:gap-6">
+        {/* Right: Tabs — natural width, left-aligned, vertically centered */}
+        <div className="flex-1 flex items-stretch px-4 lg:px-8 overflow-x-auto scrollbar-none">
           {tabItems.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -121,15 +119,15 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
                 aria-selected={isActive}
                 onClick={() => onTabChange(tab.key)}
                 className={cn(
-                  "h-full px-4 text-[13px] font-bold leading-none transition-colors relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF] focus-visible:ring-inset",
+                  "relative flex items-center px-5 text-[13px] font-bold transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#00AEEF]",
                   isActive
                     ? "text-[#00AEEF]"
                     : "text-[#787774] hover:text-[#2F3437]"
                 )}
               >
-                <span>{tab.label}</span>
+                {tab.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full bg-[#00AEEF]" />
+                  <span className="absolute bottom-0 inset-x-3 h-[2.5px] rounded-full bg-[#00AEEF]" />
                 )}
               </button>
             );
