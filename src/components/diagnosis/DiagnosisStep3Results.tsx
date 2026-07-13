@@ -693,7 +693,7 @@ export function DiagnosisStep3Results() {
         {canTrustAnalysis && (
           <div className="hidden lg:block space-y-1.5 pt-4 border-t border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#787774] mb-2">
-              Danh mục báo cáo
+              {t("results.navigatorTitle")}
             </p>
             <button
               onClick={() => scrollToSection("chapter-radar")}
@@ -701,7 +701,7 @@ export function DiagnosisStep3Results() {
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                <span>So sánh Radar</span>
+                <span>{t("results.navRadar")}</span>
               </div>
             </button>
             
@@ -712,7 +712,7 @@ export function DiagnosisStep3Results() {
               >
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Cải thiện ưu tiên</span>
+                  <span>{t("results.navPriorityImprovements")}</span>
                 </div>
               </button>
             )}
@@ -723,7 +723,7 @@ export function DiagnosisStep3Results() {
             >
               <div className="flex items-center gap-2">
                 <Code className="w-3.5 h-3.5 text-blue-500" />
-                <span>Chi tiết kỹ năng</span>
+                <span>{t("results.navSkillDetails")}</span>
               </div>
               {isJdMode && (
                 <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-mono font-bold">
@@ -738,7 +738,7 @@ export function DiagnosisStep3Results() {
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Kế hoạch hành động</span>
+                <span>{t("results.navActionPlan")}</span>
               </div>
             </button>
 
@@ -749,7 +749,7 @@ export function DiagnosisStep3Results() {
               >
                 <div className="flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Bôi đậm JD</span>
+                  <span>{t("results.navHighlightJd")}</span>
                 </div>
               </button>
             )}
@@ -1078,11 +1078,8 @@ export function DiagnosisStep3Results() {
 
               {/* The Magic Card (Action Plan) */}
               <div className="lg:col-span-2">
-                <div className="relative h-full overflow-hidden rounded-2xl bg-white shadow-lg border border-indigo-100 group">
-                  {/* Glowing background */}
-                  <div className="absolute -inset-2 opacity-30 blur-2xl bg-gradient-to-br from-indigo-300 via-purple-300 to-emerald-300 pointer-events-none transition-opacity duration-1000 group-hover:opacity-50" />
-
-                  <div className="relative h-full flex flex-col p-6 bg-white/60 backdrop-blur-3xl z-10">
+                <div className="relative h-full overflow-hidden rounded-xl bg-white border border-[#EAEAEA]">
+                  <div className="relative h-full flex flex-col p-6">
                     <div className="flex items-center gap-2 mb-6">
                       <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
                         <Sparkles className="w-5 h-5" />
@@ -1093,7 +1090,7 @@ export function DiagnosisStep3Results() {
                     <ul className="space-y-4 flex-1">
                       {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
                         <li key={i} className="flex items-start gap-3 text-[13px] text-[#2F3437] font-medium leading-relaxed">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2 shadow-[0_0_4px_rgba(99,102,241,0.5)]" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />
                           {item}
                         </li>
                       ))}

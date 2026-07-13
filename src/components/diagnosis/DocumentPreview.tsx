@@ -328,7 +328,7 @@ export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal
                   onClick={() => handleEdit(false)}
                   className="px-3 py-1.5 bg-primary text-white rounded-md font-bold hover:bg-primary/90 transition-colors"
                 >
-                  Sửa CV gốc
+                  {t("preview.editOriginal")}
                 </button>
               )}
             </div>
@@ -349,7 +349,7 @@ export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal
                 /* ── No data yet ── */
                 <div className="p-8 text-center text-slate-400">
                   <User className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                  <p className="font-semibold text-slate-500">No CV data yet</p>
+                  <p className="font-semibold text-slate-500">{t("preview.noCvData")}</p>
                   <p className="text-xs mt-1">{t("preview.empty")}</p>
                 </div>
               ) : (
@@ -358,7 +358,7 @@ export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal
                   <div className="p-5 border-b border-slate-100 bg-slate-50/50">
                     <h2 className="text-xl font-bold text-slate-900 leading-tight">
                       {doc.contact.name || (
-                        <span className="text-slate-400 font-medium italic text-base">{t("preview.unknownName")}</span>
+                        <span className="text-slate-400 font-medium italic text-[14px]">{t("preview.unknownName")}</span>
                       )}
                     </h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 text-slate-500 text-[13px]">
@@ -411,7 +411,7 @@ export function DocumentPreview({ hideEditOriginal = false }: { hideEditOriginal
                       <div>
                         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                           <Code className="w-3.5 h-3.5" />
-                          <span>Skills</span>
+                          <span>{t("preview.skills")}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {doc.skills.technical?.map((skill) => (

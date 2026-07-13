@@ -1955,6 +1955,12 @@ export default {
       thSkill: "Skill keyword",
       thScore: "Score in CV",
       thStatus: "Status",
+      navigatorTitle: "Report categories",
+      navRadar: "Radar Comparison",
+      navPriorityImprovements: "Priority Improvements",
+      navSkillDetails: "Skill Details",
+      navActionPlan: "Action Plan",
+      navHighlightJd: "Highlight JD",
       gapEmpty:
         "No JD skill mapping found. Upload or paste a job description to see detailed gaps.",
       insightsTitle: "Strategic AI insights",
@@ -2486,6 +2492,8 @@ export default {
       appliedCount: "Applied {{count}}/{{total}} evidence-backed suggestions.",
       manualTasks: "Things you need to add manually:",
       unknownName: "Name not found",
+      noCvData: "No CV data yet",
+      skills: "Skills",
     },
     builder: {
       template: {

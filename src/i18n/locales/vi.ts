@@ -1948,6 +1948,12 @@ export default {
       thSkill: "Từ khoá kỹ năng",
       thScore: "Mức trong CV",
       thStatus: "Trạng thái",
+      navigatorTitle: "Danh mục báo cáo",
+      navRadar: "So sánh Radar",
+      navPriorityImprovements: "Cải thiện ưu tiên",
+      navSkillDetails: "Chi tiết kỹ năng",
+      navActionPlan: "Kế hoạch hành động",
+      navHighlightJd: "Bôi đậm JD",
       gapEmpty:
         "Chưa có dữ liệu so khớp JD. Tải lên hoặc dán JD để xem chi tiết khoảng trống.",
       insightsTitle: "Phân tích chiến lược từ AI",
@@ -2462,6 +2468,8 @@ export default {
       appliedCount: "Đã áp {{count}}/{{total}} gợi ý có bằng chứng.",
       manualTasks: "Việc bạn phải tự thêm:",
       unknownName: "Chưa rõ tên",
+      noCvData: "Chưa có dữ liệu CV",
+      skills: "Kỹ năng",
     },
     builder: {
       template: {
