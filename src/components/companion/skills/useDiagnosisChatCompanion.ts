@@ -568,6 +568,7 @@ export function useDiagnosisChatCompanion(
     store.registerContext({
       id: CHAT_CONTEXT_ID,
       priority: 5,
+      suppressAutoOpen: true,
       // NO anchorId → the dolphin sits at the corner fallback (calm, persistent).
       getTurn: () => ({
         skill: "diagnosis_chat",

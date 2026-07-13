@@ -82,6 +82,7 @@ export interface CompanionContextReg {
   /** DOM element id to anchor the mascot to (e.g. "gap-anchor"). Omit = fixed bottom-right. */
   anchorId?: string;
   getTurn: () => CompanionTurn;
+  suppressAutoOpen?: boolean;
 }
 
 interface CompanionState {
@@ -212,10 +213,14 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Activating selects the context; auto-open the bubble the FIRST time only (until dismissed).
   activateContext: (id) =>
-    set((s) => ({
-      activeId: id,
-      bubbleOpen: s.dismissed[id] ? false : true,
-    })),
+    set((s) => {
+      const reg = s.contexts[id];
+      const shouldAutoOpen = reg?.suppressAutoOpen ? s.bubbleOpen : (s.dismissed[id] ? false : true);
+      return {
+        activeId: id,
+        bubbleOpen: shouldAutoOpen,
+      };
+    }),
   closeBubble: () => set({ bubbleOpen: false }),
   dismissActive: () =>
     set((s) => ({

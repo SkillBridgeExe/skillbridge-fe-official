@@ -312,14 +312,14 @@ export function CompanionShell() {
         style={
           anchored
             ? // Anchored: FU-A owns positioning via top/left (transform:false).
-              { ...floatingStyles, zIndex: 70, touchAction: "none" }
+              { ...floatingStyles, zIndex: 20, touchAction: "none" }
             : positionMode === "manual" || isDragging
               ? // Manual: framer drives x/y so a parked dolphin stays where dropped.
                 { x: dragX, y: dragY, touchAction: "none" }
               : // Pure fallback (no anchor, never dragged) → clean bottom-right.
                 { touchAction: "none" }
         }
-        className={anchored ? "z-[70]" : "fixed bottom-6 right-6 z-[70]"}
+        className={anchored ? "z-[20]" : "fixed bottom-6 right-6 z-[20]"}
       >
         <button
           onPointerDown={(e) => dragControls.start(e)}
@@ -338,7 +338,7 @@ export function CompanionShell() {
             the AnimatePresence child triggers framer's "`ref` is not a prop"). ── */}
       <div
         ref={bubbleFloat.refs.setFloating}
-        style={{ ...bubbleFloat.floatingStyles, zIndex: 71 }}
+        style={{ ...bubbleFloat.floatingStyles, zIndex: 21 }}
       >
         <AnimatePresence>
           {showBubble && (
