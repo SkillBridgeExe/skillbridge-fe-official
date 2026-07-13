@@ -133,7 +133,7 @@ describe("buildDiagnosisReport", () => {
     expect(issuesGroup?.issueCount).toBe(2);
   });
 
-  it("should hide groups that are missing in reviewData", () => {
+  it("surfaces score-only categories when detailed check data is missing", () => {
     const mockData: CvReviewData = {
       overallScore: 50,
       breakdown: { ats: 50, structure: 50, skills: 50, experience: 50 },
@@ -144,7 +144,12 @@ describe("buildDiagnosisReport", () => {
     };
 
     const report = buildDiagnosisReport(mockData, mockT);
-    expect(report).toHaveLength(0);
+    // Scores exist but there's no atsCheck/bullet_feedback/skills/dimensions
+    // data → the four canonical categories still appear (score-only, zero
+    // issues) so the rail never silently drops a scored dimension.
+    expect(report.map((g) => g.id)).toEqual(["ats", "content", "skills", "ai_eval"]);
+    expect(report.every((g) => g.issueCount === 0 && g.items.length === 0)).toBe(true);
+    expect(report.find((g) => g.id === "content")?.score).toBe(50);
   });
 });
 

@@ -232,6 +232,27 @@ export function buildDiagnosisReport(
     });
   }
 
+  // Rail consistency: always surface the 4 canonical score categories, even
+  // when a CV lacks the detailed data that would build the check group (e.g.
+  // no bullet_feedback → no content items). Any category the data-driven passes
+  // above didn't emit is added as a score-only "passed" row so the rail never
+  // silently drops a dimension that still has a score.
+  const bd = reviewData.breakdown;
+  const canonical: Array<{ id: string; labelKey: string; def: string; score: number | undefined; alt?: string }> = [
+    { id: "ats", labelKey: "report.groups.ats", def: "Tương thích ATS", score: bd?.ats },
+    { id: "content", labelKey: "report.groups.content", def: "Tối ưu nội dung", score: bd?.structure },
+    { id: "skills", labelKey: "report.groups.skills", def: "Phù hợp kỹ năng", score: bd?.skills },
+    { id: "ai_eval", labelKey: "report.groups.ai_eval", def: "AI đánh giá sâu", score: bd?.experience, alt: "issues" },
+  ];
+  for (const c of canonical) {
+    const present = groups.some((g) => g.id === c.id || (c.alt !== undefined && g.id === c.alt));
+    if (!present && c.score !== undefined) {
+      groups.push({ id: c.id, label: t(c.labelKey, { defaultValue: c.def }), score: c.score, issueCount: 0, items: [] });
+    }
+  }
+  const order = ["ats", "content", "skills", "ai_eval", "issues"];
+  groups.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+
   return groups;
 }
 
