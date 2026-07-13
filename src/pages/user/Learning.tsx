@@ -60,20 +60,20 @@ export default function Learning() {
                 </p>
               </div>
 
-              <div className="flex flex-shrink-0 items-center gap-2">
+              <div className="flex w-full flex-col gap-2 min-[420px]:flex-row sm:w-auto sm:flex-shrink-0 sm:items-center">
                 {isAIGenerated && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearRoadmap}
-                    className="rounded-full text-xs text-slate-400 hover:text-slate-700"
+                    className="w-full rounded-full text-xs text-slate-400 hover:text-slate-700 min-[420px]:w-auto"
                   >
                     {t("learning.page.clearRoadmap")}
                   </Button>
                 )}
                 <Button
                   onClick={() => navigate("/diagnosis")}
-                  className="gap-2 rounded-full text-sm font-semibold shadow-sm"
+                  className="w-full gap-2 rounded-full text-sm font-semibold shadow-sm min-[420px]:w-auto"
                   variant={hasRoadmap ? "outline" : "default"}
                 >
                   <Sparkles className="h-4 w-4" />
@@ -81,7 +81,7 @@ export default function Learning() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-full border-slate-200 text-sm font-semibold text-slate-700"
+                  className="w-full rounded-full border-slate-200 text-sm font-semibold text-slate-700 min-[420px]:w-auto"
                 >
                   <BookOpen className="mr-2 h-4 w-4" /> {t("learning.page.viewSyllabus")}
                 </Button>
@@ -116,7 +116,7 @@ export default function Learning() {
             ) : null}
 
             {hasRoadmap && (
-              <div className="flex w-fit items-center gap-1 rounded-xl bg-slate-100 p-1">
+              <div className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:mx-0 sm:w-fit">
                 {VIEW_TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeView === tab.value;
@@ -125,7 +125,7 @@ export default function Learning() {
                       key={tab.value}
                       onClick={() => setActiveView(tab.value)}
                       className={cn(
-                        "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+                        "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all sm:px-4",
                         isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700",
                       )}
                     >

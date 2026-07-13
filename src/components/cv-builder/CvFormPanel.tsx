@@ -358,7 +358,7 @@ export function CvFormPanel() {
           variant="ghost"
           size="sm"
           onClick={(e) => { e.stopPropagation(); handleEvaluateSection(beSection, sectionId); }}
-          className="h-7 px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm bg-[#FFF8E6] text-[#D97706] hover:bg-[#FEF0C7] border border-[#FDE68A]"
+          className="h-7 max-w-full px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm bg-[#FFF8E6] text-[#D97706] hover:bg-[#FEF0C7] border border-[#FDE68A]"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span className="font-sans font-semibold text-[10px] uppercase tracking-wider">
@@ -384,7 +384,7 @@ export function CvFormPanel() {
       return (
         <Popover open={scorePopoverKey === sectionId} onOpenChange={(open) => setScorePopoverKey(open ? sectionId : null)}>
           <PopoverTrigger asChild>
-            <button className={cn("px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm", badgeClass)}>
+            <button className={cn("max-w-full px-2.5 py-1 text-[11px] font-mono font-bold rounded-full transition-colors flex items-center gap-1 shrink-0 shadow-sm", badgeClass)}>
               <span>{score}%</span>
               <span className="font-sans font-semibold text-[9px] uppercase tracking-wider">{localizeBeText(label, currentLang)}</span>
             </button>
@@ -492,13 +492,13 @@ export function CvFormPanel() {
               )}
               onClick={() => toggleSectionCollapse(section.id)}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isHidden ? "bg-slate-100/50 text-slate-400" : isActive ? "bg-primary/10 text-primary" : "bg-white border border-slate-200 text-slate-500 shadow-sm")}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <h4 className={cn("font-bold text-sm tracking-tight", isHidden ? "text-slate-400" : "text-slate-900")}>{title}</h4>
+                  <div className="min-w-0 flex flex-wrap items-center gap-2">
+                    <h4 className={cn("break-words font-bold text-sm tracking-tight", isHidden ? "text-slate-400" : "text-slate-900")}>{title}</h4>
                     {isHidden && (
                       <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200/70 text-slate-500 uppercase tracking-wider">
                         {t("builder.review.hidden")}
@@ -509,14 +509,14 @@ export function CvFormPanel() {
 
                 {/* Status Chip / Score Chip */}
                 <div
-                  className="flex items-center gap-3"
+                  className="flex flex-wrap items-center justify-end gap-2 sm:gap-3"
                   onClick={(event) => event.stopPropagation()}
                 >
                   {!isReview && (isLoggedIn && beSection ? (
                     renderEvaluateChip(beSection, section.id)
                   ) : (
                     status && (
-                      <div className="flex items-center">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         {status === "completed" && (
                           <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-[#EDF3EC] text-[#346538]">
                             <Check className="w-3.5 h-3.5 shrink-0" />

@@ -38,7 +38,7 @@ const StudioInspector = lazy(() => import("@/components/cv-builder/studio/Studio
 /* ── Step Indicator Dot ── */
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex min-w-0 flex-col items-center gap-1.5">
       <div className={cn(
         "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
         active ? "bg-primary text-white border-primary shadow-lg shadow-primary/30"
@@ -47,7 +47,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
       )}>
         {done ? <CheckCircle2 className="w-4 h-4" /> : n}
       </div>
-      <span className={cn("text-[11px] font-semibold whitespace-nowrap", active ? "text-primary" : done ? "text-emerald-600" : "text-slate-400")}>
+      <span className={cn("max-w-20 text-center text-[11px] font-semibold leading-tight sm:max-w-none sm:whitespace-nowrap", active ? "text-primary" : done ? "text-emerald-600" : "text-slate-400")}>
         {label}
       </span>
     </div>
@@ -485,7 +485,7 @@ export default function Diagnosis() {
 
   return (
     <Layout>
-      <div id="diagnosis-root" className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
+      <div id="diagnosis-root" className="max-w-6xl mx-auto px-4 py-10 sm:px-6 sm:py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
 
         {/* LOADING OVERLAY */}
         <AnimatePresence>
@@ -525,7 +525,7 @@ export default function Diagnosis() {
             <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
-            <h1 className="text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
               {t("header.title")}
             </h1>
           </header>
@@ -533,7 +533,7 @@ export default function Diagnosis() {
 
         {/* ── Dynamic Step Indicator ── */}
         {step !== "input" && (
-          <div className="mb-10 flex items-center justify-center gap-1 sm:gap-4">
+          <div className="mb-10 flex max-w-full items-center justify-center gap-1 overflow-x-auto px-1 sm:gap-4">
             <StepDot n={1} label={t("steps.upload")} active={false} done={true} />
             <div className="flex-1 max-w-[60px] h-0.5 transition-colors bg-primary" />
             <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />

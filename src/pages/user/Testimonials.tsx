@@ -4,7 +4,8 @@ export default function Testimonials() {
   return (
     <PlaceholderPage 
       title="User Testimonials" 
-      description="Read stories from developers, designers, and CTOs who transformed their careers with SkillBridge's AI-powered roadmaps." 
+      description="Explore the story patterns SkillBridge is designed to collect: clearer roadmaps, stronger CV evidence, and more focused interview preparation." 
+      variant="testimonials"
     />
   );
 }
