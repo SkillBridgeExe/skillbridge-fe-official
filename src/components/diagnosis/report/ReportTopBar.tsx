@@ -1,9 +1,11 @@
-import { ArrowLeft, Briefcase, RotateCcw } from "lucide-react";
+import { ArrowLeft, Briefcase, Menu, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { getRoleLabel } from "@/constants/it-roles";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useSidebarStore } from "@/store/useSidebarStore";
 
 /**
  * App-shell top bar for diagnosis report mode (steps cv-review / results) —
@@ -18,11 +20,26 @@ export function ReportTopBar() {
   const reset = useDiagnosisStore((s) => s.reset);
   const setShowJdInput = useDiagnosisStore((s) => s.setShowJdInput);
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
+
   const backLabel = step === "results" ? t("results.backToReview") : t("review.backToUpload");
 
   return (
     <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur border-b border-[#EAEAEA]">
       <div className="h-full max-w-7xl mx-auto px-4 md:px-6 flex items-center gap-3">
+        {/* A1: Sidebar hamburger (mobile, logged-in only) — replaces the hidden
+            MobileTopBar so users can still reach navigation while in report mode. */}
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
+            className="md:hidden flex items-center justify-center w-9 h-9 -ml-1 rounded-lg hover:bg-slate-50 text-[#787774] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 shrink-0"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <button
           onClick={goBack}
           className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-ink-accent transition-colors group focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded shrink-0"

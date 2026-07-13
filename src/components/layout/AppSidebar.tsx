@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
@@ -373,26 +374,42 @@ function DesktopSidebar() {
 function MobileTopBar() {
   const { mobileOpen, setMobileOpen } = useSidebarStore();
 
+  // A1: In diagnosis report mode the page-level ReportTopBar already provides
+  // a 56px sticky bar with its own hamburger (sidebar Sheet trigger). Rendering
+  // this MobileTopBar on top of it would stack two 56px bars on mobile.
+  // Hide the header but keep the Sheet drawer so ReportTopBar's trigger works.
+  const location = useLocation();
+  const diagStep = useDiagnosisStore((s) => s.step);
+  // Scope to the /diagnosis route — `step` is persisted, so a leftover
+  // "results"/"cv-review" must NOT hide the top bar on other pages (they have
+  // no ReportTopBar to replace it, leaving mobile with no way to open the nav).
+  const isDiagnosisReportMode =
+    location.pathname === "/diagnosis" &&
+    (diagStep === "cv-review" || diagStep === "results");
+
   return (
     <>
       {/* Slim top bar — static (not sticky) so it never stacks over the page-level
-          sticky bars (ReportTopBar top-0, ScoreRail chips top-14) on mobile. */}
-      <header className="md:hidden flex items-center justify-between h-14 px-4 bg-white/95 border-b border-[#EAEAEA]">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logoPng} alt="SkillBridge" className="h-9 w-auto object-contain" />
-          <span className="font-poppins font-black text-base text-slate-900 tracking-tight">
-            SkillBridge
-          </span>
-        </Link>
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation menu"
-          className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-50 text-[#787774] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </header>
+          sticky bars (ReportTopBar top-0, ScoreRail chips top-14) on mobile.
+          Hidden in diagnosis report mode (A1) where ReportTopBar takes over. */}
+      {!isDiagnosisReportMode && (
+        <header className="md:hidden flex items-center justify-between h-14 px-4 bg-white/95 border-b border-[#EAEAEA]">
+          <Link to="/" className="flex items-center gap-2">
+            <img src={logoPng} alt="SkillBridge" className="h-9 w-auto object-contain" />
+            <span className="font-poppins font-black text-base text-slate-900 tracking-tight">
+              SkillBridge
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
+            className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-50 text-[#787774] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </header>
+      )}
 
       {/* Sheet drawer */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
