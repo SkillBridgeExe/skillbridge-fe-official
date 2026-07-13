@@ -153,6 +153,7 @@ export interface InterviewDetailResponseDto extends InterviewSessionDto {
 export interface InterviewHistoryQuery {
   page?: number;
   limit?: number;
+  scoredOnly?: boolean;
 }
 
 export interface InterviewHistoryResponse {
@@ -228,6 +229,7 @@ export async function getInterviewHistory(
   const params: InterviewHistoryQuery = {
     page: query.page ?? 1,
     limit: query.limit ?? 10,
+    ...(query.scoredOnly == null ? {} : { scoredOnly: query.scoredOnly }),
   };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewHistoryResponse>>(
     httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params }),

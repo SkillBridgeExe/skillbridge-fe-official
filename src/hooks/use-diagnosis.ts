@@ -24,10 +24,13 @@ import {
   generateRoadmapFromMatch,
   type RoadmapBudgetInput,
 } from "@/services/learning-roadmap.service";
-import type { CvListQuery } from "@/api/cv/list";
+import type { DiagnosisHistoryQuery } from "@/api/cv/diagnosis-history";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
-import { ENABLE_DIAGNOSIS_ADDONS, ENABLE_GITHUB_EVIDENCE } from "@/lib/runtime-config";
+import {
+  ENABLE_DIAGNOSIS_ADDONS,
+  ENABLE_GITHUB_EVIDENCE,
+} from "@/lib/runtime-config";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { QUERY_KEYS } from "@/constants/app";
@@ -65,9 +68,16 @@ export function useReanalyzeCvMutation() {
  * CV history (GET /api/diagnosis/history). Callers pass `enabled` only after
  * a real API session is ready, so bootstrap/checking and mock accounts skip BE.
  */
-export function useCvHistoryQuery(enabled: boolean, query: CvListQuery = {}) {
+export function useCvHistoryQuery(
+  enabled: boolean,
+  query: DiagnosisHistoryQuery = {},
+) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.DIAGNOSIS_HISTORY, query.page ?? 1, query.limit ?? 20],
+    queryKey: [
+      ...QUERY_KEYS.DIAGNOSIS_HISTORY,
+      query.page ?? 1,
+      query.limit ?? 20,
+    ],
     queryFn: () => getDiagnosisHistory(query),
     enabled,
     staleTime: 60_000,
@@ -92,7 +102,12 @@ export function useJobRecommendationsQuery(
   const canUseApi = useHasApiSession();
 
   return useQuery({
-    queryKey: ["job-recommendations", cvId, query.role ?? "all", query.limit ?? 5],
+    queryKey: [
+      "job-recommendations",
+      cvId,
+      query.role ?? "all",
+      query.limit ?? 5,
+    ],
     queryFn: () => getJobRecommendations(cvId!, query),
     enabled: Boolean(cvId) && canUseApi,
     staleTime: 5 * 60_000,
@@ -100,7 +115,10 @@ export function useJobRecommendationsQuery(
 }
 
 /** Kỹ năng thị trường cần mà CV thiếu (skill-gap trends theo role). */
-export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {}) {
+export function useSkillGapQuery(
+  cvId: string | null,
+  query: SkillGapQuery = {},
+) {
   const canUseApi = useHasApiSession();
 
   return useQuery({
@@ -112,7 +130,10 @@ export function useSkillGapQuery(cvId: string | null, query: SkillGapQuery = {})
 }
 
 /** AI insight tá»« trends endpoint cho CV hiá»‡n táº¡i. */
-export function useTrendsInsightQuery(cvId: string | null, role?: string | null) {
+export function useTrendsInsightQuery(
+  cvId: string | null,
+  role?: string | null,
+) {
   const canUseApi = useHasApiSession();
 
   return useQuery({
@@ -133,7 +154,8 @@ export function useInterviewPlanQuery(
   return useQuery({
     queryKey: ["interview-plan", cvId, role ?? "none", lang ?? "auto"],
     queryFn: () => getInterviewPlan({ cvId: cvId!, role: role!, lang }),
-    enabled: ENABLE_DIAGNOSIS_ADDONS && Boolean(cvId) && Boolean(role) && canUseApi,
+    enabled:
+      ENABLE_DIAGNOSIS_ADDONS && Boolean(cvId) && Boolean(role) && canUseApi,
     staleTime: 10 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
@@ -145,12 +167,18 @@ export function useGapReportQuery(matchId?: string | null, lang?: "vi" | "en") {
   // W41: read github credentials from store (persisted via session)
   const githubUsername = useDiagnosisStore((s) => s.githubUsername);
   const githubConsent = useDiagnosisStore((s) => s.githubConsent);
-  const github = githubConsent && githubUsername
-    ? { username: githubUsername, consent: true }
-    : undefined;
+  const github =
+    githubConsent && githubUsername
+      ? { username: githubUsername, consent: true }
+      : undefined;
 
   return useQuery({
-    queryKey: ["gap-report", matchId ?? "none", lang ?? "auto", githubUsername ?? ""],
+    queryKey: [
+      "gap-report",
+      matchId ?? "none",
+      lang ?? "auto",
+      githubUsername ?? "",
+    ],
     queryFn: () => getGapReport({ matchId: matchId!, lang, github }),
     enabled: ENABLE_DIAGNOSIS_ADDONS && Boolean(matchId) && canUseApi,
     staleTime: 10 * 60_000,
@@ -215,7 +243,10 @@ export function useTailorRewriteMutation() {
 // ── Companion: next-steps ───────────────────────────────────────────
 
 /** Bước tiếp theo ưu tiên từ gap thật — query (deterministic, enabled khi có matchId). */
-export function useNextStepsQuery(matchId?: string | null, lang: "vi" | "en" = "vi") {
+export function useNextStepsQuery(
+  matchId?: string | null,
+  lang: "vi" | "en" = "vi",
+) {
   const canUseApi = useHasApiSession();
 
   return useQuery({
@@ -263,7 +294,9 @@ export function useDeleteChatThreadMutation() {
       queryClient.setQueryData(["chat-thread", matchId], { turns: [] });
     },
     onSuccess: (_data, matchId) => {
-      void queryClient.invalidateQueries({ queryKey: ["chat-thread", matchId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["chat-thread", matchId],
+      });
     },
     retry: false,
   });
