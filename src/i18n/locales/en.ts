@@ -1867,10 +1867,10 @@ export default {
     },
     report: {
       groups: {
-        ats: "ATS Readability",
-        content: "Content Optimization",
-        skills: "Skills Alignment",
-        ai_eval: "Detailed AI Evaluation",
+        ats: "ATS compatibility",
+        content: "Content optimization",
+        skills: "Skill match",
+        ai_eval: "Deep AI review",
         issues: "Issues to address",
       },
       content: {
@@ -1902,6 +1902,8 @@ export default {
       rail: {
         issuesBadge: "{{count}} to fix",
         resolved: "Passed",
+        askCompanion: "Ask your AI coach",
+        downloadCv: "Download original CV",
       },
       keywordTable: {
         thSkill: "Skill",

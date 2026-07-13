@@ -122,6 +122,7 @@ interface CompanionState {
   unregisterContext: (id: string) => void;
   activateContext: (id: string) => void;
   closeBubble: () => void;
+  openBubble: () => void;
   dismissActive: () => void;
   /** Clear the session dismiss flag for one context so activateContext re-opens it. */
   clearDismissed: (id: string) => void;
@@ -222,6 +223,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       };
     }),
   closeBubble: () => set({ bubbleOpen: false }),
+  openBubble: () => set({ bubbleOpen: true }),
   dismissActive: () =>
     set((s) => ({
       bubbleOpen: false,

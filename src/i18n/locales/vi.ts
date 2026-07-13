@@ -1861,10 +1861,10 @@ export default {
     },
     report: {
       groups: {
-        ats: "Độ tương thích ATS",
-        content: "Độ tối ưu nội dung",
-        skills: "Độ phù hợp kỹ năng",
-        ai_eval: "Đánh giá chi tiết từ AI",
+        ats: "Tương thích ATS",
+        content: "Tối ưu nội dung",
+        skills: "Phù hợp kỹ năng",
+        ai_eval: "AI đánh giá sâu",
         issues: "Vấn đề cần xử lý",
       },
       content: {
@@ -1896,6 +1896,8 @@ export default {
       rail: {
         issuesBadge: "{{count}} cần sửa",
         resolved: "Đạt chuẩn",
+        askCompanion: "Hỏi AI đồng hành",
+        downloadCv: "Tải CV gốc",
       },
       keywordTable: {
         thSkill: "Kỹ năng",

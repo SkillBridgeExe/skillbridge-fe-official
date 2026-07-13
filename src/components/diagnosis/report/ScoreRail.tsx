@@ -1,9 +1,14 @@
 import { ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, Sparkles, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import type { CheckGroupData } from "@/lib/diagnosis-report";
 import type { CvScoreBreakdown } from "@shared/api";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { useCompanionStore } from "@/store/useCompanionStore";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { triggerCvDownload } from "@/services/diagnosis.service";
 
 interface ScoreRailProps {
   overallScore: number;
@@ -54,7 +59,24 @@ const bandOf = (score: number) =>
 
 export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, actions }: ScoreRailProps) {
   const { t } = useTranslation("diagnosis");
+  const { lastCvId } = useDiagnosisStore();
+  const { toast } = useToast();
   const band = bandOf(overallScore);
+
+  const handleAskCompanion = () => {
+    const companionStore = useCompanionStore.getState();
+    const diagnosisStore = useDiagnosisStore.getState();
+    const targetContext = diagnosisStore.step === "results" ? "diagnosis:results" : "diagnosis:review";
+    if (companionStore.activeId !== targetContext) {
+      companionStore.activateContext(targetContext);
+    }
+    companionStore.openBubble();
+  };
+
+  const handleDownloadCv = async () => {
+    if (!lastCvId) return;
+    await triggerCvDownload(lastCvId, toast, t);
+  };
 
   // Donut geometry — big and bold, Jobscan-style
   const size = 150;
@@ -177,6 +199,34 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
             );
           })}
         </nav>
+
+        {/* Divider */}
+        <div className="border-t border-[#EAEAEA]" />
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAskCompanion}
+            className="w-full justify-center gap-2 border-[#DCE9F6] bg-[#F2F7FC] text-[#00AEEF] hover:bg-[#E6F0FA] hover:text-[#0092c7] font-bold text-[13px] py-2 h-9"
+          >
+            <Sparkles className="w-4 h-4" />
+            {t("report.rail.askCompanion")}
+          </Button>
+
+          {lastCvId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCv}
+              className="w-full justify-center gap-2 border-[#EAEAEA] text-[#5F666B] hover:bg-slate-50 font-semibold text-[13px] py-2 h-9"
+            >
+              <Download className="w-4 h-4" />
+              {t("report.rail.downloadCv")}
+            </Button>
+          )}
+        </div>
       </div>
     </aside>
   );

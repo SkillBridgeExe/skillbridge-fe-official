@@ -20,12 +20,15 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
   const reset = useDiagnosisStore((s) => s.reset);
   const scanAgain = useDiagnosisStore((s) => s.scanAgain);
   const setShowJdInput = useDiagnosisStore((s) => s.setShowJdInput);
+  const cvFile = useDiagnosisStore((s) => s.cvFile);
+  const builderCvName = useDiagnosisStore((s) => s.builderCvName);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
 
   const roleName = targetRole ? getRoleLabel(targetRole) : "";
   const backLabelText = roleName ? `${t("review.title", { defaultValue: "Phân tích CV" })} · ${roleName}` : t("review.title", { defaultValue: "Phân tích CV" });
+  const cvName = cvFile?.name || builderCvName || roleName || t("review.fallbackCvName", { defaultValue: "CV của bạn" });
 
   const tabItems = [
     { key: "audit" as const, label: t("review.tabAudit", { defaultValue: "Đánh giá CV" }) },
@@ -95,30 +98,41 @@ export function ReportTopBar({ activeTab, onTabChange }: ReportTopBarProps) {
       {/* ROW 2: Tab strip (h-11 = 44px) */}
       <nav
         role="tablist"
-        className="h-11 border-b border-[#EAEAEA] flex items-center px-4 md:px-6 w-full overflow-x-auto scrollbar-none gap-2 sm:gap-6 bg-white"
+        className="h-11 border-b border-[#EAEAEA] flex items-center w-full bg-white overflow-hidden animate-in fade-in"
       >
-        {tabItems.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => onTabChange(tab.key)}
-              className={cn(
-                "h-full px-1 text-[13px] font-bold transition-all relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]",
-                isActive
-                  ? "text-[#2F3437]"
-                  : "text-[#787774] hover:text-[#2F3437]"
-              )}
-            >
-              <span>{tab.label}</span>
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00AEEF]" />
-              )}
-            </button>
-          );
-        })}
+        {/* Left: CV filename (desktop only) */}
+        <div
+          className="hidden lg:flex items-center lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#F1F1EF] px-6 h-full text-[13px] font-bold text-[#2F3437] truncate shrink-0"
+          title={cvName}
+        >
+          <span className="truncate">{cvName}</span>
+        </div>
+
+        {/* Right: Tabs */}
+        <div className="flex-1 flex items-center h-full px-4 lg:px-8 overflow-x-auto scrollbar-none gap-2 sm:gap-6">
+          {tabItems.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => onTabChange(tab.key)}
+                className={cn(
+                  "h-full px-1 text-[13px] font-bold transition-all relative flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]",
+                  isActive
+                    ? "text-[#2F3437]"
+                    : "text-[#787774] hover:text-[#2F3437]"
+                )}
+              >
+                <span>{tab.label}</span>
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00AEEF]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );
