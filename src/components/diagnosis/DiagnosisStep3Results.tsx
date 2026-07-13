@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
+  CheckCircle2, AlertCircle, AlertTriangle, X,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
-  ChevronDown, ChevronUp, RotateCcw, FileText,
+  ChevronDown, ChevronUp, RotateCcw,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -13,9 +13,6 @@ import {
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/use-toast";
-import { downloadOriginalCvFile } from "@/services/diagnosis.service";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
 import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
@@ -365,38 +362,7 @@ interface DiagnosisStep3ResultsProps {
 
 export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
-  const { toast } = useToast();
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: t("results.shareCopied") });
-    } catch {
-      toast({ title: t("results.shareCopied"), description: window.location.href });
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!lastCvId) return;
-    try {
-      const blob = await downloadOriginalCvFile(lastCvId);
-      const ext = blob.type.includes("png") ? "png"
-        : blob.type.includes("webp") ? "webp"
-        : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "jpg"
-        : "pdf";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `skillbridge-cv.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast({ title: t("results.downloadFailed"), description: getApiErrorMessage(err, ""), variant: "destructive" });
-    }
-  };
+  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -421,7 +387,6 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   // so gate every downstream chapter on this single flag and offer a re-scan instead.
   const canTrustAnalysis = !isDegradedNoBasis && !isUnusable;
 
-  const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
   const partialCount = hardSkills.filter((s) => s.status === "partial").length;
@@ -431,17 +396,6 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
     ? dimensions.map((_, i) => dimensionIssueSlice(reviewData, i))
     : [allIssues];
   const reportGroups = buildDiagnosisReport(reviewData, t, issueGroups);
-
-  /* ── Dynamic UX copy (HONESTY: only existing band copy, no AI text) ── */
-  const scoreMessage = matchScore === null
-    ? ""
-    : matchScore >= 85
-      ? t("results.scoreMsg.excellent")
-      : matchScore >= 80
-        ? t("results.scoreMsg.strong")
-        : matchScore >= 50
-          ? t("results.scoreMsg.decent")
-          : t("results.scoreMsg.weak");
 
   /* ── Rubric Fallback Warning Strings ── */
   const unnormalizedSkillsList = jdMatch?.unnormalized_jd_requirements || [];
@@ -571,18 +525,6 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
     ? Math.round(jdMatch.required_coverage * 100)
     : undefined;
   const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
-
-  /* ── Kicker text ── */
-  const kickerText = targetRole
-    ? t("editorial.kicker", { role: targetRole })
-    : t("editorial.kickerGeneric");
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
 
   return (
     <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500 w-full">

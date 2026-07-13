@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RotateCcw, Briefcase, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
+import { RotateCcw, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from "lucide-react";
 import { DocumentPreview } from "./DocumentPreview";
 import { JobDescriptionInput } from "./JobDescriptionInput";
 import { EvidenceLedgerCard, SkillsExtractedCard, SkillsRelevanceCard, TopSummaryCard } from "./DiagnosisInsights";
@@ -24,7 +24,6 @@ import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { CvIssue } from "@shared/api";
 import type { DiagnosisChatFocus } from "@/types/companion";
-import { Chapter } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
@@ -44,7 +43,7 @@ interface DiagnosisStep2ReviewProps {
   setActiveTab: (tab: 'audit' | 'cv' | 'market') => void;
 }
 
-export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2ReviewProps) {
+export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   const { t, i18n } = useTranslation("diagnosis");
   const {
     reviewData,
@@ -141,13 +140,6 @@ export function DiagnosisStep2Review({ activeTab, setActiveTab }: DiagnosisStep2
 
   const overallCvScore = reviewData?.overallScore ?? 0;
   const dimensions = reviewData?.dimensions ?? [];
-
-  /* ── Dynamic UX copy (HONESTY: band copy from existing keys) ── */
-  const scoreMessage = overallCvScore >= 70
-    ? t("review.scoreMsg.excellent")
-    : overallCvScore >= 50
-      ? t("review.scoreMsg.good")
-      : t("review.scoreMsg.fair");
 
   /* ── A4: Unusable-quality gate (replicates Step3 pattern) ── */
   const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";

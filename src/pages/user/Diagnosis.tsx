@@ -474,7 +474,6 @@ export default function Diagnosis() {
 
   // Report mode (Jobscan-style app shell): slim utility top bar instead of the
   // floating marketing navbar, no stepper, wider container.
-  const isResultsMode = step === "results";
   const reportMode = step === "cv-review" || step === "results";
 
   return (
