@@ -10,8 +10,19 @@ export type ISODateTime = string;
 export type JobStatus = "draft" | "active" | "closed" | "expired" | "removed";
 export type ApplicationMode = "NATIVE" | "EXTERNAL";
 export type WorkMode = "ONSITE" | "HYBRID" | "REMOTE";
-export type EmploymentType = "FULL_TIME" | "PART_TIME" | "INTERNSHIP" | "CONTRACT" | "FREELANCE";
-export type ExperienceLevel = "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD";
+export type EmploymentType =
+  | "FULL_TIME"
+  | "PART_TIME"
+  | "INTERNSHIP"
+  | "CONTRACT"
+  | "FREELANCE";
+export type ExperienceLevel =
+  | "INTERN"
+  | "FRESHER"
+  | "JUNIOR"
+  | "MIDDLE"
+  | "SENIOR"
+  | "LEAD";
 export type SalaryPeriod = "MONTH" | "YEAR";
 export type BusinessProfileStatus =
   | "DRAFT"
@@ -28,7 +39,12 @@ export type ApplicationStatus =
   | "WITHDRAWN";
 export type MatchStatus = "PENDING" | "READY" | "FAILED";
 export type JobSourceType = "employer" | "scraped" | "imported" | "feed";
-export type CompanyType = "PRODUCT" | "OUTSOURCING" | "CONSULTING" | "STARTUP" | "OTHER";
+export type CompanyType =
+  | "PRODUCT"
+  | "OUTSOURCING"
+  | "CONSULTING"
+  | "STARTUP"
+  | "OTHER";
 export type CompanySize =
   | "1_10"
   | "11_50"
@@ -39,7 +55,12 @@ export type CompanySize =
   | "1000_PLUS";
 export type SkillImportance = "REQUIRED" | "NICE_TO_HAVE";
 export type SkillSource = "AUTO" | "BUSINESS";
-export type ReportReasonCode = "SCAM" | "MISLEADING" | "DISCRIMINATION" | "EXPIRED" | "OTHER";
+export type ReportReasonCode =
+  | "SCAM"
+  | "MISLEADING"
+  | "DISCRIMINATION"
+  | "EXPIRED"
+  | "OTHER";
 export type ReportStatus = "OPEN" | "DISMISSED" | "ACTIONED";
 
 // ── Pagination ──────────────────────────────────────────────────────
@@ -230,6 +251,14 @@ export interface JobApplicationDto {
   piiPurgedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime | null;
+  /** Included by the candidate application list for dashboard rendering. */
+  job?: {
+    id: UUID;
+    slug: string;
+    title: string;
+    companyName: string | null;
+    location: string | null;
+  } | null;
 }
 
 export interface CandidateApplicationEventDto {

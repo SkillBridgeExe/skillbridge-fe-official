@@ -8,10 +8,14 @@ export interface CvListQuery {
   page?: number;
   /** 1-50, BE mặc định 20. */
   limit?: number;
+  /** Distinguishes uploaded scans from Studio builder drafts. */
+  cvKind?: "UPLOADED" | "BUILT";
 }
 
 /** GET /api/cvs — danh sách CV của user (lịch sử chẩn đoán). */
-export async function getCvListApi(query: CvListQuery = {}): Promise<Paginated<CvListItemDto>> {
+export async function getCvListApi(
+  query: CvListQuery = {},
+): Promise<Paginated<CvListItemDto>> {
   const envelope = await unwrapEnvelope<ApiEnvelope<Paginated<CvListItemDto>>>(
     httpClient.get(API_ROUTES.CV.LIST, { params: query }),
     "Failed to load your CV history.",

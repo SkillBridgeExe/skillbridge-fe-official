@@ -5,6 +5,7 @@ import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 export interface UserSkillDto {
   skillId: string;
   level: number;
+  category?: string | null;
   name?: string | null;
   skillName?: string | null;
 }
@@ -16,6 +17,7 @@ export interface BackendUserSkillDto {
   displayName?: string | null;
   name?: string | null;
   skillName?: string | null;
+  category?: string | null;
   level: number;
 }
 
@@ -30,10 +32,16 @@ export interface ReplaceUserSkillsRequest {
 
 export function normalizeUserSkill(skill: BackendUserSkillDto): UserSkillDto {
   const skillId = skill.skillId ?? skill.id ?? "";
-  const label = skill.name ?? skill.skillName ?? skill.displayName ?? skill.canonicalName ?? skillId;
+  const label =
+    skill.name ??
+    skill.skillName ??
+    skill.displayName ??
+    skill.canonicalName ??
+    skillId;
   return {
     skillId,
     level: Number(skill.level) || 1,
+    ...(skill.category !== undefined ? { category: skill.category } : {}),
     name: label,
     skillName: label,
   };
@@ -50,7 +58,9 @@ export async function getCurrentUserSkillsApi(): Promise<UserSkillDto[]> {
 export async function replaceCurrentUserSkillsApi(
   payload: ReplaceUserSkillsRequest,
 ): Promise<UserSkillDto[] | null> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<BackendUserSkillDto[] | null>>(
+  const envelope = await unwrapEnvelope<
+    ApiEnvelope<BackendUserSkillDto[] | null>
+  >(
     httpClient.put(API_ROUTES.USER.SKILLS, payload),
     "Failed to update user skills.",
   );
