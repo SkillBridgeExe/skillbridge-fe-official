@@ -786,6 +786,7 @@ describe("interview view model", () => {
         "I built a REST API with authentication and added Postgres transactions plus validation.",
       modality: "AUDIO",
       durationSeconds: 52,
+      transcriptSegments: 2,
     });
   });
 
@@ -1022,5 +1023,39 @@ describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
 
     const legacy = toInterviewResultViewModel(detail);
     expect(legacy.questions[0].guardAdjustments).toEqual([]);
+  });
+});
+
+describe("buffered realtime turn request — P3 speech timing", () => {
+  it("sends measured response delay and the segment count", () => {
+    const request = buildBufferedRealtimeTurnRequest({
+      sessionId: "session-1",
+      currentQuestion: "How do you cache the report queries in your service?",
+      transcripts: [
+        "We cache the report queries in Redis with a five minute TTL so the dashboards stay fast.",
+        "And a Kafka consumer invalidates the entries whenever a write happens.",
+      ],
+      durationSeconds: 42,
+      responseDelayMs: 2380,
+    });
+    expect(request).toMatchObject({
+      modality: "AUDIO",
+      durationSeconds: 42,
+      responseDelayMs: 2380,
+      transcriptSegments: 2,
+    });
+  });
+
+  it("omits timing fields it did not measure instead of sending fakes", () => {
+    const request = buildBufferedRealtimeTurnRequest({
+      sessionId: "session-1",
+      currentQuestion: "How do you cache the report queries in your service?",
+      transcripts: [
+        "We cache the report queries in Redis with a five minute TTL so the dashboards stay fast.",
+      ],
+      durationSeconds: 30,
+    });
+    expect(request?.responseDelayMs).toBeUndefined();
+    expect(request?.transcriptSegments).toBe(1);
   });
 });
