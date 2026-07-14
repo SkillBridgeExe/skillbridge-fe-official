@@ -25,9 +25,9 @@ import {
   usePublishJobMutation,
   useUpdateJobDraftMutation,
   useReplaceJobSkillsMutation,
+  useBusinessDashboardQuery,
 } from "@/hooks/use-business-jobs";
 import { useToast } from "@/hooks/use-toast";
-import { useBusinessCompanyQuery } from "@/hooks/use-business-company";
 import { getApiErrorMessage } from "@/lib/api-error";
 import type { EmploymentType, ExperienceLevel, SalaryPeriod, WorkMode, JobLocationDto, JobSkillDto } from "@/types/jobs";
 import {
@@ -37,6 +37,7 @@ import {
   splitLines,
   type BusinessJobFormState,
 } from "./business-job-form";
+import { describeBusinessProfileBlockers } from "./business-profile-blockers";
 
 const EMPLOYMENT_TYPES: EmploymentType[] = ["FULL_TIME", "PART_TIME", "INTERNSHIP", "CONTRACT", "FREELANCE"];
 const EXPERIENCE_LEVELS: ExperienceLevel[] = ["INTERN", "FRESHER", "JUNIOR", "MIDDLE", "SENIOR", "LEAD"];
@@ -124,7 +125,7 @@ export default function BusinessJobEdit() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const detailQuery = useBusinessJobDetailQuery(jobId);
-  const companyQuery = useBusinessCompanyQuery();
+  const dashboardQuery = useBusinessDashboardQuery();
   const updateMutation = useUpdateJobDraftMutation();
   const extractMutation = useExtractJobSkillsMutation();
   const publishMutation = usePublishJobMutation();
@@ -149,7 +150,7 @@ export default function BusinessJobEdit() {
     draftVersion &&
       form &&
       !formDirty &&
-      companyQuery.data?.profile.status === "VERIFIED" &&
+      dashboardQuery.data?.company?.publishAllowed === true &&
       form.roleCode &&
       form.summary.trim() &&
       splitLines(form.responsibilitiesText).length &&
@@ -161,6 +162,9 @@ export default function BusinessJobEdit() {
   const isSaving = updateMutation.isPending;
   const isPublishing = publishMutation.isPending;
   const isExtracting = extractMutation.isPending;
+  const profileBlockers = describeBusinessProfileBlockers(
+    dashboardQuery.data?.company?.blockers ?? [],
+  );
 
   useEffect(() => {
     if (displayVersion) {
@@ -354,6 +358,18 @@ export default function BusinessJobEdit() {
             </button>
           </div>
         </div>
+
+        {dashboardQuery.data && dashboardQuery.data.company?.publishAllowed !== true && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">This draft cannot be published until the company profile is verified.</p>
+            {profileBlockers.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-800">
+                {profileBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+              </ul>
+            )}
+            <Link to="/business/profile" className="mt-3 inline-flex text-xs font-semibold underline">Open company profile</Link>
+          </div>
+        )}
 
         {/* States */}
         {detailQuery.isLoading && (

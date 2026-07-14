@@ -9,7 +9,16 @@ import type {
   ReplaceDraftSkillsRequest, PublishJobResponse,
   JobApplicationDto, BusinessApplicationsQuery,
   BusinessApplicationDetailResponse, UpdateApplicationStatusRequest,
+  BusinessDashboardResponse,
 } from "@/types/jobs";
+
+export async function getBusinessDashboardApi(): Promise<BusinessDashboardResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<BusinessDashboardResponse>>(
+    httpClient.get(API_ROUTES.BUSINESS_DASHBOARD.GET),
+    "Failed to load the business dashboard.",
+  );
+  return envelope.data;
+}
 
 // §7.2 List employer jobs
 export async function getBusinessJobsApi(

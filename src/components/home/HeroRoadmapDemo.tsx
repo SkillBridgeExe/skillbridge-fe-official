@@ -189,14 +189,14 @@ export default function HeroRoadmapDemo() {
       }
     >
       {/* Main Content Area */}
-      <div className="flex-1 p-5 md:p-6 flex flex-col justify-between min-w-0">
+      <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-between min-w-0">
         {/* Header row */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="space-y-0.5">
-            <h4 className="text-sm font-bold text-slate-800">Learning Roadmap Generator</h4>
-            <p className="text-[9px] text-slate-400 font-medium">Map out skills step-by-step to target any job role</p>
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="min-w-0 space-y-0.5">
+            <h4 className="truncate text-sm font-bold text-slate-800">Learning Roadmap Generator</h4>
+            <p className="truncate text-[9px] font-medium text-slate-400">Map out skills step-by-step to target any job role</p>
           </div>
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-[9px] text-slate-400 font-bold">
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-400">
             <Sparkles className="w-3 h-3 text-indigo-500 animate-pulse" />
             <span>AI Engine 2.0</span>
           </div>
@@ -343,9 +343,9 @@ export default function HeroRoadmapDemo() {
           )}>
             <Cpu className={cn("w-3.5 h-3.5", showLoader && "animate-spin")} />
           </div>
-          <p className="text-xs leading-relaxed font-medium">
+          <p className="min-w-0 break-words text-xs font-medium leading-relaxed">
             {phase === "nav" && (
-              <span className="italic text-slate-400">Ready — open Learning Roadmaps to map a curriculum for your dream role.</span>
+              <span className="italic text-slate-400">Ready - open Learning Roadmaps to map a curriculum for your dream role.</span>
             )}
             {(phase === "focus" || phase === "typing") && (
               <span className="italic text-slate-400">Select a target job position to generate a skill-focused curriculum.</span>

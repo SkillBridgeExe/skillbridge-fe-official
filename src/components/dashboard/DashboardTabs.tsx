@@ -18,7 +18,7 @@ const tabs: { value: DashboardTabValue; label: string; icon: React.ElementType }
 
 export default function DashboardTabs({ activeTab, onTabChange }: DashboardTabsProps) {
   return (
-    <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-2xl w-fit">
+    <div className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 sm:mx-0 sm:w-fit">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.value;
         return (
@@ -26,7 +26,7 @@ export default function DashboardTabs({ activeTab, onTabChange }: DashboardTabsP
             key={tab.value}
             onClick={() => onTabChange(tab.value)}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[15px] font-semibold transition-all duration-200",
+              "flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 sm:px-5 sm:text-[15px]",
               isActive
                 ? "bg-white text-primary shadow-sm"
                 : "text-slate-500 hover:text-slate-700"

@@ -6,12 +6,12 @@ import {
   Briefcase,
   Users,
   Trophy,
-  Bell,
   ChevronRight,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
+import { useBusinessDashboardQuery } from "@/hooks/use-business-jobs";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Overview", path: "/business" },
@@ -30,6 +30,14 @@ interface BusinessLayoutProps {
 export default function BusinessLayout({ children, title, subtitle }: BusinessLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const dashboard = useBusinessDashboardQuery();
+  const company = dashboard.data?.company;
+  const companyInitials = company?.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "CO";
   const currentPage = NAV_ITEMS.find((item) =>
     item.path === "/business"
       ? location.pathname === "/business"
@@ -78,11 +86,11 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
         <div className="mx-4 mt-4 p-3 bg-gradient-to-br from-sky-50 to-cyan-50 rounded-xl border border-sky-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-sky-500 flex items-center justify-center text-white font-bold text-sm">
-              CO
+              {companyInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">Business Portal</p>
-              <p className="text-xs text-sky-600">Enterprise Account</p>
+              <p className="text-sm font-semibold text-slate-800 truncate">{company?.name ?? "Set up your company"}</p>
+              <p className="text-xs text-sky-700">{company?.status.replaceAll("_", " ") ?? "PROFILE NOT CREATED"}</p>
             </div>
           </div>
         </div>
@@ -151,10 +159,6 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
             </div>
           )}
 
-          <button className="relative p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
-            <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full" />
-          </button>
         </header>
 
         {/* Content */}

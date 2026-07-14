@@ -532,7 +532,7 @@ export default function Diagnosis() {
             <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
-            <h1 className="text-4xl md:text-5xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
               {t("header.title")}
             </h1>
           </header>
