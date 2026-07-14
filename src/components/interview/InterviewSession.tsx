@@ -28,6 +28,14 @@ import {
   type InterviewQuestionBankSourceKind,
 } from "./interview-view-model";
 
+const PHASES = [
+  { key: "SCREENING", labelVi: "Khởi động", labelEn: "Screening" },
+  { key: "SKILL_PROBE", labelVi: "Kỹ năng & JD", labelEn: "Skill probe" },
+  { key: "SCENARIO", labelVi: "Tình huống", labelEn: "Scenario" },
+  { key: "BEHAVIORAL", labelVi: "Hành vi", labelEn: "Behavioral" },
+  { key: "WRAP", labelVi: "Tổng kết", labelEn: "Wrap-up" }
+];
+
 interface CurrentQuestionMetadata {
   topicPhase: string | null;
   skillCanonical: string | null;
@@ -65,6 +73,15 @@ interface InterviewSessionProps {
   interviewFinished: boolean;
   onStop: () => void;
   apiError: string | null;
+  currentTurnTrace?: {
+    action: 'ask' | 'drill' | 'move_on' | 'wrap';
+    phase: string;
+    topic_id?: string;
+    reasons: string[];
+    depth: number;
+    remaining_turn_budget: number;
+    confidence: 'high' | 'medium' | 'low';
+  } | null;
 }
 
 export function InterviewSession({
@@ -86,7 +103,7 @@ export function InterviewSession({
   isQuestionAudioPlaying,
   questionAudioError,
   currentQuestion,
-  currentQuestionMeta: _currentQuestionMeta,
+  currentQuestionMeta,
   chatHistory,
   isLoading,
   userAnswer,
@@ -96,8 +113,10 @@ export function InterviewSession({
   interviewFinished,
   onStop,
   apiError,
+  currentTurnTrace,
 }: InterviewSessionProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const isVi = i18n?.language?.startsWith("vi") ?? true;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isVoiceConnected = isLiveConnected && !isVoiceFallback;
@@ -203,6 +222,45 @@ export function InterviewSession({
             {maxDurationSeconds > 0 && (
               <Progress value={progress} className="h-1.5" />
             )}
+
+            {/* Live Phase Timeline */}
+            <div className="flex items-center justify-between gap-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm text-xs select-none">
+              {PHASES.map((p, idx) => {
+                const currentPhase = currentQuestionMeta?.topicPhase || 'SCREENING';
+                const isCurrent = currentPhase.toUpperCase() === p.key || 
+                                  (p.key === "SKILL_PROBE" && (currentPhase.toUpperCase().includes("PROBE") || currentPhase.toUpperCase().includes("JD") || currentPhase.toUpperCase().includes("REQUIREMENT")));
+                
+                const activeIndex = PHASES.findIndex(x => x.key === (
+                  currentPhase.toUpperCase().includes("PROBE") || currentPhase.toUpperCase().includes("JD") || currentPhase.toUpperCase().includes("REQUIREMENT")
+                    ? "SKILL_PROBE"
+                    : currentPhase.toUpperCase()
+                ));
+                const isPast = idx < activeIndex;
+
+                return (
+                  <div key={p.key} className="flex-1 flex items-center gap-1.5 last:flex-initial">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center border text-[9px] font-bold shrink-0 transition-all duration-300",
+                        isCurrent ? "bg-[#00AEEF] border-[#00AEEF] text-white scale-110 shadow-sm animate-pulse" :
+                        isPast ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-slate-50 border-slate-200 text-slate-400"
+                      )}>
+                        {isPast ? "✓" : idx + 1}
+                      </div>
+                      <span className={cn(
+                        "font-bold truncate text-[10px] md:text-xs",
+                        isCurrent ? "text-[#00AEEF]" : isPast ? "text-emerald-700" : "text-slate-400"
+                      )}>
+                        {isVi ? p.labelVi : p.labelEn}
+                      </span>
+                    </div>
+                    {idx < PHASES.length - 1 && (
+                      <div className="hidden sm:block flex-1 h-[1.5px] bg-slate-100 mx-1" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
             <div
               className={cn(
@@ -312,13 +370,20 @@ export function InterviewSession({
                   />
                 )}
 
-                <div className="absolute left-5 top-5 z-30 flex items-center gap-2">
-                  <div className="rounded-full bg-red-500/80 px-3 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur-md">
-                    {t("interview.session.live")}
+                <div className="absolute left-5 top-5 z-30 flex flex-col gap-2 items-start">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-red-500/80 px-3 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur-md animate-pulse">
+                      {t("interview.session.live")}
+                    </div>
+                    <div className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                      {modeLabel}
+                    </div>
                   </div>
-                  <div className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                    {modeLabel}
-                  </div>
+                  {currentTurnTrace?.confidence === 'low' && currentTurnTrace?.reasons?.includes('fallback_seed_question') && (
+                    <div className="rounded-full bg-slate-700/85 px-3 py-1 text-[10px] font-semibold text-slate-100 backdrop-blur-md transition-all duration-300">
+                      {t("interview.session.fallbackQuestionBadge", { defaultValue: "Câu hỏi dự phòng" })}
+                    </div>
+                  )}
                 </div>
 
                 {currentQuestion && (

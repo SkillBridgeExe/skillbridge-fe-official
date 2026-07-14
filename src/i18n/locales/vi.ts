@@ -1069,6 +1069,27 @@ export default {
       },
     },
     interview: {
+      reasons: {
+        answer_shallow: "Câu trả lời chưa đủ sâu, interviewer khai triển thêm",
+        one_fair_follow_up: "Interviewer đặt câu hỏi đào sâu bổ sung",
+        drill_budget_reached: "Hoàn thành đào sâu chủ đề, chuyển sang câu tiếp theo",
+        evasive_after_follow_up: "Interviewer hỏi lại do chưa trả lời đúng trọng tâm",
+        deep_answer_push_for_depth: "Câu trả lời tốt, thử thách thêm bằng câu hỏi nâng cao",
+        time_limit: "Hết thời gian quy định cho chủ đề",
+        safety_cap: "Giới hạn an toàn hệ thống",
+        time_low_closing_question: "Thời gian còn lại ít, chuyển sang câu kết luận",
+        topics_exhausted_adaptive_follow_up: "Hết chủ đề chính, interviewer mở rộng câu hỏi",
+        fallback_seed_question: "Câu hỏi dự phòng hệ thống",
+        default: "Người phỏng vấn quyết định đào sâu thêm"
+      },
+      phases: {
+        SCREENING: "Khởi động",
+        SKILL_PROBE: "Kỹ năng & JD",
+        JD_REQUIREMENT: "Kỹ năng & JD",
+        SCENARIO: "Tình huống",
+        BEHAVIORAL: "Hành vi",
+        WRAP: "Tổng kết"
+      },
       title: "Phỏng vấn thử với AI",
       badge: {
         autoScored: "Chấm điểm tự động",
@@ -1457,6 +1478,42 @@ export default {
         questionBankKey: "Mã câu hỏi: {{key}}",
         noPersistedAnswers: "Chưa có câu trả lời đã lưu để hiển thị.",
         noSummary: "Chưa có tóm tắt.",
+        popover: {
+          title: "Giải thích điểm chi tiết",
+          band: "Mức độ",
+          weight: "Trọng số",
+          uncertainty: "Độ chắc chắn",
+          uncertainty_high: "Độ chắc chắn: Thấp (đánh giá dựa trên ít dữ liệu)",
+          uncertainty_medium: "Độ chắc chắn: Trung bình",
+          uncertainty_low: "Độ chắc chắn: Cao",
+          improvementHint: "Gợi ý cải thiện",
+          viewInTranscript: "Xem trong Transcript",
+          evidenceQuote: "Bằng chứng trích dẫn"
+        },
+        gapAnalysisTitle: "Phân tích lỗ hổng phỏng vấn",
+        gapAnalysisDesc: "Các kỹ năng/lỗ hổng nghiêm trọng phát hiện trong buổi phỏng vấn cùng hành động đề xuất.",
+        actionLearn: "Học kỹ năng này",
+        actionPractice: "Luyện lại câu này",
+        actionCvFix: "Sửa CV của bạn",
+        commPanel: "Tín hiệu giao tiếp chi tiết",
+        commFiller: "Từ đệm (filler)",
+        commHedging: "Từ giảm tránh (hedging)",
+        commRepeated: "Từ lặp nhiều lần",
+        commJdCoverage: "Độ phủ từ khóa JD",
+        commStar: "Cấu trúc STAR",
+        commWpm: "Tốc độ nói",
+        commWpmVal: "{{wpm}} từ/phút",
+        commWpmUnavailable: "Không đo được (thiếu dữ liệu thời lượng)",
+        commConciseness: "Độ cô đọng",
+        commConciseness_too_short: "Quá ngắn",
+        commConciseness_ideal: "Lý tưởng",
+        commConciseness_verbose: "Dài dòng",
+        depth: {
+          shallow: "Cần khai triển thêm",
+          adequate: "Đầy đủ",
+          deep: "Chuyên sâu",
+          evasive: "Chưa đi vào trọng tâm"
+        }
       },
       errors: {
         mediaUnsupported: "Trình duyệt này không hỗ trợ thiết bị media.",

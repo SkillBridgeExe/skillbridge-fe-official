@@ -39,6 +39,7 @@ import {
   type InterviewSessionDto,
   type InterviewTurnDto,
   type LiveInterviewTurnInput,
+  type AnswerInterviewResponseDto,
 } from "@/api/interview-api";
 import {
   useCvListForInterview,
@@ -158,6 +159,7 @@ export default function Interview() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentQuestionMeta, setCurrentQuestionMeta] = useState<CurrentQuestionMetadata | null>(null);
+  const [currentTurnTrace, setCurrentTurnTrace] = useState<AnswerInterviewResponseDto["turnTrace"] | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
@@ -635,6 +637,7 @@ export default function Interview() {
     setChatHistory([]);
     setCurrentQuestion("");
     setCurrentQuestionMeta(null);
+    setCurrentTurnTrace(null);
     setUserAnswer("");
     setInterviewFinished(false);
     setApiError(null);
@@ -1006,6 +1009,7 @@ export default function Interview() {
         currentQuestionRef.current = nextQuestion;
         currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
         submittedRealtimeQuestionRef.current = null;
+        setCurrentTurnTrace(response.turnTrace ?? null);
         if (nextQuestion) {
           setCurrentQuestion(nextQuestion);
           setCurrentQuestionMeta(
@@ -1171,6 +1175,7 @@ export default function Interview() {
       const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
       currentQuestionRef.current = nextQuestion;
       currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
+      setCurrentTurnTrace(response.turnTrace ?? null);
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
         setCurrentQuestionMeta(
@@ -1639,6 +1644,7 @@ export default function Interview() {
             interviewFinished={interviewFinished}
             onStop={() => setIsEndDialogOpen(true)}
             apiError={apiError}
+            currentTurnTrace={currentTurnTrace}
           />
         )}
 

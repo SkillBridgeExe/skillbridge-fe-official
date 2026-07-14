@@ -4,6 +4,7 @@ import type {
   PlatformInterviewType,
   StartInterviewRequest,
   SubmitInterviewTurnRequest,
+  CommunicationSignalsDto,
 } from "@/api/interview-api";
 import {
   DEFAULT_INTERVIEW_SPEECH_SPEED,
@@ -19,6 +20,7 @@ import {
 } from "./types";
 
 export interface InterviewResultQuestionViewModel {
+  id: string;
   question: string;
   answer: string;
   score: number | null;
@@ -33,6 +35,7 @@ export interface InterviewResultQuestionViewModel {
   strengths: string[];
   improvements: string[];
   durationSeconds: number | null;
+  signals: CommunicationSignalsDto | null;
 }
 
 export interface InterviewEvidenceMetricViewModel {
@@ -60,6 +63,25 @@ export interface InterviewDevPlanItemViewModel {
   rationale: string;
 }
 
+export interface InterviewScoreExplanationViewModel {
+  dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
+  score: number;
+  band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+  weight: number;
+  rubric_anchor: string;
+  evidence_quote: string | null;
+  linked_question_id: string | null;
+  uncertainty: 'low' | 'medium' | 'high';
+  improvement_hint: string | null;
+}
+
+export interface InterviewGapItemViewModel {
+  skillCanonical: string;
+  displayName: string;
+  severity: number;
+  recommendedAction: string;
+}
+
 export interface InterviewResultViewModel {
   sessionId: string;
   targetRole: string;
@@ -80,6 +102,8 @@ export interface InterviewResultViewModel {
   devPlanItems: InterviewDevPlanItemViewModel[];
   durationSeconds: number | null;
   questions: InterviewResultQuestionViewModel[];
+  scoreExplanations: InterviewScoreExplanationViewModel[];
+  gapItems: InterviewGapItemViewModel[];
 }
 
 export type InterviewQuestionBankSourceKind = "curated" | "fallback";
@@ -944,6 +968,44 @@ function metric(
   return value ? { label, value } : null;
 }
 
+function readScoreExplanations(value: unknown): InterviewScoreExplanationViewModel[] {
+  if (!isRecord(value) || !Array.isArray(value.score_explanations)) return [];
+  return value.score_explanations.map((item): InterviewScoreExplanationViewModel | null => {
+    if (!isRecord(item)) return null;
+    const rub = readString(item.rubric_anchor);
+    if (!rub) return null;
+    return {
+      dimension: (item.dimension || '') as InterviewScoreExplanationViewModel['dimension'],
+      score: readNumber(item.score) ?? 0,
+      band: (item.band || 'poor') as InterviewScoreExplanationViewModel['band'],
+      weight: readNumber(item.weight) ?? 0,
+      rubric_anchor: rub,
+      evidence_quote: readString(item.evidence_quote),
+      linked_question_id: readString(item.linked_question_id),
+      uncertainty: (item.uncertainty || 'medium') as InterviewScoreExplanationViewModel['uncertainty'],
+      improvement_hint: readString(item.improvement_hint),
+    };
+  }).filter((item): item is InterviewScoreExplanationViewModel => item !== null);
+}
+
+function readGapItems(value: unknown): InterviewGapItemViewModel[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item): InterviewGapItemViewModel | null => {
+    if (!isRecord(item)) return null;
+    const skill = readString(item.skill_canonical);
+    const display = readString(item.display_name);
+    const severity = readNumber(item.severity) ?? 0;
+    const action = readString(item.recommended_action) || readString(item.recommended_next_action) || "";
+    if (!skill || !display) return null;
+    return {
+      skillCanonical: skill,
+      displayName: display,
+      severity,
+      recommendedAction: action,
+    };
+  }).filter((item): item is InterviewGapItemViewModel => item !== null);
+}
+
 export function toInterviewResultViewModel(
   detail: InterviewDetailResponseDto,
   fallbacks: { summary?: string } = {},
@@ -955,6 +1017,7 @@ export function toInterviewResultViewModel(
     .map((turn) => {
       const questionBankKey = readString(turn.questionBankKey);
       return {
+        id: turn.id,
         question: turn.interviewerQuestion,
         answer: turn.userAnswerText ?? turn.userAnswerTranscript ?? "",
         score: score(turn.perQuestionScore),
@@ -969,6 +1032,7 @@ export function toInterviewResultViewModel(
         strengths: coerceStringList(turn.strengths),
         improvements: coerceStringList(turn.improvements),
         durationSeconds: turn.durationSeconds,
+        signals: turn.signals ?? null,
       };
     });
 
@@ -997,5 +1061,7 @@ export function toInterviewResultViewModel(
     devPlanItems: readDevPlanItems(detail.devPlan),
     durationSeconds: detail.durationSeconds,
     questions,
+    scoreExplanations: readScoreExplanations(detail.finalScore),
+    gapItems: readGapItems(detail.gapItems),
   };
 }

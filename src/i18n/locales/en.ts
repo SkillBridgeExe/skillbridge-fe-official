@@ -1072,6 +1072,27 @@ export default {
       },
     },
     interview: {
+      reasons: {
+        answer_shallow: "Shallow answer, probing further",
+        one_fair_follow_up: "Adaptive follow-up question",
+        drill_budget_reached: "Topic depth budget reached, moving on",
+        evasive_after_follow_up: "Clarifying question due to evasiveness",
+        deep_answer_push_for_depth: "Pushing for more technical depth",
+        time_limit: "Topic time limit reached",
+        safety_cap: "Safety cap triggered",
+        time_low_closing_question: "Time low, moving to closing question",
+        topics_exhausted_adaptive_follow_up: "Adaptive follow-up after exhausting topics",
+        fallback_seed_question: "Fallback question triggered",
+        default: "Interviewer decided to probe deeper"
+      },
+      phases: {
+        SCREENING: "Screening",
+        SKILL_PROBE: "Skill probe & JD",
+        JD_REQUIREMENT: "Skill probe & JD",
+        SCENARIO: "Scenario",
+        BEHAVIORAL: "Behavioral",
+        WRAP: "Wrap-up"
+      },
       title: "AI Mock Interview",
       badge: {
         autoScored: "Auto-scored",
@@ -1462,6 +1483,42 @@ export default {
         questionBankKey: "Bank: {{key}}",
         noPersistedAnswers: "No saved answers are available yet.",
         noSummary: "No summary is available yet.",
+        popover: {
+          title: "Detailed Score Explanation",
+          band: "Level",
+          weight: "Weight",
+          uncertainty: "Confidence",
+          uncertainty_high: "Confidence: Low (evaluated with limited data)",
+          uncertainty_medium: "Confidence: Medium",
+          uncertainty_low: "Confidence: High",
+          improvementHint: "Improvement Suggestion",
+          viewInTranscript: "View in Transcript",
+          evidenceQuote: "Evidence Quote"
+        },
+        gapAnalysisTitle: "Interview Gap Analysis",
+        gapAnalysisDesc: "Critical gaps identified during the interview and recommended actions.",
+        actionLearn: "Learn this skill",
+        actionPractice: "Practice this question",
+        actionCvFix: "Fix your CV",
+        commPanel: "Detailed Communication Signals",
+        commFiller: "Filler words",
+        commHedging: "Hedging terms",
+        commRepeated: "Repeated terms",
+        commJdCoverage: "JD keyword coverage",
+        commStar: "STAR structure",
+        commWpm: "Speaking rate",
+        commWpmVal: "{{wpm}} wpm",
+        commWpmUnavailable: "Unable to measure (missing duration data)",
+        commConciseness: "Conciseness",
+        commConciseness_too_short: "Too short",
+        commConciseness_ideal: "Ideal",
+        commConciseness_verbose: "Verbose",
+        depth: {
+          shallow: "Shallow",
+          adequate: "Adequate",
+          deep: "Deep",
+          evasive: "Evasive"
+        }
       },
       errors: {
         mediaUnsupported: "Media devices are not supported in this browser.",

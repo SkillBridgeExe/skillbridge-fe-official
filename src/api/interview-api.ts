@@ -32,6 +32,63 @@ export interface RealtimeClientSecretDto {
   reason?: string;
 }
 
+export interface FinalScoreDto {
+  overall: number;
+  overall_band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+  dimensions: Array<{ dimension: string; score: number; band: string; weight: number }>;
+  role_family: string;
+  scored_answers: number;
+  score_explanations?: Array<{
+    dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
+    score: number;
+    band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+    weight: number;
+    rubric_anchor: string;
+    evidence_quote: string | null;
+    linked_question_id: string | null;
+    uncertainty: 'low' | 'medium' | 'high';
+    improvement_hint: string | null;
+  }>;
+}
+
+export interface InterviewGapItemDto {
+  skill_canonical: string;
+  display_name: string;
+  severity: number;
+  recommended_action: string;
+}
+
+export interface CommunicationSignalsDto {
+  word_count?: number;
+  sentence_count?: number;
+  conciseness?: 'too_short' | 'ideal' | 'verbose';
+  is_quantified?: boolean | null;
+  flags?: {
+    rambling_risk?: boolean | null;
+  } | null;
+  filler?: {
+    count: number;
+    terms?: string[];
+  };
+  hedging?: {
+    count: number;
+    terms?: string[];
+  };
+  repeated_terms?: Array<{ term: string; count: number }>;
+  jd_term_hits?: {
+    hit: string[];
+    missed: string[];
+    coverage: number;
+  };
+  star?: {
+    situation: boolean;
+    task: boolean;
+    action: boolean;
+    result: boolean;
+    complete: boolean;
+  };
+}
+
 export interface InterviewSessionDto {
   id: string;
   cvId: string | null;
@@ -53,8 +110,8 @@ export interface InterviewSessionDto {
   llmScore: number | null;
   communicationScore: number | null;
   aiFeedback: InterviewFeedback | null;
-  finalScore?: unknown;
-  gapItems?: unknown;
+  finalScore?: FinalScoreDto | null;
+  gapItems?: InterviewGapItemDto[] | null;
   devPlan?: unknown;
   coaching?: unknown;
   durationSeconds: number | null;
@@ -78,7 +135,7 @@ export interface InterviewTurnDto {
   userAnswerTranscript: string | null;
   perQuestionScore: number | null;
   depthSignal?: string | null;
-  signals?: unknown;
+  signals?: CommunicationSignalsDto | null;
   insight?: unknown;
   currentThread?: string | null;
   skillCanonical?: string | null;
@@ -144,6 +201,15 @@ export interface AnswerInterviewResponseDto {
   turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
   finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
   nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
+  turnTrace?: {
+    action: 'ask' | 'drill' | 'move_on' | 'wrap';
+    phase: string;
+    topic_id?: string;
+    reasons: string[];
+    depth: number;
+    remaining_turn_budget: number;
+    confidence: 'high' | 'medium' | 'low';
+  } | null;
 }
 
 export interface InterviewDetailResponseDto extends InterviewSessionDto {
