@@ -131,9 +131,9 @@ export default function Navbar() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full px-3 pt-3 sm:px-4 sm:pt-4 lg:pt-6 pointer-events-none">
-      <nav className="w-full max-w-6xl h-14 sm:h-16 lg:h-[4.5rem] flex items-center justify-between gap-2 px-3 sm:px-4 lg:px-6 bg-white/75 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-900/5 rounded-2xl sm:rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
-        <div className="flex min-w-0 items-center gap-3 lg:gap-10 xl:gap-12">
-        <Link to="/" className="flex min-w-0 items-center group">
+      <nav className="w-full max-w-6xl h-14 sm:h-16 lg:h-[4.5rem] flex items-center justify-between gap-2 lg:gap-6 px-3 sm:px-4 lg:px-6 bg-white/75 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-900/5 rounded-2xl sm:rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <div className="flex shrink-0 items-center gap-3 lg:gap-3 xl:gap-8">
+        <Link to="/" className="flex min-w-0 items-center group shrink-0">
           <div className="flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img
               src={logoPng}
@@ -141,19 +141,19 @@ export default function Navbar() {
               className="h-12 w-auto max-w-none object-contain drop-shadow-sm -my-3 -ml-3 -mr-1 sm:h-14 lg:h-[72px] lg:-my-4 lg:-ml-4"
             />
           </div>
-          <span className="hidden min-w-0 truncate text-[18px] font-bold tracking-tight text-slate-800 sm:inline lg:text-[20px]">
+          <span className="hidden min-w-0 truncate text-[18px] font-bold tracking-tight text-slate-800 sm:inline lg:hidden xl:inline lg:text-[20px] whitespace-nowrap">
             SkillBridge
           </span>
         </Link>
 
-        <div className="hidden lg:flex items-center gap-5 xl:gap-8">
+        <div className="hidden lg:flex items-center gap-3 xl:gap-6 shrink-0">
           {NAV_ITEMS.filter((item) => isAuthenticated || item.href !== "/dashboard").map((item) => (
             <Link
               key={item.href}
               to={item.href}
               aria-current={location.pathname === item.href ? "page" : undefined}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-primary relative py-1",
+                "text-sm lg:text-[13px] xl:text-sm font-medium transition-colors hover:text-primary relative py-1 whitespace-nowrap",
                 location.pathname === item.href
                   ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
                   : "text-slate-600"
@@ -165,7 +165,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-3">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -215,7 +215,7 @@ export default function Navbar() {
             <Button
               type="button"
               onClick={() => openAuth("register")}
-              className="rounded-full px-6 bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold"
+              className="rounded-full px-4 lg:px-5 xl:px-6 bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold whitespace-nowrap"
             >
               {t("actions.startFree")}
             </Button>
