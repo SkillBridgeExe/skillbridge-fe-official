@@ -5,7 +5,6 @@ import {
   Briefcase, Globe, GraduationCap, Building2, MapPin, Code, XCircle
 } from "lucide-react";
 import { useGapReportQuery } from "@/hooks/use-diagnosis";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { GapReportDto } from "@shared/api";
 import { JdIntelligenceCard } from "./JdIntelligenceCard";
 import { SectionRule } from "./editorial";
