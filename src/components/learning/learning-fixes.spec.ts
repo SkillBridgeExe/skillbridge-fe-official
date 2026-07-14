@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deriveSessionStatuses,
   isSessionCompleted,
@@ -13,9 +13,15 @@ describe("Learning roadmap fixes", () => {
   };
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-14T09:00:00+07:00"));
     vi.clearAllMocks();
     vi.stubGlobal("window", { localStorage: localStorageMock });
     vi.stubGlobal("localStorage", localStorageMock);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   const mockSession1: LearningSession = {
@@ -24,7 +30,7 @@ describe("Learning roadmap fixes", () => {
     sessionNumber: 1,
     title: "Session 1",
     skill: "React",
-    dayOfWeek: 0,
+    dayOfWeek: 2,
     estimatedMinutes: 60,
     status: "locked",
     stars: 0,
@@ -48,7 +54,7 @@ describe("Learning roadmap fixes", () => {
     sessionNumber: 2,
     title: "Session 2",
     skill: "React",
-    dayOfWeek: 1,
+    dayOfWeek: 2,
     estimatedMinutes: 60,
     status: "locked",
     stars: 0,
@@ -71,27 +77,21 @@ describe("Learning roadmap fixes", () => {
       weekNumber: 1,
       moduleId: "module-1",
       moduleTitle: "Module 1",
-      sessions: [mockSession1],
-    },
-    {
-      weekNumber: 2,
-      moduleId: "module-2",
-      moduleTitle: "Module 2",
-      sessions: [mockSession2],
+      sessions: [mockSession1, mockSession2],
     },
   ];
 
   describe("deriveSessionStatuses", () => {
-    it("marks the first incomplete session as 'in-progress' and subsequent ones as 'locked'", () => {
+    it("opens all incomplete sessions scheduled for today", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const result = deriveSessionStatuses(mockWeeks);
 
       expect(result[0].sessions[0].status).toBe("in-progress");
-      expect(result[1].sessions[0].status).toBe("locked");
+      expect(result[0].sessions[1].status).toBe("in-progress");
     });
 
-    it("marks completed sessions as 'completed' and unlocks the next session as 'in-progress'", () => {
+    it("marks completed sessions as 'completed' and keeps today's remaining sessions open", () => {
       localStorageMock.getItem.mockImplementation((key) => {
         if (key.includes("session-1")) {
           return JSON.stringify({
@@ -106,7 +106,44 @@ describe("Learning roadmap fixes", () => {
       const result = deriveSessionStatuses(mockWeeks);
 
       expect(result[0].sessions[0].status).toBe("completed");
-      expect(result[1].sessions[0].status).toBe("in-progress");
+      expect(result[0].sessions[1].status).toBe("in-progress");
+    });
+
+    it("opens past and current-day sessions across parallel lanes", () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key.includes("kotlin-day-1")) {
+          return JSON.stringify({
+            checkedChecklistItems: {
+              __session: ["completed"],
+            },
+          });
+        }
+        return null;
+      });
+
+      const weeks: WeekPlan[] = [
+        {
+          weekNumber: 1,
+          moduleId: "parallel",
+          moduleTitle: "Parallel study",
+          sessions: [
+            { ...mockSession1, id: "swift-day-1", skill: "Swift", laneIndex: 0, dayOfWeek: 1 },
+            { ...mockSession2, id: "kotlin-day-1", skill: "Kotlin", laneIndex: 1, dayOfWeek: 1 },
+            { ...mockSession1, id: "swift-day-2", skill: "Swift", laneIndex: 0, dayOfWeek: 2 },
+            { ...mockSession2, id: "java-day-2", skill: "Java", laneIndex: 1, dayOfWeek: 2 },
+          ],
+        },
+      ];
+
+      const result = deriveSessionStatuses(weeks);
+      const statuses = Object.fromEntries(
+        result[0].sessions.map((session) => [session.id, session.status]),
+      );
+
+      expect(statuses["swift-day-1"]).toBe("in-progress");
+      expect(statuses["kotlin-day-1"]).toBe("completed");
+      expect(statuses["swift-day-2"]).toBe("in-progress");
+      expect(statuses["java-day-2"]).toBe("in-progress");
     });
   });
 

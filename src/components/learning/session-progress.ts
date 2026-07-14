@@ -63,6 +63,15 @@ export function writeStoredSessionProgress(sessionId: string, progress: SessionP
   );
 }
 
+export function clearStoredLearningProgress() {
+  if (typeof window === "undefined") return;
+  const keys = Array.from({ length: window.localStorage.length }, (_, index) =>
+    window.localStorage.key(index),
+  ).filter((key): key is string => Boolean(key?.startsWith(SESSION_PROGRESS_STORAGE_PREFIX)));
+
+  keys.forEach((key) => window.localStorage.removeItem(key));
+}
+
 export function createInitialSessionProgress(
   session: LearningSession,
   saved?: Partial<SessionProgressState> | null,
@@ -197,9 +206,18 @@ export function isSessionCompleted(
 }
 
 export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
-  const allSessions = weeks.flatMap((w) => w.sessions);
+  const sessionEntries = weeks.flatMap((week) =>
+    week.sessions.map((session, sessionOrder) => ({
+      session,
+      weekNumber: week.weekNumber,
+      sessionOrder,
+    })),
+  );
+  const allSessions = sessionEntries.map((entry) => entry.session);
+  const entryBySessionId = new Map(sessionEntries.map((entry) => [entry.session.id, entry]));
   const completedMap: Record<string, boolean> = {};
   const progressMap: Record<string, SessionProgressState> = {};
+  const todayStudyDayOrder = dayOrder(new Date().getDay());
 
   for (const session of allSessions) {
     const localProgress = createInitialSessionProgress(
@@ -210,18 +228,38 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
     progressMap[session.id] = localProgress;
   }
 
-  let foundInProgress = false;
+  const laneIndexBySessionId = inferLaneIndexes(sessionEntries);
+  const openSessionIds = new Set<string>();
+  const entriesByLane = new Map<number, typeof sessionEntries>();
+
+  for (const entry of sessionEntries) {
+    const laneIndex = entry.session.laneIndex ?? laneIndexBySessionId.get(entry.session.id) ?? 0;
+    const laneEntries = entriesByLane.get(laneIndex) ?? [];
+    laneEntries.push(entry);
+    entriesByLane.set(laneIndex, laneEntries);
+  }
+
+  for (const laneEntries of entriesByLane.values()) {
+    const firstOpen = laneEntries
+      .slice()
+      .sort(compareSessionEntries)
+      .find((entry) => !completedMap[entry.session.id]);
+    if (firstOpen) openSessionIds.add(firstOpen.session.id);
+  }
 
   return weeks.map((week) => ({
     ...week,
     sessions: week.sessions.map((session) => {
       const isDone = completedMap[session.id];
+      const entry = entryBySessionId.get(session.id);
+      const isDueByToday = entry
+        ? entry.weekNumber < 1 || (entry.weekNumber === 1 && dayOrder(entry.session.dayOfWeek) <= todayStudyDayOrder)
+        : false;
       let status: "completed" | "in-progress" | "locked";
       if (isDone) {
         status = "completed";
-      } else if (!foundInProgress) {
+      } else if (isDueByToday) {
         status = "in-progress";
-        foundInProgress = true;
       } else {
         status = "locked";
       }
@@ -231,6 +269,47 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
       return { ...withProgress, status };
     }),
   }));
+}
+
+function compareSessionEntries(
+  a: { session: LearningSession; weekNumber: number; sessionOrder: number },
+  b: { session: LearningSession; weekNumber: number; sessionOrder: number },
+): number {
+  return (
+    a.weekNumber - b.weekNumber ||
+    dayOrder(a.session.dayOfWeek) - dayOrder(b.session.dayOfWeek) ||
+    a.session.sessionNumber - b.session.sessionNumber ||
+    a.sessionOrder - b.sessionOrder
+  );
+}
+
+function inferLaneIndexes(
+  entries: Array<{ session: LearningSession; weekNumber: number; sessionOrder: number }>,
+): Map<string, number> {
+  const laneIndexes = new Map<string, number>();
+  const byStudyDay = new Map<string, typeof entries>();
+
+  for (const entry of entries) {
+    const key = `${entry.weekNumber}:${entry.session.dayOfWeek}`;
+    const dayEntries = byStudyDay.get(key) ?? [];
+    dayEntries.push(entry);
+    byStudyDay.set(key, dayEntries);
+  }
+
+  for (const dayEntries of byStudyDay.values()) {
+    dayEntries
+      .slice()
+      .sort((a, b) => a.session.sessionNumber - b.session.sessionNumber || a.sessionOrder - b.sessionOrder)
+      .forEach((entry, index) => {
+        laneIndexes.set(entry.session.id, index);
+      });
+  }
+
+  return laneIndexes;
+}
+
+function dayOrder(dayOfWeek: number): number {
+  return dayOfWeek === 0 ? 7 : dayOfWeek;
 }
 
 export function toggleSavedCourse(

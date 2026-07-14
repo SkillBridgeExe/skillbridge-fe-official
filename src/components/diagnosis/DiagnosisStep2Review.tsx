@@ -624,7 +624,11 @@ export function DiagnosisStep2Review() {
 
                     {/* Skill relevance */}
                     {reviewData?.skills_relevance_breakdown && (
-                      <SkillsRelevanceCard breakdown={reviewData.skills_relevance_breakdown} />
+                      <SkillsRelevanceCard
+                        breakdown={reviewData.skills_relevance_breakdown}
+                        cvId={lastCvId}
+                        role={targetRole}
+                      />
                     )}
 
                     {/* Evidence Ledger */}

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { FileText, ListChecks, Quote, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { RoleRoadmapAction } from "./RoadmapFromMatchSection";
 import type {
   ExtractedSkill,
   EvidenceLedger,
@@ -251,7 +252,15 @@ function sortByImportance(items: RelevanceSkillItem[]): RelevanceSkillItem[] {
   );
 }
 
-export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceBreakdown }) {
+export function SkillsRelevanceCard({
+  breakdown,
+  cvId,
+  role,
+}: {
+  breakdown: SkillsRelevanceBreakdown;
+  cvId?: string | null;
+  role?: string | null;
+}) {
   const { t } = useTranslation("diagnosis");
 
   const RELEVANCE_GROUPS: {
@@ -283,13 +292,22 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
         </div>
         {groups.map((group) => (
           <div key={group.key}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className={cn("w-1.5 h-1.5 rounded-full", group.dot)} />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-                {group.label}
-              </span>
-              {group.hint && (
-                <span className="text-[11px] text-[#9F2F2D] font-medium">— {group.hint}</span>
+            <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className={cn("w-1.5 h-1.5 rounded-full", group.dot)} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+                  {group.label}
+                </span>
+                {group.hint && (
+                  <span className="text-[11px] text-[#9F2F2D] font-medium">— {group.hint}</span>
+                )}
+              </div>
+              {group.key === "missing" && (
+                <RoleRoadmapAction
+                  cvId={cvId}
+                  role={role}
+                  className="w-fit gap-1.5"
+                />
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">

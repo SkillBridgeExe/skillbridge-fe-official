@@ -199,7 +199,16 @@ function InferredSkillsBlock({
 
 export function DiagnosisStep3Results() {
   const { t, i18n } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
+  const {
+    goBack,
+    scanAgain,
+    skillTab,
+    setSkillTab,
+    reviewData,
+    jobDescription,
+    lastCvId,
+    targetRole,
+  } = useDiagnosisStore();
   const { toast } = useToast();
 
   const handleShare = async () => {
@@ -758,12 +767,15 @@ export function DiagnosisStep3Results() {
               </div>
             </div>
 
-            {/* CTA + inline learning roadmap derived from this match's GapReport */}
-            <div id="roadmap-anchor">
-              <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
-            </div>
           </div>
         </Chapter>
+      </div>
+
+      <div id="roadmap-anchor" className="relative z-10 max-w-4xl mx-auto -mt-6 mb-10">
+        <RoadmapFromMatchSection
+          matchId={jdMatch?.matchId}
+          onScanAgain={scanAgain}
+        />
       </div>
 
       {/* ────────────────────────────────────────────────────────────────────

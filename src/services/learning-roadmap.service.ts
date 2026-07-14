@@ -18,7 +18,11 @@ import type {
   LearningResourceSourceType,
   SkillBridgeLessonContentDto,
   NotFeasibleItemDto,
+  RoadmapOptionsResponse,
   RoadmapFromMatchResponse,
+  RoadmapSessionDto,
+  TranslateDisplayRequestDto,
+  TranslateDisplayResponseDto,
   UpsertLearningSessionProgressRequest,
 } from "@shared/api";
 import type { SessionProgressState } from "@/components/learning/session-progress";
@@ -28,10 +32,28 @@ export type ComposedRoadmap = RoadmapFromMatchResponse;
 export type ComposedRoadmapResource = LearningResourceDto;
 export type NotFeasibleItem = NotFeasibleItemDto;
 
+export interface PersistedLearningRoadmapDto {
+  id: string;
+  userId: string;
+  active: boolean;
+  sourceRefs: unknown[];
+  composedRoadmap: ComposedRoadmap;
+  schedule: RoadmapSessionDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const DEFAULT_ROADMAP_BUDGET: Required<RoadmapBudgetInput> = {
   available_days: 30,
-  hours_per_week: 8,
+  hours_per_week: 20,
+  minutes_per_session: 120,
+  sessions_per_week: 10,
+  study_days_per_week: 5,
   language_pref: "vi",
+  selected_skill_order: [],
+  excluded_skills: [],
+  selected_resources: {},
+  translate_display: false,
 };
 
 function requireSession(): void {
@@ -50,6 +72,84 @@ export async function generateRoadmapFromMatch(
   const envelope = await unwrapEnvelope<ApiEnvelope<ComposedRoadmap>>(
     httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), body),
     "Failed to generate the learning roadmap.",
+  );
+  return envelope.data;
+}
+
+export async function getRoadmapOptionsFromMatch(
+  matchId: string,
+): Promise<RoadmapOptionsResponse> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<RoadmapOptionsResponse>>(
+    httpClient.get(API_ROUTES.CV_MATCHES.ROADMAP_OPTIONS(matchId)),
+    "Failed to load roadmap skill options.",
+  );
+  return envelope.data;
+}
+
+export async function getRoleRoadmapOptions(
+  cvId: string,
+  role: string,
+  band = "fresher",
+): Promise<RoadmapOptionsResponse> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<RoadmapOptionsResponse>>(
+    httpClient.get(API_ROUTES.CV.ROLE_ROADMAP_OPTIONS(cvId, role, band)),
+    "Failed to load role roadmap skill options.",
+  );
+  return envelope.data;
+}
+
+export async function generateRoleRoadmapFromCv(
+  cvId: string,
+  role: string,
+  band = "fresher",
+  body: RoadmapBudgetInput = DEFAULT_ROADMAP_BUDGET,
+): Promise<ComposedRoadmap> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<ComposedRoadmap>>(
+    httpClient.post(API_ROUTES.CV.ROLE_ROADMAP(cvId, role, band), body),
+    "Failed to generate the learning roadmap.",
+  );
+  return envelope.data;
+}
+
+export async function getActiveLearningRoadmap(): Promise<PersistedLearningRoadmapDto | null> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<PersistedLearningRoadmapDto | null>>(
+    httpClient.get(API_ROUTES.LEARNING.ACTIVE_ROADMAP),
+    "Failed to load the active learning roadmap.",
+  );
+  return envelope.data;
+}
+
+export async function clearActiveLearningRoadmap(): Promise<void> {
+  requireSession();
+  await unwrapEnvelope<ApiEnvelope<{ deletedRoadmaps: number; deletedProgress: number }>>(
+    httpClient.delete(API_ROUTES.LEARNING.CLEAR_ACTIVE_ROADMAP),
+    "Failed to clear the active learning roadmap.",
+  );
+}
+
+export async function patchLearningRoadmapSchedule(
+  roadmapId: string,
+  schedule: Pick<RoadmapSessionDto, "id" | "week_number" | "session_index" | "suggested_day_of_week">[],
+): Promise<PersistedLearningRoadmapDto> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<PersistedLearningRoadmapDto>>(
+    httpClient.patch(API_ROUTES.LEARNING.ROADMAP_SCHEDULE(roadmapId), { schedule }),
+    "Failed to update the learning roadmap schedule.",
+  );
+  return envelope.data;
+}
+
+export async function translateLearningDisplay(
+  body: TranslateDisplayRequestDto,
+): Promise<TranslateDisplayResponseDto> {
+  requireSession();
+  const envelope = await unwrapEnvelope<ApiEnvelope<TranslateDisplayResponseDto>>(
+    httpClient.post(API_ROUTES.LEARNING.TRANSLATE_DISPLAY, body),
+    "Failed to translate learning display text.",
   );
   return envelope.data;
 }
@@ -259,6 +359,20 @@ function toRecommendedCourse(course: RecommendedCourseDto) {
   };
 }
 
+function isSafeRecommendedCourse(course: RecommendedCourseDto): boolean {
+  const title = course.title.toLowerCase();
+  const url = course.url?.toLowerCase() ?? "";
+  if (/[\u0400-\u04ff\u0600-\u06ff]/u.test(course.title)) return false;
+  if (/-fr(?:$|[/?#])|[/?&]lang=fr\b/.test(url)) return false;
+  return !/\b(cr\u00e9er|creer|comp\u00e9tences|competences|utilisateur|dynamiques|notions|cl\u00e9s|cles|entreprise)\b/i.test(
+    title,
+  );
+}
+
+function toRecommendedCourses(courses: RecommendedCourseDto[] | undefined) {
+  return (courses ?? []).filter(isSafeRecommendedCourse).map(toRecommendedCourse);
+}
+
 function toLessonContent(lesson: SkillBridgeLessonContentDto) {
   const quiz = lesson.quiz_bank ?? lesson.quiz;
   return {
@@ -335,9 +449,31 @@ export function sanitizeWeekPlans(plans: WeekPlan[]): WeekPlan[] {
   return plans
     .map((week) => ({
       ...week,
-      sessions: week.sessions.filter((session) => !isPlaceholderSession(session)),
+      sessions: week.sessions
+        .filter((session) => !isPlaceholderSession(session))
+        .map(normalizeSessionDisplayTitle),
     }))
     .filter((week) => week.sessions.length > 0);
+}
+
+function normalizeSessionDisplayTitle(session: LearningSession): LearningSession {
+  const trimmedTitle = session.title.trim().toLowerCase();
+  const skillTitle = session.skill.trim().toLowerCase();
+  if (trimmedTitle === skillTitle) {
+    return {
+      ...session,
+      title: buildLearningSessionTitle(session),
+    };
+  }
+  if (!/\s+\d+\/\d+$/.test(session.title)) return session;
+  return {
+    ...session,
+    title: buildLearningSessionTitle(session),
+  };
+}
+
+function buildLearningSessionTitle(session: LearningSession): string {
+  return `Session ${session.sessionNumber}`;
 }
 
 // NOTE (cross-repo contract): the BE maps learning mastery back to skills by re-slugging
@@ -356,7 +492,7 @@ function slugPart(value: string, fallback: string): string {
 export function roadmapToLearningRoadmap(roadmap: ComposedRoadmap): LearningRoadmap {
   const sortedSteps = [...roadmap.steps]
     .filter(hasRenderableLearningContent)
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => b.priority - a.priority);
 
   return {
     totalHours: roadmap.budget_hours,
@@ -365,7 +501,7 @@ export function roadmapToLearningRoadmap(roadmap: ComposedRoadmap): LearningRoad
       id: step.skill_canonical,
       title: step.display_name,
       description: `${strategyLabel(step.strategy)} - ${step.estimated_hours}h`,
-      status: index === 0 ? "in-progress" : "locked",
+      status: "in-progress",
       weekNumber: index + 1,
       estimatedHours: step.estimated_hours,
       topics: step.resources.slice(0, 4).map((resource) => ({
@@ -378,9 +514,13 @@ export function roadmapToLearningRoadmap(roadmap: ComposedRoadmap): LearningRoad
 }
 
 export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
+  if (roadmap.sessions?.length) {
+    return roadmapSessionsToWeekPlans(roadmap);
+  }
+
   const sortedSteps = [...roadmap.steps]
     .filter(hasRenderableLearningContent)
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => b.priority - a.priority);
   const daySpread = [1, 2, 3, 4, 5];
 
   return sortedSteps.map((step, index) => {
@@ -432,7 +572,7 @@ export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
                         ? ("reading" as const)
                         : ("practice" as const),
                   }))
-                : (step.recommended_courses ?? []).map((course) => ({
+                : (step.recommended_courses ?? []).filter(isSafeRecommendedCourse).map((course) => ({
                   id: course.id,
                   title: course.title,
                   completed: false,
@@ -455,9 +595,89 @@ export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
           ],
           lessonContent,
           resources,
-          recommendedCourses: step.recommended_courses?.map(toRecommendedCourse) ?? [],
+          recommendedCourses: toRecommendedCourses(step.recommended_courses),
         },
       ],
     };
   });
+}
+
+function roadmapSessionsToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
+  const stepBySkill = new Map(roadmap.steps.map((step) => [step.skill_canonical, step]));
+  const weeks = new Map<number, WeekPlan>();
+
+  for (const session of roadmap.sessions ?? []) {
+    const primaryStep = stepBySkill.get(session.primary_skill);
+    const moduleId = slugPart(session.primary_skill, `week-${session.week_number}`);
+    const week = weeks.get(session.week_number) ?? {
+      weekNumber: session.week_number,
+      moduleId,
+      moduleTitle: primaryStep?.display_name ?? session.title,
+      sessions: [],
+    };
+    const resources = session.resource_ids
+      .flatMap((resourceId) =>
+        roadmap.steps.flatMap((step) => step.resources).filter((resource) => resource.id === resourceId),
+      )
+      .map(toSessionResource);
+    const lessonContent = primaryStep?.lesson_content
+      ? toLessonContent(primaryStep.lesson_content)
+      : undefined;
+
+    week.sessions.push({
+      id: session.id,
+      moduleId,
+      skillCanonical: session.primary_skill,
+      sessionNumber: session.session_index,
+      title:
+        session.translated_display?.title ??
+        buildSessionDisplayTitle(primaryStep?.display_name ?? session.primary_skill, session.session_index, lessonContent) ??
+        session.title,
+      skill: primaryStep?.display_name ?? session.primary_skill,
+      laneIndex: session.lane_index,
+      dayOfWeek: session.suggested_day_of_week,
+      estimatedMinutes: session.duration_minutes,
+      status: session.week_number === 1 && isFirstStudyDaySession(roadmap.sessions ?? [], session)
+        ? "in-progress"
+        : "locked",
+      stars: 0,
+      maxStars: 5,
+      sections: lessonContent
+        ? lessonContent.sections.map((section) => ({
+            id: section.id,
+            title: section.title,
+            completed: false,
+            exercises: lessonContent.exercises.length,
+            completedExercises: 0,
+            type: "reading" as const,
+            body: section.body,
+            checklist: section.checklist,
+            objectiveId: section.objectiveId,
+          }))
+        : [],
+      lessonContent,
+      resources,
+      recommendedCourses: toRecommendedCourses(primaryStep?.recommended_courses),
+    });
+
+    weeks.set(session.week_number, week);
+  }
+
+  return [...weeks.values()].sort((a, b) => a.weekNumber - b.weekNumber);
+}
+
+function buildSessionDisplayTitle(
+  _skillName: string,
+  sessionIndex: number,
+  _lessonContent?: ReturnType<typeof toLessonContent>,
+): string {
+  return `Session ${sessionIndex}`;
+}
+
+function isFirstStudyDaySession(allSessions: RoadmapSessionDto[], session: RoadmapSessionDto): boolean {
+  const firstWeekSessions = allSessions
+    .filter((item) => item.week_number === 1)
+    .sort((a, b) => a.session_index - b.session_index);
+  const firstStudyDay = firstWeekSessions[0]?.suggested_day_of_week;
+  return firstStudyDay !== undefined && session.suggested_day_of_week === firstStudyDay;
 }

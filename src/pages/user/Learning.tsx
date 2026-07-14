@@ -1,34 +1,94 @@
-import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Calendar, Info, LayoutGrid, List, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, GitBranch, Info, Languages, List, Loader2, Sparkles } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  GridRoadmapView,
   LearningSidebar,
   ListRoadmapView,
   OverviewView,
+  SkillRoadmapMapView,
 } from "@/components/learning";
 import { AIChatbot } from "@/components/learning/AIChatbot";
 import { useRoadmapStore } from "@/components/learning/roadmap-store";
+import {
+  clearActiveLearningRoadmap,
+  getActiveLearningRoadmap,
+  translateLearningDisplay,
+} from "@/services/learning-roadmap.service";
 
-type ViewMode = "overview" | "grid" | "list";
+type ViewMode = "map" | "overview" | "list";
 
-const VIEW_TABS: { value: ViewMode; labelKey: string; icon: React.ElementType }[] = [
+const VIEW_TABS: { value: ViewMode; labelKey?: string; label?: string; icon: React.ElementType }[] = [
+  { value: "map", label: "Roadmap", icon: GitBranch },
   { value: "overview", labelKey: "learning.tabs.today", icon: Calendar },
-  { value: "grid", labelKey: "learning.tabs.overview", icon: LayoutGrid },
   { value: "list", labelKey: "learning.tabs.list", icon: List },
 ];
 
 export default function Learning() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<ViewMode>("overview");
-  const { composedRoadmap, isAIGenerated, clearRoadmap } = useRoadmapStore();
+  const [activeView, setActiveView] = useState<ViewMode>("map");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const {
+    composedRoadmap,
+    weekPlans,
+    isAIGenerated,
+    clearRoadmap,
+    applyTranslatedDisplay,
+    setPersistedRoadmap,
+    setPersistedRoadmapId,
+  } = useRoadmapStore();
   const hasRoadmap = Boolean(composedRoadmap);
+  const roadmapSummary = composedRoadmap
+    ? t("learning.page.aiSummary", { count: composedRoadmap.steps.length })
+    : "";
+
+  useEffect(() => {
+    let cancelled = false;
+    getActiveLearningRoadmap()
+      .then((roadmap) => {
+        if (cancelled || !roadmap) return;
+        if (!composedRoadmap) {
+          setPersistedRoadmap(roadmap.id, roadmap.composedRoadmap);
+          return;
+        }
+        setPersistedRoadmapId(roadmap.id);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [composedRoadmap, setPersistedRoadmap, setPersistedRoadmapId]);
+
+  const translateToVietnamese = async () => {
+    const sessions = weekPlans.flatMap((week) => week.sessions);
+    if (sessions.length === 0 || isTranslating) return;
+    setIsTranslating(true);
+    try {
+      const result = await translateLearningDisplay({
+        locale: "vi",
+        items: sessions.map((session) => ({
+          id: session.id,
+          title: session.title,
+        })),
+      });
+      applyTranslatedDisplay(result.items);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleClearRoadmap = async () => {
+    try {
+      await clearActiveLearningRoadmap();
+    } finally {
+      clearRoadmap();
+    }
+  };
 
   return (
     <Layout hideFooter>
@@ -54,7 +114,6 @@ export default function Learning() {
                   {composedRoadmap
                     ? t("learning.page.meta", {
                         count: composedRoadmap.steps.length,
-                        hours: composedRoadmap.budget_hours,
                       })
                     : t("learning.page.emptyMeta")}
                 </p>
@@ -65,7 +124,7 @@ export default function Learning() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearRoadmap}
+                    onClick={handleClearRoadmap}
                     className="rounded-full text-xs text-slate-400 hover:text-slate-700"
                   >
                     {t("learning.page.clearRoadmap")}
@@ -79,6 +138,21 @@ export default function Learning() {
                   <Sparkles className="h-4 w-4" />
                   {hasRoadmap ? t("learning.page.regenerate") : t("learning.page.generateRoadmap")}
                 </Button>
+                {hasRoadmap && (
+                  <Button
+                    variant="outline"
+                    onClick={translateToVietnamese}
+                    disabled={isTranslating}
+                    className="rounded-full border-slate-200 text-sm font-semibold text-slate-700"
+                  >
+                    {isTranslating ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Languages className="mr-2 h-4 w-4" />
+                    )}
+                    Dịch sang tiếng Việt
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="rounded-full border-slate-200 text-sm font-semibold text-slate-700"
@@ -88,32 +162,15 @@ export default function Learning() {
               </div>
             </header>
 
-            {composedRoadmap?.ai_summary && (
+            {composedRoadmap && (
               <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
                 <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
                 <p className="text-sm leading-relaxed text-amber-800">
                   <span className="font-semibold">{t("learning.page.aiTip")} </span>
-                  {composedRoadmap.ai_summary}
+                  {roadmapSummary}
                 </p>
               </div>
             )}
-
-            {composedRoadmap?.not_feasible_items.length ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-bold text-slate-900">{t("learning.page.notFeasible")}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {composedRoadmap.not_feasible_items.map((item) => (
-                    <Badge
-                      key={item.skill_canonical}
-                      variant="outline"
-                      className="border-amber-200 bg-amber-50 text-amber-700"
-                    >
-                      {item.display_name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {hasRoadmap && (
               <div className="flex w-fit items-center gap-1 rounded-xl bg-slate-100 p-1">
@@ -130,7 +187,7 @@ export default function Learning() {
                       )}
                     >
                       <Icon className="h-4 w-4" />
-                      {t(tab.labelKey)}
+                      {tab.label ?? t(tab.labelKey ?? "")}
                     </button>
                   );
                 })}
@@ -139,8 +196,8 @@ export default function Learning() {
 
             {hasRoadmap ? (
               <div className="animate-in fade-in duration-300">
+                {activeView === "map" && <SkillRoadmapMapView />}
                 {activeView === "overview" && <OverviewView />}
-                {activeView === "grid" && <GridRoadmapView />}
                 {activeView === "list" && <ListRoadmapView />}
               </div>
             ) : (

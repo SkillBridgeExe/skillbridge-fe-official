@@ -957,10 +957,100 @@ export interface InterviewPlanResponse {
 // Learning roadmap derived from a CV/JD match's GapReport (POST /api/cv-matches/:matchId/roadmap).
 export type RoadmapLanguagePref = "vi" | "en" | "both";
 
+export type RoadmapSourceType = "jd_match" | "role_baseline";
+
+export interface RoadmapSourceRefDto {
+  type: RoadmapSourceType;
+  id: string;
+  label?: string;
+  reason: string;
+}
+
+export interface RoadmapSkillOptionDto {
+  skill_canonical: string;
+  display_name: string;
+  priority: number;
+  estimated_hours: number;
+  required_level?: number | null;
+  cv_level?: number | null;
+  importance?: SkillImportance;
+  selected_by_default: boolean;
+  source: RoadmapSourceRefDto;
+  resources?: RoadmapResourceOptionDto[];
+}
+
+export interface RoadmapResourceOptionDto {
+  id: string;
+  source_type: string;
+  title: string;
+  url?: string;
+  is_internal: boolean;
+  description?: string;
+  duration_minutes: number;
+  outcome_type: string;
+}
+
+export interface RoadmapOptionsResponse {
+  source: RoadmapSourceRefDto;
+  options: RoadmapSkillOptionDto[];
+  no_learning_gaps?: boolean;
+}
+
+export interface RoadmapTranslatedDisplayDto {
+  locale: "vi" | "en";
+  title?: string;
+  description?: string;
+  reason?: string;
+  summary?: string;
+}
+
+export interface RoadmapSessionDto {
+  id: string;
+  week_number: number;
+  session_index: number;
+  lane_index?: number;
+  suggested_day_of_week: number;
+  duration_minutes: number;
+  title: string;
+  mode: "single_skill" | "bundled_skills" | "mini_project";
+  skill_canonicals: string[];
+  primary_skill: string;
+  resource_ids: string[];
+  source_refs: RoadmapSourceRefDto[];
+  translated_display?: RoadmapTranslatedDisplayDto;
+}
+
+export interface TranslateDisplayItemDto {
+  id: string;
+  title?: string;
+  description?: string;
+  reason?: string;
+  summary?: string;
+}
+
+export interface TranslateDisplayRequestDto {
+  locale: "vi" | "en";
+  items: TranslateDisplayItemDto[];
+}
+
+export interface TranslateDisplayResponseDto {
+  items: Array<{
+    id: string;
+    translated_display: RoadmapTranslatedDisplayDto;
+  }>;
+}
+
 export interface GenerateRoadmapFromMatchRequest {
   available_days?: number;
   hours_per_week?: number;
+  minutes_per_session?: number;
+  sessions_per_week?: number;
+  study_days_per_week?: number;
   language_pref?: RoadmapLanguagePref;
+  selected_skill_order?: string[];
+  excluded_skills?: string[];
+  selected_resources?: Record<string, string[]>;
+  translate_display?: boolean;
 }
 
 export type LearningResourceSourceType =
@@ -1078,6 +1168,8 @@ export interface ComposedRoadmapStepDto {
   estimated_hours: number;
   priority: number;
   resources: LearningResourceDto[];
+  source_refs?: RoadmapSourceRefDto[];
+  translated_display?: RoadmapTranslatedDisplayDto;
   recommended_courses?: RecommendedCourseDto[];
   lesson_content?: SkillBridgeLessonContentDto;
 }
@@ -1094,9 +1186,11 @@ export interface NotFeasibleItemDto {
 export interface RoadmapFromMatchResponse {
   budget_hours: number;
   steps: ComposedRoadmapStepDto[];
+  sessions?: RoadmapSessionDto[];
   not_feasible_items: NotFeasibleItemDto[];
   ai_summary: string;
   no_learning_gaps?: boolean;
+  source_refs?: RoadmapSourceRefDto[];
 }
 
 export interface LearningSessionProgressDto {

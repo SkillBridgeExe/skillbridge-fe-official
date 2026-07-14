@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
+  generateRoleRoadmapFromCv,
   generateRoadmapFromMatch,
   answerLearningQuizQuestion,
+  getActiveLearningRoadmap,
   getLearningNextQuestions,
   getLearningSessionProgress,
+  getRoleRoadmapOptions,
   patchLearningChecklistItem,
+  patchLearningRoadmapSchedule,
   roadmapToLearningRoadmap,
   roadmapToWeekPlans,
   saveLearningSessionProgress,
+  translateLearningDisplay,
   type ComposedRoadmap,
 } from "./learning-roadmap.service";
 
@@ -18,6 +23,7 @@ vi.mock("@/api/core/http-client", () => ({
     post: vi.fn(),
     get: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 vi.mock("@/services/auth-session.service", () => ({ hasApiAuthSession: () => true }));
@@ -192,6 +198,95 @@ describe("learning-roadmap.service", () => {
       hours_per_week: 8,
       language_pref: "vi",
     });
+  });
+
+  it("loads role roadmap options from the CV role-baseline endpoint", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(ok({
+      source: {
+        type: "role_baseline",
+        id: "cv1:frontend_developer:fresher",
+        reason: "Missing or partial skill found from selected role baseline.",
+      },
+      options: [],
+    }) as never);
+
+    await getRoleRoadmapOptions("cv1", "frontend_developer", "fresher");
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      API_ROUTES.CV.ROLE_ROADMAP_OPTIONS("cv1", "frontend_developer", "fresher"),
+    );
+  });
+
+  it("generates a roadmap from CV role-baseline gaps without a JD match", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(ok(composedRoadmap) as never);
+
+    const result = await generateRoleRoadmapFromCv("cv1", "frontend_developer", "fresher", {
+      minutes_per_session: 60,
+      sessions_per_week: 4,
+      selected_skill_order: ["react_testing"],
+    });
+
+    expect(result).toEqual(composedRoadmap);
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.CV.ROLE_ROADMAP("cv1", "frontend_developer", "fresher"),
+      {
+        minutes_per_session: 60,
+        sessions_per_week: 4,
+        selected_skill_order: ["react_testing"],
+      },
+    );
+  });
+
+  it("loads and patches the persisted learning roadmap schedule", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(ok({ id: "roadmap-1", schedule: [] }) as never);
+    vi.mocked(httpClient.patch).mockReturnValueOnce(ok({ id: "roadmap-1", schedule: [] }) as never);
+
+    await getActiveLearningRoadmap();
+    await patchLearningRoadmapSchedule("roadmap-1", [
+      {
+        id: "s1",
+        week_number: 1,
+        session_index: 1,
+        suggested_day_of_week: 2,
+      },
+    ]);
+
+    expect(httpClient.get).toHaveBeenCalledWith(API_ROUTES.LEARNING.ACTIVE_ROADMAP);
+    expect(httpClient.patch).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.ROADMAP_SCHEDULE("roadmap-1"),
+      {
+        schedule: [
+          {
+            id: "s1",
+            week_number: 1,
+            session_index: 1,
+            suggested_day_of_week: 2,
+          },
+        ],
+      },
+    );
+  });
+
+  it("posts display text to the on-demand translation endpoint", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(ok({
+      items: [
+        {
+          id: "s1",
+          translated_display: { locale: "vi", title: "Nen tang React" },
+        },
+      ],
+    }) as never);
+
+    const result = await translateLearningDisplay({
+      locale: "vi",
+      items: [{ id: "s1", title: "React foundations" }],
+    });
+
+    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.LEARNING.TRANSLATE_DISPLAY, {
+      locale: "vi",
+      items: [{ id: "s1", title: "React foundations" }],
+    });
+    expect(result.items[0].translated_display.title).toBe("Nen tang React");
   });
 
   it("loads saved session progress from the BE learning endpoint", async () => {
@@ -527,6 +622,45 @@ describe("learning-roadmap.service", () => {
         ],
       },
     ]);
+  });
+
+  it("maps backend roadmap sessions into week plans", () => {
+    const weeks = roadmapToWeekPlans({
+      budget_hours: 4,
+      steps: [
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          strategy: "deep_build",
+          estimated_hours: 2,
+          priority: 0.9,
+          resources: [],
+        },
+      ],
+      sessions: [
+        {
+          id: "roadmap-w1-s1-react",
+          week_number: 1,
+          session_index: 1,
+          suggested_day_of_week: 2,
+          duration_minutes: 60,
+          title: "React foundations",
+          mode: "single_skill",
+          skill_canonicals: ["react"],
+          primary_skill: "react",
+          resource_ids: [],
+          source_refs: [],
+        },
+      ],
+      not_feasible_items: [],
+      ai_summary: "",
+    });
+
+    expect(weeks[0].sessions[0]).toMatchObject({
+      id: "roadmap-w1-s1-react",
+      dayOfWeek: 2,
+      estimatedMinutes: 60,
+    });
   });
 
   it("does not create a learning session when BE returns no renderable content for a step", () => {

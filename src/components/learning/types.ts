@@ -72,6 +72,7 @@ export interface LearningSession {
   sessionNumber: number;
   title: string;
   skill: string;
+  laneIndex?: number;
   dayOfWeek: number;
   estimatedMinutes: number;
   status: "completed" | "in-progress" | "locked";

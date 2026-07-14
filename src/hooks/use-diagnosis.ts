@@ -21,7 +21,10 @@ import {
 } from "@/services/diagnosis.service";
 import {
   DEFAULT_ROADMAP_BUDGET,
+  generateRoleRoadmapFromCv,
   generateRoadmapFromMatch,
+  getRoadmapOptionsFromMatch,
+  getRoleRoadmapOptions,
   type RoadmapBudgetInput,
 } from "@/services/learning-roadmap.service";
 import type { CvListQuery } from "@/api/cv/list";
@@ -183,6 +186,54 @@ export function useGenerateRoadmapFromMatchMutation() {
       body?: RoadmapBudgetInput;
     }) => generateRoadmapFromMatch(matchId, body),
     retry: false,
+  });
+}
+
+export function useRoadmapOptionsFromMatchQuery(matchId?: string | null, enabled = true) {
+  const canUseApi = useHasApiSession();
+
+  return useQuery({
+    queryKey: ["roadmap-options", matchId ?? "none"],
+    queryFn: () => getRoadmapOptionsFromMatch(matchId!),
+    enabled: enabled && Boolean(matchId) && canUseApi,
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useGenerateRoleRoadmapFromCvMutation() {
+  return useMutation({
+    mutationFn: ({
+      cvId,
+      role,
+      band = "fresher",
+      body = DEFAULT_ROADMAP_BUDGET,
+    }: {
+      cvId: string;
+      role: string;
+      band?: string;
+      body?: RoadmapBudgetInput;
+    }) => generateRoleRoadmapFromCv(cvId, role, band, body),
+    retry: false,
+  });
+}
+
+export function useRoleRoadmapOptionsQuery(
+  cvId?: string | null,
+  role?: string | null,
+  band = "fresher",
+  enabled = true,
+) {
+  const canUseApi = useHasApiSession();
+
+  return useQuery({
+    queryKey: ["role-roadmap-options", cvId ?? "none", role ?? "none", band],
+    queryFn: () => getRoleRoadmapOptions(cvId!, role!, band),
+    enabled: enabled && Boolean(cvId) && Boolean(role) && canUseApi,
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 }
 

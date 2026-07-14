@@ -38,6 +38,10 @@ export const API_ROUTES = {
     MATCH_DETAIL: (cvId: string, matchId: string) => `${API}/cvs/${cvId}/matches/${matchId}`,
     INTERVIEW_PLAN: (cvId: string) => `${API}/cvs/${cvId}/interview-plan`,
     GITHUB_EVIDENCE: (cvId: string) => `${API}/cvs/${cvId}/github-evidence`,
+    ROLE_ROADMAP_OPTIONS: (cvId: string, role: string, band = "fresher") =>
+      `${API}/cvs/${cvId}/role-roadmap/options?role=${encodeURIComponent(role)}&band=${encodeURIComponent(band)}`,
+    ROLE_ROADMAP: (cvId: string, role: string, band = "fresher") =>
+      `${API}/cvs/${cvId}/role-roadmap?role=${encodeURIComponent(role)}&band=${encodeURIComponent(band)}`,
     // CV-only corner-advisor chat (no JD match) — mirror of CV_MATCHES.CHAT but
     // grounded in the CV review alone. Used when there is no JD match id.
     DIAGNOSIS_CHAT: (cvId: string) => `${API}/cvs/${cvId}/diagnosis-chat`,
@@ -77,6 +81,7 @@ export const API_ROUTES = {
   // Gap-report-derived artifacts on a persisted CV/JD match.
   CV_MATCHES: {
     GAP_REPORT: (matchId: string) => `${API}/cv-matches/${matchId}/gap-report`,
+    ROADMAP_OPTIONS: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap/options`,
     ROADMAP: (matchId: string) => `${API}/cv-matches/${matchId}/roadmap`,
     INTERVIEW_PLAN: (matchId: string) => `${API}/cv-matches/${matchId}/interview-plan`,
     NEXT_STEPS: (matchId: string) => `${API}/cv-matches/${matchId}/next-steps`,
@@ -120,6 +125,11 @@ export const API_ROUTES = {
   LEARNING: {
     CHAT: `${API}/learning/chat`,
     CHAT_HISTORY: (conversationId: string) => `${API}/learning/chat/${conversationId}`,
+    TRANSLATE_DISPLAY: `${API}/learning/translate-display`,
+    ACTIVE_ROADMAP: `${API}/learning/roadmaps/active`,
+    CLEAR_ACTIVE_ROADMAP: `${API}/learning/roadmaps/active`,
+    ROADMAP_SCHEDULE: (roadmapId: string) =>
+      `${API}/learning/roadmaps/${encodeURIComponent(roadmapId)}/schedule`,
     SESSION_PROGRESS: (sessionId: string) =>
       `${API}/learning/sessions/${encodeURIComponent(sessionId)}/progress`,
     QUIZ_ANSWER: (sessionId: string) =>

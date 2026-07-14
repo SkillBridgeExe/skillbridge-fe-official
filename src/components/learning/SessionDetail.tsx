@@ -31,6 +31,8 @@ import {
   ExternalLink,
   Plus,
   Trash,
+  Languages,
+  Loader2,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
@@ -45,6 +47,7 @@ import {
   getLearningSessionProgress,
   patchLearningChecklistItem,
   saveLearningSessionProgress,
+  translateLearningDisplay,
 } from "@/services/learning-roadmap.service";
 import { buildInternalResourceTask } from "./internal-resource-content";
 import { getActiveSessionResource } from "./session-content";
@@ -133,6 +136,232 @@ function orderSessionForDisplay(session: LearningSession): LearningSession {
   return {
     ...session,
     sections: orderLearningSectionsForDisplay(session.sections),
+  };
+}
+
+const VI_TEXT_MAP: Record<string, string> = {
+  "Session 1": "Buổi 1",
+  "Session 2": "Buổi 2",
+  "Types and interfaces": "Kiểu dữ liệu và interface",
+  "Narrowing unknown data": "Thu hẹp kiểu cho dữ liệu unknown",
+  "Use TypeScript to make data shapes explicit, catch common mistakes earlier, and document function contracts for real frontend and backend work.":
+    "Dùng TypeScript để mô tả rõ cấu trúc dữ liệu, phát hiện lỗi sớm hơn và ghi rõ contract của hàm trong công việc frontend/backend thực tế.",
+  "Create a type for a resource or user object.": "Tạo type cho một resource hoặc object người dùng.",
+  "Use that type in at least one function parameter.": "Dùng type đó trong ít nhất một tham số của hàm.",
+  "Avoid using any for known shapes.": "Tránh dùng any cho những cấu trúc dữ liệu đã biết.",
+  "Named types make API responses, form values, and component props easier to understand.":
+    "Type có tên giúp API response, giá trị form và props của component dễ hiểu hơn.",
+  "They also let the compiler warn you when code expects fields that do not exist.":
+    "Chúng cũng giúp compiler cảnh báo khi code dùng những field không tồn tại.",
+  "Named types make API responses, form values, and component props easier to understand. They also let the compiler warn you when code expects fields that do not exist.":
+    "Type có tên giúp API response, giá trị form và props của component dễ hiểu hơn. Chúng cũng giúp compiler cảnh báo khi code dùng những field không tồn tại.",
+};
+
+const VI_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bThis section covers\b/g, "Phần này bao gồm"],
+  [/\bas part of the\b/g, "trong"],
+  [/\bmodule\b/g, "module"],
+  [/\bWork through the\b/g, "Hoàn thành"],
+  [/\bexercises to build hands-on experience\b/g, "bài thực hành để có kinh nghiệm hands-on"],
+  [/\bexercise to build hands-on experience\b/g, "bài thực hành để có kinh nghiệm hands-on"],
+  [/\bIntroduction and\b/g, "Giới thiệu và"],
+  [/\bIntroduction to\b/g, "Giới thiệu về"],
+  [/\bsetup\b/g, "cài đặt"],
+  [/\bReading images and video\b/g, "Đọc ảnh và video"],
+  [/\bResizing, drawing, and text overlays\b/g, "Resize, vẽ và chèn chữ lên ảnh"],
+  [/\bImage transforms, edges, and contours\b/g, "Biến đổi ảnh, edge và contour"],
+  [/\bFace detection and recognition basics\b/g, "Cơ bản về phát hiện và nhận diện khuôn mặt"],
+  [/\bComponents\b/g, "Component"],
+  [/\bProps\b/g, "Props"],
+  [/\bState\b/g, "State"],
+  [/\bEffects\b/g, "Effect"],
+  [/\bRouting\b/g, "Routing"],
+  [/\bPractical\b/g, "Thực hành"],
+  [/\bPractice\b/g, "Thực hành"],
+  [/\bBasics\b/g, "Cơ bản"],
+  [/\bAdvanced\b/g, "Nâng cao"],
+  [/\bBuild\b/g, "Xây dựng"],
+  [/\bCreate\b/g, "Tạo"],
+  [/\bExplain\b/g, "Giải thích"],
+  [/\bInstall\b/g, "Cài đặt"],
+  [/\bUse\b/g, "Dùng"],
+  [/\bAvoid\b/g, "Tránh"],
+  [/\busing any\b/g, "dùng kiểu any"],
+  [/\bfor known shapes\b/g, "cho những cấu trúc dữ liệu đã biết"],
+  [/\bQuestion\b/g, "Câu hỏi"],
+  [/\bCorrect\b/g, "Đúng"],
+  [/\bReview\b/g, "Xem lại"],
+];
+
+function translateLearningTextToVietnamese(text?: string): string | undefined {
+  if (!text) return text;
+  const exact = VI_TEXT_MAP[text.trim()];
+  if (exact) return exact;
+
+  const sessionMatch = text.match(/^Session\s+(\d+)$/i);
+  if (sessionMatch) return `Buổi ${sessionMatch[1]}`;
+
+  const sectionSummary = text.match(/^This section covers (.+) as part of the (.+) module\. Work through the (\d+) exercises? to build hands-on experience\.$/i);
+  if (sectionSummary) {
+    return `Phần này giúp bạn học ${translateLearningTextToVietnamese(sectionSummary[1])} trong môn ${translateLearningTextToVietnamese(sectionSummary[2])}. Hoàn thành ${sectionSummary[3]} bài thực hành để có kinh nghiệm hands-on.`;
+  }
+
+  let output = text;
+  for (const [pattern, replacement] of VI_REPLACEMENTS) {
+    output = output.replace(pattern, replacement);
+  }
+  return output;
+}
+
+type SessionTranslationMap = Record<string, string>;
+
+function translatedSessionText(path: string, text: string | undefined, translations?: SessionTranslationMap) {
+  if (!text) return text;
+  return translations?.[path] ?? translateLearningTextToVietnamese(text) ?? text;
+}
+
+function collectSessionTranslationItems(session: LearningSession) {
+  const items: Array<{ id: string; summary: string }> = [];
+  const add = (path: string, value?: string) => {
+    const text = value?.trim();
+    if (!text) return;
+    items.push({ id: path, summary: text });
+  };
+
+  add("session.title", session.title);
+  for (const section of session.sections) {
+    add(`section.${section.id}.title`, section.title);
+    add(`section.${section.id}.body`, section.body);
+    for (const item of section.checklist ?? []) {
+      add(`section.${section.id}.checklist.${item.id}`, item.label);
+    }
+  }
+
+  if (session.lessonContent) {
+    add("lesson.title", session.lessonContent.title);
+    add("lesson.summary", session.lessonContent.summary);
+    for (const objective of session.lessonContent.learningObjectives) {
+      add(`objective.${objective.id}.title`, objective.title);
+      add(`objective.${objective.id}.description`, objective.description);
+    }
+    for (const section of session.lessonContent.sections) {
+      add(`lessonSection.${section.id}.title`, section.title);
+      add(`lessonSection.${section.id}.body`, section.body);
+      for (const item of section.checklist) {
+        add(`lessonSection.${section.id}.checklist.${item.id}`, item.label);
+      }
+    }
+    for (const question of session.lessonContent.quiz) {
+      add(`quiz.${question.id}.question`, question.question);
+      add(`quiz.${question.id}.explanation`, question.explanation);
+      question.options.forEach((option, index) => add(`quiz.${question.id}.option.${index}`, option));
+    }
+    for (const exercise of session.lessonContent.exercises) {
+      add(`exercise.${exercise.id}.title`, exercise.title);
+      add(`exercise.${exercise.id}.prompt`, exercise.prompt);
+      add(`exercise.${exercise.id}.proof`, exercise.proofOfCompletion);
+      exercise.acceptanceCriteria.forEach((item, index) => add(`exercise.${exercise.id}.criteria.${index}`, item));
+    }
+  }
+
+  for (const resource of session.resources) {
+    add(`resource.${resource.id}.title`, resource.title);
+    add(`resource.${resource.id}.description`, resource.description);
+    add(`resource.${resource.id}.proof`, resource.proofOfCompletion);
+  }
+
+  return items;
+}
+
+async function translateSessionDisplay(session: LearningSession): Promise<SessionTranslationMap> {
+  const items = collectSessionTranslationItems(session);
+  if (items.length === 0) return {};
+
+  const response = await translateLearningDisplay({
+    locale: "vi",
+    items,
+  });
+
+  return Object.fromEntries(
+    response.items
+      .map((item) => [item.id, item.translated_display.summary ?? item.translated_display.title ?? ""] as const)
+      .filter(([, value]) => value.trim().length > 0),
+  );
+}
+
+function translateLearningSessionToVietnamese(
+  session: LearningSession,
+  translations?: SessionTranslationMap,
+): LearningSession {
+  return {
+    ...session,
+    title: translatedSessionText("session.title", session.title, translations) ?? session.title,
+    sections: session.sections.map((section) => ({
+      ...section,
+      title: translatedSessionText(`section.${section.id}.title`, section.title, translations) ?? section.title,
+      body: translatedSessionText(`section.${section.id}.body`, section.body, translations) ?? section.body,
+      checklist: section.checklist?.map((item) => ({
+        ...item,
+        label: translatedSessionText(`section.${section.id}.checklist.${item.id}`, item.label, translations) ?? item.label,
+      })),
+    })),
+    lessonContent: session.lessonContent
+      ? {
+          ...session.lessonContent,
+          title: translatedSessionText("lesson.title", session.lessonContent.title, translations) ?? session.lessonContent.title,
+          summary: translatedSessionText("lesson.summary", session.lessonContent.summary, translations) ?? session.lessonContent.summary,
+          learningObjectives: session.lessonContent.learningObjectives.map((objective) => ({
+            ...objective,
+            title: translatedSessionText(`objective.${objective.id}.title`, objective.title, translations) ?? objective.title,
+            description:
+              translatedSessionText(`objective.${objective.id}.description`, objective.description, translations) ??
+              objective.description,
+          })),
+          sections: session.lessonContent.sections.map((section) => ({
+            ...section,
+            title: translatedSessionText(`lessonSection.${section.id}.title`, section.title, translations) ?? section.title,
+            body: translatedSessionText(`lessonSection.${section.id}.body`, section.body, translations) ?? section.body,
+            checklist: section.checklist.map((item) => ({
+              ...item,
+              label:
+                translatedSessionText(`lessonSection.${section.id}.checklist.${item.id}`, item.label, translations) ??
+                item.label,
+            })),
+          })),
+          quiz: session.lessonContent.quiz.map((question) => ({
+            ...question,
+            question: translatedSessionText(`quiz.${question.id}.question`, question.question, translations) ?? question.question,
+            options: question.options.map(
+              (option, index) => translatedSessionText(`quiz.${question.id}.option.${index}`, option, translations) ?? option,
+            ),
+            explanation:
+              translatedSessionText(`quiz.${question.id}.explanation`, question.explanation, translations) ??
+              question.explanation,
+          })),
+          exercises: session.lessonContent.exercises.map((exercise) => ({
+            ...exercise,
+            title: translatedSessionText(`exercise.${exercise.id}.title`, exercise.title, translations) ?? exercise.title,
+            prompt: translatedSessionText(`exercise.${exercise.id}.prompt`, exercise.prompt, translations) ?? exercise.prompt,
+            acceptanceCriteria: exercise.acceptanceCriteria.map(
+              (item, index) =>
+                translatedSessionText(`exercise.${exercise.id}.criteria.${index}`, item, translations) ?? item,
+            ),
+            proofOfCompletion:
+              translatedSessionText(`exercise.${exercise.id}.proof`, exercise.proofOfCompletion, translations) ??
+              exercise.proofOfCompletion,
+          })),
+        }
+      : session.lessonContent,
+    resources: session.resources.map((resource) => ({
+      ...resource,
+      title: translatedSessionText(`resource.${resource.id}.title`, resource.title, translations) ?? resource.title,
+      description:
+        translatedSessionText(`resource.${resource.id}.description`, resource.description, translations) ??
+        resource.description,
+      proofOfCompletion:
+        translatedSessionText(`resource.${resource.id}.proof`, resource.proofOfCompletion, translations) ??
+        resource.proofOfCompletion,
+    })),
   };
 }
 
@@ -733,6 +962,7 @@ interface SidebarProps {
   activeSectionId: string;
   progress: SessionProgressState;
   onSelectSection: (id: string) => void;
+  onOpenQuiz?: () => void;
   onToggle: () => void;
   showValidationErrors?: boolean;
 }
@@ -744,6 +974,7 @@ function SessionSidebar({
   activeSectionId,
   progress: sessionProgress,
   onSelectSection,
+  onOpenQuiz,
   onToggle,
   showValidationErrors = false,
 }: SidebarProps) {
@@ -910,7 +1141,13 @@ function SessionSidebar({
           <button
             type="button"
             aria-label="Open quiz section"
-            onClick={() => document.getElementById("quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onClick={() => {
+              if (onOpenQuiz) {
+                onOpenQuiz();
+                return;
+              }
+              document.getElementById("quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
             className="w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border text-slate-700 border-transparent hover:bg-white hover:shadow-sm"
           >
             <span className="mt-0.5 flex-shrink-0">
@@ -1260,6 +1497,7 @@ function VideoContentPanel({
           onAnswer={onAnswerQuizQuestion}
           onRetry={onRetryQuiz}
           adaptiveQuiz={adaptiveQuiz}
+          initialExpanded
         />
       ) : null}
     </div>
@@ -1273,21 +1511,26 @@ function SessionQuiz({
   onAnswer,
   onRetry,
   adaptiveQuiz,
+  initialExpanded = false,
 }: {
   session: LearningSession;
   progress: SessionProgressState;
   onAnswer: (question: QuizQuestionForProgress, selectedOptionIndex: number) => Promise<void>;
   onRetry: (questionIds: string[]) => void;
   adaptiveQuiz?: AdaptiveQuizState | null;
+  initialExpanded?: boolean;
 }) {
   const { t } = useTranslation("common");
   const quiz = buildQuiz(session);
   const stats = getQuizStats(progress, quiz);
   const passingCount = getQuizPassingCount(quiz.length);
   const passed = stats.correct >= passingCount;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initialExpanded);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [checkingAnswers, setCheckingAnswers] = useState(false);
+  useEffect(() => {
+    if (initialExpanded) setExpanded(true);
+  }, [initialExpanded, session.id]);
   if (quiz.length === 0) return null;
 
   const unansweredQuestions = quiz.filter((question) => !progress.quizAttempts?.[question.id]);
@@ -1678,6 +1921,7 @@ function DocContentPanel({
   showValidationErrors = false,
   mode = "learn",
   onOpenSandboxWithSection,
+  isVietnameseDisplay = false,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -1692,6 +1936,7 @@ function DocContentPanel({
   showValidationErrors?: boolean;
   mode?: LearningMode;
   onOpenSandboxWithSection?: (sectionTitle: string) => void;
+  isVietnameseDisplay?: boolean;
 }) {
   const { t } = useTranslation("common");
   const [currentPage, setCurrentPage] = useState(1);
@@ -1727,6 +1972,13 @@ function DocContentPanel({
   const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
   const paginatedCourses = visibleRecommendedCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   const activeSectionOutcomes = getSectionLearningOutcomes(activeSection);
+  const sectionIntro = isVietnameseDisplay
+    ? `Phần này giúp bạn học ${activeSection?.title ?? "nội dung này"} trong ${session.title}. Hoàn thành ${activeSection?.exercises ?? 0} bài thực hành để có kinh nghiệm hands-on.`
+    : t("learning.session.sectionIntro", {
+        section: activeSection?.title,
+        session: session.title,
+        count: activeSection?.exercises ?? 0,
+      });
 
   const handleCheckPracticeTask = (sectionId: string, itemId: string) => {
     const proofId = getChecklistTaskProofId(sectionId, itemId);
@@ -1804,16 +2056,12 @@ function DocContentPanel({
       ">
         <h2>{activeSection?.title}</h2>
         <p>
-          {t("learning.session.sectionIntro", {
-            section: activeSection?.title,
-            session: session.title,
-            count: activeSection?.exercises ?? 0,
-          })}
+          {sectionIntro}
         </p>
         {activeSectionOutcomes.length > 0 ? (
           <div className="not-prose mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-3">
             <p className="text-xs font-bold uppercase tracking-widest text-sky-700">
-              You will be able to
+              {isVietnameseDisplay ? "Sau bài này bạn có thể" : "You will be able to"}
             </p>
             <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
               {activeSectionOutcomes.map((outcome) => (
@@ -1853,7 +2101,7 @@ function DocContentPanel({
                     onClick={() => onOpenSandboxWithSection(sec.title)}
                   >
                     <Terminal className="w-3.5 h-3.5 text-emerald-500" />
-                    Try Sandbox
+                    {isVietnameseDisplay ? "Mở sandbox" : "Try Sandbox"}
                   </Button>
                 )}
               </div>
@@ -1867,7 +2115,7 @@ function DocContentPanel({
               ) : (
                 <p>
                   {t("learning.session.type")}: <strong>{sec.type}</strong>{" - "}
-                  {t("learning.common.exercises", { count: sec.exercises })}
+                  {isVietnameseDisplay ? `${sec.exercises} bài thực hành` : t("learning.common.exercises", { count: sec.exercises })}
                   {sec.completed ? ` - ${t("learning.status.completed")}` : ""}
                 </p>
               )}
@@ -2324,6 +2572,9 @@ function MainContentPanel({
   adaptiveQuiz,
   showValidationErrors = false,
   onOpenSandboxWithSection,
+  activeMode,
+  onModeChange,
+  isVietnameseDisplay = false,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -2339,9 +2590,11 @@ function MainContentPanel({
   adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
   onOpenSandboxWithSection?: (sectionTitle: string) => void;
+  activeMode: LearningMode;
+  onModeChange: (mode: LearningMode) => void;
+  isVietnameseDisplay?: boolean;
 }) {
   const { t } = useTranslation("common");
-  const [activeMode, setActiveMode] = useState<LearningMode>("learn");
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const isVideoSection = activeSection?.type === "video" || activeSection?.type === "quiz" || activeSection?.type === "practice";
   const isDocSection = activeSection?.type === "reading";
@@ -2363,9 +2616,9 @@ function MainContentPanel({
 
         <div role="tablist" aria-label="Learning mode" className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
           {([
-            { id: "learn", label: "Learn", icon: BookOpen },
-            { id: "practice", label: "Practice", icon: GraduationCap },
-            { id: "check", label: "Check", icon: HelpCircle },
+            { id: "learn", label: isVietnameseDisplay ? "Học" : "Learn", icon: BookOpen },
+            { id: "practice", label: isVietnameseDisplay ? "Thực hành" : "Practice", icon: GraduationCap },
+            { id: "check", label: isVietnameseDisplay ? "Kiểm tra" : "Check", icon: HelpCircle },
           ] as const).map((tab) => {
             const isActiveMode = activeMode === tab.id;
             const Icon = tab.icon;
@@ -2375,7 +2628,7 @@ function MainContentPanel({
                 type="button"
                 role="tab"
                 aria-selected={isActiveMode}
-                onClick={() => setActiveMode(tab.id)}
+                onClick={() => onModeChange(tab.id)}
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors",
                   isActiveMode ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800",
@@ -2429,6 +2682,7 @@ function MainContentPanel({
             showValidationErrors={showValidationErrors}
             mode={activeMode}
             onOpenSandboxWithSection={onOpenSandboxWithSection}
+            isVietnameseDisplay={isVietnameseDisplay}
           />
         )}
       </div>
@@ -2458,6 +2712,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const initialSectionId = orderLearningSectionsForDisplay(session.sections)[0]?.id ?? "";
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
+  const [activeMode, setActiveMode] = useState<LearningMode>("learn");
+  const [isVietnameseDisplay, setIsVietnameseDisplay] = useState(false);
+  const [isTranslatingSession, setIsTranslatingSession] = useState(false);
+  const [sessionTranslations, setSessionTranslations] = useState<SessionTranslationMap | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
@@ -2466,6 +2724,36 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const handleOpenSandboxWithSection = (sectionTitle: string) => {
     setSandboxSectionTitle(sectionTitle);
     setIsSandboxOpen(true);
+  };
+
+  const handleOpenQuiz = () => {
+    setActiveMode("check");
+    window.setTimeout(() => {
+      document.getElementById("quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const handleToggleVietnameseDisplay = async () => {
+    if (isVietnameseDisplay) {
+      setIsVietnameseDisplay(false);
+      return;
+    }
+
+    if (sessionTranslations) {
+      setIsVietnameseDisplay(true);
+      return;
+    }
+
+    setIsTranslatingSession(true);
+    try {
+      const translations = await translateSessionDisplay(baseDisplaySession);
+      setSessionTranslations(translations);
+    } catch {
+      setSessionTranslations({});
+    } finally {
+      setIsTranslatingSession(false);
+      setIsVietnameseDisplay(true);
+    }
   };
 
   const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -2496,6 +2784,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   useEffect(() => {
     setActiveSectionId(initialSectionId);
+    setActiveMode("learn");
+    setIsVietnameseDisplay(false);
+    setSessionTranslations(null);
+    setIsTranslatingSession(false);
     setVideoStartSeconds(undefined);
     setAdaptiveQuiz(null);
     setShowValidationErrors(false);
@@ -2579,7 +2871,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
     };
   }, [progress, progressBelongsToCurrentSession, session.id]);
 
-  const displaySession = orderSessionForDisplay(applyProgressToSession(session, visibleProgress));
+  const baseDisplaySession = orderSessionForDisplay(applyProgressToSession(session, visibleProgress));
+  const displaySession = isVietnameseDisplay
+    ? translateLearningSessionToVietnamese(baseDisplaySession, sessionTranslations ?? undefined)
+    : baseDisplaySession;
 
   const weeks = useActiveWeekPlans();
   const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
@@ -2611,10 +2906,13 @@ export function SessionDetail({ session }: SessionDetailProps) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       } else if (!quizPassed) {
-        const quizPanel = document.getElementById("quiz-panel");
-        if (typeof quizPanel?.scrollIntoView === "function") {
-          quizPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        setActiveMode("check");
+        window.setTimeout(() => {
+          const quizPanel = document.getElementById("quiz-panel");
+          if (typeof quizPanel?.scrollIntoView === "function") {
+            quizPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 0);
       }
       return;
     }
@@ -2704,6 +3002,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   };
 
   const handleSelectSection = (sectionId: string) => {
+    setActiveMode("learn");
     const startSeconds = getSectionVideoStartSeconds(displaySession, sectionId);
     if (typeof startSeconds === "number") {
       setVideoStartSeconds(startSeconds);
@@ -2827,6 +3126,28 @@ export function SessionDetail({ session }: SessionDetailProps) {
             </Button>
           )}
 
+          {session.status !== "locked" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleToggleVietnameseDisplay()}
+              disabled={isTranslatingSession}
+              className={cn(
+                "rounded-xl border-slate-200 text-slate-600",
+                isVietnameseDisplay && "border-primary/30 bg-primary/5 text-primary",
+              )}
+            >
+              {isTranslatingSession ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Languages className="mr-2 h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isTranslatingSession ? "Đang dịch..." : isVietnameseDisplay ? "Bản gốc" : "Dịch tiếng Việt"}
+              </span>
+            </Button>
+          )}
+
           <Button variant="outline" size="sm" disabled={!prevSession || isLocked(prevSession)} onClick={() => prevSession && navigate(`/learning/session/${prevSession.id}`)} className="rounded-xl border-slate-200 text-slate-600">
             <ChevronLeft className="w-4 h-4 mr-1" /><span className="hidden sm:inline">{t("learning.session.previous")}</span>
           </Button>
@@ -2878,6 +3199,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
               activeSectionId={activeSectionId}
               progress={visibleProgress}
               onSelectSection={handleSelectSection}
+              onOpenQuiz={handleOpenQuiz}
               onToggle={() => setIsSidebarOpen(false)}
               showValidationErrors={showValidationErrors}
             />
@@ -2899,6 +3221,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
             adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
             onOpenSandboxWithSection={handleOpenSandboxWithSection}
+            activeMode={activeMode}
+            onModeChange={setActiveMode}
+            isVietnameseDisplay={isVietnameseDisplay}
           />
 
           {/* Right AI Chat Panel — sticky */}

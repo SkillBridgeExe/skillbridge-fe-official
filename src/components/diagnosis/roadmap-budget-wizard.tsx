@@ -1,28 +1,66 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, CheckCircle2, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, GripVertical, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import type { RoadmapBudgetInput } from "@/services/learning-roadmap.service";
-import type { RoadmapLanguagePref } from "@shared/api";
+import type { RoadmapLanguagePref, RoadmapSkillOptionDto } from "@shared/api";
+import { cn } from "@/lib/utils";
 
 type WizardStep = "language" | "confirm";
 
 export interface RoadmapWizardAnswers {
   availableDays: number;
   hoursPerWeek: number;
+  studyHoursPerDay: number;
+  studyDaysPerWeek: number;
   languagePref: RoadmapLanguagePref;
+  selectedSkillOrder: string[];
+  excludedSkills: string[];
+  selectedResources: Record<string, string[]>;
+}
+
+const MODULE_SESSION_MINUTES = 120;
+
+function subjectsPerDayFromHours(hours: number): number {
+  return Math.max(1, Math.floor(hours / 2));
 }
 
 export function createRoadmapBudgetInput(
   answers: RoadmapWizardAnswers,
 ): Required<RoadmapBudgetInput> {
+  const subjectsPerDay = subjectsPerDayFromHours(answers.studyHoursPerDay);
+  const studyDaysPerWeek = Math.max(1, Math.min(7, Math.floor(answers.studyDaysPerWeek)));
   return {
     available_days: answers.availableDays,
-    hours_per_week: answers.hoursPerWeek,
+    hours_per_week: subjectsPerDay * 2 * studyDaysPerWeek,
+    minutes_per_session: MODULE_SESSION_MINUTES,
+    sessions_per_week: subjectsPerDay * studyDaysPerWeek,
+    study_days_per_week: studyDaysPerWeek,
     language_pref: answers.languagePref,
+    selected_skill_order: answers.selectedSkillOrder,
+    excluded_skills: answers.excludedSkills,
+    selected_resources: answers.selectedResources,
+    translate_display: answers.languagePref === "vi",
   };
 }
 
@@ -34,12 +72,16 @@ const LANGUAGE_OPTIONS: Array<{ value: RoadmapLanguagePref; labelKey: string }> 
 
 interface MascotRoadmapWizardProps {
   isPending?: boolean;
+  isOptionsLoading?: boolean;
+  options?: RoadmapSkillOptionDto[];
   onClose: () => void;
   onSubmit: (body: Required<RoadmapBudgetInput>) => void;
 }
 
 export function MascotRoadmapWizard({
   isPending = false,
+  isOptionsLoading = false,
+  options = [],
   onClose,
   onSubmit,
 }: MascotRoadmapWizardProps) {
@@ -47,8 +89,13 @@ export function MascotRoadmapWizard({
   const [step, setStep] = useState<WizardStep>("language");
   const [answers, setAnswers] = useState<RoadmapWizardAnswers>({
     availableDays: 30,
-    hoursPerWeek: 8,
+    hoursPerWeek: 28,
+    studyHoursPerDay: 4,
+    studyDaysPerWeek: 5,
     languagePref: "vi",
+    selectedSkillOrder: [],
+    excludedSkills: [],
+    selectedResources: {},
   });
 
   // Hover state for the submit button to play with mascot stickers
@@ -62,8 +109,80 @@ export function MascotRoadmapWizard({
     };
   }, []);
 
+  useEffect(() => {
+    if (options.length === 0 || answers.selectedSkillOrder.length > 0) return;
+    setAnswers((current) => ({
+      ...current,
+      selectedSkillOrder: options
+        .filter((option) => option.selected_by_default)
+        .map((option) => option.skill_canonical),
+      excludedSkills: options
+        .filter((option) => !option.selected_by_default)
+        .map((option) => option.skill_canonical),
+      selectedResources: Object.fromEntries(
+        options
+          .filter((option) => option.selected_by_default)
+          .map((option) => [
+            option.skill_canonical,
+            option.resources?.map((resource) => resource.id) ?? [],
+          ]),
+      ),
+    }));
+  }, [answers.selectedSkillOrder.length, options]);
+
   const submit = () => {
     onSubmit(createRoadmapBudgetInput(answers));
+  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const selectedSkills = new Set(answers.selectedSkillOrder);
+  const orderedOptions = [
+    ...answers.selectedSkillOrder
+      .map((skill) => options.find((option) => option.skill_canonical === skill))
+      .filter((option): option is RoadmapSkillOptionDto => Boolean(option)),
+    ...options.filter((option) => !selectedSkills.has(option.skill_canonical)),
+  ];
+
+  const toggleSkill = (skill: string) => {
+    setAnswers((current) => {
+      const isSelected = current.selectedSkillOrder.includes(skill);
+      return {
+        ...current,
+        selectedSkillOrder: isSelected
+          ? current.selectedSkillOrder.filter((item) => item !== skill)
+          : [...current.selectedSkillOrder, skill],
+        excludedSkills: isSelected
+          ? [...new Set([...current.excludedSkills, skill])]
+          : current.excludedSkills.filter((item) => item !== skill),
+        selectedResources: isSelected
+          ? Object.fromEntries(
+              Object.entries(current.selectedResources).filter(([key]) => key !== skill),
+            )
+          : {
+              ...current.selectedResources,
+              [skill]:
+                options
+                  .find((option) => option.skill_canonical === skill)
+                  ?.resources?.map((resource) => resource.id) ?? [],
+            },
+      };
+    });
+  };
+
+  const reorderSelectedSkills = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setAnswers((current) => {
+      const oldIndex = current.selectedSkillOrder.indexOf(String(active.id));
+      const newIndex = current.selectedSkillOrder.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return current;
+      return {
+        ...current,
+        selectedSkillOrder: arrayMove(current.selectedSkillOrder, oldIndex, newIndex),
+      };
+    });
   };
 
   const question =
@@ -232,6 +351,89 @@ export function MascotRoadmapWizard({
                         {t(`roadmapWizard.language.${answers.languagePref}`)}
                       </span>
                     </div>
+                    <div className="grid grid-cols-2 gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-3">
+                      <label className="space-y-1.5">
+                        <span className="text-xs font-bold text-slate-500">
+                          {t("roadmapWizard.studyHoursPerDay", { defaultValue: "Study hours/day" })}
+                        </span>
+                        <input
+                          type="number"
+                          min={2}
+                          max={10}
+                          step={1}
+                          className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary"
+                          value={answers.studyHoursPerDay}
+                          onChange={(event) =>
+                            setAnswers((current) => ({
+                              ...current,
+                              studyHoursPerDay: Number(event.target.value) || 4,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="space-y-1.5">
+                        <span className="text-xs font-bold text-slate-500">
+                          {t("roadmapWizard.studyDaysPerWeek", { defaultValue: "Study days/week" })}
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={7}
+                          step={1}
+                          className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary"
+                          value={answers.studyDaysPerWeek}
+                          onChange={(event) =>
+                            setAnswers((current) => ({
+                              ...current,
+                              studyDaysPerWeek: Number(event.target.value) || 5,
+                            }))
+                          }
+                        />
+                      </label>
+                      <p className="col-span-2 mt-1 text-[11px] font-semibold leading-relaxed text-slate-500">
+                        {t("roadmapWizard.studyHoursHint", {
+                          defaultValue:
+                            "Each subject is planned as a 2-hour module per study day. 4h/day opens 2 subjects; 6h/day opens 3 subjects.",
+                        })}
+                      </p>
+                    </div>
+                    {isOptionsLoading ? (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-400">
+                        {t("roadmapWizard.loadingOptions", { defaultValue: "Loading skills..." })}
+                      </div>
+                    ) : orderedOptions.length > 0 ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={reorderSelectedSkills}
+                      >
+                        <SortableContext
+                          items={answers.selectedSkillOrder}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                            {orderedOptions.map((option) => {
+                              const selected = selectedSkills.has(option.skill_canonical);
+                              return selected ? (
+                                <SortableSkillOption
+                                  key={option.skill_canonical}
+                                  option={option}
+                                  selected={selected}
+                                  onToggle={() => toggleSkill(option.skill_canonical)}
+                                />
+                              ) : (
+                                <SkillOptionCard
+                                  key={option.skill_canonical}
+                                  option={option}
+                                  selected={selected}
+                                  onToggle={() => toggleSkill(option.skill_canonical)}
+                                />
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : null}
                     <Button
                       onClick={submit}
                       disabled={isPending}
@@ -271,6 +473,112 @@ export function MascotRoadmapWizard({
         </motion.div>
       </motion.div>
       </div>
+    </div>
+  );
+}
+
+function SortableSkillOption({
+  option,
+  selected,
+  onToggle,
+}: {
+  option: RoadmapSkillOptionDto;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation("diagnosis");
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: option.skill_canonical });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={cn(isDragging && "z-10 opacity-90")}
+    >
+      <SkillOptionCard
+        option={option}
+        selected={selected}
+        onToggle={onToggle}
+        dragHandle={
+          <button
+            type="button"
+            aria-label={t("roadmapWizard.dragSkill", {
+              skill: option.display_name,
+              defaultValue: `Drag ${option.display_name}`,
+            })}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-primary/70 hover:bg-white hover:text-primary active:scale-95"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
+function SkillOptionCard({
+  option,
+  selected,
+  onToggle,
+  dragHandle,
+}: {
+  option: RoadmapSkillOptionDto;
+  selected: boolean;
+  onToggle: () => void;
+  dragHandle?: ReactNode;
+}) {
+  return (
+    <div
+      data-testid={`roadmap-skill-${option.skill_canonical}`}
+      data-selected={selected ? "true" : "false"}
+      className={cn(
+        "flex min-h-14 items-center gap-2 rounded-2xl border p-2 transition-colors",
+        selected
+          ? "border-primary/45 bg-primary/10 shadow-sm"
+          : "border-slate-100 bg-slate-50/70 hover:border-primary/20 hover:bg-primary/5",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-1.5 py-1 text-left"
+        aria-pressed={selected}
+      >
+        <span
+          className={cn(
+            "grid h-5 w-5 shrink-0 place-items-center rounded-full border text-white transition-colors",
+            selected ? "border-primary bg-primary" : "border-slate-300 bg-white",
+          )}
+        >
+          {selected && <CheckCircle2 className="h-3.5 w-3.5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "block truncate text-xs font-extrabold",
+              selected ? "text-slate-800" : "text-slate-600",
+            )}
+          >
+            {option.display_name}
+          </span>
+          <span className="block text-[10px] font-bold text-slate-400">
+            {option.estimated_hours}h
+          </span>
+        </span>
+      </button>
+      {selected && dragHandle}
     </div>
   );
 }
