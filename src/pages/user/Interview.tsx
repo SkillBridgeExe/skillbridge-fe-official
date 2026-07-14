@@ -177,6 +177,9 @@ export default function Interview() {
   const liveQuestionBufferRef = useRef("");
   const liveLastQuestionRef = useRef("");
   const isRealtimeTurnSubmittingRef = useRef(false);
+  /** P3 speech timing: when the mic actually opened for this turn / delay to first speech. */
+  const micOpenedAtRef = useRef<number | null>(null);
+  const firstSpeechDelayMsRef = useRef<number | null>(null);
   const submitRealtimeTranscriptRef = useRef<(transcript: string) => void>(() => undefined);
   const micReopenTimerRef = useRef<number | null>(null);
   const realtimeAnswerBufferRef = useRef<string[]>([]);
@@ -395,6 +398,7 @@ export default function Interview() {
   const resetRealtimeAnswerBuffer = useCallback(() => {
     clearRealtimeAnswerFlushTimer();
     realtimeAnswerBufferRef.current = [];
+    firstSpeechDelayMsRef.current = null;
   }, [clearRealtimeAnswerFlushTimer]);
 
   const disconnectRealtime = useCallback(() => {
@@ -529,6 +533,7 @@ export default function Interview() {
                 acceptsUserSpeechRef.current = true;
                 liveSessionRef.current.setMicEnabled(true);
                 setIsMicActive(true);
+                micOpenedAtRef.current = Date.now();
               }, REALTIME_MIC_REOPEN_DELAY_MS);
             }
             break;
@@ -949,6 +954,7 @@ export default function Interview() {
         currentQuestion: currentQuestionKey,
         transcripts: realtimeAnswerBufferRef.current,
         durationSeconds,
+        responseDelayMs: firstSpeechDelayMsRef.current ?? undefined,
       });
       if (!payload) {
         resetRealtimeAnswerBuffer();
@@ -1101,6 +1107,10 @@ export default function Interview() {
 
       const questionKey = currentQuestionRef.current.trim().normalize("NFC");
       if (!questionKey || submittedRealtimeQuestionRef.current === questionKey) return;
+      if (realtimeAnswerBufferRef.current.length === 0 && micOpenedAtRef.current !== null) {
+        // first speech of this turn — measure thinking time from actual mic-open.
+        firstSpeechDelayMsRef.current = Math.max(0, Date.now() - micOpenedAtRef.current);
+      }
       realtimeAnswerBufferRef.current = [...realtimeAnswerBufferRef.current, transcript];
       scheduleRealtimeAnswerFlush();
     },

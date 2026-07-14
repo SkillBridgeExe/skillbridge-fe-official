@@ -38,6 +38,9 @@ export interface InterviewResultQuestionViewModel {
   signals: CommunicationSignalsDto | null;
   /** consistency-guard adjustments applied to this turn's score/depth (BE I-CONSIST). */
   guardAdjustments: InterviewGuardAdjustment[];
+  /** P3 speech timing (voice mode) — null on text/legacy turns. */
+  responseDelayMs: number | null;
+  transcriptSegments: number | null;
 }
 
 /** the guard slugs the report explains — anything unknown is ignored (forward-compatible). */
@@ -246,6 +249,10 @@ export interface ServerOwnedRealtimeTurnInput {
   sessionId: string;
   transcript: string;
   durationSeconds?: number;
+  /** P3: ms from mic-open to first speech, client-measured. */
+  responseDelayMs?: number;
+  /** P3: STT segment count in this answer (long-pause proxy). */
+  transcriptSegments?: number;
 }
 
 export interface ValidatedRealtimeTurnInput extends ServerOwnedRealtimeTurnInput {
@@ -257,6 +264,7 @@ export interface BufferedRealtimeTurnInput {
   currentQuestion?: string | null;
   transcripts: string[];
   durationSeconds?: number;
+  responseDelayMs?: number;
 }
 
 export interface QuestionAudioRequestGuard {
@@ -393,16 +401,26 @@ export function buildServerOwnedRealtimeTurnRequest({
   sessionId,
   transcript,
   durationSeconds,
+  responseDelayMs,
+  transcriptSegments,
 }: ServerOwnedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
   const normalized = transcript.trim().normalize("NFC");
   if (!normalized) return null;
-  return {
+  const request: SubmitInterviewTurnRequest = {
     sessionId,
     userAnswer: normalized,
     userTranscript: normalized,
     modality: "AUDIO",
     durationSeconds,
   };
+  // P3 speech timing — only sent when actually measured (BE drops the metric otherwise).
+  if (typeof responseDelayMs === "number" && responseDelayMs >= 0) {
+    request.responseDelayMs = Math.round(responseDelayMs);
+  }
+  if (typeof transcriptSegments === "number" && transcriptSegments >= 1) {
+    request.transcriptSegments = Math.floor(transcriptSegments);
+  }
+  return request;
 }
 
 export function buildValidatedRealtimeTurnRequest({
@@ -424,18 +442,17 @@ export function buildBufferedRealtimeTurnRequest({
   currentQuestion,
   transcripts,
   durationSeconds,
+  responseDelayMs,
 }: BufferedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
-  const transcript = transcripts
-    .map((item) => item.trim().normalize("NFC"))
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const segments = transcripts.map((item) => item.trim().normalize("NFC")).filter(Boolean);
+  const transcript = segments.join(" ").replace(/\s+/g, " ").trim();
   return buildValidatedRealtimeTurnRequest({
     sessionId,
     currentQuestion,
     transcript,
     durationSeconds,
+    responseDelayMs,
+    transcriptSegments: segments.length,
   });
 }
 
@@ -1072,6 +1089,8 @@ export function toInterviewResultViewModel(
         durationSeconds: turn.durationSeconds,
         signals: turn.signals ?? null,
         guardAdjustments: readGuardAdjustments(turn.turnTrace),
+        responseDelayMs: turn.responseDelayMs ?? null,
+        transcriptSegments: turn.transcriptSegments ?? null,
       };
     });
 
