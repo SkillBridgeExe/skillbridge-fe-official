@@ -1479,6 +1479,17 @@ export default {
         questionBankKey: "Mã câu hỏi: {{key}}",
         noPersistedAnswers: "Chưa có câu trả lời đã lưu để hiển thị.",
         noSummary: "Chưa có tóm tắt.",
+        guardTitle: "Kiểm tra nhất quán điểm",
+        guard: {
+          score_capped_off_topic:
+            "Câu trả lời không đi vào câu hỏi được hỏi, nên điểm câu này bị giới hạn ở mức thấp nhất.",
+          score_capped_evasive:
+            "Câu trả lời né tránh câu hỏi, nên điểm câu này bị giới hạn ở trần mức ranh giới.",
+          score_capped_shallow:
+            "Câu trả lời mới dừng ở bề mặt, nên điểm câu này bị giới hạn dưới mức xuất sắc.",
+          depth_downgraded_thin_answer:
+            "Câu trả lời quá ngắn để thể hiện độ sâu thật, nên đánh giá độ sâu đã được điều chỉnh xuống.",
+        },
         popover: {
           title: "Giải thích điểm chi tiết",
           band: "Mức độ",

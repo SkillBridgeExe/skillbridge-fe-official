@@ -123,6 +123,16 @@ export interface InterviewSessionDto {
   updatedAt: string | null;
 }
 
+export interface InterviewTurnTraceDto {
+  action: 'ask' | 'drill' | 'move_on' | 'wrap';
+  phase: string;
+  topic_id?: string;
+  reasons: string[];
+  depth: number;
+  remaining_turn_budget: number;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface InterviewTurnDto {
   id: string;
   sessionId: string;
@@ -139,6 +149,8 @@ export interface InterviewTurnDto {
   depthSignal?: string | null;
   signals?: CommunicationSignalsDto | null;
   insight?: unknown;
+  /** persisted per-turn decision trace (BE I-CONSIST-2) — null/absent on legacy turns. */
+  turnTrace?: InterviewTurnTraceDto | null;
   currentThread?: string | null;
   skillCanonical?: string | null;
   questionBankKey?: string | null;
@@ -203,15 +215,7 @@ export interface AnswerInterviewResponseDto {
   turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
   finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
   nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
-  turnTrace?: {
-    action: 'ask' | 'drill' | 'move_on' | 'wrap';
-    phase: string;
-    topic_id?: string;
-    reasons: string[];
-    depth: number;
-    remaining_turn_budget: number;
-    confidence: 'high' | 'medium' | 'low';
-  } | null;
+  turnTrace?: InterviewTurnTraceDto | null;
 }
 
 export interface InterviewDetailResponseDto extends InterviewSessionDto {

@@ -36,6 +36,26 @@ export interface InterviewResultQuestionViewModel {
   improvements: string[];
   durationSeconds: number | null;
   signals: CommunicationSignalsDto | null;
+  /** consistency-guard adjustments applied to this turn's score/depth (BE I-CONSIST). */
+  guardAdjustments: InterviewGuardAdjustment[];
+}
+
+/** the guard slugs the report explains — anything unknown is ignored (forward-compatible). */
+export const INTERVIEW_GUARD_ADJUSTMENTS = [
+  "score_capped_off_topic",
+  "score_capped_evasive",
+  "score_capped_shallow",
+  "depth_downgraded_thin_answer",
+] as const;
+
+export type InterviewGuardAdjustment = (typeof INTERVIEW_GUARD_ADJUSTMENTS)[number];
+
+/** extract known guard slugs from a persisted turn trace; defensive on shape (legacy turns). */
+export function readGuardAdjustments(turnTrace: unknown): InterviewGuardAdjustment[] {
+  if (!turnTrace || typeof turnTrace !== "object") return [];
+  const reasons = (turnTrace as { reasons?: unknown }).reasons;
+  if (!Array.isArray(reasons)) return [];
+  return INTERVIEW_GUARD_ADJUSTMENTS.filter((slug) => reasons.includes(slug));
 }
 
 export interface InterviewEvidenceMetricViewModel {
@@ -1051,6 +1071,7 @@ export function toInterviewResultViewModel(
         improvements: coerceStringList(turn.improvements),
         durationSeconds: turn.durationSeconds,
         signals: turn.signals ?? null,
+        guardAdjustments: readGuardAdjustments(turn.turnTrace),
       };
     });
 
