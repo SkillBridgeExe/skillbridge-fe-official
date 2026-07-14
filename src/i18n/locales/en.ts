@@ -545,6 +545,8 @@ export default {
       adminPanel: "Admin Panel",
       businessPortal: "Business Portal",
       mentorHub: "Mentor Hub",
+      billing: "Billing",
+      upgradePlan: "Upgrade Plan",
       logout: "Logout",
     },
     auth: {
@@ -590,8 +592,8 @@ export default {
         mentorDesc: "Mentor and share knowledge",
       },
       toast: {
-        loginDemoSuccess: "Demo sign-in successful - {{role}}",
-        loginSuccess: "Sign-in successful - {{role}}",
+        loginDemoSuccess: "Demo sign in successful as {{role}}",
+        loginSuccess: "Welcome back, {{role}}!",
         loginFailedTitle: "Login failed",
         loginFailedDesc: "Incorrect email or password.",
         loginFailedGenericDesc: "Could not sign in. Please try again.",
@@ -611,7 +613,7 @@ export default {
           "A new verification email has been sent. Please check your inbox.",
         resendFailedTitle: "Resend failed",
         resendFailedDesc: "Could not resend email.",
-        googleSuccess: "Google sign-in successful - {{role}}",
+        googleSuccess: "Google sign in successful as {{role}}",
         googleFailedTitle: "Google Login failed",
         googleFailedDesc: "Could not authenticate with Google.",
       },
@@ -1660,7 +1662,10 @@ export default {
       title: "Bullet feedback",
       verbFirst: "#action_verb",
       quantified: "#quantified",
-      needsWork: "needs work"
+      needsWork: "needs work",
+      missingQuantification: "missing metrics",
+      weakOpener: "weak verb",
+      firstPerson: "first person"
     },
     fit: {
       verdict: {
@@ -1770,6 +1775,10 @@ export default {
       dropActive: "Drop your CV here",
     },
     review: {
+      title: "CV Analysis",
+      tabAudit: "CV Audit",
+      tabCv: "Your CV",
+      tabMarket: "Market & Careers",
       actionList: {
         rankedCaption: "Ranked by impact on your score",
         impact: "Impact {{severity}}",
@@ -1779,6 +1788,7 @@ export default {
         not_fixable_now: "Already met or cannot be fixed right now"
       },
       backToUpload: "Back to upload",
+      fallbackCvName: "Untitled CV",
       heroTitle: "Your CV quality score",
       badgeOutstanding: "Outstanding profile",
       exportReport: "Export report",
@@ -1832,6 +1842,8 @@ export default {
       toastFailedTitle: "Analysis failed",
       praiseHigh:
         "Strong work — this CV already beats most of the screening bar.",
+      issuesMarked: "Highlighting {{count}} points to improve in your CV",
+      noIssuesMarked: "Excellent! No issues detected in your CV.",
       extractionQuality: {
         medium:
           "AI may have missed part of your CV — double-check against the original to be sure the result is complete.",
@@ -1849,10 +1861,63 @@ export default {
       },
       tabs: {
         audit: "CV Audit",
-        skills: "Skills Analysis",
+        cv: "Your CV",
         market: "Market & Careers",
       },
       footerNote: "SkillBridge CV Diagnosis Report",
+    },
+    report: {
+      groups: {
+        ats: "ATS compatibility",
+        content: "Content optimization",
+        skills: "Skill match",
+        ai_eval: "Deep AI review",
+        issues: "Issues to address",
+      },
+      content: {
+        action_verbs: {
+          label: "Action Verbs",
+          evidence_pass: "No weak action verbs or openers detected in CV.",
+          evidence_fail: "There are {{count}} bullet points starting with weak verbs or missing action verbs.",
+          hint: "Start each bullet point with strong, active verbs (e.g., 'Designed', 'Optimized', 'Led') to emphasize your impact.",
+        },
+        quantification: {
+          label: "Quantified Results",
+          evidence_pass: "All bullet points contain quantified achievements.",
+          evidence_fail: "Only {{x}}/{{y}} bullet points contain quantified results or metrics.",
+          hint: "Add specific metrics (%, $, time frame, project scale) to make your achievements verifiable and persuasive.",
+        },
+        buzzwords: {
+          label: "Avoid Buzzwords",
+          evidence_pass: "No generic buzzwords detected in CV.",
+          evidence_fail: "Detected {{count}} buzzwords: {{words}}",
+          hint: "Replace generic buzzwords (like 'hardworking', 'team-player') with concrete examples of what you accomplished.",
+        },
+        first_person: {
+          label: "First-Person Pronouns",
+          evidence_pass: "No first-person pronouns detected.",
+          evidence_fail: "There are {{count}} bullet points using first-person pronouns.",
+          hint: "Avoid using pronouns like 'I', 'we', 'my' in a professional CV. Use action-oriented, implicit subject statements.",
+        }
+      },
+      rail: {
+        scoreTitle: "Match Rate",
+        issuesBadge: "{{count}} to fix",
+        resolved: "Passed",
+        askCompanion: "Ask your AI coach",
+        downloadCv: "Download original CV",
+      },
+      keywordTable: {
+        thSkill: "Skill",
+        thCv: "In CV",
+        thJd: "In JD",
+        thImportance: "Importance",
+        thStatus: "Status",
+        groupLabel: "Keywords / Keyword frequency",
+        showMore: "Show {{count}} more skills",
+      },
+      requiredCoverage: "Covers {{pct}}% of required skills",
+      topbar: { title: "CV diagnosis report" },
     },
     results: {
       backToReview: "Back to CV review",
@@ -1864,8 +1929,8 @@ export default {
       downloadFailed: "Couldn't download your CV. Please try again.",
       overallMatch: "Overall match",
       overallScore: "Overall CV score",
-      scoreLabelMatch: "Match",
-      scoreLabelCv: "CV score",
+      scoreLabelMatch: "Match Rate",
+      scoreLabelCv: "CV Score",
       badgeTop: "Top-tier CV profile",
       "scoreMsg.excellent":
         "Outstanding profile. Your CV is highly competitive and ready for top-tier applications.",
@@ -1898,6 +1963,12 @@ export default {
       thSkill: "Skill keyword",
       thScore: "Score in CV",
       thStatus: "Status",
+      navigatorTitle: "Report categories",
+      navRadar: "Radar Comparison",
+      navPriorityImprovements: "Priority Improvements",
+      navSkillDetails: "Skill Details",
+      navActionPlan: "Action Plan",
+      navHighlightJd: "Highlight JD",
       gapEmpty:
         "No JD skill mapping found. Upload or paste a job description to see detailed gaps.",
       insightsTitle: "Strategic AI insights",
@@ -2024,6 +2095,11 @@ export default {
       noFocusTitle: "No skill gaps to practice",
       noFocusDesc:
         "Your skills already meet this role's requirements. Any remaining gaps are about evidence/wording in your CV — see the tailoring section.",
+      emptyState: {
+        title: "Personalized Interview Prep",
+        desc: "Compare your CV with a specific Job Description (JD) to get simulated interview questions tailored just for you.",
+        cta: "Compare with JD",
+      },
     },
     roadmap: {
       generating: "Generating...",
@@ -2424,6 +2500,8 @@ export default {
       appliedCount: "Applied {{count}}/{{total}} evidence-backed suggestions.",
       manualTasks: "Things you need to add manually:",
       unknownName: "Name not found",
+      noCvData: "No CV data yet",
+      skills: "Skills",
     },
     builder: {
       template: {

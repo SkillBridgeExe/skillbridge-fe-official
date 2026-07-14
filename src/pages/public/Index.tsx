@@ -4,7 +4,8 @@ import {
   Search, GraduationCap, Sparkles,
   Users, Briefcase, CheckCircle2
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useAuthStore } from "@/store/useAuthStore";
 import { motion, useInView, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import ParticleField from "@/components/shared/ParticleField";
@@ -142,8 +143,10 @@ function ExaminerTypingPreview() {
    Main Export
 ───────────────────────────────────────────── */
 export default function Index() {
+  const { isAuthenticated, currentUser } = useAuthStore();
   const { t } = useTranslation("home");
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [activeTab, setActiveTab] = useState<"cv" | "roadmap" | "interview">("cv");
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -182,6 +185,17 @@ export default function Index() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  // Logged-in users land in their app shell, not the marketing page.
+  // (Placed AFTER all hooks — an early return above them breaks rules-of-hooks.)
+  if (isAuthenticated && currentUser) {
+    const dashboardPath =
+      currentUser.role === "business" ? "/business"
+      : currentUser.role === "mentor" ? "/mentor-dashboard"
+      : currentUser.role === "admin" ? "/admin"
+      : "/dashboard";
+    return <Navigate to={dashboardPath} replace />;
+  }
 
   return (
     <Layout hideFooter={true}>

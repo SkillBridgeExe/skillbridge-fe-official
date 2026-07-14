@@ -545,6 +545,8 @@ export default {
       adminPanel: "Trang quản trị",
       businessPortal: "Cổng doanh nghiệp",
       mentorHub: "Khu vực Mentor",
+      billing: "Thanh toán",
+      upgradePlan: "Nâng cấp gói",
       logout: "Đăng xuất",
     },
     auth: {
@@ -590,8 +592,8 @@ export default {
         mentorDesc: "Cố vấn và chia sẻ kiến thức",
       },
       toast: {
-        loginDemoSuccess: "Đăng nhập demo thành công - {{role}}",
-        loginSuccess: "Đăng nhập thành công - {{role}}",
+        loginDemoSuccess: "Đăng nhập thử nghiệm thành công với vai trò {{role}}",
+        loginSuccess: "Chào mừng bạn quay trở lại, {{role}}!",
         loginFailedTitle: "Đăng nhập thất bại",
         loginFailedDesc: "Email hoặc mật khẩu không đúng.",
         loginFailedGenericDesc: "Không thể đăng nhập. Vui lòng thử lại.",
@@ -609,7 +611,7 @@ export default {
           "Email xác thực mới đã được gửi. Vui lòng kiểm tra hộp thư.",
         resendFailedTitle: "Gửi lại thất bại",
         resendFailedDesc: "Không thể gửi lại email.",
-        googleSuccess: "Đăng nhập Google thành công - {{role}}",
+        googleSuccess: "Đăng nhập Google thành công với vai trò {{role}}",
         googleFailedTitle: "Đăng nhập Google thất bại",
         googleFailedDesc: "Không thể xác thực với Google.",
       },
@@ -1656,7 +1658,10 @@ export default {
       title: "Đánh giá bullet",
       verbFirst: "#động_từ",
       quantified: "#số_liệu",
-      needsWork: "cần tối ưu"
+      needsWork: "cần tối ưu",
+      missingQuantification: "thiếu số liệu",
+      weakOpener: "động từ yếu",
+      firstPerson: "ngôi thứ nhất"
     },
     fit: {
       verdict: {
@@ -1767,6 +1772,10 @@ export default {
       dropActive: "Thả CV vào đây",
     },
     review: {
+      title: "Phân tích CV",
+      tabAudit: "Đánh giá CV",
+      tabCv: "CV của bạn",
+      tabMarket: "Thị trường tuyển dụng",
       actionList: {
         rankedCaption: "Xếp theo mức ảnh hưởng tới điểm của bạn",
         impact: "Ảnh hưởng {{severity}}",
@@ -1776,6 +1785,7 @@ export default {
         not_fixable_now: "Đã đạt hoặc chưa xử lý được ngay"
       },
       backToUpload: "Về màn tải CV",
+      fallbackCvName: "CV chưa đặt tên",
       heroTitle: "Điểm chất lượng CV của bạn",
       badgeOutstanding: "Hồ sơ nổi bật",
       exportReport: "Xuất báo cáo",
@@ -1826,6 +1836,8 @@ export default {
       toastMissingJdDesc: "Hãy dán nội dung JD trước.",
       toastFailedTitle: "Phân tích thất bại",
       praiseHigh: "Làm tốt lắm — CV này đã vượt phần lớn vòng lọc hồ sơ.",
+      issuesMarked: "Đang đánh dấu {{count}} điểm cần sửa trong CV",
+      noIssuesMarked: "Tuyệt vời! Không phát hiện lỗi nào cần sửa trong CV.",
       extractionQuality: {
         medium:
           "AI có thể đọc thiếu một phần CV — hãy đối chiếu lại với bản gốc để chắc kết quả đầy đủ.",
@@ -1842,11 +1854,64 @@ export default {
         compareCta: "So sánh JD",
       },
       tabs: {
-        audit: "Kiểm tra CV",
-        skills: "Phân tích Kỹ năng",
+        audit: "Báo cáo CV",
+        cv: "CV của bạn",
         market: "Cơ hội & Thị trường",
       },
       footerNote: "Báo cáo Chẩn đoán CV · SkillBridge",
+    },
+    report: {
+      groups: {
+        ats: "Tương thích ATS",
+        content: "Tối ưu nội dung",
+        skills: "Phù hợp kỹ năng",
+        ai_eval: "AI đánh giá sâu",
+        issues: "Vấn đề cần xử lý",
+      },
+      content: {
+        action_verbs: {
+          label: "Động từ hành động",
+          evidence_pass: "Không phát hiện động từ mở đầu yếu trong CV.",
+          evidence_fail: "Có {{count}} bullet point sử dụng động từ mở đầu yếu hoặc không có động từ hành động.",
+          hint: "Sử dụng các động từ hành động mạnh mẽ và tích cực ở đầu mỗi bullet để nêu bật vai trò chủ động của bạn.",
+        },
+        quantification: {
+          label: "Số liệu đo lường",
+          evidence_pass: "Tất cả các bullet point đều chứa số liệu định lượng.",
+          evidence_fail: "Chỉ có {{x}}/{{y}} bullet point chứa số liệu đo lường thành tích.",
+          hint: "Thêm số liệu cụ thể (%, $, thời gian, quy mô dự án) để tăng tính xác thực và thuyết phục cho các thành tựu của bạn.",
+        },
+        buzzwords: {
+          label: "Tránh từ sáo rỗng",
+          evidence_pass: "Không phát hiện từ ngữ sáo rỗng trong CV.",
+          evidence_fail: "Phát hiện {{count}} từ ngữ sáo rỗng: {{words}}",
+          hint: "Thay thế các từ ngữ chung chung sáo rỗng bằng các hành động và kết quả thực tế bạn đạt được.",
+        },
+        first_person: {
+          label: "Đại từ nhân xưng",
+          evidence_pass: "Không sử dụng đại từ nhân xưng ngôi thứ nhất.",
+          evidence_fail: "Có {{count}} bullet point sử dụng đại từ nhân xưng ngôi thứ nhất.",
+          hint: "Tránh dùng các từ xưng hô như 'tôi', 'chúng tôi' trong CV chuyên nghiệp. Nên dùng cấu trúc ẩn chủ ngữ.",
+        }
+      },
+      rail: {
+        scoreTitle: "Điểm tương thích",
+        issuesBadge: "{{count}} cần sửa",
+        resolved: "Đạt chuẩn",
+        askCompanion: "Hỏi AI đồng hành",
+        downloadCv: "Tải CV gốc",
+      },
+      keywordTable: {
+        thSkill: "Kỹ năng",
+        thCv: "Trong CV",
+        thJd: "Trong JD",
+        thImportance: "Mức độ",
+        thStatus: "Trạng thái",
+        groupLabel: "Keywords / Tần suất từ khóa",
+        showMore: "Xem thêm {{count}} kỹ năng",
+      },
+      requiredCoverage: "Đạt {{pct}}% kỹ năng bắt buộc",
+      topbar: { title: "Kết quả chẩn đoán CV" },
     },
     results: {
       backToReview: "Về màn chấm CV",
@@ -1858,8 +1923,8 @@ export default {
       downloadFailed: "Không tải được CV. Vui lòng thử lại.",
       overallMatch: "Điểm khớp tổng",
       overallScore: "Điểm CV tổng",
-      scoreLabelMatch: "Khớp",
-      scoreLabelCv: "Điểm CV",
+      scoreLabelMatch: "Tỷ lệ khớp",
+      scoreLabelCv: "Điểm số CV",
       badgeTop: "Hồ sơ nhóm đầu",
       "scoreMsg.excellent":
         "Hồ sơ xuất sắc. CV của bạn rất cạnh tranh, sẵn sàng cho các vị trí top.",
@@ -1891,6 +1956,12 @@ export default {
       thSkill: "Từ khoá kỹ năng",
       thScore: "Mức trong CV",
       thStatus: "Trạng thái",
+      navigatorTitle: "Danh mục báo cáo",
+      navRadar: "So sánh Radar",
+      navPriorityImprovements: "Cải thiện ưu tiên",
+      navSkillDetails: "Chi tiết kỹ năng",
+      navActionPlan: "Kế hoạch hành động",
+      navHighlightJd: "Bôi đậm JD",
       gapEmpty:
         "Chưa có dữ liệu so khớp JD. Tải lên hoặc dán JD để xem chi tiết khoảng trống.",
       insightsTitle: "Phân tích chiến lược từ AI",
@@ -2015,6 +2086,11 @@ export default {
       noFocusTitle: "Không có khoảng trống kỹ năng cần luyện",
       noFocusDesc:
         "Kỹ năng của bạn đã đáp ứng yêu cầu vai trò này. Khoảng cách còn lại (nếu có) là về minh chứng/diễn đạt trong CV — xem mục chỉnh sửa CV.",
+      emptyState: {
+        title: "Chuẩn bị phỏng vấn cá nhân hóa",
+        desc: "Hãy so sánh CV của bạn với một Mô tả công việc (JD) cụ thể để AI thiết kế bộ câu hỏi phỏng vấn mô phỏng dành riêng cho bạn.",
+        cta: "So sánh với JD",
+      },
     },
     roadmap: {
       generating: "Đang tạo...",
@@ -2400,6 +2476,8 @@ export default {
       appliedCount: "Đã áp {{count}}/{{total}} gợi ý có bằng chứng.",
       manualTasks: "Việc bạn phải tự thêm:",
       unknownName: "Chưa rõ tên",
+      noCvData: "Chưa có dữ liệu CV",
+      skills: "Kỹ năng",
     },
     builder: {
       template: {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle2, AlertCircle, AlertTriangle, X, ArrowLeft, Share2, Download,
+  CheckCircle2, AlertCircle, AlertTriangle, X,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
   ChevronDown, ChevronUp, RotateCcw,
 } from "lucide-react";
@@ -13,14 +13,12 @@ import {
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/use-toast";
-import { downloadOriginalCvFile } from "@/services/diagnosis.service";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
 import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
-import { VerdictHero, Ribbon, Chapter, SectionRule } from "./editorial";
+import { Ribbon, Chapter, SectionRule } from "./editorial";
+import { ScoreRail } from "./report/ScoreRail";
 import { NextStepsCard } from "./NextStepsCard";
 import { ProgressBanner } from "./ProgressBanner";
 import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
@@ -31,8 +29,16 @@ import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagn
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
-import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 import { FitBadge } from "./FitBadge";
+import { KeywordTable } from "./report/KeywordTable";
+import { buildDiagnosisReport } from "@/lib/diagnosis-report";
+import { dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
+import { seedBuilderFromDocument } from "./edit-in-builder";
+import { DocumentPreview } from "./DocumentPreview";
+import { JobRecommendations } from "./JobRecommendations";
+import { AiTrendsInsight } from "./AiTrendsInsight";
+import { SkillGapTrends } from "./SkillGapTrends";
+import { InterviewPrepPack } from "./InterviewPrepPack";
 
 /* ── Design tokens (§0b — editorial W24) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
@@ -350,40 +356,13 @@ function SystemReadPanel({
  *  MAIN COMPONENT — Editorial layout (W24)
  * ════════════════════════════════════════════════════════════════════════ */
 
-export function DiagnosisStep3Results() {
+interface DiagnosisStep3ResultsProps {
+  activeTab: 'audit' | 'cv' | 'market';
+}
+
+export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { goBack, scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
-  const { toast } = useToast();
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: t("results.shareCopied") });
-    } catch {
-      toast({ title: t("results.shareCopied"), description: window.location.href });
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!lastCvId) return;
-    try {
-      const blob = await downloadOriginalCvFile(lastCvId);
-      const ext = blob.type.includes("png") ? "png"
-        : blob.type.includes("webp") ? "webp"
-        : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "jpg"
-        : "pdf";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `skillbridge-cv.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast({ title: t("results.downloadFailed"), description: getApiErrorMessage(err, ""), variant: "destructive" });
-    }
-  };
+  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -408,21 +387,15 @@ export function DiagnosisStep3Results() {
   // so gate every downstream chapter on this single flag and offer a re-scan instead.
   const canTrustAnalysis = !isDegradedNoBasis && !isUnusable;
 
-  const scoreLabel = isJdMode ? t("results.scoreLabelMatch") : t("results.scoreLabelCv");
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
   const partialCount = hardSkills.filter((s) => s.status === "partial").length;
-
-  /* ── Dynamic UX copy (HONESTY: only existing band copy, no AI text) ── */
-  const scoreMessage = matchScore === null
-    ? ""
-    : matchScore >= 85
-      ? t("results.scoreMsg.excellent")
-      : matchScore >= 80
-        ? t("results.scoreMsg.strong")
-        : matchScore >= 50
-          ? t("results.scoreMsg.decent")
-          : t("results.scoreMsg.weak");
+  const dimensions = reviewData?.dimensions ?? [];
+  const allIssues = reviewData?.issues ?? [];
+  const issueGroups = dimensions.length > 0
+    ? dimensions.map((_, i) => dimensionIssueSlice(reviewData, i))
+    : [allIssues];
+  const reportGroups = buildDiagnosisReport(reviewData, t, issueGroups);
 
   /* ── Rubric Fallback Warning Strings ── */
   const unnormalizedSkillsList = jdMatch?.unnormalized_jd_requirements || [];
@@ -523,6 +496,7 @@ export function DiagnosisStep3Results() {
       id: "diagnosis:results",
       priority: 10,
       anchorId: "gap-anchor",
+      suppressAutoOpen: true,
       getTurn: () => ({
         skill: "diagnosis_results",
         props: {
@@ -552,483 +526,472 @@ export function DiagnosisStep3Results() {
     : undefined;
   const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
 
-  /* ── Kicker text ── */
-  const kickerText = targetRole
-    ? t("editorial.kicker", { role: targetRole })
-    : t("editorial.kickerGeneric");
-
   return (
-    <div className="space-y-0 animate-in fade-in duration-600">
-      {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
-        <div className="max-w-4xl mx-auto pt-6 px-4">
-          <ExtractionQualityBanner quality={reviewData.extraction_quality} />
-        </div>
+    <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500 w-full">
+      {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
+      {!isUnusable && !isDegradedNoBasis && (
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-hidden h-full">
+          <ScoreRail
+            overallScore={matchScore ?? 0}
+            groups={reportGroups}
+            breakdown={reviewData?.breakdown}
+            verdictMessage=""
+          />
+        </aside>
       )}
 
-      {/* ────────────────────────────────────────────────────────────────────
-       *  MASTHEAD — kicker + actions + VerdictHero + Ribbon
-       * ──────────────────────────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-4xl mx-auto space-y-2 pb-6">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-semibold text-[#787774] hover:text-[#2F3437] transition-colors group focus-visible:ring-2 focus-visible:ring-primary/40 rounded">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> {t("results.backToReview")}
-          </button>
-          <div className="flex items-center gap-3">
-            <Button onClick={handleShare} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40">
-              <Share2 className="w-3.5 h-3.5" /> {t("results.share")}
-            </Button>
-            <Button onClick={handleDownload} disabled={!lastCvId} variant="outline" size="sm" className="rounded-lg gap-2 text-xs font-semibold text-[#2F3437] border-[#EAEAEA] bg-white hover:bg-[#FBFBFA] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50">
-              <Download className="w-3.5 h-3.5" /> {t("results.download")}
-            </Button>
-          </div>
-        </div>
-
-        {/* Kicker */}
-        <p className="text-[11px] font-bold uppercase tracking-widest text-[#787774] text-center pt-6">
-          {kickerText}
-        </p>
-
-        {isJdMode && jdMatch?.fell_back_to_rubric && (
-          <div className="flex items-start gap-3 p-4 mx-auto max-w-2xl mt-4 bg-amber-50 border border-amber-200 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <h4 className="text-sm font-bold text-amber-900">{t("rubricFallback.title")}</h4>
-              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                {targetRole
-                  ? t("rubricFallback.body", { role: targetRole, skills: fallbackSkillsString })
-                  : t("rubricFallback.bodyNoRole", { skills: fallbackSkillsString })}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {isJdMode && isDegradedUnrecognizedSkills && (
-          <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mt-4 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
-            <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
-            <div>
-              <p className="leading-relaxed">
-                {t("degraded.unrecognizedSkills")}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Verdict Hero — wrap label with score breakdown popover (#14) when JD mode */}
+      {/* RIGHT COLUMN: Detail Report (Scrolls on desktop) */}
+      <div className="flex-1 lg:overflow-y-auto lg:h-full custom-scrollbar bg-[#FCFCFD] p-6 lg:p-8">
         {isDegradedNoBasis ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <h3 className="text-lg font-bold text-[#2F3437]">
+          <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto")}>
+            <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
+            <h3 className="text-sm font-bold text-[#2F3437]">
               {t("degraded.noBasisTitle")}
             </h3>
-            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+            <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
               {t("degraded.noBasisBody")}
             </p>
-            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              {t("degraded.noBasisCta", { defaultValue: "Chọn vai trò hoặc dán JD khác" })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scanAgain}
+              className="gap-1.5 text-xs rounded-full animate-none"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.noBasisCta", { defaultValue: "Chọn lại vai trò" })}
             </Button>
           </div>
         ) : isUnusable ? (
-          <div className="mx-auto max-w-2xl mt-8 p-6 bg-[#FBFBFA] border border-[#E3E0D8] rounded-2xl text-center space-y-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <h3 className="text-lg font-bold text-[#2F3437]">
+          <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto")}>
+            <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
+            <h3 className="text-sm font-bold text-[#2F3437]">
               {t("degraded.unusableTitle")}
             </h3>
-            <p className="text-sm text-[#787774] leading-relaxed max-w-lg mx-auto">
+            <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
               {t("degraded.unusableBody")}
             </p>
-            <Button variant="outline" size="sm" onClick={scanAgain} className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              {t("degraded.unusableCta", { defaultValue: "Tải lên CV rõ hơn" })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scanAgain}
+              className="gap-1.5 text-xs rounded-full animate-none"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.unusableCta", { defaultValue: "Tải lên CV khác" })}
             </Button>
           </div>
         ) : (
-          <VerdictHero
-            target={matchScore ?? 0}
-            label={
-              isJdMode ? (
-                <ScoreBreakdownPopover jdMatch={jdMatch}>
-                  {scoreLabel}
-                </ScoreBreakdownPopover>
-              ) : (
-                scoreLabel
-              )
-            }
-            verdictMessage={scoreMessage}
-            isJdMode={isJdMode}
-            rubricBand={jdMatch?.rubric_band ?? reviewData?.skills_relevance_breakdown?.rubric_band}
-            bandTooltip={t("band.tooltip")}
-          />
-        )}
-
-        {/* W44: Microcopy — honest distinction between CV score and JD match score */}
-        {isJdMode && !isDegradedNoBasis && !isUnusable && (
-          <div className="mt-2 space-y-1">
-            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
-              {t("results.scoreDistinction", {
-                defaultValue: "JD match score ≠ CV quality score: one measures how well your CV covers this JD's requirements, the other measures presentation quality.",
-              })}
-            </p>
-            <p className="text-[11px] text-[#787774] text-center max-w-md mx-auto leading-relaxed">
-              {t("results.notHiringPrediction")}
-            </p>
-          </div>
-        )}
-
-        {/* Ribbon — inline stats + deal-breaker chips */}
-        {isJdMode && !isDegradedNoBasis && !isUnusable && (
-          <div className="flex flex-col items-center justify-center gap-3 mt-4">
-            <Ribbon
-              matched={presentCount}
-              partial={partialCount}
-              missing={missingCount}
-              coverage={coverage}
-              capApplied={capApplied}
-            />
-            {fitVerdict && <FitBadge fit={fitVerdict} className="mt-1" />}
-          </div>
-        )}
-
-        {/* CV-only sub-scores — hidden when the CV text is unusable (no trustworthy number). */}
-        {!isJdMode && canTrustAnalysis && (
-          <div className="flex justify-center gap-8 text-[13px] font-semibold tabular-nums py-2">
-            <span className="text-[#787774]">
-              <Shield className="w-3.5 h-3.5 inline mr-1" />
-              ATS <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.ats ?? 0}</span>
-            </span>
-            <span className="text-[#787774]">
-              <Code className="w-3.5 h-3.5 inline mr-1" />
-              {t("results.structure")} <span className="font-mono text-[#2F3437]">{reviewData?.breakdown.structure ?? 0}</span>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* TRUST': the entire analysis body renders ONLY when the input could be trusted enough to
-          score. Otherwise the masthead panel above (with its re-scan CTA) is the whole result. */}
-      {canTrustAnalysis && (
-        <>
-      <SectionRule />
-
-      {isJdMode && (
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
-        </div>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────────
-       *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
-       * ──────────────────────────────────────────────────────────────────── */}
-      {isJdMode && !isDegradedNoBasis && (
-        <>
-          <div className="py-12 md:py-16">
-            <Chapter
-              kicker={`01`}
-              title={t("editorial.chap1")}
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
-                {/* Radar */}
-                <div className="lg:col-span-3">
-                  {radarData.length > 0 ? (
-                    <>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                          <PolarGrid stroke="#E3E3E0" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
-                          <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
-                          <Radar name="you" dataKey="you" stroke="#00AEFF" fill="#00AEFF" fillOpacity={0.12} strokeWidth={2} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                      <div className="flex justify-center gap-6 mt-2">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
-                  )}
-                </div>
-
-                {/* Narrative ("Vì sao điểm này") */}
-                <div className="lg:col-span-2 flex flex-col justify-center">
-                  <MatchNarrative jdMatch={jdMatch} t={t} />
-                </div>
+          <>
+        
+        {/* Tab 1: Audit Report */}
+        {activeTab === 'audit' && (
+          <div className="w-full px-2 lg:px-4 space-y-8">
+            {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
+              <div className="pb-6">
+                <ExtractionQualityBanner quality={reviewData.extraction_quality} />
               </div>
-            </Chapter>
-          </div>
-          <SectionRule />
-        </>
-      )}
-
-      {!isJdMode && (
-        <>
-          <div className="py-12 md:py-16">
-            <Chapter
-              kicker={`01`}
-              title={t("editorial.chap1")}
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
-                <div className="lg:col-span-3">
-                  <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
-                </div>
-                <div className="lg:col-span-2 flex flex-col justify-center">
-                  <div className="space-y-3">
-                    <p className="text-xs leading-relaxed text-[#787774]">
-                      {t("results.radarDescNoJd")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Chapter>
-          </div>
-          <SectionRule />
-        </>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────────
-       *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
-       * ──────────────────────────────────────────────────────────────────── */}
-      {/* Guard the WHOLE chapter behind the same flag GapReportCard checks internally —
-          a disabled flag must not render a chapter title over an empty body (reads as broken). */}
-      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && (
-        <div id="gap-anchor" className="py-12 md:py-16">
-          <Chapter
-            kicker="02"
-            title={t("editorial.chap2")}
-          >
-            <GapReportCard matchId={jdMatch.matchId} />
-          </Chapter>
-        </div>
-      )}
-
-      {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && <SectionRule />}
-
-      {/* ────────────────────────────────────────────────────────────────────
-       *  CHƯƠNG 3 — Chi tiết (collapsible)
-       * ──────────────────────────────────────────────────────────────────── */}
-      <div className="py-12 md:py-16">
-        <Chapter
-          kicker="03"
-          title={t("editorial.chap3")}
-        >
-          {/* Collapse toggle */}
-          <button
-            onClick={() => setDetailsOpen(!detailsOpen)}
-            className="flex items-center gap-2 text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded"
-          >
-            {detailsOpen ? t("editorial.hideDetails") : t("editorial.showDetails")}
-            {detailsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {detailsOpen && (
-            <div className="space-y-8 animate-in fade-in duration-300">
-              {/* Keyword Table */}
-              <div>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#2F3437]">
-                      {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
-                    </h3>
-                    <p className="text-xs text-[#787774] mt-0.5">
-                      {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
-                    </p>
-                  </div>
-                  {isJdMode && (
-                    <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
-                      <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
-                      <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
-                      <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
-                    </div>
-                  )}
-                </div>
-
-                {isJdMode && (
-                  <div className="flex gap-1 mb-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
-                    <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
-                      <Code className="w-4 h-4" /> {t("results.hardSkills")}
-                      {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
-                    </button>
-                    <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
-                      <Users className="w-4 h-4" /> {t("results.softSkills")}
-                      {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
-                    </button>
-                  </div>
-                )}
-
-                {isJdMode && (
-                  <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-                    <div className="w-6 shrink-0" />
-                    <span className="flex-1">{t("results.thSkill")}</span>
-                    <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
-                    <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
-                  </div>
-                )}
-                <div>
-                  {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
-                    <KeywordRow
-                      key={`${skill.name}-${i}`}
-                      skill={skill}
-                      index={i}
-                      t={t}
-                      evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
-                    />
-                  )) : (
-                    <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Inferred Skills */}
-              {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
-
-              {/* System Read Panel */}
-              {isJdMode && (
-                <SystemReadPanel
-                  unnormalized={jdMatch?.unnormalized_cv_skills}
-                  evidenceGaps={gapReportQuery.data?.evidence_gaps}
-                  emphasisGaps={gapReportQuery.data?.jd_emphasis_gaps}
-                  isLoading={gapReportQuery.isLoading}
-                  isError={gapReportQuery.isError}
-                  t={t}
-                />
-              )}
-            </div>
-          )}
-        </Chapter>
-      </div>
-
-      <SectionRule />
-
-      {/* ────────────────────────────────────────────────────────────────────
-       *  CHƯƠNG 4 — Hành động (Tailor + Roadmap + Interview + Insights)
-       * ──────────────────────────────────────────────────────────────────── */}
-      <div className="py-12 md:py-16">
-        <Chapter
-          kicker="04"
-          title={t("editorial.chap4")}
-        >
-          <div className="space-y-6">
-            {/* Tailor */}
-            {isJdMode && (
-              <TailorChecklist
-                matchId={jdMatch?.matchId}
-                cvId={lastCvId}
-                document={reviewData?.document}
-              />
             )}
 
-            {/* Interview Plan */}
-            {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
-
-            {/* Next Steps (Companion) */}
-            {isJdMode && jdMatch?.matchId && <NextStepsCard matchId={jdMatch.matchId} />}
-
-            {/* AI Insights: Tabbed Assessment & Magic Card */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-              {/* Tabbed Assessment (Strengths / Gaps) */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center gap-2 border-b border-[#EAEAEA] pb-2 px-1">
-                  <button
-                    onClick={() => setInsightTab("strengths")}
-                    className={cn(
-                      "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
-                      insightTab === "strengths" ? "text-[#346538]" : "text-[#787774]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4" /> {t("results.strengths")}
-                    </div>
-                    {insightTab === "strengths" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#346538]" />}
-                  </button>
-                  <button
-                    onClick={() => setInsightTab("gaps")}
-                    className={cn(
-                      "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
-                      insightTab === "gaps" ? "text-[#9F2F2D]" : "text-[#787774]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4" /> {t("results.gaps")}
-                    </div>
-                    {insightTab === "gaps" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#9F2F2D]" />}
-                  </button>
-                </div>
-
-                <div className={cn(CARD, "p-6 min-h-[280px]")}>
-                  {insightTab === "strengths" ? (
-                    <div className="space-y-4 animate-in fade-in duration-500">
-                      <ul className="space-y-3">
-                        {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                            <TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 animate-in fade-in duration-500">
-                      <ul className="space-y-3">
-                        {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+            {isJdMode && jdMatch?.fell_back_to_rubric && (
+              <div className="flex items-start gap-3 p-4 mx-auto max-w-2xl mb-6 bg-amber-50 border border-amber-200 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900">{t("rubricFallback.title")}</h4>
+                  <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                    {targetRole
+                      ? t("rubricFallback.body", { role: targetRole, skills: fallbackSkillsString })
+                      : t("rubricFallback.bodyNoRole", { skills: fallbackSkillsString })}
+                  </p>
                 </div>
               </div>
+            )}
 
-              {/* The Magic Card (Action Plan) */}
-              <div className="lg:col-span-2">
-                <div className="relative h-full overflow-hidden rounded-2xl bg-white shadow-lg border border-indigo-100 group">
-                  {/* Glowing background */}
-                  <div className="absolute -inset-2 opacity-30 blur-2xl bg-gradient-to-br from-indigo-300 via-purple-300 to-emerald-300 pointer-events-none transition-opacity duration-1000 group-hover:opacity-50" />
+            {isJdMode && isDegradedUnrecognizedSkills && (
+              <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mb-6 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
+                <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
+                <div>
+                  <p className="leading-relaxed">
+                    {t("degraded.unrecognizedSkills")}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                  <div className="relative h-full flex flex-col p-6 bg-white/60 backdrop-blur-3xl z-10">
-                    <div className="flex items-center gap-2 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
-                        <Sparkles className="w-5 h-5" />
-                      </div>
-                      <h4 className="text-lg font-bold text-[#2F3437] tracking-tight">{t("results.actionPlan")}</h4>
+            {isJdMode && (
+              <div className="relative z-10 pb-6">
+                <ProgressBanner matchId={jdMatch?.matchId} onExplain={explainProgress} />
+              </div>
+            )}
+
+            {/* Ribbon Stats / Badges moved to the top of audit tab inside right column */}
+            {isJdMode && !isDegradedNoBasis && !isUnusable && (
+              <div className="relative z-10 pb-6">
+                <div className="bg-white border border-[#EAEAEA] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                  <span className="text-xs font-semibold text-[#787774]">
+                    {t("results.matchStats", { defaultValue: "Thống kê so khớp kỹ năng:" })}
+                  </span>
+                  <Ribbon
+                    matched={presentCount}
+                    partial={partialCount}
+                    missing={missingCount}
+                    coverage={coverage}
+                    capApplied={capApplied}
+                  />
+                  {fitVerdict && <FitBadge fit={fitVerdict} />}
+                </div>
+              </div>
+            )}
+
+            {/* TRUST': actual analysis details */}
+            {canTrustAnalysis && (
+              <>
+                {/* ────────────────────────────────────────────────────────────────────
+                 *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
+                 * ──────────────────────────────────────────────────────────────────── */}
+                {isJdMode && !isDegradedNoBasis && (
+                  <>
+                    <div id="chapter-radar" className="py-6 md:py-8">
+                      <Chapter
+                        kicker={`01`}
+                        title={t("editorial.chap1")}
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
+                          {/* Radar */}
+                          <div className="lg:col-span-3">
+                            {radarData.length > 0 ? (
+                                <>
+                                  <ResponsiveContainer width="100%" height={280}>
+                                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                      <PolarGrid stroke="#E3E3E0" />
+                                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
+                                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                                      <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
+                                      <Radar name="you" dataKey="you" stroke="#00AEEF" fill="#00AEEF" fillOpacity={0.12} strokeWidth={2} />
+                                    </RadarChart>
+                                  </ResponsiveContainer>
+                                  <div className="flex justify-center gap-6 mt-2">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
+                                  </div>
+                                </>
+                            ) : (
+                              <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
+                            )}
+                          </div>
+
+                          {/* Narrative ("Vì sao điểm này") */}
+                          <div className="lg:col-span-2 flex flex-col justify-center">
+                            <MatchNarrative jdMatch={jdMatch} t={t} />
+                          </div>
+                        </div>
+                      </Chapter>
                     </div>
+                    <SectionRule />
+                  </>
+                )}
 
-                    <ul className="space-y-4 flex-1">
-                      {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
-                        <li key={i} className="flex items-start gap-3 text-[13px] text-[#2F3437] font-medium leading-relaxed">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2 shadow-[0_0_4px_rgba(99,102,241,0.5)]" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+                {/* ────────────────────────────────────────────────────────────────────
+                 *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
+                 * ──────────────────────────────────────────────────────────────────── */}
+                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && (
+                  <div id="gap-anchor" className="py-6 md:py-8">
+                    <Chapter
+                      kicker="02"
+                      title={t("editorial.chap2")}
+                    >
+                      <GapReportCard matchId={jdMatch.matchId} />
+                    </Chapter>
                   </div>
+                )}
+
+                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && <SectionRule />}
+
+                {/* ────────────────────────────────────────────────────────────────────
+                 *  CHƯƠNG 3 — Chi tiết (collapsible)
+                 * ──────────────────────────────────────────────────────────────────── */}
+                <div id="chapter-skills" className="py-6 md:py-8">
+                  <Chapter
+                    kicker="03"
+                    title={t("editorial.chap3")}
+                  >
+                    {/* Collapse toggle */}
+                    <button
+                      onClick={() => setDetailsOpen(!detailsOpen)}
+                      className="flex items-center gap-2 text-sm font-semibold text-ink-accent hover:text-ink-accent/80 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 rounded"
+                    >
+                      {detailsOpen ? t("editorial.hideDetails") : t("editorial.showDetails")}
+                      {detailsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    {detailsOpen && (
+                      <div className="space-y-8 animate-in fade-in duration-300">
+                        {/* Keyword Table */}
+                        <div>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <div>
+                              <h3 className="text-sm font-bold text-[#2F3437]">
+                                {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
+                              </h3>
+                              <p className="text-xs text-[#787774] mt-0.5">
+                                {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
+                              </p>
+                            </div>
+                            {isJdMode && (
+                              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
+                                <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
+                                <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
+                                <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {isJdMode && (
+                            <div className="flex gap-1 mb-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
+                              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                                <Code className="w-4 h-4" /> {t("results.hardSkills")}
+                                {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
+                              </button>
+                              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                                <Users className="w-4 h-4" /> {t("results.softSkills")}
+                                {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
+                              </button>
+                            </div>
+                          )}
+
+                          {isJdMode && (
+                            <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+                              <div className="w-6 shrink-0" />
+                              <span className="flex-1">{t("results.thSkill")}</span>
+                              <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
+                              <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
+                            </div>
+                          )}
+                          <div>
+                            {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
+                              <KeywordRow
+                                key={`${skill.name}-${i}`}
+                                skill={skill}
+                                index={i}
+                                t={t}
+                                evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
+                              />
+                            )) : (
+                              <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* KeywordTable — keyword frequency × per_skill joined table (renders nothing on old matches) */}
+                        {isJdMode && (
+                          <KeywordTable
+                            keywordFrequency={jdMatch?.keyword_frequency}
+                            perSkill={jdMatch?.scoring_breakdown?.per_skill}
+                          />
+                        )}
+
+                        {/* Inferred Skills */}
+                        {isJdMode && <InferredSkillsBlock skills={jdMatch?.inferred_skills} t={t} />}
+
+                        {/* System Read Panel */}
+                        {isJdMode && (
+                          <SystemReadPanel
+                            unnormalized={jdMatch?.unnormalized_cv_skills}
+                            evidenceGaps={gapReportQuery.data?.evidence_gaps}
+                            emphasisGaps={gapReportQuery.data?.jd_emphasis_gaps}
+                            isLoading={gapReportQuery.isLoading}
+                            isError={gapReportQuery.isError}
+                            t={t}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </Chapter>
                 </div>
+
+                <SectionRule />
+
+                {/* ────────────────────────────────────────────────────────────────────
+                 *  CHƯƠNG 4 — Hành động (Tailor + Roadmap + Interview + Insights)
+                 * ──────────────────────────────────────────────────────────────────── */}
+                <div id="chapter-action" className="py-6 md:py-8">
+                  <Chapter
+                    kicker="04"
+                    title={t("editorial.chap4")}
+                  >
+                    <div className="space-y-6">
+                      {/* Tailor */}
+                      {isJdMode && (
+                        <TailorChecklist
+                          matchId={jdMatch?.matchId}
+                          cvId={lastCvId}
+                          document={reviewData?.document}
+                        />
+                      )}
+
+                      {/* Interview Plan */}
+                      {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+
+                      {/* Next Steps (Companion) */}
+                      {isJdMode && jdMatch?.matchId && <NextStepsCard matchId={jdMatch.matchId} />}
+
+                      {/* AI Insights: Tabbed Assessment & Magic Card */}
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+                        {/* Tabbed Assessment (Strengths / Gaps) */}
+                        <div className="lg:col-span-3 space-y-4">
+                          <div className="flex items-center gap-2 border-b border-[#EAEAEA] pb-2 px-1">
+                            <button
+                              onClick={() => setInsightTab("strengths")}
+                              className={cn(
+                                "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
+                                insightTab === "strengths" ? "text-[#346538]" : "text-[#787774]"
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Shield className="w-4 h-4" /> {t("results.strengths")}
+                              </div>
+                              {insightTab === "strengths" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#346538]" />}
+                            </button>
+                            <button
+                              onClick={() => setInsightTab("gaps")}
+                              className={cn(
+                                "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
+                                insightTab === "gaps" ? "text-[#9F2F2D]" : "text-[#787774]"
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Target className="w-4 h-4" /> {t("results.gaps")}
+                              </div>
+                              {insightTab === "gaps" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#9F2F2D]" />}
+                            </button>
+                          </div>
+
+                          <div className={cn(CARD, "p-6 min-h-[280px]")}>
+                            {insightTab === "strengths" ? (
+                              <div className="space-y-4 animate-in fade-in duration-500">
+                                <ul className="space-y-3">
+                                  {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                      <TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : (
+                              <div className="space-y-4 animate-in fade-in duration-500">
+                                <ul className="space-y-3">
+                                  {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* The Magic Card (Action Plan) */}
+                        <div className="lg:col-span-2">
+                          <div className="relative h-full overflow-hidden rounded-xl bg-white border border-[#EAEAEA]">
+                            <div className="relative h-full flex flex-col p-6">
+                              <div className="flex items-center gap-2 mb-6">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
+                                  <Sparkles className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-lg font-bold text-[#2F3437] tracking-tight">{t("results.actionPlan")}</h4>
+                              </div>
+
+                              <ul className="space-y-4 flex-1">
+                                {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
+                                  <li key={i} className="flex items-start gap-3 text-[13px] text-[#2F3437] font-medium leading-relaxed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA + inline learning roadmap derived from this match's GapReport */}
+                      <div id="roadmap-anchor">
+                        <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+                      </div>
+                    </div>
+                  </Chapter>
+                </div>
+
+                {/* ────────────────────────────────────────────────────────────────────
+                 *  JD HIGHLIGHT (collapse, bottom — giữ)
+                 * ──────────────────────────────────────────────────────────────────── */}
+                {isJdMode && jobDescription && (
+                  <div id="chapter-jd" className="py-6 md:py-8">
+                    <JdHighlightBlock
+                      jobDescription={jobDescription}
+                      hardSkills={hardSkills}
+                      softSkills={softSkills}
+                      t={t}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Your CV */}
+        {activeTab === 'cv' && (
+          <div className="w-full px-2 lg:px-4 space-y-8 animate-in fade-in duration-300">
+            {/* Header bar: Issues Count & Edit button */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
+                <p className="text-sm font-semibold text-[#2F3437]">
+                  {(reviewData?.issues?.length ?? 0) > 0
+                    ? t("review.issuesMarked", { count: reviewData?.issues?.length ?? 0, defaultValue: `Tìm thấy ${reviewData?.issues?.length ?? 0} điểm cải thiện trong CV của bạn` })
+                    : t("review.noIssuesMarked", { defaultValue: "Tuyệt vời! Không phát hiện lỗi nghiêm trọng nào." })
+                  }
+                </p>
               </div>
+              <Button
+                onClick={() => seedBuilderFromDocument(reviewData?.document)}
+                size="sm"
+                className="bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
+              >
+                {t("preview.editOriginal", { defaultValue: "Sửa CV gốc" })}
+              </Button>
             </div>
 
-            {/* CTA + inline learning roadmap derived from this match's GapReport */}
-            <div id="roadmap-anchor">
-              <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
+            <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
+              <DocumentPreview hideEditOriginal />
             </div>
           </div>
-        </Chapter>
-      </div>
+        )}
 
-      {/* ────────────────────────────────────────────────────────────────────
-       *  JD HIGHLIGHT (collapse, bottom — giữ)
-       * ──────────────────────────────────────────────────────────────────── */}
-      {isJdMode && jobDescription && (
-        <JdHighlightBlock
-          jobDescription={jobDescription}
-          hardSkills={hardSkills}
-          softSkills={softSkills}
-          t={t}
-        />
-      )}
-        </>
-      )}
+        {/* Tab 3: Market Insights */}
+        {activeTab === 'market' && (
+          <div className="w-full px-2 lg:px-4 space-y-10 animate-in fade-in duration-300">
+            <JobRecommendations cvId={lastCvId} />
+
+            {/* AI trends insight */}
+            <AiTrendsInsight cvId={lastCvId} role={targetRole} />
+
+            {/* Skill gaps trends */}
+            <SkillGapTrends cvId={lastCvId} />
+
+            {/* Interview preparation pack */}
+            <InterviewPrepPack
+              cvId={lastCvId}
+              role={targetRole}
+            />
+          </div>
+        )}
+      </>
+    )}
+      </div>
     </div>
   );
 }

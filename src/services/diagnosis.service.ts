@@ -43,6 +43,7 @@ import {
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type {
   BeIssueSeverity,
   BeMatchedSkill,
@@ -557,6 +558,34 @@ export async function rewriteTailorBullet({
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);
+}
+
+export async function triggerCvDownload(
+  cvId: string,
+  toast: (options: { title: string; description?: string; variant?: "default" | "destructive" }) => void,
+  t: (key: string) => string
+): Promise<void> {
+  try {
+    const blob = await downloadOriginalCvFile(cvId);
+    const ext = blob.type.includes("png") ? "png"
+      : blob.type.includes("webp") ? "webp"
+      : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "jpg"
+      : "pdf";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skillbridge-cv.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast({
+      title: t("results.downloadFailed"),
+      description: getApiErrorMessage(err, ""),
+      variant: "destructive",
+    });
+  }
 }
 
 // ── Companion: next-steps (diagnosis page) ──────────────────────────

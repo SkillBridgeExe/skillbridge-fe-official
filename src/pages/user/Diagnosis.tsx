@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
-import { CheckCircle2, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
+import { ReportTopBar } from "@/components/diagnosis/report/ReportTopBar";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
@@ -35,36 +36,18 @@ const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel
 const CvSectionNav = lazy(() => import("@/components/cv-builder/CvSectionNav").then(m => ({ default: m.CvSectionNav })));
 const StudioInspector = lazy(() => import("@/components/cv-builder/studio/StudioInspector").then(m => ({ default: m.StudioInspector })));
 
-/* ── Step Indicator Dot ── */
-function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
-  return (
-    <div className="flex min-w-0 flex-col items-center gap-1.5">
-      <div className={cn(
-        "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
-        active ? "bg-primary text-white border-primary shadow-lg shadow-primary/30"
-        : done  ? "bg-emerald-500 text-white border-emerald-500"
-        :         "bg-white text-slate-400 border-slate-200"
-      )}>
-        {done ? <CheckCircle2 className="w-4 h-4" /> : n}
-      </div>
-      <span className={cn("max-w-20 text-center text-[11px] font-semibold leading-tight sm:max-w-none sm:whitespace-nowrap", active ? "text-primary" : done ? "text-emerald-600" : "text-slate-400")}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
 /* ── Main Diagnosis Page ── */
 export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
   const {
-    step, isAnalyzing, hasActivatedJdMode,
+    step, isAnalyzing,
     targetStep,
     setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
     setStep
   } = useDiagnosisStore();
 
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
   const posthog = usePostHog();
@@ -393,10 +376,16 @@ export default function Diagnosis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, canUseApi]);
 
+  // Reset active report tab on step change — must sit with the other hooks,
+  // ABOVE every early return, or hook order changes between renders.
+  useEffect(() => {
+    setActiveTab("audit");
+  }, [step]);
+
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
     return (
-      <Layout hideFooter hideNavbar>
+      <Layout hideFooter hideNavbar hideSidebar>
         <Suspense fallback={<PageLoader />}>
           <div id="cv-builder-anchor" className="relative h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
             {isRecoveringCv && (
@@ -483,9 +472,27 @@ export default function Diagnosis() {
     );
   }
 
+  // Report mode (Jobscan-style app shell): slim utility top bar instead of the
+  // floating marketing navbar, no stepper, wider container.
+  const reportMode = step === "cv-review" || step === "results";
+
   return (
-    <Layout>
-      <div id="diagnosis-root" className="max-w-6xl mx-auto px-4 py-10 sm:px-6 sm:py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
+    <Layout hideNavbar={reportMode} hideFooter={reportMode}>
+      {reportMode && (
+        <ReportTopBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
+      <div
+        id="diagnosis-root"
+        className={cn(
+          "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
+          reportMode
+            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-104px)] max-h-[calc(100dvh-104px)] overflow-hidden"
+            : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
+        )}
+      >
 
         {/* LOADING OVERLAY */}
         <AnimatePresence>
@@ -521,7 +528,7 @@ export default function Diagnosis() {
 
         {/* ── Header ── */}
         {step === "input" && (
-          <header className="mb-14 text-center space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          <header className="mb-6 text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
             <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
@@ -529,30 +536,6 @@ export default function Diagnosis() {
               {t("header.title")}
             </h1>
           </header>
-        )}
-
-        {/* ── Dynamic Step Indicator ── */}
-        {step !== "input" && (
-          <div className="mb-10 flex max-w-full items-center justify-center gap-1 overflow-x-auto px-1 sm:gap-4">
-            <StepDot n={1} label={t("steps.upload")} active={false} done={true} />
-            <div className="flex-1 max-w-[60px] h-0.5 transition-colors bg-primary" />
-            <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />
-
-            {/* Framer Motion for animating Step 3 in/out based on JD mode */}
-            <AnimatePresence>
-              {hasActivatedJdMode && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0, x: -20 }}
-                  animate={{ opacity: 1, width: "auto", x: 0 }}
-                  exit={{ opacity: 0, width: 0, x: -20 }}
-                  className="flex items-center gap-1 sm:gap-4 overflow-hidden"
-                >
-                  <div className={cn("flex-1 w-[60px] h-0.5 transition-colors", step === "results" ? "bg-primary" : "bg-slate-200")} />
-                  <StepDot n={3} label={t("steps.results")} active={step === "results"} done={false} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         )}
 
         {/* ═══════════════════════════════════════════════ */}
@@ -563,12 +546,21 @@ export default function Diagnosis() {
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 2: CV REVIEW                              */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "cv-review" && <DiagnosisStep2Review />}
+        {step === "cv-review" && (
+          <DiagnosisStep2Review
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 3: SKILL GAP RESULTS                      */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "results" && <DiagnosisStep3Results />}
+        {step === "results" && (
+          <DiagnosisStep3Results
+            activeTab={activeTab}
+          />
+        )}
 
       </div>
     </Layout>

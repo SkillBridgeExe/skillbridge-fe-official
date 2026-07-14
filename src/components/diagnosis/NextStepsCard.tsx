@@ -52,8 +52,8 @@ export function NextStepsCard({ matchId }: { matchId?: string | null }) {
     <div className={cn(CARD, "p-6")}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
-          <Target className="w-4.5 h-4.5" />
+        <div className="w-9 h-9 rounded-xl bg-[#00AEEF]/5 text-[#00AEEF] flex items-center justify-center shrink-0 border border-[#00AEEF]/10 shadow-sm">
+          <Target className="w-4 h-4" />
         </div>
         <div>
           <h4 className="text-sm font-bold text-[#2F3437] tracking-tight">
