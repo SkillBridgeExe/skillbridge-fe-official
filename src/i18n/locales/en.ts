@@ -1484,6 +1484,17 @@ export default {
         questionBankKey: "Bank: {{key}}",
         noPersistedAnswers: "No saved answers are available yet.",
         noSummary: "No summary is available yet.",
+        guardTitle: "Score consistency check",
+        guard: {
+          score_capped_off_topic:
+            "This answer did not address the question asked, so its score was capped at the lowest band.",
+          score_capped_evasive:
+            "The answer avoided the question, so its score was capped at the borderline ceiling.",
+          score_capped_shallow:
+            "The answer stayed at surface level, so its score was capped below the outstanding band.",
+          depth_downgraded_thin_answer:
+            "The answer was too short to demonstrate real depth, so its depth rating was adjusted down.",
+        },
         popover: {
           title: "Detailed Score Explanation",
           band: "Level",

@@ -28,6 +28,7 @@ import {
   speakOfficialRealtimeQuestion,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
+  readGuardAdjustments,
   readInterviewVoicePreference,
   takeRecentInterviewSessions,
   devPlanTrackKind,
@@ -978,3 +979,48 @@ class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
     this.values.set(key, value);
   }
 }
+
+describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
+  it("extracts only known guard slugs from a persisted turn trace", () => {
+    expect(
+      readGuardAdjustments({
+        action: "drill",
+        reasons: ["answer_evasive", "score_capped_evasive", "generic_follow_up_risk"],
+      }),
+    ).toEqual(["score_capped_evasive"]);
+  });
+
+  it("is defensive on legacy turns: null / missing / malformed traces yield no adjustments", () => {
+    expect(readGuardAdjustments(null)).toEqual([]);
+    expect(readGuardAdjustments(undefined)).toEqual([]);
+    expect(readGuardAdjustments({})).toEqual([]);
+    expect(readGuardAdjustments({ reasons: "not-an-array" })).toEqual([]);
+    expect(readGuardAdjustments("junk")).toEqual([]);
+  });
+
+  it("threads guard adjustments into the result view model per question", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      turns: [
+        {
+          ...detail.turns[0],
+          turnTrace: {
+            action: "drill",
+            phase: "SKILL_PROBE",
+            reasons: ["answer_shallow", "score_capped_shallow", "depth_downgraded_thin_answer"],
+            depth: 1,
+            remaining_turn_budget: 5,
+            confidence: "high",
+          },
+        },
+      ],
+    });
+    expect(result.questions[0].guardAdjustments).toEqual([
+      "score_capped_shallow",
+      "depth_downgraded_thin_answer",
+    ]);
+
+    const legacy = toInterviewResultViewModel(detail);
+    expect(legacy.questions[0].guardAdjustments).toEqual([]);
+  });
+});

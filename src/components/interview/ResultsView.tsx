@@ -552,6 +552,21 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                         {highlightEvidence(question.answer, explanation?.evidence_quote)}
                       </p>
 
+                      {question.guardAdjustments.length > 0 && (
+                        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                            {t("interview.results.guardTitle")}
+                          </p>
+                          <ul className="mt-1 space-y-0.5">
+                            {question.guardAdjustments.map((slug) => (
+                              <li key={slug} className="text-xs leading-relaxed text-amber-900">
+                                {t(`interview.results.guard.${slug}`)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
                       {/* Collapsible Communication Signals Panel */}
                       {signals && (
                         <div className="mt-3 border border-slate-100 rounded-lg overflow-hidden bg-white/40 shadow-sm">
