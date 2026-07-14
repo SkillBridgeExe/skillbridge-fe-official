@@ -22,7 +22,7 @@ export function CheckRow({ item }: { item: CheckRowData }) {
   const Icon = isPass ? Check : isWarn ? AlertTriangle : X;
 
   return (
-    <div id={item.anchorId} className="flex items-start gap-4.5 py-5 px-8 scroll-mt-24 hover:bg-slate-50/20 transition-all duration-200">
+    <div id={item.anchorId} className="flex items-start gap-5 py-5 px-8 scroll-mt-24 hover:bg-slate-50/20 transition-all duration-200">
       <div className={cn("w-7.5 h-7.5 w-[30px] h-[30px] rounded-full flex items-center justify-center border shrink-0 mt-0.5 shadow-sm transition-all duration-200 hover:scale-105", colorClass)}>
         <Icon className="w-4 h-4" />
       </div>
@@ -106,7 +106,7 @@ export function CheckGroup({ group, children }: CheckGroupProps) {
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="w-full flex items-center gap-3.5 px-8 py-5 text-left hover:bg-slate-50/40 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 font-semibold"
+        className="w-full flex items-center gap-4 px-8 py-5 text-left hover:bg-slate-50/40 transition-colors focus-visible:ring-2 focus-visible:ring-ink-accent/40 font-semibold"
       >
         <ChevronDown className={cn("w-4 h-4 text-[#787774] shrink-0 transition-transform duration-300", !open && "-rotate-90")} />
         <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-[#2F3437] flex-1 min-w-0 truncate group-hover:text-primary transition-colors">
