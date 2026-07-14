@@ -52,8 +52,10 @@ export interface FinalScoreDto {
 }
 
 export interface InterviewGapItemDto {
-  skill_canonical: string;
+  /** null for communication/behavioral gaps. */
+  skill_canonical: string | null;
   display_name: string;
+  weakness_type?: string;
   severity: number;
   recommended_action: string;
 }

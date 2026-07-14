@@ -36,7 +36,9 @@ import {
   FileText,
 } from "lucide-react";
 import {
+  devPlanTrackKind,
   formatDuration,
+  gapSeverityLevel,
   toInterviewResultViewModel,
   type InterviewScoreExplanationViewModel,
 } from "./interview-view-model";
@@ -155,7 +157,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
     <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
       {/* Interview Phase Timeline */}
       <Card className="border-slate-200 bg-white shadow-sm p-6">
-        <h3 className="text-sm font-bold text-slate-800 mb-4">{t("interview.results.phaseTimelineTitle", { defaultValue: "Sơ đồ giai đoạn cuộc phỏng vấn" })}</h3>
+        <h3 className="text-sm font-bold text-slate-800 mb-4">{t("interview.results.phaseTimelineTitle")}</h3>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-2">
           {PHASES.map((p, idx) => {
             const count = phaseCounts[p.key] || 0;
@@ -174,7 +176,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                       {isVi ? p.labelVi : p.labelEn}
                     </p>
                     <p className="text-[10px] text-slate-500 font-medium">
-                      {count > 0 ? t("interview.results.answeredQuestions", { count }) : t("interview.results.empty", { defaultValue: "Chưa phỏng vấn" })}
+                      {count > 0 ? t("interview.results.answeredQuestions", { count }) : t("interview.results.phaseNotReached")}
                     </p>
                   </div>
                 </div>
@@ -366,15 +368,20 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 pb-6">
             {view.gapItems.map((gap) => (
-              <div key={gap.skillCanonical} className="rounded-lg border border-slate-150 bg-slate-50/50 p-4 space-y-3 flex flex-col justify-between">
+              <div
+                key={`${gap.weaknessType}-${gap.skillCanonical ?? gap.displayName}`}
+                className="rounded-lg border border-slate-150 bg-slate-50/50 p-4 space-y-3 flex flex-col justify-between"
+              >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <h4 className="text-sm font-bold text-slate-800 truncate">{gap.displayName}</h4>
                     <Badge className={cn(
                       "rounded-full text-[10px] font-bold shrink-0",
-                      gap.severity >= 3 ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-amber-50 text-amber-700 border-amber-100"
+                      gapSeverityLevel(gap.severity) === "critical" ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-amber-50 text-amber-700 border-amber-100"
                     )} variant="outline">
-                      {gap.severity >= 3 ? "Critical Gap" : "Moderate Gap"}
+                      {gapSeverityLevel(gap.severity) === "critical"
+                        ? t("interview.results.gapCritical")
+                        : t("interview.results.gapModerate")}
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed font-medium">
@@ -495,7 +502,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                   key={`${question.question}-${index}`}
                   id={`turn-${question.id}`}
                   className={cn(
-                    "p-5 transition-all duration-750 scroll-mt-24",
+                    "p-5 transition-all duration-700 scroll-mt-24",
                     highlightedTurnId === question.id && "bg-amber-50/70 border-l-4 border-l-amber-500 shadow-sm"
                   )}
                 >
@@ -558,7 +565,9 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                               <span>{t("interview.results.commPanel")}</span>
                             </div>
                             <span className="text-[10px] text-slate-400 font-semibold">
-                              {expandedSignals[index] ? "Thu gọn ▴" : "Chi tiết ▾"}
+                              {expandedSignals[index]
+                                ? `${t("interview.results.commCollapse")} ▴`
+                                : `${t("interview.results.commExpand")} ▾`}
                             </span>
                           </button>
                           {expandedSignals[index] && (
@@ -633,7 +642,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                                   <span className="font-bold text-slate-400 block mb-0.5 uppercase tracking-wider text-[9px]">{t("interview.results.commJdCoverage")}</span>
                                   <span className="font-bold text-slate-700">{Math.round(signals.jd_term_hits.coverage * 100)}%</span>
                                   {signals.jd_term_hits.hit && signals.jd_term_hits.hit.length > 0 && (
-                                    <span className="text-[10px] text-slate-500 block font-medium mt-0.5 truncate">Hit: {signals.jd_term_hits.hit.join(', ')}</span>
+                                    <span className="text-[10px] text-slate-500 block font-medium mt-0.5 truncate">{t("interview.results.commJdHitLabel")}: {signals.jd_term_hits.hit.join(', ')}</span>
                                   )}
                                 </div>
                               )}
@@ -1150,9 +1159,10 @@ function PlanItemList({
       ) : (
         <div className="space-y-2">
           {items.slice(0, 4).map((item) => {
-            const isLearn = item.track === "learn" || item.track === "learning";
-            const isPractice = item.track === "practice" || item.track === "practice_interview";
-            const isCv = item.track === "cv_fix" || item.track === "cv";
+            const trackKind = devPlanTrackKind(item.track);
+            const isLearn = trackKind === "learn";
+            const isPractice = trackKind === "practice";
+            const isCv = trackKind === "cv";
 
             return (
               <div

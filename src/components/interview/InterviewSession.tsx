@@ -381,7 +381,7 @@ export function InterviewSession({
                   </div>
                   {currentTurnTrace?.confidence === 'low' && currentTurnTrace?.reasons?.includes('fallback_seed_question') && (
                     <div className="rounded-full bg-slate-700/85 px-3 py-1 text-[10px] font-semibold text-slate-100 backdrop-blur-md transition-all duration-300">
-                      {t("interview.session.fallbackQuestionBadge", { defaultValue: "Câu hỏi dự phòng" })}
+                      {t("interview.session.fallbackQuestionBadge")}
                     </div>
                   )}
                 </div>

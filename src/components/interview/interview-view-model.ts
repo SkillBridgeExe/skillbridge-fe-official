@@ -76,10 +76,27 @@ export interface InterviewScoreExplanationViewModel {
 }
 
 export interface InterviewGapItemViewModel {
-  skillCanonical: string;
+  /** null for skill-less gaps (communication_gap / behavioral_gap) — must still render. */
+  skillCanonical: string | null;
   displayName: string;
+  weaknessType: string;
   severity: number;
   recommendedAction: string;
+}
+
+/** BE gap severity is 0..1 (clamp01) — NOT a 0..5 scale. */
+export function gapSeverityLevel(severity: number): "critical" | "moderate" {
+  return severity >= 0.7 ? "critical" : "moderate";
+}
+
+/** UnifiedTrack on the BE is 'learn' | 'cv_fix' | 'interview_practice'. */
+export function devPlanTrackKind(
+  track: string,
+): "learn" | "practice" | "cv" | null {
+  if (track === "learn" || track === "learning") return "learn";
+  if (track === "interview_practice" || track === "practice") return "practice";
+  if (track === "cv_fix" || track === "cv") return "cv";
+  return null;
 }
 
 export interface InterviewResultViewModel {
@@ -992,14 +1009,15 @@ function readGapItems(value: unknown): InterviewGapItemViewModel[] {
   if (!Array.isArray(value)) return [];
   return value.map((item): InterviewGapItemViewModel | null => {
     if (!isRecord(item)) return null;
-    const skill = readString(item.skill_canonical);
     const display = readString(item.display_name);
     const severity = readNumber(item.severity) ?? 0;
     const action = readString(item.recommended_action) || readString(item.recommended_next_action) || "";
-    if (!skill || !display) return null;
+    // skill_canonical is null for communication/behavioral gaps — keep those items.
+    if (!display) return null;
     return {
-      skillCanonical: skill,
+      skillCanonical: readString(item.skill_canonical),
       displayName: display,
+      weaknessType: readString(item.weakness_type) ?? "gap",
       severity,
       recommendedAction: action,
     };

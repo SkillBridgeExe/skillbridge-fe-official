@@ -30,6 +30,8 @@ import {
   getInterviewSessionStatusLabel,
   readInterviewVoicePreference,
   takeRecentInterviewSessions,
+  devPlanTrackKind,
+  gapSeverityLevel,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
   writeInterviewVoicePreference,
@@ -245,6 +247,61 @@ describe("interview view model", () => {
       50,
     );
     expect(secondsRemainingFromExpiry("2026-06-12T10:09:00.000Z", now)).toBe(0);
+  });
+
+  it("keeps communication/behavioral gaps whose skill_canonical is null and exposes weakness_type", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      gapItems: [
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          weakness_type: "knowledge_gap",
+          severity: 0.8,
+          recommended_action: "Strengthen React fundamentals.",
+        },
+        {
+          skill_canonical: null,
+          display_name: "Communication",
+          weakness_type: "communication_gap",
+          severity: 0.3,
+          recommended_action: "Tighten the answer and cut filler.",
+        },
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          weakness_type: "evidence_gap",
+          severity: 0.5,
+          recommended_action: "Add a concrete example for React.",
+        },
+      ] as never,
+    });
+
+    expect(result.gapItems).toHaveLength(3);
+    expect(result.gapItems[1]).toMatchObject({
+      skillCanonical: null,
+      displayName: "Communication",
+      weaknessType: "communication_gap",
+    });
+    // two gaps on the same skill must stay distinguishable (React list keys)
+    const keys = result.gapItems.map(
+      (gap) => `${gap.weaknessType}-${gap.skillCanonical ?? gap.displayName}`,
+    );
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it("classifies gap severity on the backend 0..1 scale", () => {
+    expect(gapSeverityLevel(1)).toBe("critical");
+    expect(gapSeverityLevel(0.7)).toBe("critical");
+    expect(gapSeverityLevel(0.69)).toBe("moderate");
+    expect(gapSeverityLevel(0.3)).toBe("moderate");
+  });
+
+  it("maps unified dev-plan tracks to action kinds (BE uses interview_practice)", () => {
+    expect(devPlanTrackKind("learn")).toBe("learn");
+    expect(devPlanTrackKind("interview_practice")).toBe("practice");
+    expect(devPlanTrackKind("cv_fix")).toBe("cv");
+    expect(devPlanTrackKind("unknown_track")).toBeNull();
   });
 
   it("maps backend result without inventing body-language metrics", () => {
