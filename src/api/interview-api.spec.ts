@@ -153,6 +153,18 @@ describe("interview-api", () => {
     expect(httpClient.get).toHaveBeenNthCalledWith(2, API_ROUTES.INTERVIEW.DETAIL("session-1"));
   });
 
+  it("requests scored interview history before backend pagination", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(
+      ok({ items: [], total: 0, page: 1, limit: 10 }) as never,
+    );
+
+    await getInterviewHistory({ page: 1, limit: 10, scoredOnly: true });
+
+    expect(httpClient.get).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.HISTORY, {
+      params: { page: 1, limit: 10, scoredOnly: true },
+    });
+  });
+
   it("sends reviewed live realtime turns when ending a voice interview", async () => {
     vi.mocked(httpClient.post).mockReturnValueOnce(ok({ id: "session-1", turns: [] }) as never);
 

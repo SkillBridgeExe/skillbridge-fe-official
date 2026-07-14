@@ -32,6 +32,65 @@ export interface RealtimeClientSecretDto {
   reason?: string;
 }
 
+export interface FinalScoreDto {
+  overall: number;
+  overall_band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+  dimensions: Array<{ dimension: string; score: number; band: string; weight: number }>;
+  role_family: string;
+  scored_answers: number;
+  score_explanations?: Array<{
+    dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
+    score: number;
+    band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+    weight: number;
+    rubric_anchor: string;
+    evidence_quote: string | null;
+    linked_question_id: string | null;
+    uncertainty: 'low' | 'medium' | 'high';
+    improvement_hint: string | null;
+  }>;
+}
+
+export interface InterviewGapItemDto {
+  /** null for communication/behavioral gaps. */
+  skill_canonical: string | null;
+  display_name: string;
+  weakness_type?: string;
+  severity: number;
+  recommended_action: string;
+}
+
+export interface CommunicationSignalsDto {
+  word_count?: number;
+  sentence_count?: number;
+  conciseness?: 'too_short' | 'ideal' | 'verbose';
+  is_quantified?: boolean | null;
+  flags?: {
+    rambling_risk?: boolean | null;
+  } | null;
+  filler?: {
+    count: number;
+    terms?: string[];
+  };
+  hedging?: {
+    count: number;
+    terms?: string[];
+  };
+  repeated_terms?: Array<{ term: string; count: number }>;
+  jd_term_hits?: {
+    hit: string[];
+    missed: string[];
+    coverage: number;
+  };
+  star?: {
+    situation: boolean;
+    task: boolean;
+    action: boolean;
+    result: boolean;
+    complete: boolean;
+  };
+}
+
 export interface InterviewSessionDto {
   id: string;
   cvId: string | null;
@@ -53,8 +112,8 @@ export interface InterviewSessionDto {
   llmScore: number | null;
   communicationScore: number | null;
   aiFeedback: InterviewFeedback | null;
-  finalScore?: unknown;
-  gapItems?: unknown;
+  finalScore?: FinalScoreDto | null;
+  gapItems?: InterviewGapItemDto[] | null;
   devPlan?: unknown;
   coaching?: unknown;
   durationSeconds: number | null;
@@ -62,6 +121,16 @@ export interface InterviewSessionDto {
   endedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface InterviewTurnTraceDto {
+  action: 'ask' | 'drill' | 'move_on' | 'wrap';
+  phase: string;
+  topic_id?: string;
+  reasons: string[];
+  depth: number;
+  remaining_turn_budget: number;
+  confidence: 'high' | 'medium' | 'low';
 }
 
 export interface InterviewTurnDto {
@@ -78,8 +147,10 @@ export interface InterviewTurnDto {
   userAnswerTranscript: string | null;
   perQuestionScore: number | null;
   depthSignal?: string | null;
-  signals?: unknown;
+  signals?: CommunicationSignalsDto | null;
   insight?: unknown;
+  /** persisted per-turn decision trace (BE I-CONSIST-2) — null/absent on legacy turns. */
+  turnTrace?: InterviewTurnTraceDto | null;
   currentThread?: string | null;
   skillCanonical?: string | null;
   questionBankKey?: string | null;
@@ -144,6 +215,7 @@ export interface AnswerInterviewResponseDto {
   turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
   finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
   nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
+  turnTrace?: InterviewTurnTraceDto | null;
 }
 
 export interface InterviewDetailResponseDto extends InterviewSessionDto {
@@ -153,6 +225,7 @@ export interface InterviewDetailResponseDto extends InterviewSessionDto {
 export interface InterviewHistoryQuery {
   page?: number;
   limit?: number;
+  scoredOnly?: boolean;
 }
 
 export interface InterviewHistoryResponse {
@@ -228,6 +301,7 @@ export async function getInterviewHistory(
   const params: InterviewHistoryQuery = {
     page: query.page ?? 1,
     limit: query.limit ?? 10,
+    ...(query.scoredOnly == null ? {} : { scoredOnly: query.scoredOnly }),
   };
   const envelope = await unwrapEnvelope<ApiEnvelope<InterviewHistoryResponse>>(
     httpClient.get(API_ROUTES.INTERVIEW.HISTORY, { params }),

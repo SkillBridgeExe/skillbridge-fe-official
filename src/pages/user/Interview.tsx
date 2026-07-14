@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useEndInterviewOnExit } from "@/hooks/use-end-interview-on-exit";
 import { cn } from "@/lib/utils";
@@ -38,7 +37,7 @@ import {
   type InterviewDetailResponseDto,
   type InterviewSessionDto,
   type InterviewTurnDto,
-  type LiveInterviewTurnInput,
+  type AnswerInterviewResponseDto,
 } from "@/api/interview-api";
 import {
   useCvListForInterview,
@@ -86,7 +85,6 @@ import {
   getInterviewQuestionBankSourceKind,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
-  getLiveTranscriptWarnings,
   readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
@@ -95,7 +93,6 @@ import {
   takeRecentInterviewSessions,
   writeInterviewVoicePreference,
   type InterviewQuestionBankSourceKind,
-  type LiveTranscriptWarning,
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
 import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
@@ -104,16 +101,6 @@ import { acquireInterviewMedia } from "@/lib/interview-media";
 type EndReason = "manual" | "timer" | "finished";
 const REALTIME_MIC_REOPEN_DELAY_MS = 450;
 const REALTIME_ANSWER_BUFFER_IDLE_MS = 1300;
-
-interface LiveReviewTurn {
-  id: string;
-  turnOrder: number;
-  interviewerQuestion: string;
-  userAnswerText: string;
-  userAnswerTranscript: string;
-  durationSeconds?: number;
-  warnings: LiveTranscriptWarning[];
-}
 
 interface CurrentQuestionMetadata {
   topicPhase: string | null;
@@ -158,11 +145,11 @@ export default function Interview() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentQuestionMeta, setCurrentQuestionMeta] = useState<CurrentQuestionMetadata | null>(null);
+  const [currentTurnTrace, setCurrentTurnTrace] = useState<AnswerInterviewResponseDto["turnTrace"] | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
-  const [isLiveReviewOpen, setIsLiveReviewOpen] = useState(false);
   const [interviewFinished, setInterviewFinished] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
@@ -174,7 +161,6 @@ export default function Interview() {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isQuestionAudioPlaying, setIsQuestionAudioPlaying] = useState(false);
   const [questionAudioError, setQuestionAudioError] = useState<string | null>(null);
-  const [liveReviewTurns, setLiveReviewTurns] = useState<LiveReviewTurn[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -202,6 +188,10 @@ export default function Interview() {
 
   const canUseApi = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
+  );
+
+  const sidebarMode = useAuthStore(
+    (state) => state.isAuthenticated && state.currentUser?.role === "user",
   );
 
   const interviewHistoryQuery = useInterviewHistory(canUseApi);
@@ -304,12 +294,6 @@ export default function Interview() {
     scoredHistory.length > 0
       ? Math.max(...scoredHistory.map((session) => Math.round(Number(session.overallScore))))
       : 0;
-
-  const liveWarningsFor = useCallback(
-    (question: string, answer: string, transcript = answer): LiveTranscriptWarning[] =>
-      Array.from(new Set(getLiveTranscriptWarnings(`${question}\n${answer}\n${transcript}`))),
-    [],
-  );
 
   const appendLiveAssistantTranscript = useCallback((delta: string) => {
     const normalized = delta.normalize("NFC");
@@ -631,6 +615,7 @@ export default function Interview() {
     setChatHistory([]);
     setCurrentQuestion("");
     setCurrentQuestionMeta(null);
+    setCurrentTurnTrace(null);
     setUserAnswer("");
     setInterviewFinished(false);
     setApiError(null);
@@ -642,8 +627,6 @@ export default function Interview() {
     setIsLoading(false);
     setIsEnding(false);
     setIsEndDialogOpen(false);
-    setIsLiveReviewOpen(false);
-    setLiveReviewTurns([]);
     endingRef.current = false;
     autoEndRef.current = false;
     liveClosingRequestedRef.current = false;
@@ -902,7 +885,7 @@ export default function Interview() {
   );
 
   const finishInterview = useCallback(
-    async (reason: EndReason = "manual", liveTurns?: LiveInterviewTurnInput[]) => {
+    async (reason: EndReason = "manual") => {
       const sessionId = activeSession?.id;
       if (!sessionId || endingRef.current) return;
 
@@ -916,7 +899,7 @@ export default function Interview() {
       stopQuestionAudio();
 
       try {
-        const detail = await endInterviewMutation.mutateAsync({ sessionId, liveTurns });
+        const detail = await endInterviewMutation.mutateAsync({ sessionId });
         applyEndedInterview(detail);
       } catch (error) {
         if (reason === "timer" || reason === "finished") {
@@ -1002,6 +985,7 @@ export default function Interview() {
         currentQuestionRef.current = nextQuestion;
         currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
         submittedRealtimeQuestionRef.current = null;
+        setCurrentTurnTrace(response.turnTrace ?? null);
         if (nextQuestion) {
           setCurrentQuestion(nextQuestion);
           setCurrentQuestionMeta(
@@ -1167,6 +1151,7 @@ export default function Interview() {
       const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
       currentQuestionRef.current = nextQuestion;
       currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
+      setCurrentTurnTrace(response.turnTrace ?? null);
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
         setCurrentQuestionMeta(
@@ -1266,47 +1251,6 @@ export default function Interview() {
     setIsMicActive(next);
   };
 
-  const updateLiveReviewTurn = (
-    id: string,
-    field: "interviewerQuestion" | "userAnswerText",
-    value: string,
-  ) => {
-    setLiveReviewTurns((current) =>
-      current.map((turn) => {
-        if (turn.id !== id) return turn;
-        const next = { ...turn, [field]: value };
-        const transcript = field === "userAnswerText" ? value : next.userAnswerTranscript;
-        return {
-          ...next,
-          userAnswerTranscript: transcript,
-          warnings: liveWarningsFor(next.interviewerQuestion, next.userAnswerText, transcript),
-        };
-      }),
-    );
-  };
-
-  const liveTurnInputs = useMemo(
-    () =>
-      liveReviewTurns
-        .map<LiveInterviewTurnInput | null>((turn) => {
-          const interviewerQuestion = turn.interviewerQuestion.trim();
-          const userAnswerText = turn.userAnswerText.trim();
-          if (!interviewerQuestion || !userAnswerText || turn.warnings.length > 0) return null;
-          return {
-            turnOrder: turn.turnOrder,
-            interviewerQuestion,
-            userAnswerText,
-            userAnswerTranscript: (turn.userAnswerTranscript || userAnswerText).trim(),
-            durationSeconds: turn.durationSeconds,
-          };
-        })
-        .filter((turn): turn is LiveInterviewTurnInput => turn !== null),
-    [liveReviewTurns],
-  );
-  const liveReviewHasWarnings = liveReviewTurns.some((turn) => turn.warnings.length > 0);
-  const liveReviewCanScore =
-    liveReviewTurns.length > 0 && liveTurnInputs.length === liveReviewTurns.length;
-
   useEffect(() => {
     if (phase !== "interviewing" || !activeSession?.expiresAt) return;
 
@@ -1369,7 +1313,7 @@ export default function Interview() {
 
   return (
     <Layout>
-      <div className="flex h-[calc(100dvh-80px)] overflow-hidden">
+      <div className={cn("flex overflow-hidden", sidebarMode ? "h-dvh" : "h-[calc(100dvh-80px)]")}>
         <aside
           className={cn(
             "h-full shrink-0 overflow-hidden border-r border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col transition-all duration-300",
@@ -1562,7 +1506,7 @@ export default function Interview() {
         </button>
 
         {showPracticeSetup && (
-          <main className="custom-scrollbar relative flex-1 overflow-y-auto bg-slate-50/30">
+          <main className="custom-scrollbar relative flex-1 overflow-y-auto md:overflow-hidden bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
               <InterviewSetup
                 onStart={startInterview}
@@ -1635,6 +1579,7 @@ export default function Interview() {
             interviewFinished={interviewFinished}
             onStop={() => setIsEndDialogOpen(true)}
             apiError={apiError}
+            currentTurnTrace={currentTurnTrace}
           />
         )}
 
@@ -1718,80 +1663,6 @@ export default function Interview() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isLiveReviewOpen} onOpenChange={setIsLiveReviewOpen}>
-        <AlertDialogContent className="max-w-4xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("interview.liveReview.title")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("interview.liveReview.description")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="custom-scrollbar max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-            {liveReviewTurns.map((turn) => (
-              <div key={turn.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    {t("interview.liveReview.turn", { count: turn.turnOrder })}
-                  </p>
-                  {turn.warnings.length > 0 && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-                      {t("interview.liveReview.needsReview")}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      {t("interview.liveReview.questionLabel")}
-                    </label>
-                    <Textarea
-                      value={turn.interviewerQuestion}
-                      onChange={(event) =>
-                        updateLiveReviewTurn(turn.id, "interviewerQuestion", event.target.value)
-                      }
-                      className="min-h-[82px] resize-none rounded-xl bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      {t("interview.liveReview.answerLabel")}
-                    </label>
-                    <Textarea
-                      value={turn.userAnswerText}
-                      onChange={(event) =>
-                        updateLiveReviewTurn(turn.id, "userAnswerText", event.target.value)
-                      }
-                      className="min-h-[110px] resize-none rounded-xl bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {liveReviewHasWarnings && (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-              {t("interview.liveReview.warning")}
-            </p>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isEnding}>
-              {t("interview.liveReview.back")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!liveReviewCanScore || isEnding}
-              onClick={() => {
-                setIsLiveReviewOpen(false);
-                void finishInterview("manual", liveTurnInputs);
-              }}
-            >
-              {t("interview.liveReview.confirmScore")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Layout>
   );
 }

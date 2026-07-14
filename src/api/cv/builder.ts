@@ -24,6 +24,7 @@ import type {
 } from "@shared/api";
 import type {
   AssistantAnalyzeRequest,
+  AssistantExplanation,
   AssistantRewriteRequest,
   AssistantRewriteResponse,
   CvAssistantTurn,
@@ -272,6 +273,22 @@ export async function assistantExtractApi(
       timeout: CV_AI_TIMEOUT_MS,
     }),
     "Failed to extract fields from narrative.",
+  );
+  return envelope.data;
+}
+
+/**
+ * POST /api/cvs/:id/builder/assistant/explain — read-only guidance (no LLM, no quota).
+ */
+export async function assistantExplainApi(
+  draftId: string,
+  input: AssistantAnalyzeRequest,
+): Promise<AssistantExplanation> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AssistantExplanation>>(
+    httpClient.post(API_ROUTES.CV.ASSISTANT_EXPLAIN(draftId), input, {
+      timeout: 30_000,
+    }),
+    "Failed to explain the field.",
   );
   return envelope.data;
 }

@@ -1,10 +1,11 @@
 name: CI
 
-# Runs the same checks we run locally, on every PR into main and every push to main.
-# This is the deterministic safety net (CodeRabbit handles the AI review layer).
+# Runs the same checks we run locally, on every PR (any base — stacked wave/* PRs included)
+# and every push to main. This is the deterministic safety net (CodeRabbit handles the AI
+# review layer). The old `branches: [main]` filter silently skipped CI on stacked PRs whose
+# base was another wave branch — they showed only CodeRabbit.
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
@@ -41,3 +42,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # W118 deploy guard: the bundle must carry a working PDF worker wiring
+      # (asset emitted, referenced by a chunk, current cache key) before it can
+      # reach main / the auto-deploy. Catches the recurring blank-preview class.
+      - name: Verify build (PDF worker guard)
+        run: npm run verify:build

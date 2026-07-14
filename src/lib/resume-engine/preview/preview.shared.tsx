@@ -46,12 +46,38 @@ type ResumePreviewLoaderProps = Pick<ResumePreviewProps, "pageClassName" | "show
 	pageScale?: number;
 };
 
+// Upper bound only — the default render scale follows the actual screen
+// density below. A fixed 4x produced ~16.7M-pixel canvas layers, and Chromium's
+// compositor hard-hangs (frames stop, rAF never fires, input dies) when an
+// overlay portal forces those giant layers to re-layerize — reproduced
+// deterministically with any Radix dropdown/dialog next to the PDF preview.
 const PDF_PAGE_RENDER_SCALE = 4;
+// Mild headroom over 1x screens so slight zoom-ins stay crisp; zoom changes
+// re-render at the new pageScale anyway (pdf-canvas effect deps).
+const MIN_PREVIEW_RENDER_SCALE = 1.5;
 const MAX_PREVIEW_CANVAS_PIXELS = 16_777_216; // 4096 * 4096
+// GPU max texture dimension on common hardware — a canvas side above this is
+// its own compositor-stall class even when the pixel AREA fits the budget.
+const MAX_PREVIEW_CANVAS_DIMENSION = 4_096;
 export const DEFAULT_PDF_PAGE_SIZE: PreviewPageSize = {
 	height: 841.89,
 	width: 595.28,
 };
+
+// CSS px per PDF point (96dpi screen / 72dpi PDF). Canvas pages rendered at
+// this pageScale get a CSS box equal to the page's true CSS-pixel size —
+// pairing any other pageScale with fixed CSS-px page constants clips the
+// preview edges (595.28pt × 1.5 = 893px inside a 794px A4 box).
+export const PDF_POINT_TO_CSS_PX = 96 / 72;
+
+// Page box per supported format in CSS px (A4 210×297mm, Letter 8.5×11in @96dpi).
+// The builder preview sizes its zoom/pan wrapper from these so the canvas is
+// never wider than its clipping box.
+export const PAGE_CSS_SIZE = {
+	a4: { width: 794, height: 1123 },
+	letter: { width: 816, height: 1056 },
+} as const;
+export type PageCssFormat = keyof typeof PAGE_CSS_SIZE;
 
 export const normalizeResumePreviewProps = ({
 	pageGap = 16,
@@ -69,12 +95,17 @@ export const normalizeResumePreviewProps = ({
 
 export const getPreviewCanvasScale = (width: number, height: number) => {
 	const devicePixelRatio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
-	const desiredScale = Math.max(PDF_PAGE_RENDER_SCALE, devicePixelRatio);
-	const desiredPixels = width * height * desiredScale * desiredScale;
+	// Render at what the screen actually displays (dpr) with mild headroom —
+	// the preview is a raster preview; download/print quality comes from the
+	// vector PDF, not this canvas.
+	const desiredScale = Math.min(
+		Math.max(devicePixelRatio, MIN_PREVIEW_RENDER_SCALE),
+		PDF_PAGE_RENDER_SCALE,
+	);
+	const areaScale = Math.sqrt(MAX_PREVIEW_CANVAS_PIXELS / (width * height));
+	const dimensionScale = MAX_PREVIEW_CANVAS_DIMENSION / Math.max(width, height);
 
-	if (desiredPixels <= MAX_PREVIEW_CANVAS_PIXELS) return desiredScale;
-
-	return Math.sqrt(MAX_PREVIEW_CANVAS_PIXELS / (width * height));
+	return Math.min(desiredScale, areaScale, dimensionScale);
 };
 
 export const getScaledPreviewPageSize = (pageSize: PreviewPageSize, pageScale: number): PreviewPageSize => ({

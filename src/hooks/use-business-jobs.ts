@@ -6,6 +6,7 @@ import {
   publishJobApi, closeJobApi, duplicateJobApi, deleteJobApi,
   getBusinessApplicationsApi, getBusinessApplicationDetailApi,
   downloadApplicationCvApi, updateApplicationStatusApi,
+  getBusinessDashboardApi,
 } from "@/api/business-jobs";
 import type {
   BusinessJobsQuery, CreateJobDraftRequest, UpdateJobDraftRequest,
@@ -20,6 +21,7 @@ const keys = {
   applications: (jobId: string, q: BusinessApplicationsQuery) =>
     ["businessApplications", jobId, q] as const,
   applicationDetail: (appId: string) => ["businessApplicationDetail", appId] as const,
+  dashboard: ["businessDashboard"] as const,
 };
 
 // ── Queries ─────────────────────────────────────────────────────────
@@ -28,6 +30,13 @@ export function useBusinessJobsQuery(query: BusinessJobsQuery = {}) {
   return useQuery({
     queryKey: keys.list(query),
     queryFn: () => getBusinessJobsApi(query),
+  });
+}
+
+export function useBusinessDashboardQuery() {
+  return useQuery({
+    queryKey: keys.dashboard,
+    queryFn: getBusinessDashboardApi,
   });
 }
 
@@ -66,6 +75,7 @@ export function useCreateJobDraftMutation() {
     mutationFn: (body: CreateJobDraftRequest) => createJobDraftApi(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -82,6 +92,7 @@ export function useUpdateJobDraftMutation() {
       });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -123,6 +134,7 @@ export function usePublishJobMutation() {
       publishJobApi(jobId, revision),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -133,6 +145,7 @@ export function useCloseJobMutation() {
     mutationFn: (jobId: string) => closeJobApi(jobId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -143,6 +156,7 @@ export function useDuplicateJobMutation() {
     mutationFn: (jobId: string) => duplicateJobApi(jobId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -153,6 +167,7 @@ export function useDeleteJobMutation() {
     mutationFn: (jobId: string) => deleteJobApi(jobId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }
@@ -173,8 +188,10 @@ export function useUpdateApplicationStatusMutation() {
       applicationId: string;
       body: UpdateApplicationStatusRequest;
     }) => updateApplicationStatusApi(applicationId, body),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["businessApplications"] });
+      qc.invalidateQueries({ queryKey: keys.applicationDetail(vars.applicationId) });
+      qc.invalidateQueries({ queryKey: keys.dashboard });
     },
   });
 }

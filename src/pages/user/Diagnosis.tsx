@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import Layout from "@/components/layout/Layout";
-import { CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { DiagnosisStep1Upload, DiagnosisStep2Review, DiagnosisStep3Results } from "@/components/diagnosis";
+import { ReportTopBar } from "@/components/diagnosis/report/ReportTopBar";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import PageLoader from "@/components/common/PageLoader";
 import { useEnsureBuilderDraftMutation, useSaveBuilderDraftMutation } from "@/hooks/use-cv-builder";
@@ -20,9 +21,14 @@ import {
   resolveCvBuilderSavedSource,
   shouldHydrateServerDraft,
   shouldSaveClientSnapshotAfterDraftCreate,
-  type BuilderSnapshot,
   type CvBuilderSavedSource,
 } from "@/services/cv-builder.service";
+import { getBuilderSnapshot } from "@/components/cv-builder/builder-snapshot";
+import { getCvDetailApi } from "@/api/cv/list";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { Button } from "@/components/ui/button";
 
 const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -30,39 +36,22 @@ const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel
 const CvSectionNav = lazy(() => import("@/components/cv-builder/CvSectionNav").then(m => ({ default: m.CvSectionNav })));
 const StudioInspector = lazy(() => import("@/components/cv-builder/studio/StudioInspector").then(m => ({ default: m.StudioInspector })));
 
-/* ── Step Indicator Dot ── */
-function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div className={cn(
-        "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
-        active ? "bg-primary text-white border-primary shadow-lg shadow-primary/30"
-        : done  ? "bg-emerald-500 text-white border-emerald-500"
-        :         "bg-white text-slate-400 border-slate-200"
-      )}>
-        {done ? <CheckCircle2 className="w-4 h-4" /> : n}
-      </div>
-      <span className={cn("text-[11px] font-semibold whitespace-nowrap", active ? "text-primary" : done ? "text-emerald-600" : "text-slate-400")}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
 /* ── Main Diagnosis Page ── */
 export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
   const {
-    step, isAnalyzing, hasActivatedJdMode,
+    step, isAnalyzing,
     targetStep,
     setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
     setStep
   } = useDiagnosisStore();
 
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
   const posthog = usePostHog();
+  useUnsavedGuard();
 
   useEffect(() => {
     setCompanionSuspended(isAnalyzing);
@@ -114,28 +103,6 @@ export default function Diagnosis() {
   const builderSaveCapturedRef = useRef(false);
   const builderSaveSourceRef = useRef<CvBuilderSavedSource | null>(null);
 
-  const getBuilderSnapshot = (state: ReturnType<typeof useCvBuilderStore.getState>): BuilderSnapshot => ({
-    resumeTitle: state.resumeTitle,
-    fullName: state.fullName,
-    email: state.email,
-    phone: state.phone,
-    location: state.location,
-    linkedin: state.linkedin,
-    portfolio: state.portfolio,
-    github: state.github,
-    targetPosition: state.targetPosition,
-    summary: state.summary,
-    education: state.education,
-    experience: state.experience,
-    projects: state.projects,
-    technicalSkills: state.technicalSkills,
-    softSkills: state.softSkills,
-    tools: state.tools,
-    languages: state.languages,
-    certifications: state.certifications,
-    cvLanguage: state.cvLanguage,
-  });
-
   const captureCvBuilderSaved = useCallback((state: ReturnType<typeof useCvBuilderStore.getState>) => {
     if (builderSaveCapturedRef.current || !state.draftId) return;
 
@@ -151,6 +118,48 @@ export default function Diagnosis() {
   // W22-A fix: gate draft creation with a ref so it only attempts ONCE per builder entry.
   // A permanent 402 (quota exhausted) must NOT retry — fall back to local mode instead of looping.
   const draftAttemptRef = useRef(false);
+  // Blocks builder editing while an existing CV is being recovered (reload / deep-link) so the
+  // async hydrate can't clobber keystrokes typed during the fetch.
+  const [isRecoveringCv, setIsRecoveringCv] = useState(false);
+  const [recoverError, setRecoverError] = useState<Error | null>(null);
+
+  const recoverCvDraft = useCallback((id: string) => {
+    setIsRecoveringCv(true);
+    setRecoverError(null);
+    const recoverStartedAt = performance.now();
+    getCvDetailApi(id)
+      .then((detail) => {
+        const builder = useCvBuilderStore.getState();
+        if (detail.parsedJson) {
+          builder.hydrateFromCanonical(detail.parsedJson, { cvId: detail.id });
+        }
+        builder.setDraftId(detail.id);
+        builder.setResumeTitle(detail.title || t("builder.studio.untitledResume"));
+        builder.setSeedSourceCvId(null);
+        useAutosaveStore.getState().setSaveStatus("saved");
+        captureStudioEvent("builder_recover", {
+          outcome: "success",
+          latencyMs: performance.now() - recoverStartedAt,
+          templateId: useCvBuilderStore.getState().template,
+        });
+        setIsRecoveringCv(false);
+      })
+      .catch((err) => {
+        console.error("Failed to recover draft", err);
+        setRecoverError(err instanceof Error ? err : new Error(String(err)));
+        useAutosaveStore.getState().setSaveStatus("local");
+        captureStudioEvent("builder_recover", {
+          outcome: "failure",
+          latencyMs: performance.now() - recoverStartedAt,
+          errorCode: studioErrorCode(err),
+        });
+      });
+  }, [t]);
+
+  const handleSwitchToOffline = useCallback(() => {
+    setIsRecoveringCv(false);
+    setRecoverError(null);
+  }, []);
 
   useEffect(() => {
     if (step !== "builder") {
@@ -172,6 +181,21 @@ export default function Diagnosis() {
     // (quota exhausted) must NOT retry — fall back to local mode instead of looping.
     if (currentDraftId === null && !draftAttemptRef.current) {
       draftAttemptRef.current = true;
+      const urlParams = new URLSearchParams(window.location.search);
+      // Recover an existing CV by whichever id the URL carries — the draft working
+      // copy (draftId) or the library id (cvId). ResumeLibrary opens resumes with
+      // ?cvId=X and relies on the store already holding the draftId from the soft
+      // navigation; on a full reload / deep-link that store state is gone, so without
+      // also honouring cvId here the builder spawns a brand-new draft instead of
+      // re-opening CV X — orphaning its versions, resetting the title to "Untitled",
+      // and duplicating the CV row.
+      const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
+
+      if (recoverId) {
+        recoverCvDraft(recoverId);
+        return;
+      }
+
       const builderSeed = useCvBuilderStore.getState();
       builderSaveSourceRef.current = resolveCvBuilderSavedSource(builderSeed);
       const snapshotAtDraftRequest = getBuilderSnapshot(builderSeed);
@@ -197,14 +221,20 @@ export default function Diagnosis() {
             const wasSeededFromDiagnosis = builderBeforeHydrate.seededFromDiagnosis;
 
             if (data.parsedJson && canHydrateServerDocument) {
-              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson);
+              builderBeforeHydrate.hydrateFromCanonical(data.parsedJson, { cvId: data.id });
             }
 
             const builder = useCvBuilderStore.getState();
             builder.setDraftId(data.id);
             builder.setSeedSourceCvId(null);
+            
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set("draftId", data.id);
+            window.history.replaceState({}, "", newUrl.toString());
+
             const markSaved = () => {
               useAutosaveStore.getState().setSaveStatus("saved");
+              useAutosaveStore.getState().setIsDirty(false);
               const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
               useAutosaveStore.getState().setLastSavedTime(timeStr);
               captureCvBuilderSaved(useCvBuilderStore.getState());
@@ -225,7 +255,6 @@ export default function Diagnosis() {
               saveDraftMutation.mutate({
                 draftId: data.id,
                 snapshot: getBuilderSnapshot(latestBuilder),
-                title: latestBuilder.resumeTitle || latestBuilder.fullName || t("builder.studio.untitledResume"),
                 targetRole: useDiagnosisStore.getState().targetRole,
               }, {
                 onSuccess: markSaved,
@@ -241,6 +270,7 @@ export default function Diagnosis() {
           onError: (err: Error) => {
             // Graceful degradation: keep editing locally, surface the reason ONCE.
             useAutosaveStore.getState().setSaveStatus("local");
+            captureStudioEvent("builder_create", { outcome: "failure", errorCode: studioErrorCode(err) });
             toast({
               title: t("builder.toastDraftErrorTitle"),
               description: err?.message || t("builder.toastDraftErrorDesc"),
@@ -278,19 +308,26 @@ export default function Diagnosis() {
 
       useAutosaveStore.getState().setSaveStatus("saving");
 
+      const saveStartedAt = performance.now();
       try {
         await saveDraftMutation.mutateAsync({
           draftId,
           snapshot,
-          title: "CV Builder draft",
           targetRole: useDiagnosisStore.getState().targetRole,
         });
         useAutosaveStore.getState().setSaveStatus("saved");
+        useAutosaveStore.getState().setIsDirty(false);
         const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
         useAutosaveStore.getState().setLastSavedTime(timeStr);
         captureCvBuilderSaved(useCvBuilderStore.getState());
       } catch (error) {
         useAutosaveStore.getState().setSaveStatus("error");
+        // Failures only — a success event per 1.5s autosave would be noise.
+        captureStudioEvent("builder_save", {
+          outcome: "failure",
+          latencyMs: performance.now() - saveStartedAt,
+          errorCode: studioErrorCode(error),
+        });
         throw error;
       }
     };
@@ -309,6 +346,7 @@ export default function Diagnosis() {
       if (currentSnapshotJson !== lastSnapshotJson) {
         lastSnapshotJson = currentSnapshotJson;
 
+        useAutosaveStore.getState().setIsDirty(true);
         useAutosaveStore.getState().setSaveStatus("saving");
 
         if (timeoutId) clearTimeout(timeoutId);
@@ -323,6 +361,14 @@ export default function Diagnosis() {
     return () => {
       unsubscribe();
       if (timeoutId) clearTimeout(timeoutId);
+      // A pending debounced save must not die with this effect: SPA navigation away (browser
+      // back, sidebar links) isn't blocked by any router guard, so flush instead of losing the
+      // last <=1.5s of typing. The PUT keeps running after unmount.
+      if (useAutosaveStore.getState().isDirty && useCvBuilderStore.getState().draftId) {
+        void saveDraft().catch(() => {
+          // Nothing to surface — the page is unmounting; autosave state already marks the error.
+        });
+      }
       useAutosaveStore.getState().triggerSaveRef.current = null;
     };
     // mutateAsync is stable for this usage; excluding the mutation object avoids
@@ -330,12 +376,65 @@ export default function Diagnosis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, canUseApi]);
 
+  // Reset active report tab on step change — must sit with the other hooks,
+  // ABOVE every early return, or hook order changes between renders.
+  useEffect(() => {
+    setActiveTab("audit");
+  }, [step]);
+
   // If in builder step, render full-screen builder interface
   if (step === "builder") {
     return (
-      <Layout hideFooter hideNavbar>
+      <Layout hideFooter hideNavbar hideSidebar>
         <Suspense fallback={<PageLoader />}>
-          <div id="cv-builder-anchor" className="h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+          <div id="cv-builder-anchor" className="relative h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden text-slate-900">
+            {isRecoveringCv && (
+              <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6 text-center">
+                {recoverError ? (
+                  <div className="max-w-md p-6 bg-white border border-red-100 rounded-2xl shadow-sm flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center text-red-500">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      {t("builder.recoverErrorTitle", "Could not load CV from cloud")}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      {t("builder.recoverErrorDesc", "We encountered an issue loading your resume from the server. Check your connection and try again.")}
+                    </p>
+                    <p className="text-xs font-mono text-red-600 bg-red-50 p-3 rounded-lg w-full max-h-32 overflow-auto text-left border border-red-100/50">
+                      {getApiErrorMessage(recoverError)}
+                    </p>
+                    <div className="flex gap-2 w-full mt-2">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="flex-1 text-xs"
+                        onClick={handleSwitchToOffline}
+                      >
+                        {t("builder.recoverOffline", "Use offline mode")}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1 text-xs gap-2"
+                        onClick={() => {
+                          const urlParams = new URLSearchParams(window.location.search);
+                          const recoverId = urlParams.get("draftId") || urlParams.get("cvId");
+                          if (recoverId) recoverCvDraft(recoverId);
+                        }}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        {t("builder.recoverRetry", "Retry")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Loader2 className={`h-8 w-8 text-slate-400 ${window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "" : "animate-spin"}`} />
+                    <p className="text-sm font-medium text-slate-500">{t("builder.recoveringDraft")}</p>
+                  </>
+                )}
+              </div>
+            )}
             <StudioTopBar />
             <div className="flex-1 flex overflow-hidden">
               
@@ -345,13 +444,13 @@ export default function Diagnosis() {
               </div>
               
               {/* Zone 2: Editor (Scrollable Column) */}
-              <div className="w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
+              <div className="w-full lg:w-[460px] h-full flex flex-col bg-slate-50 border-r border-slate-200 relative shrink-0 lg:flex-none">
                 {/* Mobile Nav */}
                 <div className="lg:hidden sticky top-0 bg-white z-20 border-b border-slate-200 shrink-0 shadow-sm">
                   <CvSectionNav variant="horizontal" />
                 </div>
                 {/* Editor Content */}
-                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar motion-safe:scroll-smooth">
                   <CvFormPanel />
                 </div>
               </div>
@@ -373,9 +472,27 @@ export default function Diagnosis() {
     );
   }
 
+  // Report mode (Jobscan-style app shell): slim utility top bar instead of the
+  // floating marketing navbar, no stepper, wider container.
+  const reportMode = step === "cv-review" || step === "results";
+
   return (
-    <Layout>
-      <div id="diagnosis-root" className="max-w-6xl mx-auto px-6 py-12 relative min-h-[calc(100dvh-80px)] flex flex-col">
+    <Layout hideNavbar={reportMode} hideFooter={reportMode}>
+      {reportMode && (
+        <ReportTopBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
+      <div
+        id="diagnosis-root"
+        className={cn(
+          "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
+          reportMode
+            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-104px)] max-h-[calc(100dvh-104px)] overflow-hidden"
+            : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
+        )}
+      >
 
         {/* LOADING OVERLAY */}
         <AnimatePresence>
@@ -411,38 +528,14 @@ export default function Diagnosis() {
 
         {/* ── Header ── */}
         {step === "input" && (
-          <header className="mb-14 text-center space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          <header className="mb-6 text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
             <span className="inline-block px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] font-bold text-ink-accent bg-ink-accent/10 rounded-full ring-1 ring-ink-accent/20">
               {t("steps.progress")}
             </span>
-            <h1 className="text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-poppins font-black text-slate-900 tracking-tighter leading-tight">
               {t("header.title")}
             </h1>
           </header>
-        )}
-
-        {/* ── Dynamic Step Indicator ── */}
-        {step !== "input" && (
-          <div className="mb-10 flex items-center justify-center gap-1 sm:gap-4">
-            <StepDot n={1} label={t("steps.upload")} active={false} done={true} />
-            <div className="flex-1 max-w-[60px] h-0.5 transition-colors bg-primary" />
-            <StepDot n={2} label={t("steps.review")} active={step === "cv-review"} done={step === "results"} />
-
-            {/* Framer Motion for animating Step 3 in/out based on JD mode */}
-            <AnimatePresence>
-              {hasActivatedJdMode && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0, x: -20 }}
-                  animate={{ opacity: 1, width: "auto", x: 0 }}
-                  exit={{ opacity: 0, width: 0, x: -20 }}
-                  className="flex items-center gap-1 sm:gap-4 overflow-hidden"
-                >
-                  <div className={cn("flex-1 w-[60px] h-0.5 transition-colors", step === "results" ? "bg-primary" : "bg-slate-200")} />
-                  <StepDot n={3} label={t("steps.results")} active={step === "results"} done={false} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         )}
 
         {/* ═══════════════════════════════════════════════ */}
@@ -453,12 +546,21 @@ export default function Diagnosis() {
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 2: CV REVIEW                              */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "cv-review" && <DiagnosisStep2Review />}
+        {step === "cv-review" && (
+          <DiagnosisStep2Review
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* STEP 3: SKILL GAP RESULTS                      */}
         {/* ═══════════════════════════════════════════════ */}
-        {step === "results" && <DiagnosisStep3Results />}
+        {step === "results" && (
+          <DiagnosisStep3Results
+            activeTab={activeTab}
+          />
+        )}
 
       </div>
     </Layout>

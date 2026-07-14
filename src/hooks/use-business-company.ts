@@ -26,6 +26,7 @@ export function useUpdateBusinessCompanyMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
       qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
+      qc.invalidateQueries({ queryKey: ["businessDashboard"] });
     },
   });
 }
@@ -43,6 +44,7 @@ export function useVerifyWorkEmailMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
       qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
+      qc.invalidateQueries({ queryKey: ["businessDashboard"] });
     },
   });
 }
@@ -55,6 +57,7 @@ export function useUploadCompanyMediaMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
       qc.invalidateQueries({ queryKey: ["businessCompanyMedia"] });
+      qc.invalidateQueries({ queryKey: ["businessDashboard"] });
     },
   });
 }
@@ -73,6 +76,7 @@ export function useSubmitBusinessProfileMutation() {
     mutationFn: () => submitBusinessProfileApi(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.company });
+      qc.invalidateQueries({ queryKey: ["businessDashboard"] });
     },
   });
 }

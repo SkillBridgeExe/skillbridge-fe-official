@@ -28,7 +28,8 @@ export const SectionRule = memo(function SectionRule({ className }: { className?
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (prefersReduced()) {
+    // jsdom (vitest) has no IntersectionObserver — reveal immediately, same as reduced-motion.
+    if (prefersReduced() || typeof IntersectionObserver === "undefined") {
       setVisible(true);
       return;
     }
@@ -154,28 +155,19 @@ export const VerdictHero = memo(function VerdictHero({
   // SVG Path for half circle
   const arcPath = `M ${strokeWidth/2} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - strokeWidth/2} ${radius}`;
 
+  const gaugeColor = target >= 70
+    ? "#346538"
+    : target >= 50
+      ? "#956400"
+      : "#9F2F2D";
+
   const gaugeContent = (
-      <div className={cn("relative flex flex-col items-center justify-end", !isJdMode && breakdown && "cursor-pointer hover:opacity-90 transition-opacity")} style={{ width: radius * 2, height: radius + strokeWidth }}>
+      <div className={cn("relative z-20 flex flex-col items-center justify-end", !isJdMode && breakdown && "cursor-pointer hover:opacity-90 transition-opacity")} style={{ width: radius * 2, height: radius + strokeWidth }}>
         <svg
           height={radius + strokeWidth}
           width={radius * 2}
           className="absolute bottom-0 drop-shadow-sm"
         >
-          <defs>
-            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              {isExcellent ? (
-                <>
-                  <stop offset="0%" stopColor="#34D399" />
-                  <stop offset="100%" stopColor="#10B981" />
-                </>
-              ) : (
-                <>
-                  <stop offset="0%" stopColor="#60A5FA" />
-                  <stop offset="100%" stopColor="#3B82F6" />
-                </>
-              )}
-            </linearGradient>
-          </defs>
           {/* Background Track */}
           <path
             d={arcPath}
@@ -187,7 +179,7 @@ export const VerdictHero = memo(function VerdictHero({
           {/* Foreground Progress */}
           <path
             d={arcPath}
-            stroke="url(#scoreGradient)"
+            stroke={gaugeColor}
             fill="transparent"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
@@ -297,7 +289,7 @@ export function Ribbon({
         <span className="font-mono text-[15px] font-bold">{missing}</span> {t("results.missing")}
       </span>
       {coverage != null && (
-        <span className="text-[#787774]">
+        <span className="inline-flex items-center rounded-full border border-[#E3E3E0] bg-[#F1F1EF] px-2.5 py-1 text-[12px] text-[#787774] shadow-sm">
           {t("editorial.coverage", { pct: coverage })}
         </span>
       )}

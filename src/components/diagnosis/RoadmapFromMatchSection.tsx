@@ -16,6 +16,7 @@ import { MascotRoadmapWizard } from "./roadmap-budget-wizard";
 import { MascotSticker } from "@/components/mascot/MascotSticker";
 import { OPEN_ROADMAP_WIZARD_EVENT } from "@/components/companion/skills/chat-action-events";
 import { cn } from "@/lib/utils";
+import { isThrottledError } from "@/lib/api-error";
 
 /**
  * Learning roadmap derived from a CV/JD match's GapReport (POST /api/cv-matches/:matchId/roadmap).
@@ -33,7 +34,8 @@ export function RoadmapFromMatchSection({
   const { t } = useTranslation("diagnosis");
   const navigate = useNavigate();
   const mergeComposedRoadmap = useRoadmapStore((state) => state.mergeComposedRoadmap);
-  const { mutate, data, isPending, isError } = useGenerateRoadmapFromMatchMutation();
+  const { mutate, data, isPending, isError, error } = useGenerateRoadmapFromMatchMutation();
+  const isThrottled = isError && isThrottledError(error);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [lastBudget, setLastBudget] = useState<RoadmapBudgetInput>(DEFAULT_ROADMAP_BUDGET);
   const { data: roadmapOptions, isLoading: isOptionsLoading } = useRoadmapOptionsFromMatchQuery(
@@ -168,8 +170,15 @@ export function RoadmapFromMatchSection({
           {isPending && <RoadmapSkeleton />}
 
           {isError && (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-[#EAEAEA] bg-white py-6 text-center">
-              <p className="text-sm font-medium text-[#9F2F2D]">{t("roadmap.error")}</p>
+            <div className={cn(
+              "flex flex-col items-center gap-3 rounded-xl border border-[#EAEAEA] py-6 text-center",
+              isThrottled ? "bg-[#FBFBFA]" : "bg-white",
+            )}>
+              <p className={cn("text-sm font-medium", isThrottled ? "text-[#787774]" : "text-[#9F2F2D]")}>
+                {isThrottled
+                  ? t("degraded.throttled", { defaultValue: "Bạn thao tác hơi nhanh, thử lại sau giây lát" })
+                  : t("roadmap.error")}
+              </p>
               <Button
                 variant="ghost"
                 onClick={() => generate()}

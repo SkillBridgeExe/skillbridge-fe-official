@@ -168,14 +168,14 @@ export default function HeroInterviewDemo() {
       }
     >
       {/* Main Content Area */}
-      <div className="flex-1 p-5 md:p-6 flex flex-col justify-between min-w-0">
+      <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-between min-w-0">
         {/* Header row */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="space-y-0.5">
-            <h4 className="text-sm font-bold text-slate-800">AI Mock Interview Practice</h4>
-            <p className="text-[9px] text-slate-400 font-medium">Real-time simulation with instant voice analysis</p>
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="min-w-0 space-y-0.5">
+            <h4 className="truncate text-sm font-bold text-slate-800">AI Mock Interview Practice</h4>
+            <p className="truncate text-[9px] font-medium text-slate-400">Real-time simulation with instant voice analysis</p>
           </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 border border-emerald-100 rounded-lg">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>Interactive Voice</span>
           </div>
@@ -188,7 +188,7 @@ export default function HeroInterviewDemo() {
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Position</div>
                 <div className="text-sm font-bold text-slate-800">React Frontend Developer</div>
-                <div className="text-[9px] text-slate-400 font-semibold">10 technical questions · 15 minutes</div>
+                <div className="text-[9px] text-slate-400 font-semibold">10 technical questions / 15 minutes</div>
               </div>
               <div
                 ref={startButtonRef}
@@ -239,7 +239,7 @@ export default function HeroInterviewDemo() {
                           />
                         ))}
                       </div>
-                      <span>Recording · Transcribing...</span>
+                      <span>Recording / Transcribing...</span>
                     </div>
                     <p className="text-[10px] font-semibold text-slate-600 leading-relaxed italic">
                       "{typedAnswer}"
@@ -326,9 +326,9 @@ export default function HeroInterviewDemo() {
           )}>
             <Cpu className={cn("w-3.5 h-3.5", phase === "question" && "animate-pulse")} />
           </div>
-          <p className="text-xs leading-relaxed font-medium">
+          <p className="min-w-0 break-words text-xs font-medium leading-relaxed">
             {phase === "nav" && (
-              <span className="italic text-slate-400">Ready — open AI Interview to practice with the voice examiner.</span>
+              <span className="italic text-slate-400">Ready - open AI Interview to practice with the voice examiner.</span>
             )}
             {phase === "intro" && (
               <span className="italic text-slate-400">Start the session to begin the real-time AI voice evaluation.</span>

@@ -166,7 +166,7 @@ export function StoryReviewPanel({
       // Reflect the merged doc in the form, preserving the active draft session. preserveDraft
       // keeps draftId — nulling it (the default seed behavior) would break every draftId-gated
       // builder action (save/evaluate/rewrite/PDF) for the rest of the session.
-      store.hydrateFromCanonical(result.doc, { preserveDraft: true });
+      store.hydrateFromCanonical(result.doc, { preserveDraft: true, cvId: draftId });
       if (roleSelected && careerTarget.display_name) {
         store.setCareerTarget("targetPosition", careerTarget.display_name);
       }

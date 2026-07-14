@@ -12,6 +12,7 @@ import { useEvaluateSectionMutation } from "@/hooks/use-cv-builder";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type { BuilderSection, EvaluateSectionResponse } from "@shared/api";
 import { getBuilderSnapshot } from "../builder-snapshot";
+import { CvLengthGuard } from "./CvLengthGuard";
 
 /** FE fallback map for known BE English evaluation labels → Vietnamese. */
 const BE_LABEL_VI: Record<string, string> = {
@@ -128,7 +129,8 @@ export function ReviewSection() {
     setTimeout(() => {
       const sectionEl = document.getElementById(focusId);
       if (!sectionEl) return;
-      sectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      sectionEl.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
       // After scroll settles, focus the first editable field in the section
       setTimeout(() => {
         const firstInput = sectionEl.querySelector<HTMLElement>(
@@ -233,6 +235,8 @@ export function ReviewSection() {
           </Button>
         </div>
       )}
+
+      <CvLengthGuard onFix={handleFix} />
 
       <div className="text-center space-y-2 mb-6">
         <h3 className="text-xl font-bold text-slate-800">

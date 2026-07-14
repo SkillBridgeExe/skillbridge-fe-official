@@ -28,8 +28,11 @@ import {
   speakOfficialRealtimeQuestion,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
+  readGuardAdjustments,
   readInterviewVoicePreference,
   takeRecentInterviewSessions,
+  devPlanTrackKind,
+  gapSeverityLevel,
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
   writeInterviewVoicePreference,
@@ -245,6 +248,61 @@ describe("interview view model", () => {
       50,
     );
     expect(secondsRemainingFromExpiry("2026-06-12T10:09:00.000Z", now)).toBe(0);
+  });
+
+  it("keeps communication/behavioral gaps whose skill_canonical is null and exposes weakness_type", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      gapItems: [
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          weakness_type: "knowledge_gap",
+          severity: 0.8,
+          recommended_action: "Strengthen React fundamentals.",
+        },
+        {
+          skill_canonical: null,
+          display_name: "Communication",
+          weakness_type: "communication_gap",
+          severity: 0.3,
+          recommended_action: "Tighten the answer and cut filler.",
+        },
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          weakness_type: "evidence_gap",
+          severity: 0.5,
+          recommended_action: "Add a concrete example for React.",
+        },
+      ] as never,
+    });
+
+    expect(result.gapItems).toHaveLength(3);
+    expect(result.gapItems[1]).toMatchObject({
+      skillCanonical: null,
+      displayName: "Communication",
+      weaknessType: "communication_gap",
+    });
+    // two gaps on the same skill must stay distinguishable (React list keys)
+    const keys = result.gapItems.map(
+      (gap) => `${gap.weaknessType}-${gap.skillCanonical ?? gap.displayName}`,
+    );
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it("classifies gap severity on the backend 0..1 scale", () => {
+    expect(gapSeverityLevel(1)).toBe("critical");
+    expect(gapSeverityLevel(0.7)).toBe("critical");
+    expect(gapSeverityLevel(0.69)).toBe("moderate");
+    expect(gapSeverityLevel(0.3)).toBe("moderate");
+  });
+
+  it("maps unified dev-plan tracks to action kinds (BE uses interview_practice)", () => {
+    expect(devPlanTrackKind("learn")).toBe("learn");
+    expect(devPlanTrackKind("interview_practice")).toBe("practice");
+    expect(devPlanTrackKind("cv_fix")).toBe("cv");
+    expect(devPlanTrackKind("unknown_track")).toBeNull();
   });
 
   it("maps backend result without inventing body-language metrics", () => {
@@ -921,3 +979,48 @@ class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
     this.values.set(key, value);
   }
 }
+
+describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
+  it("extracts only known guard slugs from a persisted turn trace", () => {
+    expect(
+      readGuardAdjustments({
+        action: "drill",
+        reasons: ["answer_evasive", "score_capped_evasive", "generic_follow_up_risk"],
+      }),
+    ).toEqual(["score_capped_evasive"]);
+  });
+
+  it("is defensive on legacy turns: null / missing / malformed traces yield no adjustments", () => {
+    expect(readGuardAdjustments(null)).toEqual([]);
+    expect(readGuardAdjustments(undefined)).toEqual([]);
+    expect(readGuardAdjustments({})).toEqual([]);
+    expect(readGuardAdjustments({ reasons: "not-an-array" })).toEqual([]);
+    expect(readGuardAdjustments("junk")).toEqual([]);
+  });
+
+  it("threads guard adjustments into the result view model per question", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      turns: [
+        {
+          ...detail.turns[0],
+          turnTrace: {
+            action: "drill",
+            phase: "SKILL_PROBE",
+            reasons: ["answer_shallow", "score_capped_shallow", "depth_downgraded_thin_answer"],
+            depth: 1,
+            remaining_turn_budget: 5,
+            confidence: "high",
+          },
+        },
+      ],
+    });
+    expect(result.questions[0].guardAdjustments).toEqual([
+      "score_capped_shallow",
+      "depth_downgraded_thin_answer",
+    ]);
+
+    const legacy = toInterviewResultViewModel(detail);
+    expect(legacy.questions[0].guardAdjustments).toEqual([]);
+  });
+});

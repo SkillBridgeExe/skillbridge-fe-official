@@ -150,10 +150,20 @@ export function InterviewSetup({
 
   const [showTipsModal, setShowTipsModal] = useState(false);
   
-  // Custom context choice state for the Progressive Disclosure UI
   const [contextChoice, setContextChoice] = useState<"role" | "cv" | "match">(
     selectedMatchId ? "match" : selectedCvId ? "cv" : "role"
   );
+
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1280);
+    };
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
 
   // Sync choice card if selectedCvId changes externally
   useEffect(() => {
@@ -237,6 +247,40 @@ export function InterviewSetup({
     });
   };
 
+  const startButton = (
+    <Button
+      size="lg"
+      className={cn(
+        "w-full h-14 rounded-xl text-white font-bold text-base shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]",
+        isLoading && "opacity-70 cursor-not-allowed"
+      )}
+      onClick={() => setShowTipsModal(true)}
+      disabled={isLoading || !targetRole}
+    >
+      {isLoading ? (
+        <>
+          <RefreshCw className="w-5 h-5 mr-2 animate-spin" />{" "}
+          {t("interview.setup.starting")}
+        </>
+      ) : interviewMode === "realtime" ? (
+        <>
+          <Radio className="w-5 h-5 mr-2" />{" "}
+          {t("interview.setup.startLiveRealtime")}
+        </>
+      ) : interviewMode === "guided" ? (
+        <>
+          <Mic className="w-5 h-5 mr-2" />{" "}
+          {t("interview.setup.startGuidedVoice")}
+        </>
+      ) : (
+        <>
+          <Play className="w-5 h-5 mr-2" />{" "}
+          {t("interview.setup.startInterview")}
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
@@ -271,7 +315,7 @@ export function InterviewSetup({
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-8 items-start">
         {/* LEFT COLUMN: Main Setup Flow */}
-        <div className="space-y-6">
+        <div className="space-y-6 xl:max-h-[calc(100dvh-220px)] xl:overflow-y-auto xl:pr-2 custom-scrollbar">
           
           {/* Card 1: Goal & Context */}
           <Card className="border-slate-200 shadow-sm overflow-hidden">
@@ -560,142 +604,115 @@ export function InterviewSetup({
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Card 2: Mode & Voice Setup */}
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Mic className="w-4 h-4 text-primary" />
-                {t("interview.setup.progressive.modeAndVoice")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-5 space-y-6">
-              <ToggleGroup
-                type="single"
-                value={interviewMode}
-                onValueChange={(value) => value && setInterviewMode(value as InterviewMode)}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-              >
-                <ToggleGroupItem
-                  value="guided"
-                  className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
-                >
-                  <div className="mt-0.5 bg-slate-100 p-1.5 rounded-md text-slate-600">
-                    <Mic className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="block text-sm font-bold text-slate-900">
-                      {t("interview.setup.modes.guided.title")}
-                    </span>
-                    <span className="block text-[11px] mt-1 font-medium text-slate-500 leading-relaxed">
-                      {t("interview.setup.modes.guided.description")}
-                    </span>
-                  </div>
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="realtime"
-                  className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
-                >
-                  <div className="mt-0.5 bg-slate-100 p-1.5 rounded-md text-slate-600">
-                    <Radio className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="block text-sm font-bold text-slate-900">
-                      {t("interview.setup.modes.realtime.title")}
-                    </span>
-                    <span className="block text-[11px] mt-1 font-medium text-slate-500 leading-relaxed">
-                      {t("interview.setup.modes.realtime.description")}
-                    </span>
-                  </div>
-                </ToggleGroupItem>
-              </ToggleGroup>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 border-t border-slate-100">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {t("interview.setup.progressive.voiceLabel")}
-                  </label>
-                  <Select value={selectedVoice} onValueChange={(value) => setSelectedVoice(value as InterviewVoice)} disabled={isLoading}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INTERVIEW_VOICE_OPTIONS.map((voice) => (
-                        <SelectItem key={voice.value} value={voice.value}>
-                          {t(`interview.setup.voice.voices.${voice.i18nKey}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Section: Mode & Voice Setup (merged from Card 2) */}
+              <div className="border-t border-slate-100 pt-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-bold text-slate-800">
+                    {t("interview.setup.progressive.modeAndVoice")}
+                  </h4>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {t("interview.setup.progressive.speedLabel")}
-                  </label>
-                  <ToggleGroup
-                    type="single"
-                    value={String(speechSpeed)}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      setSpeechSpeed(Number(value) as InterviewSpeechSpeed);
-                    }}
-                    className="flex bg-slate-100 p-1 rounded-lg w-full h-11"
-                    disabled={isLoading}
+
+                <ToggleGroup
+                  type="single"
+                  value={interviewMode}
+                  onValueChange={(value) => value && setInterviewMode(value as InterviewMode)}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  <ToggleGroupItem
+                    value="guided"
+                    className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
                   >
-                    {INTERVIEW_SPEECH_SPEED_OPTIONS.map((speed) => (
-                      <ToggleGroupItem
-                        key={speed.value}
-                        value={String(speed.value)}
-                        className="flex-1 h-full rounded-md text-xs font-bold data-[state=on]:bg-white shadow-sm"
-                      >
-                        {t(`interview.setup.voice.speeds.${speed.i18nKey}`)}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+                    <div className="mt-0.5 bg-slate-100 p-1 rounded-md text-slate-600">
+                      <Mic className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-slate-900">
+                        {t("interview.setup.modes.guided.title")}
+                      </span>
+                      <span className="block text-[10px] mt-0.5 font-medium text-slate-500 leading-relaxed">
+                        {t("interview.setup.modes.guided.description")}
+                      </span>
+                    </div>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="realtime"
+                    className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
+                  >
+                    <div className="mt-0.5 bg-slate-100 p-1 rounded-md text-slate-600">
+                      <Radio className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-slate-900">
+                        {t("interview.setup.modes.realtime.title")}
+                      </span>
+                      <span className="block text-[10px] mt-0.5 font-medium text-slate-500 leading-relaxed">
+                        {t("interview.setup.modes.realtime.description")}
+                      </span>
+                    </div>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {t("interview.setup.progressive.voiceLabel")}
+                    </label>
+                    <Select value={selectedVoice} onValueChange={(value) => setSelectedVoice(value as InterviewVoice)} disabled={isLoading}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INTERVIEW_VOICE_OPTIONS.map((voice) => (
+                          <SelectItem key={voice.value} value={voice.value} className="text-xs">
+                            {t(`interview.setup.voice.voices.${voice.i18nKey}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {t("interview.setup.progressive.speedLabel")}
+                    </label>
+                    <ToggleGroup
+                      type="single"
+                      value={String(speechSpeed)}
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        setSpeechSpeed(Number(value) as InterviewSpeechSpeed);
+                      }}
+                      className="flex bg-slate-100 p-1 rounded-lg w-full h-9"
+                      disabled={isLoading}
+                    >
+                      {INTERVIEW_SPEECH_SPEED_OPTIONS.map((speed) => (
+                        <ToggleGroupItem
+                          key={speed.value}
+                          value={String(speed.value)}
+                          className="flex-1 h-full rounded-md text-[10px] font-bold data-[state=on]:bg-white shadow-sm"
+                        >
+                          {t(`interview.setup.voice.speeds.${speed.i18nKey}`)}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Primary CTA */}
-          <Button
-            size="lg"
-            className={cn(
-              "w-full h-14 rounded-xl text-white font-bold text-base shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]",
-              isLoading && "opacity-70 cursor-not-allowed"
-            )}
-            onClick={() => setShowTipsModal(true)}
-            disabled={isLoading || !targetRole}
-          >
-            {isLoading ? (
-              <>
-                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />{" "}
-                {t("interview.setup.starting")}
-              </>
-            ) : interviewMode === "realtime" ? (
-              <>
-                <Radio className="w-5 h-5 mr-2" />{" "}
-                {t("interview.setup.startLiveRealtime")}
-              </>
-            ) : interviewMode === "guided" ? (
-              <>
-                <Mic className="w-5 h-5 mr-2" />{" "}
-                {t("interview.setup.startGuidedVoice")}
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5 mr-2" />{" "}
-                {t("interview.setup.startInterview")}
-              </>
-            )}
-          </Button>
+          {!isLargeScreen && (
+            <div className="xl:hidden">
+              {startButton}
+            </div>
+          )}
 
         </div>
 
         {/* RIGHT COLUMN: Previews & Info */}
-        <div className="space-y-6">
+        <div className="space-y-6 xl:max-h-[calc(100dvh-220px)] xl:overflow-y-auto xl:pr-2 custom-scrollbar">
           <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 shadow-xl border border-slate-800">
             <div className="w-full h-full flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-300 space-y-5">
               <div className="relative w-24 h-24 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.15)]">
@@ -712,44 +729,32 @@ export function InterviewSetup({
             </div>
           </div>
 
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <ListChecks className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm">
-                    {t("interview.setup.criteriaTitle")}
-                  </CardTitle>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    {t("interview.setup.progressive.criteriaIntro", {
-                      type: t(`interview.setup.type.${interviewType}`),
-                      role: roleLabel(targetRole),
-                    })}
-                  </p>
-                </div>
+          {/* Primary CTA for Desktop */}
+          {isLargeScreen && (
+            <div className="hidden xl:block">
+              {startButton}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="bg-white p-1 rounded-md border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
+                <ListChecks className="h-3.5 w-3.5 text-slate-600" />
               </div>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              {/* Refined Bento List for Criteria */}
-              <div className="grid gap-2">
-                {criteriaData.map(({ key, icon: Icon }) => (
-                  <div
-                    key={key}
-                    className="flex items-center gap-3 rounded-lg border border-slate-100 bg-white p-3 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="bg-primary/10 p-1.5 rounded-md text-primary">
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-xs font-semibold leading-relaxed text-slate-700">
-                      {t(`interview.setup.criteria.${key}`)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              <span className="text-xs font-bold text-slate-700">{t("interview.setup.criteriaTitle")}</span>
+            </div>
+            
+            <div className="grid gap-1.5">
+              {criteriaData.map(({ key, icon: Icon }) => (
+                <div key={key} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                  <Icon className="h-3 w-3 text-primary shrink-0" />
+                  <span className="text-[11px] font-semibold text-slate-600 truncate">
+                    {t(`interview.setup.criteria.${key}`)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

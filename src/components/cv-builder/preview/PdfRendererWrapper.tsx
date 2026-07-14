@@ -2,10 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { createResumePdfBlob } from "@resume-engine/pdf/browser";
 import { PdfCanvasDocument, PdfCanvasPage } from "@resume-engine/preview/pdf-canvas";
+import { PDF_POINT_TO_CSS_PX } from "@resume-engine/preview/preview.shared";
 import { PdfErrorBoundary } from "./PdfErrorBoundary";
 import type { ResumeData } from "@resume-engine/schema/resume/data";
 import type { Template } from "@resume-engine/schema/templates";
 import { useTranslation } from "react-i18next";
+import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { captureStudioEvent } from "@/lib/studio-telemetry";
+import { cn } from "@/lib/utils";
 
 export interface PdfRendererWrapperProps {
   data: ResumeData;
@@ -37,11 +41,35 @@ function NativePdfFallback({ blob, title }: { blob: Blob; title: string }) {
 
 export default function PdfRendererWrapper({ data, template }: PdfRendererWrapperProps) {
   const { t } = useTranslation("diagnosis");
-  const [layers, setLayers] = useState<{ id: string; blob: Blob }[]>([]);
+  const [layers, setLayers] = useState<{ id: string; blob: Blob; seq: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [canvasFailedLayerIds, setCanvasFailedLayerIds] = useState<Set<string>>(() => new Set());
   const renderedPagesRef = useRef<Record<string, Set<number>>>({});
+  // Overflow honesty: only the NEWEST layer may report its page count — a
+  // slower older layer finishing late must not overwrite a fresher count.
+  const layerSeqRef = useRef(0);
+  const reportedSeqRef = useRef(0);
+
+  const reportPageCount = (seq: number, count: number | null) => {
+    if (seq < reportedSeqRef.current) return;
+    reportedSeqRef.current = seq;
+    useCvBuilderStore.getState().setRenderedPageCount(count);
+  };
+
+  // One chokepoint for all preview failure paths (blob render, canvas load):
+  // the error message itself is prose and stays out of telemetry.
+  useEffect(() => {
+    if (error) {
+      captureStudioEvent("preview_render", { outcome: "failure", errorCode: "preview_error", templateId: template });
+    }
+  }, [error, template]);
+
+  useEffect(() => {
+    // Leaving the preview invalidates the count — a stale number would keep
+    // the Pages-panel overflow warning arguing about a PDF nobody can see.
+    return () => useCvBuilderStore.getState().setRenderedPageCount(null);
+  }, []);
 
   const handleLayerReady = (id: string) => {
     // Wait a brief moment for the canvas to paint the page
@@ -82,7 +110,11 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
         const blob = await createResumePdfBlob({ data, template });
         if (!cancelled) {
           setLayers((prev) => {
-            const newLayer = { id: Date.now().toString() + Math.random().toString(36).substring(2), blob };
+            const newLayer = {
+              id: Date.now().toString() + Math.random().toString(36).substring(2),
+              blob,
+              seq: ++layerSeqRef.current,
+            };
             if (prev.length === 0) return [newLayer];
             // Keep at most the current active layer and the new pending one
             return [prev[0], newLayer];
@@ -94,6 +126,9 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
           setIsRendering(false);
+          // The preview no longer reflects the current document — an overflow
+          // warning computed from the previous render would be a lie.
+          reportPageCount(++layerSeqRef.current, null);
         }
       }
     };
@@ -132,7 +167,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
               setIsRendering(true);
               createResumePdfBlob({ data, template })
                 .then((blob) => {
-                  setLayers([{ id: Date.now().toString(), blob }]);
+                  setLayers([{ id: Date.now().toString(), blob, seq: ++layerSeqRef.current }]);
                 })
                 .catch(err => setError(err instanceof Error ? err.message : String(err)))
                 .finally(() => setIsRendering(false));
@@ -164,16 +199,29 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
     );
   }
 
+  // W105: derive a "still updating" signal that covers both blob generation
+  // and the period while the canvas pages of a new layer paint.
+  const hasPendingLayer = layers.length > 1;
+  const isUpdating = (isRendering || hasPendingLayer) && !error;
+
   return (
     <div className="relative shrink-0">
-      {isRendering && !error && (
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none transition-opacity">
-          <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-            {t("builder.previewUpdating")}
-          </span>
-        </div>
-      )}
+      {/* W105: Always-rendered updating badge — uses opacity transition for
+          smooth fade-in/fade-out instead of hard mount/unmount. */}
+      <div
+        className={cn(
+          "absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none transition-opacity duration-300",
+          isUpdating ? "opacity-100" : "opacity-0"
+        )}
+        aria-hidden={!isUpdating}
+      >
+        {/* spin only while visible — a perpetual animation on the hidden badge
+            would keep the compositor busy for nothing */}
+        <Loader2 className={cn("w-3.5 h-3.5 text-slate-400", isUpdating && "animate-spin")} />
+        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+          {t("builder.previewUpdating")}
+        </span>
+      </div>
       {error && layers.length > 0 && (
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-amber-50/95 backdrop-blur-sm border border-amber-200 shadow-sm rounded-full px-3 py-1.5 pointer-events-none">
           <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
@@ -191,7 +239,12 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
             key={layer.id}
             className={
               isActive
-                ? "relative opacity-100 transition-opacity duration-300"
+                ? cn(
+                    "relative transition-opacity duration-300",
+                    // W105: Subtle dimming when a newer layer is painting —
+                    // signals "update in progress" without hiding content.
+                    hasPendingLayer ? "opacity-[0.92]" : "opacity-100"
+                  )
                 : "absolute top-0 left-0 right-0 opacity-0 pointer-events-none"
             }
             aria-hidden={isPending ? "true" : "false"}
@@ -205,11 +258,16 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                   onLoadError={(loadError) => {
                     setError(loadError instanceof Error ? loadError.message : String(loadError));
                     setCanvasFailedLayerIds((prev) => new Set(prev).add(layer.id));
+                    reportPageCount(layer.seq, null);
                     if (isPending) {
                       setLayers((prev) => prev.filter((item) => item.id !== layer.id));
                     }
                   }}
-                  onLoadSuccess={() => {}}
+                  onLoadSuccess={(doc) => {
+                    // Overflow honesty: the Pages panel compares the real
+                    // rendered page count against the planned page count.
+                    reportPageCount(layer.seq, doc.numPages);
+                  }}
                 >
                 {(doc) => (
                   <div className="flex flex-col gap-8 items-center">
@@ -218,7 +276,7 @@ export default function PdfRendererWrapper({ data, template }: PdfRendererWrappe
                         <PdfCanvasPage
                           document={doc}
                           pageNumber={i + 1}
-                          pageScale={1.5}
+                          pageScale={PDF_POINT_TO_CSS_PX}
                           totalPages={doc.numPages}
                           showPageNumbers={false}
                           onLoadSuccess={() => {}}

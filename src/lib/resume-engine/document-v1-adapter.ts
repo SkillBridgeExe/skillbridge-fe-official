@@ -10,6 +10,13 @@ import type {
 } from "@/store/useCvBuilderStore";
 import type { ResumeDocumentV1 } from "./document-v1";
 import { createDefaultResumeDocumentV1 } from "./document-v1";
+import {
+  buildLayoutPlanFromState,
+  decomposeLayoutPlan,
+  hashString,
+  normalizeLayoutPlan,
+  sanitizeCustomSections,
+} from "./layout-plan";
 
 const SECTION_KEYS: CvBuilderSectionKey[] = [
   "summary",
@@ -33,15 +40,6 @@ const FONT_SCALES = new Set<ResumeFontScale>(["small", "normal", "large"]);
 const FONT_FAMILIES = new Set<ResumeFontFamily>(["inter", "serif", "roboto", "merriweather", "mono"]);
 const LINE_HEIGHTS = new Set<ResumeLineHeight>(["tight", "normal", "relaxed"]);
 const SPACINGS = new Set<ResumeSpacing>(["compact", "normal", "spacious"]);
-
-function hashString(input: string): string {
-  let hash = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-}
 
 function stableItemId(section: string, index: number, fields: Array<string | null | undefined>): string {
   const signature = fields
@@ -190,10 +188,16 @@ export function builderStateToResumeDocumentV1(state: CvBuilderState): ResumeDoc
     credentialUrl: cert.credentialUrl,
   }));
 
+  // P4: custom sections are content — sanitize here so import/restore paths
+  // can never smuggle junk shapes into the document.
+  doc.sections.custom = sanitizeCustomSections(state.customSections || []);
+
   doc.metadata = {
     templateId: state.template || "onyx",
     resumeFontFamily: state.resumeFontFamily || "inter",
     resumeFontScale: state.resumeFontScale || "normal",
+    resumeHeadingScale: state.resumeHeadingScale || "match",
+    resumeBaseFontSize: state.resumeBaseFontSize || 11,
     resumeLineHeight: state.resumeLineHeight || "normal",
     resumePageMargin: state.resumePageMargin || "normal",
     resumeSectionSpacing: state.resumeSectionSpacing || "normal",
@@ -202,8 +206,24 @@ export function builderStateToResumeDocumentV1(state: CvBuilderState): ResumeDoc
     resumeDividerStyle: state.resumeDividerStyle || "line",
     resumeAccentColor: state.resumeAccentColor || "#0f172a",
     resumeHideSectionIcons: state.resumeHideSectionIcons || false,
+    resumeAtsSafeMode: state.resumeAtsSafeMode || false,
+    resumeTextColor: state.resumeTextColor || "#334155",
+    resumePictureVisible: state.resumePictureVisible ?? true,
+    resumePictureShape: state.resumePictureShape || "circle",
+    resumePictureSize: state.resumePictureSize || 64,
+    resumePictureBorderWidth: state.resumePictureBorderWidth || 0,
+    resumePictureBorderColor: state.resumePictureBorderColor || "rgba(0,0,0,0)",
     sectionVisibility: { ...(state.sectionVisibility || {}) },
     sectionOrder: [...(state.sectionOrder || [])],
+    // P4: layout owns page order and main/sidebar placement; sectionOrder
+    // above stays as a flattened mirror for older readers.
+    layout: buildLayoutPlanFromState({
+      sectionOrder: state.sectionOrder || [],
+      sectionPlacement: state.sectionPlacement || {},
+      layoutPages: state.layoutPages || [],
+      sectionPage: state.sectionPage || {},
+      customSections: doc.sections.custom,
+    }),
     careerLevel: state.careerLevel || "",
     industry: state.industry || "",
   };
@@ -216,7 +236,34 @@ export function builderStateToResumeDocumentV1(state: CvBuilderState): ResumeDoc
  * Can be merged into Zustand.
  */
 export function resumeDocumentV1ToBuilderState(doc: ResumeDocumentV1): Partial<CvBuilderState> {
+  // P4: normalize the layout plan (or derive the legacy single page) through
+  // the shared chokepoint, then decompose it into the store's editing shape.
+  const custom = sanitizeCustomSections(doc.sections.custom ?? []);
+  const plan = normalizeLayoutPlan(doc.metadata.layout, {
+    knownSectionIds: [...SECTION_KEYS, ...custom.map((section) => section.id)],
+    fallbackOrder: doc.metadata.sectionOrder,
+    preferredPlacement: Object.fromEntries(custom.map((section) => [section.id, section.placement])),
+  });
+  const decomposed = decomposeLayoutPlan(plan);
+  const customById = new Map(custom.map((section) => [section.id, section]));
+  const orderedCustom = [
+    // Plan order wins; placement syncs back onto the section object.
+    ...decomposed.flatOrder
+      .filter((id) => customById.has(id))
+      .map((id) => ({ ...customById.get(id)!, placement: decomposed.sectionPlacement[id] })),
+    ...custom.filter((section) => !decomposed.flatOrder.includes(section.id)),
+  ];
+  const builtinPlacement = Object.fromEntries(
+    Object.entries(decomposed.sectionPlacement).filter(([id]) =>
+      SECTION_KEYS.includes(id as CvBuilderSectionKey),
+    ),
+  ) as Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
+
   return {
+    customSections: orderedCustom,
+    layoutPages: decomposed.layoutPages,
+    sectionPage: decomposed.sectionPage,
+    sectionPlacement: builtinPlacement,
     cvLanguage: doc.language,
     fullName: doc.basics.fullName,
     email: doc.basics.email,
@@ -244,6 +291,8 @@ export function resumeDocumentV1ToBuilderState(doc: ResumeDocumentV1): Partial<C
     template: doc.metadata.templateId,
     resumeFontFamily: asResumeFontFamily(doc.metadata.resumeFontFamily),
     resumeFontScale: asResumeFontScale(doc.metadata.resumeFontScale),
+    resumeHeadingScale: doc.metadata.resumeHeadingScale === "prominent" || doc.metadata.resumeHeadingScale === "subtle" ? doc.metadata.resumeHeadingScale : "match",
+    resumeBaseFontSize: doc.metadata.resumeBaseFontSize ?? 11,
     resumeLineHeight: asResumeLineHeight(doc.metadata.resumeLineHeight),
     resumePageMargin: asResumeSpacing(doc.metadata.resumePageMargin, doc.metadata.resumeDensity),
     resumeSectionSpacing: asResumeSpacing(doc.metadata.resumeSectionSpacing, doc.metadata.resumeDensity),
@@ -252,7 +301,16 @@ export function resumeDocumentV1ToBuilderState(doc: ResumeDocumentV1): Partial<C
     resumeDividerStyle: doc.metadata.resumeDividerStyle === "none" || doc.metadata.resumeDividerStyle === "accent" || doc.metadata.resumeDividerStyle === "subtle" ? doc.metadata.resumeDividerStyle : "line",
     resumeAccentColor: doc.metadata.resumeAccentColor,
     resumeHideSectionIcons: doc.metadata.resumeHideSectionIcons,
+    resumeAtsSafeMode: doc.metadata.resumeAtsSafeMode ?? false,
+    resumeTextColor: doc.metadata.resumeTextColor ?? "#334155",
+    resumePictureVisible: doc.metadata.resumePictureVisible ?? true,
+    resumePictureShape: doc.metadata.resumePictureShape === "square" || doc.metadata.resumePictureShape === "rounded" ? doc.metadata.resumePictureShape : "circle",
+    resumePictureSize: doc.metadata.resumePictureSize ?? 64,
+    resumePictureBorderWidth: doc.metadata.resumePictureBorderWidth ?? 0,
+    resumePictureBorderColor: doc.metadata.resumePictureBorderColor ?? "rgba(0,0,0,0)",
     sectionVisibility: asSectionVisibility(doc.metadata.sectionVisibility),
+    // The mirror keeps the user's global order (the plan stores main/sidebar
+    // separately, so flattening it would reorder interleaved sections).
     sectionOrder: asSectionOrder(doc.metadata.sectionOrder),
     careerLevel: asCareerLevel(doc.metadata.careerLevel),
     industry: doc.metadata.industry,

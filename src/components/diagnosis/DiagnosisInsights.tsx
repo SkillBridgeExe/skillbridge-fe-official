@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { FileText, ListChecks, Quote, Eye } from "lucide-react";
+import { FileText, ListChecks, Quote, Eye, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { RoleRoadmapAction } from "./RoadmapFromMatchSection";
@@ -79,39 +79,46 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
   const done = tickedIndexes.filter((i) => i < total).length;
 
   return (
-    <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] rounded-xl overflow-hidden transition-all duration-200">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            <ListChecks className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-[#F1F1EF] pb-3">
+          <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-primary">
+            <ListChecks className="w-4 h-4 text-[#00AEEF]" />
             {t("insights.fixFirst")}
           </div>
           {total > 0 && (
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
               {t("insights.actionsDone", { done, total })}
             </span>
           )}
         </div>
-        <h2 className="text-lg md:text-xl font-bold text-[#2F3437] leading-snug">
-          {summary.headline}
-        </h2>
         {total > 0 && (
-          <ol className="mt-4 space-y-3">
+          <ol className="space-y-3.5">
             {summary.prioritized_actions.map((action, idx) => {
               const isTicked = tickedIndexes.includes(idx);
               return (
-                <li key={idx} className="flex items-start gap-3 text-sm text-[#2F3437]">
-                  <input
-                    type="checkbox"
-                    checked={isTicked}
-                    onChange={() => toggleTick(idx)}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-1 shrink-0 cursor-pointer"
-                  />
-                  <span
-                    onClick={() => toggleTick(idx)}
+                <li
+                  key={idx}
+                  onClick={() => toggleTick(idx)}
+                  className={cn(
+                    "flex items-start gap-3.5 text-sm text-[#2F3437] p-3 rounded-xl border border-transparent hover:border-[#F1F1EF] hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
+                    isTicked && "bg-slate-50/30"
+                  )}
+                >
+                  <div
                     className={cn(
-                      "font-medium leading-relaxed cursor-pointer select-none transition-all duration-200",
-                      isTicked && "line-through text-[#B9B9B7]"
+                      "w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all duration-200",
+                      isTicked
+                        ? "bg-[#00AEEF] border-[#00AEEF] text-white"
+                        : "border-slate-300 bg-white group-hover:border-slate-400"
+                    )}
+                  >
+                    {isTicked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span
+                    className={cn(
+                      "font-semibold leading-relaxed transition-all duration-200 flex-1",
+                      isTicked && "line-through text-[#B9B9B7] font-medium"
                     )}
                   >
                     {action}

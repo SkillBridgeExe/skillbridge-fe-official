@@ -1,323 +1,202 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, Lock, BookOpen, AlertCircle, Video, Upload, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
-import ActivityHeatmap from "./ActivityHeatmap";
-import AIDailyBriefing from "./AIDailyBriefing";
 import {
-  MOCK_HEATMAP_DATA,
-  MOCK_ROADMAP_NODES,
-  MOCK_RECOMMENDATIONS,
-} from "@/lib/mock-data/dashboard";
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  FileSearch,
+  Loader2,
+  Map,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import type { CvDto } from "@shared/api";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
-import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { isQuotaError } from "./dashboard-view-model";
 
-export default function OverviewTab() {
+interface OverviewTabProps {
+  cv: CvDto | null;
+  isLoading: boolean;
+  error: unknown;
+}
+
+export default function OverviewTab({
+  cv,
+  isLoading,
+  error,
+}: OverviewTabProps) {
   const weeks = useActiveWeekPlans();
-  const { reviewData, targetRole } = useDiagnosisStore();
 
-  const hasRealRoadmap = weeks.length > 0;
+  if (isLoading) {
+    return (
+      <StateCard
+        icon={<Loader2 className="h-6 w-6 animate-spin" />}
+        title="Loading your dashboard"
+        description="Fetching your latest CV diagnosis."
+      />
+    );
+  }
+  if (error) {
+    const quota = isQuotaError(error);
+    return (
+      <StateCard
+        icon={<AlertCircle className="h-6 w-6" />}
+        title={
+          quota
+            ? "Your CV analysis quota is exhausted"
+            : "Dashboard data could not be loaded"
+        }
+        description={
+          quota
+            ? "Upgrade your plan to run more CV analyses."
+            : "Please refresh and try again."
+        }
+        action={
+          <Link
+            className="font-semibold text-primary"
+            to={quota ? "/pricing" : "/diagnosis"}
+          >
+            {quota ? "View plans" : "Open diagnosis"}
+          </Link>
+        }
+      />
+    );
+  }
+  if (!cv) {
+    return (
+      <StateCard
+        icon={<FileSearch className="h-6 w-6" />}
+        title="Scan your first CV"
+        description="Your real score, recommendations and roadmap will appear here after a diagnosis."
+        action={
+          <Link
+            className="inline-flex items-center gap-2 font-semibold text-primary"
+            to="/diagnosis"
+          >
+            Start CV diagnosis <ArrowRight className="h-4 w-4" />
+          </Link>
+        }
+      />
+    );
+  }
 
-  // Compute dynamic nodes from the active week plans
-  const nodes = useMemo(() => {
-    if (!hasRealRoadmap) return MOCK_ROADMAP_NODES;
-
-    let foundInProgress = false;
-    return weeks.map((week) => {
-      const totalSessions = week.sessions.length;
-      const completedSessions = week.sessions.filter((s) => s.status === "completed").length;
-      const hasInProgress = week.sessions.some((s) => s.status === "in-progress");
-      const allCompleted = totalSessions > 0 && completedSessions === totalSessions;
-
-      let status: "completed" | "in_progress" | "locked";
-      if (allCompleted) {
-        status = "completed";
-      } else if (hasInProgress || !foundInProgress) {
-        status = "in_progress";
-        foundInProgress = true;
-      } else {
-        status = "locked";
-      }
-
-      return {
-        status,
-        week: `Week ${week.weekNumber}`,
-        title: week.moduleTitle,
-      };
-    });
-  }, [weeks, hasRealRoadmap]);
-
-  // Compute the active progress line fill ratio
-  const completedWeeksCount = useMemo(() => {
-    if (!hasRealRoadmap) return 2; // mock has index 2 in_progress (meaning 2 completed)
-    return weeks.filter((w) => w.sessions.length > 0 && w.sessions.every((s) => s.status === "completed")).length;
-  }, [weeks, hasRealRoadmap]);
-
-  const progressRatio = useMemo(() => {
-    const total = hasRealRoadmap ? weeks.length : MOCK_ROADMAP_NODES.length;
-    if (total <= 1) return 0;
-    return Math.min(1, completedWeeksCount / (total - 1));
-  }, [completedWeeksCount, weeks.length, hasRealRoadmap]);
-
-  // Compute real target role match details
-  const roleName = targetRole || reviewData?.parsedCv?.inferred_roles?.[0] || "Senior Frontend Engineer";
-  const matchScore = reviewData?.jdMatch?.matchScore ?? 65;
-  const criticalGaps = reviewData?.jdMatch?.criticalGaps || [];
+  const review = cv.review;
+  const actions = review?.top_summary?.prioritized_actions ?? [];
+  const headline = review?.top_summary?.headline || "Your latest CV diagnosis";
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* ═══ Quick Actions ═══ */}
-      <div className="flex flex-wrap gap-3">
-        {[
-          { label: "Continue Learning", icon: Zap, href: "/learning", variant: "default" as const, className: "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20 border-0" },
-          { label: "Book Mock Interview", icon: Video, href: "/interview", variant: "outline" as const, className: "bg-white text-slate-700 border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5" },
-          { label: "Upload New CV", icon: Upload, href: "/diagnosis", variant: "outline" as const, className: "bg-white text-slate-700 border-slate-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5" },
-        ].map((action) => (
-          <Link key={action.label} to={action.href}>
-            <Button variant={action.variant} className={cn("rounded-xl font-bold text-sm h-10 px-5 transition-all", action.className)}>
-              <action.icon className="w-4 h-4 mr-2" /> {action.label}
-            </Button>
-          </Link>
-        ))}
-      </div>
+    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">
+              Latest scan
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-slate-900">
+              {headline}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {cv.title || cv.originalFileName || "Uploaded CV"}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-center">
+            <p className="text-2xl font-black text-primary">
+              {review?.overall_score == null
+                ? "—"
+                : Math.round(review.overall_score)}
+            </p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">
+              CV score
+            </p>
+          </div>
+        </div>
+        <h3 className="mb-3 font-bold text-slate-800">Priority actions</h3>
+        {actions.length ? (
+          <ul className="space-y-3">
+            {actions.map((action) => (
+              <li
+                key={action}
+                className="flex gap-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700"
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                {action}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">
+            No prioritized actions were returned for this scan.
+          </p>
+        )}
+      </section>
 
-      {/* ═══ AI Daily Briefing ═══ */}
-      <AIDailyBriefing />
-
-      {/* ═══ Top Row: Roadmap + CV Match ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Roadmap (span 2) */}
-        <Card className="glass border-white/50 shadow-sm lg:col-span-2 flex flex-col">
-          <CardHeader className="flex flex-row justify-between items-center pb-2">
-            <CardTitle className="text-base font-semibold text-slate-900">
-              Learning Roadmap
-            </CardTitle>
-            <Link to="/learning">
-              <Button variant="ghost" size="sm" className="text-primary font-bold text-sm">
-                View details →
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent 
-            className="pt-6 pb-6 overflow-x-auto custom-scrollbar flex-1 flex items-center relative"
-          >
-            {/* Fade gradients to indicate scrollability */}
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-20 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-20 pointer-events-none" />
-            
-            <div className="min-w-[750px] flex items-start justify-between px-8 relative w-full pt-2">
-              {/* Thick background track */}
-              <div className="absolute top-[28px] left-[70px] right-[70px] h-2 bg-slate-100 rounded-full -translate-y-1/2 z-0" />
-              
-              {/* Active progress fill */}
-              <div 
-                className="absolute top-[28px] left-[70px] h-2 bg-primary rounded-full -translate-y-1/2 transition-all duration-1000 ease-out z-0"
-                style={{ width: `calc((100% - 140px) * ${progressRatio})` }} 
-              />
-
-              {nodes.map((node, idx) => (
-                <RoadmapNode key={idx} {...node} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* CV Match Summary */}
-        <Card className="glass border-white/50 shadow-sm bg-gradient-to-br from-white to-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-slate-900">
-              Target Role Match
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1 pr-2">
-                <p className="text-sm text-slate-500 font-medium mb-1 truncate">{roleName}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-primary">{matchScore}%</span>
-                  <span className="text-sm text-slate-400">match core</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 rounded-full border-4 border-primary/20 flex items-center justify-center flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              {criticalGaps.length > 0 ? (
-                criticalGaps.slice(0, 2).map((gap, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center gap-1.5 truncate">
-                      <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                      Gap: {gap}
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="rounded-xl bg-violet-50 p-2 text-violet-600">
+            <Map className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-900">Learning roadmap</h2>
+            <p className="text-xs text-slate-500">
+              Generated from your real skill gaps
+            </p>
+          </div>
+        </div>
+        {weeks.length ? (
+          <div className="space-y-3">
+            {weeks.slice(0, 4).map((week) => {
+              const completed = week.sessions.filter(
+                (session) => session.status === "completed",
+              ).length;
+              return (
+                <div
+                  key={week.weekNumber}
+                  className="rounded-xl border border-slate-100 p-3"
+                >
+                  <div className="flex justify-between gap-3">
+                    <span className="font-semibold text-slate-800">
+                      Week {week.weekNumber}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {completed}/{week.sessions.length} sessions
                     </span>
                   </div>
-                ))
-              ) : (
-                <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Missing: System Design</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-400" /> Gap: Cloud AWS</span>
-                  </div>
-                </>
-              )}
-            </div>
-            
-            <Button size="sm" className="w-full bg-white text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors text-sm font-bold rounded-xl">
-              Scan Updated CV
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══ Middle Row: Recommendations + Heatmap ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Recommendations */}
-        <Card className="glass border-white/50 shadow-sm">
-          <CardHeader className="pb-2">
-             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Action Items
-              </CardTitle>
-             </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-2">
-            {MOCK_RECOMMENDATIONS.map((rec, idx) => (
-              <RecommendationItem key={idx} {...rec} />
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Activity Heatmap */}
-        <div className="lg:col-span-2">
-          <ActivityHeatmap data={MOCK_HEATMAP_DATA} />
-        </div>
-        
-      </div>
-    </div>
-  );
-}
-
-// ─── Roadmap Node ────────────────────────
-function RoadmapNode({
-  status,
-  week,
-  title,
-}: {
-  status: "completed" | "in_progress" | "pending" | "locked";
-  week: string;
-  title: string;
-}) {
-  const isCompleted = status === "completed";
-  const isInProgress = status === "in_progress";
-  const isPending = status === "pending";
-  const isLocked = status === "locked";
-
-  return (
-    <div className="flex flex-col items-center relative z-10 w-28 text-center group cursor-pointer">
-      {/* Node Circle */}
-      <div className="relative flex items-center justify-center w-10 h-10 mb-3">
-        {/* Glow effect for in_progress */}
-        {isInProgress && (
-          <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                </div>
+              );
+            })}
+            <Link
+              to="/learning"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              Continue learning <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Generate a roadmap from a CV/job match to see progress here.
+          </p>
         )}
-        
-        <div
-          className={cn(
-            "relative z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ring-[6px] ring-white",
-            isCompleted && "bg-primary text-white shadow-sm",
-            isInProgress && "bg-white border-[3px] border-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]",
-            isPending && "bg-white border-[3px] border-slate-200 text-slate-400",
-            isLocked && "bg-slate-100 text-slate-300"
-          )}
-        >
-          {isCompleted ? (
-            <CheckCircle2 className="w-5 h-5" />
-          ) : isLocked ? (
-            <Lock className="w-4 h-4" />
-          ) : isInProgress ? (
-            <div className="w-2 h-2 rounded-full bg-primary" />
-          ) : (
-            <span className="text-xs font-bold">{week.split(" ")[1] || "F"}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Text Container */}
-      <div className="flex flex-col items-center gap-1 transition-transform group-hover:-translate-y-1">
-        <span className={cn(
-          "text-[10px] uppercase font-bold tracking-wider",
-          isCompleted ? "text-primary" : isInProgress ? "text-primary" : "text-slate-400"
-        )}>
-          {week}
-        </span>
-        <h4 className={cn(
-          "text-xs leading-tight px-1",
-          isInProgress ? "font-bold text-slate-900" : "font-semibold text-slate-600",
-          isLocked && "text-slate-400"
-        )}>
-          {title}
-        </h4>
-      </div>
+      </section>
     </div>
   );
 }
 
-// ─── Recommendation Item ─────────────────
-function RecommendationItem({
+function StateCard({
+  icon,
   title,
   description,
-  type,
+  action,
 }: {
+  icon: React.ReactNode;
   title: string;
   description: string;
-  type: "critical" | "success" | "info";
+  action?: React.ReactNode;
 }) {
-  const config = {
-    critical: { 
-      wrapper: "hover:border-red-200 hover:bg-red-50/30 border-l-red-500", 
-      icon: AlertCircle, 
-      iconColor: "text-red-500", 
-      iconBg: "bg-red-50" 
-    },
-    success: { 
-      wrapper: "hover:border-emerald-200 hover:bg-emerald-50/30 border-l-emerald-500", 
-      icon: CheckCircle2, 
-      iconColor: "text-emerald-500", 
-      iconBg: "bg-emerald-50" 
-    },
-    info: { 
-      wrapper: "hover:border-blue-200 hover:bg-blue-50/30 border-l-blue-500", 
-      icon: BookOpen, 
-      iconColor: "text-blue-500", 
-      iconBg: "bg-blue-50" 
-    },
-  };
-  const c = config[type];
-  const Icon = c.icon;
-
   return (
-    <div className={cn(
-      "flex items-start gap-4 p-4 bg-white border border-slate-200 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm hover:shadow-md cursor-pointer border-l-4", 
-      c.wrapper
-    )}>
-      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5", c.iconBg)}>
-        <Icon className={cn("w-4 h-4", c.iconColor)} />
+    <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+      <div className="mb-4 rounded-full bg-slate-100 p-3 text-slate-600">
+        {icon}
       </div>
-      <div>
-        <h4 className="font-bold text-sm text-slate-800 leading-tight mb-1">{title}</h4>
-        <p className="text-xs text-slate-500 leading-relaxed max-w-[95%]">{description}</p>
-      </div>
+      <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+      <p className="mt-2 max-w-lg text-sm text-slate-500">{description}</p>
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }

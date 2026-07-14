@@ -2,6 +2,7 @@ import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
 import type { CvDto } from "@shared/api";
+import { uiFeedbackLang } from "@/lib/ui-locale";
 
 /**
  * POST /api/cvs chấm ĐỒNG BỘ (extract → parse → LLM) — cộng cold-start Cloud Run
@@ -31,6 +32,8 @@ export async function uploadCvApi({
   if (targetRole) formData.append("targetRole", targetRole);
   if (title) formData.append("title", title);
   formData.append("consentAccepted", String(consentAccepted));
+  // Feedback language follows the current UI toggle so the first diagnosis isn't mixed-language.
+  formData.append("lang", uiFeedbackLang());
 
   const envelope = await unwrapEnvelope<ApiEnvelope<CvDto>>(
     httpClient.post(API_ROUTES.CV.CREATE, formData, {

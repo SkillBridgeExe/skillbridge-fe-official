@@ -10,9 +10,21 @@
 import { uploadCvApi } from "@/api/cv/upload";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi, getCvMatchDetailApi } from "@/api/cv/match";
-import { getCvDetailApi, getCvListApi, type CvListQuery } from "@/api/cv/list";
-import { getJobRecommendationsApi, type JobRecommendationsQuery } from "@/api/cv/recommendations";
-import { getSkillGapApi, getTrendsInsightApi, type SkillGapQuery, type TrendsInsightQuery } from "@/api/cv/trends";
+import { getCvDetailApi } from "@/api/cv/list";
+import {
+  getDiagnosisHistoryApi,
+  type DiagnosisHistoryQuery,
+} from "@/api/cv/diagnosis-history";
+import {
+  getJobRecommendationsApi,
+  type JobRecommendationsQuery,
+} from "@/api/cv/recommendations";
+import {
+  getSkillGapApi,
+  getTrendsInsightApi,
+  type SkillGapQuery,
+  type TrendsInsightQuery,
+} from "@/api/cv/trends";
 import { downloadCvFileApi } from "@/api/cv/file";
 import {
   generateInterviewPlanFromMatchApi,
@@ -24,10 +36,14 @@ import {
 import { getGapReportApi } from "@/api/cv/gap-report";
 import { getNextStepsApi } from "@/api/cv/next-steps";
 import { deleteChatThreadApi, getChatThreadApi } from "@/api/cv/chat-thread";
-import { askCvDiagnosisChatApi, askDiagnosisChatApi } from "@/api/cv/diagnosis-chat";
+import {
+  askCvDiagnosisChatApi,
+  askDiagnosisChatApi,
+} from "@/api/cv/diagnosis-chat";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { withMockInsights } from "@/lib/mock-data/diagnosis-insights";
 import { hasApiAuthSession } from "@/services/auth-session.service";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type {
   BeIssueSeverity,
   BeMatchedSkill,
@@ -164,15 +180,32 @@ export function mapCvDtoToReviewData(dto: CvDto): CvReviewData {
       }
       // 2. High score dimensions (score20 >= 16 out of 20, which is >= 80%)
       const DIM_LABELS: Record<string, { vi: string; en: string }> = {
-        action_verbs: { vi: "Sử dụng động từ hành động hiệu quả", en: "Effective use of action verbs" },
-        skills_relevance: { vi: "Mức độ phù hợp của kỹ năng cao", en: "High relevance of skills" },
-        experience: { vi: "Kinh nghiệm làm việc phong phú", en: "Strong work experience" },
-        education: { vi: "Nền tảng học vấn vững chắc", en: "Solid education background" },
+        action_verbs: {
+          vi: "Sử dụng động từ hành động hiệu quả",
+          en: "Effective use of action verbs",
+        },
+        skills_relevance: {
+          vi: "Mức độ phù hợp của kỹ năng cao",
+          en: "High relevance of skills",
+        },
+        experience: {
+          vi: "Kinh nghiệm làm việc phong phú",
+          en: "Strong work experience",
+        },
+        education: {
+          vi: "Nền tảng học vấn vững chắc",
+          en: "Solid education background",
+        },
       };
       const cvLanguage = dto.language === "vi" ? "vi" : "en";
       if (review.llm_score_dimensions) {
         (
-          ["action_verbs", "skills_relevance", "experience", "education"] as const
+          [
+            "action_verbs",
+            "skills_relevance",
+            "experience",
+            "education",
+          ] as const
         ).forEach((key) => {
           const score = review.llm_score_dimensions[key];
           if (score >= 16) {
@@ -222,7 +255,9 @@ function toSkillMatchItem(
     status,
     ...("gap_levels" in skill ? { gap_levels: skill.gap_levels } : {}),
     // BE #51: requirement được thỏa bởi skill CON (sql ← sql_server) — UI nói thật "tính từ X".
-    ...("satisfied_by" in skill && skill.satisfied_by ? { satisfied_by: skill.satisfied_by } : {}),
+    ...("satisfied_by" in skill && skill.satisfied_by
+      ? { satisfied_by: skill.satisfied_by }
+      : {}),
   };
 }
 
@@ -241,9 +276,10 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
   // BE không tách hard/soft — toàn bộ vào hardSkills, tab soft trống (W3 xử lý UI).
   const breakdown = parsed?.scoring_breakdown;
   const total = breakdown?.total_requirements ?? hardSkills.length;
-  const matchScore = Math.round(
-    match.overallScore ?? parsed?.overall_score ?? match.matchRatio ?? 0,
-  );
+  const rawScore =
+    match.overallScore ?? parsed?.overall_score ?? match.matchRatio;
+  const matchScore =
+    rawScore !== null && rawScore !== undefined ? Math.round(rawScore) : null;
 
   return {
     matchId: match.id,
@@ -252,7 +288,9 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     // Summary thuần số liệu BE — không bịa nhận định.
     summary: breakdown
       ? `Matched ${breakdown.matched_count}/${total} requirements (${breakdown.partial_count} partial, ${breakdown.missing_count} missing). Required-skill coverage: ${Math.round((parsed?.required_coverage ?? 0) * 100)}%.`
-      : `Match score ${matchScore}/100.`,
+      : matchScore !== null
+        ? `Match score ${matchScore}/100.`
+        : `Match score —/100.`,
     hardSkills,
     softSkills: [],
     radar: hardSkills.slice(0, 6).map((skill) => ({
@@ -271,11 +309,16 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
     fell_back_to_rubric: parsed?.fell_back_to_rubric ?? false,
     source_of_requirements: parsed?.source_of_requirements ?? "none",
     unnormalized_jd_requirements: parsed?.unnormalized_jd_requirements ?? [],
-    keyword_frequency: parsed?.keyword_frequency?.map(f => ({
-      keyword: f.canonical_name || f.display_name,
-      jd_count: f.jd_count,
-      cv_count: f.cv_count,
-    })) ?? [],
+    // KHÔNG ?? [] — undefined = "parsed vắng, không biết hệ đã đọc gì" ≠ [] = "biết là đọc đủ".
+    // SystemReadPanel chỉ được claim all-clear khi field này THẬT là mảng rỗng từ BE.
+    unnormalized_cv_skills: parsed?.unnormalized_cv_skills,
+    keyword_frequency:
+      parsed?.keyword_frequency?.map((f) => ({
+        keyword: f.canonical_name || f.display_name,
+        jd_count: f.jd_count,
+        cv_count: f.cv_count,
+      })) ?? [],
+    degraded_reasons: parsed?.degraded_reasons ?? [],
   };
 }
 
@@ -347,10 +390,10 @@ export async function compareJdForCv({
 
 /** Lịch sử CV đã chấm (GET /api/diagnosis/history — alias GET /api/cvs). */
 export async function getDiagnosisHistory(
-  query: CvListQuery = {},
+  query: DiagnosisHistoryQuery = {},
 ): Promise<Paginated<CvListItemDto>> {
   requireSession();
-  return getCvListApi(query);
+  return getDiagnosisHistoryApi(query);
 }
 
 /**
@@ -390,7 +433,10 @@ export async function loadMatchForChat({
   ]);
   return {
     cvId: dto.id,
-    review: { ...mapCvDtoToReviewData(dto), jdMatch: mapMatchDtoToJdMatch(match) },
+    review: {
+      ...mapCvDtoToReviewData(dto),
+      jdMatch: mapMatchDtoToJdMatch(match),
+    },
   };
 }
 
@@ -429,7 +475,13 @@ export async function getInterviewPlan({
 }
 
 export async function getGapReport(
-  input: { matchId: string; lang?: DiagnosisLang; github?: { username: string; consent: boolean } } | string,
+  input:
+    | {
+        matchId: string;
+        lang?: DiagnosisLang;
+        github?: { username: string; consent: boolean };
+      }
+    | string,
   fallbackLang: DiagnosisLang = "vi",
 ): Promise<GapReportResponse> {
   requireSession();
@@ -493,7 +545,8 @@ export async function rewriteTailorBullet({
   // the action against the rebuilt gap-report, and builds the instruction from the VERIFIED action
   // — the FE no longer sends skill/level facts. action_id is BE-generated; fall back to the stable
   // composite if an older payload lacked it.
-  const actionId = action.action_id ?? `${action.action_type}:${action.skill_canonical}`;
+  const actionId =
+    action.action_id ?? `${action.action_type}:${action.skill_canonical}`;
   return rewriteFieldApi(cvId, {
     text,
     mode: "tailor",
@@ -505,6 +558,34 @@ export async function rewriteTailorBullet({
 export async function downloadOriginalCvFile(cvId: string): Promise<Blob> {
   requireSession();
   return downloadCvFileApi(cvId);
+}
+
+export async function triggerCvDownload(
+  cvId: string,
+  toast: (options: { title: string; description?: string; variant?: "default" | "destructive" }) => void,
+  t: (key: string) => string
+): Promise<void> {
+  try {
+    const blob = await downloadOriginalCvFile(cvId);
+    const ext = blob.type.includes("png") ? "png"
+      : blob.type.includes("webp") ? "webp"
+      : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "jpg"
+      : "pdf";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skillbridge-cv.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast({
+      title: t("results.downloadFailed"),
+      description: getApiErrorMessage(err, ""),
+      variant: "destructive",
+    });
+  }
 }
 
 // ── Companion: next-steps (diagnosis page) ──────────────────────────
@@ -522,7 +603,9 @@ export async function getNextSteps(
 
 export { getMatchProgressApi as getMatchProgress } from "@/api/cv/progress";
 
-export async function getChatThread(matchId: string): Promise<ChatThreadResponseDto> {
+export async function getChatThread(
+  matchId: string,
+): Promise<ChatThreadResponseDto> {
   requireSession();
   return getChatThreadApi(matchId);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BusinessLayout from "./BusinessLayout";
 import {
   CheckCircle,
@@ -22,6 +22,8 @@ import type { ApplicationStatus, JobApplicationDto } from "@/types/jobs";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getApiErrorMessage } from "@/lib/api-error";
+import ApplicationMatchExplanation from "@/components/business/ApplicationMatchExplanation";
+import { useSearchParams } from "react-router-dom";
 
 const STATUS_CONFIG: Record<ApplicationStatus, { label: string; color: string; bg: string; tile: string }> = {
   SUBMITTED: {
@@ -115,20 +117,26 @@ function Pagination({
 
 export default function BusinessApplicants() {
   const { toast } = useToast();
-  const [selectedJobId, setSelectedJobId] = useState<string>("all");
+  const [searchParams] = useSearchParams();
+  const [selectedJobId, setSelectedJobId] = useState<string>(() => searchParams.get("jobId") ?? "all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<JobApplicationDto | null>(null);
   const [page, setPage] = useState(1);
 
   // Fetch jobs for the selector
-  const jobsQuery = useBusinessJobsQuery({ limit: 100, status: "active" });
+  const activeJobsQuery = useBusinessJobsQuery({ limit: 100, status: "active" });
+  const closedJobsQuery = useBusinessJobsQuery({ limit: 100, status: "closed" });
+  const jobs = useMemo(
+    () => [...(activeJobsQuery.data?.items ?? []), ...(closedJobsQuery.data?.items ?? [])],
+    [activeJobsQuery.data?.items, closedJobsQuery.data?.items],
+  );
   
   // Set default selected job
   useEffect(() => {
-    if (jobsQuery.data?.items && jobsQuery.data.items.length > 0 && selectedJobId === "all") {
-      setSelectedJobId(jobsQuery.data.items[0].id);
+    if (jobs.length > 0 && selectedJobId === "all") {
+      setSelectedJobId(jobs[0].id);
     }
-  }, [jobsQuery.data, selectedJobId]);
+  }, [jobs, selectedJobId]);
 
   // Fetch applications
   const validJobId = selectedJobId !== "all" ? selectedJobId : undefined;
@@ -204,12 +212,12 @@ export default function BusinessApplicants() {
             }}
             className="w-full sm:max-w-md px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
-            {jobsQuery.isLoading && <option value="all">Loading jobs...</option>}
-            {jobsQuery.data?.items?.map(job => (
+            {(activeJobsQuery.isLoading || closedJobsQuery.isLoading) && <option value="all">Loading jobs...</option>}
+            {jobs.map(job => (
               <option key={job.id} value={job.id}>{job.title}</option>
             ))}
-            {(!jobsQuery.data?.items || jobsQuery.data.items.length === 0) && !jobsQuery.isLoading && (
-              <option value="all">No active jobs found</option>
+            {jobs.length === 0 && !activeJobsQuery.isLoading && !closedJobsQuery.isLoading && (
+              <option value="all">No active or closed jobs found</option>
             )}
           </select>
         </div>
@@ -475,14 +483,10 @@ export default function BusinessApplicants() {
                   </div>
                 )}
 
-                {selectedApplicationDetail.matchResult ? (
-                  <div>
-                    <p className="mb-2 font-semibold text-slate-900">Match result summary</p>
-                    <pre className="max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-950 p-3 text-xs text-slate-100">
-                      {JSON.stringify(selectedApplicationDetail.matchResult, null, 2)}
-                    </pre>
-                  </div>
-                ) : null}
+                <div>
+                  <p className="mb-2 font-semibold text-slate-900">Skills match</p>
+                  <ApplicationMatchExplanation explanation={selectedApplicationDetail.matchExplanation} />
+                </div>
 
                 <div className="flex justify-end gap-2">
                   <button

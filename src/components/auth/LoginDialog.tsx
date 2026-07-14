@@ -263,7 +263,7 @@ export function LoginDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[#2b0b55]/78 backdrop-blur-[2px]">
-      <div className="flex min-h-full items-center justify-center px-3 py-2 sm:px-4">
+      <div className="flex min-h-full items-start justify-center px-3 py-3 sm:items-center sm:px-4">
         <button
           type="button"
           className="fixed inset-0 h-full w-full cursor-default"
@@ -280,7 +280,7 @@ export function LoginDialog({
             ease: "easeOut",
             layout: { type: "spring", stiffness: 95, damping: 18, mass: 0.85 },
           }}
-          className="relative z-10 grid h-[44rem] max-h-[calc(100dvh-1rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white p-4 shadow-[0_26px_90px_rgba(14,5,37,0.42)] lg:grid-cols-2"
+          className="relative z-10 grid max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-6xl overflow-hidden rounded-[1.5rem] border border-white/70 bg-white p-3 shadow-[0_26px_90px_rgba(14,5,37,0.42)] sm:rounded-[2rem] sm:p-4 lg:h-[44rem] lg:grid-cols-2"
         >
           <button
             type="button"
@@ -317,7 +317,7 @@ export function LoginDialog({
           <motion.div
             layout
             transition={{ layout: { type: "spring", stiffness: 95, damping: 18, mass: 0.85 } }}
-            className={`flex h-full min-h-0 flex-col overflow-y-auto px-5 py-8 sm:px-10 lg:px-14 ${
+            className={`flex h-full min-h-0 flex-col overflow-y-auto px-4 py-7 sm:px-10 lg:px-14 ${
               isRegister ? "lg:order-1" : "lg:order-2"
             } ${isRegister || registerSuccess ? "justify-start" : "justify-center"}`}
           >
@@ -365,11 +365,11 @@ export function LoginDialog({
               </div>
             ) : (
               <>
-                <div className="mb-6 inline-flex w-fit rounded-full bg-slate-100 p-1">
+                <div className="mb-6 inline-flex w-full max-w-xs rounded-full bg-slate-100 p-1 sm:w-fit">
                   <button
                     type="button"
                     onClick={() => switchMode("login")}
-                    className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                    className={`flex-1 rounded-full px-4 py-2 text-sm font-bold transition-colors sm:flex-none ${
                       !isRegister ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"
                     }`}
                   >
@@ -378,7 +378,7 @@ export function LoginDialog({
                   <button
                     type="button"
                     onClick={() => switchMode("register")}
-                    className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                    className={`flex-1 rounded-full px-4 py-2 text-sm font-bold transition-colors sm:flex-none ${
                       isRegister ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"
                     }`}
                   >
@@ -386,14 +386,14 @@ export function LoginDialog({
                   </button>
                 </div>
 
-                <h2 className="font-poppins text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                <h2 className="font-poppins text-2xl font-black tracking-tight text-slate-950 sm:text-4xl">
                   {isRegister ? t("auth.registerTitle") : t("auth.loginTitle")}
                 </h2>
                 
 
                 {isRegister ? (
                   <div className="mt-6 space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
                       {ROLES.map((item) => {
                         const Icon = item.icon;
                         const active = role === item.value;

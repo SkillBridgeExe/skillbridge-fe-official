@@ -3,6 +3,12 @@ import type { CvBuilderState } from "@/store/useCvBuilderStore";
 import type { ResumeData } from "./schema/resume/data";
 import { templateSchema, type Template } from "./schema/templates";
 import { getTemplateLayoutCapabilities } from "./template-meta";
+import {
+  applyLayoutCapabilities,
+  buildLayoutPlanFromState,
+  normalizeLayoutPlan,
+  sanitizeCustomSections,
+} from "./layout-plan";
 
 const hasText = (...values: Array<string | null | undefined>): boolean =>
 	values.some((value) => Boolean(value?.trim()));
@@ -196,6 +202,15 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 	const fontFamily = resolveFontFamily(store.resumeFontFamily);
 	const fontScale = resolveFontScale(store.resumeFontScale);
 	const lineHeight = resolveLineHeight(store.resumeLineHeight);
+	const bodyFontSize = store.resumeBaseFontSize ?? fontScale.body;
+	const headingBaseFontSize = Math.max(
+		bodyFontSize + 2,
+		fontScale.heading + (bodyFontSize - fontScale.body),
+	);
+	const headingFontSize = Math.max(
+		bodyFontSize + 1,
+		headingBaseFontSize + (store.resumeHeadingScale === "prominent" ? 2 : store.resumeHeadingScale === "subtle" ? -1 : 0),
+	);
 	const margin = resolvePageMargin(store.resumePageMargin);
 	const spacing = resolveSectionSpacing(store.resumeSectionSpacing);
 	const sidebarWidth = resolveSidebarWidth(store.resumeSidebarWidth);
@@ -203,20 +218,46 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 	const templateName = resolveTemplate(store.template);
 	const layoutCaps = getTemplateLayoutCapabilities(templateName);
 
-	let mainSections: string[] = [];
-	let sidebarSections: string[] = [];
-
 	const safeSectionOrder = store.sectionOrder || [];
-	const safeSectionPlacement = store.sectionPlacement || {};
 	const usesSidebarSections = layoutCaps.usesSidebarSections;
 
-	if (usesSidebarSections) {
-		mainSections = safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "main" : ["experience", "education", "projects"].includes(k));
-		sidebarSections = [...safeSectionOrder.filter(k => safeSectionPlacement[k] ? safeSectionPlacement[k] === "sidebar" : ["summary", "skills", "certifications"].includes(k)), "languages"];
-	} else {
-		mainSections = [...safeSectionOrder, "languages"];
-		sidebarSections = [];
-	}
+	// P4: one canonical layout plan drives every page. Capability normalization
+	// happens here at render time; the stored plan keeps the user's intent.
+	const customSections = sanitizeCustomSections(store.customSections || []);
+	const layoutPlan = applyLayoutCapabilities(
+		normalizeLayoutPlan(
+			buildLayoutPlanFromState({
+				sectionOrder: safeSectionOrder,
+				sectionPlacement: store.sectionPlacement || {},
+				layoutPages: store.layoutPages || [],
+				sectionPage: store.sectionPage || {},
+				customSections,
+			}),
+			{
+				knownSectionIds: [...safeSectionOrder, ...customSections.map((section) => section.id)],
+				fallbackOrder: safeSectionOrder,
+				preferredPlacement: Object.fromEntries(
+					customSections.map((section) => [section.id, section.placement]),
+				),
+			},
+		),
+		layoutCaps,
+	);
+
+	// "languages" is a renderer-only pseudo section (not part of the stored
+	// plan); keep its historical spot on the last page.
+	// A full-width page suppresses the sidebar column in the templates, so its
+	// sidebar sections must fold into main here — never silently disappear.
+	// The stored plan keeps the user's sidebar assignment for when the page
+	// stops being full-width.
+	const rendererPages = layoutPlan.pages.map((page) => ({
+		fullWidth: page.fullWidth ?? false,
+		main: page.fullWidth ? [...page.main, ...page.sidebar] : [...page.main],
+		sidebar: page.fullWidth ? [] : [...page.sidebar],
+	}));
+	const lastPage = rendererPages[rendererPages.length - 1];
+	if (usesSidebarSections && !lastPage.fullWidth) lastPage.sidebar.push("languages");
+	else lastPage.main.push("languages");
 
 	const educationItems = store.education
 		.filter((edu) => hasText(edu.school, edu.major, edu.degree, edu.startYear, edu.endYear, edu.gpa, edu.coursework, edu.achievements))
@@ -278,14 +319,16 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 
 	return {
 		picture: {
-			hidden: !store.photoUrl,
+			hidden: !store.photoUrl || store.resumePictureVisible === false || !layoutCaps.supportsAvatar || !!store.resumeAtsSafeMode,
 			url: store.photoUrl || "",
-			size: 64,
+			size: store.resumePictureSize ?? 64,
 			rotation: 0,
 			aspectRatio: 1,
-			borderRadius: 0,
-			borderColor: "rgba(0, 0, 0, 0)",
-			borderWidth: 0,
+			borderRadius: store.resumePictureShape === "circle" 
+				? (store.resumePictureSize ?? 64) / 2 
+				: store.resumePictureShape === "rounded" ? 8 : 0,
+			borderColor: store.resumePictureBorderColor ?? "rgba(0, 0, 0, 0)",
+			borderWidth: store.resumePictureBorderWidth ?? 0,
 			shadowColor: "rgba(0, 0, 0, 0)",
 			shadowWidth: 0,
 		},
@@ -500,19 +543,31 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				items: [],
 			},
 		},
-		customSections: [],
+		customSections: customSections.map((section) => ({
+			id: section.id,
+			// "summary" is the generic rich-text custom type: every item renders
+			// its content through the shared RichText primitive — no user code,
+			// CSS or SVG can reach the PDF from here.
+			type: "summary" as const,
+			title: section.title,
+			icon: "",
+			columns: 1,
+			hidden: !section.visible,
+			items: section.items.map((item) => ({
+				id: item.id,
+				hidden: false,
+				content: [
+					item.heading ? `<p><strong>${escapeHtml(item.heading)}</strong></p>` : "",
+					toHtml(item.body),
+				].filter(Boolean).join(""),
+			})),
+		})),
 		metadata: {
 			template: templateName,
 			layout: {
 				sidebarWidth: usesSidebarSections ? sidebarWidth : 0,
 				sidebarPosition: layoutCaps.supportsSidebarPosition && store.resumeSidebarPosition === "right" ? "right" : "left",
-				pages: [
-					{
-						fullWidth: false,
-						main: mainSections,
-						sidebar: sidebarSections,
-					},
-				],
+				pages: rendererPages,
 			},
 			page: {
 				gapX: spacing,
@@ -521,18 +576,19 @@ export function adaptCvBuilderStoreToResumeData(store: CvBuilderState): ResumeDa
 				marginY: margin,
 				format: "a4",
 				locale: store.cvLanguage === "vi" ? "vi-VN" : "en-US",
-				hideLinkUnderline: false,
-				hideIcons: false,
-				hideSectionIcons: store.resumeHideSectionIcons ?? false,
+				hideLinkUnderline: store.resumeAtsSafeMode ? false : false,
+				hideIcons: store.resumeAtsSafeMode,
+				hideSectionIcons: store.resumeAtsSafeMode || (store.resumeHideSectionIcons ?? false),
+				simplifyDecorations: store.resumeAtsSafeMode,
 			},
 			design: {
 				level: { icon: "star", type: "hidden" },
-				colors: { primary: accentColor, text: "#334155", background: "#ffffff" },
-				dividerStyle: store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line",
+				colors: { primary: store.resumeAtsSafeMode ? "#000000" : accentColor, text: store.resumeAtsSafeMode ? "#000000" : (store.resumeTextColor ?? "#334155"), background: "#ffffff" },
+				dividerStyle: store.resumeAtsSafeMode ? "line" : (store.resumeDividerStyle === "none" || store.resumeDividerStyle === "accent" || store.resumeDividerStyle === "subtle" ? store.resumeDividerStyle : "line"),
 			},
 			typography: {
-				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: fontScale.body, lineHeight: lineHeight },
-				heading: { fontFamily: fontFamily, fontWeights: ["700"], fontSize: fontScale.heading, lineHeight: lineHeight },
+				body: { fontFamily: fontFamily, fontWeights: ["400"], fontSize: bodyFontSize, lineHeight: lineHeight },
+				heading: { fontFamily: fontFamily, fontWeights: ["700"], fontSize: headingFontSize, lineHeight: lineHeight },
 			},
 			notes: "",
 			styleRules: [],
@@ -761,7 +817,7 @@ export function adaptCanonicalToResumeData(canonical: CanonicalCvDocument): Resu
 					},
 				],
 			},
-			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false },
+			page: { gapX: 16, gapY: 16, marginX: 24, marginY: 24, format: "a4", locale: canonical.language === "vi" ? "vi-VN" : "en-US", hideLinkUnderline: false, hideIcons: false, hideSectionIcons: false, simplifyDecorations: false },
 			design: { dividerStyle: "line", level: { icon: "star", type: "hidden" }, colors: { primary: "#0f172a", text: "#334155", background: "#ffffff" } },
 			typography: { body: { fontFamily: "Inter", fontWeights: ["400"], fontSize: 11, lineHeight: 1.5 }, heading: { fontFamily: "Inter", fontWeights: ["700"], fontSize: 14, lineHeight: 1.5 } },
 			notes: "",

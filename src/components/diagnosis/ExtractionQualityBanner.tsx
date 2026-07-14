@@ -41,7 +41,7 @@ export function ExtractionQualityBanner({ quality }: { quality?: ExtractionQuali
         <p className="text-sm font-medium leading-relaxed">{t(view.messageKey)}</p>
         {view.flags.length > 0 && (
           <p className="mt-1 font-mono text-[11px] opacity-70">
-            {t("review.extractionQuality.flagsLabel")}: {view.flags.join(", ")}
+            {t("review.extractionQuality.flagsLabel")}: {view.flags.map(f => t(`review.extractionQuality.flags.${f}`, { defaultValue: f })).join(", ")}
           </p>
         )}
       </div>

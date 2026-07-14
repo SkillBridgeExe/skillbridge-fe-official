@@ -89,13 +89,14 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
     // In studio mode, scroll the editor panel to the section anchor
     const element = document.getElementById(`cv-section-${id}`);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      element.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
     }
   };
 
   if (variant === "horizontal") {
     return (
-      <div className="flex items-center gap-2 overflow-x-auto py-3 px-4 bg-white scrollbar-none select-none">
+      <div className="flex max-w-full items-center gap-2 overflow-x-auto bg-white px-3 py-3 scrollbar-none select-none sm:px-4">
         {orderedSections.map((section, index) => {
           const Icon = section.icon;
           const isSelected = activeSection === index;
@@ -111,14 +112,14 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               key={section.id}
               onClick={() => handleNavClick(index, section.id)}
               className={cn(
-                "px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap outline-none shrink-0",
+                "max-w-[14rem] px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap outline-none shrink-0",
                 isSelected
                   ? "bg-primary text-white border-primary shadow-sm"
                   : "bg-[#FBFBFA] border-[#EAEAEA] text-[#2F3437] hover:border-slate-355"
               )}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span>{title}</span>
+              <span className="truncate">{title}</span>
               
               {/* Status / Score in horizontal view */}
               {fixFeedback ? (
@@ -245,8 +246,9 @@ export function CvSectionNav({ variant = "vertical" }: { variant?: "vertical" | 
               key={section.id}
               onClick={() => handleNavClick(index, section.id)}
               title={title}
+              aria-label={title}
               className={cn(
-                "relative w-10 h-10 mx-auto flex items-center justify-center rounded-lg transition-all duration-200 group outline-none",
+                "relative w-10 h-10 mx-auto flex items-center justify-center rounded-lg transition-all duration-200 group focus-visible:ring-2 focus-visible:ring-primary/40 outline-none",
                 isSelected
                   ? "bg-primary/10 text-primary"
                   : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800"

@@ -1,3 +1,4 @@
+import { breakPdfWord } from "../shared/contact";
 import type { Style } from "@react-pdf/types";
 import type { TemplatePageProps } from "../../document";
 import type { TemplateColorRoles, TemplateFeatures, TemplateStyleContext, TemplateStyleSlots } from "../shared/types";
@@ -126,13 +127,13 @@ const Header = ({ styles, colors }: DitgarHeaderProps) => {
 				{Boolean(basics.email) && (
 					<Link src={`mailto:${basics.email}`} style={styles.contactItem}>
 						<Icon name="at" color={colors.background} />
-						<Text style={styles.headerText}>{basics.email}</Text>
+						<Text style={styles.headerText}>{breakPdfWord(basics.email)}</Text>
 					</Link>
 				)}
 				{Boolean(basics.phone) && (
 					<Link src={`tel:${basics.phone}`} style={styles.contactItem}>
 						<Icon name="phone" color={colors.background} />
-						<Text style={styles.headerText}>{basics.phone}</Text>
+						<Text style={styles.headerText}>{breakPdfWord(basics.phone)}</Text>
 					</Link>
 				)}
 				{Boolean(basics.location) && (
@@ -404,3 +405,4 @@ const useDitgarTemplate = (): DitgarTemplate => {
 		};
 	}, [picture, metadata, rtl]);
 };
+

@@ -31,6 +31,11 @@ export const API_ROUTES = {
     DETAIL: (id: string) => `${API}/cvs/${id}`,
     DELETE: (id: string) => `${API}/cvs/${id}`,
     FILE: (id: string) => `${API}/cvs/${id}/file`,
+    // Version history / snapshots (P2 — cvs.controller.ts)
+    VERSIONS: (id: string) => `${API}/cvs/${id}/versions`,
+    VERSION_DETAIL: (id: string, versionId: string) => `${API}/cvs/${id}/versions/${versionId}`,
+    VERSION_RESTORE: (id: string, versionId: string) =>
+      `${API}/cvs/${id}/versions/${versionId}/restore`,
     // CV × JD match (cv-matches.controller.ts)
     MATCH: (cvId: string) => `${API}/cvs/${cvId}/match`,
     MATCH_FILE: (cvId: string) => `${API}/cvs/${cvId}/match/file`,
@@ -68,6 +73,7 @@ export const API_ROUTES = {
     // server-side from the owned CV record (never a client-sent role).
     ASSISTANT_SMART_QUESTIONS: (id: string) =>
       `${API}/cvs/${id}/builder/assistant/smart-questions`,
+    ASSISTANT_EXPLAIN: (id: string) => `${API}/cvs/${id}/builder/assistant/explain`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)
@@ -259,6 +265,10 @@ export const API_ROUTES = {
     LOGO: `${API}/business/company/logo`,
     COVER: `${API}/business/company/cover`,
     SUBMIT: `${API}/business/company/submit`,
+  },
+
+  BUSINESS_DASHBOARD: {
+    GET: `${API}/business/dashboard`,
   },
 
   // ── §7–8 Business job editor + applicant pipeline ─────────────────────

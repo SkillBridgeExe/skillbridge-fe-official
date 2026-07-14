@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Translation } from 'react-i18next';
+import { captureStudioEvent } from '@/lib/studio-telemetry';
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,7 @@ export class PdfErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('PDF Renderer Error:', error, errorInfo);
+    captureStudioEvent('preview_render', { outcome: 'failure', errorCode: 'render_crash' });
   }
 
   public render() {

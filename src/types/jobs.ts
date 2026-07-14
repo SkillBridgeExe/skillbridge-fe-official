@@ -10,8 +10,19 @@ export type ISODateTime = string;
 export type JobStatus = "draft" | "active" | "closed" | "expired" | "removed";
 export type ApplicationMode = "NATIVE" | "EXTERNAL";
 export type WorkMode = "ONSITE" | "HYBRID" | "REMOTE";
-export type EmploymentType = "FULL_TIME" | "PART_TIME" | "INTERNSHIP" | "CONTRACT" | "FREELANCE";
-export type ExperienceLevel = "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD";
+export type EmploymentType =
+  | "FULL_TIME"
+  | "PART_TIME"
+  | "INTERNSHIP"
+  | "CONTRACT"
+  | "FREELANCE";
+export type ExperienceLevel =
+  | "INTERN"
+  | "FRESHER"
+  | "JUNIOR"
+  | "MIDDLE"
+  | "SENIOR"
+  | "LEAD";
 export type SalaryPeriod = "MONTH" | "YEAR";
 export type BusinessProfileStatus =
   | "DRAFT"
@@ -28,7 +39,12 @@ export type ApplicationStatus =
   | "WITHDRAWN";
 export type MatchStatus = "PENDING" | "READY" | "FAILED";
 export type JobSourceType = "employer" | "scraped" | "imported" | "feed";
-export type CompanyType = "PRODUCT" | "OUTSOURCING" | "CONSULTING" | "STARTUP" | "OTHER";
+export type CompanyType =
+  | "PRODUCT"
+  | "OUTSOURCING"
+  | "CONSULTING"
+  | "STARTUP"
+  | "OTHER";
 export type CompanySize =
   | "1_10"
   | "11_50"
@@ -39,7 +55,12 @@ export type CompanySize =
   | "1000_PLUS";
 export type SkillImportance = "REQUIRED" | "NICE_TO_HAVE";
 export type SkillSource = "AUTO" | "BUSINESS";
-export type ReportReasonCode = "SCAM" | "MISLEADING" | "DISCRIMINATION" | "EXPIRED" | "OTHER";
+export type ReportReasonCode =
+  | "SCAM"
+  | "MISLEADING"
+  | "DISCRIMINATION"
+  | "EXPIRED"
+  | "OTHER";
 export type ReportStatus = "OPEN" | "DISMISSED" | "ACTIONED";
 
 // ── Pagination ──────────────────────────────────────────────────────
@@ -198,6 +219,27 @@ export interface CvSkillSnapshotDto {
   displayName: string;
 }
 
+export interface ApplicationMatchSkillDto {
+  canonicalName: string;
+  displayName: string;
+  importance: string | null;
+  cvLevel: number | null;
+  requiredLevel: number | null;
+}
+
+export interface ApplicationMatchExplanationDto {
+  status: MatchStatus;
+  score: number | null;
+  scoringVersion: string | null;
+  scoreBasis: string | null;
+  requirementsSource: string | null;
+  requiredCoverage: number | null;
+  errorCode: string | null;
+  matchedSkills: ApplicationMatchSkillDto[];
+  partialSkills: ApplicationMatchSkillDto[];
+  missingSkills: ApplicationMatchSkillDto[];
+}
+
 export interface JobApplicationDto {
   id: UUID;
   jobId: UUID;
@@ -222,6 +264,7 @@ export interface JobApplicationDto {
   matchResult: JobMatchResult | null;
   matchComputedAt: ISODateTime | null;
   matchErrorCode: string | null;
+  matchExplanation: ApplicationMatchExplanationDto;
   firstViewedAt: ISODateTime | null;
   submittedAt: ISODateTime;
   withdrawnAt: ISODateTime | null;
@@ -230,6 +273,14 @@ export interface JobApplicationDto {
   piiPurgedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime | null;
+  /** Included by the candidate application list for dashboard rendering. */
+  job?: {
+    id: UUID;
+    slug: string;
+    title: string;
+    companyName: string | null;
+    location: string | null;
+  } | null;
 }
 
 export interface CandidateApplicationEventDto {
@@ -438,10 +489,46 @@ export interface BusinessJobsQuery {
 
 export interface BusinessApplicationsQuery {
   status?: ApplicationStatus;
+  pipeline?: "ACTIVE";
   search?: string;
   sort?: "NEWEST" | "OLDEST" | "MATCH_DESC";
   page?: number;
   limit?: number;
+}
+
+export type BusinessProfileBlocker =
+  | "PROFILE_SUSPENDED"
+  | "WORK_EMAIL_UNVERIFIED"
+  | "CONTACT_NAME_MISSING"
+  | "COMPANY_NAME_MISSING"
+  | "WEBSITE_MISSING"
+  | "WORK_EMAIL_DOMAIN_MISMATCH"
+  | "INDUSTRY_MISSING"
+  | "SHORT_DESCRIPTION_MISSING";
+
+export interface BusinessDashboardResponse {
+  company: {
+    profileId: UUID;
+    companyId: UUID;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    status: BusinessProfileStatus;
+    publishAllowed: boolean;
+    blockers: BusinessProfileBlocker[];
+  } | null;
+  metrics: {
+    activeJobs: number;
+    totalApplications: number;
+    submitted: number;
+    inReview: number;
+    shortlisted: number;
+  };
+  recentApplications: Array<
+    JobApplicationDto & {
+      job: Pick<JobEntityDto, "id" | "title" | "slug" | "status"> | null;
+    }
+  >;
 }
 
 export interface PaginationQuery {

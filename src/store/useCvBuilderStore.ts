@@ -1,10 +1,18 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { BuilderSection, CanonicalCvDocument, EvaluateSectionResponse } from "@shared/api";
 import type { AssistantAnswer, AssistantFieldPatch, CvAssistantTurn } from "@/types/companion";
 import { isGibberish, checkRolePosition } from "@/lib/input-quality";
 import type { ResumeData } from "@/lib/resume-engine/schema/resume/data";
 import { adaptCvBuilderStoreToResumeData } from "@/lib/resume-engine/adapter";
-import type { ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import type { CustomSection, ResumeDocumentV1 } from "@/lib/resume-engine/document-v1";
+import {
+  projectCustomSectionsToActivities,
+  sanitizeCustomSections,
+  sanitizeLayoutPages,
+  sanitizeSectionPage,
+  UNTITLED_CUSTOM_SECTION,
+} from "@/lib/resume-engine/layout-plan";
 import { builderStateToResumeDocumentV1 } from "@/lib/resume-engine/document-v1-adapter";
 import { TEMPLATE_PREVIEWS } from "@/lib/resume-engine/template-meta";
 import type { Template } from "@/lib/resume-engine/schema/templates";
@@ -177,6 +185,34 @@ export interface CvBuilderState {
   sectionPlacement: Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>;
   collapsedSections: Record<string, boolean>;
 
+  // P4: canonical layout plan projection (pages + per-section page assignment + custom sections)
+  layoutPages: Array<{ id: string; name?: string; fullWidth?: boolean }>;
+  /** sectionId (builtin key or custom id) -> layoutPages[].id; missing = first page. */
+  sectionPage: Record<string, string>;
+  customSections: CustomSection[];
+  /**
+   * Which CV the persisted customSections belong to. Hydrating a DIFFERENT
+   * CV must never inherit them (they contain content, not just layout).
+   */
+  customSectionsCvId: string | null;
+  /** Transient: real page count of the last rendered preview PDF (overflow honesty). */
+  renderedPageCount: number | null;
+
+  // W87: Avatar customization
+  resumePictureVisible: boolean;
+  resumePictureShape: "circle" | "rounded" | "square";
+  resumePictureSize: number;
+  resumePictureBorderWidth: number;
+  resumePictureBorderColor: string;
+
+  // W88: Typography
+  resumeHeadingScale: "match" | "prominent" | "subtle";
+  resumeBaseFontSize: number;
+
+  // W89: Theme & Density
+  resumeAtsSafeMode: boolean;
+  resumeTextColor: string;
+
   // BE draft (W5 — builder live): id draft trên BE + kết quả chấm live per-section
   draftId: string | null;
   sectionEvaluations: Partial<Record<BuilderSection, EvaluateSectionResponse>>;
@@ -262,8 +298,33 @@ export interface CvBuilderState {
   resetSectionOrder: () => void;
   reorderSection: (activeId: CvBuilderSectionKey, overId: CvBuilderSectionKey) => void;
   setSectionPlacement: (section: CvBuilderSectionKey, placement: "main" | "sidebar") => void;
+
+  // Actions — P4 layout pages
+  addLayoutPage: () => void;
+  removeLayoutPage: (pageId: string) => void;
+  renameLayoutPage: (pageId: string, name: string) => void;
+  moveLayoutPage: (pageId: string, direction: "up" | "down") => void;
+  setLayoutPageFullWidth: (pageId: string, fullWidth: boolean) => void;
+  assignSectionToPage: (sectionId: string, pageId: string) => void;
+
+  // Actions — P4 custom sections
+  addCustomSection: (title: string) => void;
+  updateCustomSection: (id: string, patch: Partial<Omit<CustomSection, "id">>) => void;
+  removeCustomSection: (id: string) => void;
+  moveCustomSection: (id: string, direction: "up" | "down") => void;
+  setRenderedPageCount: (count: number | null) => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapsed: (sectionId: string, collapsed: boolean) => void;
+  setResumePictureVisible: (visible: boolean) => void;
+  setResumePictureShape: (shape: "circle" | "rounded" | "square") => void;
+  setResumePictureSize: (size: number) => void;
+  setResumePictureBorderWidth: (width: number) => void;
+  setResumePictureBorderColor: (color: string) => void;
+  setResumeHeadingScale: (scale: "match" | "prominent" | "subtle") => void;
+  setResumeBaseFontSize: (size: number) => void;
+  setResumeAtsSafeMode: (safeMode: boolean) => void;
+  setResumeTextColor: (color: string) => void;
+  
   /** W69: Reset accent/font/density/icons to template defaults. */
   resetStyle: () => void;
 
@@ -275,7 +336,7 @@ export interface CvBuilderState {
 
   // Actions — seed từ CV đã chẩn đoán
   /** Đổ 1 CanonicalCvDocument (từ Diagnosis) vào form builder + reset draft cho phiên sửa mới. */
-  hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean }) => void;
+  hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean; cvId?: string | null }) => void;
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
 
@@ -345,6 +406,16 @@ const initialState = {
   resumeSidebarWidth: "normal" as const,
   resumeDividerStyle: "line" as const,
   resumeHideSectionIcons: false,
+  resumePictureVisible: true,
+  resumePictureShape: "circle" as const,
+  resumePictureSize: 64,
+  resumePictureBorderWidth: 0,
+  resumePictureBorderColor: "rgba(0,0,0,0)",
+  resumeHeadingScale: "match" as const,
+  resumeBaseFontSize: 11,
+  resumeAtsSafeMode: false,
+  resumeTextColor: "#334155",
+  
   sectionVisibility: {
     summary: true,
     education: true,
@@ -356,6 +427,11 @@ const initialState = {
   sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"] as CvBuilderSectionKey[],
   sectionPlacement: {} as Partial<Record<CvBuilderSectionKey, "main" | "sidebar">>,
   collapsedSections: {} as Record<string, boolean>,
+  layoutPages: [{ id: "page_1" }] as Array<{ id: string; name?: string; fullWidth?: boolean }>,
+  sectionPage: {} as Record<string, string>,
+  customSections: [] as CustomSection[],
+  customSectionsCvId: null as string | null,
+  renderedPageCount: null as number | null,
   draftId: null as string | null,
   sectionEvaluations: {} as Partial<Record<BuilderSection, EvaluateSectionResponse>>,
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
@@ -452,6 +528,23 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     proficiency: "",
   }));
 
+  // Custom sections project into canonical `activities` (org=title, bullets=items);
+  // the inverse restores them one-bullet-per-item. Item headings were joined into
+  // the bullet text on the way out and are not split back apart — which is why
+  // hydrateFromCanonical prefers the local sections when they still project to
+  // the same activities (see localCustomSectionsMatch).
+  const customSections: CustomSection[] = (doc.activities ?? [])
+    .filter((activity) => (activity.org ?? "").trim())
+    .map((activity) => ({
+      id: `custom_${uid()}`,
+      title: activity.org.trim(),
+      placement: "main" as const,
+      items: (activity.bullets ?? [])
+        .filter((bullet) => bullet.trim())
+        .map((bullet) => ({ id: `custom_item_${uid()}`, body: bullet.trim() })),
+      visible: true,
+    }));
+
   return {
     fullName: doc.contact?.name ?? "",
     email: doc.contact?.email ?? "",
@@ -474,6 +567,7 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     languages: doc.skills?.languages ?? [],
     languageDetails,
     certifications,
+    customSections,
     cvLanguage: (doc.language === "vi" ? "vi" : "en") as CvLanguage,
     // Phiên sửa mới cho CV này: bỏ draft cũ + đánh giá cũ, bật cờ seed.
     draftId: null,
@@ -486,7 +580,43 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
   };
 }
 
-export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
+/**
+ * P4: presentation state (template/style/layout/custom sections) persists in
+ * localStorage. The BE autosave only stores CONTENT (CanonicalCvDocument), so
+ * without this every refresh silently reset template, colors and placement.
+ * Content stays out of here — the server draft is its source of truth.
+ */
+const PRESENTATION_KEYS = [
+  "template",
+  "resumeAccentColor",
+  "resumeFontFamily",
+  "resumeFontScale",
+  "resumeLineHeight",
+  "resumePageMargin",
+  "resumeSectionSpacing",
+  "resumeSidebarPosition",
+  "resumeSidebarWidth",
+  "resumeDividerStyle",
+  "resumeHideSectionIcons",
+  "resumePictureVisible",
+  "resumePictureShape",
+  "resumePictureSize",
+  "resumePictureBorderWidth",
+  "resumePictureBorderColor",
+  "resumeHeadingScale",
+  "resumeBaseFontSize",
+  "resumeAtsSafeMode",
+  "resumeTextColor",
+  "sectionVisibility",
+  "sectionOrder",
+  "sectionPlacement",
+  "layoutPages",
+  "sectionPage",
+  "customSections",
+  "customSectionsCvId",
+] as const satisfies ReadonlyArray<keyof CvBuilderState>;
+
+export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => ({
   ...initialState,
 
   // Basic Info
@@ -647,17 +777,6 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     collapsedSections: { ...s.collapsedSections, [sectionId]: collapsed }
   })),
 
-  // W69: Reset style to template defaults
-  resetStyle: () => set((s) => {
-    const meta = TEMPLATE_PREVIEWS[s.template as keyof typeof TEMPLATE_PREVIEWS];
-    return {
-      resumeAccentColor: meta?.accent ?? "#0f172a",
-      resumeFontScale: (meta?.fontScale ?? "normal") as ResumeFontScale,
-      resumePageMargin: (meta?.pageMargin ?? "normal") as ResumeSpacing,
-      resumeSectionSpacing: (meta?.sectionSpacing ?? "normal") as ResumeSpacing,
-      resumeHideSectionIcons: false,
-    };
-  }),
 
   setDraftId: (draftId) => set({ draftId }),
   setSectionEvaluation: (section, result) =>
@@ -687,12 +806,58 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   hydrateFromCanonical: (doc, opts) =>
     set((state) => {
       const next = canonicalToBuilderState(doc);
+      const incomingCvId = opts?.cvId ?? null;
+      // Local custom sections may only survive a hydrate of the SAME CV —
+      // for any other (or unknown) CV the document wins outright, so content
+      // persisted on this device can never bleed into another resume.
+      const sameCv = incomingCvId !== null && incomingCvId === state.customSectionsCvId;
+
+      let customSections = next.customSections;
+      if (sameCv && state.customSections.length > 0) {
+        const projectionMatches =
+          JSON.stringify(projectCustomSectionsToActivities(state.customSections)) ===
+          JSON.stringify(
+            (doc.activities ?? []).map((activity) => ({
+              org: (activity.org ?? "").trim(),
+              role: null,
+              bullets: (activity.bullets ?? []).map((bullet) => bullet.trim()).filter(Boolean),
+            })),
+          );
+        if (projectionMatches) {
+          // Same content — the local copy is richer (headings, hidden
+          // sections, stable ids), keep it wholesale.
+          customSections = state.customSections;
+        } else {
+          // Server content wins (version restore, cross-device edit), but
+          // reuse local presentation by title and keep local hidden sections
+          // — they are never written to the server by design.
+          const localByTitle = new Map(
+            state.customSections.map((section) => [section.title.trim() || UNTITLED_CUSTOM_SECTION, section]),
+          );
+          customSections = next.customSections.map((derived) => {
+            const local = localByTitle.get(derived.title);
+            return local ? { ...derived, id: local.id, placement: local.placement } : derived;
+          });
+          const derivedTitles = new Set(customSections.map((section) => section.title));
+          customSections = [
+            ...customSections,
+            ...state.customSections.filter(
+              (section) => !section.visible && !derivedTitles.has(section.title.trim() || UNTITLED_CUSTOM_SECTION),
+            ),
+          ];
+        }
+      }
+
+      const customSectionsCvId = incomingCvId ?? (opts?.preserveDraft ? state.customSectionsCvId : null);
+
       // preserveDraft: reflect new canonical content in the form WITHOUT resetting the active
       // editing session. The default (fresh Diagnosis seed) nulls draftId — doing that inside an
       // active draft would break every draftId-gated builder action (save/evaluate/rewrite/PDF).
       return opts?.preserveDraft
         ? {
             ...next,
+            customSections,
+            customSectionsCvId,
             draftId: state.draftId,
             activeSection: state.activeSection,
             sectionEvaluations: state.sectionEvaluations,
@@ -700,7 +865,7 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
           }
-        : next;
+        : { ...next, customSections, customSectionsCvId };
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
@@ -728,6 +893,39 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   setResumeSidebarWidth: (resumeSidebarWidth) => set({ resumeSidebarWidth }),
   setResumeDividerStyle: (resumeDividerStyle) => set({ resumeDividerStyle }),
   setResumeHideSectionIcons: (resumeHideSectionIcons) => set({ resumeHideSectionIcons }),
+  setResumePictureVisible: (resumePictureVisible) => set({ resumePictureVisible }),
+  setResumePictureShape: (resumePictureShape) => set({ resumePictureShape }),
+  setResumePictureSize: (resumePictureSize) => set({ resumePictureSize }),
+  setResumePictureBorderWidth: (resumePictureBorderWidth) => set({ resumePictureBorderWidth }),
+  setResumePictureBorderColor: (resumePictureBorderColor) => set({ resumePictureBorderColor }),
+  setResumeHeadingScale: (resumeHeadingScale) => set({ resumeHeadingScale }),
+  setResumeBaseFontSize: (resumeBaseFontSize) => set({ resumeBaseFontSize }),
+  setResumeAtsSafeMode: (resumeAtsSafeMode) => set({ resumeAtsSafeMode }),
+  setResumeTextColor: (resumeTextColor) => set({ resumeTextColor }),
+  resetStyle: () => set((s) => {
+    const meta = TEMPLATE_PREVIEWS[s.template as Template];
+    return {
+      resumeAccentColor: meta?.accent ?? "#0f172a",
+      resumeFontFamily: "inter",
+      resumeFontScale: meta?.fontScale ?? "normal",
+      resumeLineHeight: "normal",
+      resumePageMargin: meta?.pageMargin ?? "normal",
+      resumeSectionSpacing: meta?.sectionSpacing ?? "normal",
+      resumeSidebarPosition: "left",
+      resumeSidebarWidth: "normal",
+      resumeDividerStyle: "line",
+      resumeHideSectionIcons: false,
+      resumePictureVisible: true,
+      resumePictureShape: "circle",
+      resumePictureSize: 64,
+      resumePictureBorderWidth: 0,
+      resumePictureBorderColor: "rgba(0,0,0,0)",
+      resumeHeadingScale: "match",
+      resumeBaseFontSize: 11,
+      resumeAtsSafeMode: false,
+      resumeTextColor: "#334155",
+    };
+  }),
   setSectionVisibility: (section, visible) => set((s) => ({
     sectionVisibility: { ...s.sectionVisibility, [section]: visible },
   })),
@@ -760,6 +958,8 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
   resetSectionOrder: () => set({
     sectionOrder: [...initialState.sectionOrder],
     sectionPlacement: {},
+    layoutPages: [{ id: "page_1" }],
+    sectionPage: {},
   }),
   reorderSection: (activeId, overId) => set((s) => {
     const oldIndex = s.sectionOrder.indexOf(activeId);
@@ -774,10 +974,95 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     sectionPlacement: { ...s.sectionPlacement, [section]: placement },
   })),
 
+  // P4 layout pages
+  addLayoutPage: () => set((s) => ({ layoutPages: [...s.layoutPages, { id: uid() }] })),
+  removeLayoutPage: (pageId) => set((s) => {
+    if (s.layoutPages.length <= 1) return {};
+    const remaining = s.layoutPages.filter((p) => p.id !== pageId);
+    if (remaining.length === s.layoutPages.length) return {};
+    // Sections on the removed page fall back to the first remaining page.
+    const fallbackId = remaining[0].id;
+    const sectionPage = Object.fromEntries(
+      Object.entries(s.sectionPage).map(([sectionId, pid]) => [sectionId, pid === pageId ? fallbackId : pid]),
+    );
+    return { layoutPages: remaining, sectionPage };
+  }),
+  renameLayoutPage: (pageId, name) => set((s) => ({
+    layoutPages: s.layoutPages.map((p) => (p.id === pageId ? { ...p, name: name.trim() || undefined } : p)),
+  })),
+  moveLayoutPage: (pageId, direction) => set((s) => {
+    const idx = s.layoutPages.findIndex((p) => p.id === pageId);
+    if (idx < 0) return {};
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= s.layoutPages.length) return {};
+    const pages = [...s.layoutPages];
+    [pages[idx], pages[targetIdx]] = [pages[targetIdx], pages[idx]];
+    return { layoutPages: pages };
+  }),
+  setLayoutPageFullWidth: (pageId, fullWidth) => set((s) => ({
+    layoutPages: s.layoutPages.map((p) => (p.id === pageId ? { ...p, fullWidth: fullWidth || undefined } : p)),
+  })),
+  assignSectionToPage: (sectionId, pageId) => set((s) => {
+    if (!s.layoutPages.some((p) => p.id === pageId)) return {};
+    return { sectionPage: { ...s.sectionPage, [sectionId]: pageId } };
+  }),
+
+  // P4 custom sections — every edit stamps which CV the sections belong to,
+  // so hydrating a different CV later can refuse to inherit them.
+  addCustomSection: (title) => set((s) => ({
+    customSections: [
+      ...s.customSections,
+      { id: `custom_${uid()}`, title: title.trim() || "Untitled", placement: "main", items: [], visible: true },
+    ],
+    customSectionsCvId: s.draftId ?? s.customSectionsCvId,
+  })),
+  updateCustomSection: (id, patch) => set((s) => ({
+    customSections: s.customSections.map((section) =>
+      section.id === id ? { ...section, ...patch, id: section.id } : section,
+    ),
+    customSectionsCvId: s.draftId ?? s.customSectionsCvId,
+  })),
+  removeCustomSection: (id) => set((s) => {
+    const sectionPage = { ...s.sectionPage };
+    delete sectionPage[id];
+    return {
+      customSections: s.customSections.filter((section) => section.id !== id),
+      sectionPage,
+      customSectionsCvId: s.draftId ?? s.customSectionsCvId,
+    };
+  }),
+  moveCustomSection: (id, direction) => set((s) => {
+    const idx = s.customSections.findIndex((section) => section.id === id);
+    if (idx < 0) return {};
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= s.customSections.length) return {};
+    const sections = [...s.customSections];
+    [sections[idx], sections[targetIdx]] = [sections[targetIdx], sections[idx]];
+    return { customSections: sections };
+  }),
+  // Guard against render loops: the preview reports its page count on every
+  // load; writing an unchanged value would re-notify store subscribers, which
+  // re-derives resume data and re-renders the preview, forever.
+  setRenderedPageCount: (renderedPageCount) => {
+    if (get().renderedPageCount !== renderedPageCount) set({ renderedPageCount });
+  },
+
   importState: (newState) => set((s) => {
     const cleanState = Object.fromEntries(
       Object.entries(newState).filter(([, value]) => typeof value !== "function"),
     ) as Partial<CvBuilderState>;
+
+    // Trust boundary: backups are arbitrary JSON. The structural P4 fields
+    // feed .map()/[0].id accesses all over the studio UI, so junk shapes
+    // here would crash the inspector. ALWAYS assigned (not only when the key
+    // exists): an import is a whole-document overwrite, so a pre-P4 backup
+    // without these keys must clear them, not inherit the current CV's.
+    cleanState.customSections = sanitizeCustomSections(cleanState.customSections);
+    cleanState.layoutPages = sanitizeLayoutPages(cleanState.layoutPages);
+    cleanState.sectionPage = sanitizeSectionPage(
+      cleanState.sectionPage,
+      cleanState.layoutPages.map((page) => page.id),
+    );
 
     return {
       ...cleanState,
@@ -902,4 +1187,22 @@ export const useCvBuilderStore = create<CvBuilderState>((set, get) => ({
     companionReaskCount: 0,
     pendingProveIt: null,
   }),
+}), {
+  name: "skillbridge-cv-studio",
+  version: 1,
+  partialize: (state) =>
+    Object.fromEntries(PRESENTATION_KEYS.map((key) => [key, state[key]])) as Partial<CvBuilderState>,
+  // Rehydrate runs through the same trust boundary as import: localStorage
+  // can hold stale schemas (older deploys) or hand-edited junk, and the
+  // studio UI dereferences these shapes without guards.
+  merge: (persisted, current) => {
+    const incoming = { ...((persisted ?? {}) as Partial<CvBuilderState>) };
+    incoming.customSections = sanitizeCustomSections(incoming.customSections);
+    incoming.layoutPages = sanitizeLayoutPages(incoming.layoutPages);
+    incoming.sectionPage = sanitizeSectionPage(
+      incoming.sectionPage,
+      incoming.layoutPages.map((page) => page.id),
+    );
+    return { ...current, ...incoming };
+  },
 }));

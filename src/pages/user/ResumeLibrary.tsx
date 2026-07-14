@@ -98,9 +98,9 @@ function ResumeCard({
   const displayTitle = item.title || t("builder.studio.untitledResume");
 
   return (
-    <div className="group relative rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 overflow-hidden flex flex-col h-full">
+    <div className="group relative bg-white rounded-xl shadow-sm ring-1 ring-slate-100 hover:ring-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 overflow-hidden flex flex-col h-full">
       {/* Card top — accent bar */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-primary/60 to-primary/20 shrink-0" />
+      <div className="h-1 w-full bg-gradient-to-r from-primary/40 to-primary/10 shrink-0" />
 
       <div className="p-4 flex flex-col flex-1">
         {/* Icon + Title */}
@@ -227,7 +227,7 @@ export default function ResumeLibrary() {
         const initialTitle = detail.title || item.title || t("builder.studio.untitledResume");
         const builder = useCvBuilderStore.getState();
         builder.reset();
-        builder.hydrateFromCanonical(detail.parsedJson);
+        builder.hydrateFromCanonical(detail.parsedJson, { cvId: detail.id });
         const hydrated = useCvBuilderStore.getState();
         hydrated.setDraftId(detail.id);
         hydrated.setResumeTitle(initialTitle);

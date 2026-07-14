@@ -36,7 +36,7 @@ export default function MetricsStrip() {
       transition={{ duration: 0.8 }}
       className="w-full max-w-5xl mx-auto px-4"
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 py-8 md:py-10 px-6 md:px-8 bg-white/60 backdrop-blur-md border border-slate-200/80 rounded-[2rem] shadow-[0_12px_40px_-12px_rgba(15,23,42,0.03)] text-center relative overflow-hidden">
+      <div className="relative grid grid-cols-2 gap-4 overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white/60 px-4 py-7 text-center shadow-[0_12px_40px_-12px_rgba(15,23,42,0.03)] backdrop-blur-md sm:gap-6 sm:rounded-[2rem] sm:px-6 sm:py-8 md:grid-cols-4 md:gap-8 md:px-8 md:py-10">
         {/* Subtle inner blur effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/[0.01] to-indigo-500/[0.01] pointer-events-none" />
 

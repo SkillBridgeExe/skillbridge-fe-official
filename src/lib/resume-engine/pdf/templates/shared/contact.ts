@@ -7,10 +7,15 @@ type CustomFieldLink = {
 	link?: string | undefined;
 };
 
+export const breakPdfWord = (text: string | undefined): string => {
+	if (!text) return "";
+	return text.replace(/([@./\-_,=])/g, "$1\u200B");
+};
+
 export const getWebsiteDisplayText = (website: WebsiteDisplay): string => {
 	const label = website.label?.trim();
 
-	return label || website.url;
+	return breakPdfWord(label || website.url);
 };
 
 export const getCustomFieldLinkUrl = (field: CustomFieldLink): string | undefined => {

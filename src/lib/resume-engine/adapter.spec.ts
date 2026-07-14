@@ -40,7 +40,8 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			linkedin: "https://linkedin.com/in/johndoe",
 			github: "https://github.com/johndoe",
 			cvLanguage: "en",
-			template: "onyx",
+			template: "gengar",
+			resumePictureVisible: true,
 			summary: "",
 			education: [],
 			experience: [],
@@ -82,7 +83,7 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 			],
 			customFields: [{ id: "field-1", name: "Work authorization", value: "Vietnam", icon: "passport" }],
 			cvLanguage: "en",
-			template: "onyx",
+			template: "gengar",
 			summary: "",
 			education: [],
 			experience: [],
@@ -260,6 +261,37 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.page.hideSectionIcons).toBe(true);
 	});
 
+	it("maps ATS Safe Mode overrides into resume metadata", () => {
+		const mockStore = {
+			fullName: "ATS User",
+			template: "onyx",
+			cvLanguage: "en",
+			resumeAccentColor: "#2563eb",
+			resumeHideSectionIcons: false,
+			resumeAtsSafeMode: true,
+			summary: "",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+		// ATS mode overrides
+		expect(result.metadata.design.colors.primary).toBe("#000000");
+		expect(result.metadata.design.colors.text).toBe("#000000");
+		expect(result.metadata.page.hideIcons).toBe(true);
+		expect(result.metadata.page.hideSectionIcons).toBe(true);
+		expect(result.metadata.page.simplifyDecorations).toBe(true);
+		expect(result.metadata.design.dividerStyle).toBe("line");
+		expect(result.picture.hidden).toBe(true);
+	});
+
 	it("maps bounded layout controls into resume metadata for sidebar templates", () => {
 		const mockStore = {
 			fullName: "Layout User",
@@ -284,6 +316,43 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 		expect(result.metadata.layout.sidebarPosition).toBe("right");
 		expect(result.metadata.layout.sidebarWidth).toBe(42);
 		expect(result.metadata.design.dividerStyle).toBe("accent");
+	});
+
+	it("hides profile photo when the selected template does not support avatars", () => {
+		const result = adaptCvBuilderStoreToResumeData({
+			fullName: "John Doe",
+			photoUrl: "https://example.com/photo.jpg",
+			template: "onyx",
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState);
+
+		expect(result.picture.hidden).toBe(true);
+	});
+
+	it("hides profile photo when the user disables avatar visibility", () => {
+		const result = adaptCvBuilderStoreToResumeData({
+			fullName: "John Doe",
+			photoUrl: "https://example.com/photo.jpg",
+			template: "gengar",
+			resumePictureVisible: false,
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState);
+
+		expect(result.picture.hidden).toBe(true);
 	});
 
 	it("uses renderer sidebar sections for templates that actually render side columns", () => {
@@ -431,6 +500,114 @@ describe("adaptCvBuilderStoreToResumeData", () => {
 
 		expect(result.metadata.layout.pages[0].main).toEqual(["projects", "experience", "education"]);
 		expect(result.metadata.layout.pages[0].sidebar).toEqual(["skills", "summary", "certifications", "languages"]);
+	});
+
+	it("maps the planned pages and custom sections into renderer layout for representative templates", () => {
+		// One per layout family: split, sidebar, minimal/grouped, timeline, ATS-compact.
+		const representatives = ["azurill", "gengar", "onyx", "kakuna", "glalie"] as const;
+
+		for (const template of representatives) {
+			const mockStore = {
+				fullName: "Layout User",
+				template,
+				cvLanguage: "en",
+				summary: "Summary.",
+				sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+				sectionVisibility: { summary: true, education: true, experience: true, projects: true, skills: true, certifications: true },
+				sectionPlacement: {},
+				layoutPages: [{ id: "pg_1", name: "Main" }, { id: "pg_2" }],
+				sectionPage: { education: "pg_2", custom_extra: "pg_2" },
+				customSections: [
+					{
+						id: "custom_extra",
+						title: "Hoạt động",
+						placement: "main",
+						visible: true,
+						items: [{ id: "i1", heading: "CLB <Guitar>", body: "Trưởng nhóm 2024" }],
+					},
+				],
+				education: [],
+				experience: [],
+				projects: [],
+				technicalSkills: [],
+				softSkills: [],
+				tools: [],
+				languages: [],
+				certifications: [],
+			} as unknown as CvBuilderState;
+
+			const result = adaptCvBuilderStoreToResumeData(mockStore);
+
+			// Same page plan drives preview and download (they share this data),
+			// so logical page-count parity is structural.
+			expect(result.metadata.layout.pages, template).toHaveLength(2);
+			expect(result.metadata.layout.pages[1].main, template).toContain("education");
+			expect(result.metadata.layout.pages[1].main, template).toContain("custom_extra");
+			expect(result.metadata.layout.pages[0].main, template).not.toContain("education");
+
+			const custom = result.customSections.find((section) => section.id === "custom_extra");
+			expect(custom, template).toBeDefined();
+			expect(custom?.type, template).toBe("summary");
+			expect(custom?.hidden, template).toBe(false);
+			const item = custom?.items[0] as { content: string } | undefined;
+			// Heading is escaped user text — markup cannot be injected.
+			expect(item?.content, template).toContain("<strong>CLB &lt;Guitar&gt;</strong>");
+			expect(item?.content, template).toContain("Trưởng nhóm 2024");
+		}
+	});
+
+	it("folds sidebar sections into main on full-width pages instead of dropping them", () => {
+		const mockStore = {
+			fullName: "",
+			template: "gengar",
+			summary: "Text",
+			sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+			sectionPlacement: { summary: "sidebar", skills: "sidebar" },
+			layoutPages: [{ id: "pg_1", fullWidth: true }],
+			sectionPage: {},
+			customSections: [],
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: ["React"],
+			softSkills: [],
+			tools: [],
+			languages: ["English"],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		const page = result.metadata.layout.pages[0];
+
+		// Templates suppress the sidebar column on full-width pages; nothing
+		// assigned there may silently vanish (languages included).
+		expect(page.fullWidth).toBe(true);
+		expect(page.sidebar).toEqual([]);
+		expect(page.main).toEqual(expect.arrayContaining(["summary", "skills", "languages"]));
+	});
+
+	it("keeps hidden custom sections out of the rendered output but in the data", () => {
+		const mockStore = {
+			fullName: "",
+			template: "onyx",
+			summary: "",
+			sectionOrder: ["summary", "experience", "education", "projects", "skills", "certifications"],
+			customSections: [
+				{ id: "custom_hidden", title: "Ẩn", placement: "main", visible: false, items: [{ id: "i1", body: "x" }] },
+			],
+			education: [],
+			experience: [],
+			projects: [],
+			technicalSkills: [],
+			softSkills: [],
+			tools: [],
+			languages: [],
+			certifications: [],
+		} as unknown as CvBuilderState;
+
+		const result = adaptCvBuilderStoreToResumeData(mockStore);
+		const custom = result.customSections.find((section) => section.id === "custom_hidden");
+		expect(custom?.hidden).toBe(true);
 	});
 
 	it("does not turn empty builder placeholder rows into fake resume entries", () => {
