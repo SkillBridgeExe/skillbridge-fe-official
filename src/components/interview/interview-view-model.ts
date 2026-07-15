@@ -41,6 +41,12 @@ export interface InterviewResultQuestionViewModel {
   /** P3 speech timing (voice mode) — null on text/legacy turns. */
   responseDelayMs: number | null;
   transcriptSegments: number | null;
+  /** I-PACE: answer budget for this turn (seconds). null on legacy turns. */
+  timeBudgetSeconds: number | null;
+  /** ISO timestamp when the question was asked (server-owned). */
+  askedAt: string;
+  /** ISO timestamp when the answer was received (server-owned). null if unanswered. */
+  answeredAt: string | null;
 }
 
 /** the guard slugs the report explains — anything unknown is ignored (forward-compatible). */
@@ -1091,6 +1097,9 @@ export function toInterviewResultViewModel(
         guardAdjustments: readGuardAdjustments(turn.turnTrace),
         responseDelayMs: turn.responseDelayMs ?? null,
         transcriptSegments: turn.transcriptSegments ?? null,
+        timeBudgetSeconds: turn.timeBudgetSeconds ?? null,
+        askedAt: turn.askedAt,
+        answeredAt: turn.answeredAt ?? null,
       };
     });
 
@@ -1122,4 +1131,56 @@ export function toInterviewResultViewModel(
     scoreExplanations: readScoreExplanations(detail.finalScore),
     gapItems: readGapItems(detail.gapItems),
   };
+}
+
+// ─── I-PACE answer-pacing helpers ───────────────────────────────────
+
+/**
+ * Hard ceiling in milliseconds for the auto-flush timer.
+ * Returns `null` when `timeBudgetSeconds` is absent (degrade: no ceiling).
+ * Ceiling = 2 × timeBudgetSeconds (spec W120).
+ */
+export function computeAnswerCeilingMs(
+  timeBudgetSeconds: number | null | undefined,
+): number | null {
+  if (timeBudgetSeconds == null || timeBudgetSeconds <= 0) return null;
+  return timeBudgetSeconds * 2 * 1000;
+}
+
+/**
+ * For the report overtime badge. Returns `null` unless the answer provably ran past its budget.
+ *
+ * The measurement is `durationSeconds`, BOUNDED by the server's `askedAt`→`answeredAt` window.
+ *
+ * Why not the server window alone: `askedAt` is stamped when the question row is created — before
+ * the AI reads it aloud. That window therefore also contains ~10-20s of the interviewer talking,
+ * plus the mic-open delay and the idle tail, none of which is the candidate answering. Comparing it
+ * against a budget that means "time to answer" flags people who came in under it. A badge that says
+ * you ran long when you did not is worse than no badge.
+ *
+ * `durationSeconds` measures the right window (voice: AI stopped speaking → submit), but the client
+ * reports it. So the server window is used as the ceiling it cannot exceed: a client can only ever
+ * shrink its own number, which hides a badge rather than inventing one.
+ */
+export function computeAnswerOvertimeDisplay(
+  askedAt: string | null | undefined,
+  answeredAt: string | null | undefined,
+  timeBudgetSeconds: number | null | undefined,
+  durationSeconds: number | null | undefined,
+): { elapsedSeconds: number; budgetSeconds: number } | null {
+  if (!askedAt || !answeredAt || timeBudgetSeconds == null || timeBudgetSeconds <= 0) return null;
+  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return null;
+  }
+  const asked = new Date(askedAt).getTime();
+  const answered = new Date(answeredAt).getTime();
+  if (Number.isNaN(asked) || Number.isNaN(answered)) return null;
+  const serverWindowSeconds = Math.round((answered - asked) / 1000);
+  if (serverWindowSeconds <= 0) return null;
+  // an answer cannot have lasted longer than the question was open — drop an implausible claim
+  // rather than rendering it.
+  if (durationSeconds > serverWindowSeconds) return null;
+  const elapsedSeconds = Math.round(durationSeconds);
+  if (elapsedSeconds <= timeBudgetSeconds) return null;
+  return { elapsedSeconds, budgetSeconds: timeBudgetSeconds };
 }

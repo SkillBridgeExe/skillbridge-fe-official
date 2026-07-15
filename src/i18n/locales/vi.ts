@@ -1372,6 +1372,7 @@ export default {
         viewResults: "Xem kết quả",
         liveMicOn: "Mic live đang bật",
         liveMicMuted: "Mic live đang tắt",
+        paceNudge: "Hãy chốt lại ý chính nhé",
         realtimeMic: {
           manual: "Dùng text fallback để trả lời.",
           interviewerSpeaking: "Interviewer đang nói. Mic tạm dừng nghe.",
@@ -1536,7 +1537,9 @@ export default {
           adequate: "Đầy đủ",
           deep: "Chuyên sâu",
           evasive: "Chưa đi vào trọng tâm"
-        }
+        },
+        answerOvertime: '{{elapsed}} — interviewer thường cho ~{{budget}}s',
+        answerOvertimeLabel: 'Nhịp trả lời',
       },
       errors: {
         mediaUnsupported: "Trình duyệt này không hỗ trợ thiết bị media.",

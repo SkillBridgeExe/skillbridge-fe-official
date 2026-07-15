@@ -97,6 +97,7 @@ import {
 } from "@/components/interview/interview-view-model";
 import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
 import { acquireInterviewMedia } from "@/lib/interview-media";
+import { useAnswerPace } from "@/hooks/use-answer-pace";
 
 type EndReason = "manual" | "timer" | "finished";
 const REALTIME_MIC_REOPEN_DELAY_MS = 450;
@@ -188,6 +189,9 @@ export default function Interview() {
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
   const liveClosingRequestedRef = useRef(false);
+  /** I-PACE: answer budget (seconds) for the CURRENT turn. null → degrade (no pace UI). */
+  const currentTimeBudgetRef = useRef<number | null>(null);
+  const [currentTimeBudget, setCurrentTimeBudget] = useState<number | null>(null);
 
   const canUseApi = useAuthStore(
     (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
@@ -641,6 +645,8 @@ export default function Interview() {
     liveQuestionBufferRef.current = "";
     liveLastQuestionRef.current = "";
     submittedRealtimeQuestionRef.current = null;
+    currentTimeBudgetRef.current = null;
+    setCurrentTimeBudget(null);
   }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
 
   const openHistoryDetail = useCallback(
@@ -811,6 +817,10 @@ export default function Interview() {
       setSidebarOpen(false);
       posthog?.capture("interview_started", { mode: interviewMode, type: interviewType, target_role: targetRole });
       questionStartedAtRef.current = interviewMode === "realtime" ? null : new Date();
+      // I-PACE: set initial answer budget from start response.
+      const initialBudget = (started as { answerBudgetSeconds?: number }).answerBudgetSeconds ?? null;
+      currentTimeBudgetRef.current = initialBudget;
+      setCurrentTimeBudget(initialBudget);
 
       const stream = await requestSessionMedia();
       let realtimeConnected = false;
@@ -992,6 +1002,10 @@ export default function Interview() {
         currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
         submittedRealtimeQuestionRef.current = null;
         setCurrentTurnTrace(response.turnTrace ?? null);
+        // I-PACE: update budget for next turn.
+        const nextBudget = response.nextTurn?.timeBudgetSeconds ?? null;
+        currentTimeBudgetRef.current = nextBudget;
+        setCurrentTimeBudget(nextBudget);
         if (nextQuestion) {
           setCurrentQuestion(nextQuestion);
           setCurrentQuestionMeta(
@@ -1298,6 +1312,22 @@ export default function Interview() {
     selectedLanguage,
   ]);
 
+  // I-PACE: per-turn answer pacing (hard ceiling + soft nudge).
+  const answerPace = useAnswerPace({
+    timeBudgetSeconds: currentTimeBudget,
+    isMicOpen: isMicActive && isLiveConnected && !isVoiceFallback,
+    isEnding: endingRef.current || isEnding,
+    isAiSpeaking,
+    onCeilingReached: flushRealtimeAnswerBuffer,
+    onNudge: () => {
+      // NOT requestLiveInterviewClosing — that announces the whole session is ending, which at a
+      // per-question budget would land 90s into question one.
+      if (liveSessionRef.current?.isConnected && !endingRef.current) {
+        liveSessionRef.current.requestAnswerPaceNudge(selectedLanguage);
+      }
+    },
+  });
+
   useEffect(() => {
     writeInterviewVoicePreference(
       typeof window === "undefined" ? null : window.localStorage,
@@ -1590,6 +1620,7 @@ export default function Interview() {
             onStop={() => setIsEndDialogOpen(true)}
             apiError={apiError}
             currentTurnTrace={currentTurnTrace}
+            answerPace={answerPace}
           />
         )}
 
