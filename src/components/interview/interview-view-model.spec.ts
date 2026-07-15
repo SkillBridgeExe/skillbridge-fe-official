@@ -36,6 +36,8 @@ import {
   secondsRemainingFromExpiry,
   toInterviewResultViewModel,
   writeInterviewVoicePreference,
+  computeAnswerCeilingMs,
+  computeAnswerOvertimeDisplay,
 } from "./interview-view-model";
 import { DEFAULT_INTERVIEW_MODE } from "./types";
 
@@ -1057,5 +1059,69 @@ describe("buffered realtime turn request — P3 speech timing", () => {
     });
     expect(request?.responseDelayMs).toBeUndefined();
     expect(request?.transcriptSegments).toBe(1);
+  });
+});
+
+describe("computeAnswerCeilingMs", () => {
+  it("returns null for null/undefined budget (degrade)", () => {
+    expect(computeAnswerCeilingMs(null)).toBeNull();
+    expect(computeAnswerCeilingMs(undefined)).toBeNull();
+  });
+
+  it("returns null for zero or negative budget", () => {
+    expect(computeAnswerCeilingMs(0)).toBeNull();
+    expect(computeAnswerCeilingMs(-10)).toBeNull();
+  });
+
+  it("returns 2× budget in milliseconds", () => {
+    expect(computeAnswerCeilingMs(90)).toBe(180_000);
+    expect(computeAnswerCeilingMs(60)).toBe(120_000);
+  });
+});
+
+describe("computeAnswerOvertimeDisplay", () => {
+  const ASKED = "2026-01-01T00:00:00Z";
+  // the server window is 3 minutes: the interviewer read the question, then the candidate answered.
+  const ANSWERED = "2026-01-01T00:03:00Z";
+
+  it("stays silent without a budget", () => {
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, null, 120)).toBeNull();
+  });
+
+  it("stays silent on an unanswered turn", () => {
+    expect(computeAnswerOvertimeDisplay(ASKED, null, 90, 120)).toBeNull();
+  });
+
+  it("stays silent on invalid timestamps", () => {
+    expect(computeAnswerOvertimeDisplay("nope", "also-nope", 90, 120)).toBeNull();
+  });
+
+  it("reports the answer that ran past its budget", () => {
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, 120)).toEqual({
+      elapsedSeconds: 120,
+      budgetSeconds: 90,
+    });
+  });
+
+  it("stays silent when the answer came in under budget", () => {
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, 85)).toBeNull();
+  });
+
+  it("does not flag an on-time answer just because the interviewer talked first", () => {
+    // the whole reason this measures durationSeconds and not the server window: askedAt is
+    // stamped BEFORE the AI reads the question aloud, so the window here is 180s while the
+    // candidate only answered for 85s. Measuring the window would flag them for the
+    // interviewer's own speaking time.
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, 85)).toBeNull();
+  });
+
+  it("drops a duration longer than the question was even open", () => {
+    // the server window bounds the client's claim — it can shrink its number, never inflate it.
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, 400)).toBeNull();
+  });
+
+  it("stays silent when the client measured nothing", () => {
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, null)).toBeNull();
+    expect(computeAnswerOvertimeDisplay(ASKED, ANSWERED, 90, 0)).toBeNull();
   });
 });

@@ -34,12 +34,14 @@ import {
   Eye,
   HelpCircle,
   FileText,
+  Timer,
 } from "lucide-react";
 import {
   devPlanTrackKind,
   formatDuration,
   gapSeverityLevel,
   toInterviewResultViewModel,
+  computeAnswerOvertimeDisplay,
   type InterviewScoreExplanationViewModel,
 } from "./interview-view-model";
 
@@ -707,6 +709,31 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                           )}
                         </div>
                       )}
+
+                      {/* W120: Answer overtime badge — OUTSIDE signals gate */}
+                      {(() => {
+                        const overtime = computeAnswerOvertimeDisplay(
+                          question.askedAt,
+                          question.answeredAt,
+                          question.timeBudgetSeconds,
+                          question.durationSeconds,
+                        );
+                        if (!overtime) return null;
+                        return (
+                          <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-200/60 bg-amber-50/50 px-3 py-2">
+                            <Timer className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                            <span className="text-xs text-amber-800">
+                              {t("interview.results.answerOvertimeLabel")}
+                            </span>
+                            <span className="text-xs font-semibold text-amber-900">
+                              {t("interview.results.answerOvertime", {
+                                elapsed: formatDuration(overtime.elapsedSeconds),
+                                budget: overtime.budgetSeconds,
+                              })}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {question.confidenceEvidence.length > 0 && (
                         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
