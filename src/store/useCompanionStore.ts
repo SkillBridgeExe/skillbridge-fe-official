@@ -401,6 +401,22 @@ export const bubbleVisible = (s: CompanionState): boolean =>
   s.bubbleOpen && !s.isDragging && !s.suspended && s.activeId !== null;
 
 /**
+ * The SINGLE definition of "a chat turn is in flight": a pending assistant row in the thread, or a
+ * confirmed chip action running its own network call. CompanionShell disables the composer with it;
+ * the send/retry guards read it LIVE via getState().
+ *
+ * Both callers MUST use this, and the guards must read it live rather than close over it. The shell
+ * is a sibling rendered BEFORE the router (App.tsx:60 vs :63), so its getTurn() always reads a
+ * propsRef written during the hook host's PREVIOUS render: a guard that closed over the mutation's
+ * isPending got captured as permanently-true the moment a turn settled, silently dropping every
+ * later send while the composer still looked enabled (two sources of truth for "busy" → dead chat).
+ */
+export const isChatBusy = (
+  s: Pick<CompanionState, "chatMessages" | "chatActionPending">,
+): boolean =>
+  s.chatMessages.some((m) => m.role === "assistant" && !!m.pending) || s.chatActionPending;
+
+/**
  * The visible issue queue: severity-sorted issues minus any that are dismissed
  * (sticky cross-session OR session-only "once"). Anti-Clippy: dismissed issues
  * never reappear. Honest-empty: a clean scan → [] → no context registered.
