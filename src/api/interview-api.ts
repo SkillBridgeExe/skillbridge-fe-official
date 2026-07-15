@@ -162,6 +162,8 @@ export interface InterviewTurnDto {
   /** P3 speech timing (voice mode) — null/absent on text/legacy turns. */
   responseDelayMs?: number | null;
   transcriptSegments?: number | null;
+  /** I-PACE: seconds the interviewer allocated for this turn's answer. null on legacy/review turns. */
+  timeBudgetSeconds?: number | null;
 }
 
 export interface InterviewFeedback {
@@ -190,6 +192,8 @@ export interface StartInterviewResponseDto extends InterviewSessionDto {
   firstQuestion: string;
   phase: string | null;
   realtime: RealtimeClientSecretDto;
+  /** I-PACE: answer budget for the first question (seconds). */
+  answerBudgetSeconds?: number;
 }
 
 export interface SubmitInterviewTurnRequest {
