@@ -1376,6 +1376,7 @@ export default {
         viewResults: "View Results",
         liveMicOn: "Live mic is on",
         liveMicMuted: "Live mic is muted",
+        paceNudge: "Try to wrap up your key point",
         realtimeMic: {
           manual: "Use text fallback to answer.",
           interviewerSpeaking: "Interviewer is speaking. Listening is paused.",
@@ -1541,7 +1542,9 @@ export default {
           adequate: "Adequate",
           deep: "Deep",
           evasive: "Evasive"
-        }
+        },
+        answerOvertime: '{{elapsed}} — interviewer typically allows ~{{budget}}s',
+        answerOvertimeLabel: 'Answer pacing',
       },
       errors: {
         mediaUnsupported: "Media devices are not supported in this browser.",

@@ -125,6 +125,28 @@ export class OpenAIRealtimeSession {
     });
   }
 
+  /**
+   * W120: nudge the candidate to land THIS answer — not to end the interview.
+   *
+   * Deliberately separate from `requestLiveInterviewClosing`, which announces the whole session
+   * is wrapping up. Firing that at a per-question budget would tell a candidate 90 seconds into
+   * question one that the interview is over.
+   *
+   * The line invites, never accuses: running long is not a rule the candidate broke.
+   */
+  requestAnswerPaceNudge(language: "vi" | "en"): void {
+    this.send({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+        instructions:
+          language === "vi"
+            ? "Nói MỘT câu tiếng Việt ngắn, thân thiện, mời ứng viên chốt lại ý chính của câu trả lời đang dở. Không hỏi câu mới, không nhận xét, không nói gì về thời gian hay việc họ nói dài."
+            : "Say ONE short, warm English sentence inviting the candidate to land the main point of the answer they are already giving. Ask no new question, give no assessment, and say nothing about time or about them talking long.",
+      },
+    });
+  }
+
   speakOfficialQuestion(question: string, language: "vi" | "en"): void {
     const trimmed = question.trim().normalize("NFC");
     if (!trimmed) return;

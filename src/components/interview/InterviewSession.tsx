@@ -27,6 +27,8 @@ import {
   getRealtimeMicStatusKey,
   type InterviewQuestionBankSourceKind,
 } from "./interview-view-model";
+import { AnswerPaceRing } from "./AnswerPaceRing";
+import type { AnswerPaceState } from "@/hooks/use-answer-pace";
 
 const PHASES = [
   { key: "SCREENING", labelVi: "Khởi động", labelEn: "Screening" },
@@ -82,6 +84,8 @@ interface InterviewSessionProps {
     remaining_turn_budget: number;
     confidence: 'high' | 'medium' | 'low';
   } | null;
+  /** I-PACE: answer pacing state for the current turn. */
+  answerPace?: AnswerPaceState;
 }
 
 export function InterviewSession({
@@ -114,6 +118,7 @@ export function InterviewSession({
   onStop,
   apiError,
   currentTurnTrace,
+  answerPace,
 }: InterviewSessionProps) {
   const { t, i18n } = useTranslation("common");
   const isVi = i18n?.language?.startsWith("vi") ?? true;
@@ -436,6 +441,9 @@ export function InterviewSession({
                   <MicOff className="h-4 w-4" />
                 )}
               </Button>
+            )}
+            {answerPace && (
+              <AnswerPaceRing pace={answerPace} />
             )}
           </div>
         </div>
