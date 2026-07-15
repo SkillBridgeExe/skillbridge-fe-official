@@ -159,6 +159,9 @@ export interface InterviewTurnDto {
   askedAt: string;
   answeredAt: string | null;
   durationSeconds: number | null;
+  /** P3 speech timing (voice mode) — null/absent on text/legacy turns. */
+  responseDelayMs?: number | null;
+  transcriptSegments?: number | null;
 }
 
 export interface InterviewFeedback {
@@ -195,6 +198,9 @@ export interface SubmitInterviewTurnRequest {
   userTranscript?: string;
   modality?: PlatformInterviewModality;
   durationSeconds?: number;
+  /** P3 speech timing (voice mode) — only sent when client-measured. */
+  responseDelayMs?: number;
+  transcriptSegments?: number;
 }
 
 export interface LiveInterviewTurnInput {

@@ -607,6 +607,34 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                                 </span>
                               </div>
 
+                              {/* Filler per minute (P3, voice) */}
+                              {question.durationSeconds && question.durationSeconds > 0 && signals.filler && (
+                                <div className="bg-slate-50/50 p-2.5 rounded border border-slate-100">
+                                  <span className="font-bold text-slate-400 block mb-0.5 uppercase tracking-wider text-[9px]">{t("interview.results.commFillerPerMin")}</span>
+                                  <span className="font-bold text-slate-700">
+                                    {Math.round((signals.filler.count / question.durationSeconds) * 600) / 10}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Response delay (P3, voice) */}
+                              {question.responseDelayMs !== null && question.responseDelayMs >= 0 && (
+                                <div className="bg-slate-50/50 p-2.5 rounded border border-slate-100">
+                                  <span className="font-bold text-slate-400 block mb-0.5 uppercase tracking-wider text-[9px]">{t("interview.results.commResponseDelay")}</span>
+                                  <span className="font-bold text-slate-700">
+                                    {t("interview.results.commResponseDelayVal", { seconds: Math.round(question.responseDelayMs / 100) / 10 })}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Speech bursts / pauses (P3, voice) */}
+                              {question.transcriptSegments !== null && question.transcriptSegments >= 1 && (
+                                <div className="bg-slate-50/50 p-2.5 rounded border border-slate-100">
+                                  <span className="font-bold text-slate-400 block mb-0.5 uppercase tracking-wider text-[9px]">{t("interview.results.commSegments")}</span>
+                                  <span className="font-bold text-slate-700">{question.transcriptSegments}</span>
+                                </div>
+                              )}
+
                               {/* STAR Coverage */}
                               <div className="bg-slate-50/50 p-2.5 rounded border border-slate-100">
                                 <span className="font-bold text-slate-400 block mb-0.5 uppercase tracking-wider text-[9px]">{t("interview.results.commStar")}</span>
