@@ -9,7 +9,9 @@
 // onPointerDown stopPropagation on the input area so typing never drags the unit.
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useTypewriter } from "@/hooks/use-typewriter";
 import { Send, RotateCcw, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -35,11 +37,38 @@ export function LearningChatSkill({ messages, opener, suggestions, onSend, onRet
 
   const hasMessages = messages.length > 0;
 
+  // ── Reduced-motion (R3) — same pattern as ThinkingDots ──
+  const prefersReducedMotion = useReducedMotion() === true;
+
+  // ── Which indexes are pending RIGHT NOW, snapshotted after paint (R1). ──
+  // The render map reads this ref DURING render: on the exact render where a row
+  // flips pending→resolved, this effect hasn't run yet, so the set still contains
+  // that index — that single render mounts the row already animating, with no
+  // post-paint state flip (a state-based approach showed the full text for one
+  // frame, then wiped it). At most one row is ever pending (single-flight send
+  // guard), so at most one row animates — no extra bookkeeping.
+  const prevPendingRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const nowPending = new Set<number>();
+    messages.forEach((m, i) => {
+      if (m.role === "assistant" && m.pending) nowPending.add(i);
+    });
+    prevPendingRef.current = nowPending;
+  }, [messages]);
+
   // Auto-scroll the thread to the newest message.
   useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, messages]);
+
+  // R7: also scroll during the reveal.
+  const scrollIfNearBottom = useCallback(() => {
+    const el = threadRef.current;
+    if (!el) return;
+    const isNear = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (isNear) el.scrollTop = el.scrollHeight;
+  }, []);
 
   const submit = (text: string) => {
     const q = text.trim();
@@ -146,11 +175,12 @@ export function LearningChatSkill({ messages, opener, suggestions, onSend, onRet
               );
             }
             return (
-              <div key={i} className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
-                  {m.text}
-                </div>
-              </div>
+              <LearningAssistantTextRow
+                key={i}
+                message={m}
+                animate={prevPendingRef.current.has(i) && !prefersReducedMotion}
+                onScrollDuringReveal={scrollIfNearBottom}
+              />
             );
             })}
           </div>
@@ -184,6 +214,50 @@ export function LearningChatSkill({ messages, opener, suggestions, onSend, onRet
         >
           <Send className="h-4 w-4" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── LearningAssistantTextRow (typewriter-enabled) ───────────────────
+
+interface LearningAssistantTextRowProps {
+  message: CompanionChatMessage;
+  animate: boolean;
+  onScrollDuringReveal: () => void;
+}
+
+function LearningAssistantTextRow({
+  message: m,
+  animate,
+  onScrollDuringReveal,
+}: LearningAssistantTextRowProps) {
+  // Sticky at mount: this row REMOUNTS exactly at pending→resolved (the pending
+  // branch renders a host div, this component replaces it under the same key →
+  // type switch → fresh mount). Later renders pass animate=false (the parent's
+  // pending snapshot has moved on) — the mount-captured value keeps the reveal alive.
+  const [shouldAnimate] = useState(animate);
+  const { displayed, done } = useTypewriter(m.text, { animate: shouldAnimate });
+
+  useEffect(() => {
+    if (shouldAnimate && !done) {
+      onScrollDuringReveal();
+    }
+  }, [displayed, shouldAnimate, done, onScrollDuringReveal]);
+
+  const isAnimating = shouldAnimate && !done;
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
+        {isAnimating ? (
+          <>
+            <span aria-hidden="true">{displayed}</span>
+            <span className="sr-only">{m.text}</span>
+          </>
+        ) : (
+          m.text
+        )}
       </div>
     </div>
   );

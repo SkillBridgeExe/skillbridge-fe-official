@@ -12,7 +12,9 @@
 // onPointerDown stopPropagation on the input area so typing never drags the unit.
 // Rendered INSIDE the existing bubble container (which carries max-h/overflow/aria/focus).
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useTypewriter } from "@/hooks/use-typewriter";
 import { Send, RotateCcw, AlertCircle, ArrowUpRight, Trash2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -67,11 +69,39 @@ export function DiagnosisChatSkill({
 
   const hasMessages = messages.length > 0;
 
+  // ── Reduced-motion (R3) — same pattern as ThinkingDots ──
+  const prefersReducedMotion = useReducedMotion() === true;
+
+  // ── Which indexes are pending RIGHT NOW, snapshotted after paint (R1). ──
+  // The render map reads this ref DURING render: on the exact render where a row
+  // flips pending→resolved, this effect hasn't run yet, so the set still contains
+  // that index — that single render mounts the row already animating, with no
+  // post-paint state flip (a state-based approach showed the full text for one
+  // frame, then wiped it). At most one row is ever pending (single-flight
+  // isChatBusy send guard), so at most one row animates — no extra bookkeeping.
+  const prevPendingRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const nowPending = new Set<number>();
+    messages.forEach((m, i) => {
+      if (m.role === "assistant" && m.pending) nowPending.add(i);
+    });
+    prevPendingRef.current = nowPending;
+  }, [messages]);
+
   // Auto-scroll the thread to the newest message.
   useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, messages]);
+
+  // R7: also scroll during the reveal (follow the growing row).
+  const scrollIfNearBottom = useCallback(() => {
+    const el = threadRef.current;
+    if (!el) return;
+    // "near bottom" = within 80px of the scroll end.
+    const isNear = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (isNear) el.scrollTop = el.scrollHeight;
+  }, []);
 
   const submit = (text: string) => {
     const q = text.trim();
@@ -198,46 +228,16 @@ export function DiagnosisChatSkill({
               );
             }
             return (
-              <div key={i} className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
-                  {m.text}
-                  {m.citedTool && (
-                    <div className="mt-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        <ShieldCheck className="h-3 w-3" />
-                        {t("companion.chat.verifiedWithTool", { tool: toolLabel(m.citedTool) })}
-                      </span>
-                    </div>
-                  )}
-                  {m.actions && m.actions.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {m.actions.map((a) => (
-                        <button
-                          key={a.anchorId ?? `${a.labelKey}-${a.kind}`}
-                          type="button"
-                          onClick={() => onAction?.(a)}
-                          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ink-accent/40 focus:outline-none"
-                        >
-                          <span>{t(a.labelKey)}</span>
-                          <ArrowUpRight className="w-3 h-3 shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {m.suggestedNextStep && (
-                    <div className="mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onSend(m.suggestedNextStep!)}
-                        disabled={isPending}
-                        className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#D8DEE4] bg-transparent px-2.5 py-1 text-[11px] font-medium text-[#5F6B76] hover:bg-[#F5F5F3] transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <span>{m.suggestedNextStep}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <AssistantTextRow
+                key={i}
+                message={m}
+                animate={prevPendingRef.current.has(i) && !prefersReducedMotion}
+                onScrollDuringReveal={scrollIfNearBottom}
+                isPending={isPending}
+                onSend={onSend}
+                onAction={onAction}
+                t={t}
+              />
             );
             })}
           </div>
@@ -300,6 +300,102 @@ export function DiagnosisChatSkill({
         >
           <Send className="h-4 w-4" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AssistantTextRow (typewriter-enabled) ───────────────────────────
+// Extracted so the useTypewriter hook runs per-row. Hooks cannot be called
+// inside map callbacks, so a sub-component is required.
+
+interface AssistantTextRowProps {
+  message: CompanionChatMessage;
+  animate: boolean;
+  onScrollDuringReveal: () => void;
+  isPending: boolean;
+  onSend: (q: string) => void;
+  onAction?: (chip: ChatActionChip) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}
+
+function AssistantTextRow({
+  message: m,
+  animate,
+  onScrollDuringReveal,
+  isPending,
+  onSend,
+  onAction,
+  t,
+}: AssistantTextRowProps) {
+  // Sticky at mount: this row REMOUNTS exactly at pending→resolved (the pending
+  // branch renders a host div, this component replaces it under the same key →
+  // type switch → fresh mount). Later renders pass animate=false (the parent's
+  // pending snapshot has moved on) — the mount-captured value keeps the reveal alive.
+  const [shouldAnimate] = useState(animate);
+  const { displayed, done } = useTypewriter(m.text, { animate: shouldAnimate });
+
+  // R7: scroll the thread while revealed text grows.
+  useEffect(() => {
+    if (shouldAnimate && !done) {
+      onScrollDuringReveal();
+    }
+  }, [displayed, shouldAnimate, done, onScrollDuringReveal]);
+
+  const isAnimating = shouldAnimate && !done;
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
+        {/* R5: during animation, visible span is aria-hidden + sr-only sibling has full text. */}
+        {isAnimating ? (
+          <>
+            <span aria-hidden="true">{displayed}</span>
+            <span className="sr-only">{m.text}</span>
+          </>
+        ) : (
+          m.text
+        )}
+        {/* R6: chips wait for the reveal (non-animating rows render immediately). */}
+        {(!shouldAnimate || done) && (
+          <>
+            {m.citedTool && (
+              <div className="mt-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  <ShieldCheck className="h-3 w-3" />
+                  {t("companion.chat.verifiedWithTool", { tool: toolLabel(m.citedTool) })}
+                </span>
+              </div>
+            )}
+            {m.actions && m.actions.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {m.actions.map((a) => (
+                  <button
+                    key={a.anchorId ?? `${a.labelKey}-${a.kind}`}
+                    type="button"
+                    onClick={() => onAction?.(a)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ink-accent/40 focus:outline-none"
+                  >
+                    <span>{t(a.labelKey)}</span>
+                    <ArrowUpRight className="w-3 h-3 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {m.suggestedNextStep && (
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSend(m.suggestedNextStep!)}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#D8DEE4] bg-transparent px-2.5 py-1 text-[11px] font-medium text-[#5F6B76] hover:bg-[#F5F5F3] transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span>{m.suggestedNextStep}</span>
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
