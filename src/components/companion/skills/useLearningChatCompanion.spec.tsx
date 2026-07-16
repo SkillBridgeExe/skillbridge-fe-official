@@ -202,6 +202,65 @@ describe("useLearningChatCompanion — error/limit rows (mirrors diagnosis patte
   });
 });
 
+describe("useLearningChatCompanion — cross-session isolation (resolve-by-index must not cross threads)", () => {
+  let capturedApi: { sendQuestion: (q: string) => void } | undefined;
+  function CaptureSession({ sessionId, sessionTitle }: { sessionId: string; sessionTitle: string }) {
+    capturedApi = useLearningChatCompanion(sessionId, sessionTitle, "react");
+    return null;
+  }
+
+  it("drops an in-flight ANSWER when the user switches sessions before it resolves", async () => {
+    const d = deferred<LearningChatResponse>();
+    vi.mocked(sendLearningChatMessage).mockReturnValueOnce(d.promise);
+    const { rerender } = render(<CaptureSession sessionId="s1" sessionTitle="Session A" />);
+
+    capturedApi?.sendQuestion("question for A");
+    expect(useCompanionStore.getState().chatMessages).toHaveLength(2); // user + pending
+
+    // Switch to session B while A's answer is in flight — the page instance is
+    // reused across next/prev navigation, so the hook does NOT unmount.
+    rerender(<CaptureSession sessionId="s2" sessionTitle="Session B" />);
+    // B's persisted thread arrives with the SAME length as A's thread — the worst
+    // case for index reuse: A's stale resolve targets a valid assistant row of B.
+    useCompanionStore.getState().seedChatMessages([
+      { role: "user", text: "B question" },
+      { role: "assistant", text: "B answer", pending: false, error: false },
+    ]);
+
+    d.resolve({ conversationId: "conv-A", message: "answer for A" });
+    // The conversationId still persists under the SENT session's key (BE thread
+    // continuity for A) — and doubles as the "promise settled" sync point.
+    await waitFor(() => {
+      expect(localStorage.getItem("skillbridge_chat_conv_id_s1")).toBe("conv-A");
+    });
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
+      text: "B answer",
+      error: false,
+    });
+  });
+
+  it("drops an in-flight FAILURE the same way (no orphan error row in the new thread)", async () => {
+    const d = deferred<LearningChatResponse>();
+    vi.mocked(sendLearningChatMessage).mockReturnValueOnce(d.promise);
+    const { rerender } = render(<CaptureSession sessionId="s1" sessionTitle="Session A" />);
+
+    capturedApi?.sendQuestion("question for A");
+    rerender(<CaptureSession sessionId="s2" sessionTitle="Session B" />);
+    useCompanionStore.getState().seedChatMessages([
+      { role: "user", text: "B question" },
+      { role: "assistant", text: "B answer", pending: false, error: false },
+    ]);
+
+    d.reject(new Error("network down"));
+    await d.promise.catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
+      text: "B answer",
+      error: false,
+    });
+  });
+});
+
 describe("useLearningChatCompanion — continuity via the shared conversationId (AIChatPanel scheme)", () => {
   it("restores persisted history for a saved conversationId on mount", async () => {
     localStorage.setItem("skillbridge_chat_conv_id_sess-1", "conv-old");

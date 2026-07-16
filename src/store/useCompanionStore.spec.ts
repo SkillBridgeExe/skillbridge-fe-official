@@ -359,4 +359,23 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     // The lone user message is untouched (no assistant slot to resolve).
     expect(useCompanionStore.getState().chatMessages).toEqual([{ role: "user", text: "q" }]);
   });
+
+  it("chatEpoch bumps on every thread replacement and never goes backwards", () => {
+    const s = useCompanionStore.getState();
+    const start = useCompanionStore.getState().chatEpoch;
+    s.clearChat();
+    expect(useCompanionStore.getState().chatEpoch).toBe(start + 1);
+    s.seedChatMessages([{ role: "user", text: "restored" }]);
+    expect(useCompanionStore.getState().chatEpoch).toBe(start + 2);
+    // resetCompanion restores `initial` but must NOT rewind the epoch — an
+    // in-flight send that captured `start + 2` would otherwise collide with a
+    // fresh thread whose epoch wrapped back to 0.
+    s.resetCompanion();
+    expect(useCompanionStore.getState().chatEpoch).toBe(start + 3);
+    // Appending/resolving within ONE thread does not move its identity.
+    s.appendChatMessage({ role: "user", text: "q" });
+    s.setChatPending("q");
+    s.resolveLastAssistant("a");
+    expect(useCompanionStore.getState().chatEpoch).toBe(start + 3);
+  });
 });
