@@ -271,10 +271,16 @@ export function useDiagnosisChatCompanion(
    */
   const runChat = useCallback(
     (question: string, assistantIndex: number) => {
+      // Thread identity at send time. matchId can change while this hook stays
+      // mounted (a re-compare from the page) — the match-change effect clears +
+      // reseeds the thread, and resolving `assistantIndex` after that would write
+      // the OLD match's answer over a row of the new match's thread.
+      const chatEpoch = useCompanionStore.getState().chatEpoch;
       chatMutation.mutate(
         { question },
         {
           onSuccess: (res) => {
+            if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
             // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
             // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
@@ -289,6 +295,7 @@ export function useDiagnosisChatCompanion(
             revealCited(res);
           },
           onError: (error) => {
+            if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
             // Daily-cap 429 → distinct "limit reached" row with NO retry affordance.
             // Everything else keeps the friendly retryable error row.
             useCompanionStore

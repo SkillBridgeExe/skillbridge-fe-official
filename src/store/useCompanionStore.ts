@@ -105,6 +105,15 @@ interface CompanionState {
   // ── Corner-advisor chat slice (ephemeral — NOT persisted) ──
   /** Two-way chat thread for the calm corner advisor (user asks, assistant answers). */
   chatMessages: CompanionChatMessage[];
+  /**
+   * Monotonic identity of the CURRENT thread. Bumped whenever the thread is replaced
+   * (clearChat / seedChatMessages / resetCompanion) — never reset. Contract for
+   * in-flight sends: capture it when the request leaves, compare before resolving;
+   * a mismatch means the user swapped session/match mid-flight and this answer
+   * belongs to a thread that no longer exists — drop it, or resolve-by-index will
+   * write one conversation's answer over another's row.
+   */
+  chatEpoch: number;
   /** Focus-aware opener for the corner advisor — store-backed so the shell repaints on tab switch. */
   chatOpener: string | null;
   /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
@@ -195,6 +204,7 @@ const initial = {
   issues: [] as ElementIssue[],
   activeIssueIndex: 0,
   chatMessages: [] as CompanionChatMessage[],
+  chatEpoch: 0,
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
@@ -282,7 +292,9 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
   // ── Chat actions (ephemeral corner-advisor thread) ──
   appendChatMessage: (msg) =>
     set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
-  seedChatMessages: (msgs) => set({ chatMessages: msgs }),
+  // Replacing the thread is a NEW thread identity — bump the epoch so any send
+  // still in flight against the old thread drops instead of resolving into this one.
+  seedChatMessages: (msgs) => set((s) => ({ chatMessages: msgs, chatEpoch: s.chatEpoch + 1 })),
   // Append an in-flight assistant placeholder (drives the "thinking" row). The
   // owning question rides along so a later retry heals THIS row in place.
   setChatPending: (question) =>
@@ -371,22 +383,32 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     return question;
   },
   clearChat: () =>
-    set({ chatMessages: [], chatOpener: null, chatSuggestions: [], chatPendingAction: null, chatActionPending: false }),
+    set((s) => ({
+      chatMessages: [],
+      chatEpoch: s.chatEpoch + 1,
+      chatOpener: null,
+      chatSuggestions: [],
+      chatPendingAction: null,
+      chatActionPending: false,
+    })),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
   setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
-    set({
+    set((s) => ({
       ...initial,
       contexts: {},
       dismissed: {},
       chatMessages: [],
+      // Epoch stays monotonic across resets — restoring `initial`'s 0 could collide
+      // with an epoch captured by a send that is still in flight.
+      chatEpoch: s.chatEpoch + 1,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
       chatActionPending: false,
       dismissedIssues: loadDismissedIssues(),
-    }),
+    })),
 }));
 
 /** Index of the last assistant message in the thread, or -1 if there is none. */

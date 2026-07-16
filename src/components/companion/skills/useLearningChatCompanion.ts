@@ -108,6 +108,11 @@ export function useLearningChatCompanion(
 
   const runChat = useCallback(
     (question: string, assistantIndex: number) => {
+      // Thread identity at send time. If the user swaps sessions mid-flight (the page
+      // instance is reused, so the hook never unmounts) the session-change effect
+      // clears + reseeds the thread — resolving `assistantIndex` then would write
+      // THIS session's answer over a row of the OTHER session's thread.
+      const chatEpoch = useCompanionStore.getState().chatEpoch;
       sendLearningChatMessage({
         message: question,
         conversationId: conversationIdRef.current,
@@ -116,11 +121,15 @@ export function useLearningChatCompanion(
         skill_canonical: skillCanonical,
       })
         .then((res) => {
-          conversationIdRef.current = res.conversationId;
+          // Keyed to the session this question was SENT to — correct even if the
+          // user has navigated away, so the BE thread is not forked on return.
           localStorage.setItem(storageKey(sessionId), res.conversationId);
+          if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
+          conversationIdRef.current = res.conversationId;
           useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.message);
         })
         .catch((error) => {
+          if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
           // Daily-cap 429 → distinct "limit reached" row with NO retry; everything
           // else keeps the friendly retryable error row (mirrors the diagnosis hook).
           useCompanionStore
