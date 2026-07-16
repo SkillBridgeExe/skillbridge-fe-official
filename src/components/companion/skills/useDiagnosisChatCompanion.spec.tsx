@@ -107,6 +107,82 @@ function Harness({
   return null;
 }
 
+/**
+ * CompanionShell lives at App.tsx:60 — a SIBLING rendered BEFORE <BrowserRouter> (:63), which owns
+ * the hook host. So in any batch React renders the shell FIRST, and its getTurn() reads a propsRef
+ * written during the host's PREVIOUS render. When a turn settles, the shell re-renders (it subscribes
+ * to chatMessages) and captures the onSend closure from the still-in-flight render; the host's own
+ * post-settle render refreshes propsRef but never re-renders the shell again. The shell is therefore
+ * left holding an onSend whose captured `chatMutation.isPending` is permanently true — every later
+ * send/chip-tap returns silently and the chat is dead. The composer LOOKS enabled because the shell
+ * derives its disabled flag from the store, not from this closure — two sources of truth for "busy".
+ *
+ * These tests call onSend the way the shell does — through the registered context's getTurn() — which
+ * the plain `Harness` tests never do (they use fresh closures and so cannot see this).
+ */
+describe("useDiagnosisChatCompanion — onSend must survive a stale capture (the dead-chat bug)", () => {
+  const getTurnOnSend = (): ((q: string) => void) =>
+    (
+      useCompanionStore.getState().contexts[CHAT_CONTEXT_ID].getTurn().props as {
+        onSend: (q: string) => void;
+      }
+    ).onSend;
+
+  it("an onSend captured WHILE a turn is in flight still sends once that turn resolves", async () => {
+    const qc = new QueryClient();
+    let resolveFirst: ((v: { answer: string }) => void) | undefined;
+    vi.mocked(askDiagnosisChat)
+      .mockImplementationOnce(
+        () => new Promise<{ answer: string }>((r) => { resolveFirst = r; }) as ReturnType<typeof askDiagnosisChat>,
+      )
+      .mockResolvedValue({ answer: "second" });
+
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+
+    getTurnOnSend()("q1");
+    await waitFor(() => expect(askDiagnosisChat).toHaveBeenCalledTimes(1));
+
+    // The shell re-renders during the in-flight window (a pending row was appended) and
+    // captures THIS closure — the one whose chatMutation.isPending is true.
+    const staleOnSend = getTurnOnSend();
+
+    resolveFirst!({ answer: "first" });
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.pending)).toBe(false),
+    );
+
+    // The shell got no further re-render, so it still holds staleOnSend. This is the tap.
+    staleOnSend("q2");
+    await waitFor(() => expect(askDiagnosisChat).toHaveBeenCalledTimes(2));
+  });
+
+  it("still refuses a genuine double-send while a turn IS in flight", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockImplementation(
+      () => new Promise<{ answer: string }>(() => {}) as ReturnType<typeof askDiagnosisChat>,
+    );
+
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+
+    getTurnOnSend()("q1");
+    await waitFor(() => expect(askDiagnosisChat).toHaveBeenCalledTimes(1));
+
+    getTurnOnSend()("q2"); // second tap while the first is still in flight → ignored
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.pending)).toBe(true),
+    );
+    expect(askDiagnosisChat).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("useDiagnosisChatCompanion — focus drives store-backed opener/chips", () => {
   it("pushes a cv_audit opener + 3 chips into the store on mount", () => {
     const qc = new QueryClient();

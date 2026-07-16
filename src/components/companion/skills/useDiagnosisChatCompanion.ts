@@ -27,7 +27,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useToast } from "@/hooks/use-toast";
-import { useCompanionStore } from "@/store/useCompanionStore";
+import { isChatBusy, useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { askDiagnosisChat, loadMatchForChat } from "@/services/diagnosis.service";
@@ -305,19 +305,21 @@ export function useDiagnosisChatCompanion(
     (question: string) => {
       const text = question.trim();
       if (!text) return;
-      // Guard against a double-send race: ignore while a request is in flight.
-      if (chatMutation.isPending) return;
+      // Guard against a double-send race — read LIVE store state, never a closed-over
+      // mutation flag. CompanionShell hands this callback out from a propsRef written on
+      // the host's PREVIOUS render, so a closed-over isPending gets captured as
+      // permanently-true once a turn settles and every later send dies silently.
       const store = useCompanionStore.getState();
+      if (isChatBusy(store)) return;
       store.appendChatMessage({ role: "user", text });
       store.setChatPending(text);
       // The pending placeholder is now the last message → its index.
       const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
       runChat(text, assistantIndex);
     },
-    // chatMutation drives the pending guard; runChat carries the send logic. onSend
-    // identity changing per render no longer re-registers the context (register is
-    // mount-only), so this is safe.
-    [chatMutation, runChat],
+    // runChat carries the send logic; the busy guard reads the store live, so this
+    // callback deliberately closes over NO render-scoped pending flag.
+    [runChat],
   );
 
   /**
@@ -327,13 +329,14 @@ export function useDiagnosisChatCompanion(
    */
   const onRetry = useCallback(
     (index: number) => {
-      if (chatMutation.isPending) return;
+      // Same live-state guard as onSend (this callback is handed out the same stale way).
       const store = useCompanionStore.getState();
+      if (isChatBusy(store)) return;
       const question = store.retryAssistantAt(index);
       if (!question) return;
       runChat(question, index);
     },
-    [chatMutation, runChat],
+    [runChat],
   );
 
   const onSuggestionTap = useCallback(

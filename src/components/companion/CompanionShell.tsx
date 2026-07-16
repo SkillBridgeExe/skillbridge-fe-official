@@ -29,7 +29,7 @@ import {
   FloatingPortal,
 } from "@floating-ui/react";
 import { MascotSticker, type MascotState } from "@/components/mascot/MascotSticker";
-import { useCompanionStore, bubbleVisible } from "@/store/useCompanionStore";
+import { useCompanionStore, bubbleVisible, isChatBusy } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
 import { CvBuilderSkill } from "./skills/CvBuilderSkill";
 import { CvIntakeSkill } from "./skills/CvIntakeSkill";
@@ -81,8 +81,10 @@ export function CompanionShell() {
   // chatActionPending (store-backed) ORs in a confirmed chip action's own network
   // call (e.g. view_match's loadMatchForChat) — same disable, no fake chat row.
   const chatActionPending = useCompanionStore((s) => s.chatActionPending);
-  const chatPending =
-    chatMessages.some((m) => m.role === "assistant" && !!m.pending) || chatActionPending;
+  // isChatBusy is the SHARED definition — the send/retry guards read the very same predicate
+  // live from the store, so the composer's enabled state and "will this send actually fire?"
+  // can never disagree again (they did: the guard closed over a stale flag → dead chat).
+  const chatPending = isChatBusy({ chatMessages, chatActionPending });
   // Subscribe to the store-backed opener + chips so the bubble REPAINTS when the user
   // switches tabs (focus change). The hook pushes these via setChatDisplay; reading them
   // from the subscribed store — not turn.props — is what makes the swap live on tab switch.
