@@ -335,23 +335,28 @@ function AssistantTextRow({
   const [shouldAnimate] = useState(animate);
   const { displayed, done } = useTypewriter(m.text, { animate: shouldAnimate });
 
-  // R7: scroll the thread while revealed text grows.
+  // R7: scroll while revealed text grows — AND once more on the `done` flip:
+  // the chips/badge/next-step mount exactly then, and the parent's scroll only
+  // reacts to `messages` changes, so without this last call they mount clipped
+  // below the fold for a reader pinned to the bottom.
   useEffect(() => {
-    if (shouldAnimate && !done) {
+    if (shouldAnimate) {
       onScrollDuringReveal();
     }
   }, [displayed, shouldAnimate, done, onScrollDuringReveal]);
 
-  const isAnimating = shouldAnimate && !done;
-
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
-        {/* R5: during animation, visible span is aria-hidden + sr-only sibling has full text. */}
-        {isAnimating ? (
+        {/* R5: the visible span stays aria-hidden even AFTER the reveal. Swapping a
+            bare text node in at `done` re-announces the whole answer — the thread
+            is an aria-live region and swapped-in text counts as an addition. The
+            sr-only sibling (announced once at mount) stays the accessible copy;
+            select-none keeps it out of copy-paste. */}
+        {shouldAnimate ? (
           <>
             <span aria-hidden="true">{displayed}</span>
-            <span className="sr-only">{m.text}</span>
+            <span className="sr-only select-none">{m.text}</span>
           </>
         ) : (
           m.text

@@ -11,8 +11,11 @@
 // • Speed scales with length so full reveal completes in ≤ 2s (R2).
 // • Advances by code points, never by UTF-16 index (R4 — no broken emoji/surrogates).
 // • Interval is cleaned up on unmount or text change (R9).
+// • Progress derives from ELAPSED TIME, not a tick counter — hidden tabs throttle
+//   setInterval to ~1 tick/s (1/min after 5 idle minutes), and a counter would
+//   stretch the 2s reveal into minutes with the chips hidden the whole way.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /** Target wall-clock reveal duration (ms). Actual may be slightly shorter. */
 const MAX_DURATION_MS = 2000;
@@ -32,11 +35,6 @@ export function useTypewriter(
   );
   const [done, setDone] = useState(() => !opts.animate);
 
-  // Refs survive across ticks without triggering re-renders.
-  const codePointsRef = useRef<string[]>([]);
-  const indexRef = useRef(0);
-  const charsPerTickRef = useRef(1);
-
   useEffect(() => {
     // ── Fast path: no animation requested ──
     if (!opts.animate) {
@@ -47,8 +45,6 @@ export function useTypewriter(
 
     // ── Prepare code-point array (R4) ──
     const cps = Array.from(text);
-    codePointsRef.current = cps;
-    indexRef.current = 0;
 
     if (cps.length === 0) {
       setDisplayed("");
@@ -56,26 +52,26 @@ export function useTypewriter(
       return;
     }
 
-    // ── Speed scaling (R2): finish in ≤ MAX_DURATION_MS ──
-    const totalTicks = Math.floor(MAX_DURATION_MS / TICK_MS);
-    const perTick = Math.max(1, Math.ceil(cps.length / totalTicks));
-    charsPerTickRef.current = perTick;
+    // ── Speed scaling (R2): finish in ≤ MAX_DURATION_MS, elapsed-based ──
+    // Each tick derives the reveal position from wall-clock elapsed, so a
+    // throttled background tab jumps straight to the right position on whatever
+    // tick it does get, and completes on the first tick past the budget.
+    const durationMs = Math.min(MAX_DURATION_MS, cps.length * TICK_MS);
+    const startedAt = Date.now();
 
     // Start with empty string; first tick fires after TICK_MS.
     setDisplayed("");
     setDone(false);
 
     const id = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
       const next = Math.min(
-        indexRef.current + charsPerTickRef.current,
-        codePointsRef.current.length,
+        cps.length,
+        Math.max(1, Math.ceil((elapsed / durationMs) * cps.length)),
       );
-      indexRef.current = next;
+      setDisplayed(cps.slice(0, next).join(""));
 
-      const slice = codePointsRef.current.slice(0, next).join("");
-      setDisplayed(slice);
-
-      if (next >= codePointsRef.current.length) {
+      if (next >= cps.length) {
         setDone(true);
         clearInterval(id);
       }

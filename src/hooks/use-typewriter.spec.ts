@@ -144,6 +144,27 @@ describe("useTypewriter", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  // ── 7. Background-tab throttling: progress is elapsed-based, not tick-counted ──
+  it("a throttled tab (wall clock passes, ticks are rare) completes on its next tick", () => {
+    const text = "A".repeat(500);
+    const { result } = renderHook(() =>
+      useTypewriter(text, { animate: true }),
+    );
+
+    tick(28); // one normal early tick → partial reveal
+    expect(result.current.done).toBe(false);
+    expect(result.current.displayed.length).toBeLessThan(text.length);
+
+    // Hidden tab: 5s of wall clock passes but NO intermediate ticks fire
+    // (Chrome throttles setInterval to ~1 tick/s when the tab is hidden).
+    act(() => {
+      vi.setSystemTime(Date.now() + 5000);
+      vi.advanceTimersByTime(28); // the single throttled tick
+    });
+    expect(result.current.displayed).toBe(text);
+    expect(result.current.done).toBe(true);
+  });
+
   // ── Edge: empty string ──
   it("handles empty text gracefully", () => {
     const { result } = renderHook(() =>

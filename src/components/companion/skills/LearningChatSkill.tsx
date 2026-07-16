@@ -239,21 +239,23 @@ function LearningAssistantTextRow({
   const [shouldAnimate] = useState(animate);
   const { displayed, done } = useTypewriter(m.text, { animate: shouldAnimate });
 
+  // Scroll while the reveal grows AND once more on the `done` flip (mirrors
+  // DiagnosisChatSkill — anything mounting at `done` must not be clipped).
   useEffect(() => {
-    if (shouldAnimate && !done) {
+    if (shouldAnimate) {
       onScrollDuringReveal();
     }
   }, [displayed, shouldAnimate, done, onScrollDuringReveal]);
 
-  const isAnimating = shouldAnimate && !done;
-
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
-        {isAnimating ? (
+        {/* Stays aria-hidden after the reveal too — swapping in a bare text node at
+            `done` would re-announce the answer (aria-live region, mirrors Diagnosis). */}
+        {shouldAnimate ? (
           <>
             <span aria-hidden="true">{displayed}</span>
-            <span className="sr-only">{m.text}</span>
+            <span className="sr-only select-none">{m.text}</span>
           </>
         ) : (
           m.text
