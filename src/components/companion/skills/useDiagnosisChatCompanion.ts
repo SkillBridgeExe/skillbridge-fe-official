@@ -346,6 +346,8 @@ export function useDiagnosisChatCompanion(
       if (isChatBusy(store)) return;
       const question = store.retryAssistantAt(index);
       if (!question) return;
+      // A retry is a new in-flight turn — the previous verdict resets, same as onSend.
+      store.setChatAnswerTone(null);
       runChat(question, index);
     },
     [runChat],

@@ -894,4 +894,31 @@ describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)
     );
     expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
   });
+
+  it("a per-row retry clears the stale tone, same as a fresh send", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockRejectedValueOnce(new Error("boom"));
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "ok", answer_kind: "grounded" });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" />
+      </QueryClientProvider>,
+    );
+    getTurnOnSend()("q");
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.error)).toBe(true),
+    );
+    // Simulate another turn having answered meanwhile — the pose verdict is stale for a retry.
+    useCompanionStore.getState().setChatAnswerTone("refusal");
+    const failedIndex = useCompanionStore
+      .getState()
+      .chatMessages.findIndex((m) => m.role === "assistant" && m.error);
+    const { onRetry } = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID].getTurn().props as {
+      onRetry: (index: number) => void;
+    };
+    onRetry(failedIndex);
+    // Cleared synchronously at retry — busy carries the pose until the retried row resolves.
+    expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+    await waitFor(() => expect(useCompanionStore.getState().chatAnswerTone).toBe("grounded"));
+  });
 });
