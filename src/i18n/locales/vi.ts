@@ -3532,6 +3532,8 @@ export default {
         error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
         limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
         verifiedWithTool: "Đã kiểm chứng bằng {{tool}}",
+        provenance: "Dựa trên {{count}} dữ kiện",
+        provenanceYouSaid: "bạn đã nói: {{value}}",
         suggestions: [
           "Sao điểm mình vậy?",
           "Chỗ nào yếu nhất?",

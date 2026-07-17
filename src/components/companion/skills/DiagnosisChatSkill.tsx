@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
 import type { CompanionChatMessage } from "@/store/useCompanionStore";
 import type { ChatActionChip } from "./chat-action-chips";
+import type { GroundedFact } from "@/types/companion";
 
 interface Props {
   messages: CompanionChatMessage[];
@@ -305,6 +306,84 @@ export function DiagnosisChatSkill({
   );
 }
 
+// ─── ProvenanceRow ("Dựa trên N dữ kiện", Wave 2) ────────────────────
+// Exact-by-construction: the facts arrive from the BE gate's OWN resolution —
+// this component only renders, never derives. Collapsed by default (one quiet
+// line under the answer); expanding shows one chip per fact. dimension/gap
+// chips reuse the existing jump pipeline; 'conversation' facts ("you said 2")
+// are informational text, deliberately NOT clickable — a user-said number has
+// no report anchor and must not dress up as verification.
+
+export function ProvenanceRow({
+  facts,
+  answerKind,
+  onAction,
+  t,
+}: {
+  facts?: GroundedFact[];
+  answerKind?: CompanionChatMessage["answerKind"];
+  onAction?: (chip: ChatActionChip) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  // Double guard: the BE already sends [] on refusal/canned; a refusal must never advertise.
+  if (!facts?.length || answerKind === "refusal") return null;
+
+  const chipClass =
+    "inline-flex items-center gap-1 rounded-full border border-[#D8DEE4] bg-[#F8F9FA] px-2 py-0.5 text-[11px] text-[#5F6B76]";
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-[#8A94A6] hover:text-[#5F6B76] transition-colors"
+      >
+        <ShieldCheck className="h-3 w-3" />
+        {t("companion.chat.provenance", { count: facts.length })}
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {facts.map((f) => {
+            if (f.kind === "dimension" || f.kind === "gap") {
+              const anchorId = f.kind === "dimension" ? `dim-${f.id}` : `gap-${f.id}`;
+              const label =
+                f.kind === "dimension"
+                  ? t(`review.dims.${f.id}`, { defaultValue: f.label })
+                  : f.label;
+              return (
+                <button
+                  key={`${f.kind}-${f.id}`}
+                  type="button"
+                  onClick={() =>
+                    onAction?.({ kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId })
+                  }
+                  className={cn(chipClass, "hover:bg-[#EFF1F4] transition-colors")}
+                >
+                  <span>{label}</span>
+                  <ArrowUpRight className="h-3 w-3 shrink-0" />
+                </button>
+              );
+            }
+            if (f.kind === "conversation") {
+              return (
+                <span key={`conv-${f.id}`} className={chipClass}>
+                  {t("companion.chat.provenanceYouSaid", { value: f.label })}
+                </span>
+              );
+            }
+            // tool / other_match: informational label (other_match has no on-page anchor).
+            return (
+              <span key={`${f.kind}-${f.id}`} className={chipClass}>
+                {f.kind === "tool" ? toolLabel(f.id) : f.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AssistantTextRow (typewriter-enabled) ───────────────────────────
 // Extracted so the useTypewriter hook runs per-row. Hooks cannot be called
 // inside map callbacks, so a sub-component is required.
@@ -399,6 +478,13 @@ function AssistantTextRow({
                 </button>
               </div>
             )}
+            {/* Wave 2: provenance row — same reveal gate as the other chrome. */}
+            <ProvenanceRow
+              facts={m.groundedFacts}
+              answerKind={m.answerKind}
+              onAction={onAction}
+              t={t}
+            />
           </>
         )}
       </div>

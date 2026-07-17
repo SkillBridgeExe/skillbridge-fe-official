@@ -3561,6 +3561,8 @@ export default {
         error: "The assistant is being connected — please try again in a moment.",
         limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
         verifiedWithTool: "Verified with {{tool}}",
+        provenance: "Based on {{count}} verified facts",
+        provenanceYouSaid: "you said: {{value}}",
         suggestions: [
           "Why is my score this?",
           "What's my weakest part?",
