@@ -281,6 +281,9 @@ export function useDiagnosisChatCompanion(
         {
           onSuccess: (res) => {
             if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
+            // Wave 1: the gate verdict drives the mascot pose (refusal → sheepish,
+            // grounded → confident). Nullish for BEs that don't send answer_kind yet.
+            useCompanionStore.getState().setChatAnswerTone(res.answer_kind ?? null);
             // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
             // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
@@ -320,6 +323,8 @@ export function useDiagnosisChatCompanion(
       if (isChatBusy(store)) return;
       store.appendChatMessage({ role: "user", text });
       store.setChatPending(text);
+      // A new turn has no verdict yet — the busy state carries the pose until resolve.
+      store.setChatAnswerTone(null);
       // The pending placeholder is now the last message → its index.
       const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
       runChat(text, assistantIndex);

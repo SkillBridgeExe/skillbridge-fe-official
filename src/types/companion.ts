@@ -175,6 +175,9 @@ export interface DiagnosisChatRequest {
 export interface DiagnosisChatResponse {
   /** The grounded answer text to show in the thread. */
   answer: string;
+  /** Gate verdict (Wave 1) — drives the mascot pose: refusal → sheepish, grounded →
+   *  confident. Optional: older BEs simply don't send it. */
+  answer_kind?: "grounded" | "refusal" | "canned";
   /** If the answer is about a score dimension, its key (e.g. "skills_relevance") → scroll `dim-{key}`. */
   cited_dimension?: string;
   /** If the answer is about a specific gap, its id → scroll `gap-{id}`. */

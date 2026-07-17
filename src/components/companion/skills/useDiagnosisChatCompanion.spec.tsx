@@ -856,3 +856,42 @@ describe("useDiagnosisChatCompanion — cross-JD view_match chip", () => {
     });
   });
 });
+
+describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)", () => {
+  const getTurnOnSend = (): ((q: string) => void) =>
+    (
+      useCompanionStore.getState().contexts[CHAT_CONTEXT_ID].getTurn().props as {
+        onSend: (q: string) => void;
+      }
+    ).onSend;
+
+  it("stores the BE answer_kind when the answer resolves", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "refused", answer_kind: "refusal" });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" />
+      </QueryClientProvider>,
+    );
+    getTurnOnSend()("q");
+    await waitFor(() => expect(useCompanionStore.getState().chatAnswerTone).toBe("refusal"));
+  });
+
+  it("a new send clears the stale tone; a BE without answer_kind resolves to null", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "ok" });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" />
+      </QueryClientProvider>,
+    );
+    useCompanionStore.getState().setChatAnswerTone("grounded"); // stale tone from a previous turn
+    getTurnOnSend()("q");
+    // Cleared synchronously at send — the busy state carries the pose while in flight.
+    expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.pending)).toBe(false),
+    );
+    expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+  });
+});

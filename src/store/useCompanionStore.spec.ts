@@ -378,4 +378,17 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     s.resolveLastAssistant("a");
     expect(useCompanionStore.getState().chatEpoch).toBe(start + 3);
   });
+
+  it("chatAnswerTone follows the latest answer and resets with the thread (Wave 1)", () => {
+    const s = useCompanionStore.getState();
+    s.setChatAnswerTone("refusal");
+    expect(useCompanionStore.getState().chatAnswerTone).toBe("refusal");
+    s.setChatAnswerTone("grounded");
+    expect(useCompanionStore.getState().chatAnswerTone).toBe("grounded");
+    s.clearChat();
+    expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+    s.setChatAnswerTone("canned");
+    s.resetCompanion();
+    expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+  });
 });
