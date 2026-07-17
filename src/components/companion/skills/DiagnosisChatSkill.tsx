@@ -308,6 +308,11 @@ export function DiagnosisChatSkill({
           <Send className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Wave 2 positioning line — the one-sentence trust contract, always visible. */}
+      <p className="text-center text-[10px] leading-snug text-[#9AA1A6]">
+        {t("companion.chat.positioning")}
+      </p>
     </div>
   );
 }
