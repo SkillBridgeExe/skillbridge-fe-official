@@ -114,6 +114,12 @@ interface CompanionState {
    * write one conversation's answer over another's row.
    */
   chatEpoch: number;
+  /**
+   * Gate verdict of the LATEST resolved answer (Wave 1) — drives the mascot pose
+   * (refusal → sheepish, grounded → confident). Null while nothing resolved yet,
+   * on a fresh thread, or for answers from BEs that don't send answer_kind.
+   */
+  chatAnswerTone: 'grounded' | 'refusal' | 'canned' | null;
   /** Focus-aware opener for the corner advisor — store-backed so the shell repaints on tab switch. */
   chatOpener: string | null;
   /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
@@ -185,6 +191,8 @@ interface CompanionState {
   clearChat: () => void;
   /** Store a chip action that needs explicit confirmation before spending quota. */
   setChatPendingAction: (action: ChatActionChip | null) => void;
+  /** Record the gate verdict of the answer that just resolved (Wave 1 mascot pose). */
+  setChatAnswerTone: (tone: 'grounded' | 'refusal' | 'canned' | null) => void;
   /** Flip while a confirmed chip action's real network call is in flight. */
   setChatActionPending: (pending: boolean) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
@@ -205,6 +213,7 @@ const initial = {
   activeIssueIndex: 0,
   chatMessages: [] as CompanionChatMessage[],
   chatEpoch: 0,
+  chatAnswerTone: null as 'grounded' | 'refusal' | 'canned' | null,
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
@@ -386,12 +395,14 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     set((s) => ({
       chatMessages: [],
       chatEpoch: s.chatEpoch + 1,
+      chatAnswerTone: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
       chatActionPending: false,
     })),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
+  setChatAnswerTone: (chatAnswerTone) => set({ chatAnswerTone }),
   setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
@@ -403,6 +414,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       // Epoch stays monotonic across resets — restoring `initial`'s 0 could collide
       // with an epoch captured by a send that is still in flight.
       chatEpoch: s.chatEpoch + 1,
+      chatAnswerTone: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,

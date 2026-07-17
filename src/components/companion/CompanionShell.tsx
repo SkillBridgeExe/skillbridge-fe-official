@@ -50,6 +50,23 @@ const POSE: Record<string, MascotState> = {
   presenting: "tip",
 };
 
+/**
+ * Pose for the CHAT skills (Wave 1): a pure function of two store facts — a reply in
+ * flight, and the latest gate verdict (answer_kind). The LLM is never in the animation
+ * loop: thinking covers the whole round-trip latency, sheepish owns a refusal, confident
+ * owns a grounded answer, and everything else keeps the advisor's default lightbulb.
+ * Exported for its spec.
+ */
+export function chatPose(
+  busy: boolean,
+  tone: "grounded" | "refusal" | "canned" | null,
+): MascotState {
+  if (busy) return "thinking";
+  if (tone === "refusal") return "sheepish";
+  if (tone === "grounded") return "confident";
+  return "tip";
+}
+
 const SUCCESS_DURATION = 1200; // ms
 
 export function CompanionShell() {
@@ -210,23 +227,25 @@ export function CompanionShell() {
     [refs, bubbleFloat.refs],
   );
 
-  // Pose: dragging → "swimming"; success flash → "success";
-  // diagnosis advisory skills → "tip"; otherwise cv_intake/cv_builder follow mascotState.
+  // Pose: dragging → "swimming"; success flash → "success"; chat skills → event-driven
+  // emotion (Wave 1); other advisory skills → "tip"; cv_intake/cv_builder follow mascotState.
+  const isChatSkill = turn?.skill === "diagnosis_chat" || turn?.skill === "learning_chat";
   const isAdvisorySkill = turn?.skill === "diagnosis_results"
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
     || turn?.skill === "diagnosis_progress"
     || turn?.skill === "diagnosis_element_issue"
-    || turn?.skill === "diagnosis_commentary"
-    || turn?.skill === "diagnosis_chat"
-    || turn?.skill === "learning_chat";
+    || turn?.skill === "diagnosis_commentary";
+  const chatAnswerTone = useCompanionStore((s) => s.chatAnswerTone);
   const pose: MascotState = isDragging
     ? "swimming"
     : showSuccess
       ? "success"
-      : isAdvisorySkill
-        ? "tip"
-        : (POSE[mascotState] ?? "idle");
+      : isChatSkill
+        ? chatPose(chatPending, chatAnswerTone)
+        : isAdvisorySkill
+          ? "tip"
+          : (POSE[mascotState] ?? "idle");
 
   // Success pose after apply: flash for SUCCESS_DURATION, robustly cleaned up.
   useEffect(() => {
