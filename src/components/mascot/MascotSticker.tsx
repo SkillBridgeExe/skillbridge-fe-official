@@ -32,6 +32,8 @@ export type MascotState =
   | "love"
   | "swimming"
   | "thinking"
+  | "sheepish"
+  | "confident"
   | "video_loading"
   | "video_laptop1";
 
@@ -43,6 +45,10 @@ const POSE: Record<MascotState, string> = {
   love: heartsPng,
   swimming: swimmingPng,
   thinking: thinkingPng,
+  // Wave 1 chat-verdict emotions: reuse existing art, the MOTION carries the feeling
+  // until dedicated poses exist (sheepish = droopy thinking, confident = calm thumbs-up).
+  sheepish: thinkingPng,
+  confident: thumbsUpPng,
   video_loading: "", // Video doesn't use PNG pose
   video_laptop1: "", // Video doesn't use PNG pose
 };
@@ -82,6 +88,18 @@ const MOTION: Record<MascotState, { animate: TargetAndTransition; transition: Tr
   thinking: {
     animate: { y: [0, -3, 0], rotate: [0, -5, 0, 5, 0] },
     transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+  },
+  // Droopy, slow "áy náy" — head-down tilt held, gentle sink. Shown after a gate
+  // refusal: the dolphin is sorry it can't say more, not proud of it.
+  sheepish: {
+    animate: { y: [0, 3, 3, 0], rotate: [0, -7, -7, 0] },
+    transition: { duration: 2.8, repeat: Infinity, ease: "easeInOut" },
+  },
+  // Grounded-answer confidence: one gentle rise-and-settle, calmer than `success`
+  // (every grounded answer earning a celebratory jump would cheapen the jump).
+  confident: {
+    animate: { y: [0, -6, 0], scale: [1, 1.03, 1] },
+    transition: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
   },
   // Video loading: video itself has animation, so we leave this empty.
   video_loading: {
