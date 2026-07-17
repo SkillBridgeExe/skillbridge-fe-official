@@ -1990,6 +1990,8 @@ export default {
         askCompanion: "Ask your AI coach",
         downloadCv: "Download original CV",
       },
+      askDimension: "Ask the dolphin about this score",
+      askGap: "Ask the dolphin about this gap",
       keywordTable: {
         thSkill: "Skill",
         thCv: "In CV",
@@ -3567,6 +3569,8 @@ export default {
         memoryRole: "Target role: {{value}}",
         memoryDeadline: "Deadline: {{value}}",
         memoryCovered: "Already advised on: {{value}}",
+        askDimensionQ: "Explain my {{name}} score of {{score}}/20 for me",
+        askGapQ: "How should I tackle the {{name}} gap?",
         suggestions: [
           "Why is my score this?",
           "What's my weakest part?",

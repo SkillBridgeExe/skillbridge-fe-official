@@ -472,6 +472,15 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
     // Force bubble open even if dismissed (cf. CompanionShell.handleDolphinClick)
     useCompanionStore.setState({ bubbleOpen: true });
   }, [chat, t]);
+  // Wave 2 entry point: "ask the dolphin about THIS gap" — same recipe, gap-scoped focus.
+  const askGap = useCallback(
+    (displayName: string) => {
+      chat.sendQuestion(t("companion.chat.askGapQ", { name: displayName }), "gap_results");
+      useCompanionStore.getState().activateContext(CHAT_CONTEXT_ID);
+      useCompanionStore.setState({ bubbleOpen: true });
+    },
+    [chat, t],
+  );
   // The chat advisor owns the bubble while registered → the legacy results/proveit
   // nudges gate off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
@@ -700,7 +709,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                       kicker="02"
                       title={t("editorial.chap2")}
                     >
-                      <GapReportCard matchId={jdMatch.matchId} />
+                      <GapReportCard matchId={jdMatch.matchId} onAsk={askGap} />
                     </Chapter>
                   </div>
                 )}

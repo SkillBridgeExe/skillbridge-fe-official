@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Check, AlertTriangle, X, ArrowRight, ChevronDown } from "lucide-react";
+import { Check, AlertTriangle, X, ArrowRight, ChevronDown, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { CheckGroupData, CheckRowData } from "@/lib/diagnosis-report";
@@ -13,7 +13,7 @@ const PASTEL = {
 
 const SEVERITY_PASTEL = { high: PASTEL.red, medium: PASTEL.yellow, low: PASTEL.gray } as const;
 
-export function CheckRow({ item }: { item: CheckRowData }) {
+export function CheckRow({ item, onAsk }: { item: CheckRowData; onAsk?: () => void }) {
   const { t } = useTranslation("diagnosis");
   const isPass = item.status === "pass";
   const isWarn = item.status === "warn";
@@ -44,6 +44,18 @@ export function CheckRow({ item }: { item: CheckRowData }) {
           <p className="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
             {t(`provenance.source.${item.provenance.source}`)} · {t(`provenance.conf.${item.provenance.confidence}`)}
           </p>
+        )}
+
+        {/* Wave 2 entry point — only on rows the companion can actually cite (dim-*). */}
+        {onAsk && (
+          <button
+            type="button"
+            onClick={onAsk}
+            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            {t("report.askDimension")}
+          </button>
         )}
 
         {!isPass && item.hint && (
@@ -81,9 +93,11 @@ export function CheckRow({ item }: { item: CheckRowData }) {
 interface CheckGroupProps {
   group: CheckGroupData;
   children?: ReactNode;
+  /** Wave 2: "ask the dolphin about this dimension" — wired only onto dim-* rows. */
+  onAskDimension?: (item: CheckRowData) => void;
 }
 
-export function CheckGroup({ group, children }: CheckGroupProps) {
+export function CheckGroup({ group, children, onAskDimension }: CheckGroupProps) {
   const { t } = useTranslation("diagnosis");
   const [open, setOpen] = useState(group.issueCount > 0);
   const clean = group.issueCount === 0;
@@ -134,7 +148,17 @@ export function CheckGroup({ group, children }: CheckGroupProps) {
           {group.items && group.items.length > 0 && (
             <div className="divide-y divide-[#F1F1EF]">
               {group.items.map((item) => (
-                <CheckRow key={item.id} item={item} />
+                <CheckRow
+                  key={item.id}
+                  item={item}
+                  // Only AI-dimension rows have a dim-* anchor the companion can cite;
+                  // ATS/content rows share this component and must not grow the button.
+                  onAsk={
+                    onAskDimension && item.anchorId?.startsWith("dim-")
+                      ? () => onAskDimension(item)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           )}

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   TrendingUp, CheckCircle2, AlertCircle, X, Loader2,
-  Briefcase, Globe, GraduationCap, Building2, MapPin, Code, XCircle
+  Briefcase, Globe, GraduationCap, Building2, MapPin, Code, XCircle, MessageCircle
 } from "lucide-react";
 import { useGapReportQuery } from "@/hooks/use-diagnosis";
 import type { GapReportDto } from "@shared/api";
@@ -59,7 +59,14 @@ function severityBand(severity: number): "high" | "med" | "low" {
  * W24: restyle editorial — hairline divider, serif heading, bỏ Card wrapper.
  * W23 logic giữ nguyên: gap_items filter/sort/slice, render-when-present, fallback.
  */
-export function GapReportCard({ matchId }: { matchId: string }) {
+export function GapReportCard({
+  matchId,
+  onAsk,
+}: {
+  matchId: string;
+  /** Wave 2: "ask the dolphin about this gap" — opens the companion with a scoped question. */
+  onAsk?: (displayName: string) => void;
+}) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang: "vi" | "en" = i18n.language?.startsWith("vi") ? "vi" : "en";
 
@@ -283,6 +290,18 @@ export function GapReportCard({ matchId }: { matchId: string }) {
                         <span className="font-semibold text-slate-700 mr-1.5">{t("gapReport.actions")}:</span>{" "}
                         {gap.recommended_next_action}
                       </div>
+
+                      {/* Wave 2 entry point — user-pull, never mascot-push. */}
+                      {onAsk && (
+                        <button
+                          type="button"
+                          onClick={() => onAsk(gap.display_name)}
+                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary transition-colors hover:text-primary/80"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {t("report.askGap")}
+                        </button>
+                      )}
 
                       {/* Bottom metadata tags */}
                       {showBottomMetadata && (

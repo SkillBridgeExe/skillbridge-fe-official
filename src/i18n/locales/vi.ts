@@ -1984,6 +1984,8 @@ export default {
         askCompanion: "Hỏi AI đồng hành",
         downloadCv: "Tải CV gốc",
       },
+      askDimension: "Hỏi cá heo về điểm này",
+      askGap: "Hỏi cá heo về mục này",
       keywordTable: {
         thSkill: "Kỹ năng",
         thCv: "Trong CV",
@@ -3538,6 +3540,8 @@ export default {
         memoryRole: "Mục tiêu: {{value}}",
         memoryDeadline: "Thời hạn: {{value}}",
         memoryCovered: "Đã tư vấn: {{value}}",
+        askDimensionQ: "Giải thích điểm {{name}} {{score}}/20 của mình giúp mình với",
+        askGapQ: "Mình nên xử lý khoảng trống {{name}} thế nào?",
         suggestions: [
           "Sao điểm mình vậy?",
           "Chỗ nào yếu nhất?",

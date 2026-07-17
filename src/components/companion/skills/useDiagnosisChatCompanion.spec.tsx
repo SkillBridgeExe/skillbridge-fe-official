@@ -964,4 +964,34 @@ describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)
     getTurnOnSend()("q2");
     await waitFor(() => expect(useCompanionStore.getState().chatKnownState).toBeNull());
   });
+
+  it("a per-turn focus override rides the wire; without it the hook focus stands (Wave 2 entry points)", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockResolvedValue({ answer: "ok" });
+    let send!: ReturnType<typeof useDiagnosisChatCompanion>["sendQuestion"];
+    function Probe() {
+      send = useDiagnosisChatCompanion(reviewData, "cv_audit", undefined, "cv-1").sendQuestion;
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <Probe />
+      </QueryClientProvider>,
+    );
+    send("mình nên xử lý gap này thế nào?", "gap_results");
+    await waitFor(() =>
+      expect(vi.mocked(askDiagnosisChat)).toHaveBeenCalledWith(
+        expect.objectContaining({ focus: "gap_results" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.pending)).toBe(false),
+    );
+    send("câu hỏi thường");
+    await waitFor(() =>
+      expect(vi.mocked(askDiagnosisChat)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ focus: "cv_audit" }),
+      ),
+    );
+  });
 });
