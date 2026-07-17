@@ -321,6 +321,12 @@ export function useDiagnosisChatCompanion(
     [chatMutation, revealCited, gapReportQuery.data],
   );
 
+  // Per-row focus override, keyed by `${epoch}:${index}` so a per-row RETRY re-sends with
+  // the SAME scope the row was originally asked with (an entry-point send is gap/dim-scoped;
+  // falling back to the tab focus on retry would shift the answer's emphasis). Epoch in the
+  // key because a cleared thread reuses indexes — stale entries must never cross threads.
+  const focusByRowRef = useRef<Record<string, DiagnosisChatFocus | undefined>>({});
+
   const onSend = useCallback(
     (question: string, focusOverride?: DiagnosisChatFocus) => {
       const text = question.trim();
@@ -337,6 +343,8 @@ export function useDiagnosisChatCompanion(
       store.setChatAnswerTone(null);
       // The pending placeholder is now the last message → its index.
       const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
+      focusByRowRef.current[`${useCompanionStore.getState().chatEpoch}:${assistantIndex}`] =
+        focusOverride;
       runChat(text, assistantIndex, focusOverride);
     },
     // runChat carries the send logic; the busy guard reads the store live, so this
@@ -358,7 +366,7 @@ export function useDiagnosisChatCompanion(
       if (!question) return;
       // A retry is a new in-flight turn — the previous verdict resets, same as onSend.
       store.setChatAnswerTone(null);
-      runChat(question, index);
+      runChat(question, index, focusByRowRef.current[`${store.chatEpoch}:${index}`]);
     },
     [runChat],
   );

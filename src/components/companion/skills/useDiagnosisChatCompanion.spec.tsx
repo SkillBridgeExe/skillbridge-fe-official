@@ -302,6 +302,32 @@ describe("useDiagnosisChatCompanion — persisted thread memory", () => {
     expect(useCompanionStore.getState().chatOpener).toBe("continue:Why is React weak?");
   });
 
+  it("stores the restore payload's known_state so the memory card survives a reload (Wave 2)", async () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["chat-thread", "match-1"], {
+      turns: [
+        {
+          role: "user",
+          text: "Mình nhắm vị trí AI Engineer nhé",
+          ts: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+      known_state: { target_role: "AI Engineer", deadline: null, covered_gaps: [] },
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="gap_results" data={reviewWithMatch} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatKnownState).toEqual({
+        target_role: "AI Engineer",
+        deadline: null,
+        covered_gaps: [],
+      }),
+    );
+  });
+
   it("does not overwrite an active local chat with persisted turns", async () => {
     const qc = new QueryClient();
     qc.setQueryData(["chat-thread", "match-1"], {
@@ -991,6 +1017,39 @@ describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)
     await waitFor(() =>
       expect(vi.mocked(askDiagnosisChat)).toHaveBeenLastCalledWith(
         expect.objectContaining({ focus: "cv_audit" }),
+      ),
+    );
+  });
+
+  it("a retry re-sends with the SAME focus override the row was asked with", async () => {
+    const qc = new QueryClient();
+    vi.mocked(askDiagnosisChat).mockRejectedValueOnce(new Error("boom"));
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "ok" });
+    let send!: ReturnType<typeof useDiagnosisChatCompanion>["sendQuestion"];
+    function Probe() {
+      send = useDiagnosisChatCompanion(reviewData, "cv_audit", undefined, "cv-1").sendQuestion;
+      return null;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <Probe />
+      </QueryClientProvider>,
+    );
+    send("gap này xử lý sao?", "gap_results");
+    await waitFor(() =>
+      expect(useCompanionStore.getState().chatMessages.some((m) => m.error)).toBe(true),
+    );
+    const failedIndex = useCompanionStore
+      .getState()
+      .chatMessages.findIndex((m) => m.role === "assistant" && m.error);
+    const { onRetry } = useCompanionStore.getState().contexts[CHAT_CONTEXT_ID].getTurn().props as {
+      onRetry: (i: number) => void;
+    };
+    onRetry(failedIndex);
+    // The retried turn must keep its gap-scoped focus, not fall back to the tab focus.
+    await waitFor(() =>
+      expect(vi.mocked(askDiagnosisChat)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ focus: "gap_results" }),
       ),
     );
   });

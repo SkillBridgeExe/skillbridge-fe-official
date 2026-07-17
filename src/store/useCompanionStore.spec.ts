@@ -295,7 +295,7 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     const actions = [{ kind: "jump" as const, labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" }];
     s.resolveAssistantAt(1, "a1", { actions });
     expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({ role: "assistant", text: "a1", actions });
-    // Omitting the 3rd arg (existing call sites) still resolves — no actions on the row.
+    // Omitting extras entirely (the learning-chat call site) still resolves — no actions.
     s.appendChatMessage({ role: "user", text: "q2" });
     s.setChatPending("q2");
     s.resolveAssistantAt(3, "a2");
@@ -326,7 +326,7 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
       text: "a1",
       suggestedNextStep: "What about my experience gap?",
     });
-    // Omitting the 5th arg (existing call sites) still resolves — no follow-up on the row.
+    // Omitting extras entirely still resolves — no follow-up on the row.
     s.appendChatMessage({ role: "user", text: "q2" });
     s.setChatPending("q2");
     s.resolveAssistantAt(3, "a2");

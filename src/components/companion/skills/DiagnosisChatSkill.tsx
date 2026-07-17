@@ -374,7 +374,9 @@ export function ProvenanceRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const [open, setOpen] = useState(false);
-  // Double guard: the BE already sends [] on refusal/canned; a refusal must never advertise.
+  // The BE sends [] on refusal/canned/fallback; the refusal check here is the one belt-and-
+  // suspenders guard (advertising provenance over a refusal would be a lie even if a BE bug
+  // ever attached facts to one). Other kinds trust the BE, same as citedTool/actions do.
   if (!facts?.length || answerKind === "refusal") return null;
 
   const chipClass =
