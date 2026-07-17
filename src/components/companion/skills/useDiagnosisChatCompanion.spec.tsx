@@ -944,4 +944,24 @@ describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)
       expect(row?.answerKind).toBe("grounded");
     });
   });
+
+  it("mirrors known_state into the store on resolve; a BE without it clears the card (Wave 2)", async () => {
+    const qc = new QueryClient();
+    const known = { target_role: "Data Analyst", deadline: "2 tuần", covered_gaps: ["Docker"] };
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({
+      answer: "ok",
+      answer_kind: "grounded",
+      known_state: known,
+    });
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({ answer: "ok2" }); // old BE shape
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" />
+      </QueryClientProvider>,
+    );
+    getTurnOnSend()("q");
+    await waitFor(() => expect(useCompanionStore.getState().chatKnownState).toEqual(known));
+    getTurnOnSend()("q2");
+    await waitFor(() => expect(useCompanionStore.getState().chatKnownState).toBeNull());
+  });
 });

@@ -3563,6 +3563,10 @@ export default {
         verifiedWithTool: "Verified with {{tool}}",
         provenance: "Based on {{count}} verified facts",
         provenanceYouSaid: "you said: {{value}}",
+        memoryTitle: "What the dolphin remembers",
+        memoryRole: "Target role: {{value}}",
+        memoryDeadline: "Deadline: {{value}}",
+        memoryCovered: "Already advised on: {{value}}",
         suggestions: [
           "Why is my score this?",
           "What's my weakest part?",

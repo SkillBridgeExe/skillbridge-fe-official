@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
 import type { CompanionChatMessage } from "@/store/useCompanionStore";
 import type { ChatActionChip } from "./chat-action-chips";
-import type { GroundedFact } from "@/types/companion";
+import type { ChatKnownState, GroundedFact } from "@/types/companion";
 
 interface Props {
   messages: CompanionChatMessage[];
@@ -41,6 +41,8 @@ interface Props {
   onCancelAction?: () => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
+  /** Wave 2: the BE's deterministic memory mirror — renders the collapsed memory card. */
+  knownState?: ChatKnownState | null;
 }
 
 function toolLabel(tool: string): string {
@@ -62,6 +64,7 @@ export function DiagnosisChatSkill({
   onConfirmAction,
   onCancelAction,
   isPending,
+  knownState,
 }: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
@@ -274,6 +277,9 @@ export function DiagnosisChatSkill({
         </div>
       )}
 
+      {/* ── Memory mirror (Wave 2) — what the dolphin remembers, verbatim from the BE. ── */}
+      <MemoryCard state={knownState} t={t} />
+
       {/* ── Composer ── */}
       <div className="flex items-end gap-2 border-t border-[#F1F1EF] pt-2.5">
         <textarea
@@ -303,6 +309,43 @@ export function DiagnosisChatSkill({
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── MemoryCard ("Cá heo đang nhớ gì", Wave 2) ───────────────────────
+// Renders the BE's deterministic known_state VERBATIM — there is no client-side
+// inference, so the card is 100% accurate by definition. Honest-empty: no card
+// at all when nothing is known (an empty "I remember nothing" card is noise).
+// Native <details> = collapsed by default, zero state to manage.
+
+export function MemoryCard({
+  state,
+  t,
+}: {
+  state?: ChatKnownState | null;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const known =
+    !!state && (state.target_role !== null || state.deadline !== null || state.covered_gaps.length > 0);
+  if (!known) return null;
+  const lines = [
+    state.target_role ? t("companion.chat.memoryRole", { value: state.target_role }) : null,
+    state.deadline ? t("companion.chat.memoryDeadline", { value: state.deadline }) : null,
+    state.covered_gaps.length
+      ? t("companion.chat.memoryCovered", { value: state.covered_gaps.join(", ") })
+      : null,
+  ].filter((line): line is string => line !== null);
+  return (
+    <details className="rounded-lg border border-[#EAEAEA] bg-[#FAFAF9] px-2.5 py-1.5 text-[11px] text-[#8A94A6]">
+      <summary className="cursor-pointer select-none font-medium transition-colors hover:text-[#5F6B76]">
+        {t("companion.chat.memoryTitle")}
+      </summary>
+      <div className="mt-1 space-y-0.5 text-[#5F6B76]">
+        {lines.map((line) => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
+    </details>
   );
 }
 

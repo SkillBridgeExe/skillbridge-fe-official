@@ -108,6 +108,8 @@ export function CompanionShell() {
   const chatOpener = useCompanionStore((s) => s.chatOpener);
   const chatSuggestions = useCompanionStore((s) => s.chatSuggestions);
   const chatPendingAction = useCompanionStore((s) => s.chatPendingAction);
+  // Wave 2: memory mirror — store-backed (same repaint reason as chatOpener).
+  const chatKnownState = useCompanionStore((s) => s.chatKnownState);
 
   const mascotState = useCvBuilderStore((s) => s.mascotState);
   const draftId = useCvBuilderStore((s) => s.draftId);
@@ -494,6 +496,7 @@ export function CompanionShell() {
                   onConfirmAction={turn.props.onConfirmAction as (() => void) | undefined}
                   onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
                   isPending={chatPending}
+                  knownState={chatKnownState}
                 />
               )}
 

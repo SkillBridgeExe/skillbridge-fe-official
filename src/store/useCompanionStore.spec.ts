@@ -412,4 +412,19 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     s.resetCompanion();
     expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
   });
+
+  it("chatKnownState mirrors the BE memory and resets with the thread (Wave 2)", () => {
+    const s = useCompanionStore.getState();
+    const state = { target_role: "Data Analyst", deadline: "2 tuần", covered_gaps: ["Docker"] };
+    s.setChatKnownState(state);
+    expect(useCompanionStore.getState().chatKnownState).toEqual(state);
+    // A FORGET turn's response overwrites with the nullified mirror — verbatim, no merge.
+    s.setChatKnownState({ target_role: "Data Analyst", deadline: null, covered_gaps: [] });
+    expect(useCompanionStore.getState().chatKnownState?.deadline).toBeNull();
+    s.clearChat();
+    expect(useCompanionStore.getState().chatKnownState).toBeNull();
+    s.setChatKnownState(state);
+    s.resetCompanion();
+    expect(useCompanionStore.getState().chatKnownState).toBeNull();
+  });
 });

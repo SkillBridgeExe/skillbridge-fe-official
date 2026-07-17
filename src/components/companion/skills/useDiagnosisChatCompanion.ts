@@ -284,6 +284,9 @@ export function useDiagnosisChatCompanion(
             // Wave 1: the gate verdict drives the mascot pose (refusal → sheepish,
             // grounded → confident). Nullish for BEs that don't send answer_kind yet.
             useCompanionStore.getState().setChatAnswerTone(res.answer_kind ?? null);
+            // Wave 2: overwrite the memory mirror verbatim — a FORGET turn's nullified
+            // state must replace the old card, so no merging, no keep-on-absent.
+            useCompanionStore.getState().setChatKnownState(res.known_state ?? null);
             // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
             // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
@@ -550,6 +553,9 @@ export function useDiagnosisChatCompanion(
     const store = useCompanionStore.getState();
     if (store.chatMessages.length > 0) return;
     store.seedChatMessages(restoredMessages);
+    // Wave 2: the restore payload carries the BE-rebuilt memory mirror for these turns.
+    store.setChatKnownState(chatThreadQuery.data?.known_state ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, restoredMessages]);
 
   // Store-back the focus-aware opener + chips so CompanionShell (which subscribes to

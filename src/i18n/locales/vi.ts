@@ -3534,6 +3534,10 @@ export default {
         verifiedWithTool: "Đã kiểm chứng bằng {{tool}}",
         provenance: "Dựa trên {{count}} dữ kiện",
         provenanceYouSaid: "bạn đã nói: {{value}}",
+        memoryTitle: "Cá heo đang nhớ gì",
+        memoryRole: "Mục tiêu: {{value}}",
+        memoryDeadline: "Thời hạn: {{value}}",
+        memoryCovered: "Đã tư vấn: {{value}}",
         suggestions: [
           "Sao điểm mình vậy?",
           "Chỗ nào yếu nhất?",

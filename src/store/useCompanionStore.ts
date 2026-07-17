@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import type { ElementIssue } from "@/components/companion/skills/element-issues";
 import type { ChatActionChip } from "@/components/companion/skills/chat-action-chips";
-import type { GroundedFact } from "@/types/companion";
+import type { ChatKnownState, GroundedFact } from "@/types/companion";
 
 export type CompanionSkill =
   | "cv_builder"
@@ -126,6 +126,12 @@ interface CompanionState {
    * on a fresh thread, or for answers from BEs that don't send answer_kind.
    */
   chatAnswerTone: 'grounded' | 'refusal' | 'canned' | null;
+  /**
+   * The BE's deterministic memory mirror (Wave 2) — overwritten verbatim on every resolved
+   * turn (a FORGET turn's nullified mirror replaces the old one; no client-side merging).
+   * Null until a turn/restore delivers one, and on a fresh thread.
+   */
+  chatKnownState: ChatKnownState | null;
   /** Focus-aware opener for the corner advisor — store-backed so the shell repaints on tab switch. */
   chatOpener: string | null;
   /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
@@ -202,6 +208,8 @@ interface CompanionState {
   setChatPendingAction: (action: ChatActionChip | null) => void;
   /** Record the gate verdict of the answer that just resolved (Wave 1 mascot pose). */
   setChatAnswerTone: (tone: 'grounded' | 'refusal' | 'canned' | null) => void;
+  /** Overwrite the memory mirror with the latest turn's known_state (Wave 2 memory card). */
+  setChatKnownState: (state: ChatKnownState | null) => void;
   /** Flip while a confirmed chip action's real network call is in flight. */
   setChatActionPending: (pending: boolean) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
@@ -223,6 +231,7 @@ const initial = {
   chatMessages: [] as CompanionChatMessage[],
   chatEpoch: 0,
   chatAnswerTone: null as 'grounded' | 'refusal' | 'canned' | null,
+  chatKnownState: null as ChatKnownState | null,
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
@@ -409,6 +418,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       chatMessages: [],
       chatEpoch: s.chatEpoch + 1,
       chatAnswerTone: null,
+      chatKnownState: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
@@ -416,6 +426,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     })),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
   setChatAnswerTone: (chatAnswerTone) => set({ chatAnswerTone }),
+  setChatKnownState: (chatKnownState) => set({ chatKnownState }),
   setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
@@ -428,6 +439,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       // with an epoch captured by a send that is still in flight.
       chatEpoch: s.chatEpoch + 1,
       chatAnswerTone: null,
+      chatKnownState: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
