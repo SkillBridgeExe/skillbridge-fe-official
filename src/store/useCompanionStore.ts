@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import type { ElementIssue } from "@/components/companion/skills/element-issues";
 import type { ChatActionChip } from "@/components/companion/skills/chat-action-chips";
+import type { ChatKnownState, GroundedFact } from "@/types/companion";
 
 export type CompanionSkill =
   | "cv_builder"
@@ -44,6 +45,11 @@ export interface CompanionChatMessage {
   citedTool?: string;
   /** BE-suggested follow-up question — absent when the answer had no follow-up (honest-empty). */
   suggestedNextStep?: string;
+  /** Provenance behind THIS row's answer (Wave 2) — drives the "Dựa trên N dữ kiện" row. */
+  groundedFacts?: GroundedFact[];
+  /** Per-row gate verdict — the global chatAnswerTone drives the mascot pose; this one lets the
+   *  row itself decide (e.g. never advertise provenance under a refusal). */
+  answerKind?: "grounded" | "refusal" | "canned";
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -120,6 +126,12 @@ interface CompanionState {
    * on a fresh thread, or for answers from BEs that don't send answer_kind.
    */
   chatAnswerTone: 'grounded' | 'refusal' | 'canned' | null;
+  /**
+   * The BE's deterministic memory mirror (Wave 2) — overwritten verbatim on every resolved
+   * turn (a FORGET turn's nullified mirror replaces the old one; no client-side merging).
+   * Null until a turn/restore delivers one, and on a fresh thread.
+   */
+  chatKnownState: ChatKnownState | null;
   /** Focus-aware opener for the corner advisor — store-backed so the shell repaints on tab switch. */
   chatOpener: string | null;
   /** Focus-aware suggestion chips — store-backed (same reason as chatOpener). */
@@ -169,15 +181,18 @@ interface CompanionState {
    */
   failLastAssistant: (kind?: "retry" | "limit") => void;
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
-   *  concurrent send appended at the end never clobbers the retried row. `actions`
-   *  (F4) is optional — omit/[] when there's nothing honest to deep-link to.
-   *  `suggestedNextStep` is optional — omit/undefined when the BE had no follow-up. */
+   *  concurrent send appended at the end never clobbers the retried row. Every extra is
+   *  optional and honest-empty: omit what the BE did not send. */
   resolveAssistantAt: (
     index: number,
     text: string,
-    actions?: ChatActionChip[],
-    citedTool?: string,
-    suggestedNextStep?: string,
+    extras?: {
+      actions?: ChatActionChip[];
+      citedTool?: string;
+      suggestedNextStep?: string;
+      groundedFacts?: GroundedFact[];
+      answerKind?: "grounded" | "refusal" | "canned";
+    },
   ) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
@@ -193,6 +208,8 @@ interface CompanionState {
   setChatPendingAction: (action: ChatActionChip | null) => void;
   /** Record the gate verdict of the answer that just resolved (Wave 1 mascot pose). */
   setChatAnswerTone: (tone: 'grounded' | 'refusal' | 'canned' | null) => void;
+  /** Overwrite the memory mirror with the latest turn's known_state (Wave 2 memory card). */
+  setChatKnownState: (state: ChatKnownState | null) => void;
   /** Flip while a confirmed chip action's real network call is in flight. */
   setChatActionPending: (pending: boolean) => void;
   /** Push the focus-aware opener + chips so CompanionShell (subscribed) repaints on tab switch. */
@@ -214,6 +231,7 @@ const initial = {
   chatMessages: [] as CompanionChatMessage[],
   chatEpoch: 0,
   chatAnswerTone: null as 'grounded' | 'refusal' | 'canned' | null,
+  chatKnownState: null as ChatKnownState | null,
   chatOpener: null as string | null,
   chatSuggestions: [] as string[],
   chatPendingAction: null as ChatActionChip | null,
@@ -338,7 +356,9 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Resolve a SPECIFIC assistant row (by index) with the answer. Used by per-row
   // retry where the retried slot is NOT necessarily the last assistant.
-  resolveAssistantAt: (index, text, actions, citedTool, suggestedNextStep) =>
+  // NOTE: this literal is the row's ENTIRE post-resolve shape — a new per-row field
+  // that is not spelled out here silently vanishes on resolve.
+  resolveAssistantAt: (index, text, extras) =>
     set((s) => {
       const target = s.chatMessages[index];
       if (!target || target.role !== "assistant") return {};
@@ -349,9 +369,11 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
         pending: false,
         error: false,
         question: target.question,
-        actions,
-        citedTool,
-        suggestedNextStep,
+        actions: extras?.actions,
+        citedTool: extras?.citedTool,
+        suggestedNextStep: extras?.suggestedNextStep,
+        groundedFacts: extras?.groundedFacts,
+        answerKind: extras?.answerKind,
       };
       return { chatMessages };
     }),
@@ -396,6 +418,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       chatMessages: [],
       chatEpoch: s.chatEpoch + 1,
       chatAnswerTone: null,
+      chatKnownState: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,
@@ -403,6 +426,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     })),
   setChatPendingAction: (chatPendingAction) => set({ chatPendingAction }),
   setChatAnswerTone: (chatAnswerTone) => set({ chatAnswerTone }),
+  setChatKnownState: (chatKnownState) => set({ chatKnownState }),
   setChatActionPending: (chatActionPending) => set({ chatActionPending }),
   setChatDisplay: ({ opener, suggestions }) => set({ chatOpener: opener, chatSuggestions: suggestions }),
   resetCompanion: () =>
@@ -415,6 +439,7 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       // with an epoch captured by a send that is still in flight.
       chatEpoch: s.chatEpoch + 1,
       chatAnswerTone: null,
+      chatKnownState: null,
       chatOpener: null,
       chatSuggestions: [],
       chatPendingAction: null,

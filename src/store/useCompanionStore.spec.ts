@@ -293,9 +293,9 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     s.appendChatMessage({ role: "user", text: "q1" });
     s.setChatPending("q1");
     const actions = [{ kind: "jump" as const, labelKey: "companion.chat.chipViewGap", anchorId: "gap-req-1" }];
-    s.resolveAssistantAt(1, "a1", actions);
+    s.resolveAssistantAt(1, "a1", { actions });
     expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({ role: "assistant", text: "a1", actions });
-    // Omitting the 3rd arg (existing call sites) still resolves — no actions on the row.
+    // Omitting extras entirely (the learning-chat call site) still resolves — no actions.
     s.appendChatMessage({ role: "user", text: "q2" });
     s.setChatPending("q2");
     s.resolveAssistantAt(3, "a2");
@@ -306,7 +306,7 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "github?" });
     s.setChatPending("github?");
-    s.resolveAssistantAt(1, "Verified with GitHub.", undefined, "github.enrich");
+    s.resolveAssistantAt(1, "Verified with GitHub.", { citedTool: "github.enrich" });
 
     expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
       role: "assistant",
@@ -319,18 +319,39 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     const s = useCompanionStore.getState();
     s.appendChatMessage({ role: "user", text: "q1" });
     s.setChatPending("q1");
-    s.resolveAssistantAt(1, "a1", undefined, undefined, "What about my experience gap?");
+    s.resolveAssistantAt(1, "a1", { suggestedNextStep: "What about my experience gap?" });
 
     expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
       role: "assistant",
       text: "a1",
       suggestedNextStep: "What about my experience gap?",
     });
-    // Omitting the 5th arg (existing call sites) still resolves — no follow-up on the row.
+    // Omitting extras entirely still resolves — no follow-up on the row.
     s.appendChatMessage({ role: "user", text: "q2" });
     s.setChatPending("q2");
     s.resolveAssistantAt(3, "a2");
     expect(useCompanionStore.getState().chatMessages[3].suggestedNextStep).toBeUndefined();
+  });
+
+  it("resolveAssistantAt stores per-row provenance (Wave 2) and a retry drops it", () => {
+    const s = useCompanionStore.getState();
+    s.appendChatMessage({ role: "user", text: "q1" });
+    s.setChatPending("q1");
+    const groundedFacts = [{ kind: "gap" as const, id: "jd:hard_skill:docker", label: "Docker" }];
+    s.resolveAssistantAt(1, "a1", { groundedFacts, answerKind: "grounded" });
+    expect(useCompanionStore.getState().chatMessages[1]).toMatchObject({
+      role: "assistant",
+      text: "a1",
+      groundedFacts,
+      answerKind: "grounded",
+    });
+    // Fail → retry flips the row back to pending: stale provenance must NOT ride along.
+    s.failAssistantAt(1, "retry");
+    s.retryAssistantAt(1);
+    const row = useCompanionStore.getState().chatMessages[1];
+    expect(row.pending).toBe(true);
+    expect(row.groundedFacts).toBeUndefined();
+    expect(row.answerKind).toBeUndefined();
   });
 
   it("clearChat empties the thread", () => {
@@ -390,5 +411,20 @@ describe("useCompanionStore chat slice (corner advisor)", () => {
     s.setChatAnswerTone("canned");
     s.resetCompanion();
     expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
+  });
+
+  it("chatKnownState mirrors the BE memory and resets with the thread (Wave 2)", () => {
+    const s = useCompanionStore.getState();
+    const state = { target_role: "Data Analyst", deadline: "2 tuần", covered_gaps: ["Docker"] };
+    s.setChatKnownState(state);
+    expect(useCompanionStore.getState().chatKnownState).toEqual(state);
+    // A FORGET turn's response overwrites with the nullified mirror — verbatim, no merge.
+    s.setChatKnownState({ target_role: "Data Analyst", deadline: null, covered_gaps: [] });
+    expect(useCompanionStore.getState().chatKnownState?.deadline).toBeNull();
+    s.clearChat();
+    expect(useCompanionStore.getState().chatKnownState).toBeNull();
+    s.setChatKnownState(state);
+    s.resetCompanion();
+    expect(useCompanionStore.getState().chatKnownState).toBeNull();
   });
 });

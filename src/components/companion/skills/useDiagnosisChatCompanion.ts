@@ -120,7 +120,7 @@ export function useDiagnosisChatCompanion(
   cvId?: string | null,
   progress?: ProgressReportDto | null,
   proveIt?: EvidenceItem | null,
-): { sendQuestion: (question: string) => void } {
+): { sendQuestion: (question: string, focusOverride?: DiagnosisChatFocus) => void } {
   const { t, i18n } = useTranslation("diagnosis");
   const { toast } = useToast();
   const language = i18n.language?.startsWith("vi") ? "vi" : "en";
@@ -193,7 +193,7 @@ export function useDiagnosisChatCompanion(
   //    useCompareJdMutation). Graceful: any failure (incl. 404/501 not-built-yet)
   //    flips the last assistant slot to an error row — never crashes. ──
   const chatMutation = useMutation({
-    mutationFn: (vars: { question: string }) => {
+    mutationFn: (vars: { question: string; focus?: DiagnosisChatFocus }) => {
       if (!matchId && !cvId) {
         // Neither a JD match nor a CV id → no chat target server-side at all.
         // Reject → failLastAssistant → friendly "assistant being connected" row.
@@ -206,7 +206,9 @@ export function useDiagnosisChatCompanion(
         matchId,
         cvId,
         question: vars.question,
-        focus,
+        // Wave 2 entry points: an object-scoped send ("ask about THIS gap") beats the
+        // tab-level focus for its one turn; everything else keeps the hook focus.
+        focus: vars.focus ?? focus,
         language,
       });
     },
@@ -270,20 +272,23 @@ export function useDiagnosisChatCompanion(
    * concurrent send appended later never clobbers the row this call owns.
    */
   const runChat = useCallback(
-    (question: string, assistantIndex: number) => {
+    (question: string, assistantIndex: number, focusOverride?: DiagnosisChatFocus) => {
       // Thread identity at send time. matchId can change while this hook stays
       // mounted (a re-compare from the page) — the match-change effect clears +
       // reseeds the thread, and resolving `assistantIndex` after that would write
       // the OLD match's answer over a row of the new match's thread.
       const chatEpoch = useCompanionStore.getState().chatEpoch;
       chatMutation.mutate(
-        { question },
+        { question, focus: focusOverride },
         {
           onSuccess: (res) => {
             if (useCompanionStore.getState().chatEpoch !== chatEpoch) return; // stale thread — drop
             // Wave 1: the gate verdict drives the mascot pose (refusal → sheepish,
             // grounded → confident). Nullish for BEs that don't send answer_kind yet.
             useCompanionStore.getState().setChatAnswerTone(res.answer_kind ?? null);
+            // Wave 2: overwrite the memory mirror verbatim — a FORGET turn's nullified
+            // state must replace the old card, so no merging, no keep-on-absent.
+            useCompanionStore.getState().setChatKnownState(res.known_state ?? null);
             // F4: map the cited gap/match → deep-link chips (honest-empty on a join miss
             // or when the answer didn't cite anything).
             const actions = buildChatActionChips({
@@ -292,9 +297,14 @@ export function useDiagnosisChatCompanion(
               gapItems: gapReportQuery.data?.gap_items,
               actions: gapReportQuery.data?.recommended_actions,
             });
-            useCompanionStore
-              .getState()
-              .resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool, res.suggested_next_step ?? undefined);
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, {
+              actions,
+              citedTool: res.cited_tool,
+              suggestedNextStep: res.suggested_next_step ?? undefined,
+              // Wave 2: per-row provenance + verdict for the "Dựa trên N dữ kiện" row.
+              groundedFacts: res.grounded_facts,
+              answerKind: res.answer_kind,
+            });
             revealCited(res);
           },
           onError: (error) => {
@@ -311,8 +321,14 @@ export function useDiagnosisChatCompanion(
     [chatMutation, revealCited, gapReportQuery.data],
   );
 
+  // Per-row focus override, keyed by `${epoch}:${index}` so a per-row RETRY re-sends with
+  // the SAME scope the row was originally asked with (an entry-point send is gap/dim-scoped;
+  // falling back to the tab focus on retry would shift the answer's emphasis). Epoch in the
+  // key because a cleared thread reuses indexes — stale entries must never cross threads.
+  const focusByRowRef = useRef<Record<string, DiagnosisChatFocus | undefined>>({});
+
   const onSend = useCallback(
-    (question: string) => {
+    (question: string, focusOverride?: DiagnosisChatFocus) => {
       const text = question.trim();
       if (!text) return;
       // Guard against a double-send race — read LIVE store state, never a closed-over
@@ -327,7 +343,9 @@ export function useDiagnosisChatCompanion(
       store.setChatAnswerTone(null);
       // The pending placeholder is now the last message → its index.
       const assistantIndex = useCompanionStore.getState().chatMessages.length - 1;
-      runChat(text, assistantIndex);
+      focusByRowRef.current[`${useCompanionStore.getState().chatEpoch}:${assistantIndex}`] =
+        focusOverride;
+      runChat(text, assistantIndex, focusOverride);
     },
     // runChat carries the send logic; the busy guard reads the store live, so this
     // callback deliberately closes over NO render-scoped pending flag.
@@ -348,7 +366,7 @@ export function useDiagnosisChatCompanion(
       if (!question) return;
       // A retry is a new in-flight turn — the previous verdict resets, same as onSend.
       store.setChatAnswerTone(null);
-      runChat(question, index);
+      runChat(question, index, focusByRowRef.current[`${store.chatEpoch}:${index}`]);
     },
     [runChat],
   );
@@ -545,6 +563,9 @@ export function useDiagnosisChatCompanion(
     const store = useCompanionStore.getState();
     if (store.chatMessages.length > 0) return;
     store.seedChatMessages(restoredMessages);
+    // Wave 2: the restore payload carries the BE-rebuilt memory mirror for these turns.
+    store.setChatKnownState(chatThreadQuery.data?.known_state ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, restoredMessages]);
 
   // Store-back the focus-aware opener + chips so CompanionShell (which subscribes to

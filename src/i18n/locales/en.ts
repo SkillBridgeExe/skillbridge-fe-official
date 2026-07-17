@@ -535,7 +535,7 @@ export default {
     quota402: {
       title: "You've hit your plan limit",
       limitReached:
-        "You've used all of this feature's quota for the current period.",
+        "You've used all of this feature's quota for the current period — every AI answer has a real processing cost, which is why plans have limits.",
       notInPlan: "This feature isn't included in your plan.",
       upgrade: "Upgrade",
     },
@@ -1990,6 +1990,8 @@ export default {
         askCompanion: "Ask your AI coach",
         downloadCv: "Download original CV",
       },
+      askDimension: "Ask the dolphin about this score",
+      askGap: "Ask the dolphin about this gap",
       keywordTable: {
         thSkill: "Skill",
         thCv: "In CV",
@@ -3559,8 +3561,18 @@ export default {
         deleteThread: "Erase conversation",
         thinking: "Thinking…",
         error: "The assistant is being connected — please try again in a moment.",
-        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        limitReached:
+          "You've reached today's question limit — every AI answer has a real processing cost, so questions come in daily allowances. Come back tomorrow and we'll pick it up.",
         verifiedWithTool: "Verified with {{tool}}",
+        provenance: "Based on {{count}} verified facts",
+        provenanceYouSaid: "you said: {{value}}",
+        memoryTitle: "What the dolphin remembers",
+        memoryRole: "Target role: {{value}}",
+        memoryDeadline: "Deadline: {{value}}",
+        memoryCovered: "Already advised on: {{value}}",
+        askDimensionQ: "Explain my {{name}} score of {{score}}/20 for me",
+        askGapQ: "How should I tackle the {{name}} gap?",
+        positioning: "The dolphin only remembers what you say and what your diagnosis proves.",
         suggestions: [
           "Why is my score this?",
           "What's my weakest part?",
@@ -3604,7 +3616,8 @@ export default {
         thread: "Chat thread",
         thinking: "Thinking…",
         error: "The assistant is being connected — please try again in a moment.",
-        limitReached: "You've reached today's question limit for the assistant. Please come back tomorrow.",
+        limitReached:
+          "You've reached today's question limit — every AI answer has a real processing cost, so questions come in daily allowances. Come back tomorrow and we'll pick it up.",
         suggestions: [
           "Explain this concept",
           "What should I practice next?",

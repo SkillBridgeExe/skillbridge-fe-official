@@ -172,6 +172,23 @@ export interface DiagnosisChatRequest {
   language?: string;
 }
 
+/** One provenance entry behind an answer (Wave 2 "visible trust") — built server-side from what
+ *  the gate actually resolved/licensed, never guessed. kind 'conversation' = a number the user
+ *  themselves said ("bạn đã nói"), rendered as informational, never as verification. */
+export interface GroundedFact {
+  kind: "dimension" | "gap" | "other_match" | "tool" | "conversation";
+  /** dimension key | gap requirement_id | real match_id | tool name | the number token itself. */
+  id: string;
+  label: string;
+}
+
+/** The BE's deterministic conversation memory, mirrored verbatim (Wave 2 memory card). */
+export interface ChatKnownState {
+  target_role: string | null;
+  deadline: string | null;
+  covered_gaps: string[];
+}
+
 export interface DiagnosisChatResponse {
   /** The grounded answer text to show in the thread. */
   answer: string;
@@ -193,6 +210,10 @@ export interface DiagnosisChatResponse {
     cv_id: string;
     jd_title: string | null;
   };
+  /** Provenance behind this answer — absent/[] means "advertise nothing" (honest-empty). */
+  grounded_facts?: GroundedFact[];
+  /** What the BE currently remembers about the user — drives the memory mirror card. */
+  known_state?: ChatKnownState;
 }
 
 // ── CV Intake: POST /api/cvs/:id/builder/assistant/extract ──────────

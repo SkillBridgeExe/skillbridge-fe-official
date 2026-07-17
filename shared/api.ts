@@ -1529,4 +1529,11 @@ export interface ChatThreadTurnDto {
 
 export interface ChatThreadResponseDto {
   turns: ChatThreadTurnDto[];
+  /** Wave 2: BE-rebuilt deterministic memory over the same persisted rows — feeds the
+   *  memory mirror card on thread restore. covered_gaps is [] on this path (no facts). */
+  known_state?: {
+    target_role: string | null;
+    deadline: string | null;
+    covered_gaps: string[];
+  };
 }

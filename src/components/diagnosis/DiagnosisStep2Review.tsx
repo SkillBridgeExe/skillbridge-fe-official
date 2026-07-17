@@ -27,7 +27,11 @@ import type { DiagnosisChatFocus } from "@/types/companion";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import { pickTopCompletenessGap, completenessSummary, dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
-import { useDiagnosisChatCompanion } from "@/components/companion/skills/useDiagnosisChatCompanion";
+import {
+  CHAT_CONTEXT_ID,
+  useDiagnosisChatCompanion,
+} from "@/components/companion/skills/useDiagnosisChatCompanion";
+import type { CheckRowData } from "@/lib/diagnosis-report";
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -205,7 +209,20 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   }, []);
   // Pass lastCvId so the advisor works on a CV-only scan (no JD match): when there's
   // no matchId, the hook/service post to the CV-only route grounded in the CV review.
-  useDiagnosisChatCompanion(reviewData, chatFocus, revealCard, lastCvId);
+  const chat = useDiagnosisChatCompanion(reviewData, chatFocus, revealCard, lastCvId);
+  // Wave 2 entry point: "ask the dolphin about THIS dimension" — prefill + send the
+  // code-authored question and force the bubble open (explainProgress recipe).
+  const askDimension = useCallback(
+    (item: CheckRowData) => {
+      chat.sendQuestion(
+        t("companion.chat.askDimensionQ", { name: item.label, score: item.score }),
+        "cv_audit",
+      );
+      useCompanionStore.getState().activateContext(CHAT_CONTEXT_ID);
+      useCompanionStore.setState({ bubbleOpen: true });
+    },
+    [chat, t],
+  );
   // The chat advisor owns the bubble while it is registered → the legacy completeness
   // nudge gates off whenever the chat context is live (single-active invariant).
   const chatContextActive = useCompanionStore((s) => !!s.contexts["diagnosis:chat"]);
@@ -361,7 +378,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
 
                       {/* CheckGroups */}
                       {reportGroups.map((group) => (
-                        <CheckGroup key={group.id} group={group}>
+                        <CheckGroup key={group.id} group={group} onAskDimension={askDimension}>
                           {/* Custom slot for Skills */}
                           {group.id === "skills" && (
                             <div className="space-y-4 mt-4">

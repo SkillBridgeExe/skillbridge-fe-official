@@ -535,7 +535,8 @@ export default {
     },
     quota402: {
       title: "Đã đến giới hạn của gói",
-      limitReached: "Bạn đã dùng hết lượt cho tính năng này trong kỳ hiện tại.",
+      limitReached:
+        "Bạn đã dùng hết lượt cho tính năng này trong kỳ hiện tại — mỗi lượt AI đều tốn chi phí xử lý thật, nên gói có giới hạn.",
       notInPlan: "Tính năng này chưa có trong gói của bạn.",
       upgrade: "Nâng cấp",
     },
@@ -1984,6 +1985,8 @@ export default {
         askCompanion: "Hỏi AI đồng hành",
         downloadCv: "Tải CV gốc",
       },
+      askDimension: "Hỏi cá heo về điểm này",
+      askGap: "Hỏi cá heo về mục này",
       keywordTable: {
         thSkill: "Kỹ năng",
         thCv: "Trong CV",
@@ -3530,8 +3533,18 @@ export default {
         deleteThread: "Xóa hội thoại",
         thinking: "Đang suy nghĩ…",
         error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
-        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        limitReached:
+          "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay — mỗi câu trả lời AI tốn chi phí thật, nên mình phải chia lượt. Mai quay lại mình tiếp nhé.",
         verifiedWithTool: "Đã kiểm chứng bằng {{tool}}",
+        provenance: "Dựa trên {{count}} dữ kiện",
+        provenanceYouSaid: "bạn đã nói: {{value}}",
+        memoryTitle: "Cá heo đang nhớ gì",
+        memoryRole: "Mục tiêu: {{value}}",
+        memoryDeadline: "Thời hạn: {{value}}",
+        memoryCovered: "Đã tư vấn: {{value}}",
+        askDimensionQ: "Giải thích điểm {{name}} {{score}}/20 của mình giúp mình với",
+        askGapQ: "Mình nên xử lý khoảng trống {{name}} thế nào?",
+        positioning: "Cá heo chỉ nhớ những gì bạn nói và những gì chẩn đoán của bạn chứng minh.",
         suggestions: [
           "Sao điểm mình vậy?",
           "Chỗ nào yếu nhất?",
@@ -3574,7 +3587,8 @@ export default {
         thread: "Hội thoại",
         thinking: "Đang suy nghĩ…",
         error: "Trợ lý đang được kết nối — vui lòng thử lại sau giây lát.",
-        limitReached: "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay. Vui lòng quay lại vào ngày mai nhé.",
+        limitReached:
+          "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay — mỗi câu trả lời AI tốn chi phí thật, nên mình phải chia lượt. Mai quay lại mình tiếp nhé.",
         suggestions: [
           "Giải thích khái niệm này",
           "Mình nên luyện gì tiếp?",

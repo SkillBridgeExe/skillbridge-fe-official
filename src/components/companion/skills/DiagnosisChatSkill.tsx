@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ThinkingDots } from "../ThinkingDots";
 import type { CompanionChatMessage } from "@/store/useCompanionStore";
 import type { ChatActionChip } from "./chat-action-chips";
+import type { ChatKnownState, GroundedFact } from "@/types/companion";
 
 interface Props {
   messages: CompanionChatMessage[];
@@ -40,6 +41,8 @@ interface Props {
   onCancelAction?: () => void;
   /** True while a request is in flight → disables the composer/chips (anti double-send). */
   isPending: boolean;
+  /** Wave 2: the BE's deterministic memory mirror — renders the collapsed memory card. */
+  knownState?: ChatKnownState | null;
 }
 
 function toolLabel(tool: string): string {
@@ -61,6 +64,7 @@ export function DiagnosisChatSkill({
   onConfirmAction,
   onCancelAction,
   isPending,
+  knownState,
 }: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
@@ -273,6 +277,9 @@ export function DiagnosisChatSkill({
         </div>
       )}
 
+      {/* ── Memory mirror (Wave 2) — what the dolphin remembers, verbatim from the BE. ── */}
+      <MemoryCard state={knownState} t={t} />
+
       {/* ── Composer ── */}
       <div className="flex items-end gap-2 border-t border-[#F1F1EF] pt-2.5">
         <textarea
@@ -301,6 +308,128 @@ export function DiagnosisChatSkill({
           <Send className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Wave 2 positioning line — the one-sentence trust contract, always visible. */}
+      <p className="text-center text-[10px] leading-snug text-[#9AA1A6]">
+        {t("companion.chat.positioning")}
+      </p>
+    </div>
+  );
+}
+
+// ─── MemoryCard ("Cá heo đang nhớ gì", Wave 2) ───────────────────────
+// Renders the BE's deterministic known_state VERBATIM — there is no client-side
+// inference, so the card is 100% accurate by definition. Honest-empty: no card
+// at all when nothing is known (an empty "I remember nothing" card is noise).
+// Native <details> = collapsed by default, zero state to manage.
+
+export function MemoryCard({
+  state,
+  t,
+}: {
+  state?: ChatKnownState | null;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const known =
+    !!state && (state.target_role !== null || state.deadline !== null || state.covered_gaps.length > 0);
+  if (!known) return null;
+  const lines = [
+    state.target_role ? t("companion.chat.memoryRole", { value: state.target_role }) : null,
+    state.deadline ? t("companion.chat.memoryDeadline", { value: state.deadline }) : null,
+    state.covered_gaps.length
+      ? t("companion.chat.memoryCovered", { value: state.covered_gaps.join(", ") })
+      : null,
+  ].filter((line): line is string => line !== null);
+  return (
+    <details className="rounded-lg border border-[#EAEAEA] bg-[#FAFAF9] px-2.5 py-1.5 text-[11px] text-[#8A94A6]">
+      <summary className="cursor-pointer select-none font-medium transition-colors hover:text-[#5F6B76]">
+        {t("companion.chat.memoryTitle")}
+      </summary>
+      <div className="mt-1 space-y-0.5 text-[#5F6B76]">
+        {lines.map((line) => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+// ─── ProvenanceRow ("Dựa trên N dữ kiện", Wave 2) ────────────────────
+// Exact-by-construction: the facts arrive from the BE gate's OWN resolution —
+// this component only renders, never derives. Collapsed by default (one quiet
+// line under the answer); expanding shows one chip per fact. dimension/gap
+// chips reuse the existing jump pipeline; 'conversation' facts ("you said 2")
+// are informational text, deliberately NOT clickable — a user-said number has
+// no report anchor and must not dress up as verification.
+
+export function ProvenanceRow({
+  facts,
+  answerKind,
+  onAction,
+  t,
+}: {
+  facts?: GroundedFact[];
+  answerKind?: CompanionChatMessage["answerKind"];
+  onAction?: (chip: ChatActionChip) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  // The BE sends [] on refusal/canned/fallback; the refusal check here is the one belt-and-
+  // suspenders guard (advertising provenance over a refusal would be a lie even if a BE bug
+  // ever attached facts to one). Other kinds trust the BE, same as citedTool/actions do.
+  if (!facts?.length || answerKind === "refusal") return null;
+
+  const chipClass =
+    "inline-flex items-center gap-1 rounded-full border border-[#D8DEE4] bg-[#F8F9FA] px-2 py-0.5 text-[11px] text-[#5F6B76]";
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-[#8A94A6] hover:text-[#5F6B76] transition-colors"
+      >
+        <ShieldCheck className="h-3 w-3" />
+        {t("companion.chat.provenance", { count: facts.length })}
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {facts.map((f) => {
+            if (f.kind === "dimension" || f.kind === "gap") {
+              const anchorId = f.kind === "dimension" ? `dim-${f.id}` : `gap-${f.id}`;
+              const label =
+                f.kind === "dimension"
+                  ? t(`review.dims.${f.id}`, { defaultValue: f.label })
+                  : f.label;
+              return (
+                <button
+                  key={`${f.kind}-${f.id}`}
+                  type="button"
+                  onClick={() =>
+                    onAction?.({ kind: "jump", labelKey: "companion.chat.chipViewGap", anchorId })
+                  }
+                  className={cn(chipClass, "hover:bg-[#EFF1F4] transition-colors")}
+                >
+                  <span>{label}</span>
+                  <ArrowUpRight className="h-3 w-3 shrink-0" />
+                </button>
+              );
+            }
+            if (f.kind === "conversation") {
+              return (
+                <span key={`conv-${f.id}`} className={chipClass}>
+                  {t("companion.chat.provenanceYouSaid", { value: f.label })}
+                </span>
+              );
+            }
+            // tool / other_match: informational label (other_match has no on-page anchor).
+            return (
+              <span key={`${f.kind}-${f.id}`} className={chipClass}>
+                {f.kind === "tool" ? toolLabel(f.id) : f.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -399,6 +528,13 @@ function AssistantTextRow({
                 </button>
               </div>
             )}
+            {/* Wave 2: provenance row — same reveal gate as the other chrome. */}
+            <ProvenanceRow
+              facts={m.groundedFacts}
+              answerKind={m.answerKind}
+              onAction={onAction}
+              t={t}
+            />
           </>
         )}
       </div>
