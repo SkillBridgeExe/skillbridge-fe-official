@@ -921,4 +921,27 @@ describe("useDiagnosisChatCompanion — answer tone for the mascot pose (Wave 1)
     expect(useCompanionStore.getState().chatAnswerTone).toBeNull();
     await waitFor(() => expect(useCompanionStore.getState().chatAnswerTone).toBe("grounded"));
   });
+
+  it("stores grounded_facts and answer_kind on the resolved row (Wave 2 provenance)", async () => {
+    const qc = new QueryClient();
+    const facts = [{ kind: "gap" as const, id: "jd:hard_skill:docker", label: "Docker" }];
+    vi.mocked(askDiagnosisChat).mockResolvedValueOnce({
+      answer: "ok",
+      answer_kind: "grounded",
+      grounded_facts: facts,
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="cv_audit" />
+      </QueryClientProvider>,
+    );
+    getTurnOnSend()("q");
+    await waitFor(() => {
+      const row = useCompanionStore
+        .getState()
+        .chatMessages.find((m) => m.role === "assistant" && !m.pending);
+      expect(row?.groundedFacts).toEqual(facts);
+      expect(row?.answerKind).toBe("grounded");
+    });
+  });
 });

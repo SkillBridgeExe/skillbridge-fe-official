@@ -292,9 +292,14 @@ export function useDiagnosisChatCompanion(
               gapItems: gapReportQuery.data?.gap_items,
               actions: gapReportQuery.data?.recommended_actions,
             });
-            useCompanionStore
-              .getState()
-              .resolveAssistantAt(assistantIndex, res.answer, actions, res.cited_tool, res.suggested_next_step ?? undefined);
+            useCompanionStore.getState().resolveAssistantAt(assistantIndex, res.answer, {
+              actions,
+              citedTool: res.cited_tool,
+              suggestedNextStep: res.suggested_next_step ?? undefined,
+              // Wave 2: per-row provenance + verdict for the "Dựa trên N dữ kiện" row.
+              groundedFacts: res.grounded_facts,
+              answerKind: res.answer_kind,
+            });
             revealCited(res);
           },
           onError: (error) => {

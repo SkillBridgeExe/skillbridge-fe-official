@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import type { ElementIssue } from "@/components/companion/skills/element-issues";
 import type { ChatActionChip } from "@/components/companion/skills/chat-action-chips";
+import type { GroundedFact } from "@/types/companion";
 
 export type CompanionSkill =
   | "cv_builder"
@@ -44,6 +45,11 @@ export interface CompanionChatMessage {
   citedTool?: string;
   /** BE-suggested follow-up question — absent when the answer had no follow-up (honest-empty). */
   suggestedNextStep?: string;
+  /** Provenance behind THIS row's answer (Wave 2) — drives the "Dựa trên N dữ kiện" row. */
+  groundedFacts?: GroundedFact[];
+  /** Per-row gate verdict — the global chatAnswerTone drives the mascot pose; this one lets the
+   *  row itself decide (e.g. never advertise provenance under a refusal). */
+  answerKind?: "grounded" | "refusal" | "canned";
 }
 
 /** Sticky dismiss/snooze modes for an element issue (persisted cross-session). */
@@ -169,15 +175,18 @@ interface CompanionState {
    */
   failLastAssistant: (kind?: "retry" | "limit") => void;
   /** Resolve a SPECIFIC assistant row (by index) — used by per-row retry so a
-   *  concurrent send appended at the end never clobbers the retried row. `actions`
-   *  (F4) is optional — omit/[] when there's nothing honest to deep-link to.
-   *  `suggestedNextStep` is optional — omit/undefined when the BE had no follow-up. */
+   *  concurrent send appended at the end never clobbers the retried row. Every extra is
+   *  optional and honest-empty: omit what the BE did not send. */
   resolveAssistantAt: (
     index: number,
     text: string,
-    actions?: ChatActionChip[],
-    citedTool?: string,
-    suggestedNextStep?: string,
+    extras?: {
+      actions?: ChatActionChip[];
+      citedTool?: string;
+      suggestedNextStep?: string;
+      groundedFacts?: GroundedFact[];
+      answerKind?: "grounded" | "refusal" | "canned";
+    },
   ) => void;
   /** Fail a SPECIFIC assistant row (by index) — used by per-row retry. */
   failAssistantAt: (index: number, kind?: "retry" | "limit") => void;
@@ -338,7 +347,9 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
     }),
   // Resolve a SPECIFIC assistant row (by index) with the answer. Used by per-row
   // retry where the retried slot is NOT necessarily the last assistant.
-  resolveAssistantAt: (index, text, actions, citedTool, suggestedNextStep) =>
+  // NOTE: this literal is the row's ENTIRE post-resolve shape — a new per-row field
+  // that is not spelled out here silently vanishes on resolve.
+  resolveAssistantAt: (index, text, extras) =>
     set((s) => {
       const target = s.chatMessages[index];
       if (!target || target.role !== "assistant") return {};
@@ -349,9 +360,11 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
         pending: false,
         error: false,
         question: target.question,
-        actions,
-        citedTool,
-        suggestedNextStep,
+        actions: extras?.actions,
+        citedTool: extras?.citedTool,
+        suggestedNextStep: extras?.suggestedNextStep,
+        groundedFacts: extras?.groundedFacts,
+        answerKind: extras?.answerKind,
       };
       return { chatMessages };
     }),
