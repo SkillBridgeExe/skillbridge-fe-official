@@ -3564,6 +3564,8 @@ export default {
         limitReached:
           "You've reached today's question limit — every AI answer has a real processing cost, so questions come in daily allowances. Come back tomorrow and we'll pick it up.",
         verifiedWithTool: "Verified with {{tool}}",
+        toolRoadmap: "your learning-roadmap progress",
+        toolInterview: "your mock-interview history",
         provenance: "Based on {{count}} verified facts",
         provenanceYouSaid: "you said: {{value}}",
         memoryTitle: "What the dolphin remembers",
