@@ -60,4 +60,18 @@ describe("ProvenanceRow — 'Dựa trên N dữ kiện' (Wave 2)", () => {
     const youSaid = screen.getByText("companion.chat.provenanceYouSaid");
     expect(youSaid.closest("button")).toBeNull();
   });
+
+  it("Wave 3 read-tool facts resolve localized labels, not raw tool ids", () => {
+    const toolFacts: GroundedFact[] = [
+      { kind: "tool", id: "roadmap.progress", label: "roadmap.progress" },
+      { kind: "tool", id: "interview.history", label: "interview.history" },
+      { kind: "tool", id: "github.enrich", label: "github.enrich" },
+    ];
+    render(<ProvenanceRow facts={toolFacts} answerKind="grounded" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "companion.chat.provenance:3" }));
+    expect(screen.getByText("companion.chat.toolRoadmap")).toBeTruthy();
+    expect(screen.getByText("companion.chat.toolInterview")).toBeTruthy();
+    expect(screen.getByText("GitHub")).toBeTruthy(); // brand names stay hardcoded
+    expect(screen.queryByText("roadmap.progress")).toBeNull(); // raw id never shown
+  });
 });

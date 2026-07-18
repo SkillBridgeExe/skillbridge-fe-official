@@ -3536,6 +3536,8 @@ export default {
         limitReached:
           "Bạn đã dùng hết số câu hỏi cho trợ lý hôm nay — mỗi câu trả lời AI tốn chi phí thật, nên mình phải chia lượt. Mai quay lại mình tiếp nhé.",
         verifiedWithTool: "Đã kiểm chứng bằng {{tool}}",
+        toolRoadmap: "tiến độ lộ trình học của bạn",
+        toolInterview: "lịch sử phỏng vấn thử của bạn",
         provenance: "Dựa trên {{count}} dữ kiện",
         provenanceYouSaid: "bạn đã nói: {{value}}",
         memoryTitle: "Cá heo đang nhớ gì",

@@ -45,9 +45,15 @@ interface Props {
   knownState?: ChatKnownState | null;
 }
 
-function toolLabel(tool: string): string {
+function toolLabel(
+  tool: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   if (tool === "github.enrich") return "GitHub";
   if (tool === "resource.validate") return "Link";
+  // Wave 3 read-tools carry no brand name — localize instead of showing the raw id.
+  if (tool === "roadmap.progress") return t("companion.chat.toolRoadmap");
+  if (tool === "interview.history") return t("companion.chat.toolInterview");
   return tool;
 }
 
@@ -424,7 +430,7 @@ export function ProvenanceRow({
             // tool / other_match: informational label (other_match has no on-page anchor).
             return (
               <span key={`${f.kind}-${f.id}`} className={chipClass}>
-                {f.kind === "tool" ? toolLabel(f.id) : f.label}
+                {f.kind === "tool" ? toolLabel(f.id, t) : f.label}
               </span>
             );
           })}
@@ -497,7 +503,7 @@ function AssistantTextRow({
               <div className="mt-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                   <ShieldCheck className="h-3 w-3" />
-                  {t("companion.chat.verifiedWithTool", { tool: toolLabel(m.citedTool) })}
+                  {t("companion.chat.verifiedWithTool", { tool: toolLabel(m.citedTool, t) })}
                 </span>
               </div>
             )}
