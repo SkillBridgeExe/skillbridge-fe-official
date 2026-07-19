@@ -528,6 +528,8 @@ export function CompanionShell() {
                   onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
                   isPending={chatPending}
                   knownState={chatKnownState}
+                  placeholderKey="companion.cvChat.placeholder"
+                  positioningKey="companion.cvChat.positioning"
                 />
               )}
               </div>

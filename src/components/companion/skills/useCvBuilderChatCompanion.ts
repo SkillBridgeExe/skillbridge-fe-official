@@ -47,14 +47,15 @@ function hasPendingAssistant(): boolean {
  *      "experience[1].achievements"       → "experience"
  *      "summary"                          → "summary"
  */
-function sectionFromFieldPath(fieldPath: string): "projects" | "experience" | "summary" {
+function sectionFromFieldPath(fieldPath: string): "projects" | "experience" | "summary" | null {
   const stripped = fieldPath.startsWith("cvbuilder:")
     ? fieldPath.slice("cvbuilder:".length)
     : fieldPath;
   const prefix = stripped.split(/[.[]/)[0];
   if (prefix === "projects") return "projects";
   if (prefix === "experience") return "experience";
-  return "summary";
+  if (prefix === "summary") return "summary";
+  return null;
 }
 
 /** Map BE grounded_facts to the store's GroundedFact shape. */
@@ -62,18 +63,14 @@ function mapGroundedFacts(
   facts: CvBuilderChatResponse["grounded_facts"],
 ): GroundedFact[] | undefined {
   if (!facts || facts.length === 0) return undefined;
-  return facts.map((f) => {
-    const kindMap: Record<string, GroundedFact["kind"]> = {
-      original_bullet: "dimension",
-      detected_gap: "gap",
-      user_answer: "conversation",
-    };
-    return {
-      kind: kindMap[f.kind] ?? "conversation",
-      id: f.field_path ?? f.text.slice(0, 40),
-      label: f.text,
-    };
-  });
+  // The builder page has no dim/gap jump anchors, so every fact renders as a plain
+  // non-clickable info span ("conversation") — a clickable chip whose jump the builder
+  // ignores is a dead affordance.
+  return facts.map((f) => ({
+    kind: "conversation" as const,
+    id: f.field_path ?? f.text.slice(0, 40),
+    label: f.text,
+  }));
 }
 
 /** Map BE known_state to the store's ChatKnownState shape. */
@@ -90,9 +87,9 @@ function mapKnownState(
   };
 }
 
-/** The Apply chip — a bare trigger; the onAction handler reads the edit from latestEditRef. */
-function buildApplyActions(): ChatActionChip[] {
-  return [{ kind: "rewrite", labelKey: "companion.cvChat.applyButton" }];
+/** The Apply chip — carries its OWN proposed edit so tapping an old row applies THAT row's edit. */
+function buildApplyActions(edit: CvBuilderChatProposedEdit): ChatActionChip[] {
+  return [{ kind: "rewrite", labelKey: "companion.cvChat.applyButton", cvEdit: edit }];
 }
 
 // ── Main hook ───────────────────────────────────────────────────────
@@ -116,11 +113,6 @@ export function useCvBuilderChatCompanion(
   const suggestions = Array.isArray(suggestionsRaw) ? (suggestionsRaw as string[]) : [];
 
   const previousCvIdRef = useRef<string | null | undefined>(undefined);
-  // The proposed_edit to apply when the user taps the Apply chip. Hook-local so we
-  // never mutate a store message object in place (a Zustand anti-pattern that would
-  // not re-render reliably). v1 holds the LATEST edit — the common flow is the user
-  // tapping Apply right after the edit arrives.
-  const latestEditRef = useRef<CvBuilderChatProposedEdit | null>(null);
 
   // A different cvId is a different thread. Clear local chat so switching
   // drafts never mixes two CVs' threads.
@@ -128,7 +120,6 @@ export function useCvBuilderChatCompanion(
     const previous = previousCvIdRef.current;
     if (previous !== undefined && previous !== cvId) {
       useCompanionStore.getState().clearChat();
-      latestEditRef.current = null;
     }
     previousCvIdRef.current = cvId;
   }, [cvId]);
@@ -171,7 +162,13 @@ export function useCvBuilderChatCompanion(
 
   const runChat = useCallback(
     (question: string, assistantIndex: number) => {
-      if (!cvId) return;
+      if (!cvId) {
+        // No draft id (local/offline, or draftId permanently null after a 402) → fail the
+        // pending row so it degrades to a friendly retry row instead of hanging isChatBusy
+        // true forever (dead composer). Mirrors the diagnosis hook's NO_CHAT_TARGET path.
+        useCompanionStore.getState().failAssistantAt(assistantIndex, "retry");
+        return;
+      }
       const chatEpoch = useCompanionStore.getState().chatEpoch;
       const focusedField = getFocusedField();
 
@@ -186,7 +183,7 @@ export function useCvBuilderChatCompanion(
 
           // Map extras
           const groundedFacts = mapGroundedFacts(res.grounded_facts);
-          const applyActions = res.proposed_edit ? buildApplyActions() : undefined;
+          const applyActions = res.proposed_edit ? buildApplyActions(res.proposed_edit) : undefined;
 
           store.resolveAssistantAt(assistantIndex, res.answer, {
             actions: applyActions,
@@ -198,9 +195,6 @@ export function useCvBuilderChatCompanion(
           // Store-back answer tone + known state
           store.setChatAnswerTone(res.answer_kind ?? null);
           store.setChatKnownState(mapKnownState(res.known_state));
-
-          // Carry the proposed_edit for the Apply chip — hook-local, no store mutation.
-          latestEditRef.current = res.proposed_edit ?? latestEditRef.current;
         })
         .catch((error) => {
           if (useCompanionStore.getState().chatEpoch !== chatEpoch) return;
@@ -238,21 +232,24 @@ export function useCvBuilderChatCompanion(
   );
 
   const onDeleteThread = useCallback(() => {
-    if (!cvId) return;
+    // Clear the LOCAL thread regardless of cvId so a stuck thread can always be
+    // cleared; only the server DELETE needs a real draft id.
     useCompanionStore.getState().clearChat();
-    deleteBuilderChatThreadApi(cvId).catch(() => undefined);
+    if (cvId) deleteBuilderChatThreadApi(cvId).catch(() => undefined);
   }, [cvId]);
 
   const onAction = useCallback(
     (chip: ChatActionChip) => {
       if (chip.kind !== "rewrite" || !cvId) return;
-      // The Apply flow: apply the latest proposed_edit (carried hook-local).
-      const proposedEdit = latestEditRef.current;
+      // The Apply flow: apply THIS chip's own proposed_edit (carried on the chip so
+      // tapping an old row never applies a newer row's edit).
+      const proposedEdit = chip.cvEdit;
       if (!proposedEdit) return;
 
       try {
         const store = useCvBuilderStore.getState();
         const section = sectionFromFieldPath(proposedEdit.field_path);
+        if (!section) return; // out-of-contract prefix → never clobber the summary
         const stripped = proposedEdit.field_path.startsWith("cvbuilder:")
           ? proposedEdit.field_path.slice("cvbuilder:".length)
           : proposedEdit.field_path;
@@ -335,7 +332,6 @@ export function useCvBuilderChatCompanion(
       s.unregisterContext(CV_BUILDER_CHAT_CONTEXT_ID);
       // MANDATORY: clearChat on unmount — single global chat thread
       s.clearChat();
-      latestEditRef.current = null;
     };
     // Mount-only: NEVER re-run (re-running would re-pop a closed bubble = Clippy).
   }, []);
