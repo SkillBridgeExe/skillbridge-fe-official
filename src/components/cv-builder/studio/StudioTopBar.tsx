@@ -33,6 +33,7 @@ import { createBuilderDraftApi } from "@/api/cv/builder";
 import { createVersionApi } from "@/api/cv/versions";
 import { createStudioResumePdfBlob } from "./download-resume-pdf";
 import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
+import { useCvBuilderChatCompanion } from "@/components/companion/skills/useCvBuilderChatCompanion";
 
 /** Low-cardinality context every studio event carries. */
 const studioEventContext = () => {
@@ -66,6 +67,10 @@ export function StudioTopBar() {
   const navigate = useNavigate();
   const { saveStatus, lastSavedTime, triggerSaveRef } = useAutosaveStore();
   const draftId = useCvBuilderStore((s) => s.draftId);
+
+  // Slice 5: mount the CV builder chat companion (chat-driven corner advisor).
+  // The hook registers/activates once, clears on unmount (anti-Clippy).
+  useCvBuilderChatCompanion(draftId);
   const title = useCvBuilderStore((s) => s.resumeTitle);
   const fullName = useCvBuilderStore((s) => s.fullName);
   const analyzeCvMutation = useAnalyzeCvMutation();

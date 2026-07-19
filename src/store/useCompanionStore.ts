@@ -19,7 +19,8 @@ export type CompanionSkill =
   | "diagnosis_element_issue"
   | "diagnosis_commentary"
   | "diagnosis_chat"
-  | "learning_chat";
+  | "learning_chat"
+  | "cv_builder_chat";
 
 /** One message in the calm corner-advisor chat thread (ephemeral, NOT persisted). */
 export interface CompanionChatMessage {

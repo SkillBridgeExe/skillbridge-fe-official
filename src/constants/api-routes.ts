@@ -70,6 +70,8 @@ export const API_ROUTES = {
     ASSISTANT_SMART_QUESTIONS: (id: string) =>
       `${API}/cvs/${id}/builder/assistant/smart-questions`,
     ASSISTANT_EXPLAIN: (id: string) => `${API}/cvs/${id}/builder/assistant/explain`,
+    // CV Builder Chat Companion (Slice 5 — PR #217)
+    BUILDER_CHAT: (id: string) => `${API}/cvs/${id}/builder/chat`,
   },
 
   // §1.4 Diagnosis (diagnosis.controller.ts)
