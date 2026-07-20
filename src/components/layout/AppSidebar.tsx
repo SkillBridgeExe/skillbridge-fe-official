@@ -297,7 +297,7 @@ function SidebarAccount({ collapsed }: { collapsed: boolean }) {
 /* ------------------------------------------------------------------ */
 
 function DesktopSidebar() {
-  const { collapsed, toggleCollapsed } = useSidebarStore();
+  const { collapsed, forceCollapsed, toggleCollapsed } = useSidebarStore();
   const prefersReduced = window.matchMedia?.(
     "(prefers-reduced-motion: reduce)",
   )?.matches;
@@ -343,26 +343,28 @@ function DesktopSidebar() {
       </div>
 
       {/* Collapse toggle at edge */}
-      <button
-        type="button"
-        onClick={toggleCollapsed}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        aria-expanded={!collapsed}
-        className={cn(
-          "absolute top-1/2 -translate-y-1/2 -right-3 z-50",
-          "flex items-center justify-center w-6 h-6 rounded-full",
-          "bg-white border border-[#EAEAEA] shadow-sm",
-          "text-[#787774] hover:text-[#2F3437] hover:shadow-md",
-          "transition-all",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
-        )}
-      >
-        {collapsed ? (
-          <PanelLeft className="w-3.5 h-3.5" />
-        ) : (
-          <PanelLeftClose className="w-3.5 h-3.5" />
-        )}
-      </button>
+      {!forceCollapsed && (
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 -right-3 z-50",
+            "flex items-center justify-center w-6 h-6 rounded-full",
+            "bg-white border border-[#EAEAEA] shadow-sm",
+            "text-[#787774] hover:text-[#2F3437] hover:shadow-md",
+            "transition-all",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeft className="w-3.5 h-3.5" />
+          ) : (
+            <PanelLeftClose className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
     </aside>
   );
 }

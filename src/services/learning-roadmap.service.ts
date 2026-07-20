@@ -360,13 +360,12 @@ function toRecommendedCourse(course: RecommendedCourseDto) {
 }
 
 function isSafeRecommendedCourse(course: RecommendedCourseDto): boolean {
-  const title = course.title.toLowerCase();
   const url = course.url?.toLowerCase() ?? "";
+  const language = course.language?.toLowerCase();
   if (/[\u0400-\u04ff\u0600-\u06ff]/u.test(course.title)) return false;
+  if (language === "fr" || language === "french") return false;
   if (/-fr(?:$|[/?#])|[/?&]lang=fr\b/.test(url)) return false;
-  return !/\b(cr\u00e9er|creer|comp\u00e9tences|competences|utilisateur|dynamiques|notions|cl\u00e9s|cles|entreprise)\b/i.test(
-    title,
-  );
+  return true;
 }
 
 function toRecommendedCourses(courses: RecommendedCourseDto[] | undefined) {
@@ -629,10 +628,7 @@ function roadmapSessionsToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
       moduleId,
       skillCanonical: session.primary_skill,
       sessionNumber: session.session_index,
-      title:
-        session.translated_display?.title ??
-        buildSessionDisplayTitle(primaryStep?.display_name ?? session.primary_skill, session.session_index, lessonContent) ??
-        session.title,
+      title: session.title,
       skill: primaryStep?.display_name ?? session.primary_skill,
       laneIndex: session.lane_index,
       dayOfWeek: session.suggested_day_of_week,
@@ -664,14 +660,6 @@ function roadmapSessionsToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
   }
 
   return [...weeks.values()].sort((a, b) => a.weekNumber - b.weekNumber);
-}
-
-function buildSessionDisplayTitle(
-  _skillName: string,
-  sessionIndex: number,
-  _lessonContent?: ReturnType<typeof toLessonContent>,
-): string {
-  return `Session ${sessionIndex}`;
 }
 
 function isFirstStudyDaySession(allSessions: RoadmapSessionDto[], session: RoadmapSessionDto): boolean {

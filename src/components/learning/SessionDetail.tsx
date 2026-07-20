@@ -139,93 +139,52 @@ function orderSessionForDisplay(session: LearningSession): LearningSession {
   };
 }
 
-const VI_TEXT_MAP: Record<string, string> = {
-  "Session 1": "Buổi 1",
-  "Session 2": "Buổi 2",
-  "Types and interfaces": "Kiểu dữ liệu và interface",
-  "Narrowing unknown data": "Thu hẹp kiểu cho dữ liệu unknown",
-  "Use TypeScript to make data shapes explicit, catch common mistakes earlier, and document function contracts for real frontend and backend work.":
-    "Dùng TypeScript để mô tả rõ cấu trúc dữ liệu, phát hiện lỗi sớm hơn và ghi rõ contract của hàm trong công việc frontend/backend thực tế.",
-  "Create a type for a resource or user object.": "Tạo type cho một resource hoặc object người dùng.",
-  "Use that type in at least one function parameter.": "Dùng type đó trong ít nhất một tham số của hàm.",
-  "Avoid using any for known shapes.": "Tránh dùng any cho những cấu trúc dữ liệu đã biết.",
-  "Named types make API responses, form values, and component props easier to understand.":
-    "Type có tên giúp API response, giá trị form và props của component dễ hiểu hơn.",
-  "They also let the compiler warn you when code expects fields that do not exist.":
-    "Chúng cũng giúp compiler cảnh báo khi code dùng những field không tồn tại.",
-  "Named types make API responses, form values, and component props easier to understand. They also let the compiler warn you when code expects fields that do not exist.":
-    "Type có tên giúp API response, giá trị form và props của component dễ hiểu hơn. Chúng cũng giúp compiler cảnh báo khi code dùng những field không tồn tại.",
+type SessionTranslationMap = Record<string, string>;
+type SessionTranslationSourceItem = { path: string; summary: string };
+type SessionTranslationRequestItem = {
+  id: string;
+  path: string;
+  summary: string;
+  partIndex: number;
+  partCount: number;
 };
 
-const VI_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/\bThis section covers\b/g, "Phần này bao gồm"],
-  [/\bas part of the\b/g, "trong"],
-  [/\bmodule\b/g, "module"],
-  [/\bWork through the\b/g, "Hoàn thành"],
-  [/\bexercises to build hands-on experience\b/g, "bài thực hành để có kinh nghiệm hands-on"],
-  [/\bexercise to build hands-on experience\b/g, "bài thực hành để có kinh nghiệm hands-on"],
-  [/\bIntroduction and\b/g, "Giới thiệu và"],
-  [/\bIntroduction to\b/g, "Giới thiệu về"],
-  [/\bsetup\b/g, "cài đặt"],
-  [/\bReading images and video\b/g, "Đọc ảnh và video"],
-  [/\bResizing, drawing, and text overlays\b/g, "Resize, vẽ và chèn chữ lên ảnh"],
-  [/\bImage transforms, edges, and contours\b/g, "Biến đổi ảnh, edge và contour"],
-  [/\bFace detection and recognition basics\b/g, "Cơ bản về phát hiện và nhận diện khuôn mặt"],
-  [/\bComponents\b/g, "Component"],
-  [/\bProps\b/g, "Props"],
-  [/\bState\b/g, "State"],
-  [/\bEffects\b/g, "Effect"],
-  [/\bRouting\b/g, "Routing"],
-  [/\bPractical\b/g, "Thực hành"],
-  [/\bPractice\b/g, "Thực hành"],
-  [/\bBasics\b/g, "Cơ bản"],
-  [/\bAdvanced\b/g, "Nâng cao"],
-  [/\bBuild\b/g, "Xây dựng"],
-  [/\bCreate\b/g, "Tạo"],
-  [/\bExplain\b/g, "Giải thích"],
-  [/\bInstall\b/g, "Cài đặt"],
-  [/\bUse\b/g, "Dùng"],
-  [/\bAvoid\b/g, "Tránh"],
-  [/\busing any\b/g, "dùng kiểu any"],
-  [/\bfor known shapes\b/g, "cho những cấu trúc dữ liệu đã biết"],
-  [/\bQuestion\b/g, "Câu hỏi"],
-  [/\bCorrect\b/g, "Đúng"],
-  [/\bReview\b/g, "Xem lại"],
-];
-
-function translateLearningTextToVietnamese(text?: string): string | undefined {
-  if (!text) return text;
-  const exact = VI_TEXT_MAP[text.trim()];
-  if (exact) return exact;
-
-  const sessionMatch = text.match(/^Session\s+(\d+)$/i);
-  if (sessionMatch) return `Buổi ${sessionMatch[1]}`;
-
-  const sectionSummary = text.match(/^This section covers (.+) as part of the (.+) module\. Work through the (\d+) exercises? to build hands-on experience\.$/i);
-  if (sectionSummary) {
-    return `Phần này giúp bạn học ${translateLearningTextToVietnamese(sectionSummary[1])} trong môn ${translateLearningTextToVietnamese(sectionSummary[2])}. Hoàn thành ${sectionSummary[3]} bài thực hành để có kinh nghiệm hands-on.`;
-  }
-
-  let output = text;
-  for (const [pattern, replacement] of VI_REPLACEMENTS) {
-    output = output.replace(pattern, replacement);
-  }
-  return output;
-}
-
-type SessionTranslationMap = Record<string, string>;
+const TRANSLATION_BATCH_SIZE = 50;
+const TRANSLATION_TEXT_LIMIT = 950;
 
 function translatedSessionText(path: string, text: string | undefined, translations?: SessionTranslationMap) {
   if (!text) return text;
-  return translations?.[path] ?? translateLearningTextToVietnamese(text) ?? text;
+  return translations?.[path] ?? text;
+}
+
+function splitTextForTranslation(text: string, limit = TRANSLATION_TEXT_LIMIT): string[] {
+  const trimmed = text.trim();
+  if (trimmed.length <= limit) return [trimmed];
+
+  const chunks: string[] = [];
+  let current = "";
+  const tokens = trimmed.split(/(\s+)/);
+
+  for (const token of tokens) {
+    if (!token) continue;
+    if (current && current.length + token.length > limit) {
+      chunks.push(current.trim());
+      current = token.trimStart();
+      continue;
+    }
+    current += token;
+  }
+
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length > 0 ? chunks : [trimmed.slice(0, limit)];
 }
 
 function collectSessionTranslationItems(session: LearningSession) {
-  const items: Array<{ id: string; summary: string }> = [];
+  const items: SessionTranslationSourceItem[] = [];
   const add = (path: string, value?: string) => {
     const text = value?.trim();
     if (!text) return;
-    items.push({ id: path, summary: text });
+    items.push({ path, summary: text });
   };
 
   add("session.title", session.title);
@@ -251,40 +210,77 @@ function collectSessionTranslationItems(session: LearningSession) {
         add(`lessonSection.${section.id}.checklist.${item.id}`, item.label);
       }
     }
-    for (const question of session.lessonContent.quiz) {
-      add(`quiz.${question.id}.question`, question.question);
-      add(`quiz.${question.id}.explanation`, question.explanation);
-      question.options.forEach((option, index) => add(`quiz.${question.id}.option.${index}`, option));
+    for (const quizItem of session.lessonContent.quiz) {
+      add(`quiz.${quizItem.id}.question`, quizItem.question);
+      quizItem.options.forEach((option, index) => add(`quiz.${quizItem.id}.option.${index}`, option));
+      add(`quiz.${quizItem.id}.explanation`, quizItem.explanation);
     }
     for (const exercise of session.lessonContent.exercises) {
       add(`exercise.${exercise.id}.title`, exercise.title);
       add(`exercise.${exercise.id}.prompt`, exercise.prompt);
-      add(`exercise.${exercise.id}.proof`, exercise.proofOfCompletion);
-      exercise.acceptanceCriteria.forEach((item, index) => add(`exercise.${exercise.id}.criteria.${index}`, item));
+      exercise.acceptanceCriteria.forEach((criterion, index) =>
+        add(`exercise.${exercise.id}.acceptanceCriteria.${index}`, criterion),
+      );
+      add(`exercise.${exercise.id}.proofOfCompletion`, exercise.proofOfCompletion);
     }
   }
 
   for (const resource of session.resources) {
     add(`resource.${resource.id}.title`, resource.title);
     add(`resource.${resource.id}.description`, resource.description);
-    add(`resource.${resource.id}.proof`, resource.proofOfCompletion);
+    add(`resource.${resource.id}.proofOfCompletion`, resource.proofOfCompletion);
+    for (const chapter of resource.videoChapters ?? []) {
+      add(`resource.${resource.id}.chapter.${chapter.id}.title`, chapter.title);
+    }
   }
 
   return items;
 }
 
 async function translateSessionDisplay(session: LearningSession): Promise<SessionTranslationMap> {
-  const items = collectSessionTranslationItems(session);
-  if (items.length === 0) return {};
+  const sourceItems = collectSessionTranslationItems(session);
+  if (sourceItems.length === 0) return {};
 
-  const response = await translateLearningDisplay({
-    locale: "vi",
-    items,
+  const requestItems: SessionTranslationRequestItem[] = sourceItems.flatMap((item, itemIndex) => {
+    const parts = splitTextForTranslation(item.summary);
+    return parts.map((summary, partIndex) => ({
+      id: `t${itemIndex}_${partIndex}`,
+      path: item.path,
+      summary,
+      partIndex,
+      partCount: parts.length,
+    }));
   });
 
+  const translatedParts = new Map<string, string[]>();
+
+  for (let index = 0; index < requestItems.length; index += TRANSLATION_BATCH_SIZE) {
+    const batch = requestItems.slice(index, index + TRANSLATION_BATCH_SIZE);
+    const batchById = new Map(batch.map((item) => [item.id, item]));
+    const response = await translateLearningDisplay({
+      locale: "vi",
+      items: batch.map((item) => ({ id: item.id, summary: item.summary })),
+    });
+
+    for (const translatedItem of response.items) {
+      const source = batchById.get(translatedItem.id);
+      if (!source) continue;
+      const translatedText =
+        translatedItem.translated_display.summary ??
+        translatedItem.translated_display.description ??
+        translatedItem.translated_display.title ??
+        "";
+      if (!translatedText.trim()) continue;
+
+      const existing = translatedParts.get(source.path) ?? Array.from({ length: source.partCount }, () => "");
+      existing[source.partIndex] = translatedText.trim();
+      translatedParts.set(source.path, existing);
+    }
+  }
+
   return Object.fromEntries(
-    response.items
-      .map((item) => [item.id, item.translated_display.summary ?? item.translated_display.title ?? ""] as const)
+    [...translatedParts.entries()]
+      .map(([path, parts]) => [path, parts.filter(Boolean).join(" ")] as const)
       .filter(([, value]) => value.trim().length > 0),
   );
 }
@@ -328,27 +324,36 @@ function translateLearningSessionToVietnamese(
                 item.label,
             })),
           })),
-          quiz: session.lessonContent.quiz.map((question) => ({
-            ...question,
-            question: translatedSessionText(`quiz.${question.id}.question`, question.question, translations) ?? question.question,
-            options: question.options.map(
-              (option, index) => translatedSessionText(`quiz.${question.id}.option.${index}`, option, translations) ?? option,
+          quiz: session.lessonContent.quiz.map((quizItem) => ({
+            ...quizItem,
+            question:
+              translatedSessionText(`quiz.${quizItem.id}.question`, quizItem.question, translations) ??
+              quizItem.question,
+            options: quizItem.options.map(
+              (option, index) =>
+                translatedSessionText(`quiz.${quizItem.id}.option.${index}`, option, translations) ?? option,
             ),
             explanation:
-              translatedSessionText(`quiz.${question.id}.explanation`, question.explanation, translations) ??
-              question.explanation,
+              translatedSessionText(`quiz.${quizItem.id}.explanation`, quizItem.explanation, translations) ??
+              quizItem.explanation,
           })),
           exercises: session.lessonContent.exercises.map((exercise) => ({
             ...exercise,
             title: translatedSessionText(`exercise.${exercise.id}.title`, exercise.title, translations) ?? exercise.title,
-            prompt: translatedSessionText(`exercise.${exercise.id}.prompt`, exercise.prompt, translations) ?? exercise.prompt,
+            prompt:
+              translatedSessionText(`exercise.${exercise.id}.prompt`, exercise.prompt, translations) ??
+              exercise.prompt,
             acceptanceCriteria: exercise.acceptanceCriteria.map(
-              (item, index) =>
-                translatedSessionText(`exercise.${exercise.id}.criteria.${index}`, item, translations) ?? item,
+              (criterion, index) =>
+                translatedSessionText(`exercise.${exercise.id}.acceptanceCriteria.${index}`, criterion, translations) ??
+                criterion,
             ),
             proofOfCompletion:
-              translatedSessionText(`exercise.${exercise.id}.proof`, exercise.proofOfCompletion, translations) ??
-              exercise.proofOfCompletion,
+              translatedSessionText(
+                `exercise.${exercise.id}.proofOfCompletion`,
+                exercise.proofOfCompletion,
+                translations,
+              ) ?? exercise.proofOfCompletion,
           })),
         }
       : session.lessonContent,
@@ -359,8 +364,14 @@ function translateLearningSessionToVietnamese(
         translatedSessionText(`resource.${resource.id}.description`, resource.description, translations) ??
         resource.description,
       proofOfCompletion:
-        translatedSessionText(`resource.${resource.id}.proof`, resource.proofOfCompletion, translations) ??
+        translatedSessionText(`resource.${resource.id}.proofOfCompletion`, resource.proofOfCompletion, translations) ??
         resource.proofOfCompletion,
+      videoChapters: resource.videoChapters?.map((chapter) => ({
+        ...chapter,
+        title:
+          translatedSessionText(`resource.${resource.id}.chapter.${chapter.id}.title`, chapter.title, translations) ??
+          chapter.title,
+      })),
     })),
   };
 }
@@ -484,6 +495,27 @@ function getSectionMasteryStatus(
   const stats = getSectionTaskStats(section, progress);
   if (stats.total > 0 && stats.completed < stats.total) return "Practice needed";
   return "Learning";
+}
+
+function sectionMasteryLabel(status: SectionMasteryStatus, t: ReturnType<typeof useTranslation<"common">>["t"]) {
+  switch (status) {
+    case "Completed":
+      return t("learning.sectionStatus.completed", { defaultValue: "Completed" });
+    case "Practice needed":
+      return t("learning.sectionStatus.practiceNeeded", { defaultValue: "Practice needed" });
+    case "Quiz passed":
+      return t("learning.sectionStatus.quizPassed", { defaultValue: "Quiz passed" });
+    case "Learning":
+    default:
+      return t("learning.sectionStatus.learning", { defaultValue: "Learning" });
+  }
+}
+
+function learningSectionTypeLabel(
+  type: LearningSession["sections"][number]["type"],
+  t: ReturnType<typeof useTranslation<"common">>["t"],
+) {
+  return t(`learning.sectionType.${type}`, { defaultValue: type });
 }
 
 function getSessionEvidenceSummary(session: LearningSession, progress: SessionProgressState) {
@@ -984,10 +1016,10 @@ function SessionSidebar({
   const progress = session.sections.length > 0 ? (completedCount / session.sections.length) * 100 : 0;
   const quizCount = buildQuiz(session).length;
   const sidebarTabs: Array<{ id: SidebarTab; label: string }> = [
-    { id: "all", label: "All" },
-    { id: "lessons", label: "Lessons" },
-    { id: "video", label: "Video" },
-    { id: "quiz", label: "Quiz" },
+    { id: "all", label: t("learning.sidebarTabs.all", { defaultValue: "All" }) },
+    { id: "lessons", label: t("learning.sidebarTabs.lessons", { defaultValue: "Lessons" }) },
+    { id: "video", label: t("learning.sidebarTabs.video", { defaultValue: "Video" }) },
+    { id: "quiz", label: t("learning.sidebarTabs.quiz", { defaultValue: "Quiz" }) },
   ];
   const filteredSections = session.sections.filter((section) => {
     if (activeTab === "all") return true;
@@ -1006,7 +1038,7 @@ function SessionSidebar({
   };
 
   return (
-    <aside className="absolute top-0 left-0 z-30 w-72 h-full border-r border-slate-200 bg-white shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-left duration-300">
+    <aside className="absolute top-0 left-0 z-30 h-full w-80 border-r border-slate-200 bg-white shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-left duration-300">
       {/* Toggle + Module info header */}
       <div className="p-5 border-b border-slate-100 sticky top-0 bg-slate-50/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between mb-3">
@@ -1021,8 +1053,8 @@ function SessionSidebar({
         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">
           {t("learning.common.session", { number: session.sessionNumber })}
         </p>
-        <h2 className="font-poppins font-bold text-slate-900 text-base leading-snug mb-2">{session.title}</h2>
-        <div className="flex items-center gap-3">
+        <h2 className="line-clamp-2 font-poppins font-bold text-slate-900 text-base leading-snug mb-2">{session.title}</h2>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <StarRating stars={session.stars} max={session.maxStars} />
           <span className="text-xs text-slate-400">
             {t("learning.common.starProgress", { earned: session.stars, total: session.maxStars })}
@@ -1074,6 +1106,7 @@ function SessionSidebar({
             <button
               key={section.id}
               onClick={() => selectLearningSection(section.id, onSelectSection)}
+              aria-label={`${section.title} ${learningSectionTypeLabel(section.type, t)} - ${t("learning.common.exercises", { count: section.exercises })}`}
               className={cn(
                 "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
                 isActive
@@ -1093,14 +1126,14 @@ function SessionSidebar({
                 )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className={cn("text-sm font-medium leading-snug", isActive ? "text-white" : "text-slate-800")}>
+                <p className={cn("line-clamp-2 text-sm font-medium leading-snug", isActive ? "text-white" : "text-slate-800")}>
                   {section.title}
                 </p>
-                <div className={cn("flex items-center gap-2 mt-1", isActive ? "text-white/70" : "text-slate-400")}>
-                  <span className="flex items-center gap-1 text-xs">
-                    {typeIcon(section.type)} {section.type}
+                <div className={cn("mt-1 flex flex-wrap items-center gap-x-2 gap-y-1", isActive ? "text-white/70" : "text-slate-400")}>
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    {typeIcon(section.type)} {learningSectionTypeLabel(section.type, t)}
                   </span>
-                  <span className="text-xs">-</span>
+                  <span aria-hidden="true" className="text-xs text-current/50">•</span>
                   <span className="text-xs">{t("learning.common.exercises", { count: section.exercises })}</span>
                 </div>
                 <span
@@ -1117,7 +1150,7 @@ function SessionSidebar({
                       : "bg-slate-100 text-slate-500",
                   )}
                 >
-                  {sectionStatus}
+                  {sectionMasteryLabel(sectionStatus, t)}
                 </span>
                 {/* Section stars */}
                 <div className="flex items-center gap-0.5 mt-1">
@@ -1154,15 +1187,15 @@ function SessionSidebar({
               <HelpCircle className="w-4 h-4 text-amber-500" />
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium leading-snug text-slate-800">
+              <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-800">
                 {t("learning.session.knowledgeCheck")}
               </p>
-              <div className="mt-1 flex items-center gap-2 text-slate-400">
-                <span className="flex items-center gap-1 text-xs">
+              <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-slate-400">
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs">
                   <HelpCircle className="w-3.5 h-3.5" /> quiz
                 </span>
-                <span className="text-xs">-</span>
-                <span className="text-xs">{t("learning.session.questionCount", { count: quizCount })}</span>
+                <span aria-hidden="true" className="shrink-0 text-xs text-slate-300">•</span>
+                <span className="min-w-0 truncate text-xs leading-snug">{t("learning.session.questionCount", { count: quizCount })}</span>
               </div>
               <div className="flex items-center gap-0.5 mt-1">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -1428,7 +1461,7 @@ function VideoContentPanel({
                   </div>
                   {progress.quizAttempts?.[q.id] && q.explanation ? (
                     <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
-                      {progress.quizAttempts[q.id]?.explanation ?? q.explanation}
+                      {q.explanation || progress.quizAttempts[q.id]?.explanation}
                     </p>
                   ) : null}
                 </div>
@@ -1575,12 +1608,12 @@ function SessionQuiz({
           <div>
             <h4 className="text-sm font-bold text-slate-800">{t("learning.session.knowledgeCheck")}</h4>
             <p className="text-xs text-slate-400">
-              {t("learning.session.questionCount", { count: quiz.length })} - {t("learning.session.correctCount", { correct: stats.correct, total: quiz.length })} - Pass {passingCount}/{quiz.length}
+              {t("learning.session.questionCount", { count: quiz.length })} - {t("learning.session.correctCount", { correct: stats.correct, total: quiz.length })} - {t("learning.session.passScoreShort", { passing: passingCount, total: quiz.length })}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-          <span>{expanded ? "Hide quiz" : "Start quiz"}</span>
+          <span>{expanded ? t("learning.session.hideQuiz") : t("learning.session.startQuiz")}</span>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </button>
@@ -1655,13 +1688,13 @@ function SessionQuiz({
                 {answered ? (
                   <div className="flex justify-end">
                     <span className={cn("text-xs font-semibold", attempt?.isCorrect ? "text-emerald-600" : "text-red-600")}>
-                      {attempt?.isCorrect ? "Correct" : "Review this answer"}
+                      {attempt?.isCorrect ? t("learning.session.correctAnswer") : t("learning.session.reviewThisAnswer")}
                     </span>
                   </div>
                 ) : null}
                 {attempt ? (
                   <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-800">
-                    {attempt.explanation ?? question.explanation}
+                    {question.explanation || attempt.explanation}
                   </p>
                 ) : null}
               </div>
@@ -1670,14 +1703,18 @@ function SessionQuiz({
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800">
-                Passing score: {passingCount}/{quiz.length} correct ({Math.round(QUIZ_PASSING_RATIO * 100)}%)
+                {t("learning.session.passingScore", {
+                  passing: passingCount,
+                  total: quiz.length,
+                  percent: Math.round(QUIZ_PASSING_RATIO * 100),
+                })}
               </p>
               <p className={cn("mt-1 text-xs font-medium", passed ? "text-emerald-600" : "text-slate-500")}>
                 {allQuestionsAnswered
                   ? passed
-                    ? "Quiz passed. You can complete this lesson."
-                    : "Review the explanations and retry before completing this lesson."
-                  : "Choose an answer for every question, then check once."}
+                    ? t("learning.session.quizPassedCanComplete")
+                    : t("learning.session.reviewExplanationsBeforeComplete")
+                  : t("learning.session.chooseEveryAnswer")}
               </p>
             </div>
             <Button
@@ -1728,6 +1765,7 @@ function EvidenceSummary({
   session: LearningSession;
   progress: SessionProgressState;
 }) {
+  const { t } = useTranslation("common");
   const evidence = getSessionEvidenceSummary(session, progress);
   const completedProofs = evidence.tasks.filter((item) => item.complete);
 
@@ -1741,11 +1779,20 @@ function EvidenceSummary({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            Portfolio evidence
+            {t("learning.evidence.portfolioEvidence", { defaultValue: "Portfolio evidence" })}
           </p>
-          <h3 className="mt-1 text-lg font-bold text-slate-900">Evidence summary</h3>
+          <h3 className="mt-1 text-lg font-bold text-slate-900">
+            {t("learning.evidence.summaryTitle", { defaultValue: "Evidence summary" })}
+          </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Lab proof {evidence.completedTasks}/{evidence.totalTasks} - Quiz {evidence.quizCorrect}/{evidence.quizTotal}
+            {t("learning.evidence.labProofAndQuiz", {
+              completed: evidence.completedTasks,
+              total: evidence.totalTasks,
+              correct: evidence.quizCorrect,
+              quizTotal: evidence.quizTotal,
+              defaultValue:
+                "Lab proof {{completed}}/{{total}} - Quiz {{correct}}/{{quizTotal}}",
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1757,10 +1804,12 @@ function EvidenceSummary({
                 : "bg-amber-50 text-amber-700",
             )}
           >
-            {evidence.readyForPortfolio ? "Ready for portfolio" : "Practice needed"}
+            {evidence.readyForPortfolio
+              ? t("learning.evidence.readyForPortfolio", { defaultValue: "Ready for portfolio" })
+              : t("learning.sectionStatus.practiceNeeded", { defaultValue: "Practice needed" })}
           </span>
           <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={handleCopy}>
-            Copy summary
+            {t("learning.evidence.copySummary", { defaultValue: "Copy summary" })}
           </Button>
         </div>
       </div>
@@ -1775,7 +1824,9 @@ function EvidenceSummary({
         </ul>
       ) : (
         <p className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
-          Complete at least one lab task to build portfolio evidence.
+          {t("learning.evidence.empty", {
+            defaultValue: "Complete at least one lab task to build portfolio evidence.",
+          })}
         </p>
       )}
     </section>
@@ -2061,7 +2112,7 @@ function DocContentPanel({
         {activeSectionOutcomes.length > 0 ? (
           <div className="not-prose mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-3">
             <p className="text-xs font-bold uppercase tracking-widest text-sky-700">
-              {isVietnameseDisplay ? "Sau bài này bạn có thể" : "You will be able to"}
+              {t("learning.session.youWillBeAbleTo", { defaultValue: "You will be able to" })}
             </p>
             <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
               {activeSectionOutcomes.map((outcome) => (
@@ -2101,13 +2152,16 @@ function DocContentPanel({
                     onClick={() => onOpenSandboxWithSection(sec.title)}
                   >
                     <Terminal className="w-3.5 h-3.5 text-emerald-500" />
-                    {isVietnameseDisplay ? "Mở sandbox" : "Try Sandbox"}
+                    {t("learning.session.trySandbox", { defaultValue: "Try Sandbox" })}
                   </Button>
                 )}
               </div>
               {shouldHighlightSection && (
                 <p className="text-xs font-semibold text-red-500 flex items-center gap-1 mt-1 mb-2 animate-pulse">
-                  <AlertCircle className="w-3.5 h-3.5" /> Chưa hoàn thành nội dung tự học này
+                  <AlertCircle className="w-3.5 h-3.5" />{" "}
+                  {t("learning.session.incompleteSelfStudy", {
+                    defaultValue: "This self-study section is not complete yet",
+                  })}
                 </p>
               )}
               {sec.body ? (
@@ -2235,7 +2289,7 @@ function DocContentPanel({
                               <div className="mt-2 grid gap-2 lg:grid-cols-[1fr_0.9fr]">
                                 <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
                                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                                    Practice rubric
+                                    {t("learning.session.practiceRubric", { defaultValue: "Practice rubric" })}
                                   </p>
                                   <ul className="mt-1.5 flex flex-wrap gap-1.5">
                                     {rubric.map((criterion) => (
@@ -2250,7 +2304,7 @@ function DocContentPanel({
                                 </div>
                                 <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
                                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                                    Example proof
+                                    {t("learning.session.exampleProof", { defaultValue: "Example proof" })}
                                   </p>
                                   <p className="mt-1.5 text-xs leading-5 text-slate-500">{placeholder}</p>
                                 </div>
@@ -2258,10 +2312,13 @@ function DocContentPanel({
                               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
                                 <label className="min-w-0 flex-1">
                                   <span className="sr-only">
-                                    Proof for {item.label}
+                                    {t("learning.session.proofFor", { label: item.label, defaultValue: `Proof for ${item.label}` })}
                                   </span>
                                   <textarea
-                                    aria-label={`Proof for ${item.label}`}
+                                    aria-label={t("learning.session.proofFor", {
+                                      label: item.label,
+                                      defaultValue: `Proof for ${item.label}`,
+                                    })}
                                     value={proofValue}
                                     onChange={(event) => {
                                       onExerciseProofChange(proofId, event.target.value);
@@ -2286,12 +2343,16 @@ function DocContentPanel({
                                   disabled={isTaskComplete}
                                   onClick={() => handleCheckPracticeTask(sec.id, item.id)}
                                 >
-                                  {isTaskComplete ? "Done" : "Check task"}
+                                  {isTaskComplete
+                                    ? t("learning.session.done")
+                                    : t("learning.session.checkTask", { defaultValue: "Check task" })}
                                 </Button>
                               </div>
                               {taskProofErrors[proofId] ? (
                                 <p className="mt-1.5 text-xs font-semibold text-red-600">
-                                  Add proof before checking this task.
+                                  {t("learning.session.addProofBeforeCheck", {
+                                    defaultValue: "Add proof before checking this task.",
+                                  })}
                                 </p>
                               ) : null}
                             </div>
@@ -2616,9 +2677,9 @@ function MainContentPanel({
 
         <div role="tablist" aria-label="Learning mode" className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
           {([
-            { id: "learn", label: isVietnameseDisplay ? "Học" : "Learn", icon: BookOpen },
-            { id: "practice", label: isVietnameseDisplay ? "Thực hành" : "Practice", icon: GraduationCap },
-            { id: "check", label: isVietnameseDisplay ? "Kiểm tra" : "Check", icon: HelpCircle },
+            { id: "learn", label: t("learning.modeTabs.learn", { defaultValue: "Learn" }), icon: BookOpen },
+            { id: "practice", label: t("learning.modeTabs.practice", { defaultValue: "Practice" }), icon: GraduationCap },
+            { id: "check", label: t("learning.modeTabs.check", { defaultValue: "Check" }), icon: HelpCircle },
           ] as const).map((tab) => {
             const isActiveMode = activeMode === tab.id;
             const Icon = tab.icon;
@@ -2877,7 +2938,22 @@ export function SessionDetail({ session }: SessionDetailProps) {
     : baseDisplaySession;
 
   const weeks = useActiveWeekPlans();
-  const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
+  const ALL_SESSIONS = weeks
+    .flatMap((week) =>
+      week.sessions.map((scheduledSession, sessionOrder) => ({
+        ...scheduledSession,
+        __weekNumber: week.weekNumber,
+        __sessionOrder: sessionOrder,
+      })),
+    )
+    .sort(
+      (a, b) =>
+        a.__weekNumber - b.__weekNumber ||
+        dayOrderForLearningSchedule(a.dayOfWeek) - dayOrderForLearningSchedule(b.dayOfWeek) ||
+        (a.laneIndex ?? 0) - (b.laneIndex ?? 0) ||
+        a.sessionNumber - b.sessionNumber ||
+        a.__sessionOrder - b.__sessionOrder,
+    );
 
   const currentIdx = ALL_SESSIONS.findIndex(s => s.id === session.id);
 
@@ -2951,7 +3027,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
       completion_percent: 100,
     });
 
-    const next = ALL_SESSIONS[currentIdx + 1];
+    const next = ALL_SESSIONS.slice(currentIdx + 1).find((scheduledSession) => scheduledSession.status !== "locked");
     setTimeout(() => next ? navigate(`/learning/session/${next.id}`) : navigate("/learning"), 800);
   };
   const prevSession = currentIdx > 0 ? ALL_SESSIONS[currentIdx - 1] : null;
@@ -3206,25 +3282,27 @@ export function SessionDetail({ session }: SessionDetailProps) {
           )}
 
           {/* Center content — scrollable */}
-          <MainContentPanel
-            session={displaySession}
-            activeSectionId={activeSectionId}
-            onSelectSection={handleSelectSection}
-            progress={visibleProgress}
-            onToggleChecklistItem={handleToggleChecklistItem}
-            onExerciseProofChange={handleExerciseProofChange}
-            onToggleSaveCourse={handleToggleSaveCourse}
-            onAnswerQuizQuestion={handleAnswerQuizQuestion}
-            onRetryQuiz={handleRetryQuiz}
-            videoStartSeconds={videoStartSeconds}
-            onSeekVideo={setVideoStartSeconds}
-            adaptiveQuiz={adaptiveQuiz}
-            showValidationErrors={showValidationErrors}
-            onOpenSandboxWithSection={handleOpenSandboxWithSection}
-            activeMode={activeMode}
-            onModeChange={setActiveMode}
-            isVietnameseDisplay={isVietnameseDisplay}
-          />
+          <div className={cn("flex min-w-0 flex-1 transition-[padding-left] duration-300", isSidebarOpen && "pl-80")}>
+            <MainContentPanel
+              session={displaySession}
+              activeSectionId={activeSectionId}
+              onSelectSection={handleSelectSection}
+              progress={visibleProgress}
+              onToggleChecklistItem={handleToggleChecklistItem}
+              onExerciseProofChange={handleExerciseProofChange}
+              onToggleSaveCourse={handleToggleSaveCourse}
+              onAnswerQuizQuestion={handleAnswerQuizQuestion}
+              onRetryQuiz={handleRetryQuiz}
+              videoStartSeconds={videoStartSeconds}
+              onSeekVideo={setVideoStartSeconds}
+              adaptiveQuiz={adaptiveQuiz}
+              showValidationErrors={showValidationErrors}
+              onOpenSandboxWithSection={handleOpenSandboxWithSection}
+              activeMode={activeMode}
+              onModeChange={setActiveMode}
+              isVietnameseDisplay={isVietnameseDisplay}
+            />
+          </div>
 
           {/* Right AI Chat Panel — sticky */}
           {false && isChatOpen && (
@@ -3262,4 +3340,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
       )}
     </div>
   );
+}
+
+function dayOrderForLearningSchedule(dayOfWeek: number) {
+  return dayOfWeek === 0 ? 7 : dayOfWeek;
 }

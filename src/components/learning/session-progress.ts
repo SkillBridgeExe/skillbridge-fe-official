@@ -205,7 +205,10 @@ export function isSessionCompleted(
   return isSessionReadyToComplete(session, progress);
 }
 
-export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
+export function deriveSessionStatuses(
+  weeks: WeekPlan[],
+  roadmapStartedAt?: string | null,
+): WeekPlan[] {
   const sessionEntries = weeks.flatMap((week) =>
     week.sessions.map((session, sessionOrder) => ({
       session,
@@ -218,7 +221,7 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
   const completedMap: Record<string, boolean> = {};
   const progressMap: Record<string, SessionProgressState> = {};
   const todayStudyDayOrder = dayOrder(new Date().getDay());
-
+  const dueByStartedAt = createStartedAtDueChecker(sessionEntries, roadmapStartedAt);
   for (const session of allSessions) {
     const localProgress = createInitialSessionProgress(
       session,
@@ -228,37 +231,26 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
     progressMap[session.id] = localProgress;
   }
 
-  const laneIndexBySessionId = inferLaneIndexes(sessionEntries);
-  const openSessionIds = new Set<string>();
-  const entriesByLane = new Map<number, typeof sessionEntries>();
-
-  for (const entry of sessionEntries) {
-    const laneIndex = entry.session.laneIndex ?? laneIndexBySessionId.get(entry.session.id) ?? 0;
-    const laneEntries = entriesByLane.get(laneIndex) ?? [];
-    laneEntries.push(entry);
-    entriesByLane.set(laneIndex, laneEntries);
-  }
-
-  for (const laneEntries of entriesByLane.values()) {
-    const firstOpen = laneEntries
-      .slice()
-      .sort(compareSessionEntries)
-      .find((entry) => !completedMap[entry.session.id]);
-    if (firstOpen) openSessionIds.add(firstOpen.session.id);
-  }
+  const openWeekNumber = sessionEntries
+    .slice()
+    .sort(compareSessionEntries)
+    .find((entry) => !completedMap[entry.session.id])?.weekNumber;
 
   return weeks.map((week) => ({
     ...week,
     sessions: week.sessions.map((session) => {
       const isDone = completedMap[session.id];
       const entry = entryBySessionId.get(session.id);
-      const isDueByToday = entry
-        ? entry.weekNumber < 1 || (entry.weekNumber === 1 && dayOrder(entry.session.dayOfWeek) <= todayStudyDayOrder)
-        : false;
+      const isDueInOpenWeek =
+        entry &&
+        entry.weekNumber === openWeekNumber &&
+        (dueByStartedAt
+          ? dueByStartedAt(entry)
+          : dayOrder(entry.session.dayOfWeek) <= todayStudyDayOrder);
       let status: "completed" | "in-progress" | "locked";
       if (isDone) {
         status = "completed";
-      } else if (isDueByToday) {
+      } else if (isDueInOpenWeek) {
         status = "in-progress";
       } else {
         status = "locked";
@@ -271,6 +263,41 @@ export function deriveSessionStatuses(weeks: WeekPlan[]): WeekPlan[] {
   }));
 }
 
+function createStartedAtDueChecker(
+  entries: Array<{ session: LearningSession; weekNumber: number; sessionOrder: number }>,
+  roadmapStartedAt?: string | null,
+) {
+  const start = parseLocalDate(roadmapStartedAt);
+  if (!start) return null;
+
+  const today = startOfLocalDay(new Date());
+  const elapsedDays = Math.max(
+    0,
+    Math.floor((today.getTime() - start.getTime()) / 86_400_000),
+  );
+  const activeDayOrders = [...new Set(entries.map((entry) => dayOrder(entry.session.dayOfWeek)))]
+    .sort((a, b) => a - b);
+  const firstActiveDayOrder = activeDayOrders[0] ?? 1;
+
+  return (entry: { session: LearningSession; weekNumber: number }) => {
+    const scheduledOffset =
+      (entry.weekNumber - 1) * 7 +
+      Math.max(0, dayOrder(entry.session.dayOfWeek) - firstActiveDayOrder);
+    return scheduledOffset <= elapsedDays;
+  };
+}
+
+function parseLocalDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function startOfLocalDay(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
 function compareSessionEntries(
   a: { session: LearningSession; weekNumber: number; sessionOrder: number },
   b: { session: LearningSession; weekNumber: number; sessionOrder: number },
@@ -281,31 +308,6 @@ function compareSessionEntries(
     a.session.sessionNumber - b.session.sessionNumber ||
     a.sessionOrder - b.sessionOrder
   );
-}
-
-function inferLaneIndexes(
-  entries: Array<{ session: LearningSession; weekNumber: number; sessionOrder: number }>,
-): Map<string, number> {
-  const laneIndexes = new Map<string, number>();
-  const byStudyDay = new Map<string, typeof entries>();
-
-  for (const entry of entries) {
-    const key = `${entry.weekNumber}:${entry.session.dayOfWeek}`;
-    const dayEntries = byStudyDay.get(key) ?? [];
-    dayEntries.push(entry);
-    byStudyDay.set(key, dayEntries);
-  }
-
-  for (const dayEntries of byStudyDay.values()) {
-    dayEntries
-      .slice()
-      .sort((a, b) => a.session.sessionNumber - b.session.sessionNumber || a.sessionOrder - b.sessionOrder)
-      .forEach((entry, index) => {
-        laneIndexes.set(entry.session.id, index);
-      });
-  }
-
-  return laneIndexes;
 }
 
 function dayOrder(dayOfWeek: number): number {

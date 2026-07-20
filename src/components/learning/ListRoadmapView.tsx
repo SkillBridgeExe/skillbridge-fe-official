@@ -1,241 +1,281 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
-  PlayCircle,
-  Lock,
-  Star,
-  Clock,
-  ChevronRight,
   ChevronDown,
-  Circle,
-  ExternalLink,
+  ChevronRight,
+  Clock,
+  Lock,
+  PlayCircle,
 } from "lucide-react";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
-import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
+import type { LearningSession } from "./types";
+
+interface SessionEntry {
+  session: LearningSession;
+  weekNumber: number;
+  order: number;
+}
+
+interface SubjectGroup {
+  id: string;
+  title: string;
+  entries: SessionEntry[];
+  weeks: Array<{
+    weekNumber: number;
+    entries: SessionEntry[];
+  }>;
+}
 
 const statusConfig = {
-  completed: { labelKey: "learning.status.completed", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
-  "in-progress": { labelKey: "learning.status.inProgress", icon: PlayCircle, color: "text-primary bg-primary/10" },
-  locked: { labelKey: "learning.status.locked", icon: Lock, color: "text-slate-400 bg-slate-50" },
+  completed: {
+    labelKey: "learning.status.completed",
+    icon: CheckCircle2,
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  "in-progress": {
+    labelKey: "learning.status.inProgress",
+    icon: PlayCircle,
+    className: "border-sky-200 bg-sky-50 text-sky-700",
+  },
+  locked: {
+    labelKey: "learning.status.locked",
+    icon: Lock,
+    className: "border-slate-200 bg-slate-50 text-slate-500",
+  },
 } as const;
 
 export function ListRoadmapView() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const weeks = useActiveWeekPlans();
+  const groups = useMemo(() => buildSubjectGroups(weeks), [weeks]);
+  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(groups[0]?.id ?? null);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Grouped by week */}
-      {weeks.map(week => {
-        const completedCount = week.sessions.filter(s => s.status === "completed").length;
+    <div className="grid gap-4 animate-in fade-in duration-500">
+      {groups.map((group) => {
+        const completed = group.entries.filter((entry) => entry.session.status === "completed").length;
+        const ready = group.entries.filter((entry) => entry.session.status === "in-progress").length;
+        const total = group.entries.length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const expanded = expandedSubjectId === group.id;
+
         return (
-          <div key={week.weekNumber}>
-            {/* Week header */}
-            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0",
-                completedCount === week.sessions.length
-                  ? "bg-emerald-500 text-white"
-                  : "bg-primary/10 text-primary"
-              )}>
-                {completedCount === week.sessions.length ? (
-                  <CheckCircle2 className="w-5 h-5" />
-                ) : (
-                  week.weekNumber
+          <section
+            key={group.id}
+            className={cn(
+              "overflow-hidden rounded-2xl border bg-white shadow-sm transition-all",
+              expanded ? "border-sky-200 shadow-sky-100/60" : "border-slate-200 hover:border-sky-100",
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedSubjectId(expanded ? null : group.id)}
+              className="flex w-full items-center gap-4 px-4 py-4 text-left"
+            >
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-base font-black text-white shadow-lg shadow-sky-200">
+                {completed === total ? <CheckCircle2 className="h-5 w-5" /> : progress}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-base font-black text-slate-950">{group.title}</h3>
+                  {ready > 0 && (
+                    <Badge className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-black text-sky-700">
+                      {ready} ready
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                  <span>{group.weeks.length} weeks</span>
+                  <span>•</span>
+                  <span>{completed}/{total} sessions</span>
+                  <span>•</span>
+                  <span>{Math.round(group.entries.reduce((sum, entry) => sum + entry.session.estimatedMinutes, 0) / 60)}h</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600 transition-all"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="hidden shrink-0 grid-cols-3 gap-1.5 sm:grid">
+                {group.weeks.slice(0, 3).map((week) => (
+                  <WeekMiniCard key={week.weekNumber} weekNumber={week.weekNumber} entries={week.entries} />
+                ))}
+                {group.weeks.length > 3 && (
+                  <div className="grid h-14 w-16 place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-black text-slate-500">
+                    +{group.weeks.length - 3}
+                  </div>
                 )}
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-bold text-slate-900">{week.moduleTitle}</h3>
-                <p className="text-xs text-slate-400">
-                  {t("learning.common.week", { number: week.weekNumber })} -{" "}
-                  {t("learning.common.sectionsCompleted", { done: completedCount, total: week.sessions.length })}
-                </p>
-              </div>
-              <div className="text-xs text-slate-400 font-medium">
-                {t("learning.common.starProgress", {
-                  earned: Math.round(week.sessions.reduce((sum, s) => sum + s.stars, 0)),
-                  total: week.sessions.reduce((sum, s) => sum + s.maxStars, 0),
-                })}
-              </div>
-            </div>
 
-            {/* Sessions */}
-            <div className="space-y-2 ml-5">
-              {week.sessions.map(session => {
-                const isLocked = session.status === "locked";
-                const isInProgress = session.status === "in-progress";
-                const config = statusConfig[session.status];
-                const StatusIcon = config.icon;
-                const colors = SKILL_COLORS[session.skill] || DEFAULT_SKILL_COLOR;
-                const completedSections = session.sections.filter(s => s.completed).length;
-                const isExpanded = expandedSession === session.id;
+              {expanded ? (
+                <ChevronDown className="h-5 w-5 shrink-0 text-sky-500" />
+              ) : (
+                <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+              )}
+            </button>
 
-                return (
-                  <div key={session.id}>
-                    {/* Session row */}
-                    <button
-                      onClick={() => {
-                        if (isLocked) return;
-                        setExpandedSession(isExpanded ? null : session.id);
-                      }}
-                      disabled={isLocked}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-2xl border bg-white text-left transition-all group",
-                        isLocked
-                          ? "opacity-50 cursor-not-allowed border-slate-100"
-                          : "hover:shadow-md cursor-pointer border-slate-200",
-                        isInProgress && "ring-2 ring-primary/20 border-primary/30 bg-primary/5",
-                        isExpanded && !isLocked && "shadow-md border-primary/20"
-                      )}
-                    >
-                      {/* Session number circle */}
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-base font-black",
-                        session.status === "completed" && "bg-emerald-500 text-white",
-                        isInProgress && "bg-primary text-white",
-                        isLocked && "bg-slate-100 text-slate-400"
-                      )}>
-                        {session.status === "completed" ? (
-                          <CheckCircle2 className="w-6 h-6" />
-                        ) : (
-                          session.sessionNumber
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={cn("text-[10px] px-2 py-0.5 border whitespace-nowrap", colors.bg, colors.text, colors.border)}>
-                            {session.skill}
-                          </Badge>
-                          <span className={cn("inline-flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5", config.color)}>
-                            <StatusIcon className="w-3 h-3" />
-                            {t(config.labelKey)}
-                          </span>
-                        </div>
-
-                        <p className="text-sm font-bold text-slate-900 leading-snug group-hover:text-primary transition-colors truncate">
-                          {session.title}
+            {expanded && (
+              <div className="border-t border-sky-100 bg-sky-50/35 px-4 py-4">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {group.weeks.map((week) => (
+                    <div key={week.weekNumber} className="rounded-2xl border border-sky-100 bg-white p-3 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-700">
+                          {t("learning.common.week", { number: week.weekNumber })}
                         </p>
-
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {t("learning.common.mins", { count: session.estimatedMinutes })}
-                          </span>
-                          <span>{t("learning.common.sections", { count: `${completedSections}/${session.sections.length}` })}</span>
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: session.maxStars }).map((_, i) => (
-                              <Star key={i} className={cn("w-3 h-3", i < session.stars ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200")} />
-                            ))}
-                          </div>
-                        </div>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {week.entries.filter((entry) => entry.session.status === "completed").length}/{week.entries.length}
+                        </span>
                       </div>
 
-                      {/* Expand/Arrow */}
-                      {!isLocked && (
-                        isExpanded
-                          ? <ChevronDown className="w-5 h-5 text-primary transition-colors flex-shrink-0" />
-                          : <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors flex-shrink-0" />
-                      )}
-                    </button>
-
-                    {/* Expanded sections (PREP-style section list) */}
-                    {isExpanded && !isLocked && (
-                      <div className="ml-16 mt-2 mb-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                        {session.sections.map(section => (
-                          <button
-                            key={section.id}
-                            onClick={() => navigate(`/learning/session/${session.id}`)}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors group/section"
-                          >
-                            {section.completed
-                              ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                              : <Circle className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                            }
-                            <span className={cn(
-                              "text-sm flex-1",
-                              section.completed ? "text-slate-500" : "text-slate-800 font-medium"
-                            )}>
-                              {section.title}
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              {Array.from({ length: 3 }).map((_, i) => (
-                                <Star key={i} className={cn(
-                                  "w-3 h-3",
-                                  section.completed
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "fill-slate-200 text-slate-200"
-                                )} />
-                              ))}
-                            </div>
-                          </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        {week.entries.map((entry) => (
+                          <SessionChip
+                            key={`${week.weekNumber}-${entry.session.id}`}
+                            entry={entry}
+                            t={t}
+                            onOpen={() => navigate(`/learning/session/${entry.session.id}`)}
+                          />
                         ))}
-
-                        {/* Enter session button */}
-                        {session.resources.length > 0 && (
-                          <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-white p-3">
-                            {session.resources.map((resource) => (
-                              <div key={`${session.id}-${resource.title}`} className="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="truncate text-xs font-bold text-slate-800">{resource.title}</p>
-                                    {resource.lowConfidence && (
-                                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                                        {t("learning.common.pendingSource")}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="mt-1 text-[11px] font-medium text-slate-500">
-                                    {resource.platform ?? resource.type}
-                                    {resource.duration ? ` - ${resource.duration}` : ""}
-                                    {resource.proofOfCompletion ? ` - ${resource.proofOfCompletion}` : ""}
-                                  </p>
-                                </div>
-                                {resource.isInternal ? (
-                                  <button
-                                    onClick={() => navigate(`/learning/session/${session.id}`)}
-                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90"
-                                  >
-                                    {t("learning.common.startPractice")}
-                                  </button>
-                                ) : resource.url ? (
-                                  <a
-                                    href={resource.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-primary/30 hover:text-primary"
-                                  >
-                                    {t("learning.common.openResource")} <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <button
-                          onClick={() => navigate(`/learning/session/${session.id}`)}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors mt-2"
-                        >
-                          {t("learning.common.enterSession")}
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
         );
       })}
     </div>
   );
+}
+
+function WeekMiniCard({ weekNumber, entries }: { weekNumber: number; entries: SessionEntry[] }) {
+  const completed = entries.filter((entry) => entry.session.status === "completed").length;
+  const hasReady = entries.some((entry) => entry.session.status === "in-progress");
+
+  return (
+    <div
+      className={cn(
+        "h-14 w-16 rounded-xl border px-2 py-1.5 text-center",
+        completed === entries.length
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : hasReady
+            ? "border-sky-200 bg-sky-50 text-sky-700"
+            : "border-slate-200 bg-slate-50 text-slate-500",
+      )}
+    >
+      <p className="text-[10px] font-black">W{weekNumber}</p>
+      <p className="mt-1 text-[11px] font-black">{completed}/{entries.length}</p>
+    </div>
+  );
+}
+
+function SessionChip({
+  entry,
+  t,
+  onOpen,
+}: {
+  entry: SessionEntry;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  onOpen: () => void;
+}) {
+  const { session } = entry;
+  const config = statusConfig[session.status];
+  const StatusIcon = config.icon;
+  const completedSections = session.sections.filter((section) => section.completed).length;
+  const locked = session.status === "locked";
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!locked) onOpen();
+      }}
+      disabled={locked}
+      className={cn(
+        "group min-h-[92px] rounded-xl border p-3 text-left transition-all",
+        locked
+          ? "cursor-not-allowed border-slate-100 bg-slate-50/70 opacity-65"
+          : "border-sky-100 bg-white hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md",
+        session.status === "in-progress" && "border-sky-300 ring-2 ring-sky-100",
+        session.status === "completed" && "border-emerald-200 bg-emerald-50/50",
+      )}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-black text-slate-500">S{entry.order + 1}</span>
+        <span className={cn("inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-black leading-none", config.className)}>
+          <StatusIcon className="h-3 w-3 shrink-0" />
+          <span className="hidden whitespace-nowrap min-[520px]:inline">{t(config.labelKey)}</span>
+        </span>
+      </div>
+
+      <p className={cn("line-clamp-2 text-sm font-black leading-snug", locked ? "text-slate-500" : "text-slate-900 group-hover:text-sky-700")}>
+        {session.title}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-500">
+        <span className="inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {session.estimatedMinutes}m
+        </span>
+        <span>{completedSections}/{session.sections.length} sections</span>
+      </div>
+    </button>
+  );
+}
+
+function buildSubjectGroups(weeks: ReturnType<typeof useActiveWeekPlans>): SubjectGroup[] {
+  const groupMap = new Map<string, SubjectGroup>();
+
+  weeks.forEach((week) => {
+    week.sessions.forEach((session, order) => {
+      const id = session.skillCanonical ?? session.moduleId ?? session.skill;
+      const group = groupMap.get(id) ?? {
+        id,
+        title: session.skill,
+        entries: [],
+        weeks: [],
+      };
+      const entry = { session, weekNumber: week.weekNumber, order };
+      group.entries.push(entry);
+      const weekGroup = group.weeks.find((item) => item.weekNumber === week.weekNumber);
+      if (weekGroup) {
+        weekGroup.entries.push(entry);
+      } else {
+        group.weeks.push({ weekNumber: week.weekNumber, entries: [entry] });
+      }
+      groupMap.set(id, group);
+    });
+  });
+
+  return [...groupMap.values()].map((group) => ({
+    ...group,
+    entries: group.entries.sort(compareEntries),
+    weeks: group.weeks
+      .map((week) => ({ ...week, entries: week.entries.sort(compareEntries) }))
+      .sort((a, b) => a.weekNumber - b.weekNumber),
+  }));
+}
+
+function compareEntries(a: SessionEntry, b: SessionEntry) {
+  return (
+    a.weekNumber - b.weekNumber ||
+    dayOrder(a.session.dayOfWeek) - dayOrder(b.session.dayOfWeek) ||
+    (a.session.laneIndex ?? 0) - (b.session.laneIndex ?? 0) ||
+    a.order - b.order ||
+    a.session.id.localeCompare(b.session.id)
+  );
+}
+
+function dayOrder(dayOfWeek: number) {
+  return dayOfWeek === 0 ? 7 : dayOfWeek;
 }

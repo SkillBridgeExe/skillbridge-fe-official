@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ import type { LearningSession } from "./types";
 import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
 import { patchLearningRoadmapSchedule } from "@/services/learning-roadmap.service";
 
-// â”€â”€â”€ Calendar Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Calendar helpers
 function getWeekDates(offset: number) {
   const today = new Date();
   const monday = new Date(today);
@@ -93,7 +93,7 @@ function getSkillAccentClass(skill: string): string {
 
 
 
-// â”€â”€â”€ Calendar + Session Overview (PREP-inspired) â”€â”€â”€
+// Calendar + session overview
 export function OverviewView() {
   const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
@@ -115,7 +115,7 @@ export function OverviewView() {
 
   const { weekPlans, persistedRoadmapId, setWeekPlans, moveSession } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
-  // âœ… Build roadmap modules by subject, not by calendar week.
+  // Build roadmap modules by subject, not by calendar week.
   const roadmapModules = useMemo(() => {
     const subjects = new Map<
       string,
@@ -169,7 +169,7 @@ export function OverviewView() {
     });
   }, [weeks]);
 
-  // âœ… Fix: sync activeSessions khi weeks thay Ä‘á»•i (AI roadmap Ä‘Æ°á»£c apply)
+  // Keep active sessions in sync when an AI roadmap changes.
   const [activeSessions, setActiveSessions] = useState<LearningSession[]>([]);
   useEffect(() => {
     setActiveSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
@@ -263,7 +263,7 @@ export function OverviewView() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* â•â•â• Calendar Section (PREP-style weekly view) â•â•â• */}
+      {/* Calendar section */}
       <Card className="border border-slate-200/85 shadow-md shadow-slate-100/40 overflow-hidden rounded-2xl bg-white">
         {/* Calendar Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-150 bg-slate-50/30">
@@ -399,6 +399,7 @@ export function OverviewView() {
                 <div
                   key={idx}
                   onDragOver={(event) => {
+                    if (isPastDay || !draggedSessionId) return;
                     event.preventDefault();
                     if (dragOverDayIdx !== idx) {
                       setDragOverDayIdx(idx);
@@ -408,7 +409,7 @@ export function OverviewView() {
                     setDragOverDayIdx(null);
                   }}
                   onDrop={() => {
-                    if (!draggedSessionId) return;
+                    if (!draggedSessionId || isPastDay) return;
                     const targetDay = calendarIndexToSessionDay(idx);
                     moveSession(draggedSessionId, targetDay);
                     if (persistedRoadmapId) {
@@ -458,37 +459,49 @@ export function OverviewView() {
                         const isActive = session.status === "in-progress";
                         const isCompleted = session.status === "completed";
                         const isLocked = session.status === "locked";
-                        const canClick = !isLocked;
+                        const isMissed = isPastDay && !isCompleted;
+                        const canClick = !isLocked && !isMissed;
+                        const canReschedule = !isCompleted && !isMissed;
                         const accentColor = getSkillAccentClass(session.skill);
                         const subjectPosition = subjectSessionPosition(activeSessions, session);
                         return (
                           <button
                             key={session.id}
                             onClick={() => canClick && navigate(`/learning/session/${session.id}`)}
-                            draggable={!isCompleted && !isLocked}
-                            onDragStart={() => setDraggedSessionId(session.id)}
+                            aria-disabled={!canClick}
+                            tabIndex={canClick ? 0 : -1}
+                            draggable={canReschedule}
+                            onDragStart={(event) => {
+                              if (!canReschedule) {
+                                event.preventDefault();
+                                return;
+                              }
+                              setDraggedSessionId(session.id);
+                            }}
                             onDragEnd={() => {
                               setDraggedSessionId(null);
                               setDragOverDayIdx(null);
                             }}
                             className={cn(
                               "group relative flex min-h-[118px] w-full flex-col overflow-hidden rounded-2xl border p-3 text-left transition-all duration-300",
-                              isPastDay && !isCompleted
-                                ? "cursor-pointer border-slate-200 bg-slate-50/70 text-slate-500 shadow-none hover:border-slate-300 hover:bg-slate-50"
+                              isMissed
+                                ? "cursor-default border-slate-200 bg-slate-50/70 text-slate-400 opacity-60 shadow-none"
                                 : isCompleted 
                                 ? "border-emerald-200 bg-emerald-50/40 shadow-sm hover:shadow-md" 
                                 : isLocked 
-                                  ? "cursor-default border-slate-200 bg-slate-50/70 text-slate-400 shadow-none" 
+                                  ? "cursor-grab border-slate-200 bg-slate-50/70 text-slate-400 shadow-sm hover:border-primary/25 hover:bg-sky-50/60 active:cursor-grabbing"
                                   : isActive 
                                     ? "cursor-pointer border-primary/40 bg-white shadow-lg shadow-primary/10 ring-2 ring-primary/10 hover:-translate-y-0.5 hover:shadow-xl"
-                                    : "cursor-pointer border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                                    : canReschedule
+                                      ? "cursor-grab border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md active:cursor-grabbing"
+                                      : "cursor-pointer border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
                             )}
                           >
                             <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-slate-100">
                               {!isLocked && !isPastDay && <div className={cn("h-full w-full", accentColor)} />}
                             </div>
                             {/* Left accent bar for active & scheduled sessions */}
-                            {!isLocked && !isCompleted && (
+                            {!isLocked && !isCompleted && !isMissed && (
                               <div className={cn("absolute bottom-0 left-0 top-1 w-[3px]", accentColor)} />
                             )}
 
@@ -496,7 +509,7 @@ export function OverviewView() {
                             <div className="mb-2 flex w-full items-start justify-between gap-2">
                               <span className={cn(
                                 "inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl text-[11px] font-black shadow-sm",
-                                isPastDay && !isCompleted && "bg-white text-slate-400 shadow-none ring-1 ring-slate-200",
+                                isMissed && "bg-white text-slate-400 shadow-none ring-1 ring-slate-200",
                                 isCompleted && "bg-emerald-500 text-white shadow-emerald-500/20",
                                 !isPastDay && isActive && "bg-primary text-white shadow-primary/20",
                                 isLocked && "bg-white text-slate-400 shadow-none ring-1 ring-slate-200"
@@ -505,7 +518,7 @@ export function OverviewView() {
                               </span>
                               <span className={cn(
                                 "rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wide",
-                                isPastDay && !isCompleted
+                                isMissed
                                   ? "bg-white text-slate-400 ring-1 ring-slate-200"
                                   : isLocked 
                                   ? "bg-white text-slate-400 ring-1 ring-slate-200" 
@@ -518,8 +531,8 @@ export function OverviewView() {
                             </div>
                             <p className={cn(
                               "line-clamp-2 w-full text-[12px] font-black leading-snug",
-                              isPastDay && !isCompleted
-                                ? "text-slate-500"
+                              isMissed
+                                ? "text-slate-400"
                                 : isCompleted 
                                 ? "text-slate-450 line-through decoration-slate-300 font-medium" 
                                 : isLocked 
@@ -537,8 +550,8 @@ export function OverviewView() {
                                 {Math.round(session.estimatedMinutes / 60)}h
                               </span>
                             </div>
-                            {/* âœ… Start button for active sessions */}
-                            {isActive && !isPastDay && (
+                            {/* Start button for active sessions */}
+                            {isActive && !isMissed && (
                               <div className="mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-2 text-[10px] font-black text-white shadow-sm shadow-primary/10 transition-all hover:bg-primary/95 active:scale-[0.98]">
                                 <PlayCircle className="h-3.5 w-3.5 fill-white/20" /> {t("learning.common.start")}
                               </div>
@@ -550,7 +563,7 @@ export function OverviewView() {
                               </div>
                             )}
                             {/* Stars & Duration */}
-                            {!isActive && !isLocked && (
+                            {!isActive && !isLocked && !isMissed && (
                               <div className="flex items-center justify-between w-full mt-auto">
                                 <div className="flex items-center gap-0.5">
                                   {Array.from({ length: session.maxStars }).map((_, i) => (
@@ -577,7 +590,7 @@ export function OverviewView() {
         </div>
       </Card>
 
-      {/* â•â•â• Today's Sessions â€” Premium SaaS List â•â•â• */}
+      {/* Today's sessions */}
       {todaySessions.length > 0 && (
         <div className="animate-in slide-in-from-bottom-4 duration-700 ease-out">
           <div className="flex items-center justify-between mb-4">
@@ -705,7 +718,7 @@ export function OverviewView() {
         </div>
       )}
 
-      {/* â•â•â• Roadmap Flow â€” Premium SaaS UI â•â•â• */}
+      {/* Roadmap flow */}
       <div className="pt-4  animate-in fade-in slide-in-from-bottom-6 duration-1000 ease-out delay-150">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">{t("learning.page.roadmapTitle")}</h3>
@@ -755,20 +768,20 @@ export function OverviewView() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                          {i18n.language.startsWith("vi") ? `MÃ´n ${mod.orderNumber}` : `Subject ${mod.orderNumber}`}
+                          {i18n.language.startsWith("vi") ? `Môn ${mod.orderNumber}` : `Subject ${mod.orderNumber}`}
                         </span>
                         {isInProgress && (
-                          <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none animate-pulse">
+                          <Badge variant="outline" className="w-fit whitespace-nowrap bg-primary/10 text-primary border-primary/20 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none animate-pulse">
                             {t("learning.status.inProgress")}
                           </Badge>
                         )}
                         {isCompleted && (
-                          <Badge variant="outline" className="w-fit bg-emerald-50 text-emerald-600 border-emerald-250 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
+                          <Badge variant="outline" className="w-fit whitespace-nowrap bg-emerald-50 text-emerald-600 border-emerald-250 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
                             {t("learning.status.completed")}
                           </Badge>
                         )}
                         {isLocked && (
-                          <Badge variant="outline" className="w-fit bg-slate-50 text-slate-400 border-slate-200 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
+                          <Badge variant="outline" className="w-fit whitespace-nowrap bg-slate-50 text-slate-400 border-slate-200 text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md shadow-none">
                             {t("learning.status.locked")}
                           </Badge>
                         )}

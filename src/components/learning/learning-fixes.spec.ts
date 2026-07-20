@@ -145,6 +145,85 @@ describe("Learning roadmap fixes", () => {
       expect(statuses["swift-day-2"]).toBe("in-progress");
       expect(statuses["java-day-2"]).toBe("in-progress");
     });
+
+    it("keeps future sessions in the open week locked", () => {
+      localStorageMock.getItem.mockReturnValue(null);
+
+      const weeks: WeekPlan[] = [
+        {
+          weekNumber: 1,
+          moduleId: "typescript",
+          moduleTitle: "TypeScript",
+          sessions: [
+            { ...mockSession1, id: "typescript-monday", dayOfWeek: 1 },
+            { ...mockSession2, id: "typescript-friday", dayOfWeek: 5 },
+          ],
+        },
+      ];
+
+      const result = deriveSessionStatuses(weeks);
+
+      expect(result[0].sessions[0].status).toBe("in-progress");
+      expect(result[0].sessions[1].status).toBe("locked");
+    });
+
+    it("unlocks sessions from the saved roadmap start date instead of the current weekday when provided", () => {
+      localStorageMock.getItem.mockReturnValue(null);
+
+      const weeks: WeekPlan[] = [
+        {
+          weekNumber: 1,
+          moduleId: "typescript",
+          moduleTitle: "TypeScript",
+          sessions: [
+            { ...mockSession1, id: "typescript-start-day", dayOfWeek: 2 },
+            { ...mockSession2, id: "typescript-next-day", dayOfWeek: 3 },
+          ],
+        },
+      ];
+
+      const result = deriveSessionStatuses(weeks, "2026-07-14");
+
+      expect(result[0].sessions[0].status).toBe("in-progress");
+      expect(result[0].sessions[1].status).toBe("locked");
+    });
+
+    it("opens week 2 when the previous lane session is completed", () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key.includes("react-week-1")) {
+          return JSON.stringify({
+            checkedChecklistItems: {
+              __session: ["completed"],
+            },
+          });
+        }
+        return null;
+      });
+
+      const weeks: WeekPlan[] = [
+        {
+          weekNumber: 1,
+          moduleId: "react",
+          moduleTitle: "React",
+          sessions: [
+            { ...mockSession1, id: "react-week-1", laneIndex: 0, dayOfWeek: 5 },
+          ],
+        },
+        {
+          weekNumber: 2,
+          moduleId: "react",
+          moduleTitle: "React",
+          sessions: [
+            { ...mockSession2, id: "react-week-2", laneIndex: 0, dayOfWeek: 1 },
+          ],
+        },
+      ];
+
+      const result = deriveSessionStatuses(weeks);
+
+      expect(result[0].sessions[0].status).toBe("completed");
+      expect(result[1].sessions[0].status).toBe("in-progress");
+    });
   });
 
   describe("isSessionCompleted", () => {

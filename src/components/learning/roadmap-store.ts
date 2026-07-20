@@ -16,6 +16,7 @@ import { clearStoredLearningProgress, deriveSessionStatuses } from "./session-pr
 interface RoadmapStore {
   composedRoadmap: ComposedRoadmap | null;
   persistedRoadmapId: string | null;
+  roadmapStartedAt: string | null;
   weekPlans: WeekPlan[];
   isAIGenerated: boolean;
 
@@ -28,6 +29,7 @@ interface RoadmapStore {
   applyTranslatedDisplay: (
     items: Array<{ id: string; translated_display: RoadmapTranslatedDisplayDto }>,
   ) => void;
+  clearTranslatedDisplayFromRoadmap: (sourceRoadmap: ComposedRoadmap) => void;
   clearRoadmap: () => void;
 }
 
@@ -36,6 +38,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
     (set) => ({
       composedRoadmap: null,
       persistedRoadmapId: null,
+      roadmapStartedAt: null,
       weekPlans: [],
       isAIGenerated: false,
 
@@ -45,17 +48,19 @@ export const useRoadmapStore = create<RoadmapStore>()(
           set({
             composedRoadmap: roadmap,
             persistedRoadmapId: null,
+            roadmapStartedAt: todayIsoDate(),
             weekPlans: sanitizeWeekPlans(roadmapToWeekPlans(roadmap)),
             isAIGenerated: true,
           });
         },
       setPersistedRoadmap: (roadmapId, roadmap) =>
-        set({
+        set((state) => ({
           composedRoadmap: roadmap,
           persistedRoadmapId: roadmapId,
+          roadmapStartedAt: state.roadmapStartedAt ?? todayIsoDate(),
           weekPlans: sanitizeWeekPlans(roadmapToWeekPlans(roadmap)),
           isAIGenerated: true,
-        }),
+        })),
       setPersistedRoadmapId: (roadmapId) => set({ persistedRoadmapId: roadmapId }),
       mergeComposedRoadmap: (roadmap) =>
         set((state) => {
@@ -63,6 +68,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
           return {
             composedRoadmap,
             persistedRoadmapId: state.persistedRoadmapId,
+            roadmapStartedAt: state.roadmapStartedAt ?? todayIsoDate(),
             weekPlans: mergeWeekPlans(state.weekPlans, roadmapToWeekPlans(roadmap)),
             isAIGenerated: true,
           };
@@ -91,19 +97,68 @@ export const useRoadmapStore = create<RoadmapStore>()(
                   sessions: state.composedRoadmap.sessions?.map((session) => ({
                     ...session,
                     translated_display: byId.get(session.id) ?? session.translated_display,
-                    title: byId.get(session.id)?.title ?? session.title,
                   })),
                 }
               : state.composedRoadmap,
-            weekPlans: sanitizeWeekPlans(
-              state.weekPlans.map((week) => ({
-                ...week,
-                sessions: week.sessions.map((session) => ({
+          };
+        }),
+      clearTranslatedDisplayFromRoadmap: (sourceRoadmap) =>
+        set((state) => {
+          const originalById = new Map(
+            (sourceRoadmap.sessions ?? []).map((session) => [
+              session.id,
+              {
+                title: session.title,
+                translated_display: session.translated_display,
+              },
+            ]),
+          );
+          let changed = false;
+          const composedRoadmap = state.composedRoadmap
+            ? {
+                ...state.composedRoadmap,
+                sessions: state.composedRoadmap.sessions?.map((session) => {
+                  const original = originalById.get(session.id);
+                  if (!original) {
+                    if (session.translated_display) changed = true;
+                    const { translated_display: _translatedDisplay, ...rest } = session;
+                    return rest;
+                  }
+                  if (
+                    session.title !== original.title ||
+                    session.translated_display !== original.translated_display
+                  ) {
+                    changed = true;
+                  }
+                  return {
+                    ...session,
+                    title: original.title,
+                    translated_display: original.translated_display,
+                  };
+                }),
+              }
+            : state.composedRoadmap;
+          const weekPlans = sanitizeWeekPlans(
+            state.weekPlans.map((week) => ({
+              ...week,
+              sessions: week.sessions.map((session) => {
+                const originalTitle = originalById.get(session.id)?.title;
+                if (originalTitle && session.title !== originalTitle) changed = true;
+                return {
                   ...session,
-                  title: byId.get(session.id)?.title ?? session.title,
-                })),
-              })),
-            ),
+                  title: originalTitle ?? session.title,
+                };
+              }),
+            })),
+          );
+
+          if (!changed) return state;
+
+          return {
+            composedRoadmap: state.composedRoadmap
+              ? composedRoadmap
+              : state.composedRoadmap,
+            weekPlans,
           };
         }),
       clearRoadmap: () => {
@@ -111,6 +166,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
         set({
           composedRoadmap: null,
           persistedRoadmapId: null,
+          roadmapStartedAt: null,
           weekPlans: [],
           isAIGenerated: false,
         });
@@ -144,7 +200,7 @@ function mergeRoadmaps(
 
   return {
     ...incoming,
-    budget_hours: current.budget_hours + incoming.budget_hours,
+    budget_hours: incoming.budget_hours,
     steps: [...steps.values()],
     sessions: [...sessions.values()],
     not_feasible_items: incoming.not_feasible_items,
@@ -295,12 +351,12 @@ function dayOrder(dayOfWeek: number) {
 // Gọi: const weeks = useActiveWeekPlans();
 
 export function useActiveWeekPlans() {
-  const { composedRoadmap, isAIGenerated, weekPlans } = useRoadmapStore();
+  const { composedRoadmap, isAIGenerated, roadmapStartedAt, weekPlans } = useRoadmapStore();
   if (isAIGenerated && weekPlans.length > 0) {
-    return deriveSessionStatuses(sanitizeWeekPlans(weekPlans));
+    return deriveSessionStatuses(sanitizeWeekPlans(weekPlans), roadmapStartedAt);
   }
   if (isAIGenerated && composedRoadmap) {
-    return deriveSessionStatuses(sanitizeWeekPlans(roadmapToWeekPlans(composedRoadmap)));
+    return deriveSessionStatuses(sanitizeWeekPlans(roadmapToWeekPlans(composedRoadmap)), roadmapStartedAt);
   }
   return [];
 }
@@ -309,4 +365,12 @@ export function useActiveRoadmap(): LearningRoadmap {
   const { composedRoadmap, isAIGenerated } = useRoadmapStore();
   if (isAIGenerated && composedRoadmap) return roadmapToLearningRoadmap(composedRoadmap);
   return { modules: [], estimatedCompletionWeeks: 0, totalHours: 0 };
+}
+
+function todayIsoDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

@@ -658,6 +658,7 @@ describe("learning-roadmap.service", () => {
 
     expect(weeks[0].sessions[0]).toMatchObject({
       id: "roadmap-w1-s1-react",
+      title: "React foundations",
       dayOfWeek: 2,
       estimatedMinutes: 60,
     });

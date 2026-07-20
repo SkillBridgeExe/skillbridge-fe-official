@@ -143,7 +143,7 @@ export function GridRoadmapView() {
                             {session.skill}
                           </Badge>
                         </div>
-                        <Badge className={cn("text-[9px] font-bold px-2 py-0.5 border shadow-none rounded-md", config.color)}>
+                        <Badge className={cn("whitespace-nowrap text-[9px] font-bold px-2 py-0.5 border shadow-none rounded-md", config.color)}>
                           {t(config.labelKey)}
                         </Badge>
                       </div>
