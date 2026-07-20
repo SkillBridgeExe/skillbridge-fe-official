@@ -3036,6 +3036,14 @@ export default {
       aiNeedsContentDesc: "Add Summary, Project, or Experience content first, then open AI on that section for an applicable suggestion.",
       skillInputPlaceholder: "Type a skill and press Enter...",
       commonSkillsSuggest: "Common skills for {{role}}",
+      diagnosisFindings: {
+        title: "Findings from your CV scan",
+        subtitle: "From your latest CV scan — hit Fix to jump to the exact spot.",
+        fixButton: "Fix",
+        maybeFixed: "Possibly addressed — the text has changed",
+        bannerCta: "Review & fix",
+        bannerText: "Your CV scan flagged {{count}} issues in this CV",
+      },
       lengthGuard: {
         title: "CV length & focus",
         statusPages: "Estimated length: {{estimated}} page(s)",

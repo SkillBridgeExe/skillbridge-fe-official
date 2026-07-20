@@ -3009,6 +3009,14 @@ export default {
       aiNeedsContentDesc: "Hãy nhập Summary, Project hoặc Experience trước, rồi mở AI ở đúng mục để nhận đề xuất có thể áp dụng.",
       skillInputPlaceholder: "Nhập kỹ năng rồi nhấn Enter...",
       commonSkillsSuggest: "Kỹ năng thường gặp cho {{role}}",
+      diagnosisFindings: {
+        title: "Lỗi từ chẩn đoán",
+        subtitle: "Phát hiện từ lần quét CV gần nhất — bấm Sửa để nhảy tới đúng chỗ.",
+        fixButton: "Sửa",
+        maybeFixed: "Có thể đã xử lý — nội dung đã thay đổi",
+        bannerCta: "Xem & sửa",
+        bannerText: "Chẩn đoán tìm thấy {{count}} vấn đề trong CV này",
+      },
       lengthGuard: {
         title: "Độ dài & trọng tâm CV",
         statusPages: "Độ dài ước tính: {{estimated}} trang",

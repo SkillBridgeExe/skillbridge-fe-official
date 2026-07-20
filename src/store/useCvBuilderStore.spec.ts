@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { useCvBuilderStore } from "./useCvBuilderStore";
+import { useCvBuilderStore, sanitizeSectionOrder } from "./useCvBuilderStore";
 import type { CanonicalCvDocument } from "@shared/api";
+
+const emptyDoc: CanonicalCvDocument = {
+  language: "en",
+  contact: { name: null, email: null, phone: null, location: null, links: [] },
+  summary: "",
+  education: [],
+  experience: [],
+  projects: [],
+  skills: { technical: [], soft: [], languages: [], tools: [] },
+  certifications: [],
+  activities: [],
+};
 
 describe("useCvBuilderStore.hydrateFromCanonical", () => {
   it("hydrates contact, projects, and project links from a canonical CV", () => {
@@ -80,6 +92,53 @@ describe("useCvBuilderStore.hydrateFromCanonical", () => {
 
     useCvBuilderStore.getState().reset();
     expect(useCvBuilderStore.getState().seedSourceCvId).toBeNull();
+  });
+
+  it("clears diagnosisSourceCvId when hydrating a NON-seed CV (opening from library)", () => {
+    // Simulate: a diagnosed CV was open, then the user opens an unrelated library CV
+    // (seededFromDiagnosis is false at that point) → provenance must NOT leak onto it.
+    useCvBuilderStore.setState({ diagnosisSourceCvId: "cv-A", seededFromDiagnosis: false });
+    useCvBuilderStore.getState().hydrateFromCanonical(emptyDoc);
+    expect(useCvBuilderStore.getState().diagnosisSourceCvId).toBeNull();
+  });
+
+  it("keeps diagnosisSourceCvId across the seed-flow re-hydrate (ensureDraft)", () => {
+    // Seed flow keeps seededFromDiagnosis true until Diagnosis.tsx clears it AFTER the
+    // ensureDraft re-hydrate — so the pointer must survive that re-hydrate.
+    useCvBuilderStore.setState({ diagnosisSourceCvId: "cv-A", seededFromDiagnosis: true });
+    useCvBuilderStore.getState().hydrateFromCanonical(emptyDoc, { cvId: "draft-D" });
+    expect(useCvBuilderStore.getState().diagnosisSourceCvId).toBe("cv-A");
+  });
+
+  it("preserveDraft keeps diagnosisSourceCvId (mid-session autosave re-hydrate)", () => {
+    useCvBuilderStore.setState({ diagnosisSourceCvId: "cv-A", seededFromDiagnosis: false });
+    useCvBuilderStore.getState().hydrateFromCanonical(emptyDoc, { preserveDraft: true });
+    expect(useCvBuilderStore.getState().diagnosisSourceCvId).toBe("cv-A");
+  });
+});
+
+describe("sanitizeSectionOrder", () => {
+  it("drops unknown ids and de-duplicates while keeping the user order", () => {
+    expect(sanitizeSectionOrder(["awards", "experience", "experience", "summary"])).toEqual([
+      "experience",
+      "summary",
+      "education",
+      "projects",
+      "certifications",
+      "skills",
+    ]);
+  });
+
+  it("returns the full default order for junk/empty input", () => {
+    expect(sanitizeSectionOrder(null)).toEqual([
+      "summary",
+      "experience",
+      "education",
+      "projects",
+      "certifications",
+      "skills",
+    ]);
+    expect(sanitizeSectionOrder([])).toHaveLength(6);
   });
 });
 
