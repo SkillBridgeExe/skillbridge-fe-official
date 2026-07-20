@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { BuilderSection } from "@shared/api";
 import { getBuilderSnapshot } from "./builder-snapshot";
 import { resumeDocumentPaths } from "@/lib/resume-engine/document-v1-paths";
+import { DiagnosisFindingsBanner } from "./sections/DiagnosisFindingsPanel";
 
 const SECTIONS = [
   { id: "basic-info", icon: User, component: Sections.BasicInfoSection },
@@ -461,6 +462,7 @@ export function CvFormPanel() {
 
   return (
     <div className="flex flex-col relative max-w-4xl mx-auto pb-32 space-y-4">
+      <DiagnosisFindingsBanner />
       {orderedSections.map((section, index) => {
         const Icon = section.icon;
         const statusIdx = STATUS_INDEX_MAP[section.id];

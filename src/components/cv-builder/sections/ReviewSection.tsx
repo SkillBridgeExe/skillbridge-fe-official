@@ -13,6 +13,7 @@ import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import type { BuilderSection, EvaluateSectionResponse } from "@shared/api";
 import { getBuilderSnapshot } from "../builder-snapshot";
 import { CvLengthGuard } from "./CvLengthGuard";
+import { DiagnosisFindingsPanel } from "./DiagnosisFindingsPanel";
 
 /** FE fallback map for known BE English evaluation labels → Vietnamese. */
 const BE_LABEL_VI: Record<string, string> = {
@@ -237,6 +238,7 @@ export function ReviewSection() {
       )}
 
       <CvLengthGuard onFix={handleFix} />
+      <DiagnosisFindingsPanel />
 
       <div className="text-center space-y-2 mb-6">
         <h3 className="text-xl font-bold text-slate-800">
