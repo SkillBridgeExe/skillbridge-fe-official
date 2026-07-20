@@ -8,29 +8,41 @@ import { AlertCircle } from "lucide-react";
 
 export function useDiagnosisFindingRows(): DiagnosisFindingRow[] {
   const reviewData = useDiagnosisStore((s) => s.reviewData);
+  const lastCvId = useDiagnosisStore((s) => s.lastCvId);
+  const diagnosisSourceCvId = useCvBuilderStore((s) => s.diagnosisSourceCvId);
   const experience = useCvBuilderStore((s) => s.experience);
   const projects = useCvBuilderStore((s) => s.projects);
   const summary = useCvBuilderStore((s) => s.summary);
-  
+
   return useMemo(() => {
-    if (!reviewData) return [];
+    // Provenance guard: findings chỉ thuộc về phiên builder được seed từ ĐÚNG CV
+    // vừa chẩn đoán — không bind kết quả quét CV A vào draft CV B mở từ thư viện.
+    if (!reviewData || !diagnosisSourceCvId || diagnosisSourceCvId !== lastCvId) return [];
     const document = useCvBuilderStore.getState().getResumeDocumentV1();
     return buildDiagnosisFindingRows({ reviewData, gapReport: null, document });
     // experience/projects/summary chỉ là trigger re-resolve anchor trên document sống.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewData, experience, projects, summary]);
+  }, [reviewData, lastCvId, diagnosisSourceCvId, experience, projects, summary]);
 }
 
-const SECTION_IDX: Record<"summary" | "experience" | "projects", number> = {
-  summary: 2,
-  experience: 4,
-  projects: 5,
+// activeSection đánh index vào orderedSections = [basic-info, career-target,
+// ...sectionOrder, review] (cùng công thức CvFormPanel/CvSectionNav) — sectionOrder
+// do user kéo-thả và persist, nên index PHẢI tính động, không hardcode.
+const sectionIndexInOrder = (sectionOrder: string[], id: string): number => {
+  const idx = sectionOrder.indexOf(id);
+  return idx >= 0 ? idx + 2 : -1;
+};
+const reviewIndexInOrder = (sectionOrder: string[]): number => sectionOrder.length + 2;
+
+const scrollToSectionCard = (id: string) => {
+  const el = document.getElementById(`cv-section-${id}`);
+  if (!el) return;
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  el.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
 };
 
 export function DiagnosisFindingsPanel() {
   const { t } = useTranslation("diagnosis");
-  const store = useCvBuilderStore();
-  const { setActiveSection, markSectionNeedsRecheck } = store;
   const rows = useDiagnosisFindingRows();
 
   if (rows.length === 0) {
@@ -38,18 +50,21 @@ export function DiagnosisFindingsPanel() {
   }
 
   const handleFix = (anchor: NonNullable<DiagnosisFindingRow["anchor"]>) => {
-    if (!anchor || !anchor.ok) return;
-    const sectionIndex = SECTION_IDX[anchor.section];
-    setActiveSection(sectionIndex);
+    if (!anchor.ok) return;
+    const { sectionOrder, setActiveSection, setSectionCollapsed, markSectionNeedsRecheck } =
+      useCvBuilderStore.getState();
+    const sectionIndex = sectionIndexInOrder(sectionOrder, anchor.section);
+    if (sectionIndex >= 0) setActiveSection(sectionIndex);
+    setSectionCollapsed(anchor.section, false);
     markSectionNeedsRecheck(anchor.section, { source: "diagnosis_fix" });
 
+    // Chờ 1 nhịp re-render (panel/banner có thể unmount làm layout dịch) rồi mới scroll.
     setTimeout(() => {
-      const focusId = anchor.section;
-      const sectionEl = document.getElementById(focusId) || document.getElementById(`cv-section-${focusId}`);
+      const sectionEl = document.getElementById(`cv-section-${anchor.section}`);
       if (!sectionEl) return;
-      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
       sectionEl.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
-      
+
       setTimeout(() => {
         const firstInput = sectionEl.querySelector<HTMLElement>(
           'textarea, input[type="text"], input[type="email"], input[type="tel"], input[type="url"], [contenteditable="true"]'
@@ -125,14 +140,25 @@ export function DiagnosisFindingsPanel() {
 
 export function DiagnosisFindingsBanner() {
   const { t } = useTranslation("diagnosis");
-  const seededFromDiagnosis = useCvBuilderStore((s) => s.seededFromDiagnosis);
   const activeSection = useCvBuilderStore((s) => s.activeSection);
-  const setActiveSection = useCvBuilderStore((s) => s.setActiveSection);
+  const sectionOrder = useCvBuilderStore((s) => s.sectionOrder);
   const rows = useDiagnosisFindingRows();
+  const reviewIndex = reviewIndexInOrder(sectionOrder);
 
-  if (!seededFromDiagnosis || rows.length === 0 || activeSection === 8) {
+  // Provenance đã gate trong useDiagnosisFindingRows (rows rỗng khi CV không khớp),
+  // nên banner KHÔNG dựa vào seededFromDiagnosis (cờ đó bị consume-then-clear
+  // ngay khi ensureDraft xong — gate bằng nó thì banner biến mất sau ~1s).
+  if (rows.length === 0 || activeSection === reviewIndex) {
     return null;
   }
+
+  const jumpToReview = () => {
+    const { setActiveSection, setSectionCollapsed } = useCvBuilderStore.getState();
+    setActiveSection(reviewIndex);
+    setSectionCollapsed("review", false);
+    // Scroll sau khi banner unmount (activeSection === reviewIndex) để target không bị dịch.
+    setTimeout(() => scrollToSectionCard("review"), 100);
+  };
 
   return (
     <div className="bg-[#FFF8E6] border border-[#FDE68A] rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shadow-sm mb-4">
@@ -147,7 +173,7 @@ export function DiagnosisFindingsBanner() {
         </div>
       </div>
       <Button
-        onClick={() => setActiveSection(8)}
+        onClick={jumpToReview}
         className="w-full sm:w-auto bg-[#D97706] hover:bg-[#B45309] text-white shrink-0 shadow-sm"
         size="sm"
       >

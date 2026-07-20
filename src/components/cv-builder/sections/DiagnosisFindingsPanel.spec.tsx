@@ -31,6 +31,12 @@ const review = {
   top_summary: { headline: "x", prioritized_actions: ["Thêm số liệu"] },
 } as unknown as CvReviewData;
 
+/** Provenance hợp lệ: builder được seed từ đúng CV vừa chẩn đoán. */
+const armProvenance = (cvId = "cv-123") => {
+  useDiagnosisStore.setState({ reviewData: review, lastCvId: cvId });
+  useCvBuilderStore.setState({ diagnosisSourceCvId: cvId });
+};
+
 afterEach(() => {
   cleanup();
   // Reset stores to their initial states to avoid test leakage
@@ -38,12 +44,14 @@ afterEach(() => {
     experience: [],
     projects: [],
     summary: "",
-    seededFromDiagnosis: false,
+    diagnosisSourceCvId: null,
     activeSection: 0,
     sectionFixFeedback: {},
+    collapsedSections: {},
   });
   useDiagnosisStore.setState({
     reviewData: null,
+    lastCvId: null,
   });
   vi.clearAllMocks();
 });
@@ -54,8 +62,18 @@ describe("DiagnosisFindingsPanel", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("renders nothing when the open draft was not seeded from the diagnosed CV (provenance guard)", () => {
+    // Quét CV A nhưng draft đang mở là CV B (mở từ thư viện): không bind chéo.
+    useDiagnosisStore.setState({ reviewData: review, lastCvId: "cv-A" });
+    useCvBuilderStore.setState({ diagnosisSourceCvId: null });
+    expect(render(<DiagnosisFindingsPanel />).container.firstChild).toBeNull();
+
+    useCvBuilderStore.setState({ diagnosisSourceCvId: "cv-B" });
+    expect(render(<DiagnosisFindingsPanel />).container.firstChild).toBeNull();
+  });
+
   it("renders verbatim BE tips and jumps on Sửa", () => {
-    useDiagnosisStore.setState({ reviewData: review });
+    armProvenance();
     useCvBuilderStore.setState({
       experience: [
         {
@@ -70,6 +88,7 @@ describe("DiagnosisFindingsPanel", () => {
           aiRewrite: "",
         },
       ],
+      collapsedSections: { experience: true },
     });
 
     render(<DiagnosisFindingsPanel />);
@@ -83,16 +102,19 @@ describe("DiagnosisFindingsPanel", () => {
     // Click Sửa/Fix button
     fireEvent.click(screen.getByRole("button", { name: /builder.diagnosisFindings.fixButton/i }));
 
-    // Verify side effects
-    expect(useCvBuilderStore.getState().activeSection).toBe(4); // experience section index
+    // activeSection đánh index vào orderedSections = [basic-info, career-target,
+    // ...sectionOrder, review]; default sectionOrder → experience = 2 + 1 = 3.
+    expect(useCvBuilderStore.getState().activeSection).toBe(3);
     expect(useCvBuilderStore.getState().sectionFixFeedback.experience?.source).toBe("diagnosis_fix");
+    // Section đích được auto-expand như CvSectionNav.handleNavClick
+    expect(useCvBuilderStore.getState().collapsedSections.experience).toBe(false);
   });
 });
 
 describe("DiagnosisFindingsBanner", () => {
-  it("banner shows count when seeded from diagnosis and jumps to review section", () => {
-    useDiagnosisStore.setState({ reviewData: review });
-    useCvBuilderStore.setState({ seededFromDiagnosis: true, activeSection: 0 });
+  it("banner shows count when provenance matches and jumps to review section", () => {
+    armProvenance();
+    useCvBuilderStore.setState({ activeSection: 0 });
 
     render(<DiagnosisFindingsBanner />);
 
@@ -102,15 +124,20 @@ describe("DiagnosisFindingsBanner", () => {
     // Click CTA button
     fireEvent.click(screen.getByRole("button", { name: /builder.diagnosisFindings.bannerCta/i }));
 
-    // Verify navigation
-    expect(useCvBuilderStore.getState().activeSection).toBe(8); // review section index
+    // reviewIndex = 2 + sectionOrder.length (default 6) = 8, và review được expand.
+    expect(useCvBuilderStore.getState().activeSection).toBe(8);
+    expect(useCvBuilderStore.getState().collapsedSections.review).toBe(false);
   });
 
-  it("banner hidden khi không seed từ diagnosis hoặc đang ở review", () => {
-    useDiagnosisStore.setState({ reviewData: review });
-    useCvBuilderStore.setState({ seededFromDiagnosis: false });
+  it("banner hidden khi provenance không khớp hoặc đang ở review", () => {
+    // Không seed từ CV đã chẩn đoán → ẩn (dù reviewData tồn tại).
+    useDiagnosisStore.setState({ reviewData: review, lastCvId: "cv-A" });
+    useCvBuilderStore.setState({ diagnosisSourceCvId: null });
+    expect(render(<DiagnosisFindingsBanner />).container.firstChild).toBeNull();
 
-    const { container } = render(<DiagnosisFindingsBanner />);
-    expect(container.firstChild).toBeNull();
+    // Đang đứng ở review section → ẩn.
+    armProvenance();
+    useCvBuilderStore.setState({ activeSection: 8 });
+    expect(render(<DiagnosisFindingsBanner />).container.firstChild).toBeNull();
   });
 });

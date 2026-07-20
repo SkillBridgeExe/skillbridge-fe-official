@@ -582,6 +582,9 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     collapsedSections: {},
     seededFromDiagnosis: true,
     seedSourceCvId: null,
+    // Provenance chẩn đoán KHÔNG lây sang phiên hydrate khác (mở từ thư viện/recover):
+    // chỉ seedBuilderFromDocument set lại ngay sau hydrate.
+    diagnosisSourceCvId: null,
   };
 }
 
