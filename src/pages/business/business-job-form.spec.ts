@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { JobVersionDto } from "@/types/jobs";
 import {
+  getDateInputBounds,
+  getSkillsRefreshState,
+  getStepForBlocker,
+  updateBusinessJobLocation,
+  validateFormForSave,
+  validateBusinessJobStep,
   dateInputToEndOfDayIso,
   draftToBusinessJobForm,
   formToUpdateJobDraftRequest,
@@ -47,6 +53,113 @@ const baseDraft: JobVersionDto = {
 };
 
 describe("business job form mapping", () => {
+  it("validates the required Basic fields and optional advanced ranges", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    form.title = "x";
+    form.roleCode = "";
+    form.salaryMin = "500";
+    form.salaryMax = "100";
+    form.minYearsExperience = "4";
+    form.maxYearsExperience = "2";
+    form.openingsCount = "0";
+
+    expect(validateBusinessJobStep(form, "basic")).toMatchObject({
+      title: "Enter at least 2 characters.",
+      roleCode: "Choose a role.",
+      salary: "Maximum salary must be at least the minimum.",
+      experience: "Maximum experience must be at least the minimum.",
+      openingsCount: "Openings must be a whole number from 1 through 1000.",
+    });
+  });
+
+  it("rejects non-finite and out-of-range numeric values instead of coercing them away", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    form.openingsCount = "1001";
+    form.salaryMin = "Infinity";
+    form.salaryMax = "-1";
+    form.minYearsExperience = "NaN";
+    form.maxYearsExperience = "100";
+
+    expect(validateBusinessJobStep(form, "basic")).toMatchObject({
+      openingsCount: "Openings must be a whole number from 1 through 1000.",
+      salary: "Salary values must be finite non-negative numbers.",
+      experience: "Experience values must be finite numbers from 0 through 99.",
+    });
+    expect(() => formToUpdateJobDraftRequest(form, baseDraft.revision)).toThrow("Invalid numeric value");
+  });
+
+  it("validates numeric constraints for direct draft saves", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    form.openingsCount = "1001";
+    form.salaryMin = "Infinity";
+    form.maxYearsExperience = "NaN";
+
+    expect(validateFormForSave(form)).toEqual({
+      openingsCount: "Openings must be a whole number from 1 through 1000.",
+      salary: "Salary values must be finite non-negative numbers.",
+      experience: "Experience values must be finite numbers from 0 through 99.",
+    });
+  });
+
+  it("changes only the selected location unless making it primary", () => {
+    const locations = [
+      { cityCode: "SGN", countryCode: "VN", addressLine: "One", isPrimary: true },
+      { cityCode: "HAN", countryCode: "VN", addressLine: "Two", isPrimary: false },
+    ];
+
+    expect(updateBusinessJobLocation(locations, 1, "cityCode", "DAD")).toEqual([
+      locations[0],
+      { ...locations[1], cityCode: "DAD" },
+    ]);
+    expect(updateBusinessJobLocation(locations, 1, "isPrimary", true)).toEqual([
+      { ...locations[0], isPrimary: false },
+      { ...locations[1], isPrimary: true },
+    ]);
+  });
+
+  it("requires deadline, content and complete hiring locations on the content step", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    form.applicationDeadline = "";
+    form.summary = " ";
+    form.responsibilitiesText = "\n";
+    form.requirementsText = "";
+    form.locations = [{ cityCode: " ", countryCode: "VNM", addressLine: "", isPrimary: true }];
+
+    expect(validateBusinessJobStep(form, "content", new Date("2026-07-20T12:00:00"))).toMatchObject({
+      applicationDeadline: "Choose a deadline from tomorrow through 60 days out.",
+      summary: "Add a job summary.",
+      responsibilities: "Add at least one responsibility.",
+      requirements: "Add at least one requirement.",
+      locations: "Each location needs a city and a 2-letter country code.",
+    });
+  });
+
+  it("maps readiness blockers to the step a user can fix", () => {
+    expect(getStepForBlocker({ code: "MISSING_SKILLS", field: "skills", message: "Extract skills" })).toBe("skills");
+    expect(getStepForBlocker({ code: "COMPANY_PROFILE", field: "company", message: "Complete profile" })).toBe("review");
+    expect(getStepForBlocker({ code: "MISSING_TITLE", field: "title", message: "Title" })).toBe("basic");
+    expect(getStepForBlocker({ code: "MISSING_SUMMARY", field: "summary", message: "Summary" })).toBe("content");
+  });
+
+  it("treats material content edits as requiring a fresh confirmed skills set", () => {
+    const form = draftToBusinessJobForm(baseDraft);
+    expect(getSkillsRefreshState(form, { ...form, benefitsText: "New benefit" })).toEqual({
+      needsRefresh: false,
+      changedFields: [],
+    });
+    expect(getSkillsRefreshState(form, { ...form, requirementsText: "Changed" })).toEqual({
+      needsRefresh: true,
+      changedFields: ["requirementsText"],
+    });
+  });
+
+  it("sets the deadline input bounds to tomorrow through sixty days", () => {
+    expect(getDateInputBounds(new Date("2026-07-20T12:00:00"))).toEqual({
+      min: "2026-07-21",
+      max: "2026-09-18",
+    });
+  });
+
   it("hydrates editable form values from a draft", () => {
     const form = draftToBusinessJobForm(baseDraft);
 

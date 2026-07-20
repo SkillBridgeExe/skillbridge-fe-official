@@ -482,6 +482,7 @@ export interface PublicJobsQuery {
 }
 
 export interface BusinessJobsQuery {
+  q?: string;
   status?: JobStatus;
   page?: number;
   limit?: number;
@@ -643,6 +644,17 @@ export interface BusinessJobDetailResponse {
   job: JobEntityDto;
   draft: JobVersionDto | null;
   published: JobVersionDto | null;
+  publishReadiness: JobPublishReadiness;
+}
+
+/** Backend-owned publishing gate. Keep its shape exact so unknown blockers stay visible. */
+export interface JobPublishReadiness {
+  ready: boolean;
+  blockers: Array<{
+    code: string;
+    field: string;
+    message: string;
+  }>;
 }
 
 export interface PublishJobResponse {

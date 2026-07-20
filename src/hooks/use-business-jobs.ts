@@ -12,6 +12,8 @@ import type {
   BusinessJobsQuery, CreateJobDraftRequest, UpdateJobDraftRequest,
   ReplaceDraftSkillsRequest, BusinessApplicationsQuery,
   UpdateApplicationStatusRequest,
+  BusinessJobDetailResponse,
+  JobVersionDto,
 } from "@/types/jobs";
 
 // ── Keys ────────────────────────────────────────────────────────────
@@ -23,6 +25,25 @@ const keys = {
   applicationDetail: (appId: string) => ["businessApplicationDetail", appId] as const,
   dashboard: ["businessDashboard"] as const,
 };
+
+/** A mutation returns a new draft revision but not a new readiness evaluation. */
+export function withStalePublishReadiness(
+  current: BusinessJobDetailResponse,
+  draft: JobVersionDto,
+): BusinessJobDetailResponse {
+  return {
+    ...current,
+    draft,
+    publishReadiness: {
+      ready: false,
+      blockers: [{
+        code: "READINESS_STALE",
+        field: "review",
+        message: "Checking publish readiness for the latest draft.",
+      }],
+    },
+  };
+}
 
 // ── Queries ─────────────────────────────────────────────────────────
 
@@ -86,9 +107,8 @@ export function useUpdateJobDraftMutation() {
     mutationFn: ({ jobId, body }: { jobId: string; body: UpdateJobDraftRequest }) =>
       updateJobDraftApi(jobId, body),
     onSuccess: (draft, vars) => {
-      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
-        if (!current || typeof current !== "object") return current;
-        return { ...current, draft };
+      qc.setQueryData(keys.detail(vars.jobId), (current: BusinessJobDetailResponse | undefined) => {
+        return current ? withStalePublishReadiness(current, draft) : current;
       });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
       qc.invalidateQueries({ queryKey: ["businessJobs"] });
@@ -103,9 +123,8 @@ export function useExtractJobSkillsMutation() {
     mutationFn: ({ jobId, revision }: { jobId: string; revision: number }) =>
       extractJobSkillsApi(jobId, revision),
     onSuccess: (draft, vars) => {
-      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
-        if (!current || typeof current !== "object") return current;
-        return { ...current, draft };
+      qc.setQueryData(keys.detail(vars.jobId), (current: BusinessJobDetailResponse | undefined) => {
+        return current ? withStalePublishReadiness(current, draft) : current;
       });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
     },
@@ -118,9 +137,8 @@ export function useReplaceJobSkillsMutation() {
     mutationFn: ({ jobId, body }: { jobId: string; body: ReplaceDraftSkillsRequest }) =>
       replaceJobSkillsApi(jobId, body),
     onSuccess: (draft, vars) => {
-      qc.setQueryData(keys.detail(vars.jobId), (current: unknown) => {
-        if (!current || typeof current !== "object") return current;
-        return { ...current, draft };
+      qc.setQueryData(keys.detail(vars.jobId), (current: BusinessJobDetailResponse | undefined) => {
+        return current ? withStalePublishReadiness(current, draft) : current;
       });
       qc.invalidateQueries({ queryKey: keys.detail(vars.jobId) });
     },
