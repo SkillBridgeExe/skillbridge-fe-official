@@ -25,7 +25,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useMascotSuccess } from "@/hooks/useMascot";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
 import {
-  dashboardPathFor,
   getLoginErrorDescription,
   login,
   loginWithGoogle,
@@ -34,12 +33,15 @@ import {
 } from "@/services/auth.service";
 import loginPanel from "@/assets/panel/loginpanel.jpg";
 import { GOOGLE_CLIENT_ID } from "@/lib/runtime-config";
+import { postLoginPath } from "./login-redirect";
 
 type AuthMode = "login" | "register";
 
 interface LoginDialogProps {
   open: boolean;
   mode?: AuthMode;
+  /** Optional in-app destination to restore after a successful login. */
+  redirectTo?: string;
   onModeChange?: (mode: AuthMode) => void;
   onOpenChange: (open: boolean) => void;
 }
@@ -65,6 +67,7 @@ const ROLES: Array<{
 export function LoginDialog({
   open,
   mode = "login",
+  redirectTo,
   onModeChange,
   onOpenChange,
 }: LoginDialogProps) {
@@ -147,7 +150,7 @@ export function LoginDialog({
           : t("auth.toast.loginSuccess", { role: nameToDisplay }),
       );
       onOpenChange(false);
-      navigate(dashboardPathFor(userRole));
+      navigate(postLoginPath(userRole, redirectTo));
     } catch (err) {
       toast({
         title: t("auth.toast.loginFailedTitle"),
@@ -248,7 +251,7 @@ export function LoginDialog({
 
       celebrate(t("auth.toast.googleSuccess", { role: nameToDisplay }));
       onOpenChange(false);
-      navigate(dashboardPathFor(userRole));
+      navigate(postLoginPath(userRole, redirectTo));
     } catch (err) {
       toast({
         title: t("auth.toast.googleFailedTitle"),

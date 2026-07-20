@@ -4,7 +4,7 @@ import "@/lib/version"; // W28: log version stamp to console on boot
 
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import posthog from "posthog-js";
 import { PostHogErrorBoundary, PostHogProvider } from "@posthog/react";
 import { POSTHOG_HOST, POSTHOG_PROJECT_TOKEN } from "@/lib/runtime-config";
@@ -48,21 +48,9 @@ function AdminFallback() {
   );
 }
 
-const App = () => (
-  <PostHogProvider client={posthog}>
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="skillbridge-ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <QuotaUpgradeListener />
-        <MascotOverlay />
-        <CompanionShell />
-        <AuthBootstrap />
-        <PostHogErrorBoundary>
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
               <Route path="/" element={<Pages.Index />} />
               <Route path="/register" element={<Navigate to="/?auth=register" replace />} />
               <Route path="/about" element={<Pages.About />} />
@@ -101,6 +89,7 @@ const App = () => (
               <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
+              <Route path="/jobs/:slug" element={<Pages.JobDetail />} />
               <Route path="/roadmap-generator" element={<Navigate to="/diagnosis" replace />} />
               <Route path="/cv-builder" element={<Navigate to="/diagnosis?mode=builder" replace />} />
               <Route path="/mascot" element={<Pages.MascotShowcase />} />
@@ -141,10 +130,26 @@ const App = () => (
                 <Route path="*" element={<AdminFallback />} />
               </Route>
 
-              <Route path="*" element={<Pages.NotFound />} />
-            </Routes>
+      <Route path="*" element={<Pages.NotFound />} />
+    </>,
+  ),
+);
+
+const App = () => (
+  <PostHogProvider client={posthog}>
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider defaultTheme="light" storageKey="skillbridge-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <QuotaUpgradeListener />
+        <MascotOverlay />
+        <CompanionShell />
+        <AuthBootstrap />
+        <PostHogErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <RouterProvider router={router} />
           </Suspense>
-        </BrowserRouter>
         </PostHogErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
