@@ -231,7 +231,7 @@ export function CompanionShell() {
 
   // Pose: dragging → "swimming"; success flash → "success"; chat skills → event-driven
   // emotion (Wave 1); other advisory skills → "tip"; cv_intake/cv_builder follow mascotState.
-  const isChatSkill = turn?.skill === "diagnosis_chat" || turn?.skill === "learning_chat";
+  const isChatSkill = turn?.skill === "diagnosis_chat" || turn?.skill === "learning_chat" || turn?.skill === "cv_builder_chat";
   const isAdvisorySkill = turn?.skill === "diagnosis_results"
     || turn?.skill === "diagnosis_review"
     || turn?.skill === "diagnosis_upload"
@@ -509,6 +509,27 @@ export function CompanionShell() {
                   onSend={turn.props.onSend as (q: string) => void}
                   onRetry={turn.props.onRetry as (index: number) => void}
                   isPending={chatPending}
+                />
+              )}
+
+              {/* ── cv_builder_chat (Slice 5 — CV builder writing companion) ── */}
+              {turn?.skill === "cv_builder_chat" && (
+                <DiagnosisChatSkill
+                  messages={chatMessages}
+                  opener={chatOpener}
+                  suggestions={chatSuggestions}
+                  onSend={turn.props.onSend as (q: string) => void}
+                  onSuggestionTap={turn.props.onSuggestionTap as ((q: string) => void) | undefined}
+                  onRetry={turn.props.onRetry as (index: number) => void}
+                  onDeleteThread={turn.props.onDeleteThread as (() => void) | undefined}
+                  onAction={turn.props.onAction as ((chip: ChatActionChip) => void) | undefined}
+                  pendingAction={chatPendingAction}
+                  onConfirmAction={turn.props.onConfirmAction as (() => void) | undefined}
+                  onCancelAction={turn.props.onCancelAction as (() => void) | undefined}
+                  isPending={chatPending}
+                  knownState={chatKnownState}
+                  placeholderKey="companion.cvChat.placeholder"
+                  positioningKey="companion.cvChat.positioning"
                 />
               )}
               </div>

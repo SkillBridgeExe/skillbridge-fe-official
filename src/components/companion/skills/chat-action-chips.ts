@@ -27,6 +27,8 @@ export interface ChatActionChip {
   copyText?: string;
   /** Cross-JD deep-link target (another persisted CV/JD match); only present for kind='view_match'. */
   viewMatch?: { cvId: string; matchId: string; jdTitle: string | null };
+  /** CV builder chat: the proposed edit to write; only present for its rewrite chip. */
+  cvEdit?: { field_path: string; before: string; after: string };
 }
 
 export function canOpenTailorRewrite(action: TailorAction | null | undefined): action is TailorAction {

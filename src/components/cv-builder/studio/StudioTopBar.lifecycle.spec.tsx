@@ -32,6 +32,18 @@ vi.mock("react-i18next", () => ({
 vi.mock("@resume-engine/pdf/browser", () => ({
   createResumePdfBlob: vi.fn(async () => new Blob(["pdf"], { type: "application/pdf" })),
 }));
+// The chat companion hook mounts inside the top bar and hits the builder-chat API on
+// mount; this suite tests resume lifecycle, not chat — stub the service so its GET never
+// reaches the fake server (it would otherwise land during the wait window and inflate
+// server.calls).
+// Plain functions (not vi.fn spies) so a clearMocks/resetMocks config can't wipe the
+// return value between tests and leave the hook's `.then` reading undefined.
+vi.mock("@/services/cv-builder-chat.service", () => ({
+  postBuilderChatApi: () => Promise.resolve({}),
+  getBuilderChatThreadApi: () => Promise.resolve({ turns: [], known_state: null }),
+  deleteBuilderChatThreadApi: () => Promise.resolve(undefined),
+  isDailyLimitError: () => false,
+}));
 
 import { createResumePdfBlob } from "@resume-engine/pdf/browser";
 import { resolveBuilderTemplate } from "../preview/TemplatePicker";

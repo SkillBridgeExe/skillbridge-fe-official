@@ -43,6 +43,10 @@ interface Props {
   isPending: boolean;
   /** Wave 2: the BE's deterministic memory mirror — renders the collapsed memory card. */
   knownState?: ChatKnownState | null;
+  /** Override the composer placeholder (e.g. the CV builder reuses this skill with its own copy). */
+  placeholderKey?: string;
+  /** Override the bottom positioning/trust line. */
+  positioningKey?: string;
 }
 
 function toolLabel(
@@ -71,6 +75,8 @@ export function DiagnosisChatSkill({
   onCancelAction,
   isPending,
   knownState,
+  placeholderKey,
+  positioningKey,
 }: Props) {
   const { t } = useTranslation("diagnosis");
   const [draft, setDraft] = useState("");
@@ -295,8 +301,8 @@ export function DiagnosisChatSkill({
           onKeyDown={handleKeyDown}
           disabled={isPending}
           rows={1}
-          placeholder={t("companion.chat.placeholder")}
-          aria-label={t("companion.chat.placeholder")}
+          placeholder={t(placeholderKey ?? "companion.chat.placeholder")}
+          aria-label={t(placeholderKey ?? "companion.chat.placeholder")}
           className="max-h-28 min-h-[38px] flex-1 resize-none rounded-lg border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437] placeholder:text-[#9AA1A6] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-[#F8F8F7] disabled:opacity-60"
         />
         <button
@@ -317,7 +323,7 @@ export function DiagnosisChatSkill({
 
       {/* Wave 2 positioning line — the one-sentence trust contract, always visible. */}
       <p className="text-center text-[10px] leading-snug text-[#9AA1A6]">
-        {t("companion.chat.positioning")}
+        {t(positioningKey ?? "companion.chat.positioning")}
       </p>
     </div>
   );
