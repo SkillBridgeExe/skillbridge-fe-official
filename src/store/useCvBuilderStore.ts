@@ -222,6 +222,9 @@ export interface CvBuilderState {
    *  báo cho Diagnosis page đẩy ngay nội dung vào draft mới sau khi tạo. */
   seededFromDiagnosis: boolean;
   seedSourceCvId: string | null;
+  /** cvId đã chẩn đoán — KHÔNG bị consume-then-clear như seedSourceCvId,
+   *  để builder chat/panel tra ngược review của CV cha. */
+  diagnosisSourceCvId: string | null;
 
   // Actions — Basic Info
   setBasicInfo: (field: keyof Pick<CvBuilderState, "fullName" | "email" | "phone" | "location" | "linkedin" | "portfolio" | "github" | "photoUrl">, value: string) => void;
@@ -339,6 +342,7 @@ export interface CvBuilderState {
   hydrateFromCanonical: (doc: CanonicalCvDocument, opts?: { preserveDraft?: boolean; cvId?: string | null }) => void;
   setSeededFromDiagnosis: (val: boolean) => void;
   setSeedSourceCvId: (id: string | null) => void;
+  setDiagnosisSourceCvId: (id: string | null) => void;
 
   // Actions — Import/Restore backup (W64)
   importState: (newState: Partial<CvBuilderState>) => void;
@@ -437,6 +441,7 @@ const initialState = {
   sectionFixFeedback: {} as Partial<Record<BuilderSection, SectionFixFeedback>>,
   seededFromDiagnosis: false,
   seedSourceCvId: null as string | null,
+  diagnosisSourceCvId: null as string | null,
   // Companion
   mascotState: 'idle' as const,
   companionField: null as string | null,
@@ -864,11 +869,13 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
             sectionFixFeedback: state.sectionFixFeedback,
             seededFromDiagnosis: state.seededFromDiagnosis,
             seedSourceCvId: state.seedSourceCvId,
+            diagnosisSourceCvId: state.diagnosisSourceCvId,
           }
         : { ...next, customSections, customSectionsCvId };
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
+  setDiagnosisSourceCvId: (diagnosisSourceCvId) => set({ diagnosisSourceCvId }),
   setTemplate: (template) => set(() => {
     const meta = TEMPLATE_PREVIEWS[template as Template];
     if (meta) {

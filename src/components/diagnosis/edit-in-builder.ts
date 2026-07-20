@@ -24,6 +24,10 @@ export function seedBuilderFromDocument(docToEdit: CanonicalCvDocument | null | 
   builder.hydrateFromCanonical(seedDoc);
 
   const diag = useDiagnosisStore.getState();
+  // Draft nhớ CV cha: BE clone từ đúng CV đã chẩn đoán (thay heuristic latest-upload),
+  // và diagnosisSourceCvId sống qua ensureDraft (seedSourceCvId bị consume-then-clear).
+  builder.setSeedSourceCvId(diag.lastCvId ?? null);
+  builder.setDiagnosisSourceCvId(diag.lastCvId ?? null);
   if (diag.targetRole) {
     builder.setCareerTarget("targetPosition", diag.targetRole);
   }
