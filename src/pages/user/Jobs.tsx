@@ -29,6 +29,8 @@ import {
 } from "@/hooks/use-jobs";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
+import { getJobListAccess } from "./job-list-access";
+import { getExternalJobApplyUrl } from "./job-access";
 import type { PublicJobDto, PublicJobsQuery, WorkMode, EmploymentType, ExperienceLevel } from "@/types/jobs";
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -220,7 +222,7 @@ function CustomDropdown({
 }
 
 // ─── Job Card ────────────────────────────────────────────────────────
-function JobCard({ job, saved, onSave }: { job: PublicJobDto; saved: boolean; onSave: (id: string) => void }) {
+export function JobCard({ job, saved, showSave, externalApplyUrl, onSave }: { job: PublicJobDto; saved: boolean; showSave: boolean; externalApplyUrl: string | null; onSave: (id: string) => void }) {
   const salary = formatSalary(job);
   const posted = postedAgo(job.postedAt);
   const isNew = job.postedAt && (Date.now() - new Date(job.postedAt).getTime()) < 2 * 86_400_000;
@@ -261,12 +263,15 @@ function JobCard({ job, saved, onSave }: { job: PublicJobDto; saved: boolean; on
             <h3 className="text-sm font-bold text-slate-900 group-hover:text-sky-600 transition-colors leading-snug">
               {job.title}
             </h3>
-            <button
-              onClick={() => onSave(job.id)}
-              className="flex-shrink-0 p-1 text-slate-300 hover:text-sky-500 transition-colors mt-0.5"
-            >
-              {saved ? <BookmarkCheck size={16} className="text-sky-500" /> : <Bookmark size={16} />}
-            </button>
+            {showSave ? (
+              <button
+                onClick={() => onSave(job.id)}
+                aria-label={saved ? "Unsave job" : "Save job"}
+                className="flex-shrink-0 p-1 text-slate-300 hover:text-sky-500 transition-colors mt-0.5"
+              >
+                {saved ? <BookmarkCheck size={16} className="text-sky-500" /> : <Bookmark size={16} />}
+              </button>
+            ) : null}
           </div>
 
           {/* Company + info */}
@@ -324,9 +329,9 @@ function JobCard({ job, saved, onSave }: { job: PublicJobDto; saved: boolean; on
         </div>
         {/* CTA: external jobs always show "Apply on site" if sourceUrl exists,
              native jobs gate on canApply, otherwise show Closed */}
-        {job.applicationMode === "EXTERNAL" && job.sourceUrl ? (
+        {job.applicationMode === "EXTERNAL" && externalApplyUrl ? (
           <a
-            href={job.sourceUrl}
+            href={externalApplyUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 group/btn"
@@ -362,6 +367,13 @@ export default function Jobs() {
   const heroRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authSource = useAuthStore((s) => s.authSource);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const { canQuerySavedJobs: canSaveJobs, showSaveAction } = getJobListAccess({
+    isAuthenticated,
+    authSource,
+    role: currentUser?.role,
+  });
   const { toast } = useToast();
   const posthog = usePostHog();
 
@@ -379,7 +391,7 @@ export default function Jobs() {
   const jobsQuery = useJobsQuery(apiQuery);
   const filtersQuery = useJobFiltersQuery();
   // Only fetch saved jobs when user is logged in — this is a USER route
-  const savedJobsQuery = useSavedJobsQuery({ limit: 100, enabled: isAuthenticated });
+  const savedJobsQuery = useSavedJobsQuery({ limit: 100, enabled: canSaveJobs });
   const saveMutation = useSaveJobMutation();
   const unsaveMutation = useUnsaveJobMutation();
 
@@ -418,6 +430,8 @@ export default function Jobs() {
       });
       return;
     }
+
+    if (!canSaveJobs) return;
 
     if (savedJobIds.has(id)) {
       unsaveMutation.mutate(id);
@@ -780,7 +794,14 @@ export default function Jobs() {
                 {jobs.length > 0 ? (
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {jobs.map(job => (
-                      <JobCard key={job.id} job={job} saved={savedJobIds.has(job.id)} onSave={toggleSave} />
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        saved={savedJobIds.has(job.id)}
+                        showSave={showSaveAction}
+                        externalApplyUrl={getExternalJobApplyUrl({ isAuthenticated, role: currentUser?.role }, job.sourceUrl)}
+                        onSave={toggleSave}
+                      />
                     ))}
                   </div>
                 ) : (

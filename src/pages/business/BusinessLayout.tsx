@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePostHog } from "@posthog/react";
 import {
   Building2,
   LayoutDashboard,
@@ -12,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { useBusinessDashboardQuery } from "@/hooks/use-business-jobs";
+import { logout as logoutSession } from "@/services/auth.service";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Overview", path: "/business" },
@@ -29,6 +33,10 @@ interface BusinessLayoutProps {
 
 export default function BusinessLayout({ children, title, subtitle }: BusinessLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const posthog = usePostHog();
+  const currentUser = useAuthStore((state) => state.currentUser);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const dashboard = useBusinessDashboardQuery();
   const company = dashboard.data?.company;
@@ -44,6 +52,14 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
       : location.pathname.startsWith(item.path),
   );
   const CurrentPageIcon = currentPage?.icon;
+
+  const handleLogout = () => {
+    posthog?.capture("user_logged_out", { role: currentUser?.role });
+    posthog?.reset();
+    queryClient.clear();
+    void logoutSession();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-dvh bg-slate-50 flex">
@@ -126,13 +142,14 @@ export default function BusinessLayout({ children, title, subtitle }: BusinessLa
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-slate-100">
-          <Link
-            to="/?auth=login"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-all hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
             <LogOut size={16} />
-            Exit Portal
-          </Link>
+            Log out
+          </button>
         </div>
       </aside>
 
