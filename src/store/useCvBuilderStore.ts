@@ -85,6 +85,40 @@ export type SectionFixFeedback = {
 
 export type CvBuilderSectionKey = "summary" | "experience" | "education" | "projects" | "skills" | "certifications";
 
+const SECTION_ORDER_KEYS: CvBuilderSectionKey[] = [
+  "summary",
+  "experience",
+  "education",
+  "projects",
+  "certifications",
+  "skills",
+];
+
+/**
+ * Persisted sectionOrder is untrusted (older deploys / hand-edited localStorage).
+ * CvFormPanel builds its render list via `sectionOrder.map(SECTIONS.find).filter(Boolean)`,
+ * which silently DROPS unknown ids — so any consumer indexing the raw order (e.g. the
+ * diagnosis findings jump) would diverge. Normalize here: keep valid ids in the user's
+ * order, drop junk/dupes, and guarantee all six sections are present.
+ */
+export function sanitizeSectionOrder(order: unknown): CvBuilderSectionKey[] {
+  const valid = new Set<string>(SECTION_ORDER_KEYS);
+  const seen = new Set<CvBuilderSectionKey>();
+  const result: CvBuilderSectionKey[] = [];
+  if (Array.isArray(order)) {
+    for (const id of order) {
+      if (typeof id === "string" && valid.has(id) && !seen.has(id as CvBuilderSectionKey)) {
+        seen.add(id as CvBuilderSectionKey);
+        result.push(id as CvBuilderSectionKey);
+      }
+    }
+  }
+  for (const id of SECTION_ORDER_KEYS) {
+    if (!seen.has(id)) result.push(id);
+  }
+  return result;
+}
+
 export interface SectionMeta {
   label: string;
   status: SectionStatus;
@@ -582,9 +616,8 @@ function canonicalToBuilderState(doc: CanonicalCvDocument) {
     collapsedSections: {},
     seededFromDiagnosis: true,
     seedSourceCvId: null,
-    // Provenance chẩn đoán KHÔNG lây sang phiên hydrate khác (mở từ thư viện/recover):
-    // chỉ seedBuilderFromDocument set lại ngay sau hydrate.
-    diagnosisSourceCvId: null,
+    // diagnosisSourceCvId (provenance) KHÔNG set ở đây — quyết định giữ/xoá phụ thuộc
+    // state trước hydrate (seed flow vs mở CV khác), xử lý ở nhánh return của hydrate.
   };
 }
 
@@ -874,7 +907,16 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
             seedSourceCvId: state.seedSourceCvId,
             diagnosisSourceCvId: state.diagnosisSourceCvId,
           }
-        : { ...next, customSections, customSectionsCvId };
+        : {
+            ...next,
+            customSections,
+            customSectionsCvId,
+            // Giữ provenance chẩn đoán chỉ khi ĐANG trong seed flow (ensureDraft re-hydrate
+            // lại draft vừa clone từ CV đã chẩn đoán — seededFromDiagnosis còn true tới khi
+            // Diagnosis.tsx clear sau đó). Mở CV khác từ thư viện/recover: seededFromDiagnosis
+            // là false → xoá, không để lỗi CV A bám vào draft CV B.
+            diagnosisSourceCvId: state.seededFromDiagnosis ? state.diagnosisSourceCvId : null,
+          };
     }),
   setSeededFromDiagnosis: (seededFromDiagnosis) => set({ seededFromDiagnosis }),
   setSeedSourceCvId: (seedSourceCvId) => set({ seedSourceCvId }),
@@ -1208,6 +1250,7 @@ export const useCvBuilderStore = create<CvBuilderState>()(persist((set, get) => 
   merge: (persisted, current) => {
     const incoming = { ...((persisted ?? {}) as Partial<CvBuilderState>) };
     incoming.customSections = sanitizeCustomSections(incoming.customSections);
+    incoming.sectionOrder = sanitizeSectionOrder(incoming.sectionOrder);
     incoming.layoutPages = sanitizeLayoutPages(incoming.layoutPages);
     incoming.sectionPage = sanitizeSectionPage(
       incoming.sectionPage,

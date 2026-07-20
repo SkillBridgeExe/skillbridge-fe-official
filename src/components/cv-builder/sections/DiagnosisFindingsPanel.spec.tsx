@@ -48,6 +48,7 @@ afterEach(() => {
     activeSection: 0,
     sectionFixFeedback: {},
     collapsedSections: {},
+    sectionOrder: ["summary", "experience", "education", "projects", "certifications", "skills"],
   });
   useDiagnosisStore.setState({
     reviewData: null,
@@ -108,6 +109,32 @@ describe("DiagnosisFindingsPanel", () => {
     expect(useCvBuilderStore.getState().sectionFixFeedback.experience?.source).toBe("diagnosis_fix");
     // Section đích được auto-expand như CvSectionNav.handleNavClick
     expect(useCvBuilderStore.getState().collapsedSections.experience).toBe(false);
+  });
+
+  it("computes the jump index from the LIVE sectionOrder (reorder-safe, not hardcoded)", () => {
+    armProvenance();
+    // User dragged experience to the top → its builder index is now 2 (not the default 3).
+    useCvBuilderStore.setState({
+      sectionOrder: ["experience", "summary", "education", "projects", "certifications", "skills"],
+      experience: [
+        {
+          id: "exp-1",
+          company: "A Company",
+          position: "Developer",
+          startDate: "",
+          endDate: "",
+          description: "Làm việc với team phát triển web",
+          responsibilities: "",
+          achievements: "",
+          aiRewrite: "",
+        },
+      ],
+    });
+
+    render(<DiagnosisFindingsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: /builder.diagnosisFindings.fixButton/i }));
+    // experience moved to sectionOrder index 0 → orderedSections index 0 + 2 = 2.
+    expect(useCvBuilderStore.getState().activeSection).toBe(2);
   });
 });
 
