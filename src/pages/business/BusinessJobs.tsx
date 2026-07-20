@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import BusinessLayout from "./BusinessLayout";
 import {
   Briefcase,
   Calendar,
-  CheckCircle,
   Clock,
   Copy,
   Edit2,
+  Eye,
   Loader2,
   MapPin,
   Plus,
@@ -19,6 +19,20 @@ import {
 } from "lucide-react";
 import { useBusinessJobsQuery, useCreateJobDraftMutation, useDeleteJobMutation, useCloseJobMutation, useDuplicateJobMutation } from "@/hooks/use-business-jobs";
 import type { JobEntityDto, JobStatus } from "@/types/jobs";
+import { IT_ROLES } from "@/constants/it-roles";
+import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { canCreateBusinessJobDraft, normalizeBusinessJobSearch } from "./business-jobs-helpers";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_BADGES: Record<JobStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -99,16 +113,24 @@ function JobStatusBadge({ status }: { status: JobStatus }) {
 
 export default function BusinessJobs() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | JobStatus>("all");
   const [page, setPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newRoleCode, setNewRoleCode] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [confirmation, setConfirmation] = useState<{ kind: "close" | "delete"; job: JobEntityDto } | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   // API queries
   const jobsQuery = useBusinessJobsQuery({
+    q: normalizeBusinessJobSearch(debouncedQuery),
     status: statusFilter === "all" ? undefined : statusFilter,
     page,
     limit: PAGE_SIZE,
@@ -121,21 +143,10 @@ export default function BusinessJobs() {
   const total = jobsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Client-side search filter (backend already filters by status)
-  const filtered = useMemo(() => {
-    const items = jobsQuery.data?.items ?? [];
-    if (!query.trim()) return items;
-    const q = query.toLowerCase();
-    return items.filter(
-      (job) =>
-        job.title.toLowerCase().includes(q) ||
-        job.slug.toLowerCase().includes(q) ||
-        job.location?.toLowerCase().includes(q),
-    );
-  }, [jobsQuery.data, query]);
+  const jobs = jobsQuery.data?.items ?? [];
 
   const handleCreate = () => {
-    if (!newTitle.trim()) return;
+    if (!canCreateBusinessJobDraft(newTitle)) return;
     createMutation.mutate(
       { title: newTitle.trim(), roleCode: newRoleCode.trim() || undefined },
       {
@@ -143,27 +154,45 @@ export default function BusinessJobs() {
           setNewTitle("");
           setNewRoleCode("");
           setShowCreateForm(false);
-          setSubmitted(true);
-          setTimeout(() => setSubmitted(false), 3000);
+          toast({ title: "Draft created", description: "Continue with the guided job editor." });
           navigate(`/business/jobs/${created.job.id}/edit`);
         },
+        onError: (error) => toast({ variant: "destructive", title: "Could not create draft", description: getApiErrorMessage(error) }),
       },
     );
   };
 
   const handleDelete = (job: JobEntityDto) => {
     if (job.status !== "draft") return;
-    deleteMutation.mutate(job.id);
+    deleteMutation.mutate(job.id, {
+      onSuccess: () => {
+        toast({ title: "Draft deleted" });
+        setConfirmation(null);
+      },
+      onError: (error) => toast({ variant: "destructive", title: "Delete failed", description: getApiErrorMessage(error) }),
+    });
   };
 
   const handleClose = (job: JobEntityDto) => {
     if (job.status !== "active") return;
-    closeMutation.mutate(job.id);
+    closeMutation.mutate(job.id, {
+      onSuccess: () => {
+        toast({ title: "Job closed", description: "The job is no longer accepting applications." });
+        setConfirmation(null);
+      },
+      onError: (error) => toast({ variant: "destructive", title: "Close failed", description: getApiErrorMessage(error) }),
+    });
   };
 
   const handleDuplicate = (job: JobEntityDto) => {
     if (job.status !== "closed" && job.status !== "expired") return;
-    duplicateMutation.mutate(job.id);
+    duplicateMutation.mutate(job.id, {
+      onSuccess: (created) => {
+        toast({ title: "Draft duplicated" });
+        navigate(`/business/jobs/${created.job.id}/edit`);
+      },
+      onError: (error) => toast({ variant: "destructive", title: "Duplicate failed", description: getApiErrorMessage(error) }),
+    });
   };
 
   const startIndex = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -172,15 +201,6 @@ export default function BusinessJobs() {
   return (
     <BusinessLayout title="Job Listings" subtitle="Manage, publish, and monitor all open positions.">
       <div className="space-y-5">
-        {submitted && (
-          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-            <CheckCircle size={16} className="text-emerald-600" />
-            <p className="text-sm text-emerald-800 font-medium">
-              Job draft created successfully. Edit and publish when ready.
-            </p>
-          </div>
-        )}
-
         <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-3 justify-between">
             <p className="text-sm text-slate-500">
@@ -205,8 +225,11 @@ export default function BusinessJobs() {
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter current page by title or location"
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search all jobs by title, role, or location"
                 className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50"
               />
             </div>
@@ -255,14 +278,15 @@ export default function BusinessJobs() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Role Code (optional)</label>
-                  <input
-                    type="text"
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Role (optional)</label>
+                  <select
                     value={newRoleCode}
                     onChange={(e) => setNewRoleCode(e.target.value)}
-                    placeholder="e.g. frontend_developer"
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50"
-                  />
+                  >
+                    <option value="">Choose later</option>
+                    {IT_ROLES.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
@@ -274,7 +298,7 @@ export default function BusinessJobs() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={!newTitle.trim() || createMutation.isPending}
+                  disabled={!canCreateBusinessJobDraft(newTitle) || createMutation.isPending}
                   className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
                   {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
@@ -319,7 +343,7 @@ export default function BusinessJobs() {
         {/* Job list */}
         {jobsQuery.isSuccess && (
           <div className="space-y-3">
-            {filtered.map((job) => (
+            {jobs.map((job) => (
               <div
                 key={job.id}
                 className={`bg-white rounded-xl border transition-all ${
@@ -376,11 +400,21 @@ export default function BusinessJobs() {
                           <Edit2 size={15} />
                         </button>
                       )}
+                      {job.status === "active" && (
+                        <Link
+                          to={`/jobs/${job.slug}`}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-sky-50 hover:text-sky-600"
+                          title="View public job"
+                          aria-label={`View ${job.title} public page`}
+                        >
+                          <Eye size={15} />
+                        </Link>
+                      )}
                       {/* Close — only active */}
                       {job.status === "active" && (
                         <button
-                          onClick={() => handleClose(job)}
-                          disabled={closeMutation.isPending}
+                          onClick={() => setConfirmation({ kind: "close", job })}
+                          disabled={closeMutation.isPending && closeMutation.variables === job.id}
                           className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"
                           title="Close"
                         >
@@ -391,7 +425,7 @@ export default function BusinessJobs() {
                       {(job.status === "closed" || job.status === "expired") && (
                         <button
                           onClick={() => handleDuplicate(job)}
-                          disabled={duplicateMutation.isPending}
+                          disabled={duplicateMutation.isPending && duplicateMutation.variables === job.id}
                           className="p-2 rounded-lg hover:bg-sky-50 text-slate-400 hover:text-sky-600"
                           title="Duplicate"
                         >
@@ -401,8 +435,8 @@ export default function BusinessJobs() {
                       {/* Delete — only draft */}
                       {job.status === "draft" && (
                         <button
-                          onClick={() => handleDelete(job)}
-                          disabled={deleteMutation.isPending}
+                          onClick={() => setConfirmation({ kind: "delete", job })}
+                          disabled={deleteMutation.isPending && deleteMutation.variables === job.id}
                           className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
                           title="Delete"
                         >
@@ -415,7 +449,7 @@ export default function BusinessJobs() {
               </div>
             ))}
 
-            {filtered.length === 0 && (
+            {jobs.length === 0 && (
               <div className="bg-white rounded-xl border border-dashed border-slate-200 p-10 text-center">
                 <Briefcase size={32} className="text-slate-200 mx-auto mb-3" />
                 <p className="text-sm text-slate-500">No jobs match your current filters.</p>
@@ -427,6 +461,35 @@ export default function BusinessJobs() {
         {totalPages > 1 && (
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         )}
+
+        <AlertDialog open={Boolean(confirmation)} onOpenChange={(open) => !open && setConfirmation(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{confirmation?.kind === "delete" ? "Delete this draft?" : "Close this job?"}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmation?.kind === "delete"
+                  ? "This draft will be permanently deleted. This action cannot be undone."
+                  : "Candidates will no longer be able to apply to this job."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending || closeMutation.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (!confirmation) return;
+                  if (confirmation.kind === "delete") handleDelete(confirmation.job);
+                  else handleClose(confirmation.job);
+                }}
+                disabled={deleteMutation.isPending || closeMutation.isPending}
+                className={confirmation?.kind === "delete" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}
+              >
+                {(deleteMutation.isPending || closeMutation.isPending) && <Loader2 size={14} className="mr-2 animate-spin" />}
+                {confirmation?.kind === "delete" ? "Delete draft" : "Close job"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </BusinessLayout>
   );

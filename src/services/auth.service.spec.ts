@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   forgotPassword,
   getLoginErrorDescription,
+  isMockAuthEnabled,
   login,
+  logout,
   resetPassword,
 } from "./auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -22,6 +24,10 @@ vi.mock("@/api/auth/forgotPassword", () => ({
 
 vi.mock("@/api/auth/resetPassword", () => ({
   resetPasswordApi: vi.fn(),
+}));
+
+vi.mock("@/api/auth/logout", () => ({
+  logoutApi: vi.fn(),
 }));
 
 const user = {
@@ -121,5 +127,28 @@ describe("auth service session persistence", () => {
       token: "token",
       newPassword: "NewStrongPass123",
     });
+  });
+
+  it("enables mock auth only for an explicitly enabled development build", () => {
+    expect(isMockAuthEnabled(true, "true")).toBe(true);
+    expect(isMockAuthEnabled(true, "false")).toBe(false);
+    expect(isMockAuthEnabled(false, "true")).toBe(false);
+  });
+
+  it("clears the local session before the logout request settles", async () => {
+    const { logoutApi } = await import("@/api/auth/logout");
+    let finishRequest!: () => void;
+    vi.mocked(logoutApi).mockReturnValue(
+      new Promise((resolve) => {
+        finishRequest = () => resolve({ success: true, message: "ok", data: null, errors: null });
+      }),
+    );
+    useAuthStore.getState().login("business");
+
+    const pending = logout();
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    finishRequest();
+    await pending;
   });
 });

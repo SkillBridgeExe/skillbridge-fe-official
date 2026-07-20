@@ -31,6 +31,10 @@ export interface LoginOutcome {
   source: "api" | "mock";
 }
 
+export function isMockAuthEnabled(isDevelopment: boolean, flag: string | undefined): boolean {
+  return isDevelopment && flag === "true";
+}
+
 /** Trang đích theo role — dùng chung cho mọi redirect sau khi auth thành công. */
 export function dashboardPathFor(role: UserRole): string {
   switch (role) {
@@ -80,6 +84,9 @@ export async function login(email: string, password: string): Promise<LoginOutco
     persistSession(result.data.accessToken, result.data.expiresIn, result.data.user, role);
     return { role, source: "api", displayName: result.data.user.displayName };
   } catch (apiError) {
+    if (!isMockAuthEnabled(import.meta.env.DEV, import.meta.env.VITE_ENABLE_MOCK_AUTH)) {
+      throw apiError;
+    }
     const mock = useAuthStore.getState().loginWithMockAccount(email, password);
     if (mock.success) {
       const currentUser = useAuthStore.getState().currentUser;
@@ -121,10 +128,10 @@ export function resetPassword(token: string, newPassword: string) {
 
 /** Best-effort logout phía BE (xoá refresh cookie) + luôn xoá session local. */
 export async function logout(): Promise<void> {
+  useAuthStore.getState().logout();
   try {
     await logoutApi();
   } catch {
     // BE không phản hồi vẫn phải logout được ở local.
   }
-  useAuthStore.getState().logout();
 }
