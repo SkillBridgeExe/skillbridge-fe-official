@@ -19,6 +19,9 @@ export interface CvBuilderChatRequest {
     current_value: string;
   };
   language?: string;
+  /** The diagnosed CV this draft was cloned from — a POINTER so the BE can read the parent CV's scan
+   *  findings when this fresh draft has none of its own. Sent from useCvBuilderStore.diagnosisSourceCvId. */
+  source_cv_id?: string;
 }
 
 export interface CvBuilderChatProposedEdit {

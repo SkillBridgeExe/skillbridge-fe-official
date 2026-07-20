@@ -171,11 +171,16 @@ export function useCvBuilderChatCompanion(
       }
       const chatEpoch = useCompanionStore.getState().chatEpoch;
       const focusedField = getFocusedField();
+      // The diagnosed CV this draft was seeded from (Phase A). A POINTER so the BE can read the
+      // parent CV's scan findings when this fresh draft has none of its own — undefined when this
+      // draft did not come from a diagnosis (the BE then just has no diagnosis block).
+      const sourceCvId = useCvBuilderStore.getState().diagnosisSourceCvId ?? undefined;
 
       postBuilderChatApi(cvId, {
         question,
         focused_field: focusedField,
         language,
+        source_cv_id: sourceCvId,
       })
         .then((res) => {
           if (useCompanionStore.getState().chatEpoch !== chatEpoch) return;
