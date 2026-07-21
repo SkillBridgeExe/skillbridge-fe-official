@@ -1985,6 +1985,9 @@ export default {
       },
       rail: {
         scoreTitle: "Match Rate",
+        matchScoreTitle: "JD match score",
+        matchCoverage: "Required coverage",
+        unnormalizedChip: "Scored {{scored}}/{{total}} readable requirements — {{unscored}} out-of-scope requirements could not be evaluated",
         issuesBadge: "{{count}} to fix",
         resolved: "Passed",
         askCompanion: "Ask your AI coach",
@@ -2300,6 +2303,13 @@ export default {
         RATE_LIMITED:
           "GitHub is rate limiting requests. Try again in a few minutes.",
         FETCH_FAILED: "Could not read GitHub. Please try again later.",
+      },
+    },
+    match: {
+      band: {
+        strong: "Strong match",
+        moderate: "Partial match",
+        low: "Low match",
       },
     },
     matchDepth: {
