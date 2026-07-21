@@ -251,10 +251,13 @@ export const useCompanionStore = create<CompanionState>()((set) => ({
       return { contexts, activeId: s.activeId === id ? null : s.activeId };
     }),
   // Activating selects the context; auto-open the bubble the FIRST time only (until dismissed).
+  // Guard: if the id is not registered in contexts, no-op — prevents setting activeId to a
+  // dead/unregistered context which would break showBubble (contexts[activeId] undefined).
   activateContext: (id) =>
     set((s) => {
       const reg = s.contexts[id];
-      const shouldAutoOpen = reg?.suppressAutoOpen ? s.bubbleOpen : (s.dismissed[id] ? false : true);
+      if (!reg) return {};
+      const shouldAutoOpen = reg.suppressAutoOpen ? s.bubbleOpen : (s.dismissed[id] ? false : true);
       return {
         activeId: id,
         bubbleOpen: shouldAutoOpen,
