@@ -19,11 +19,16 @@ export function InterviewPrepPack({
 }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
-  const [isRequested, setIsRequested] = useState(false);
+  // Freeze the language at request time. Generating the plan reserves an
+  // INTERVIEW_SESSION slot, so a passive header language toggle must NOT change
+  // the query key and silently re-charge it (bug hunt R2 07-22). The AI plan
+  // stays in the language it was generated in; UI chrome still follows i18n.
+  const [requestedLang, setRequestedLang] = useState<"vi" | "en" | null>(null);
+  const isRequested = requestedLang !== null;
   const { data, isLoading, isError } = useInterviewPlanQuery(
     isRequested ? cvId : null,
     role,
-    lang
+    requestedLang ?? lang
   );
 
   if (!cvId) return null;
@@ -44,7 +49,7 @@ export function InterviewPrepPack({
               </p>
             </div>
             <button
-              onClick={() => setIsRequested(true)}
+              onClick={() => setRequestedLang(lang)}
               className="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-xs hover:bg-primary/90 transition-colors shadow-sm active:scale-95 flex items-center gap-1.5 mx-auto"
             >
               <Mic className="w-3.5 h-3.5" />
