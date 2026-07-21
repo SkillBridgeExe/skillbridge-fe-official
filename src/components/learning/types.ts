@@ -74,6 +74,8 @@ export interface LearningSession {
   skill: string;
   dayOfWeek: number;
   estimatedMinutes: number;
+  /** Exact persisted calendar occurrence. Legacy roadmaps may omit this field. */
+  scheduledStartAt?: string;
   status: "completed" | "in-progress" | "locked";
   stars: number;
   maxStars: number;

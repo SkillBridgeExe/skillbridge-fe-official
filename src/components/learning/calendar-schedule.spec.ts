@@ -75,4 +75,24 @@ describe("learning calendar schedule", () => {
     ]);
     expect(getSessionsForIsoWeekday(7, sessions)).toEqual([]);
   });
+
+  it("uses persisted dates for V2 sessions instead of repeating a module every week", () => {
+    const datedWeeks: WeekPlan[] = [
+      {
+        ...weeks[0],
+        sessions: [
+          { ...weeks[0].sessions[0], id: "dated-current", scheduledStartAt: "2026-07-21T12:00:00.000Z" },
+          { ...weeks[0].sessions[0], id: "dated-next", scheduledStartAt: "2026-07-28T12:00:00.000Z" },
+        ],
+      },
+    ];
+    const now = new Date("2026-07-21T03:00:00.000Z");
+
+    expect(getSessionsForRoadmapWeek(datedWeeks, 0, now).map((session) => session.id)).toEqual([
+      "dated-current",
+    ]);
+    expect(getSessionsForRoadmapWeek(datedWeeks, 1, now).map((session) => session.id)).toEqual([
+      "dated-next",
+    ]);
+  });
 });

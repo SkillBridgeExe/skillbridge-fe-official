@@ -5,7 +5,6 @@ import { hasApiAuthSession } from "@/services/auth-session.service";
 import type { LearningRoadmap } from "@/types/user";
 import type { LearningSession, WeekPlan } from "@/components/learning/types";
 import type {
-  GenerateRoadmapFromMatchRequest,
   AnswerLearningQuizQuestionRequest,
   LearningChatRequest,
   LearningChatResponse,
@@ -23,16 +22,9 @@ import type {
 } from "@shared/api";
 import type { SessionProgressState } from "@/components/learning/session-progress";
 
-export type RoadmapBudgetInput = GenerateRoadmapFromMatchRequest;
 export type ComposedRoadmap = RoadmapFromMatchResponse;
 export type ComposedRoadmapResource = LearningResourceDto;
 export type NotFeasibleItem = NotFeasibleItemDto;
-
-export const DEFAULT_ROADMAP_BUDGET: Required<RoadmapBudgetInput> = {
-  available_days: 30,
-  hours_per_week: 8,
-  language_pref: "vi",
-};
 
 function requireSession(): void {
   if (!hasApiAuthSession()) {
@@ -40,18 +32,6 @@ function requireSession(): void {
       "Please sign in with a real account to generate a learning roadmap.",
     );
   }
-}
-
-export async function generateRoadmapFromMatch(
-  matchId: string,
-  body: RoadmapBudgetInput = DEFAULT_ROADMAP_BUDGET,
-): Promise<ComposedRoadmap> {
-  requireSession();
-  const envelope = await unwrapEnvelope<ApiEnvelope<ComposedRoadmap>>(
-    httpClient.post(API_ROUTES.CV_MATCHES.ROADMAP(matchId), body),
-    "Failed to generate the learning roadmap.",
-  );
-  return envelope.data;
 }
 
 export async function sendLearningChatMessage(
@@ -200,7 +180,7 @@ function sourceTypeToUiType(
   return "course";
 }
 
-function toSessionResource(resource: LearningResourceDto) {
+export function toSessionResource(resource: LearningResourceDto) {
   return {
     id: resource.id,
     title: resource.title,
@@ -259,7 +239,7 @@ function toRecommendedCourse(course: RecommendedCourseDto) {
   };
 }
 
-function toLessonContent(lesson: SkillBridgeLessonContentDto) {
+export function toLessonContent(lesson: SkillBridgeLessonContentDto) {
   const quiz = lesson.quiz_bank ?? lesson.quiz;
   return {
     title: lesson.title,

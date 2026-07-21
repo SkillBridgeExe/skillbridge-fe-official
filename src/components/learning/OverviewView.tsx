@@ -70,7 +70,7 @@ export function OverviewView() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const { weekPlans, setWeekPlans } = useRoadmapStore();
+  const { activeRoadmap, weekPlans, setWeekPlans } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
   // ✅ Build roadmap modules from weekPlans — drives status, progress, connector animations
   const roadmapModules = useMemo(() => {
@@ -226,7 +226,7 @@ export function OverviewView() {
             </div>
           </div>
           
-          <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
+          {!activeRoadmap ? <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" onClick={handleOpenReschedule} className="h-8 text-xs font-semibold gap-1.5 border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primary hover:bg-primary/5 rounded-lg shadow-sm transition-all bg-white">
                 <Edit3 className="w-3.5 h-3.5" />
@@ -312,7 +312,7 @@ export function OverviewView() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+          </Dialog> : null}
         </div>
 
         {/* Calendar Grid */}
