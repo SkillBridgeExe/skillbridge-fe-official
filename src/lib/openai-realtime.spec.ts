@@ -50,7 +50,7 @@ describe("OpenAIRealtimeSession", () => {
     ]);
   });
 
-  it("surfaces input audio transcription failures", () => {
+  it("surfaces input audio transcription failures as non-fatal transcript_failed", () => {
     const session = new OpenAIRealtimeSession();
     const events = collectEvents(session);
 
@@ -61,10 +61,13 @@ describe("OpenAIRealtimeSession", () => {
       }),
     );
 
+    // Per-utterance STT failure must NOT look like a session-fatal "error":
+    // that mapping used to tear down voice mode and wipe the buffered answer.
     expect(events).toContainEqual({
-      type: "error",
+      type: "transcript_failed",
       data: "Unable to transcribe Vietnamese audio.",
     });
+    expect(events.some((event) => event.type === "error")).toBe(false);
   });
 
   it("maps current OpenAI Realtime output audio speaking lifecycle events", () => {

@@ -19,7 +19,7 @@ import { GithubEvidence } from "./GithubEvidence";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
+import { useCompareJdMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { CvIssue } from "@shared/api";
