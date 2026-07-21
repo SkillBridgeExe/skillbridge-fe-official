@@ -488,7 +488,9 @@ function AssistantTextRow({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
+      {/* whitespace-pre-line: the BE preserves newlines in served answers (multi-paragraph
+          coaching, "1./2." lists) — without it HTML collapses them into one blob. */}
+      <div className="max-w-[85%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
         {/* R5: the visible span stays aria-hidden even AFTER the reveal. Swapping a
             bare text node in at `done` re-announces the whole answer — the thread
             is an aria-live region and swapped-in text counts as an addition. The
