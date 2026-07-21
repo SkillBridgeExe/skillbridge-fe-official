@@ -23,9 +23,22 @@ import type { AssistantAnswer, AssistantQuestion, AssistantExplanation } from "@
 import { assistantLocales } from "./assistant-locale";
 import { ThinkingDots } from "../ThinkingDots";
 import { openIntakeCoach } from "./open-intake-coach";
+import { CV_BUILDER_CHAT_CONTEXT_ID } from "./useCvBuilderChatCompanion";
 import { buildCvBuilderPatchProposal } from "./cv-builder-patch";
 
 const MAX_REASK = 2;
+
+// The prove-it flow registers the transient "diagnosis_anchor_fix" context and
+// activates it; nothing else ever tears it down. When the user finishes the
+// anchored fix (apply→Close or Discard), unregister it and hand the dolphin
+// back to the builder writing chat — otherwise cvbuilder:chat stays permanently
+// unreachable for the session (bug hunt R2 07-22).
+function handoffFromAnchorFix(): void {
+  const store = useCompanionStore.getState();
+  if (store.activeId !== "diagnosis_anchor_fix") return;
+  store.unregisterContext("diagnosis_anchor_fix");
+  store.activateContext(CV_BUILDER_CHAT_CONTEXT_ID); // no-op if chat isn't registered
+}
 
 // Synthetic gap key for the user-initiated "Hỏi thêm để rõ hơn" free-text answer — never
 // sent by BE's Turn-1 analyze, so it can't collide with a real gap code.
@@ -689,6 +702,7 @@ export function CvBuilderSkill({
     setCompanionExplanation(null);
     resetCompanion();
     useCompanionStore.getState().dismissActive();
+    handoffFromAnchorFix();
     setActiveIntent(null);
   }, [resetCompanion]);
 
@@ -936,6 +950,7 @@ export function CvBuilderSkill({
                   size="sm"
                   onClick={() => {
                     resetCompanion();
+                    handoffFromAnchorFix();
                     useCompanionStore.getState().closeBubble();
                   }}
                   className="flex-1 h-8 text-[11px] bg-[#10B981] hover:bg-[#059669] text-white"
