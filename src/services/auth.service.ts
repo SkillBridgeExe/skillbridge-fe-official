@@ -20,6 +20,8 @@ import { forgotPasswordApi } from "@/api/auth/forgotPassword";
 import { resetPasswordApi } from "@/api/auth/resetPassword";
 import type { AuthUserDto } from "@/api/auth/envelope";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
+import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { queryClient } from "@/lib/query-client";
 import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { setAccessToken } from "@/services/auth-token.service";
 import { toAuthUser, toUserRole } from "@/services/auth-session.service";
@@ -129,6 +131,15 @@ export function resetPassword(token: string, newPassword: string) {
 /** Best-effort logout phía BE (xoá refresh cookie) + luôn xoá session local. */
 export async function logout(): Promise<void> {
   useAuthStore.getState().logout();
+  // Wipe per-user server state so the NEXT account signing in on this tab never
+  // sees the previous user's cached profile/billing/CV data. Query keys are
+  // global (not user-scoped), so without this the cache (staleTime 5min) leaks
+  // one account's PII to the next (bug hunt R2 07-22). Single source of truth
+  // for logout — every navbar/sidebar path routes through here.
+  queryClient.clear();
+  // Diagnosis holds the previous user's parsed-CV review in memory + session
+  // storage; reset() also rewrites the persisted 'skillbridge-diagnosis' entry.
+  useDiagnosisStore.getState().reset();
   try {
     await logoutApi();
   } catch {
