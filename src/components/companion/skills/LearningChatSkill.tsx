@@ -249,7 +249,8 @@ function LearningAssistantTextRow({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
+      {/* whitespace-pre-line: mirrors DiagnosisChatSkill — served answers keep newlines. */}
+      <div className="max-w-[85%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-[#EAEAEA] bg-white px-3 py-2 text-[13px] leading-relaxed text-[#2F3437]">
         {/* Stays aria-hidden after the reveal too — swapping in a bare text node at
             `done` would re-announce the answer (aria-live region, mirrors Diagnosis). */}
         {shouldAnimate ? (
