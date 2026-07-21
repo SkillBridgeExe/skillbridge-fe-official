@@ -8,6 +8,7 @@ import {
 import { Link } from "react-router-dom";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import { useMyApplicationsQuery } from "@/hooks/use-jobs";
+import { matchScoreBand } from "@/lib/match-score-band";
 import { isQuotaError } from "./dashboard-view-model";
 
 interface CareerTabProps {
@@ -78,7 +79,13 @@ export default function CareerTab({ cvId }: CareerTabProps) {
                       </p>
                     )}
                   </div>
-                  <span className="text-lg font-black text-emerald-600">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-sm font-black ${
+                      matchScoreBand(
+                        Math.round(job.recommendation_score ?? job.match_score),
+                      ).chip
+                    }`}
+                  >
                     {Math.round(job.recommendation_score ?? job.match_score)}%
                   </span>
                 </div>

@@ -5,6 +5,7 @@ import { isAxiosError } from "axios";
 import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
+import { matchScoreBand } from "@/lib/match-score-band";
 import type { JobRecommendationDto } from "@shared/api";
 import { FitBadge } from "./FitBadge";
 import { InfoPopover } from "./InfoPopover";
@@ -13,11 +14,9 @@ import { InfoPopover } from "./InfoPopover";
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
-/** Band màu cho match_score (0-100) — hiển thị, KHÔNG tính lại. */
+/** Band màu cho match % — CÙNG thang 80/60 với màn compare (một con số, một màu). */
 function matchBand(score: number): string {
-  if (score >= 70) return "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]";
-  if (score >= 40) return "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]";
-  return "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
+  return matchScoreBand(score).chip;
 }
 
 /** VND → "tr" (triệu), ngoại tệ → số + mã. null cả hai → null (ẩn). */

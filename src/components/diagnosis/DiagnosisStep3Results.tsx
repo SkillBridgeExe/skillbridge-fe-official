@@ -147,9 +147,11 @@ function MatchNarrative({
   if (!jdMatch?.scoring_breakdown) return null;
   const breakdown = jdMatch.scoring_breakdown;
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
-  // Use the shared band thresholds (80/60) — map 3-band result to the 4-key
-  // bandRationale i18n: strong → strong, moderate → good, low → low.
-  const matchBand = matchScoreBand(coverage);
+  // Band the SCORE, not the coverage: the bandRationale copy asserts why the
+  // score is high/low, and banding coverage made this panel call a 29-point
+  // match "strong" while the donut chip next to it said low (bug hunt 07-21).
+  // Map 3-band result to the 4-key bandRationale i18n: moderate → good.
+  const matchBand = matchScoreBand(jdMatch.matchScore ?? coverage);
   const band = matchBand.band === "strong" ? "strong" : matchBand.band === "moderate" ? "good" : "low";
 
   const hasPerSkill = !!breakdown.per_skill && breakdown.per_skill.length > 0;
