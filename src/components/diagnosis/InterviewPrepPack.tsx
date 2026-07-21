@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MessageSquare, Mic } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -18,9 +19,42 @@ export function InterviewPrepPack({
 }) {
   const { t, i18n } = useTranslation("diagnosis");
   const lang = i18n.language?.startsWith("vi") ? "vi" : "en";
-  const { data, isLoading, isError } = useInterviewPlanQuery(cvId, role, lang);
+  const [isRequested, setIsRequested] = useState(false);
+  const { data, isLoading, isError } = useInterviewPlanQuery(
+    isRequested ? cvId : null,
+    role,
+    lang
+  );
 
   if (!cvId) return null;
+
+  if (!isRequested) {
+    return (
+      <>
+        <SectionRule className="my-6" />
+        <Chapter kicker="04" title="">
+          <div className={cn(CARD, "p-6 text-center space-y-4 mt-6")}>
+            <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
+            <div className="space-y-1 max-w-md mx-auto">
+              <h4 className="text-sm font-bold text-[#2F3437]">
+                {t("interviewPrep.ctaTitle", { defaultValue: "Luyện phỏng vấn thử" })}
+              </h4>
+              <p className="text-xs text-[#787774] leading-relaxed">
+                {t("interviewPrep.ctaHint", { defaultValue: "Tạo bộ câu hỏi phỏng vấn thử nhắm mục tiêu vào các điểm thiếu sót trên CV." })}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsRequested(true)}
+              className="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-xs hover:bg-primary/90 transition-colors shadow-sm active:scale-95 flex items-center gap-1.5 mx-auto"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              {t("interviewPrep.generate", { defaultValue: "Tạo bộ câu hỏi" })}
+            </button>
+          </div>
+        </Chapter>
+      </>
+    );
+  }
 
   const items = data?.items ?? [];
   const hasNoData = !role || isError || (!isLoading && items.length === 0);

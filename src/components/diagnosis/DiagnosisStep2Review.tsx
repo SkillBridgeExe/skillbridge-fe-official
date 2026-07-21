@@ -73,10 +73,6 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   const compareJdMutation = useCompareJdMutation();
   const diagnosisLang = i18n.language?.startsWith("vi") ? "vi" : "en";
 
-  // Prefetch W11 as soon as the CV review has enough context. The visible
-  // InterviewPrepPack still renders in the Market tab and reuses this cache.
-  useInterviewPlanQuery(lastCvId, targetRole, diagnosisLang);
-
   const compareFromCvReview = async () => {
     if (!lastCvId) {
       toast({ title: t("review.toastMissingCvTitle"), description: t("review.toastMissingCvDesc"), variant: "destructive" });
