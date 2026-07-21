@@ -1096,10 +1096,14 @@ export default function Interview() {
     (transcript: string) => {
       if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
       const intent = classifyRealtimeTranscriptIntent(transcript);
-      // Never wipe the buffered answer on a non-answer segment: a misclassified
-      // command must not destroy what the candidate already said (bug hunt 07-21).
+      // A command word only acts as a command at the START of a turn (empty
+      // buffer). Once the candidate is mid-answer, EVERY segment is answer
+      // content and must never be intercepted — a segment like "we use skip
+      // connections" or "...và dự án đã kết thúc" must not hijack or drop the
+      // answer (bug hunt R2 07-22). Never wipe the buffer on any branch.
+      const midAnswer = realtimeAnswerBufferRef.current.length > 0;
 
-      if (intent === "repeat_question") {
+      if (!midAnswer && intent === "repeat_question") {
         acceptsUserSpeechRef.current = false;
         liveSessionRef.current?.setMicEnabled(false);
         setIsMicActive(false);
@@ -1112,7 +1116,7 @@ export default function Interview() {
         return;
       }
 
-      if (intent === "clarify_question") {
+      if (!midAnswer && intent === "clarify_question") {
         acceptsUserSpeechRef.current = false;
         liveSessionRef.current?.setMicEnabled(false);
         setIsMicActive(false);
@@ -1120,7 +1124,7 @@ export default function Interview() {
         return;
       }
 
-      if (intent === "pause") {
+      if (!midAnswer && intent === "pause") {
         // Hold the pending flush so thinking time doesn't submit a partial
         // answer. Mic stays ON — muting here had no un-pause path, so a
         // misheard "pause" used to dead-end the whole turn.
@@ -1128,30 +1132,28 @@ export default function Interview() {
         return;
       }
 
-      if (intent === "end_interview" && realtimeAnswerBufferRef.current.length === 0) {
-        // Only a standalone command with nothing buffered may end the session;
-        // "kết thúc" inside a flowing answer falls through and is appended.
+      if (!midAnswer && intent === "end_interview") {
+        // Only a standalone end command with nothing buffered may end the
+        // session; "kết thúc" mid-answer is answer content and appends below.
         void finishInterview("manual");
         return;
       }
 
-      if (intent === "skip_question") {
-        // No skip API exists — say so instead of silently doing nothing.
+      if (!midAnswer && intent === "skip_question") {
+        // No skip API exists — say so instead of silently doing nothing. Do
+        // NOT return: fall through to append, so a real short answer that
+        // merely contains "skip"/"next" ("we use skip connections") is kept.
         toast({
           title: t("interview.skipUnsupportedTitle", { defaultValue: "Chưa hỗ trợ bỏ qua câu hỏi" }),
           description: t("interview.skipUnsupportedDesc", {
             defaultValue: "Hãy trả lời ngắn gọn, hoặc nói \"nhắc lại câu hỏi\" nếu cần nghe lại.",
           }),
         });
-        if (liveSessionRef.current?.isConnected && !endingRef.current) {
-          acceptsUserSpeechRef.current = true;
-          liveSessionRef.current.setMicEnabled(true);
-          setIsMicActive(true);
-        }
-        return;
       }
 
       if (intent === "off_topic") {
+        // Genuine noise only (empty / CJK / prompt-leak) — the <2-token case is
+        // now classified "answer", so nothing droppable reaches here. Keep mic.
         if (liveSessionRef.current?.isConnected && !endingRef.current) {
           acceptsUserSpeechRef.current = true;
           liveSessionRef.current.setMicEnabled(true);

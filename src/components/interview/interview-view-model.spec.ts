@@ -832,6 +832,25 @@ describe("interview view model", () => {
     expect(classifyRealtimeTranscriptIntent("ừm")).toBe("answer");
   });
 
+  it("does not classify answer-opening phrases with bare explain/skip as commands", () => {
+    // "explain" / "giải thích" lead genuine answers far more than requests.
+    expect(classifyRealtimeTranscriptIntent("let me explain our approach")).toBe(
+      "answer",
+    );
+    expect(classifyRealtimeTranscriptIntent("em giải thích thêm về dự án")).toBe(
+      "answer",
+    );
+    // Short answer segments that merely contain "skip" are still answers; the
+    // Interview handler only treats skip as a command at the start of a turn.
+    expect(classifyRealtimeTranscriptIntent("we use skip connections")).toBe(
+      "skip_question",
+    );
+    // ...but an explicit clarification request is still recognized.
+    expect(classifyRealtimeTranscriptIntent("em chưa hiểu câu hỏi")).toBe(
+      "clarify_question",
+    );
+  });
+
   it.each([
     [
       {

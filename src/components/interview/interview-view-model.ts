@@ -483,10 +483,13 @@ export function classifyRealtimeTranscriptIntent(
       return "repeat_question";
     }
     if (
-      /\b(clarify|explain|what do you mean|i don't understand|i do not understand)\b/.test(
+      // Bare "explain" / "giải thích" removed: they lead genuine answers far
+      // more often than clarification requests ("let me explain...", "em giải
+      // thích thêm...") and used to hijack+drop the answer (bug hunt R2 07-22).
+      /\b(clarify|what do you mean|i don't understand|i do not understand)\b/.test(
         normalized,
       ) ||
-      /(y cau nay|giai thich|em chua hieu|khong hieu)/.test(normalized)
+      /(y cau nay la sao|em chua hieu|toi chua hieu|khong hieu cau hoi)/.test(normalized)
     ) {
       return "clarify_question";
     }
