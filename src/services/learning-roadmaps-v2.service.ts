@@ -51,6 +51,7 @@ export interface LearningRoadmapDraft {
   language_pref: LearningLanguagePreference;
   candidate_skills: LearningCandidateSkill[];
   selected_priorities: Array<{ skill_canonical: string; rank: number }>;
+  selected_resources: Record<string, string[]>;
   schedule: LearningScheduleDraft | null;
 }
 
@@ -72,6 +73,7 @@ export interface UpdateLearningRoadmapDraftRequest {
   expected_revision: number;
   language_pref?: LearningLanguagePreference;
   selected_priorities?: Array<{ skill_canonical: string; rank: number }>;
+  selected_resources?: Record<string, string[]>;
   schedule?: LearningScheduleDraft;
 }
 
@@ -221,6 +223,14 @@ export function listLearningRoadmaps(): Promise<LearningRoadmapDraft[]> {
   return unwrap(
     httpClient.get(API_ROUTES.LEARNING.ROADMAPS),
     "Failed to load your learning roadmaps.",
+  );
+}
+
+export function archiveActiveLearningRoadmap(): Promise<{ archived: number }> {
+  requireSession();
+  return unwrap(
+    httpClient.delete(API_ROUTES.LEARNING.ACTIVE_ROADMAP),
+    "Failed to archive the active learning roadmap.",
   );
 }
 

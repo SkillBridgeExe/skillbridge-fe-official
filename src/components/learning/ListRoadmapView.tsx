@@ -9,6 +9,7 @@ import {
   Lock,
   Star,
   Clock,
+  CalendarDays,
   ChevronRight,
   ChevronDown,
   Circle,
@@ -24,7 +25,7 @@ const statusConfig = {
 } as const;
 
 export function ListRoadmapView() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const weeks = useActiveWeekPlans();
@@ -129,6 +130,15 @@ export function ListRoadmapView() {
                             <Clock className="w-3 h-3" />
                             {t("learning.common.mins", { count: session.estimatedMinutes })}
                           </span>
+                          {session.scheduledStartAt ? (
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" />
+                              {formatSessionSchedule(
+                                session.scheduledStartAt,
+                                i18n.language,
+                              )}
+                            </span>
+                          ) : null}
                           <span>{t("learning.common.sections", { count: `${completedSections}/${session.sections.length}` })}</span>
                           <div className="flex items-center gap-0.5">
                             {Array.from({ length: session.maxStars }).map((_, i) => (
@@ -238,4 +248,18 @@ export function ListRoadmapView() {
       })}
     </div>
   );
+}
+
+export function formatSessionSchedule(
+  scheduledStartAt: string,
+  locale: string,
+  timeZone?: string,
+) {
+  const value = new Date(scheduledStartAt);
+  if (Number.isNaN(value.getTime())) return scheduledStartAt;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    ...(timeZone ? { timeZone } : {}),
+  }).format(value);
 }

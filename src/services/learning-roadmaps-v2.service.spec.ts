@@ -2,15 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
+  archiveActiveLearningRoadmap,
   createLearningRoadmapDraft,
   generateLearningRoadmap,
   roadmapV2ToWeekPlans,
   updateLearningRoadmapDraft,
   type ActiveLearningRoadmap,
 } from "./learning-roadmaps-v2.service";
+import * as learningRoadmapsV2 from "./learning-roadmaps-v2.service";
 
 vi.mock("@/api/core/http-client", () => ({
-  httpClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  httpClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 vi.mock("@/services/auth-session.service", () => ({
   hasApiAuthSession: () => true,
@@ -73,6 +75,24 @@ describe("Learning Roadmaps V2 service", () => {
       API_ROUTES.LEARNING.ROADMAP_GENERATE("roadmap-1"),
       { expected_revision: 4 },
     );
+  });
+
+  it("archives the active roadmap on the server instead of clearing only local state", async () => {
+    vi.mocked(httpClient.delete).mockReturnValueOnce(
+      ok({ archived: 1 }) as never,
+    );
+
+    await expect(archiveActiveLearningRoadmap()).resolves.toEqual({ archived: 1 });
+    expect(httpClient.delete).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.ACTIVE_ROADMAP,
+    );
+    expect(
+      typeof (learningRoadmapsV2 as unknown as { archiveActiveLearningRoadmap?: unknown })
+        .archiveActiveLearningRoadmap,
+    ).toBe("function");
+    expect(
+      (API_ROUTES.LEARNING as unknown as { ACTIVE_ROADMAP?: string }).ACTIVE_ROADMAP,
+    ).toBe("/api/learning/roadmaps/active");
   });
 
   it("maps persisted session UUIDs and exact scheduled dates into the existing learning UI", () => {

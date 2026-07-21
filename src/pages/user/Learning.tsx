@@ -1,27 +1,31 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Calendar, Info, LayoutGrid, List, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, GitBranch, Info, LayoutGrid, List, Sparkles } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   GridRoadmapView,
   LearningSidebar,
   ListRoadmapView,
   OverviewView,
+  SkillRoadmapMapView,
 } from "@/components/learning";
 import { AIChatbot } from "@/components/learning/AIChatbot";
 import { useRoadmapStore } from "@/components/learning/roadmap-store";
 import { LearningRoadmapWizard } from "@/components/learning/LearningRoadmapWizard";
 import {
+  archiveActiveLearningRoadmap,
   getActiveLearningRoadmap,
   listLearningRoadmaps,
 } from "@/services/learning-roadmaps-v2.service";
 
-type ViewMode = "overview" | "grid" | "list";
+type ViewMode = "map" | "overview" | "grid" | "list";
 
 const VIEW_TABS: { value: ViewMode; labelKey: string; icon: React.ElementType }[] = [
+  { value: "map", labelKey: "learning.tabs.roadmap", icon: GitBranch },
   { value: "overview", labelKey: "learning.tabs.today", icon: Calendar },
   { value: "grid", labelKey: "learning.tabs.overview", icon: LayoutGrid },
   { value: "list", labelKey: "learning.tabs.list", icon: List },
@@ -29,9 +33,11 @@ const VIEW_TABS: { value: ViewMode; labelKey: string; icon: React.ElementType }[
 
 export default function Learning() {
   const { t } = useTranslation("common");
-  const [activeView, setActiveView] = useState<ViewMode>("overview");
+  const { toast } = useToast();
+  const [activeView, setActiveView] = useState<ViewMode>("map");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(true);
+  const [isArchivingRoadmap, setIsArchivingRoadmap] = useState(false);
   const { activeRoadmap, composedRoadmap, isAIGenerated, clearRoadmap, setActiveRoadmap } =
     useRoadmapStore();
   const hasRoadmap = Boolean(activeRoadmap || composedRoadmap);
@@ -61,6 +67,29 @@ export default function Learning() {
       cancelled = true;
     };
   }, [setActiveRoadmap]);
+
+  const handleClearRoadmap = async () => {
+    if (!activeRoadmap) {
+      clearRoadmap();
+      return;
+    }
+
+    setIsArchivingRoadmap(true);
+    try {
+      await archiveActiveLearningRoadmap();
+      clearRoadmap();
+      toast({ title: t("learning.page.archiveSuccess") });
+    } catch (cause) {
+      toast({
+        title: t("learning.page.archiveError"),
+        description:
+          cause instanceof Error ? cause.message : t("learning.page.archiveError"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchivingRoadmap(false);
+    }
+  };
 
   return (
     <Layout hideFooter>
@@ -93,11 +122,12 @@ export default function Learning() {
               </div>
 
               <div className="flex w-full flex-col gap-2 min-[420px]:flex-row sm:w-auto sm:flex-shrink-0 sm:items-center">
-                {isAIGenerated && !activeRoadmap && (
+                {isAIGenerated && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearRoadmap}
+                    onClick={handleClearRoadmap}
+                    disabled={isArchivingRoadmap}
                     className="w-full rounded-full text-xs text-slate-400 hover:text-slate-700 min-[420px]:w-auto"
                   >
                     {t("learning.page.clearRoadmap")}
@@ -175,6 +205,7 @@ export default function Learning() {
               </div>
             ) : hasRoadmap ? (
               <div className="animate-in fade-in duration-300">
+                {activeView === "map" && <SkillRoadmapMapView />}
                 {activeView === "overview" && <OverviewView />}
                 {activeView === "grid" && <GridRoadmapView />}
                 {activeView === "list" && <ListRoadmapView />}

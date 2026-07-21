@@ -65,6 +65,10 @@ export function LearningRoadmapWizard({
   const [slotMinutes, setSlotMinutes] = useState(60);
   const [deadline, setDeadline] = useState(defaultDeadline);
   const [preview, setPreview] = useState<LearningRoadmapPreview | null>(null);
+  const [selectedResources, setSelectedResources] = useState<
+    Record<string, string[]>
+  >({});
+  const [resourceSelectionDirty, setResourceSelectionDirty] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,6 +190,8 @@ export function LearningRoadmapWizard({
       );
       setDraft(updated);
       setPreview(nextPreview);
+      setSelectedResources(resourceSelectionFromPreview(nextPreview));
+      setResourceSelectionDirty(false);
       setStep("preview");
     } catch (cause) {
       setError(messageOf(cause));
@@ -199,8 +205,26 @@ export function LearningRoadmapWizard({
     setIsBusy(true);
     setError(null);
     try {
-      await generateLearningRoadmap(draft.id, preview.revision);
-      onGenerated(await getActiveLearningRoadmap(draft.id));
+      let currentDraft = draft;
+      let currentPreview = preview;
+
+      if (resourceSelectionDirty) {
+        currentDraft = await updateLearningRoadmapDraft(draft.id, {
+          expected_revision: draft.revision,
+          selected_resources: selectedResources,
+        });
+        currentPreview = await previewLearningRoadmap(
+          currentDraft.id,
+          currentDraft.revision,
+        );
+        setDraft(currentDraft);
+        setPreview(currentPreview);
+        setSelectedResources(resourceSelectionFromPreview(currentPreview));
+        setResourceSelectionDirty(false);
+      }
+
+      await generateLearningRoadmap(currentDraft.id, currentPreview.revision);
+      onGenerated(await getActiveLearningRoadmap(currentDraft.id));
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -216,6 +240,17 @@ export function LearningRoadmapWizard({
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  };
+
+  const toggleResource = (skillCanonical: string, resourceId: string) => {
+    setSelectedResources((current) => {
+      const selected = current[skillCanonical] ?? [];
+      const next = selected.includes(resourceId)
+        ? selected.filter((id) => id !== resourceId)
+        : [...selected, resourceId];
+      return { ...current, [skillCanonical]: next };
+    });
+    setResourceSelectionDirty(true);
   };
 
   return (
@@ -490,26 +525,65 @@ export function LearningRoadmapWizard({
                   value={`${Math.round(preview.scheduled_minutes / 60)}h`}
                 />
               </div>
-              <div className="max-h-56 space-y-2 overflow-y-auto">
+              <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                 {preview.modules.map((module) => (
                   <div
                     key={module.skill_canonical}
-                    className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
+                    className="rounded-xl border border-slate-200 px-4 py-3"
                   >
-                    <span className="font-medium text-slate-800">
-                      {module.rank}. {module.display_name}
-                    </span>
-                    <span
-                      className={
-                        module.feasibility === "FEASIBLE"
-                          ? "text-xs font-semibold text-emerald-600"
-                          : "text-xs font-semibold text-amber-600"
-                      }
-                    >
-                      {t(
-                        `learning.wizard.preview.${module.feasibility.toLowerCase()}`,
-                      )}
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium text-slate-800">
+                        {module.rank}. {module.display_name}
+                      </span>
+                      <span
+                        className={
+                          module.feasibility === "FEASIBLE"
+                            ? "text-xs font-semibold text-emerald-600"
+                            : "text-xs font-semibold text-amber-600"
+                        }
+                      >
+                        {t(
+                          `learning.wizard.preview.${module.feasibility.toLowerCase()}`,
+                        )}
+                      </span>
+                    </div>
+                    {module.resources.length > 0 ? (
+                      <fieldset className="mt-3 space-y-2">
+                        <legend className="text-xs font-semibold text-slate-500">
+                          {t("learning.wizard.preview.resources")}
+                        </legend>
+                        {module.resources.map((resource) => (
+                          <label
+                            key={resource.id}
+                            className="flex cursor-pointer items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(
+                                selectedResources[module.skill_canonical] ?? []
+                              ).includes(resource.id)}
+                              onChange={() =>
+                                toggleResource(
+                                  module.skill_canonical,
+                                  resource.id,
+                                )
+                              }
+                              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium">
+                                {resource.title}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {t("learning.wizard.preview.resourceMinutes", {
+                                  count: resource.duration_minutes,
+                                })}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </fieldset>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -534,6 +608,17 @@ export function LearningRoadmapWizard({
         </main>
       </div>
     </div>
+  );
+}
+
+function resourceSelectionFromPreview(
+  preview: LearningRoadmapPreview,
+): Record<string, string[]> {
+  return Object.fromEntries(
+    preview.modules.map((module) => [
+      module.skill_canonical,
+      module.resources.map((resource) => resource.id),
+    ]),
   );
 }
 
