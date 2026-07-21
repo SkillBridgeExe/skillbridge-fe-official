@@ -582,7 +582,7 @@ describe("SessionDetail", () => {
     expect(screen.getByRole("button", { name: /B Filters rows by a condition/ })).not.toBeDisabled();
   });
 
-  it("requires passing the quiz before completing the session", () => {
+  it("does not require a quiz score to complete required learning work", () => {
     const readyButQuizIncompleteSession: LearningSession = {
       ...sqlDocVideoSession,
       id: "session-quiz-required",
@@ -598,7 +598,7 @@ describe("SessionDetail", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Mark complete" })[0]);
 
-    expect(screen.queryByText("Done")).not.toBeInTheDocument();
+    expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
   it("uses video duration and hides the full-video row when timeline chapters are missing", () => {

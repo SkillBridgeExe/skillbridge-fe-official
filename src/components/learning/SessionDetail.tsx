@@ -58,6 +58,7 @@ import {
   writeStoredSessionProgress,
   toggleSavedCourse,
   isSectionComplete,
+  mergeChecklistPatch,
   getChecklistTaskProofId,
   hasChecklistTaskProof,
   type SessionProgressState,
@@ -2598,9 +2599,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
     const incompleteExercises = exercises.filter(
       (ex) => !visibleProgress.exerciseProofs[ex.id]?.trim()
     );
-    const quizPassed = isQuizPassed(session, visibleProgress);
-
-    if (incompleteSections.length > 0 || incompleteExercises.length > 0 || !quizPassed) {
+    if (incompleteSections.length > 0 || incompleteExercises.length > 0) {
       setShowValidationErrors(true);
       
       // Optionally scroll to the first uncompleted section
@@ -2609,11 +2608,6 @@ export function SessionDetail({ session }: SessionDetailProps) {
         const element = document.getElementById(`section-${firstIncompleteId}`);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      } else if (!quizPassed) {
-        const quizPanel = document.getElementById("quiz-panel");
-        if (typeof quizPanel?.scrollIntoView === "function") {
-          quizPanel.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
       return;
@@ -2678,7 +2672,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
         checked: nextChecked,
       })
         .then((remoteProgress) => {
-          const hydrated = createInitialSessionProgress(session, remoteProgress);
+          const hydrated = mergeChecklistPatch(
+            progressRef.current,
+            createInitialSessionProgress(session, remoteProgress),
+            sectionId,
+          );
           progressRef.current = hydrated;
           suppressNextProgressSaveRef.current = true;
           setProgress(hydrated);

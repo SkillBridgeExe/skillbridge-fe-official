@@ -11,11 +11,14 @@ import {
 } from "@/services/learning-roadmap.service";
 import type { LearningRoadmap } from "@/types/user";
 import { deriveSessionStatuses } from "./session-progress";
+import { useAuthStore } from "@/store/useAuthStore";
+import { canUsePersistedRoadmap } from "./learning-storage";
 
 interface RoadmapStore {
   composedRoadmap: ComposedRoadmap | null;
   weekPlans: WeekPlan[];
   isAIGenerated: boolean;
+  ownerUserId: string | null;
 
   setComposedRoadmap: (roadmap: ComposedRoadmap) => void;
   setWeekPlans: (plans: WeekPlan[]) => void;
@@ -28,12 +31,14 @@ export const useRoadmapStore = create<RoadmapStore>()(
       composedRoadmap: null,
       weekPlans: [],
       isAIGenerated: false,
+      ownerUserId: null,
 
       setComposedRoadmap: (roadmap) =>
         set({
           composedRoadmap: roadmap,
           weekPlans: sanitizeWeekPlans(roadmapToWeekPlans(roadmap)),
           isAIGenerated: true,
+          ownerUserId: useAuthStore.getState().currentUser?.id ?? null,
         }),
       setWeekPlans: (plans) => set({ weekPlans: sanitizeWeekPlans(plans) }),
       clearRoadmap: () =>
@@ -41,6 +46,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
           composedRoadmap: null,
           weekPlans: [],
           isAIGenerated: false,
+          ownerUserId: null,
         }),
     }),
     {
@@ -53,7 +59,9 @@ export const useRoadmapStore = create<RoadmapStore>()(
 // Gọi: const weeks = useActiveWeekPlans();
 
 export function useActiveWeekPlans() {
-  const { composedRoadmap, isAIGenerated, weekPlans } = useRoadmapStore();
+  const { composedRoadmap, isAIGenerated, ownerUserId, weekPlans } = useRoadmapStore();
+  const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
+  if (!canUsePersistedRoadmap(ownerUserId, currentUserId)) return [];
   if (isAIGenerated && weekPlans.length > 0) {
     return deriveSessionStatuses(sanitizeWeekPlans(weekPlans));
   }
@@ -64,7 +72,11 @@ export function useActiveWeekPlans() {
 }
 
 export function useActiveRoadmap(): LearningRoadmap {
-  const { composedRoadmap, isAIGenerated } = useRoadmapStore();
+  const { composedRoadmap, isAIGenerated, ownerUserId } = useRoadmapStore();
+  const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
+  if (!canUsePersistedRoadmap(ownerUserId, currentUserId)) {
+    return { modules: [], estimatedCompletionWeeks: 0, totalHours: 0 };
+  }
   if (isAIGenerated && composedRoadmap) return roadmapToLearningRoadmap(composedRoadmap);
   return { modules: [], estimatedCompletionWeeks: 0, totalHours: 0 };
 }

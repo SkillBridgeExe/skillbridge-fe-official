@@ -58,9 +58,12 @@ export function answerQuestion(
         ...(progress.quizAttempts ?? {}),
         [question.id]: {
           ...existing,
+          selectedOptionIndex,
+          isCorrect: selectedOptionIndex === question.correctOptionIndex,
           attemptCount: existing.attemptCount + 1,
           lastAnsweredAt: answeredAt,
-          scored: false,
+          scored: true,
+          correctOptionIndex: question.correctOptionIndex,
         },
       },
     };

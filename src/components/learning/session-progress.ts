@@ -1,4 +1,6 @@
 import type { LearningSession, WeekPlan } from "./types";
+import { useAuthStore } from "@/store/useAuthStore";
+import { getSessionProgressStorageKey } from "./learning-storage";
 
 export interface SessionProgressState {
   checkedChecklistItems: Record<string, string[]>;
@@ -29,8 +31,11 @@ export interface QuizAttemptProgress {
   remediationStartSeconds?: number;
 }
 
-const SESSION_PROGRESS_STORAGE_PREFIX = "skillbridge:learning-session-progress:";
 const MIN_CHECKLIST_TASK_PROOF_LENGTH = 12;
+
+function currentLearningUserId(): string | null {
+  return useAuthStore.getState().currentUser?.id ?? null;
+}
 
 export function getChecklistTaskProofId(sectionId: string, itemId: string): string {
   return `task:${sectionId}:${itemId}`;
@@ -47,8 +52,10 @@ export function hasChecklistTaskProof(
 
 export function readStoredSessionProgress(sessionId: string): Partial<SessionProgressState> | null {
   if (typeof window === "undefined") return null;
+  const userId = currentLearningUserId();
+  if (!userId) return null;
   try {
-    const raw = window.localStorage.getItem(`${SESSION_PROGRESS_STORAGE_PREFIX}${sessionId}`);
+    const raw = window.localStorage.getItem(getSessionProgressStorageKey(userId, sessionId));
     return raw ? (JSON.parse(raw) as Partial<SessionProgressState>) : null;
   } catch {
     return null;
@@ -57,8 +64,10 @@ export function readStoredSessionProgress(sessionId: string): Partial<SessionPro
 
 export function writeStoredSessionProgress(sessionId: string, progress: SessionProgressState) {
   if (typeof window === "undefined") return;
+  const userId = currentLearningUserId();
+  if (!userId) return;
   window.localStorage.setItem(
-    `${SESSION_PROGRESS_STORAGE_PREFIX}${sessionId}`,
+    getSessionProgressStorageKey(userId, sessionId),
     JSON.stringify(progress),
   );
 }
@@ -118,6 +127,20 @@ export function setExerciseProof(
     exerciseProofs: {
       ...progress.exerciseProofs,
       [exerciseId]: proof,
+    },
+  };
+}
+
+export function mergeChecklistPatch(
+  local: SessionProgressState,
+  remote: SessionProgressState,
+  sectionId: string,
+): SessionProgressState {
+  return {
+    ...local,
+    checkedChecklistItems: {
+      ...local.checkedChecklistItems,
+      [sectionId]: remote.checkedChecklistItems[sectionId] ?? [],
     },
   };
 }

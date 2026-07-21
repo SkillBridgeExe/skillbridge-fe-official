@@ -12,21 +12,21 @@ const question: QuizQuestionForProgress = {
 };
 
 describe("quiz-progress", () => {
-  it("scores only the first attempt for local fallback", () => {
-    const first = answerQuestion({}, question, 0, "2026-07-03T00:00:00.000Z");
+  it("scores retries as new practice attempts", () => {
+    const first = answerQuestion({}, question, 2, "2026-07-03T00:00:00.000Z");
     expect(first.quizAttempts?.["state-purpose"]).toMatchObject({
-      selectedOptionIndex: 0,
-      isCorrect: true,
+      selectedOptionIndex: 2,
+      isCorrect: false,
       attemptCount: 1,
       scored: true,
     });
 
-    const retry = answerQuestion(first, question, 2, "2026-07-03T00:01:00.000Z");
+    const retry = answerQuestion(first, question, 0, "2026-07-03T00:01:00.000Z");
     expect(retry.quizAttempts?.["state-purpose"]).toMatchObject({
       selectedOptionIndex: 0,
       isCorrect: true,
       attemptCount: 2,
-      scored: false,
+      scored: true,
     });
   });
 

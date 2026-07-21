@@ -4,6 +4,7 @@ import {
   createInitialSessionProgress,
   getChecklistTaskProofId,
   isSessionReadyToComplete,
+  mergeChecklistPatch,
   setExerciseProof,
   toggleChecklistItem,
   toggleSavedCourse,
@@ -116,6 +117,25 @@ describe("session-progress", () => {
 
     nextSession = applyProgressToSession(session, progress);
     expect(nextSession.sections[0].completed).toBe(true);
+  });
+
+  it("preserves locally typed proof when a checklist patch response arrives", () => {
+    const local = setExerciseProof(
+      createInitialSessionProgress(session),
+      "task:star:write-one-answer",
+      "A proof typed while the checklist request was in flight.",
+    );
+    const remote = {
+      ...createInitialSessionProgress(session),
+      checkedChecklistItems: { star: ["write-one-answer"] },
+    };
+
+    const merged = mergeChecklistPatch(local, remote, "star");
+
+    expect(merged.checkedChecklistItems.star).toEqual(["write-one-answer"]);
+    expect(merged.exerciseProofs["task:star:write-one-answer"]).toBe(
+      "A proof typed while the checklist request was in flight.",
+    );
   });
 
   it("marks a checklist-free section complete when '__completed' is checked", () => {

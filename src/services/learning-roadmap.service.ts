@@ -356,7 +356,7 @@ function slugPart(value: string, fallback: string): string {
 export function roadmapToLearningRoadmap(roadmap: ComposedRoadmap): LearningRoadmap {
   const sortedSteps = [...roadmap.steps]
     .filter(hasRenderableLearningContent)
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => b.priority - a.priority);
 
   return {
     totalHours: roadmap.budget_hours,
@@ -380,7 +380,7 @@ export function roadmapToLearningRoadmap(roadmap: ComposedRoadmap): LearningRoad
 export function roadmapToWeekPlans(roadmap: ComposedRoadmap): WeekPlan[] {
   const sortedSteps = [...roadmap.steps]
     .filter(hasRenderableLearningContent)
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => b.priority - a.priority);
   const daySpread = [1, 2, 3, 4, 5];
 
   return sortedSteps.map((step, index) => {

@@ -387,6 +387,29 @@ describe("learning-roadmap.service", () => {
     ]);
   });
 
+  it("places the highest-priority skill first in every roadmap view", () => {
+    const lowerPriority = composedRoadmap.steps[0];
+    const higherPriority = {
+      ...lowerPriority,
+      skill_canonical: "typescript",
+      display_name: "TypeScript",
+      priority: lowerPriority.priority + 10,
+    };
+    const roadmap = {
+      ...composedRoadmap,
+      steps: [lowerPriority, higherPriority],
+    };
+
+    expect(roadmapToLearningRoadmap(roadmap).modules.map((module) => module.id)).toEqual([
+      "typescript",
+      "react",
+    ]);
+    expect(roadmapToWeekPlans(roadmap).map((week) => week.moduleId)).toEqual([
+      "typescript",
+      "react",
+    ]);
+  });
+
   it("maps each composed step to one actionable session with resource metadata", () => {
     const weeks = roadmapToWeekPlans(composedRoadmap);
 
