@@ -2175,6 +2175,7 @@ export default {
         applied: "Applied",
       },
       runDiagnosisFirst: "Run a diagnosis first.",
+      ctaTitle: "Practice interview",
       ctaHint:
         "Generate practice questions targeted at the real gaps in this match — with hints on what a strong answer covers.",
       generate: "Practice interview questions",
@@ -2769,6 +2770,10 @@ export default {
         avatarPreview: "Avatar preview",
         avatarPreviewReady: "This photo will appear in preview and PDF when ATS Safe Mode is off.",
         avatarEmptyHint: "Upload a photo or paste an image URL for templates that support avatars.",
+        atsHiddenAvatarDesc: "ATS Safe Mode is on, so the avatar is hidden. Turn it off to show the photo in preview and PDF.",
+        unsupportedTemplateAvatar: "This template does not support avatars.",
+        turnOffAtsCTA: "Turn off ATS Safe Mode",
+        selectFont: "Select a font",
         noPhoto: "No photo",
         clearPhoto: "Clear photo",
         resetPictureStyle: "Reset picture style",

@@ -2167,6 +2167,7 @@ export default {
         applied: "Vận dụng",
       },
       runDiagnosisFirst: "Hãy chạy chẩn đoán trước.",
+      ctaTitle: "Luyện phỏng vấn thử",
       ctaHint:
         "Tạo câu hỏi luyện tập nhắm đúng các khoảng trống thật trong lần so khớp này — kèm gợi ý câu trả lời tốt cần nói gì.",
       generate: "Luyện câu hỏi phỏng vấn",
@@ -2394,6 +2395,17 @@ export default {
       marketDemand: "Nhu cầu thị trường: {{pct}}%",
       moreGaps: "và {{count}} khoảng cách khác...",
       severity: { high: "Ưu tiên cao", med: "Ưu tiên vừa", low: "Ưu tiên thấp" },
+      estimatedPrefix: "Ước tính · ",
+      source: {
+        jd: "JD",
+        role_rubric: "Khung vai trò",
+        market_implied: "Thị trường",
+      },
+      sourceHint: {
+        jd: "Trích trực tiếp từ JD của bạn · độ tin cậy {{confidence}}%",
+        role_rubric: "Suy ra từ khung năng lực của vai trò mục tiêu · độ tin cậy {{confidence}}%",
+        market_implied: "Suy ra từ dữ liệu thị trường · độ tin cậy {{confidence}}%",
+      },
       evidenceFrom: "Tính từ: {{sources}}",
       evidenceKind: {
         experience: "Kinh nghiệm",
@@ -2746,6 +2758,10 @@ export default {
         avatarPreview: "Xem trước ảnh đại diện",
         avatarPreviewReady: "Ảnh này sẽ hiển thị trong bản xem trước và PDF khi ATS Safe Mode tắt.",
         avatarEmptyHint: "Tải ảnh lên hoặc dán URL ảnh cho các mẫu CV có hỗ trợ avatar.",
+        atsHiddenAvatarDesc: "ATS Safe Mode đang bật nên ảnh đại diện bị ẩn. Tắt chế độ này để hiển thị ảnh trong bản xem trước và PDF.",
+        unsupportedTemplateAvatar: "Mẫu CV này không hỗ trợ ảnh đại diện.",
+        turnOffAtsCTA: "Tắt ATS Safe Mode",
+        selectFont: "Chọn phông chữ",
         noPhoto: "Chưa có ảnh",
         clearPhoto: "Xóa ảnh",
         resetPictureStyle: "Khôi phục kiểu ảnh",

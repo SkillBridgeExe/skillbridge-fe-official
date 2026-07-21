@@ -61,7 +61,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
             }
           >
             <p className="text-xs leading-relaxed text-[#2F3437]">
-              {t("diagnosis.jobs.seniorityTooltip", {
+              {t("jobs.seniorityTooltip", {
                 defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
                 match: job.match_score,
                 factor: job.seniority_factor.toFixed(2),
