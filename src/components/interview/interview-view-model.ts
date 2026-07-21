@@ -462,42 +462,52 @@ export function buildBufferedRealtimeTurnRequest({
   });
 }
 
+/** A spoken command is a short standalone utterance. Keyword matches inside a
+ *  flowing answer ("...dự án đó đã kết thúc vào tháng 3") must never hijack the
+ *  turn — they used to wipe the buffered answer (bug hunt 2026-07-21). */
+const COMMAND_MAX_TOKENS = 6;
+
 export function classifyRealtimeTranscriptIntent(
   transcript: string,
 ): RealtimeTranscriptIntent {
   const normalized = normalizeCommandText(transcript);
   if (!normalized) return "off_topic";
   if (getLiveTranscriptWarnings(transcript).length > 0) return "off_topic";
-  if (
-    /\b(repeat|say again|read again|ask again|nhac lai|doc lai|noi lai)\b/.test(
-      normalized,
-    ) ||
-    /nhac lai cau hoi/.test(normalized)
-  ) {
-    return "repeat_question";
+  if (tokenizeTranscript(transcript).length <= COMMAND_MAX_TOKENS) {
+    if (
+      /\b(repeat|say again|read again|ask again|nhac lai|doc lai|noi lai)\b/.test(
+        normalized,
+      ) ||
+      /nhac lai cau hoi/.test(normalized)
+    ) {
+      return "repeat_question";
+    }
+    if (
+      /\b(clarify|explain|what do you mean|i don't understand|i do not understand)\b/.test(
+        normalized,
+      ) ||
+      /(y cau nay|giai thich|em chua hieu|khong hieu)/.test(normalized)
+    ) {
+      return "clarify_question";
+    }
+    if (/\b(skip|next question|bo qua|cau khac)\b/.test(normalized)) {
+      return "skip_question";
+    }
+    // "cho em"/"wait" dropped from the pause vocabulary: both appear inside
+    // genuine answers far more often than as standalone pause requests.
+    if (/\b(pause|tam dung|dung mot chut)\b/.test(normalized)) {
+      return "pause";
+    }
+    if (
+      /\b(end interview|finish interview|stop interview|ket thuc|dung phong van)\b/.test(
+        normalized,
+      )
+    ) {
+      return "end_interview";
+    }
   }
-  if (
-    /\b(clarify|explain|what do you mean|i don't understand|i do not understand)\b/.test(
-      normalized,
-    ) ||
-    /(y cau nay|giai thich|em chua hieu|khong hieu)/.test(normalized)
-  ) {
-    return "clarify_question";
-  }
-  if (/\b(skip|next question|bo qua|cau khac)\b/.test(normalized)) {
-    return "skip_question";
-  }
-  if (/\b(pause|wait|tam dung|dung mot chut|cho em)\b/.test(normalized)) {
-    return "pause";
-  }
-  if (
-    /\b(end interview|finish interview|stop interview|ket thuc|dung phong van)\b/.test(
-      normalized,
-    )
-  ) {
-    return "end_interview";
-  }
-  if (tokenizeTranscript(transcript).length < 2) return "off_topic";
+  // Short segments ("PostgreSQL", "ừm") are answer material — they append to the
+  // buffer instead of being classified off-topic, which used to erase it.
   return "answer";
 }
 

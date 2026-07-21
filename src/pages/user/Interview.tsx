@@ -420,6 +420,12 @@ export default function Interview() {
 
   const setVoiceFallback = useCallback((reason: string) => {
     clearMicReopenTimer();
+    // Salvage anything already transcribed into the text box before the buffer
+    // is cleared — a voice failure must not silently discard the spoken answer.
+    const salvaged = realtimeAnswerBufferRef.current.join(" ").replace(/\s+/g, " ").trim();
+    if (salvaged) {
+      setUserAnswer((current) => (current.trim() ? current : salvaged));
+    }
     resetRealtimeAnswerBuffer();
     liveSessionRef.current?.disconnect();
     liveSessionRef.current = null;
@@ -541,6 +547,19 @@ export default function Interview() {
               }, REALTIME_MIC_REOPEN_DELAY_MS);
             }
             break;
+          case "transcript_failed": {
+            // One segment was lost to STT noise — the session and the buffered
+            // answer are intact. Tell the user; never tear down voice for this.
+            toast({
+              title: t("interview.errors.transcriptionFailedTitle", {
+                defaultValue: "Một đoạn nói không nghe rõ",
+              }),
+              description: t("interview.errors.transcriptionFailedDesc", {
+                defaultValue: "Có thể do ồn nền — phần đã ghi nhận vẫn còn, bạn cứ nói tiếp.",
+              }),
+            });
+            break;
+          }
           case "error":
             setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
             break;
@@ -563,6 +582,7 @@ export default function Interview() {
       resetRealtimeAnswerBuffer,
       setVoiceFallback,
       t,
+      toast,
     ],
   );
 
@@ -587,6 +607,10 @@ export default function Interview() {
         audio.onended = () => {
           if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
           setIsQuestionAudioPlaying(false);
+          // The answer clock starts when the interviewer finishes reading the
+          // question — matching realtime's ai_stopped semantics. Without this,
+          // guided answers were billed the TTS playback and flagged overtime.
+          questionStartedAtRef.current = new Date();
         };
         audio.onerror = () => {
           if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
@@ -1072,9 +1096,8 @@ export default function Interview() {
     (transcript: string) => {
       if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
       const intent = classifyRealtimeTranscriptIntent(transcript);
-      if (intent !== "answer") {
-        resetRealtimeAnswerBuffer();
-      }
+      // Never wipe the buffered answer on a non-answer segment: a misclassified
+      // command must not destroy what the candidate already said (bug hunt 07-21).
 
       if (intent === "repeat_question") {
         acceptsUserSpeechRef.current = false;
@@ -1098,19 +1121,37 @@ export default function Interview() {
       }
 
       if (intent === "pause") {
+        // Hold the pending flush so thinking time doesn't submit a partial
+        // answer. Mic stays ON — muting here had no un-pause path, so a
+        // misheard "pause" used to dead-end the whole turn.
         clearRealtimeAnswerFlushTimer();
-        acceptsUserSpeechRef.current = false;
-        liveSessionRef.current?.setMicEnabled(false);
-        setIsMicActive(false);
         return;
       }
 
-      if (intent === "end_interview") {
+      if (intent === "end_interview" && realtimeAnswerBufferRef.current.length === 0) {
+        // Only a standalone command with nothing buffered may end the session;
+        // "kết thúc" inside a flowing answer falls through and is appended.
         void finishInterview("manual");
         return;
       }
 
-      if (intent === "skip_question" || intent === "off_topic") {
+      if (intent === "skip_question") {
+        // No skip API exists — say so instead of silently doing nothing.
+        toast({
+          title: t("interview.skipUnsupportedTitle", { defaultValue: "Chưa hỗ trợ bỏ qua câu hỏi" }),
+          description: t("interview.skipUnsupportedDesc", {
+            defaultValue: "Hãy trả lời ngắn gọn, hoặc nói \"nhắc lại câu hỏi\" nếu cần nghe lại.",
+          }),
+        });
+        if (liveSessionRef.current?.isConnected && !endingRef.current) {
+          acceptsUserSpeechRef.current = true;
+          liveSessionRef.current.setMicEnabled(true);
+          setIsMicActive(true);
+        }
+        return;
+      }
+
+      if (intent === "off_topic") {
         if (liveSessionRef.current?.isConnected && !endingRef.current) {
           acceptsUserSpeechRef.current = true;
           liveSessionRef.current.setMicEnabled(true);
@@ -1131,9 +1172,10 @@ export default function Interview() {
     [
       clearRealtimeAnswerFlushTimer,
       finishInterview,
-      resetRealtimeAnswerBuffer,
       scheduleRealtimeAnswerFlush,
       selectedLanguage,
+      t,
+      toast,
     ],
   );
   submitRealtimeTranscriptRef.current = handleRealtimeTranscript;
@@ -1161,11 +1203,14 @@ export default function Interview() {
     setApiError(null);
 
     try {
+      // Typed answers are TEXT regardless of whether a dictation channel happens
+      // to be connected: labeling them AUDIO ran the BE voice-transcript gate on
+      // typed text (rejecting short valid answers) and mislabeled history.
       const response = await submitTurnMutation.mutateAsync({
         sessionId: activeSession.id,
         userAnswer: answer,
-        userTranscript: isLiveConnected ? answer : undefined,
-        modality: isLiveConnected ? "AUDIO" : "TEXT",
+        userTranscript: undefined,
+        modality: "TEXT",
         durationSeconds,
       });
 
