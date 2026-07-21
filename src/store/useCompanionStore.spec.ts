@@ -30,6 +30,26 @@ describe("useCompanionStore", () => {
     expect(useCompanionStore.getState().bubbleOpen).toBe(true);
   });
 
+  it("activating an UNREGISTERED context is a no-op (guard: dead context never sets activeId)", () => {
+    const s = useCompanionStore.getState();
+    s.registerContext(reg("live"));
+    s.activateContext("live");
+    expect(useCompanionStore.getState().activeId).toBe("live");
+
+    // Try to activate a dead context that was never registered
+    s.activateContext("diagnosis:results");
+    // activeId must NOT change, bubbleOpen must stay as-is
+    expect(useCompanionStore.getState().activeId).toBe("live");
+    expect(useCompanionStore.getState().bubbleOpen).toBe(true);
+  });
+
+  it("activating an unregistered context with no prior active context stays null", () => {
+    const s = useCompanionStore.getState();
+    s.activateContext("ghost:context");
+    expect(useCompanionStore.getState().activeId).toBeNull();
+    expect(useCompanionStore.getState().bubbleOpen).toBe(false);
+  });
+
   it("after dismiss, re-activating the SAME context does NOT auto-open (quiet)", () => {
     const s = useCompanionStore.getState();
     s.registerContext(reg("f1"));

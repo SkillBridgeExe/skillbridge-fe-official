@@ -1980,6 +1980,9 @@ export default {
       },
       rail: {
         scoreTitle: "Điểm tương thích",
+        matchScoreTitle: "Điểm khớp JD",
+        matchCoverage: "Độ phủ yêu cầu",
+        unnormalizedChip: "Chấm trên {{scored}}/{{total}} yêu cầu đọc được — {{unscored}} yêu cầu ngoài phạm vi chưa đánh giá được",
         issuesBadge: "{{count}} cần sửa",
         resolved: "Đạt chuẩn",
         askCompanion: "Hỏi AI đồng hành",
@@ -2287,6 +2290,13 @@ export default {
         USER_NOT_FOUND: "Không tìm thấy user GitHub này.",
         RATE_LIMITED: "GitHub đang giới hạn lượt đọc. Thử lại sau ít phút.",
         FETCH_FAILED: "Không đọc được GitHub. Vui lòng thử lại sau.",
+      },
+    },
+    match: {
+      band: {
+        strong: "Khớp tốt",
+        moderate: "Khớp một phần",
+        low: "Khớp thấp",
       },
     },
     matchDepth: {

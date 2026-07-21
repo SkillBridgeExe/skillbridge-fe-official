@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { matchScoreBand } from "@/lib/match-score-band";
 import {
   CheckCircle2, AlertCircle, AlertTriangle, X,
   Sparkles, TrendingUp, Target, Shield, Code, Users,
@@ -146,7 +147,10 @@ function MatchNarrative({
   if (!jdMatch?.scoring_breakdown) return null;
   const breakdown = jdMatch.scoring_breakdown;
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
-  const band = coverage >= 80 ? "strong" : coverage >= 60 ? "good" : coverage >= 40 ? "fair" : "low";
+  // Use the shared band thresholds (80/60) — map 3-band result to the 4-key
+  // bandRationale i18n: strong → strong, moderate → good, low → low.
+  const matchBand = matchScoreBand(coverage);
+  const band = matchBand.band === "strong" ? "strong" : matchBand.band === "moderate" ? "good" : "low";
 
   const hasPerSkill = !!breakdown.per_skill && breakdown.per_skill.length > 0;
   const sortedSkills = hasPerSkill
@@ -401,7 +405,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   const unnormalizedSkillsList = jdMatch?.unnormalized_jd_requirements || [];
   const unnormalizedSkillNames = unnormalizedSkillsList
     .map((skill) => skill.raw_input || readLegacyName(skill))
-    .filter(Boolean);
+    .filter((name): name is string => Boolean(name));
   const fallbackSkillsString = unnormalizedSkillNames.length > 5
     ? unnormalizedSkillNames.slice(0, 5).join(", ") + "…"
     : unnormalizedSkillNames.join(", ") || "...";
@@ -545,6 +549,14 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             groups={reportGroups}
             breakdown={reviewData?.breakdown}
             verdictMessage=""
+            matchStats={isJdMode ? {
+              matched: presentCount,
+              partial: partialCount,
+              missing: missingCount,
+              coveragePercent: coverage,
+              fitVerdict: fitVerdict ?? undefined,
+              unnormalizedRequirements: unnormalizedSkillNames,
+            } : undefined}
           />
         </aside>
       )}
