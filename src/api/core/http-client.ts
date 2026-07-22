@@ -13,6 +13,16 @@ import {
   getAccessToken,
   setAccessToken,
 } from "@/services/auth-token.service";
+import { clearPerUserClientState } from "@/services/session-cleanup";
+
+/** Involuntary session end (401/refresh-fail). Mirrors the manual logout PII wipe
+ *  so the next account on the tab can't read the previous user's cached data —
+ *  the R2 fix only covered the manual logout button (bug hunt R3 07-22). */
+function forceAnonymous(): void {
+  clearAccessToken();
+  useAuthStore.getState().setAnonymous();
+  clearPerUserClientState();
+}
 
 export interface AuthAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
@@ -170,8 +180,7 @@ httpClient.interceptors.response.use(
         return httpClient(originalRequest);
       } catch (refreshError) {
         if (!isUsingMockAuth()) {
-          clearAccessToken();
-          useAuthStore.getState().setAnonymous();
+          forceAnonymous();
         }
         return Promise.reject(refreshError);
       }
@@ -179,8 +188,7 @@ httpClient.interceptors.response.use(
 
     if (status === 401 && originalRequest && !isAuthRefreshExcluded(originalRequest)) {
       if (!isUsingMockAuth()) {
-        clearAccessToken();
-        useAuthStore.getState().setAnonymous();
+        forceAnonymous();
       }
     }
 
