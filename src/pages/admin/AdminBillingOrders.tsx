@@ -74,8 +74,10 @@ export default function AdminBillingOrders() {
     setPage(1);
   }, [filters.status, filters.purpose, filters.userId]);
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    // Guard on data present: a page change makes data undefined mid-fetch, which
+    // would collapse totalPages to 1 and bounce the user back to page 1.
+    if (ordersQuery.data && page > totalPages) setPage(totalPages);
+  }, [ordersQuery.data, page, totalPages]);
   const getPurposeLabel = (purpose: string) =>
     t(`billing.checkout.purposeLabels.${purpose}`, {
       defaultValue: purpose.replace(/_/g, " "),

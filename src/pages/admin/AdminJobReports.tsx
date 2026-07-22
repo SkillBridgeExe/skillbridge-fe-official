@@ -152,10 +152,12 @@ export default function AdminJobReports() {
 
   // Resolving the last item on a page shrinks the set; without this the pager
   // (gated on totalPages > 1) unmounts and strands the admin on an empty page
-  // with no way back (bug hunt R3 07-22). Clamp back into range.
+  // with no way back (bug hunt R3 07-22). Clamp back into range — but only once
+  // data is present, else a page-change's mid-fetch undefined would bounce the
+  // user back to page 1.
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    if (reportsQuery.data && page > totalPages) setPage(totalPages);
+  }, [reportsQuery.data, page, totalPages]);
 
   return (
     <div className="space-y-6">

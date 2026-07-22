@@ -65,8 +65,10 @@ export default function AdminBillingSubscriptions() {
     setPage(1);
   }, [filters.status, filters.planCode, filters.userId]);
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    // Guard on data present: a page change makes data undefined mid-fetch, which
+    // would collapse totalPages to 1 and bounce the user back to page 1.
+    if (subscriptionsQuery.data && page > totalPages) setPage(totalPages);
+  }, [subscriptionsQuery.data, page, totalPages]);
 
   return (
     <div className="flex flex-col gap-5">
