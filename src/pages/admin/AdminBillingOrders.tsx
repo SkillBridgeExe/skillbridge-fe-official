@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -43,9 +43,10 @@ export default function AdminBillingOrders() {
   });
   const [selectedOrder, setSelectedOrder] =
     useState<AdminPaymentOrderDto | null>(null);
+  const [page, setPage] = useState(1);
   const query = useMemo<AdminOrdersQuery>(
     () => ({
-      page: 1,
+      page,
       limit: 20,
       status: filters.status
         ? (filters.status as AdminOrdersQuery["status"])
@@ -55,7 +56,7 @@ export default function AdminBillingOrders() {
         : undefined,
       userId: filters.userId || undefined,
     }),
-    [filters],
+    [filters, page],
   );
 
   const ordersQuery = useQuery({
@@ -64,6 +65,17 @@ export default function AdminBillingOrders() {
   });
 
   const orders = ordersQuery.data?.items ?? [];
+  const total = ordersQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  // A filter change resets to page 1; clamp if a page emptied out (e.g. after
+  // the result set shrank) so the view never strands on a page past the end.
+  useEffect(() => {
+    setPage(1);
+  }, [filters.status, filters.purpose, filters.userId]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
   const getPurposeLabel = (purpose: string) =>
     t(`billing.checkout.purposeLabels.${purpose}`, {
       defaultValue: purpose.replace(/_/g, " "),
@@ -162,6 +174,34 @@ export default function AdminBillingOrders() {
               ) : null}
             </TableBody>
           </Table>
+
+          {/* Pagination — the API returns a real total; render controls so orders
+              past the first 20 are reachable for reconciliation (bug hunt R3). */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-2 pt-4 text-sm text-slate-500">
+              <p>
+                Page <span className="font-semibold text-slate-900">{page}</span> of{" "}
+                <span className="font-semibold text-slate-900">{totalPages}</span>
+                <span className="ml-2 text-slate-400">({total} total)</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

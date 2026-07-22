@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -38,9 +38,10 @@ export default function AdminBillingSubscriptions() {
   });
   const [selectedSubscription, setSelectedSubscription] =
     useState<AdminSubscriptionDto | null>(null);
+  const [page, setPage] = useState(1);
   const query = useMemo<AdminSubscriptionsQuery>(
     () => ({
-      page: 1,
+      page,
       limit: 20,
       status: filters.status
         ? (filters.status as AdminSubscriptionsQuery["status"])
@@ -48,7 +49,7 @@ export default function AdminBillingSubscriptions() {
       planCode: filters.planCode || undefined,
       userId: filters.userId || undefined,
     }),
-    [filters],
+    [filters, page],
   );
 
   const subscriptionsQuery = useQuery({
@@ -57,6 +58,15 @@ export default function AdminBillingSubscriptions() {
   });
 
   const subscriptions = subscriptionsQuery.data?.items ?? [];
+  const total = subscriptionsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters.status, filters.planCode, filters.userId]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -158,6 +168,33 @@ export default function AdminBillingSubscriptions() {
               ) : null}
             </TableBody>
           </Table>
+
+          {/* Pagination — surface subscriptions past the first 20 (bug hunt R3). */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-2 pt-4 text-sm text-slate-500">
+              <p>
+                Page <span className="font-semibold text-slate-900">{page}</span> of{" "}
+                <span className="font-semibold text-slate-900">{totalPages}</span>
+                <span className="ml-2 text-slate-400">({total} total)</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

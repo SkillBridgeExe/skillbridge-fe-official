@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   Flag,
@@ -149,6 +149,13 @@ export default function AdminJobReports() {
   const reports = reportsQuery.data?.items || [];
   const total = reportsQuery.data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  // Resolving the last item on a page shrinks the set; without this the pager
+  // (gated on totalPages > 1) unmounts and strands the admin on an empty page
+  // with no way back (bug hunt R3 07-22). Clamp back into range.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="space-y-6">

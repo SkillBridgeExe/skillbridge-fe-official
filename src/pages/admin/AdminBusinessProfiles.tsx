@@ -418,6 +418,11 @@ export default function AdminBusinessProfiles() {
     setQuery((prev) => ({ ...prev, status, page: 1 }));
   };
 
+  const page = query.page ?? 1;
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (query.limit ?? 20)));
+  const setPage = (next: number) =>
+    setQuery((prev) => ({ ...prev, page: Math.min(totalPages, Math.max(1, next)) }));
+
   const TABS: { label: string; value: BusinessProfileStatus | undefined }[] = [
     { label: "All", value: undefined },
     { label: "Pending Review", value: "PENDING_REVIEW" },
@@ -569,6 +574,33 @@ export default function AdminBusinessProfiles() {
                 })}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* Pagination — render whenever more than one page exists so rows past
+            the first 20 are reachable/moderatable (bug hunt R3 07-22). */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+            <p>
+              Page <span className="font-semibold text-slate-900">{page}</span> of{" "}
+              <span className="font-semibold text-slate-900">{totalPages}</span>
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none transition-colors font-medium text-slate-700"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
