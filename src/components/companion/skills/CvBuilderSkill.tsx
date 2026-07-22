@@ -703,6 +703,10 @@ export function CvBuilderSkill({
     resetCompanion();
     useCompanionStore.getState().dismissActive();
     handoffFromAnchorFix();
+    // handoff activates cvbuilder:chat, which auto-opens its bubble; Discard is a
+    // dismiss gesture, so close it again (the Close button already does this).
+    // Otherwise the X on the fix coach re-popped the chat bubble (anti-Clippy, R3).
+    useCompanionStore.getState().closeBubble();
     setActiveIntent(null);
   }, [resetCompanion]);
 
