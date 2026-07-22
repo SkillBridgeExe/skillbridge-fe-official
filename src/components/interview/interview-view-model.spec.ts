@@ -849,13 +849,11 @@ describe("interview view model", () => {
     expect(classifyRealtimeTranscriptIntent("em chưa hiểu câu hỏi")).toBe(
       "clarify_question",
     );
-    // First-person "I don't understand" (both chưa/không) triggers clarify.
-    expect(classifyRealtimeTranscriptIntent("em không hiểu")).toBe(
-      "clarify_question",
-    );
-    expect(classifyRealtimeTranscriptIntent("tôi không hiểu")).toBe(
-      "clarify_question",
-    );
+    // A genuine answer opener containing "không hiểu" must NOT be hijacked into
+    // clarify (that would drop the answer) — bare "không hiểu" is not a command.
+    expect(
+      classifyRealtimeTranscriptIntent("ban đầu em không hiểu codebase"),
+    ).toBe("answer");
   });
 
   it.each([

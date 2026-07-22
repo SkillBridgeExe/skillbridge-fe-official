@@ -489,9 +489,11 @@ export function classifyRealtimeTranscriptIntent(
       /\b(clarify|what do you mean|i don't understand|i do not understand)\b/.test(
         normalized,
       ) ||
-      // First-person confusion = a clarify request. "em/tôi không hiểu" is
-      // unambiguous (a third-person "khách hàng không hiểu" won't match).
-      /(y cau nay la sao|em chua hieu|toi chua hieu|em khong hieu|toi khong hieu|khong hieu cau hoi)/.test(
+      // Bare "em/tôi không hiểu" is deliberately NOT here: "không hiểu" appears
+      // inside genuine answer openers ("ban đầu em không hiểu codebase"), and a
+      // substring match there would drop the real answer (bug hunt R4). Keep the
+      // narrower "chưa hiểu" / "không hiểu câu hỏi" forms only.
+      /(y cau nay la sao|em chua hieu|toi chua hieu|khong hieu cau hoi)/.test(
         normalized,
       )
     ) {
