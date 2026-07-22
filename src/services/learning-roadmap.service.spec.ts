@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
-  generateRoadmapFromMatch,
   answerLearningQuizQuestion,
   getLearningNextQuestions,
   getLearningSessionProgress,
@@ -175,23 +174,6 @@ const composedRoadmap: ComposedRoadmap = {
 describe("learning-roadmap.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("posts matchId budget and language preferences to the BE roadmap endpoint", async () => {
-    vi.mocked(httpClient.post).mockReturnValueOnce(ok(composedRoadmap) as never);
-
-    const result = await generateRoadmapFromMatch("match-1", {
-      available_days: 30,
-      hours_per_week: 8,
-      language_pref: "vi",
-    });
-
-    expect(result).toEqual(composedRoadmap);
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.CV_MATCHES.ROADMAP("match-1"), {
-      available_days: 30,
-      hours_per_week: 8,
-      language_pref: "vi",
-    });
   });
 
   it("loads saved session progress from the BE learning endpoint", async () => {
@@ -384,6 +366,29 @@ describe("learning-roadmap.service", () => {
         qualityScore: 0.9,
         freshnessScore: 0.86,
       },
+    ]);
+  });
+
+  it("places the highest-priority skill first in every roadmap view", () => {
+    const lowerPriority = composedRoadmap.steps[0];
+    const higherPriority = {
+      ...lowerPriority,
+      skill_canonical: "typescript",
+      display_name: "TypeScript",
+      priority: lowerPriority.priority + 10,
+    };
+    const roadmap = {
+      ...composedRoadmap,
+      steps: [lowerPriority, higherPriority],
+    };
+
+    expect(roadmapToLearningRoadmap(roadmap).modules.map((module) => module.id)).toEqual([
+      "typescript",
+      "react",
+    ]);
+    expect(roadmapToWeekPlans(roadmap).map((week) => week.moduleId)).toEqual([
+      "typescript",
+      "react",
     ]);
   });
 

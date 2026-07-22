@@ -26,6 +26,7 @@ if (POSTHOG_PROJECT_TOKEN) {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGuard from "@/components/layout/AuthGuard";
+import LearningAccessBoundary from "@/components/learning/LearningAccessBoundary";
 import AuthBootstrap from "@/components/auth/AuthBootstrap";
 import PageLoader from "@/components/common/PageLoader";
 import { MascotOverlay } from "@/components/mascot/MascotOverlay";
@@ -68,10 +69,10 @@ const router = createBrowserRouter(
               <Route path="/profile" element={<AuthGuard requiredRole="user"><Pages.UserProfile /></AuthGuard>} />
               <Route path="/diagnosis" element={<Pages.Diagnosis />} />
               <Route path="/cv-studio" element={<AuthGuard requiredRole="user"><Pages.ResumeLibrary /></AuthGuard>} />
-              <Route path="/learning" element={<Pages.Learning />} />
+              <Route path="/learning" element={<LearningAccessBoundary><Pages.Learning /></LearningAccessBoundary>} />
               {/* /practice was a fake AI-interview duplicate; the real (soon) flow is /interview. */}
               <Route path="/practice" element={<Navigate to="/interview" replace />} />
-              <Route path="/learning/session/:id" element={<Pages.LearningSession />} />
+              <Route path="/learning/session/:id" element={<LearningAccessBoundary><Pages.LearningSession /></LearningAccessBoundary>} />
               <Route
                 path="/interview"
                 element={

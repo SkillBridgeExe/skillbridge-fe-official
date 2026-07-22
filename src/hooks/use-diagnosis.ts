@@ -19,11 +19,6 @@ import {
   getNextSteps,
   getMatchProgress,
 } from "@/services/diagnosis.service";
-import {
-  DEFAULT_ROADMAP_BUDGET,
-  generateRoadmapFromMatch,
-  type RoadmapBudgetInput,
-} from "@/services/learning-roadmap.service";
 import type { DiagnosisHistoryQuery } from "@/api/cv/diagnosis-history";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import type { SkillGapQuery } from "@/api/cv/trends";
@@ -220,21 +215,6 @@ export function useGithubEvidenceMutation() {
       }
       return getGithubEvidence(params);
     },
-    retry: false,
-  });
-}
-
-/** Generate a learning roadmap from a match's GapReport (button-triggered; learn-only, server-derived).
- *  No `lang` arg — the BE route takes no body params; roadmap language is server-defaulted. */
-export function useGenerateRoadmapFromMatchMutation() {
-  return useMutation({
-    mutationFn: ({
-      matchId,
-      body = DEFAULT_ROADMAP_BUDGET,
-    }: {
-      matchId: string;
-      body?: RoadmapBudgetInput;
-    }) => generateRoadmapFromMatch(matchId, body),
     retry: false,
   });
 }

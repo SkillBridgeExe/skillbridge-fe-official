@@ -1,23 +1,31 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Calendar, Info, LayoutGrid, List, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, GitBranch, Info, LayoutGrid, List, Sparkles } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   GridRoadmapView,
   LearningSidebar,
   ListRoadmapView,
   OverviewView,
+  SkillRoadmapMapView,
 } from "@/components/learning";
 import { AIChatbot } from "@/components/learning/AIChatbot";
 import { useRoadmapStore } from "@/components/learning/roadmap-store";
+import { LearningRoadmapWizard } from "@/components/learning/LearningRoadmapWizard";
+import {
+  archiveActiveLearningRoadmap,
+  getActiveLearningRoadmap,
+  listLearningRoadmaps,
+} from "@/services/learning-roadmaps-v2.service";
 
-type ViewMode = "overview" | "grid" | "list";
+type ViewMode = "map" | "overview" | "grid" | "list";
 
 const VIEW_TABS: { value: ViewMode; labelKey: string; icon: React.ElementType }[] = [
+  { value: "map", labelKey: "learning.tabs.roadmap", icon: GitBranch },
   { value: "overview", labelKey: "learning.tabs.today", icon: Calendar },
   { value: "grid", labelKey: "learning.tabs.overview", icon: LayoutGrid },
   { value: "list", labelKey: "learning.tabs.list", icon: List },
@@ -25,10 +33,63 @@ const VIEW_TABS: { value: ViewMode; labelKey: string; icon: React.ElementType }[
 
 export default function Learning() {
   const { t } = useTranslation("common");
-  const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<ViewMode>("overview");
-  const { composedRoadmap, isAIGenerated, clearRoadmap } = useRoadmapStore();
-  const hasRoadmap = Boolean(composedRoadmap);
+  const { toast } = useToast();
+  const [activeView, setActiveView] = useState<ViewMode>("map");
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(true);
+  const [isArchivingRoadmap, setIsArchivingRoadmap] = useState(false);
+  const { activeRoadmap, composedRoadmap, isAIGenerated, clearRoadmap, setActiveRoadmap } =
+    useRoadmapStore();
+  const hasRoadmap = Boolean(activeRoadmap || composedRoadmap);
+  const moduleCount = activeRoadmap?.modules.length ?? composedRoadmap?.steps.length ?? 0;
+  const totalHours = activeRoadmap
+    ? Math.round(
+        (activeRoadmap.modules.reduce((sum, module) => sum + module.estimated_minutes, 0) / 60) *
+          10,
+      ) / 10
+    : composedRoadmap?.budget_hours ?? 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    listLearningRoadmaps()
+      .then((roadmaps) => {
+        const active = roadmaps.find((roadmap) => roadmap.status === "ACTIVE");
+        return active ? getActiveLearningRoadmap(active.id) : null;
+      })
+      .then((roadmap) => {
+        if (!cancelled && roadmap) setActiveRoadmap(roadmap);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setIsLoadingRoadmap(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setActiveRoadmap]);
+
+  const handleClearRoadmap = async () => {
+    if (!activeRoadmap) {
+      clearRoadmap();
+      return;
+    }
+
+    setIsArchivingRoadmap(true);
+    try {
+      await archiveActiveLearningRoadmap();
+      clearRoadmap();
+      toast({ title: t("learning.page.archiveSuccess") });
+    } catch (cause) {
+      toast({
+        title: t("learning.page.archiveError"),
+        description:
+          cause instanceof Error ? cause.message : t("learning.page.archiveError"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchivingRoadmap(false);
+    }
+  };
 
   return (
     <Layout hideFooter>
@@ -51,10 +112,10 @@ export default function Learning() {
                   </button>
                 </div>
                 <p className="text-sm text-slate-500">
-                  {composedRoadmap
+                  {hasRoadmap
                     ? t("learning.page.meta", {
-                        count: composedRoadmap.steps.length,
-                        hours: composedRoadmap.budget_hours,
+                        count: moduleCount,
+                        hours: totalHours,
                       })
                     : t("learning.page.emptyMeta")}
                 </p>
@@ -65,14 +126,15 @@ export default function Learning() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearRoadmap}
+                    onClick={handleClearRoadmap}
+                    disabled={isArchivingRoadmap}
                     className="w-full rounded-full text-xs text-slate-400 hover:text-slate-700 min-[420px]:w-auto"
                   >
                     {t("learning.page.clearRoadmap")}
                   </Button>
                 )}
                 <Button
-                  onClick={() => navigate("/diagnosis")}
+                  onClick={() => setIsWizardOpen(true)}
                   className="w-full gap-2 rounded-full text-sm font-semibold shadow-sm min-[420px]:w-auto"
                   variant={hasRoadmap ? "outline" : "default"}
                 >
@@ -137,8 +199,13 @@ export default function Learning() {
               </div>
             )}
 
-            {hasRoadmap ? (
+            {isLoadingRoadmap && !hasRoadmap ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+                {t("common.loading", { defaultValue: "Loading..." })}
+              </div>
+            ) : hasRoadmap ? (
               <div className="animate-in fade-in duration-300">
+                {activeView === "map" && <SkillRoadmapMapView />}
                 {activeView === "overview" && <OverviewView />}
                 {activeView === "grid" && <GridRoadmapView />}
                 {activeView === "list" && <ListRoadmapView />}
@@ -152,8 +219,8 @@ export default function Learning() {
                 <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
                   {t("learning.page.emptyBody")}
                 </p>
-                <Button onClick={() => navigate("/diagnosis")} className="mt-5 rounded-full font-semibold">
-                  {t("learning.page.goDiagnosis")}
+                <Button onClick={() => setIsWizardOpen(true)} className="mt-5 rounded-full font-semibold">
+                  {t("learning.page.generateRoadmap")}
                 </Button>
               </div>
             )}
@@ -168,6 +235,15 @@ export default function Learning() {
       </div>
 
       <AIChatbot />
+      {isWizardOpen ? (
+        <LearningRoadmapWizard
+          onClose={() => setIsWizardOpen(false)}
+          onGenerated={(roadmap) => {
+            setActiveRoadmap(roadmap);
+            setIsWizardOpen(false);
+          }}
+        />
+      ) : null}
     </Layout>
   );
 }

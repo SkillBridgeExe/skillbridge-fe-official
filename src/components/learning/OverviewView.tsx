@@ -24,6 +24,11 @@ import {
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import type { LearningSession } from "./types";
 import { DEFAULT_SKILL_COLOR, SKILL_COLORS } from "@/components/learning/skill-colors";
+import {
+  getSessionsForIsoWeekday,
+  getSessionsForRoadmapWeek,
+  toIsoWeekday,
+} from "./calendar-schedule";
 
 // ─── Calendar Helpers ──────────────────────────────
 function getWeekDates(offset: number) {
@@ -45,12 +50,6 @@ function isToday(date: Date) {
   return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
 }
 
-function getSessionsForDay(dayIndex: number, allSessions: LearningSession[]) {
-  return allSessions.filter(s => s.dayOfWeek === dayIndex);
-}
-
-
-
 // ─── Calendar + Session Overview (PREP-inspired) ───
 export function OverviewView() {
   const { t, i18n } = useTranslation("common");
@@ -71,7 +70,7 @@ export function OverviewView() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const { weekPlans, setWeekPlans } = useRoadmapStore();
+  const { activeRoadmap, weekPlans, setWeekPlans } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
   // ✅ Build roadmap modules from weekPlans — drives status, progress, connector animations
   const roadmapModules = useMemo(() => {
@@ -108,6 +107,10 @@ export function OverviewView() {
   useEffect(() => {
     setActiveSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);
   }, [weeks]);
+  const visibleSessions = useMemo(
+    () => getSessionsForRoadmapWeek(weeks, weekOffset),
+    [weekOffset, weeks],
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!roadmapScrollRef.current) return;
@@ -139,9 +142,9 @@ export function OverviewView() {
   }, [dates, i18n.language]);
 
   // Get today's sessions for instant access
-  const todayIndex = new Date().getDay() - 1; // 0=Mon
+  const todayIsoWeekday = toIsoWeekday(new Date().getDay());
   const todaySessions = weekOffset === 0
-    ? activeSessions.filter(s => s.dayOfWeek === (todayIndex < 0 ? 6 : todayIndex))
+    ? getSessionsForIsoWeekday(todayIsoWeekday, visibleSessions)
     : [];
 
   const handleOpenReschedule = () => {
@@ -223,7 +226,7 @@ export function OverviewView() {
             </div>
           </div>
           
-          <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
+          {!activeRoadmap ? <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" onClick={handleOpenReschedule} className="h-8 text-xs font-semibold gap-1.5 border-slate-200 hover:border-primary/30 text-slate-700 hover:text-primary hover:bg-primary/5 rounded-lg shadow-sm transition-all bg-white">
                 <Edit3 className="w-3.5 h-3.5" />
@@ -273,7 +276,7 @@ export function OverviewView() {
                             }))}
                          >
                            {dayLabels.map((label, idx) => (
-                             <option key={idx} value={idx}>{label}</option>
+                             <option key={idx} value={idx + 1}>{label}</option>
                            ))}
                          </select>
                       </div>
@@ -309,7 +312,7 @@ export function OverviewView() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+          </Dialog> : null}
         </div>
 
         {/* Calendar Grid */}
@@ -318,7 +321,7 @@ export function OverviewView() {
         <div className="overflow-x-auto min-w-full custom-scrollbar pb-2">
           <div className="grid grid-cols-7 divide-x divide-slate-100 min-w-[900px]">
             {dates.map((date, idx) => {
-              const sessions = getSessionsForDay(idx, activeSessions);
+              const sessions = getSessionsForIsoWeekday(idx + 1, visibleSessions);
               const today = isToday(date);
               return (
                 <div

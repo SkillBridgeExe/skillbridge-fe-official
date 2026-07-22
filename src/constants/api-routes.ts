@@ -126,6 +126,12 @@ export const API_ROUTES = {
   },
 
   LEARNING: {
+    ROADMAPS: `${API}/learning/roadmaps`,
+    ACTIVE_ROADMAP: `${API}/learning/roadmaps/active`,
+    ROADMAP: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}`,
+    ROADMAP_DRAFT: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/draft`,
+    ROADMAP_PREVIEW: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/preview`,
+    ROADMAP_GENERATE: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/generate`,
     CHAT: `${API}/learning/chat`,
     CHAT_HISTORY: (conversationId: string) => `${API}/learning/chat/${conversationId}`,
     SESSION_PROGRESS: (sessionId: string) =>

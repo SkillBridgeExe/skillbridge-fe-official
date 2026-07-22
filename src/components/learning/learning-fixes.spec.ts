@@ -6,6 +6,12 @@ import {
 } from "./session-progress";
 import type { WeekPlan, LearningSession } from "./types";
 
+vi.mock("@/store/useAuthStore", () => ({
+  useAuthStore: {
+    getState: () => ({ currentUser: { id: "user-1", role: "user" } }),
+  },
+}));
+
 describe("Learning roadmap fixes", () => {
   const localStorageMock = {
     getItem: vi.fn(),

@@ -1,20 +1,23 @@
 import { ArrowRight, Calendar, Flame, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
+import type { WeekPlan } from "@/components/learning/types";
 
 export function LearningSidebar() {
   const { t } = useTranslation("common");
   const weeks = useActiveWeekPlans();
   const composedRoadmap = useRoadmapStore((state) => state.composedRoadmap);
-  const sessions = weeks.flatMap((week) => week.sessions);
-  const completedUnits = sessions.filter((session) => session.status === "completed").length;
-  const plannedUnits = sessions.filter((session) => session.status !== "completed").length;
-  const totalUnits = sessions.length;
-  const earnedStars = sessions.reduce((total, session) => total + session.stars, 0);
-  const totalStars = sessions.reduce((total, session) => total + session.maxStars, 0);
-  const totalDays = composedRoadmap ? Math.max(1, composedRoadmap.steps.length * 7) : 0;
-  const remainingDays = totalDays;
-  const completionPct = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+  const {
+    completedDays,
+    earnedStars,
+    qualifiedUnits,
+    remainingUnits,
+    starQualifiedPct,
+    streakDays,
+    totalDays,
+    totalStars,
+    totalUnits,
+  } = getLearningSidebarProgress(weeks);
 
   return (
     <aside className="w-full space-y-5">
@@ -26,15 +29,19 @@ export function LearningSidebar() {
         <div className="grid grid-cols-3 gap-2">
           <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-center">
             <Calendar className="w-4 h-4 text-slate-400 mb-1.5" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Days Left</span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+              {t("learning.sidebar.studyDays")}
+            </span>
             <span className="text-xs font-black text-slate-800 mt-1">
-              {remainingDays}/{totalDays}
+              {completedDays}/{totalDays}
             </span>
           </div>
 
           <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-50/30 border border-amber-100/50 text-center">
             <Trophy className="w-4 h-4 text-amber-500 mb-1.5" />
-            <span className="text-[9px] font-bold text-amber-600/80 uppercase tracking-wider leading-none">Stars</span>
+            <span className="text-[9px] font-bold text-amber-600/80 uppercase tracking-wider leading-none">
+              {t("learning.sidebar.starsEarned")}
+            </span>
             <span className="text-xs font-black text-slate-800 mt-1">
               {earnedStars}/{totalStars}
             </span>
@@ -42,8 +49,10 @@ export function LearningSidebar() {
 
           <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-orange-50/30 border border-orange-100/50 text-center">
             <Flame className="w-4 h-4 text-orange-500 mb-1.5 animate-pulse" />
-            <span className="text-[9px] font-bold text-orange-600/80 uppercase tracking-wider leading-none">Streak</span>
-            <span className="text-xs font-black text-orange-700 mt-1">0</span>
+            <span className="text-[9px] font-bold text-orange-600/80 uppercase tracking-wider leading-none">
+              {t("learning.sidebar.currentStreak")}
+            </span>
+            <span className="text-xs font-black text-orange-700 mt-1">{streakDays}</span>
           </div>
         </div>
 
@@ -54,20 +63,30 @@ export function LearningSidebar() {
           <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden relative w-full">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-primary to-blue-500 transition-all duration-1000 ease-out relative overflow-hidden"
-              style={{ width: `${completionPct}%` }}
+              style={{ width: `${starQualifiedPct}%` }}
             >
               <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </div>
           </div>
           
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold pt-1">
-            <span className="flex items-center gap-1.5">
+          <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-bold text-slate-500">
+            <span className="min-w-0 inline-flex items-center gap-1.5 whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.3)]" />
-              {t("learning.sidebar.completed", { done: completedUnits, total: totalUnits })}
+              <span className="truncate">
+                {t("learning.sidebar.completedCompact", {
+                  done: qualifiedUnits,
+                  total: totalUnits,
+                })}
+              </span>
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="min-w-0 inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_6px_rgba(59,130,246,0.3)]" />
-              {t("learning.sidebar.planned", { planned: plannedUnits, total: totalUnits })}
+              <span className="truncate">
+                {t("learning.sidebar.remainingCompact", {
+                  remaining: remainingUnits,
+                  total: totalUnits,
+                })}
+              </span>
             </span>
           </div>
         </div>
@@ -109,4 +128,78 @@ export function LearningSidebar() {
       </div>
     </aside>
   );
+}
+
+export function getLearningSidebarProgress(weeks: WeekPlan[]) {
+  const sessions = weeks.flatMap((week) => week.sessions);
+  const dayMap = new Map<string, typeof sessions>();
+
+  for (const week of weeks) {
+    for (const session of week.sessions) {
+      const key = session.scheduledStartAt
+        ? localDateKey(new Date(session.scheduledStartAt))
+        : `w${week.weekNumber}-d${isoWeekday(session.dayOfWeek)}`;
+      const daySessions = dayMap.get(key) ?? [];
+      daySessions.push(session);
+      dayMap.set(key, daySessions);
+    }
+  }
+
+  const studyDays = [...dayMap.entries()]
+    .map(([key, daySessions]) => ({ key, sessions: daySessions }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+  const completedDays = studyDays.filter(
+    (day) =>
+      day.sessions.length > 0 &&
+      day.sessions.every((session) => session.status === "completed"),
+  ).length;
+  const qualifiedUnits = sessions.filter((session) => session.stars >= 2).length;
+  const totalUnits = sessions.length;
+
+  return {
+    completedDays,
+    earnedStars: sessions.reduce((total, session) => total + session.stars, 0),
+    qualifiedUnits,
+    remainingUnits: Math.max(0, totalUnits - qualifiedUnits),
+    starQualifiedPct:
+      totalUnits > 0 ? Math.round((qualifiedUnits / totalUnits) * 100) : 0,
+    streakDays: currentStudyStreak(studyDays),
+    totalDays: studyDays.length,
+    totalStars: sessions.reduce((total, session) => total + session.maxStars, 0),
+    totalUnits,
+  };
+}
+
+function currentStudyStreak(
+  studyDays: Array<{ key: string; sessions: WeekPlan["sessions"] }>,
+) {
+  let cursor = studyDays.length - 1;
+  while (
+    cursor >= 0 &&
+    !studyDays[cursor].sessions.some((session) => session.status === "completed")
+  ) {
+    cursor -= 1;
+  }
+
+  let streak = 0;
+  while (
+    cursor >= 0 &&
+    studyDays[cursor].sessions.some((session) => session.status === "completed")
+  ) {
+    streak += 1;
+    cursor -= 1;
+  }
+  return streak;
+}
+
+function localDateKey(value: Date) {
+  if (Number.isNaN(value.getTime())) return "invalid-date";
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isoWeekday(dayOfWeek: number) {
+  return dayOfWeek === 0 ? 7 : dayOfWeek;
 }
