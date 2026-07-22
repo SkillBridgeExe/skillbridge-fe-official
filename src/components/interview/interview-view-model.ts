@@ -489,13 +489,11 @@ export function classifyRealtimeTranscriptIntent(
       /\b(clarify|what do you mean|i don't understand|i do not understand)\b/.test(
         normalized,
       ) ||
-      // Bare "em/tôi không hiểu" is deliberately NOT here: "không hiểu" appears
-      // inside genuine answer openers ("ban đầu em không hiểu codebase"), and a
-      // substring match there would drop the real answer (bug hunt R4). Keep the
-      // narrower "chưa hiểu" / "không hiểu câu hỏi" forms only.
-      /(y cau nay la sao|em chua hieu|toi chua hieu|khong hieu cau hoi)/.test(
-        normalized,
-      )
+      // Clarify must be QUESTION-DIRECTED. Bare "em/tôi chưa hiểu" and "không
+      // hiểu" are NOT here: both appear inside genuine answer openers ("ban đầu
+      // em chưa/không hiểu codebase") and a substring match would drop the real
+      // answer (bug hunt R4/R5). Require an explicit "…câu hỏi" / "ý câu này".
+      /(y cau nay la sao|chua hieu cau hoi|khong hieu cau hoi)/.test(normalized)
     ) {
       return "clarify_question";
     }

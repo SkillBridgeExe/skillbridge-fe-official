@@ -845,10 +845,15 @@ describe("interview view model", () => {
     expect(classifyRealtimeTranscriptIntent("we use skip connections")).toBe(
       "skip_question",
     );
-    // ...but an explicit clarification request is still recognized.
+    // ...but an explicit QUESTION-DIRECTED clarification request is recognized.
     expect(classifyRealtimeTranscriptIntent("em chưa hiểu câu hỏi")).toBe(
       "clarify_question",
     );
+    // Both "chưa hiểu" and "không hiểu" answer openers stay answers (they used
+    // to be hijacked into clarify and drop the answer — bug hunt R4/R5).
+    expect(
+      classifyRealtimeTranscriptIntent("ban đầu em chưa hiểu codebase"),
+    ).toBe("answer");
     // A genuine answer opener containing "không hiểu" must NOT be hijacked into
     // clarify (that would drop the answer) — bare "không hiểu" is not a command.
     expect(
