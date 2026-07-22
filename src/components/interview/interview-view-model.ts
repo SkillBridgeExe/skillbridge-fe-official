@@ -489,7 +489,11 @@ export function classifyRealtimeTranscriptIntent(
       /\b(clarify|what do you mean|i don't understand|i do not understand)\b/.test(
         normalized,
       ) ||
-      /(y cau nay la sao|em chua hieu|toi chua hieu|khong hieu cau hoi)/.test(normalized)
+      // First-person confusion = a clarify request. "em/tôi không hiểu" is
+      // unambiguous (a third-person "khách hàng không hiểu" won't match).
+      /(y cau nay la sao|em chua hieu|toi chua hieu|em khong hieu|toi khong hieu|khong hieu cau hoi)/.test(
+        normalized,
+      )
     ) {
       return "clarify_question";
     }

@@ -177,7 +177,11 @@ export function useInterviewPlanQuery(
     queryFn: () => getInterviewPlan({ cvId: cvId!, role: role!, lang }),
     enabled:
       ENABLE_DIAGNOSIS_ADDONS && Boolean(cvId) && Boolean(role) && canUseApi,
-    staleTime: 10 * 60_000,
+    staleTime: 30 * 60_000,
+    // Each generate reserves an INTERVIEW_SESSION slot. The pack unmounts on a
+    // diagnosis tab switch; without a long gcTime the cached plan is evicted
+    // (default 5min) and a re-visit + re-click silently re-charges (bug hunt R3).
+    gcTime: 60 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
   });
