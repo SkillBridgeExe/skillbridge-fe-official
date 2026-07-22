@@ -10,12 +10,16 @@ import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
+import { useRoadmapStore } from "@/components/learning/roadmap-store";
 
 export function clearPerUserClientState(): void {
   queryClient.clear();
-  // reset() also rewrites the persisted sessionStorage/localStorage entries.
+  // reset()/clearRoadmap() also rewrite the persisted sessionStorage/localStorage
+  // entries. Every store holding data DERIVED FROM THE USER's CV must be here —
+  // the learning roadmap is built from the user's gap analysis (bug hunt R6).
   useDiagnosisStore.getState().reset();
   useCvBuilderStore.getState().reset();
+  useRoadmapStore.getState().clearRoadmap();
 }
 
 /**
@@ -26,6 +30,13 @@ export function clearPerUserClientState(): void {
  */
 export function wipeClientStateIfUserChanged(newUserId: string): void {
   const prev = useAuthStore.getState().lastAuthedUserId;
-  if (prev && prev !== newUserId) clearPerUserClientState();
+  // Wipe UNLESS we can prove it's the same user (prev === newUserId). A null
+  // prev is NOT proof — it happens on a fresh browser (nothing to wipe, harmless)
+  // AND on a browser whose last login predates this marker being persisted, where
+  // stale per-user data may still sit in storage. Wiping defensively there closes
+  // that migration window without ever wiping a proven same-user re-login, so the
+  // R4 "don't destroy in-flight work on a transient blip" guarantee still holds
+  // (post-fix sessions always have prev set). (bug hunt R6 07-22)
+  if (prev !== newUserId) clearPerUserClientState();
   useAuthStore.setState({ lastAuthedUserId: newUserId });
 }
