@@ -5,93 +5,586 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SkillBridge — Product &amp; AI Architecture Handbook</title>
 <style>
-  :root{
-    --pine:#175243; --pine-soft:#1f6b57; --pine-wash:#e8f1ee;
-    --ink:#22302b; --ink-soft:#5a6b64; --paper:#faf9f6; --card:#ffffff;
-    --line:#e3e0d8; --amber:#8a5a12; --amber-wash:#faf3e3;
-    --red:#8a2c22; --red-wash:#f9ebe8; --blue:#1f4e79; --blue-wash:#e9f0f7;
-    --mono:'Cascadia Code','Consolas',ui-monospace,monospace;
+  :root {
+    --pine: #0f172a;          /* Slate 900 */
+    --pine-light: #4f46e5;    /* Indigo 600 */
+    --pine-wash: #f8fafc;     /* Slate 50 */
+    --ink: #334155;           /* Slate 700 */
+    --ink-light: #64748b;     /* Slate 500 */
+    --paper: #f8fafc;         /* Slate 50 */
+    --card: #ffffff;          /* White */
+    --line: #e2e8f0;          /* Slate 200 */
+    --amber: #d97706;         /* Amber 600 */
+    --amber-wash: #fef3c7;    /* Amber 100 */
+    --red: #dc2626;           /* Red 600 */
+    --red-wash: #fee2e2;      /* Red 100 */
+    --blue: #2563eb;          /* Blue 600 */
+    --blue-wash: #eff6ff;     /* Blue 50 */
+    --mono: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
   }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --pine:#5fb89d; --pine-soft:#4a9c84; --pine-wash:#12211d;
-      --ink:#d9e2de; --ink-soft:#93a49d; --paper:#121715; --card:#1a211e;
-      --line:#2c3733; --amber:#d9a84e; --amber-wash:#251d0e;
-      --red:#d98077; --red-wash:#251311; --blue:#7aa8d0; --blue-wash:#101b26;
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pine: #f8fafc;          /* Slate 50 */
+      --pine-light: #818cf8;    /* Indigo 400 */
+      --pine-wash: #0f172a;     /* Slate 900 */
+      --ink: #cbd5e1;           /* Slate 300 */
+      --ink-light: #94a3b8;     /* Slate 400 */
+      --paper: #090d16;         /* Very dark blue-gray */
+      --card: #0f172a;          /* Slate 900 */
+      --line: #1e293b;          /* Slate 800 */
+      --amber: #fbbf24;         /* Amber 400 */
+      --amber-wash: #78350f;    /* Dark Amber */
+      --red: #f87171;           /* Red 400 */
+      --red-wash: #7f1d1d;      /* Dark Red */
+      --blue: #3b82f6;          /* Blue 500 */
+      --blue-wash: #1e3a8a;     /* Dark Blue */
     }
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{
-    font-family:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-    background:var(--paper); color:var(--ink); line-height:1.65; font-size:15.5px;
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
-  .wrap{max-width:1240px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:36px}
-  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
 
-  header.hero{border-bottom:3px solid var(--pine);background:var(--card);padding:44px 20px 30px}
-  header.hero .inner{max-width:1240px;margin:0 auto}
-  header.hero h1{font-family:Georgia,'Times New Roman',serif;font-size:2.1rem;color:var(--pine);letter-spacing:-.5px}
-  header.hero p.sub{color:var(--ink-soft);margin-top:8px;max-width:860px}
-  header.hero .meta{margin-top:14px;font-size:.82rem;color:var(--ink-soft)}
-  header.hero .meta code{font-family:var(--mono)}
-
-  nav.toc{position:sticky;top:16px;align-self:start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 16px;font-size:.87rem;max-height:calc(100vh - 32px);overflow:auto}
-  @media(max-width:960px){nav.toc{position:static;max-height:none}}
-  nav.toc h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft);margin-bottom:10px}
-  nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 8px;border-radius:6px;border-left:3px solid transparent}
-  nav.toc a:hover{background:var(--pine-wash);border-left-color:var(--pine)}
-  nav.toc a .idx{color:var(--pine);font-weight:700;margin-right:6px;font-family:Georgia,serif}
-  nav.toc a.sub{padding-left:26px;font-size:.82rem;color:var(--ink-soft)}
-
-  main{padding:34px 0 90px;min-width:0}
-  section{margin-bottom:64px}
-  h2.sec{
-    font-family:Georgia,serif;font-size:1.6rem;color:var(--pine);
-    border-bottom:2px solid var(--line);padding-bottom:10px;margin-bottom:22px;letter-spacing:-.3px
+  html {
+    scroll-behavior: smooth;
   }
-  h2.sec .idx{display:inline-block;background:var(--pine);color:var(--paper);font-size:1rem;border-radius:8px;padding:2px 12px;margin-right:12px;vertical-align:3px}
-  h3{font-family:Georgia,serif;font-size:1.18rem;margin:30px 0 12px;color:var(--ink)}
-  h4{font-size:.98rem;margin:20px 0 8px;color:var(--pine-soft)}
-  p{margin-bottom:12px} ul,ol{margin:0 0 14px 22px} li{margin-bottom:6px}
-  strong{color:var(--ink)}
-  a{color:var(--pine-soft)}
-  code{font-family:var(--mono);font-size:.86em;background:var(--pine-wash);padding:1px 5px;border-radius:4px}
 
-  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:.9rem;background:var(--card)}
-  th{background:var(--pine);color:#fff;text-align:left;padding:9px 12px;font-weight:600}
-  @media (prefers-color-scheme: dark){ th{color:#0e1512} }
-  td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  tr:nth-child(even) td{background:color-mix(in srgb,var(--pine-wash) 40%,transparent)}
-  .tblwrap{overflow-x:auto}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 16px;
+  }
 
-  .callout{border-left:4px solid var(--pine);background:var(--card);border-radius:0 10px 10px 0;padding:14px 18px;margin:18px 0;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .callout .ttl{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;color:var(--pine)}
-  .callout.warn{border-left-color:var(--amber);background:var(--amber-wash)} .callout.warn .ttl{color:var(--amber)}
-  .callout.danger{border-left-color:var(--red);background:var(--red-wash)} .callout.danger .ttl{color:var(--red)}
-  .callout.ex{border-left-color:var(--blue);background:var(--blue-wash)} .callout.ex .ttl{color:var(--blue)}
-  .callout p:last-child{margin-bottom:0}
+  header.hero {
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+    padding: 60px 20px 40px;
+  }
 
-  .formula{font-family:var(--mono);font-size:.86rem;background:var(--card);border:1px dashed var(--pine-soft);border-radius:8px;padding:12px 16px;margin:12px 0;overflow-x:auto;white-space:pre;line-height:1.7}
+  header.hero .inner {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
 
-  .badge{display:inline-block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:20px;padding:2px 10px;vertical-align:1px;white-space:nowrap}
-  .badge.det{background:var(--pine-wash);color:var(--pine);border:1px solid var(--pine-soft)}
-  .badge.llm{background:var(--amber-wash);color:var(--amber);border:1px solid var(--amber)}
-  .badge.hyb{background:var(--blue-wash);color:var(--blue);border:1px solid var(--blue)}
+  header.hero h1 {
+    font-size: 2.2rem;
+    color: var(--pine);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+  }
 
-  .flow{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:20px 0;max-width:640px}
-  .fnode{background:var(--card);border:1.5px solid var(--pine-soft);border-radius:10px;padding:10px 16px;text-align:center}
-  .fnode .t{font-weight:700;color:var(--pine)} .fnode .d{font-size:.83rem;color:var(--ink-soft)}
-  .farrow{align-self:center;color:var(--pine-soft);font-size:1.1rem;line-height:1.5;padding:2px 0}
-  .farrow span{font-size:.78rem;color:var(--ink-soft);font-style:italic;margin-left:8px}
-  .fbranch{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:640px){.fbranch{grid-template-columns:1fr}}
+  header.hero p.sub {
+    font-size: 1.05rem;
+    color: var(--ink-light);
+    max-width: 950px;
+    margin-bottom: 16px;
+  }
 
-  .filerefs{font-size:.78rem;color:var(--ink-soft);font-family:var(--mono);margin-top:6px;overflow-wrap:anywhere}
-  .kv{display:grid;grid-template-columns:190px 1fr;gap:6px 16px;margin:12px 0}
-  .kv .k{font-weight:600;color:var(--pine-soft)}
-  @media(max-width:640px){.kv{grid-template-columns:1fr}}
-  footer{border-top:1px solid var(--line);color:var(--ink-soft);font-size:.82rem;padding:22px 20px;text-align:center}
+  header.hero .meta {
+    font-size: 0.85rem;
+    color: var(--ink-light);
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+
+  header.hero .meta code {
+    font-family: var(--mono);
+  }
+
+  .wrap {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 48px;
+  }
+
+  @media (max-width: 960px) {
+    .wrap {
+      grid-template-columns: 1fr;
+      margin: 20px auto;
+      gap: 24px;
+    }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 20px;
+    font-size: 0.9rem;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  @media (max-width: 960px) {
+    nav.toc {
+      position: static;
+      max-height: none;
+    }
+  }
+
+  nav.toc h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-light);
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+    font-weight: 700;
+  }
+
+  nav.toc a {
+    display: block;
+    color: var(--ink-light);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+
+  nav.toc a:hover {
+    background: var(--pine-wash);
+    color: var(--pine-light);
+    border-left-color: var(--pine-light);
+  }
+
+  nav.toc a .idx {
+    color: var(--pine-light);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  main {
+    min-width: 0;
+  }
+
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 48px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  h2.sec {
+    font-size: 1.6rem;
+    color: var(--pine);
+    margin-bottom: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+  }
+
+  h2.sec .idx {
+    background: var(--pine-wash);
+    color: var(--pine-light);
+    border: 1px solid var(--line);
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    margin: 36px 0 16px;
+    color: var(--pine);
+    border-left: 3px solid var(--pine-light);
+    padding-left: 12px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+
+  h4 {
+    font-size: 1.05rem;
+    margin: 24px 0 12px;
+    color: var(--pine);
+    font-weight: 600;
+  }
+
+  p {
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+
+  ul, ol {
+    margin: 0 0 20px 24px;
+    color: var(--ink);
+  }
+
+  li {
+    margin-bottom: 8px;
+  }
+
+  strong {
+    color: var(--pine);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--pine-wash);
+    color: var(--pine-light);
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0 24px;
+    font-size: 0.9rem;
+    background: var(--card);
+  }
+
+  th {
+    background: var(--pine-wash);
+    color: var(--pine);
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    border-bottom: 2px solid var(--line);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--ink);
+  }
+
+  tr:nth-child(even) td {
+    background: var(--pine-wash);
+  }
+
+  .tblwrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+
+  .callout {
+    border-left: 4px solid var(--pine-light);
+    background: var(--pine-wash);
+    border-radius: 0 8px 8px 0;
+    padding: 20px;
+    margin: 24px 0;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .callout .ttl {
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    color: var(--pine-light);
+  }
+
+  .callout.warn {
+    border-left-color: var(--amber);
+    background: var(--amber-wash);
+  }
+
+  .callout.warn .ttl {
+    color: var(--amber);
+  }
+
+  .callout.danger {
+    border-left-color: var(--red);
+    background: var(--red-wash);
+  }
+
+  .callout.danger .ttl {
+    color: var(--red);
+  }
+
+  .callout.ex {
+    border-left-color: var(--blue);
+    background: var(--blue-wash);
+  }
+
+  .callout.ex .ttl {
+    color: var(--blue);
+  }
+
+  .formula {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    background: var(--pine-wash);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: var(--pine-light);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 12px;
+    padding: 2px 8px;
+    vertical-align: middle;
+  }
+
+  .badge.det {
+    background: var(--pine-wash);
+    color: var(--pine-light);
+    border: 1px solid var(--line);
+  }
+
+  .badge.llm {
+    background: var(--amber-wash);
+    color: var(--amber);
+    border: 1px solid var(--amber-wash);
+  }
+
+  .badge.hyb {
+    background: var(--blue-wash);
+    color: var(--blue);
+    border: 1px solid var(--blue-wash);
+  }
+
+  details {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 16px 0;
+    background: var(--card);
+    transition: all 0.2s ease;
+  }
+
+  details[open] {
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  summary {
+    padding: 12px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--pine-wash);
+    color: var(--pine);
+    border-radius: 7px;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    outline: none;
+    font-size: 0.95rem;
+  }
+
+  summary:hover {
+    background: var(--line);
+    color: var(--pine);
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::after {
+    content: "▶";
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+    color: var(--ink-light);
+  }
+
+  details[open] summary::after {
+    transform: rotate(90deg);
+  }
+
+  details[open] summary {
+    border-bottom: 1px solid var(--line);
+    border-radius: 7px 7px 0 0;
+  }
+
+  .details-content {
+    padding: 16px 20px;
+    background: var(--card);
+    border-radius: 0 0 7px 7px;
+  }
+
+  .global-ctrl {
+    margin-bottom: 24px;
+    text-align: right;
+  }
+
+  .global-ctrl button {
+    background: var(--pine-light);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.9rem;
+  }
+
+  .global-ctrl button:hover {
+    background: var(--pine);
+  }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin: 24px 0;
+    max-width: 680px;
+  }
+
+  .fnode {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--pine-light);
+    border-radius: 8px;
+    padding: 12px 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
+
+  .fnode .t {
+    font-weight: 700;
+    color: var(--pine);
+    font-size: 1rem;
+  }
+
+  .fnode .d {
+    font-size: 0.88rem;
+    color: var(--ink-light);
+    margin-top: 4px;
+  }
+
+  .farrow {
+    align-self: center;
+    color: var(--ink-light);
+    font-size: 1.1rem;
+    line-height: 1.5;
+    padding: 6px 0;
+  }
+
+  .farrow span {
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    font-style: italic;
+    margin-left: 8px;
+  }
+
+  .fbranch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .fbranch {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .filerefs {
+    font-size: 0.78rem;
+    color: var(--ink-light);
+    font-family: var(--mono);
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 8px 20px;
+    margin: 16px 0;
+  }
+
+  .kv .k {
+    font-weight: 600;
+    color: var(--pine);
+  }
+
+  @media (max-width: 640px) {
+    .kv {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  footer {
+    border-top: 1px solid var(--line);
+    color: var(--ink-light);
+    font-size: 0.85rem;
+    padding: 32px 20px;
+    text-align: center;
+    margin-top: 60px;
+  }
+
+  @media print {
+    nav.toc, .global-ctrl {
+      display: none;
+    }
+    .wrap {
+      grid-template-columns: 1fr;
+    }
+    body {
+      background: #fff;
+      color: #000;
+      font-size: 12pt;
+    }
+    section {
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin-bottom: 30pt;
+      page-break-inside: avoid;
+    }
+    details {
+      border: none;
+    }
+    summary {
+      background: none;
+      color: #000;
+      font-weight: bold;
+      border-bottom: 1px solid #000;
+    }
+    summary::after {
+      display: none;
+    }
+    .details-content {
+      padding: 10pt 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -100,7 +593,7 @@
   <div class="inner">
     <h1>SkillBridge — Product &amp; AI Architecture Handbook</h1>
     <p class="sub">Tài liệu giải thích toàn bộ business logic và AI logic của 3 luồng chính — <strong>Diagnosis · Learning · Interview</strong> — kèm công thức chấm điểm, nguồn dữ liệu, ranh giới giữa code deterministic và LLM, và ví dụ tính điểm cụ thể. Dành cho founder / dev / demo.</p>
-    <p class="meta">Biên soạn 2026-07-05 · căn cứ trên code thật skillbridge-ai (hậu PR #166 + fix PR #167) và FE <code>main</code> · mọi công thức đều có nguồn file trong code — chỗ nào chưa xác minh được ghi rõ <em>"Cần verify trong code"</em>. Cập nhật cuối: 05/07 tối — phản ánh 2 fix từ audit logic (band-sync review→fresher · seniority fallback cap junior). ⚠️ File local-only, không commit (doc team = Notion).</p>
+    <p class="meta">Cập nhật 2026-07-21 · đối chiếu code thật skillbridge-ai (HEAD b085a3a) + FE main · đã kiểm chứng bằng audit 7 lượt độc lập ngày 21/07. ⚠️ File local-only, không commit (doc team = Notion).</p>
   </div>
 </header>
 
@@ -115,701 +608,1151 @@
   <a href="#sec-f"><span class="idx">F</span>Learning flow</a>
   <a href="#sec-g"><span class="idx">G</span>Interview flow</a>
   <a href="#sec-h"><span class="idx">H</span>Mascot Assistant</a>
-  <a href="#sec-i"><span class="idx">I</span>Data, audit, production readiness</a>
+  <a href="#sec-i"><span class="idx">I</span>Data, audit, readiness</a>
   <a href="#sec-j"><span class="idx">J</span>Kết luận</a>
 </nav>
 
 <main>
+  <div class="global-ctrl">
+    <button id="toggle-all-btn" onclick="toggleAllDetails()">Mở tất cả chi tiết kỹ thuật</button>
+  </div>
 
-<!-- ============ A. TỔNG QUAN ============ -->
-<section id="sec-a">
-  <h2 class="sec"><span class="idx">A</span>Tổng quan hệ thống</h2>
+  <!-- ============ A. TỔNG QUAN ============ -->
+  <section id="sec-a">
+    <h2 class="sec"><span class="idx">A</span>Tổng quan hệ thống</h2>
 
-  <h3>A.1 SkillBridge giải quyết vấn đề gì</h3>
-  <p>Sinh viên IT Việt Nam ra trường đối mặt một vòng luẩn quẩn: <strong>không biết CV của mình yếu ở đâu so với thị trường thật</strong>, không biết học gì tiếp cho đúng, và không có chỗ tập phỏng vấn có phản hồi nghiêm túc. Các công cụ hiện có tách rời nhau — resume checker chấm điểm chung chung không gắn JD, khóa học gợi ý theo trend chứ không theo lỗ hổng cá nhân, mock interview không nối lại với CV.</p>
-  <p>SkillBridge là <strong>AI career companion</strong> đóng vòng lặp đó thành một chuỗi giá trị duy nhất: chẩn đoán CV trên JD thật → chỉ ra gap có bằng chứng → hành động cụ thể (sửa CV / học / luyện phỏng vấn) → đo tiến bộ ở lần quét sau. Triết lý cốt lõi (xuyên suốt code):</p>
-  <ul>
-    <li><strong>Deterministic-first:</strong> LLM chỉ được <em>trích xuất</em> (extract) thông tin từ văn bản; mọi con số — điểm, xếp hạng, mức độ nghiêm trọng, lọc — do <strong>code deterministic sở hữu</strong>, tái lập được (reproducible), có test và eval gate.</li>
-    <li><strong>Evidence-grounded:</strong> mọi nhận định phải trỏ được về bằng chứng (quote từ CV, kết quả phỏng vấn, tín hiệu GitHub). Không có bằng chứng thì nói "chưa chứng minh được", không bịa.</li>
-    <li><strong>Honest by design:</strong> hệ thống được review nhiều tầng để không "nuốt lỗi", không phóng đại (ví dụ: học xong khóa học <em>không</em> tự động giảm rủi ro — phải kiểm chứng ở lần quét CV tới).</li>
-  </ul>
+    <h3>A.1 SkillBridge giải quyết vấn đề gì</h3>
+    <p>Sinh viên IT Việt Nam ra trường đối mặt một vòng luẩn quẩn: <strong>không biết CV của mình yếu ở đâu so với thị trường thật</strong>, không biết học gì tiếp cho đúng, và không có chỗ tập phỏng vấn có phản hồi nghiêm túc. Các công cụ hiện có tách rời nhau — resume checker chấm điểm chung chung không gắn JD, khóa học gợi ý theo trend chứ không theo lỗ hổng cá nhân, mock interview không nối lại với CV.</p>
+    <p>SkillBridge là <strong>AI career companion</strong> đóng vòng lặp đó thành một chuỗi giá trị duy nhất: chẩn đoán CV trên JD thật → chỉ ra gap có bằng chứng → hành động cụ thể (sửa CV / học / luyện phỏng vấn) → đo tiến bộ ở lần quét sau. Triết lý cốt lõi (xuyên suốt code):</p>
+    <ul>
+      <li><strong>Deterministic-first:</strong> LLM chỉ được <em>trích xuất</em> (extract) thông tin từ văn bản; mọi con số — điểm, xếp hạng, mức độ nghiêm trọng, lọc — do <strong>code deterministic sở hữu</strong>, có test và eval gate. <em>(Lưu ý trung thực về "tái lập được": tính tái lập chỉ đảm bảo ở <strong>tầng TOÁN</strong>. Tầng <strong>EXTRACT do LLM</strong> đảm nhiệm là <strong>phi tất định trên prod</strong> — model reasoning <code>gpt-5.4-mini</code> tước <code>temperature</code>+<code>seed</code> (<code>openai.provider.ts:21-34</code>) — nên cùng một CV upload lại có thể ra facts/điểm khác, trừ khi lần trích xuất được cache/đóng băng. <code>cv-jd-match</code> có cache; <code>cv_parse</code> thì không.)</em></li>
+      <li><strong>Evidence-grounded:</strong> mọi nhận định phải trỏ được về bằng chứng (quote từ CV, kết quả phỏng vấn, tín hiệu GitHub). Không có bằng chứng thì nói "chưa chứng minh được", không bịa.</li>
+      <li><strong>Honest by design:</strong> hệ thống được review nhiều tầng để không "nuốt lỗi", không phóng đại (ví dụ: học xong khóa học <em>không</em> tự động giảm rủi ro — phải kiểm chứng ở lần quét CV tới).</li>
+    </ul>
 
-  <h3>A.2 Value chain — chuỗi giá trị end-to-end</h3>
-  <div class="flow">
-    <div class="fnode"><div class="t">CV Upload / CV Builder</div><div class="d">PDF/DOCX/scan upload, hoặc soạn trong builder (engine vendored từ Reactive Resume)</div></div>
-    <div class="farrow">▼ <span>parse + extract (LLM extract-only)</span></div>
-    <div class="fnode"><div class="t">CV Diagnosis (CV Review)</div><div class="d">Điểm CV-only /100 theo dimension, bullet feedback, ATS rules</div></div>
-    <div class="farrow">▼ <span>chọn JD (paste / job recommendation)</span></div>
-    <div class="fnode"><div class="t">CV–JD Match</div><div class="d">SkillDiff theo taxonomy chuẩn hoá → match_score + coverage + fit verdict</div></div>
-    <div class="farrow">▼ <span>code deterministic sinh gap</span></div>
-    <div class="fnode"><div class="t">GapReport</div><div class="d">GapItem canonical: severity + evidence + fixability + recommended_actions + expected_impact</div></div>
-    <div class="farrow">▼ <span>3 nhánh hành động</span></div>
-    <div class="fbranch">
-      <div class="fnode"><div class="t">Mascot Assistant</div><div class="d">tư vấn 2 chiều grounded trên facts, gợi ý sửa CV (tailor rewrite có verify)</div></div>
-      <div class="fnode"><div class="t">Learning Roadmap</div><div class="d">lộ trình học theo tuần derive từ gap_items, resource đã curate</div></div>
+    <h3>A.2 Value chain — chuỗi giá trị end-to-end</h3>
+    <div class="flow">
+      <div class="fnode"><div class="t">CV Upload / CV Builder</div><div class="d">PDF/DOCX/scan upload, hoặc soạn trong CV Studio (PDF ↔ preview engine)</div></div>
+      <div class="farrow">▼ <span>parse + extract (LLM extract-only + OCR pipeline)</span></div>
+      <div class="fnode"><div class="t">CV Diagnosis (CV Review)</div><div class="d">Điểm CV-only /100 theo dimension, bullet feedback, ATS rules</div></div>
+      <div class="farrow">▼ <span>chọn JD (paste / job recommendation)</span></div>
+      <div class="fnode"><div class="t">CV–JD Match</div><div class="d">SkillDiff theo taxonomy chuẩn hoá → match_score + coverage + fit verdict</div></div>
+      <div class="farrow">▼ <span>code deterministic sinh gap</span></div>
+      <div class="fnode"><div class="t">GapReport</div><div class="d">GapItem canonical: severity + evidence + fixability + recommended_actions + expected_impact</div></div>
+      <div class="farrow">▼ <span>3 nhánh hành động</span></div>
+      <div class="fbranch">
+        <div class="fnode"><div class="t">Mascot Assistant v3</div><div class="d">tư vấn 2 chiều grounded trên facts, gợi ý sửa CV (tailor rewrite có verify)</div></div>
+        <div class="fnode"><div class="t">Learning Roadmap</div><div class="d">lộ trình học theo tuần derive từ gap_items, resource đã curate</div></div>
+      </div>
+      <div class="farrow">▼</div>
+      <div class="fnode"><div class="t">Interview Practice</div><div class="d">AI interviewer hỏi bám gap + JD (Voice &amp; Text chung đường chấm), answer analyzer deterministic</div></div>
+      <div class="farrow">▼ <span>anti-fabrication chokepoint</span></div>
+      <div class="fnode"><div class="t">InterviewGapReport</div><div class="d">điểm yếu lộ ra khi phỏng vấn (knowledge_gap / evidence_gap) — persist per session</div></div>
+      <div class="farrow">▼ <span>join theo requirement_id</span></div>
+      <div class="fnode"><div class="t">UnifiedDevelopmentPlan</div><div class="d">gộp CV Gaps, GitHub Evidence + interview gaps thành một kế hoạch phát triển</div></div>
+      <div class="farrow">▼ <span>re-scan / re-match</span></div>
+      <div class="fnode"><div class="t">Progress &amp; Calibration</div><div class="d">so prior vs current: gaps closed/improved/worsened; đo predicted vs actual impact (impact_calibrations)</div></div>
     </div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">Interview Practice</div><div class="d">AI interviewer hỏi bám gap + JD, answer analyzer deterministic</div></div>
-    <div class="farrow">▼ <span>anti-fabrication chokepoint</span></div>
-    <div class="fnode"><div class="t">InterviewGapReport</div><div class="d">điểm yếu lộ ra khi phỏng vấn (knowledge_gap / evidence_gap) — persist per session</div></div>
-    <div class="farrow">▼ <span>join theo requirement_id</span></div>
-    <div class="fnode"><div class="t">UnifiedDevelopmentPlan</div><div class="d">gộp CV gaps + interview gaps thành một kế hoạch phát triển</div></div>
-    <div class="farrow">▼ <span>re-scan / re-match</span></div>
-    <div class="fnode"><div class="t">Progress &amp; Calibration</div><div class="d">so prior vs current: gaps closed/improved/worsened; đo predicted vs actual impact (impact_calibrations)</div></div>
-  </div>
 
-  <div class="callout">
-    <div class="ttl">Vòng lặp khép kín</div>
-    <p>Từ 2026-07 (Wave 8 VALUE_CHAIN), kết quả phỏng vấn thật <strong>chảy ngược</strong> vào severity của gap (chỉ được nâng rủi ro, không hạ), và tiến độ học hiện diện trong progress report ở trạng thái <em>pending-verification</em>. Hệ thống không còn là các tính năng rời — nó là một vòng lặp: chẩn đoán → hành động → đo → chẩn đoán lại.</p>
-  </div>
+    <div class="callout">
+      <div class="ttl">Vòng lặp khép kín</div>
+      <p>Từ 2026-07 (Wave 8 VALUE_CHAIN), kết quả phỏng vấn thật <strong>chảy ngược</strong> vào severity của gap (chỉ được nâng rủi ro, không hạ), và tiến độ học hiện diện trong progress report ở trạng thái <em>pending-verification</em>. Hệ thống không còn là các tính năng rời — nó là một vòng lặp: chẩn đoán → hành động → đo → chẩn đoán lại.</p>
+    </div>
 
-  <h3>A.3 Kiến trúc kỹ thuật (1 phút)</h3>
-  <div class="kv">
-    <div class="k">Frontend</div><div>React 18 + Vite + Zustand + TanStack Query (repo <code>skillbridge-fe-official</code>). FE chỉ gọi NestJS qua <code>/api/*</code>.</div>
-    <div class="k">Backend</div><div>NestJS 11 modular monolith (repo <code>skillbridge-ai</code>): platform modules (auth/quota/history/payment) + AI module nội bộ ranh giới rõ. PostgreSQL + pgvector, TypeORM.</div>
-    <div class="k">LLM</div><div>Gemini (<code>@google/genai</code>) + OpenAI — chỉ làm extraction / phrasing / chat, không quyết định số.</div>
-    <div class="k">Truy vết</div><div>Mọi AI call ghi <code>ai_requests</code>/<code>ai_results</code> (prompt version, model, payload, latency, cost) — audit được từng quyết định.</div>
-    <div class="k">Chất lượng</div><div>~2.180 unit test + <strong>20 eval gate chạy trong CI</strong> (offline, deterministic) chặn regression về logic chấm điểm.</div>
-  </div>
-</section>
+    <h3>A.3 Kiến trúc kỹ thuật (1 phút)</h3>
+    <div class="kv">
+      <div class="k">Frontend</div><div>React 18 + Vite 7 + Zustand + TanStack Query (repo <code>skillbridge-fe-official</code>). FE chỉ gọi NestJS qua <code>/api/*</code>.</div>
+      <div class="k">Backend</div><div>NestJS 11 modular monolith (repo <code>skillbridge-ai</code>): platform modules (auth/quota/history/payment) + AI module nội bộ ranh giới rõ. PostgreSQL + pgvector, TypeORM.</div>
+      <div class="k">LLM</div><div>OpenAI-only (<code>llm.service</code> chỉ dùng openai.provider; Gemini đã gỡ bỏ hoàn toàn khỏi backend logic). Voice vẫn dùng OpenAI Realtime.</div>
+      <div class="k">Truy vết</div><div>Mọi AI call ghi <code>ai_requests</code>/<code>ai_results</code> (prompt version, model, payload, latency, cost) — audit được từng quyết định.</div>
+      <div class="k">Chất lượng</div><div>~2.822 unit test / 284 spec + <strong>22 eval gate chạy offline trong CI</strong> chặn regression về logic chấm điểm.</div>
+    </div>
+  </section>
 
-<!-- ============ B ============ -->
-<section id="sec-b">
-  <h2 class="sec"><span class="idx">B</span>Diagnosis flow chi tiết</h2>
+  <!-- ============ B ============ -->
+  <section id="sec-b">
+    <h2 class="sec"><span class="idx">B</span>Diagnosis flow chi tiết</h2>
 
-  <h3>B.1 Năm bước của flow</h3>
-  <div class="flow">
-    <div class="fnode"><div class="t">Step 1 — Upload / Parse CV</div><div class="d">LLM call #1: <code>cv_parse_v1</code> (temp 0.1, JSON mode) — raw text → CanonicalCvDocument. Doctrine trong prompt: <em>"You DO NOT score, judge, rewrite — only extract what is literally present"</em>. Kèm <code>extraction_quality</code> (HIGH/MEDIUM/LOW theo mojibake ratio, wordlike ratio, độ dài, OCR) — chỉ để FE cảnh báo, <strong>không bao giờ chặn hay đổi điểm</strong>.</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">Step 2 — CV Review (điểm CV-only /100)</div><div class="d">LLM call #2 chấm 4 dimension theo rubric → code deterministic <strong>ghi đè</strong> (override) dimension nào đo được bằng máy; cộng 40% điểm ATS-rules thuần code. Không có LLM call thứ 3 — top_summary/evidence_ledger đều deterministic.</div></div>
-    <div class="farrow">▼ <span>user dán JD hoặc chọn job từ recommendation</span></div>
-    <div class="fnode"><div class="t">Step 3 — CV–JD Match</div><div class="d">LLM extract skill 2 phía (không chấm) → chuẩn hoá qua taxonomy → SkillDiffService so sánh deterministic → match_score + coverage + fit verdict.</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">Step 4 — Gap Report</div><div class="d">Code sinh GapItem canonical: severity (công thức mục D.5) + evidence + fixability + recommended_actions (top-8) + expected_impact (range).</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">Step 5 — Hành động</div><div class="d">Tailor checklist (sửa CV có verify server-side) · Mascot tư vấn grounded · Learning roadmap · Interview practice — tất cả đọc từ CÙNG GapReport.</div></div>
-  </div>
+    <h3>B.1 Năm bước của flow</h3>
+    <p>Quy trình chẩn đoán CV gồm 5 bước khép kín. Bắt đầu từ việc tải lên và phân tích tài liệu, đánh giá chất lượng viết chung, so khớp với yêu cầu của công việc cụ thể, tự động xác định các điểm thiếu hụt, và cuối cùng là đề xuất các hành động thực tế.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <div class="flow">
+          <div class="fnode"><div class="t">Step 1 — Upload &amp; Intake Pipeline</div><div class="d">Tải CV lên (PDF/DOCX/scan). Sử dụng pdf-parse. Nếu lỗi định dạng hoặc scan, kích hoạt OCR rescue + DPI retry. Đánh giá sơ bộ chất lượng qua <code>extraction_quality</code> (HIGH/MEDIUM/LOW). Kích hoạt content-gate Step-0 (trả về <code>CV_CONTENT_INSUFFICIENT</code> nếu CV rỗng hoặc quá ít chữ để tránh tốn LLM). LLM call #1: <code>cv_parse_v1</code> (temp 0.1, JSON mode) chuyển đổi văn bản sang <code>CanonicalCvDocument</code>.</div></div>
+          <div class="farrow">▼</div>
+          <div class="fnode"><div class="t">Step 2 — CV Review (chấm điểm CV-only /100)</div><div class="d">LLM call #2 chấm 4 tiêu chí (dimension) theo rubric. Code chạy máy đè (override) các giá trị đếm được. Cộng thêm 40% điểm kiểm tra quy tắc ATS tự động. Không chạy LLM call thứ 3.</div></div>
+          <div class="farrow">▼ <span>user dán JD hoặc chọn job từ đề xuất</span></div>
+          <div class="fnode"><div class="t">Step 3 — CV–JD Match</div><div class="d">LLM trích xuất kỹ năng 2 phía, sau đó hợp nhất với kết quả quét gazetteer trên cùng văn bản JD và đối chiếu trình độ với bản review CV đã lưu (input parity — hai đường "dán JD" và "job recommendation" chấm trên cùng tập dữ liệu). Chuẩn hóa qua taxonomy. Gọi <code>SkillDiffService</code> so khớp deterministic để tính match_score và fit verdict.</div></div>
+          <div class="farrow">▼</div>
+          <div class="fnode"><div class="t">Step 4 — Gap Report</div><div class="d">Máy tự tạo danh sách <code>GapItem</code> canonical gồm: mức nghiêm trọng (severity), bằng chứng (evidence), khả năng sửa (fixability), hành động đề xuất (actions) và tác động dự kiến (expected_impact).</div></div>
+          <div class="farrow">▼</div>
+          <div class="fnode"><div class="t">Step 5 — Hành động</div><div class="d">Sản sinh checklist tùy chỉnh, bật Mascot tư vấn, lên lộ trình học và thiết lập phỏng vấn giả lập.</div></div>
+        </div>
+        <p class="filerefs">cv-intake.service.ts · ocr-rescue.service.ts · cv-review.service.ts · cv-jd-match.service.ts</p>
+      </div>
+    </details>
 
-  <h3>B.2 "CV Review 100 điểm" nghĩa là gì</h3>
-  <p>Điểm CV-only là <strong>composite 2 tầng</strong>:</p>
-  <div class="formula">overall_score = clamp(0,100, round( ats_rule_score × 0.4  +  (llm_total/80 × 100) × 0.6 ))
+    <h3>B.2 "CV Review 100 điểm" nghĩa là gì</h3>
+    <p>Điểm đánh giá CV đo lường mức độ chuyên nghiệp trong trình bày và bố cục chung của CV mà chưa cần so khớp với bất kỳ công việc nào. Điểm số này giúp ứng viên tối ưu hóa CV theo chuẩn mực chung của ngành.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Điểm CV-only là sự kết hợp có trọng số từ 2 phần:</p>
+        <div class="formula">overall_score = clamp(0, 100, round( ats_rule_score × 0.4  +  (llm_total/80 × 100) × 0.6 ))
 
-ats_rule_score : 10 rule ATS thuần code (pass=1, warn=0.5, fail=0) × 10 → /100
-llm_total      : 4 dimension × 20 điểm = /80 (sau khi bị deterministic override đè)
-trọng số 0.4/0.6 nạp từ scoring-weights-v1.json, validate sum=1.0 lúc khởi động</div>
-  <p class="filerefs">cv-review.service.ts:271-280, 114-135 · scoring-weights-v1.json</p>
-  <p>Nghĩa là <strong>100 điểm = CV pass cả 10 rule ATS VÀ đạt tối đa cả 4 dimension</strong> — nó đo "CV này được viết và cấu trúc tốt đến đâu", không đo "bạn có được nhận không". Band hiển thị: ≥80 "mạnh" · 60–79 "khá" · &lt;60 "cần cải thiện".</p>
+ats_rule_score : 10 quy tắc ATS code kiểm tra (pass=1, warn=0.5, fail=0) × 10 → tối đa 100
+llm_total      : 4 dimension × 20 điểm = tối đa 80 điểm (đã đè qua override của code)
+Trọng số 0.4/0.6 được khai báo trong cấu hình hệ thống.</div>
+        <p>CV đạt 100 điểm review nghĩa là vượt qua tất cả 10 luật ATS và đạt điểm tối đa ở cả 4 tiêu chí chất lượng. Các dải điểm hiển thị: ≥80 (Mạnh), 60–79 (Khá), &lt;60 (Cần cải thiện).</p>
+        <p class="filerefs">cv-review.service.ts · computeOverallScore · scoring-weights-v1.json</p>
+      </div>
+    </details>
 
-  <div class="callout">
-    <div class="ttl">100 điểm CV-only ≠ 100 điểm CV-JD Match</div>
-    <p>Hai thước đo khác nhau về bản chất: <strong>CV Review</strong> đo chất lượng trình bày + độ liên quan chung với role (không có JD nào cả) — một CV 90 điểm review vẫn có thể match 30% với một JD cụ thể. <strong>CV-JD Match</strong> đo độ phủ requirement của MỘT JD cụ thể — 100 match nghĩa là đạt mức yêu cầu ở mọi skill JD đòi (và đủ coverage các skill REQUIRED). Review cao + match thấp = "CV viết tốt nhưng chưa đúng người cho job này".</p>
-  </div>
+    <div class="callout">
+      <div class="ttl">Phân biệt Điểm CV Review và Điểm CV-JD Match</div>
+      <p>CV Review đo lường chất lượng cấu trúc độc lập của CV. Một CV có điểm review 90 vẫn có thể chỉ đạt match_score 30% đối với một JD có yêu cầu công nghệ chuyên biệt. Điểm Match đo độ phủ thực tế đối với JD mục tiêu.</p>
+    </div>
 
-  <h3>B.3 Bốn dimension — cái nào code tính, cái nào LLM</h3>
-  <p>Doctrine <strong>"Routed-Evidence Scoring"</strong> (ghi ngay trong docstring service): dimension nào là <em>sự kiện cơ học đếm được</em> thì code chấm và <strong>ghi đè</strong> con số của LLM (không blend) — để đạt stddev=0, chống prompt-injection (CV không thể "thuyết phục" analyzer bằng lời lẽ), và giải thích được. Response luôn kèm <code>dimension_provenance</code> khai rõ từng dimension do <code>deterministic</code> hay <code>llm</code> chấm, kèm confidence + evidence.</p>
-  <div class="tblwrap"><table>
-    <tr><th>Dimension (0–20)</th><th>Ai chấm</th><th>Logic chính</th><th>Khi nào rơi về LLM</th></tr>
-    <tr><td><strong>action_verbs</strong><br>Action Verbs &amp; Quantified Impact</td><td><span class="badge det">CODE</span> BulletAnalyzer</td><td>base theo <code>verbFirstRatio</code> (≥0.8→15 / ≥0.5→11 / ≥0.25→7 / else 3) + bonus <code>quantifiedRatio</code> (≥0.5→+5 / ≥0.25→+2 / &gt;0→+1). Lexicon ~90 strong verbs EN + ~60 VI, weak openers, filler EN/VI, regex số liệu impact. 0 bullet → 2 điểm.</td><td>CV không phải tiếng Việt/Anh</td></tr>
-    <tr><td><strong>skills_relevance</strong></td><td><span class="badge det">CODE</span> SkillDiff vs role rubric</td><td>Chạy CÙNG engine MATCH_TUNING với CV-JD match, đối chiếu <em>role rubric</em> (data/role-rubrics-pilot.json, 5 role pilot) band <code>fresher</code> mặc định (PR #167, breakdown khai <code>rubric_band</code>) → <code>score20 = round(diff/100 × 20)</code>. Số của LLM bị vứt.</td><td>Không có target_role, hoặc role chưa có rubric → LLM chấm theo "generic tech expectations"</td></tr>
-    <tr><td><strong>experience</strong><br>Experience Clarity</td><td><span class="badge det">CODE</span> experience-scorer</td><td>quantity (0–12) = số entry hợp lệ ×3 (exp) / ×2 (project) + bonus seniority (+2 nếu est_years≥1); quality (0–8) = band theo quantified ratio (≥0.5→5…) + verb-first ratio (≥0.6→3…). 0 entry → điểm cố định 2.</td><td>Số bullet liên quan &lt; 2 (thiếu tín hiệu)</td></tr>
-    <tr><td><strong>education</strong></td><td><span class="badge det">CODE</span> education-scorer</td><td>Entry tốt nhất (không cộng dồn): school +8 · bachelor+ +6 (associate/đang học +4) · ngành IT +4 · GPA đạt ngưỡng +2 (hiểu đúng mẫu số: 3.8/10 ≠ 3.8/4). Không có education thật → 4 điểm.</td><td>Parser nghi bỏ sót section (mảng rỗng nhưng text có từ khoá giáo dục)</td></tr>
-  </table></div>
-  <p class="filerefs">cv-review.service.ts:100-107, 426-455, 557-629, 683-765, 777-822 · bullet-analyzer.service.ts:545-593 · experience-scorer.ts · education-scorer.ts</p>
+    <h3>B.3 Bốn dimension — cái nào code tính, cái nào LLM</h3>
+    <p>Hệ thống tự động tính toán các tiêu chí định lượng như số lượng động từ hành động mạnh, thông tin học vấn hay kinh nghiệm làm việc để đảm bảo tính khách quan tối đa. LLM chỉ hỗ trợ đánh giá các khía cạnh định tính khi dữ liệu cơ học không đủ để kết luận.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Mỗi tiêu chí (dimension) có cơ chế "Routed-Evidence Scoring": nếu code đếm được thì sẽ ghi đè hoàn toàn điểm của LLM để triệt tiêu độ nhiễu.</p>
+        <div class="tblwrap"><table>
+          <tr><th>Dimension (0–20)</th><th>Bên tính</th><th>Logic chấm điểm</th><th>Khi nào dùng LLM</th></tr>
+          <tr><td><strong>action_verbs</strong><br>Động từ &amp; Chỉ số lượng hóa</td><td><span class="badge det">CODE</span> BulletAnalyzer</td><td>Dựa trên tỷ lệ động từ mạnh mở đầu (<code>verbFirstRatio</code>: ≥0.8→15 / ≥0.5→11 / ≥0.25→7 / khác→3) cộng điểm thưởng lượng hóa (<code>quantifiedRatio</code>: ≥0.5→+5 / ≥0.25→+2 / &gt;0→+1). Lexicon gồm ~103 từ mạnh EN + ~60 từ VI. 0 bullet → 2 điểm.</td><td>CV dùng ngôn ngữ khác tiếng Anh/Việt.</td></tr>
+          <tr><td><strong>skills_relevance</strong><br>Độ tương thích kỹ năng</td><td><span class="badge det">CODE</span> SkillDiff vs Rubric</td><td>So sánh kỹ năng trong CV với 18 role trong <code>role-rubrics-pilot.json</code> (đã thêm data_engineer, security, embedded_iot, ui_ux, game_dev, it_support, network_sysadmin, business_analyst...) theo band <code>fresher</code>. Công thức: <code>score20 = round(diff/100 × 20)</code>.</td><td>Không có target_role hoặc role chưa được thiết lập rubric.</td></tr>
+          <tr><td><strong>experience</strong><br>Kinh nghiệm thực tế</td><td><span class="badge det">CODE</span> ExpScorer</td><td>Điểm số lượng (tối đa 12) = số entry hợp lý ×3 (kinh nghiệm) / ×2 (dự án) + bonus thâm niên (+2 nếu số năm ≥1). Điểm chất lượng (tối đa 8) dựa trên các tỷ lệ động từ và số liệu. 0 entry → 2 điểm.</td><td>Thiếu thông tin (số bullet &lt; 2).</td></tr>
+          <tr><td><strong>education</strong><br>Học vấn chuyên môn</td><td><span class="badge det">CODE</span> EduScorer</td><td>Lấy kết quả từ trường học tốt nhất: trường IT trọng điểm +8, bằng cử nhân trở lên +6, đúng ngành IT +4, GPA đạt chuẩn +2 (ngưỡng thật: ≥3.0 hệ 4 hoặc ≥7.5 hệ 10). Không có → 4 điểm.</td><td>Parser nghi ngờ bỏ sót phần học vấn.</td></tr>
+        </table></div>
+        <p><strong>Cập nhật CV Review mới:</strong> Tích hợp Step-0 content gate để lọc hồ sơ rác, tham số <code>lang</code> giúp xuất feedback theo ngôn ngữ tùy chọn (độc lập với ngôn ngữ viết CV), cơ chế <code>reconcileLang</code> đếm số lượng dấu tiếng Việt để phát hiện chính xác ngôn ngữ CV tránh LLM nhận diện nhầm, bổ sung thêm trường chất lượng trích xuất <code>extraction_quality</code>.</p>
+        <p class="filerefs">cv-review.service.ts · gradeDimensions · bullet-analyzer.service.ts · analyzeBullets · experience-scorer.ts · education-scorer.ts · role-rubric.service.ts</p>
+      </div>
+    </details>
 
-  <h3>B.4 Target role và band Fresher/Junior/Senior ảnh hưởng thế nào</h3>
-  <ul>
-    <li><strong>CV Review (CV-only):</strong> <code>target_role</code> CHỈ ảnh hưởng dimension skills_relevance (chọn rubric để đối chiếu + nhúng danh sách skill vào prompt). Ba dimension còn lại độc lập hoàn toàn với role. <strong>Band (fix PR #167, 07-05):</strong> review nhận <code>target_band</code> optional (intern/fresher/mid), <strong>mặc định <code>'fresher'</code> — CÙNG thước với match path</strong>; band chảy vào cả prompt LLM lẫn diff deterministic, và breakdown trả thêm <code>rubric_band</code> để FE ghi rõ "chấm theo chuẩn nào". (Trước đó hardcode 'mid' → cùng CV+role ra 2 số relevance không đối chiếu được — đã vá.)</li>
-    <li><strong>CV-JD Match:</strong> khi user không dán JD (chỉ chọn role), điểm chấm theo role rubric với <code>target_band</code> — mặc định sản phẩm là <code>'fresher'</code>. Band dịch chuẩn yêu cầu qua <code>BAND_OFFSET = {intern: −2, fresher: −1, mid: 0}</code> áp lên <code>required_level</code> của từng skill — chọn fresher nghĩa là mọi skill được "nới" 1 level so với chuẩn mid. Khi có JD thật, <strong>JD luôn thắng rubric</strong> (band bị bỏ qua).</li>
-    <li><strong>Job Recommendation:</strong> band của CV được <em>suy từ bằng chứng</em> (không phải user chọn) và chỉ dùng để demote job vượt tầm — xem E.5.</li>
-  </ul>
-  <p class="filerefs">role-rubric.service.ts:120-136 (BAND_OFFSET) · cv-jd-match.service.ts:229 (default 'fresher') · cv-review.service.ts:490, 561 (không truyền band)</p>
-  <div class="callout warn">
-    <div class="ttl">fell_back_to_rubric — cờ trung thực</div>
-    <p>Khi user dán JD nhưng <strong>0/N requirement chuẩn hoá được</strong> qua taxonomy (JD quá lạ / ngoài phạm vi IT pilot), hệ thống chấm theo role rubric thay thế và bật cờ <code>fell_back_to_rubric</code> để FE cảnh báo: "điểm này chấm theo chuẩn role, không phải JD bạn dán". Cờ này chỉ có ở CV-JD match, không có ở CV review (review không nhận JD).</p>
-  </div>
+    <h3>B.4 Target role và band Fresher/Junior/Senior ảnh hưởng thế nào</h3>
+    <p>Vị trí công việc mong muốn và cấp độ năng lực sẽ quyết định bộ tiêu chuẩn mà hệ thống dùng để đối chiếu. Cập nhật mới đồng bộ hóa chuẩn Fresher làm thang đo cốt lõi trên mọi luồng xử lý.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <ul>
+          <li><strong>CV Review (CV-only):</strong> <code>target_role</code> chỉ tác động đến tiêu chí <code>skills_relevance</code> (chọn rubric để đối chiếu). Mặc định band chấm là <code>'fresher'</code> để đồng bộ với luồng match. <code>rubric_band</code> được trả về ở kết quả phân tích để hiển thị rõ chuẩn so sánh trên giao diện.</li>
+          <li><strong>CV-JD Match:</strong> Khi so sánh không có JD (chọn theo role), hệ thống dùng <code>target_band</code> (mặc định <code>'fresher'</code>). Cấp độ này sẽ dịch chuyển yêu cầu kỹ năng qua hệ số: <code>BAND_OFFSET = {intern: -2, fresher: -1, mid: 0}</code> áp lên <code>required_level</code> của từng kỹ năng. Khi có JD thực tế, các yêu cầu của JD sẽ đè lên rubric.</li>
+        </ul>
+        <p><strong>Cờ fell_back_to_rubric:</strong> Khi người dùng dán JD thực tế nhưng không thể chuẩn hóa được yêu cầu nào qua taxonomy, hệ thống sẽ tự động chuyển sang chấm theo rubric của role tương ứng và bật cờ cảnh báo <code>fell_back_to_rubric</code>.</p>
+        <p class="filerefs">role-rubric.service.ts · getRequiredLevel · cv-jd-match.service.ts</p>
+      </div>
+    </details>
 
-  <h3>B.5 Evidence / rationale lấy ở đâu</h3>
-  <ul>
-    <li><strong>Per-bullet:</strong> <code>bullet_feedback[]</code> — từng bullet với cờ verbFirst / quantified / weakOpener / firstPerson / fillerCount + tips sửa theo rule cứng.</li>
-    <li><strong>Per-rule ATS:</strong> mỗi rule có hint tiếng Việt hướng dẫn sửa; email/phone có evidence (được redact khi lưu trace).</li>
-    <li><strong>Per-dimension:</strong> <code>dimension_provenance[dim].evidence[]</code> — tín hiệu thô mà scorer dùng (ratio, số entry…).</li>
-    <li><strong>Evidence Ledger:</strong> mục lục "skill nào được chứng minh ở đâu trong CV" (experience/project/activity/summary/skills_list) — display-only, không đụng điểm, nhưng là đầu vào cho evidence_risk của Gap Engine (mục D).</li>
-    <li><strong>Buzzwords:</strong> 13 cụm filler EN + 8 cụm VI ("chăm chỉ", "nhiệt tình", "năng động"…) bị phát hiện và liệt kê đích danh.</li>
-  </ul>
-  <p class="filerefs">bullet-analyzer.service.ts:271-295, 430-480 · ats-rule-checker.service.ts · evidence-ledger.ts</p>
+    <h3>B.5 Evidence / rationale lấy ở đâu</h3>
+    <p>Mọi lời khuyên hoặc điểm số đều phải dựa trên những dòng thông tin thực tế trong CV của ứng viên. Hệ thống tự động thu thập các bằng chứng này từ các phần kinh nghiệm, dự án hay học vấn để người dùng kiểm chứng dễ dàng.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống trích dẫn trực tiếp nguồn dữ liệu thông qua các thành phần:</p>
+        <ul>
+          <li><code>bullet_feedback[]</code>: Lưu trữ nhận xét chi tiết cho từng dòng mô tả.</li>
+          <li><code>dimension_provenance[dim].evidence[]</code>: Minh chứng các con số thống kê cơ học để chấm điểm cho từng dimension.</li>
+          <li><code>evidence_ledger</code>: Mục lục tổng hợp kỹ năng được chứng minh ở phần nào trong CV, là đầu vào để tính toán rủi ro thiếu bằng chứng (<code>evidence_risk</code>).</li>
+          <li>Buzzwords: Phát hiện các từ sáo rỗng thường gặp (13 cụm tiếng Anh, 8 cụm tiếng Việt).</li>
+        </ul>
+        <p class="filerefs">bullet-analyzer.service.ts · ats-rule-checker.service.ts · evidence-ledger.ts</p>
+      </div>
+    </details>
 
-  <h3>B.6 Confidence</h3>
-  <div class="formula">confidence_score = round2( 0.95 − failRate × 0.4 )    // failRate = số ATS rule fail / 10
-→ dải [0.55, 0.95]: CV càng khó parse (nhiều rule fail) → tin cậy chẩn đoán càng thấp</div>
-  <p class="filerefs">cv-review.service.ts:413-418. Lưu ý: <code>data_confidence</code> là field của module Trends (khác), không thuộc CV review.</p>
-</section>
+    <h3>B.6 Confidence</h3>
+    <p>Đo lường mức độ tin cậy dựa trên các quy tắc ATS thô nhằm cảnh báo rủi ro bóc tách thông tin khi định dạng tài liệu bị lỗi.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Chỉ số tin cậy được tính toán từ các lỗi định dạng ATS:</p>
+        <div class="formula">confidence_score = round2( 0.95 − failRate × 0.4 )
 
-<!-- ============ C ============ -->
-<section id="sec-c">
-  <h2 class="sec"><span class="idx">C</span>Công thức / logic điểm</h2>
+failRate: Tỷ lệ số quy tắc ATS bị vi phạm trên tổng số 10 quy tắc.
+Dải điểm từ [0.55, 0.95]. Chỉ số này giúp FE đưa ra các cảnh báo phù hợp về độ chính xác của phân tích.</div>
+        <p class="filerefs">cv-review.service.ts · calculateConfidence</p>
+      </div>
+    </details>
 
-  <h3>C.1 Bảng tra cứu mọi loại điểm</h3>
-  <div class="tblwrap"><table>
-    <tr><th>Score</th><th>Input</th><th>Công thức / rule</th><th>AI?</th><th>Evidence</th></tr>
-    <tr>
-      <td><strong>overall_score</strong><br>(CV Review, /100)</td>
-      <td>10 ATS rule + 4 dimension</td>
-      <td><code>round(ats×0.4 + (dims/80×100)×0.6)</code>, trọng số từ scoring-weights-v1.json</td>
-      <td><span class="badge hyb">LLM + override</span> LLM chấm 4 dim, code đè dim đo được</td>
-      <td>dimension_provenance, bullet_feedback, ATS hints</td>
-    </tr>
-    <tr>
-      <td><strong>action_verbs</strong> (0–20)</td>
-      <td>Bullets CV (vi/en)</td>
-      <td>base theo verbFirstRatio (0.8→15/0.5→11/0.25→7/else 3) + bonus quantifiedRatio (0.5→+5/0.25→+2/&gt;0→+1)</td>
-      <td><span class="badge det">CODE</span></td>
-      <td>Per-bullet: verbFirst/quantified/weakOpener/filler + tips</td>
-    </tr>
-    <tr>
-      <td><strong>skills_relevance</strong> (0–20)</td>
-      <td>Skill CV vs role rubric (band fresher — đồng bộ match path, PR #167)</td>
-      <td>Engine MATCH_TUNING (xem match_score) trên rubric → <code>round(diff/100×20)</code></td>
-      <td><span class="badge hyb">LLM extract skill, code chấm</span></td>
-      <td>Skill breakdown matched/partial/missing</td>
-    </tr>
-    <tr>
-      <td><strong>experience</strong> (0–20)</td>
-      <td>Entries + bullets exp/project</td>
-      <td>quantity(0–12) = entries×3/×2 + seniority bonus(+2); quality(0–8) = bands quantified + verb-first</td>
-      <td><span class="badge det">CODE</span> (fallback LLM khi &lt;2 bullet)</td>
-      <td>Số entry hợp lệ, ratios</td>
-    </tr>
-    <tr>
-      <td><strong>education</strong> (0–20)</td>
-      <td>Entry education tốt nhất</td>
-      <td>school +8 · bachelor+ +6 · ngành IT +4 · GPA đạt +2 (đọc đúng mẫu số /4 vs /10); không có → 4</td>
-      <td><span class="badge det">CODE</span></td>
-      <td>degree/field/GPA parse được</td>
-    </tr>
-    <tr>
-      <td><strong>ATS rules</strong> (/100)</td>
-      <td>Document + raw text</td>
-      <td>10 rule (format, contact, education, experience, skills≥3, email, phone, độ dài 250–1500 từ, dates, lặp filler) — pass=1/warn=0.5/fail=0, ×10</td>
-      <td><span class="badge det">CODE</span> 100%</td>
-      <td>Hint sửa tiếng Việt per-rule</td>
-    </tr>
-    <tr>
-      <td><strong>confidence_score</strong></td>
-      <td>Số ATS rule fail</td>
-      <td><code>0.95 − failRate×0.4</code> → [0.55, 0.95]</td>
-      <td><span class="badge det">CODE</span></td>
-      <td>—</td>
-    </tr>
-    <tr>
-      <td><strong>match_score</strong><br>(CV–JD, /100)</td>
-      <td>Skill CV + requirement JD (đã normalize taxonomy)</td>
-      <td>Xem C.2 — weighted strength + coverage cap</td>
-      <td><span class="badge hyb">LLM extract 2 phía, code chấm</span></td>
-      <td>evidence_text per skill, matched/partial/missing arrays</td>
-    </tr>
-    <tr>
-      <td><strong>recommendation_score</strong></td>
-      <td>match_score + experience_fit</td>
-      <td><code>round(match_score × seniority_factor)</code> — factor 1 / 0.85 / 0.7 / 0.65 / 0.4 (mục E.5)</td>
-      <td><span class="badge det">CODE</span></td>
-      <td>fit verdict + level_gap trên card</td>
-    </tr>
-    <tr>
-      <td><strong>experience_fit</strong></td>
-      <td>Band CV (suy từ ngày tháng entries) vs level job</td>
-      <td><code>diff = rank(CV) − rank(job)</code>: &lt;−1 stretch · &gt;1 over_qualified · else fits; kèm confidence theo tỉ lệ entry parse được ngày</td>
-      <td><span class="badge det">CODE</span></td>
-      <td>est_years + entries đã parse</td>
-    </tr>
-    <tr>
-      <td><strong>severity</strong> (0–1, per gap)</td>
-      <td>importance, gap_levels, evidence_risk, cv_status, market_demand, interview signal</td>
-      <td>Xem C.3 — <code>clamp01(imp × core × marketMult)</code></td>
-      <td><span class="badge det">CODE</span> (interview signal cũng từ scoring deterministic)</td>
-      <td>severity_factors breakdown + evidence[] (quote/github/interview)</td>
-    </tr>
-    <tr>
-      <td><strong>expected_impact</strong><br>(per action)</td>
-      <td>Arrays matched/partial/missing đã persist</td>
-      <td>Recompute mirror công thức match với cv_level giả định → range {score_min, score_max}; add_evidence/emphasize = <strong>0 điểm</strong> + severity_drop (honest-zero)</td>
-      <td><span class="badge det">CODE</span> 100%, không re-run LLM</td>
-      <td>predicted vs actual ghi vào impact_calibrations</td>
-    </tr>
-  </table></div>
+    <h3>B.7 CV/Resume Studio</h3>
+    <p>CV Studio cung cấp môi trường chỉnh sửa, xem trước và xuất bản CV trực quan. Hệ thống đảm bảo tính đồng bộ hoàn toàn về mặt hiển thị giữa giao diện web và file PDF tải xuống, giúp tài liệu của bạn luôn chuyên nghiệp khi in ấn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>CV Studio quản lý toàn bộ quy trình biên tập và kết xuất CV thực tế:</p>
+        <ul>
+          <li><strong>Parity Spec:</strong> Động cơ sinh PDF thực tế sử dụng <code>@react-pdf/renderer</code> và bộ xem trước canvas sử dụng <code>pdfjs-dist</code>. Cả hai bộ hiển thị phải tuân thủ nghiêm ngặt các kiểm thử căn lề trang để tránh lệch trang (độ đơn vị tính bằng PDF points thay vì CSS pixels).</li>
+          <li><strong>Autosave &amp; Versioning:</strong> Dữ liệu CV được đồng bộ tự động lên server thông qua các bản vá JSON-patch (<code>fast-json-patch</code>) lưu trữ tại <code>cv-builder.service.ts</code> để quản lý lịch sử và cho phép khôi phục phiên bản.</li>
+          <li><strong>AI Rewrite Copilot:</strong> Tích hợp luồng viết lại cục bộ (PR #181), hỗ trợ giải thích thay đổi giữa các phiên bản CV (delta explain) và viết lại cục bộ từng đoạn trực tiếp trong giao diện soạn thảo.</li>
+        </ul>
+        <p class="filerefs">cv-builder.service.ts · pdf-renderer.ts · studio-preview.tsx</p>
+      </div>
+    </details>
+  </section>
 
-  <h3>C.2 Ví dụ tính match_score: CV có React level 2, JD cần React level 4</h3>
-  <div class="formula">MATCH_TUNING (skill-diff.service.ts:93-98):
-  importanceMultiplier = { REQUIRED: 1.0, PREFERRED: 0.6, NICE_TO_HAVE: 0.3 }
-  partialExponent = 1.6 · coverageCapBase = 45 · coverageCapSlope = 55
+  <!-- ============ C ============ -->
+  <section id="sec-c">
+    <h2 class="sec"><span class="idx">C</span>Công thức / logic điểm</h2>
 
+    <h3>C.1 Bảng tra cứu mọi loại điểm</h3>
+    <p>Bảng tổng hợp toàn bộ các loại điểm số trong hệ thống, giúp bạn nhanh chóng nắm bắt cách tính, nguồn dữ liệu đầu vào và ranh giới hoạt động giữa code và AI.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <div class="tblwrap"><table>
+          <tr><th>Loại điểm</th><th>Dữ liệu đầu vào</th><th>Cách tính toán / Quy tắc chính</th><th>Có dùng AI?</th><th>Nói đơn giản là gì</th></tr>
+          <tr>
+            <td><strong>overall_score</strong><br>(CV Review, /100)</td>
+            <td>10 quy tắc ATS + 4 dimension chất lượng</td>
+            <td><code>round(ats×0.4 + (dims/80×100)×0.6)</code>. Trọng số load từ file cấu hình.</td>
+            <td><span class="badge hyb">LLM + override</span> LLM chấm thô, code đè các phần đếm được.</td>
+            <td>Điểm đánh giá chất lượng viết và cấu trúc trình bày chung của CV.</td>
+          </tr>
+          <tr>
+            <td><strong>action_verbs</strong> (0–20)</td>
+            <td>Các dòng mô tả (bullet) trong CV</td>
+            <td>Tính theo tỷ lệ động từ mở đầu và tỷ lệ câu có số liệu định lượng.</td>
+            <td><span class="badge det">CODE</span> 100%</td>
+            <td>CV có dùng từ hành động mạnh và dẫn chứng số liệu trực quan không.</td>
+          </tr>
+          <tr>
+            <td><strong>skills_relevance</strong> (0–20)</td>
+            <td>Kỹ năng CV so với rubric vị trí</td>
+            <td>So khớp qua SkillDiff. Cập nhật band fresher và đối chiếu danh mục 18 vị trí IT.</td>
+            <td><span class="badge hyb">LLM extract, code chấm</span></td>
+            <td>Mức độ khớp giữa các kỹ năng bạn có với yêu cầu chuẩn của vị trí.</td>
+          </tr>
+          <tr>
+            <td><strong>experience</strong> (0–20)</td>
+            <td>Các mục kinh nghiệm và dự án</td>
+            <td>Đếm số lượng kinh nghiệm/dự án hợp lệ, cộng điểm thâm niên và chất lượng viết câu.</td>
+            <td><span class="badge det">CODE</span> (LLM làm fallback)</td>
+            <td>Đánh giá số lượng và chất lượng mô tả kinh nghiệm làm việc thực tế.</td>
+          </tr>
+          <tr>
+            <td><strong>education</strong> (0–20)</td>
+            <td>Các mục học tập trong CV</td>
+            <td>Xét trường đại học, bậc học, ngành IT và điểm trung bình GPA (chuẩn hóa thang 4 và 10).</td>
+            <td><span class="badge det">CODE</span> 100%</td>
+            <td>Đánh giá nền tảng học vấn và thành tích học tập đúng chuyên ngành.</td>
+          </tr>
+          <tr>
+            <td><strong>ATS rules</strong> (/100)</td>
+            <td>File CV thô và văn bản trích xuất</td>
+            <td>Kiểm tra 10 lỗi định dạng phổ biến (liên hệ, độ dài, từ sáo rỗng, định dạng ngày tháng...).</td>
+            <td><span class="badge det">CODE</span> 100%</td>
+            <td>CV có tuân thủ các quy tắc định dạng để máy quét dễ dàng đọc được không.</td>
+          </tr>
+          <tr>
+            <td><strong>match_score</strong><br>(CV–JD, /100)</td>
+            <td>Kỹ năng trong CV và yêu cầu JD</td>
+            <td>Tính tổng có trọng số mức độ thạo kỹ năng và giới hạn bởi tỷ lệ phủ kỹ năng bắt buộc.</td>
+            <td><span class="badge hyb">LLM extract, code chấm</span></td>
+            <td>Mức độ tương thích kỹ năng của bạn đối với một tin tuyển dụng cụ thể.</td>
+          </tr>
+          <tr>
+            <td><strong>recommendation_score</strong></td>
+            <td>match_score + độ lệch kinh nghiệm</td>
+            <td>Lấy <code>match_score</code> nhân hệ số phạt thâm niên nếu vị trí quá sức với ứng viên.</td>
+            <td><span class="badge det">CODE</span> 100%</td>
+            <td>Điểm dùng để sắp xếp thứ tự công việc được gợi ý phù hợp nhất với bạn.</td>
+          </tr>
+          <tr>
+            <td><strong>severity</strong> (0–1, per gap)</td>
+            <td>Trạng thái kỹ năng, thâm niên, nhu cầu thị trường, tín hiệu phỏng vấn</td>
+            <td>Tính mức nghiêm trọng dựa trên tầm quan trọng kỹ năng và mức độ hụt thực tế.</td>
+            <td><span class="badge det">CODE</span> 100%</td>
+            <td>Độ chí mạng của lỗ hổng kỹ năng đối với cơ hội trúng tuyển của bạn.</td>
+          </tr>
+        </table></div>
+        <p class="filerefs">cv-review.service.ts · job-recommendation.service.ts · gap-report.service.ts</p>
+      </div>
+    </details>
+
+    <h3>C.2 Ví dụ tính match_score: CV có React level 2, JD cần React level 4</h3>
+    <p>Điểm so khớp đo lường mức độ đáp ứng của CV đối với các yêu cầu kỹ năng bắt buộc từ JD. Hệ thống phạt nặng những trường hợp thiếu kỹ năng then chốt, nghĩa là bạn không thể lấy các kỹ năng phụ để bù đắp cho kỹ năng chính bị thiếu.</p>
+
+    <div class="callout ex">
+      <div class="ttl">Worked example (JD có 1 yêu cầu duy nhất: React level 4, thuộc nhóm REQUIRED, weight 1)</div>
+      <p>CV của ứng viên có React level 2. Trình độ này chưa đạt yêu cầu (2 &lt; 4). Điểm tương thạo một phần (partial) được tính lũy thừa dưới tuyến tính để phản ánh thực tế:</p>
+      <div class="formula">strength = (cv_level / required_level) ^ 1.6 = (2 / 4) ^ 1.6 ≈ 0.33</div>
+      <p>Do kỹ năng bắt buộc (REQUIRED) chưa đạt chuẩn mong đợi, điểm số bị khống chế bởi trần phủ tối đa (coverageCapBase = 45):</p>
+      <div class="formula">cap = 45 + 55 × required_coverage = 45 + 55 × 0 = 45</div>
+      <p>Kết quả match_score = min(raw, cap) = min(33, 45) = <strong>33 điểm</strong>. Số cấp độ kỹ năng bị hụt (gap_levels) là 2.</p>
+    </div>
+
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống áp dụng các hệ số điều chỉnh từ tệp cấu hình:</p>
+        <div class="formula">importanceMultiplier = { REQUIRED: 1.0, PREFERRED: 0.6, NICE_TO_HAVE: 0.3 }
+partialExponent = 1.6
+coverageCapBase = 45
+coverageCapSlope = 55
+
+raw = Σ(effective_weight × strength) / Σ(effective_weight) × 100
 effective_weight = weight × importanceMultiplier
-strength  = 1 (đạt mức) | (cv_level/required_level)^1.6 (partial) | 0 (missing)
-raw       = Σ(eff_w × strength) / Σ(eff_w) × 100
-cap       = 45 + 55 × required_coverage      // coverage = số REQUIRED đã đạt / tổng REQUIRED
-match     = round(min(raw, cap))</div>
-  <div class="callout ex">
-    <div class="ttl">Worked example (JD 1 requirement duy nhất: React level 4, REQUIRED, weight 1)</div>
-    <p>CV React level 2 → chưa đạt (2&lt;4) → <strong>partial</strong>: strength = (2/4)<sup>1.6</sup> ≈ <strong>0.33</strong> → raw ≈ 33. REQUIRED chưa đạt → coverage = 0/1 → cap = 45 + 55×0 = 45. <strong>match_score = min(33, 45) = 33</strong>, gap_levels = 2.</p>
-    <p>Lũy thừa 1.6 là chủ ý: partial credit <em>dưới tuyến tính</em> — biết một nửa không đáng nửa điểm, vì JD cần người làm được việc ở mức 4, không phải "đang học". Coverage cap là chốt chặn thứ hai: dù CV thừa mứa skill PREFERRED, <strong>thiếu REQUIRED thì trần điểm chỉ 45</strong> — không thể "bù điểm" cho kỹ năng bắt buộc bị thiếu.</p>
-  </div>
+strength = 1.0 (nếu đạt level) | (cv_level/required_level)^1.6 (nếu thiếu) | 0 (nếu không có)</div>
+        <p>Lũy thừa 1.6 đảm bảo năng lực học việc không được chấm quá cao. Cơ chế khống chế trần điểm (cap) đảm bảo ứng viên không thể dùng các kỹ năng ưu tiên hoặc phụ để bù đắp cho các kỹ năng bắt buộc bị thiếu.</p>
+        <p class="filerefs">skill-diff.service.ts · diff</p>
+      </div>
+    </details>
 
-  <h3>C.3 Ví dụ tính severity của gap React đó</h3>
-  <div class="formula">Constants (gap-item.ts:127-141):
-  EVIDENCE_RISK_W = { none: 0, listed_only: 0.45, unproven: 0.7 }
-  STATUS_BASE_IV  = { matched: 0, missing: 0.1, partial: 0.45, unproven: 0.8, overclaimed: 1.0 }
-  NEED_W = 0.65 · IV_W = 0.35 · MARKET_FLOOR = 0.8 · MARKET_SPAN = 0.4
+    <h3>C.3 Ví dụ tính severity của gap React đó</h3>
+    <p>Độ nghiêm trọng của một lỗ hổng kỹ năng phụ thuộc vào tầm quan trọng của kỹ năng đó đối với công việc và nhu cầu tuyển dụng thực tế trên thị trường. Lỗ hổng sẽ càng nghiêm trọng nếu phỏng vấn thực tế xác nhận bạn thực sự thiếu hụt kỹ năng đó.</p>
 
-levelPart = clamp01(gap_levels / 5)
-need      = max(levelPart, EVIDENCE_RISK_W[evidence_risk])
-iv        = clamp01( STATUS_BASE_IV[cv_status] × (0.5 + 0.5×EVIDENCE_RISK_W[evidence_risk]) )
-iv        = max(iv, interview_signal)        // Wave 8: phỏng vấn thật chỉ được NÂNG risk
-core      = 0.65×need + 0.35×iv
-marketMult= 0.8 + 0.4 × (market_demand/100, mặc định 0.5 nếu thiếu snapshot)
-severity  = round3( clamp01( importanceMultiplier × core × marketMult ) )</div>
-  <div class="callout ex">
-    <div class="ttl">React partial, level 2/4, REQUIRED, evidence tốt (risk=none), chưa có market snapshot</div>
-    <p>levelPart = 2/5 = 0.4 · need = max(0.4, 0) = 0.4 · iv = 0.45×(0.5+0) = 0.225 · core = 0.65×0.4 + 0.35×0.225 ≈ 0.339 · marketMult = 1.0 → <strong>severity ≈ 0.339</strong>. Nếu sau đó user phỏng vấn thử và lộ yếu React (signal 0.8): iv = max(0.225, 0.8) = 0.8 → core = 0.26 + 0.28 = 0.54 → <strong>severity ≈ 0.54</strong> — gap này nhảy hạng trong checklist, kèm citation "ghi nhận từ buổi phỏng vấn thử".</p>
-  </div>
+    <div class="callout ex">
+      <div class="ttl">React partial, level 2/4, REQUIRED, evidence tốt (risk=none), chưa có market snapshot</div>
+      <p>Tính toán mức độ nghiêm trọng cơ bản của lỗ hổng:</p>
+      <div class="formula">levelPart = 2 / 5 = 0.4
+need = max(levelPart, EVIDENCE_RISK_W['none']) = max(0.4, 0) = 0.4
+iv = STATUS_BASE_IV['partial'] × (0.5 + 0.5 × EVIDENCE_RISK_W['none']) = 0.45 × 0.5 = 0.225
+core = 0.65 × need + 0.35 × iv = 0.65 × 0.4 + 0.35 × 0.225 ≈ 0.339
+Vì thiếu snapshot thị trường, hệ số nhân mặc định: marketMult = 1.0.
+severity = round3(1.0 × 0.339 × 1.0) = <strong>0.339</strong>.</div>
+      <p>Nếu trong buổi phỏng vấn thử, ứng viên không trả lời được các câu hỏi về React khiến chỉ số rủi ro phỏng vấn tăng lên 0.8: giá trị <code>iv</code> được cập nhật <code>iv = max(0.225, 0.8) = 0.8</code>. Điểm nghiêm trọng cơ bản tăng lên: <code>core = 0.65 × 0.4 + 0.35 × 0.8 = 0.54</code> → <strong>severity mới ≈ 0.54</strong>. Lỗ hổng sẽ nhảy hạng ưu tiên khắc phục trong checklist.</p>
+    </div>
 
-  <h3>C.4 Ví dụ expected_impact của action trên gap đó</h3>
-  <div class="callout ex">
-    <div class="ttl">Action deepen_wording cho React (JD 1-requirement như trên, baseline 33)</div>
-    <p>Simulator recompute với cv_level giả định: <strong>min</strong> = level 3 → (3/4)<sup>1.6</sup> ≈ 0.63 → raw 63 nhưng REQUIRED vẫn chưa đạt → cap 45 → <strong>+12 điểm</strong>; <strong>max</strong> = level 4 (đạt bar) → raw 100, coverage 1 → <strong>+67 điểm</strong>. FE hiển thị range "+12 → +67", không hứa một con số duy nhất.</p>
-    <p><strong>Honest-zero:</strong> action <code>add_evidence</code>/<code>emphasize</code> không đổi cv_level nên score_min = score_max = <strong>0</strong> — hệ thống từ chối bịa "sửa chữ này tăng X điểm"; giá trị của nó thể hiện qua <code>severity_drop</code> (hạ evidence_risk 1 nấc: unproven→listed_only→none rồi tính lại severity).</p>
-  </div>
-  <p class="filerefs">impact-simulator.ts:56-88, 158-228 ("Mirrors SkillDiffService.diff()'s scoring math EXACTLY")</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống sử dụng các hằng số quy chuẩn sau:</p>
+        <div class="formula">EVIDENCE_RISK_W = { none: 0, listed_only: 0.45, unproven: 0.7 }
+STATUS_BASE_IV  = { matched: 0, missing: 0.1, partial: 0.45, unproven: 0.8, overclaimed: 1.0 }
+NEED_W = 0.65 · IV_W = 0.35 · MARKET_FLOOR = 0.8 · MARKET_SPAN = 0.4
 
-  <h3>C.5 "78/100 nghĩa là gì" và "làm sao lên 100"</h3>
-  <div class="callout ex">
-    <div class="ttl">Giải phẫu một CV Review 78 điểm</div>
-    <p>Một cách đạt 78: ATS 9/10 rule pass (90 × 0.4 = 36) + dimensions 56/80 (70 × 0.6 = 42). Band hiển thị: "khá" (60–79). Đọc <code>dimension_provenance</code> + <code>top_summary.prioritized_actions</code> sẽ thấy đích danh đang mất điểm ở đâu — ví dụ action_verbs 11/20 (mới 50% bullet mở đầu bằng động từ mạnh, chưa có số liệu) và education 13/20 (chưa ghi GPA).</p>
-    <p><strong>Đường lên 100</strong> (mọi nấc đều là rule công khai, không hộp đen): pass nốt rule ATS fail · ≥80% bullet mở đầu bằng action verb + ≥50% bullet có số liệu impact (→ action_verbs 20) · đủ entry experience/project với bullet định lượng (→ experience 20) · bằng đại học ngành IT + GPA ≥3.0/4 hoặc ≥7.5/10 (→ education 20) · phủ đủ skill rubric của role ở mức yêu cầu (→ skills_relevance 20). Trên thực tế 100 tuyệt đối rất hiếm — và <em>không cần</em>: điểm này đo chất lượng trình bày, mục tiêu thật là match từng JD cụ thể.</p>
-  </div>
-</section>
+iv = max(iv_calculated, interview_signal) // Wave 8: phỏng vấn chỉ được phép nâng rủi ro lên.
+marketMult = 0.8 + 0.4 × (market_demand/100)
+severity = round3( clamp01( importanceMultiplier × core × marketMult ) )</div>
+        <p class="filerefs">gap-item.ts · computeSeverity</p>
+      </div>
+    </details>
 
-<!-- ============ D ============ -->
-<section id="sec-d">
-  <h2 class="sec"><span class="idx">D</span>CV-JD Matching logic</h2>
+    <h3>C.4 Ví dụ expected_impact của action trên gap đó</h3>
+    <p>Tác động kỳ vọng cho biết điểm số của bạn có thể tăng thêm bao nhiêu nếu thực hiện các hành động sửa lỗi. Hệ thống chỉ dự báo điểm tăng dựa trên cải thiện năng lực thực tế, còn việc chỉ thêm câu chữ mô tả mà không tăng trình độ thì điểm tăng dự báo bằng không.</p>
 
-  <h3>D.1 JD được parse ra gì</h3>
-  <p>Một LLM call <span class="badge llm">LLM</span> trích xuất (không chấm điểm) — 2 template:</p>
-  <ul>
-    <li><strong>v1 (<code>cv_jd_match_v1</code> — default trong code):</strong> <code>jd_requirements_raw[]</code> = {name, required_level_hint (BEGINNER→EXPERT), importance_hint (REQUIRED/PREFERRED/NICE_TO_HAVE), evidence_text}.</li>
-    <li><strong>v2 (<code>cv_jd_match_v2</code> — JD-Intelligence, bật qua env <code>CV_JD_MATCH_TEMPLATE_CODE</code>; đã xác nhận bật trên prod 06-17):</strong> thêm <code>jd_dimensions_raw[]</code> = {dimension ∈ seniority/language/education/domain/work_mode, value_text, level_hint, min_years, importance_hint, <strong>deal_breaker</strong> (bool), evidence_text}. Rule anti-fabrication cứng trong code: dimension <strong>không có evidence_text (quote nguyên văn từ JD) sẽ bị DROP</strong> — LLM không quote được thì coi như không tồn tại.</li>
-  </ul>
-  <p>Code deterministic sau đó: map hint → level số 1–5 (<code>PROFICIENCY_TO_LEVEL</code>), map importance → enum, và <strong>chuẩn hoá qua taxonomy</strong> (<code>SkillNormalizerService</code> trên <code>data/skills-pilot.json</code>, có tier fallback semantic embedding) — "ReactJS", "React.js", "react" đều về canonical <code>react</code>.</p>
-  <p class="filerefs">prompts/cv_jd_match_v2.md:22-49 · jd-dimensions.ts:60-132 · skill-normalizer.service.ts:172, 394 · configuration.ts:45</p>
+    <div class="callout ex">
+      <div class="ttl">Worked example (Hành động deepen_wording cho React, mức điểm nền là 33)</div>
+      <p>Hệ thống mô phỏng việc nâng cấp cấp độ React lên các mức giả lập:</p>
+      <ul>
+        <li>Nâng lên level 3 (tối thiểu): Sức mạnh tăng lên (3/4)^1.6 ≈ 0.63. Tuy nhiên do chưa đạt mức REQUIRED mong muốn, điểm vẫn bị chặn bởi trần cap 45 → Điểm tăng tối thiểu = 45 - 33 = <strong>+12 điểm</strong>.</li>
+        <li>Nâng lên level 4 (đạt yêu cầu): Sức mạnh đạt 1.0, tỷ lệ phủ kỹ năng đạt 100% giải phóng trần điểm → Điểm tăng tối đa = 100 - 33 = <strong>+67 điểm</strong>.</li>
+      </ul>
+      <p>Hệ thống hiển thị khoảng tăng điểm dự kiến từ <strong>+12 → +67 điểm</strong>. Với các hành động như <code>add_evidence</code> (chỉ chứng minh lại kỹ năng thô), do không thay đổi cấp độ thực tế nên điểm tăng dự kiến bằng <strong>0 điểm</strong>, thay vào đó giá trị mang lại được phản ánh thông qua việc giảm chỉ số rủi ro của lỗ hổng (<code>severity_drop</code>).</p>
+    </div>
 
-  <h3>D.2 CV được parse ra gì</h3>
-  <p>Cùng LLM call trích <code>cv_skills_raw[]</code> = {name, evidence_text, proficiency_hint} từ chính CV text. Lưu ý kiến trúc: đây là extraction <em>riêng của flow match</em> — khác với <code>ats_extracted.skills_extracted</code> của flow review (nguồn cho job recommendation). Cầu nối giữa 2 flow là <strong>Evidence Ledger</strong> từ review: nó cho Gap Engine biết skill nào chỉ "được liệt kê" vs "được chứng minh" trong CV → quyết định <code>evidence_risk</code>. Ngoài ra có crosscheck proficiency-inflation (so hint LLM với từ định tính trong evidence) — telemetry-only, không đổi điểm.</p>
-  <p class="filerefs">skill-diff.service.ts:16-20 · gap-report.service.ts:64 · proficiency-crosscheck.ts:37-51</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Bộ mô phỏng chạy lại các thuật toán của SkillDiffService bằng cách thay thế giả định cấp độ kỹ năng mới của ứng viên sau khi hoàn thành hành động đó:</p>
+        <ul>
+          <li>Hành động học tập/sửa đổi làm tăng <code>cv_level</code> sẽ kích hoạt việc tính lại điểm số thô và trần phủ kỹ năng.</li>
+          <li>Hành động chỉ bổ sung bằng chứng (<code>add_evidence</code>, <code>emphasize</code>) không làm tăng level năng lực nên có điểm tăng bằng 0 (chống thổi phồng điểm khống). Thay vào đó, nó làm giảm mức độ nghiêm trọng bằng cách hạ 1 cấp độ rủi ro bằng chứng (<code>unproven → listed_only → none</code>).</li>
+        </ul>
+        <p class="filerefs">impact-simulator.ts · simulateImpact</p>
+      </div>
+    </details>
 
-  <h3>D.3 SkillDiffService so sánh thế nào — 5 trạng thái cv_status</h3>
-  <p>So sánh qua canonical taxonomy, hỗ trợ OR-group (<code>any_of[]</code> trong rubric — member tốt nhất thắng) và <strong>satisfies-edges</strong> (đồ thị con-thoả-cha đã curate, 1-hop: có <code>nextjs</code> thoả yêu cầu <code>react</code>). Rule mức: <code>cv_level ≥ required_level</code> → matched; thấp hơn → partial; không có → missing. Gap Engine sau đó tinh chỉnh thành <strong>5 trạng thái</strong> bằng Evidence Ledger:</p>
-  <div class="tblwrap"><table>
-    <tr><th>cv_status</th><th>Nghĩa business</th><th>Rule gán</th><th>evidence_risk</th></tr>
-    <tr><td><code>missing</code></td><td>JD cần, CV không có</td><td>Từ rổ missing của diff</td><td>none</td></tr>
-    <tr><td><code>partial</code></td><td>Có nhưng dưới mức yêu cầu</td><td>Rổ partial, có evidence thật</td><td>none / listed_only</td></tr>
-    <tr><td><code>matched</code></td><td>Đạt mức, có bằng chứng</td><td>Rổ matched + không phải listed-only</td><td>none</td></tr>
-    <tr><td><code>unproven</code></td><td>Khai đạt mức nhưng chỉ nằm trong danh sách skill, không có bằng chứng ở experience/project</td><td>Matched + listed-only + cv_level &lt; 4</td><td>listed_only</td></tr>
-    <tr><td><code>overclaimed</code></td><td>Tự khai trình độ cao (≥4) mà không bằng chứng — red flag phỏng vấn</td><td>Matched/partial + listed-only + cv_level ≥ 4</td><td>unproven</td></tr>
-  </table></div>
-  <p class="filerefs">skill-diff.service.ts:234-320 · skill-satisfies.ts:11-43 · gap-item.ts:483-576</p>
+    <h3>C.5 "78/100 nghĩa là gì" và "làm sao lên 100"</h3>
+    <p>Điểm số 78 cho thấy CV của bạn đã đáp ứng tốt phần lớn quy chuẩn trình bày nhưng vẫn còn một vài điểm cần cải thiện cụ thể. Để đạt điểm tối đa, bạn cần tối ưu hóa toàn bộ các lỗi định dạng và chứng minh đầy đủ các kỹ năng theo yêu cầu chuẩn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Ví dụ một hồ sơ đạt 78 điểm Review:</p>
+        <ul>
+          <li>Vượt qua 9/10 quy tắc định dạng ATS (đạt 90 × 0.4 = 36 điểm).</li>
+          <li>Đạt điểm chất lượng tổng hợp 4 dimension là 56/80 (đạt 70 × 0.6 = 42 điểm).</li>
+        </ul>
+        <p>Để nâng lên mức 100 điểm tuyệt đối, ứng viên cần:</p>
+        <ol>
+          <li>Khắc phục quy tắc ATS bị vi phạm (ví dụ: bổ sung số điện thoại hoặc định dạng lại ngày tháng).</li>
+          <li>Nâng cao tỷ lệ dùng động từ hành động mạnh lên ≥80% và bổ sung số liệu chứng minh hiệu quả công việc cho ≥50% số gạch đầu dòng (đạt 20 điểm action_verbs).</li>
+          <li>Bổ sung đầy đủ thông tin mô tả dự án và vai trò đảm nhiệm (đạt 20 điểm experience).</li>
+          <li>Bổ sung bằng cấp đại học chuyên ngành CNTT và có điểm GPA ≥3.0/4 hoặc ≥7.5/10 (đạt 20 điểm education).</li>
+          <li>Khai báo đầy đủ các kỹ năng chuyên môn phù hợp với vị trí fresher mong muốn (đạt 20 điểm skills_relevance).</li>
+        </ol>
+        <p class="filerefs">cv-review.service.ts · gradeDimensions</p>
+      </div>
+    </details>
+  </section>
 
-  <h3>D.4 GapItem — hợp đồng canonical</h3>
-  <p>Mọi flow hạ nguồn (checklist, mascot, roadmap, interview) đọc CÙNG một cấu trúc GapItem:</p>
-  <div class="formula">GapItem {
-  requirement_id, source ('jd'|'role_rubric'|'market_implied'),
-  type ('hard_skill'|'soft_skill'|'seniority'|'language'|'domain'|'education'|'work_mode'),
-  canonical_name, display_name, importance, cv_status, cv_level, required_level, gap_levels,
-  satisfied_by, evidence_refs[], evidence[]{kind, ref, quote},   // kind: experience|project|activity|summary|skills_list|github|interview
-  evidence_risk, fixability, market_demand,
-  severity, severity_factors{importance, core, market_mult}, confidence, recommended_next_action
+  <!-- ============ D ============ -->
+  <section id="sec-d">
+    <h2 class="sec"><span class="idx">D</span>CV-JD Matching logic</h2>
+
+    <h3>D.1 JD được parse ra gì</h3>
+    <p>Thông tin từ JD được bóc tách và phân loại thành các yêu cầu bắt buộc hoặc ưu tiên. Các kỹ năng sau đó được chuẩn hóa về một danh mục chuẩn chung để thuận tiện cho việc so khớp.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Mẫu so khớp v2 (<code>cv_jd_match_v2</code>) được thiết lập làm mặc định trên môi trường production:</p>
+        <ul>
+          <li><strong>Yêu cầu kỹ năng:</strong> Trích xuất tên kỹ năng, mức độ ưu tiên (<code>REQUIRED</code>, <code>PREFERRED</code>, <code>NICE_TO_HAVE</code>), cấp độ thạo kỹ năng và trích dẫn văn bản gốc làm minh chứng.</li>
+          <li><strong>Các chiều phi kỹ năng (JD Dimensions):</strong> Trích xuất thâm niên (seniority), ngoại ngữ (language), học vấn (education), lĩnh vực (domain), hình thức làm việc (work_mode).</li>
+          <li><strong>Nguyên tắc chống bịa đặt (Anti-Fabrication):</strong> Mọi yêu cầu được trích xuất bắt buộc phải đi kèm đoạn văn bản trích dẫn nguyên văn từ JD (<code>evidence_text</code>). Các yêu cầu không có trích dẫn sẽ bị hệ thống tự động loại bỏ.</li>
+          <li><strong>GitHub Corroboration (Đồng minh chứng thực):</strong> Nếu người dùng liên kết tài khoản GitHub, hệ thống sẽ phân tích mã nguồn đóng góp thực tế. Nếu phát hiện đóng góp thật cho kỹ năng nào, chỉ số rủi ro bằng chứng (<code>evidence_risk</code>) của kỹ năng đó sẽ tự động được hạ xuống 1 mức và gắn nhãn nguồn gốc <code>{kind: 'github'}</code>.</li>
+          <li><strong>Input Parity (hợp nhất hai nguồn trích xuất):</strong> Danh sách yêu cầu do LLM trích xuất được hợp nhất (union) với kết quả quét gazetteer (~1.300 mẫu nhận diện trên taxonomy 203 kỹ năng) chạy trên cùng văn bản JD — nhờ đó đường "dán JD thủ công" và đường "job recommendation" luôn chấm trên cùng một tập yêu cầu. Yêu cầu không chuẩn hóa được <em>không bị loại bỏ im lặng</em>: chúng được trả về trong <code>unnormalized_jd_requirements</code> và giao diện hiển thị minh bạch "chấm trên X/Y yêu cầu đọc được".</li>
+        </ul>
+        <p class="filerefs">validation.ts · jd-dimensions.ts · skill-normalizer.service.ts · github-evidence.ts · match-input-parity.ts</p>
+      </div>
+    </details>
+
+    <h3>D.2 CV được parse ra gì</h3>
+    <p>Hệ thống bóc tách danh sách kỹ năng và kinh nghiệm thực tế từ CV của bạn. Những kỹ năng này sẽ được đối chiếu với lịch sử hoạt động để xác định xem bạn chỉ liệt kê tên kỹ năng hay đã thực sự sử dụng chúng trong công việc.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quá trình bóc tách thông tin CV trong luồng so khớp:</p>
+        <ul>
+          <li>LLM trích xuất danh sách kỹ năng thô kèm ngữ cảnh sử dụng.</li>
+          <li>Hệ thống thực hiện đối chiếu chéo (crosscheck) để phát hiện nói quá năng lực: So sánh gợi ý trình độ của LLM với các từ khóa chỉ mức độ thạo nằm trong phần mô tả kinh nghiệm tương ứng.</li>
+          <li><strong>Đối chiếu với bản review đã lưu (proficiency reconcile):</strong> Trình độ kỹ năng còn được đối chiếu với kết quả review CV gần nhất — nếu LLM thiếu gợi ý trình độ thì lấy từ review; nếu cả hai đều có thì lấy mức <em>thấp hơn</em> (chống thổi phồng năng lực); kỹ năng chỉ xuất hiện trong review được bổ sung vào danh sách. Nhờ đó mọi luồng so khớp dùng chung một nguồn sự thật về trình độ.</li>
+          <li>Kết quả trích xuất được lưu trữ độc lập để tránh người dùng thay đổi dữ liệu đầu vào khi thực hiện các phân tích tiếp theo.</li>
+        </ul>
+        <p class="filerefs">skill-diff.service.ts · gap-report.service.ts · proficiency-crosscheck.ts · match-input-parity.ts</p>
+      </div>
+    </details>
+
+    <h3>D.3 SkillDiffService so sánh thế nào — 5 trạng thái cv_status</h3>
+    <p>Việc so sánh kỹ năng được thực hiện tự động qua sơ đồ quan hệ kỹ năng chuẩn, cho phép nhận diện các công nghệ tương đương hoặc bổ trợ cho nhau. Trạng thái của từng kỹ năng được phân chia rõ ràng để chỉ ra mức độ thành thạo và bằng chứng đi kèm.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống sử dụng bản đồ quan hệ kỹ năng (satisfies-edges) gồm 9 liên kết thực tế để so khớp tương đương (ví dụ: ứng viên biết <code>typescript</code> sẽ tự động được chấp nhận đạt yêu cầu về <code>javascript</code>). Kết quả phân tích phân loại kỹ năng vào 5 trạng thái:</p>
+        <div class="tblwrap"><table>
+          <tr><th>Trạng thái CV</th><th>Ý nghĩa nghiệp vụ</th><th>Quy tắc xác định</th><th>Rủi ro bằng chứng (evidence_risk)</th></tr>
+          <tr><td><code>missing</code></td><td>JD cần nhưng CV hoàn toàn không đề cập đến.</td><td>Nằm trong danh sách kỹ năng thiếu hụt.</td><td>none</td></tr>
+          <tr><td><code>partial</code></td><td>Có đề cập nhưng trình độ thạo dưới mức yêu cầu của JD.</td><td>Kỹ năng thô dưới chuẩn, có bằng chứng mô tả.</td><td>none / listed_only</td></tr>
+          <tr><td><code>matched</code></td><td>Đạt hoặc vượt mức yêu cầu và có mô tả thực tế.</td><td>Đạt trình độ mong muốn và có bằng chứng rõ ràng.</td><td>none</td></tr>
+          <tr><td><code>unproven</code></td><td>Tự khai đạt mức yêu cầu nhưng chỉ viết ở phần liệt kê kỹ năng thô, không có minh chứng trong phần dự án/công việc.</td><td>Đạt mức thô nhưng thuộc nhóm listed-only, cấp độ thô &lt; 4.</td><td>listed_only</td></tr>
+          <tr><td><code>overclaimed</code></td><td>Tự khai trình độ chuyên gia (≥4) ở phần kỹ năng thô nhưng không có bất kỳ dự án/công việc nào minh chứng. Đây là tín hiệu cảnh báo rủi ro cao.</td><td>Đạt mức thô nhưng thuộc nhóm listed-only, cấp độ thô ≥ 4.</td><td>unproven (mức phạt nặng nhất)</td></tr>
+        </table></div>
+        <p class="filerefs">skill-diff.service.ts · skill-satisfies.ts · gap-item.ts</p>
+      </div>
+    </details>
+
+    <h3>D.4 GapItem — hợp đồng canonical</h3>
+    <p>Lỗ hổng kỹ năng được đóng gói thành một cấu trúc dữ liệu chuẩn để tất cả các tính năng khác như mascot, lộ trình học hay phỏng vấn đều dùng chung một thông tin nhất quán. Mỗi lỗ hổng đều có mức độ nghiêm trọng và hành động khắc phục cụ thể đi kèm.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hợp đồng dữ liệu <code>GapItem</code> chuẩn hóa trên server:</p>
+        <div class="formula">GapItem {
+  requirement_id: string,
+  type: 'hard_skill' | 'soft_skill' | 'seniority' | 'language' | 'domain' | 'education' | 'work_mode',
+  canonical_name: string,
+  cv_status: 'missing' | 'partial' | 'matched' | 'unproven' | 'overclaimed',
+  cv_level: number,
+  required_level: number,
+  gap_levels: number,
+  evidence_refs: string[],
+  evidence_risk: 'none' | 'listed_only' | 'unproven',
+  fixability: 'learn' | 'rewrite' | 'add_evidence' | 'not_fixable_now',
+  severity: number,
+  recommended_next_action: string
 }</div>
-  <p><strong>Fixability — 4 lớp hành động</strong> <span class="badge det">CODE</span>: <code>learn</code> (missing / seniority chưa đạt — "kinh nghiệm không thể fabricate bằng viết lại") · <code>rewrite</code> (partial có bằng chứng demonstrated — chỉ cần viết rõ hơn) · <code>add_evidence</code> (unproven/overclaimed — cần chứng minh, không cần học) · <code>not_fixable_now</code> (đã matched). Severity: công thức + ví dụ ở C.3; ranking dùng severity <em>chưa làm tròn</em> để tránh near-tie collapse.</p>
-  <p class="filerefs">gap-item.ts:37-79, 116-213, 269-576</p>
+        <p>Các mức sửa lỗi (<code>fixability</code>) được tự động phân loại bằng code máy:</p>
+        <ul>
+          <li><code>learn</code>: Áp dụng khi thiếu kỹ năng (missing) hoặc thiếu thâm niên kinh nghiệm thực tế.</li>
+          <li><code>rewrite</code>: Áp dụng khi đã có kinh nghiệm thực tế nhưng viết mô tả chưa tới tầm yêu cầu (partial).</li>
+          <li><code>add_evidence</code>: Áp dụng khi kỹ năng chỉ liệt kê thô (unproven/overclaimed), cần bổ sung chi tiết chứng minh.</li>
+        </ul>
+        <p class="filerefs">gap-item.ts · evaluateFixability</p>
+      </div>
+    </details>
 
-  <h3>D.5 recommended_actions sinh ra thế nào</h3>
-  <p>4 bucket <span class="badge det">CODE</span> với cap riêng, tổng tối đa 8:</p>
-  <div class="tblwrap"><table>
-    <tr><th>action_type</th><th>Điều kiện</th><th>Cap</th></tr>
-    <tr><td><code>missing_required</code></td><td>Gap REQUIRED chưa có trong CV (sort weight giảm dần)</td><td>3</td></tr>
-    <tr><td><code>add_evidence</code></td><td>Matched nhưng listed-only (evidence gap)</td><td>2</td></tr>
-    <tr><td><code>emphasize</code></td><td>JD nhắc ≥2 lần mà CV nhắc ≤1 lần</td><td>3</td></tr>
-    <tr><td><code>deepen_wording</code></td><td>Partial có bằng chứng demonstrated (anchor được vào bullet)</td><td>2</td></tr>
-  </table></div>
-  <p><strong>Sort-before-slice:</strong> toàn bộ pool candidate được sort theo severity giảm dần TRƯỚC khi cắt top-8 — gap nghiêm trọng nhất không bao giờ bị đá ra chỉ vì bucket của nó đứng sau. <strong>CV Patch engine</strong> gắn toạ độ sửa vào từng action: <code>action_id = "{action_type}:{skill_canonical}"</code>, <code>cv_section</code> + <code>before</code> (bullet nguyên văn, CHỈ khi anchor confidence cao — không đoán bừa), <code>insertion_hint</code> cho emphasize.</p>
-  <p class="filerefs">tailor-checklist.ts:5, 28-32, 200-213 · cv-patch.ts:142-176</p>
+    <h3>D.5 recommended_actions sinh ra thế nào</h3>
+    <p>Các hành động đề xuất được lựa chọn và sắp xếp dựa trên mức độ nghiêm trọng của lỗ hổng kỹ năng, nhằm giúp ứng viên tập trung cải thiện những điểm yếu chí mạng trước. Hệ thống giới hạn số lượng hành động hiển thị để tránh làm ứng viên bị quá tải.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống chia các đề xuất thành 5 nhóm giới hạn (bucket) với số lượng hiển thị tối đa như sau:</p>
+        <ul>
+          <li><code>missing_required</code>: Các kỹ năng bắt buộc còn thiếu hoàn toàn trong hồ sơ (Giới hạn tối đa 3 đề xuất).</li>
+          <li><code>add_evidence</code>: Các kỹ năng chỉ liệt kê chung chung, cần bổ sung minh chứng thực tế (Giới hạn tối đa 2 đề xuất).</li>
+          <li><code>emphasize</code>: Các kỹ năng xuất hiện nhiều lần trong JD nhưng CV ít đề cập (Giới hạn tối đa 3 đề xuất).</li>
+          <li><code>deepen_wording</code>: Các kỹ năng có sẵn nhưng cần viết mô tả sâu hơn để tương thích yêu cầu (Giới hạn tối đa 2 đề xuất).</li>
+          <li><code>advice</code>: Các gợi ý sửa đổi cho các lỗ hổng phi kỹ năng như học vấn, thâm niên, ngoại ngữ (Giới hạn tối đa 4 đề xuất, thuộc nhóm non-rewritable).</li>
+        </ul>
+        <p><strong>Cơ chế Rank-then-Constrained-Walk:</strong> Hệ thống không giới hạn số lượng lỗ hổng phân tích ban đầu. Tất cả các lỗ hổng được sắp xếp theo độ nghiêm trọng giảm dần, sau đó thuật toán sẽ duyệt qua danh sách để nhặt các đề xuất bỏ vào các bucket tương ứng cho đến khi chạm các trần giới hạn đa dạng (cap) để tạo ra danh sách tối đa 8 hành động khuyên dùng tốt nhất.</p>
+        <p>Công cụ vá CV (CV Patch Engine) đính kèm tọa độ sửa đổi cụ thể: <code>action_id = "{action_type}:{skill_canonical}"</code> để Mascot hoặc trình duyệt định vị chính xác đoạn văn bản gốc cần điều chỉnh.</p>
+        <p class="filerefs">tailor-checklist.ts · cv-patch.ts</p>
+      </div>
+    </details>
 
-  <h3>D.6 classifyFit — safe_apply / stretch / not_recommended</h3>
-  <div class="formula">Policy versioned: data/fit-policy-v1.json
-  { not_recommended_score_below: 40, safe_apply_score_at_least: 65,
-    safe_apply_coverage_at_least: 0.7, overqualified_severe_level_gap_at_least: 3 }
+    <h3>D.6 classifyFit — safe_apply / stretch / not_recommended</h3>
+    <p>Dựa trên tổng điểm so khớp và các yêu cầu bắt buộc, hệ thống sẽ đưa ra khuyến nghị ứng tuyển. Nếu công việc đòi hỏi quá cao so với kinh nghiệm của bạn, hệ thống sẽ cảnh báo để bạn cân nhắc kỹ.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Khuyến nghị ứng tuyển được phân chia thành 3 mức độ dựa trên chính sách <code>fit-policy-v1.json</code>:</p>
+        <ul>
+          <li><strong>not_recommended (Không khuyến khích):</strong> Kích hoạt khi vi phạm bất kỳ yêu cầu bắt buộc loại deal-breaker nào, hoặc điểm so khớp &lt; 40, hoặc thâm niên bị lệch nặng quá sức (vượt ≥3 cấp độ - <code>severeStretch</code>).</li>
+          <li><strong>safe_apply (Ứng tuyển an toàn):</strong> Đạt điểm so khớp ≥ 65, tỷ lệ phủ kỹ năng REQUIRED ≥ 0.7, đáp ứng yêu cầu thâm niên và không có deal-breaker nào bị bỏ ngỏ.</li>
+          <li><strong>stretch (Thử thách):</strong> Các trường hợp còn lại nằm giữa hai ngưỡng trên.</li>
+        </ul>
+        <p>Mã lý do từ chối nổi bật: <code>DEAL_BREAKER_UNVERIFIED</code> — Khi JD có yêu cầu khắt khe về ngoại ngữ hoặc học vấn nhưng hệ thống chưa chạy kiểm tra tự động các khía cạnh này (chỉ mới hỗ trợ tự động kiểm thâm niên) → Hệ thống tuyệt đối không tự đánh giá trượt ứng viên mà sẽ chuyển trạng thái về <code>stretch</code> để đảm bảo tính khách quan.</p>
+        <p class="filerefs">fit-strategy.ts · gap-report.ts</p>
+      </div>
+    </details>
 
-not_recommended ⇐ deal-breaker unmet | score &lt; 40 | over-qualified nặng (gap ≥3 bậc)
-safe_apply      ⇐ score ≥ 65 AND coverage ≥ 0.7 AND seniority fits AND không có deal-breaker chưa kiểm chứng được
-stretch         ⇐ còn lại</div>
-  <p>11 reason code đi kèm để FE giải thích verdict. Đáng chú ý nhất: <code>DEAL_BREAKER_UNVERIFIED</code> — JD đánh dấu một dimension là deal-breaker nhưng hệ thống <em>chưa có grader</em> cho dimension đó (hiện chỉ seniority chấm được) → "không kiểm chứng được" ≠ "không đạt": <strong>không bao giờ tự phán not_recommended, nhưng chặn trần ở stretch</strong> (safe_apply là khẳng định tích cực phải có kiểm chứng). Đây là nguyên tắc honest-by-design áp vào policy.</p>
-  <p class="filerefs">fit-strategy.ts:18-29, 76-127 · gap-report.ts:261-267</p>
+    <h3>D.7 Vì sao roadmap/interview/rewrite KHÔNG tin gap FE gửi lên</h3>
+    <p>Để ngăn chặn việc giả mạo thông tin hoặc thay đổi trái phép kết quả từ phía trình duyệt, máy chủ luôn tự động tính toán lại toàn bộ dữ liệu lỗ hổng trước khi thực hiện viết lại CV hay lên lịch phỏng vấn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Mục đích là bảo vệ ranh giới bảo mật dữ liệu (Trust Boundary):</p>
+        <ul>
+          <li>Client chỉ gửi lên các tham số định danh cơ bản như <code>{match_id, action_id}</code>.</li>
+          <li>Hệ thống <code>TailorVerifierService</code> trên server sẽ tải lại thông tin CV và JD tương ứng, tính toán lại toàn bộ danh sách <code>GapReport</code> thực tế để đối chiếu và xác thực yêu cầu viết lại của client.</li>
+          <li>Quy trình xác thực sẽ kiểm tra 6 mã lỗi nghiêm ngặt: <code>MATCH_TOO_OLD</code> (phiên bản so khớp quá cũ), <code>NO_REVIEW</code> (chưa đánh giá CV), <code>ACTION_NOT_FOUND</code> (hành động gửi lên không tồn tại trong phân tích gốc), <code>ACTION_NOT_REWRITABLE</code> (hành động không cho phép viết lại), <code>NO_ANCHOR</code> (không xác định được dòng văn bản gốc cần sửa) và <code>TEXT_NOT_IN_CV</code> (nội dung gốc đã bị thay đổi bên ngoài).</li>
+        </ul>
+        <p class="filerefs">tailor-verifier.service.ts · tailor-verification.ts</p>
+      </div>
+    </details>
+  </section>
 
-  <h3>D.7 Vì sao roadmap/interview/rewrite KHÔNG tin gap FE gửi lên</h3>
-  <div class="callout danger">
-    <div class="ttl">Trust boundary: FE chỉ gửi ID, server tự xác minh</div>
-    <p>FE là client không đáng tin (user có thể sửa payload). Nếu BE nhận "gap/action" từ FE, một request chế tác có thể bắt AI viết thêm skill không có thật vào CV. Vì vậy: rewrite tailor chỉ nhận <code>{match_id, action_id}</code>; <code>TailorVerifierService</code> <strong>rebuild gap report từ dữ liệu server</strong> (cùng interview signals với bản FE đã render — dùng chung 1 helper để không lệch), rồi mới xác minh action. Sáu mã từ chối: <code>MATCH_TOO_OLD · NO_REVIEW · ACTION_NOT_FOUND · ACTION_NOT_REWRITABLE · NO_ANCHOR · TEXT_NOT_IN_CV</code>. Cùng nguyên tắc, roadmap và interview plan đều build lại từ GapReport server-side, không từ client payload.</p>
-  </div>
-  <p class="filerefs">tailor-verifier.service.ts:48-115 · tailor-verification.ts:48-124 · interview-signals.ts:16-20 ("SINGLE source of truth... Do NOT reimplement this query per caller")</p>
-</section>
+  <!-- ============ E ============ -->
+  <section id="sec-e">
+    <h2 class="sec"><span class="idx">E</span>Job Recommendation logic</h2>
 
-<!-- ============ E ============ -->
-<section id="sec-e">
-  <h2 class="sec"><span class="idx">E</span>Job Recommendation logic</h2>
+    <h3>E.1 Job pool lấy từ đâu</h3>
+    <p>Danh sách công việc được tổng hợp định kỳ từ nhiều nguồn tuyển dụng bao gồm nhập liệu thủ công, công cụ thu thập tự động từ các trang lớn và tin tuyển dụng đăng trực tiếp bởi các doanh nghiệp đối tác.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Vòng đời và cơ chế nạp tin tuyển dụng của hệ thống:</p>
+        <ul>
+          <li><strong>Đăng tuyển trực tiếp (Employer):</strong> Nhà tuyển dụng tạo và duyệt tin trực tiếp trên nền tảng. Tin tuyển dụng được xuất bản thẳng vào cơ sở dữ liệu với nguồn gốc <code>source_type='employer'</code> mà không đi qua các bộ lọc thu thập tự động.</li>
+          <li><strong>Thu thập tự động (Crawler ITviec):</strong> Sử dụng sitemap chính thức để dò tìm, kiểm tra lại tệp <code>robots.txt</code> trước mỗi lượt chạy để tuân thủ chính sách thu thập dữ liệu.</li>
+          <li><strong>Idempotency và cập nhật:</strong> Các tin tuyển dụng đã ghi nhận chỉ cập nhật lại trường mốc thời gian nhìn thấy cuối cùng (<code>UPDATE last_seen_at</code>) nếu không có thay đổi nội dung để tiết kiệm băng thông. Tin tuyển dụng bị coi là hết hạn (expired) sau 3 ngày không được cập nhật thấy lại.</li>
+        </ul>
+        <p class="filerefs">jd-ingest.service.ts · itviec-crawler.service.ts · business-job.service.ts</p>
+      </div>
+    </details>
 
-  <h3>E.1 Job pool lấy từ đâu</h3>
-  <p>Ba nguồn, đổ chung vào <strong>một pipeline ingest duy nhất</strong> (<code>JdIngestService.ingestBatch</code>) và một bảng <code>jobs</code>:</p>
-  <div class="tblwrap"><table>
-    <tr><th>Nguồn</th><th>Cơ chế</th><th>Nguồn code</th></tr>
-    <tr><td><strong>Import thủ công</strong></td><td>Script CLI <code>pnpm jobs:import</code> đọc file seed → ingest batch.</td><td class="filerefs">src/tools/import-jobs.ts:41</td></tr>
-    <tr><td><strong>Crawler ITviec</strong></td><td>Discovery ưu tiên sitemap chính thức, fallback quét listing; <strong>robots.txt được kiểm tra lại MỖI LẦN chạy</strong> trước khi crawl.</td><td class="filerefs">src/modules/jobs/crawl/itviec-crawler.service.ts:197-230, 264-307</td></tr>
-    <tr><td><strong>Employer đăng tin</strong></td><td>Doanh nghiệp tạo draft → publish (<code>status='active'</code>), vào thẳng cùng bảng jobs với <code>source_type='employer'</code>.</td><td class="filerefs">src/platform/business-jobs/business-job.service.ts:597</td></tr>
-  </table></div>
+    <h3>E.2 Chống trùng JD/job (dedup)</h3>
+    <p>Để tránh việc hiển thị trùng lặp một công việc từ nhiều nguồn khác nhau, hệ thống sử dụng các mã định danh dựa trên tên công ty, chức danh và danh sách kỹ năng để tự động gộp các tin tuyển dụng giống nhau.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Cơ chế chống trùng lặp hoạt động ở 2 cấp độ:</p>
+        <div class="formula">identityHash = sha256( company_normalized | title_normalized | location_normalized )
+contentHash = sha256( identityHash | sorted_canonical_skills[] )</div>
+        <p>Nếu tin tuyển dụng mới có cùng <code>contentHash</code> với một công việc đã có, nó sẽ được gắn liên kết tham chiếu <code>canonical_job_id</code> trỏ về tin tuyển dụng đầu tiên. Các thuật toán đề xuất và gợi ý công việc sẽ tự động lọc bỏ các tin trùng lặp bằng điều kiện <code>canonical_job_id IS NULL</code>.</p>
+        <p class="filerefs">jd-ingest.service.ts · job-recommendation.service.ts</p>
+      </div>
+    </details>
 
-  <h4>Cron hoạt động thế nào</h4>
-  <p><strong>Không có cron in-process</strong> — đây là quyết định có chủ đích, ghi ngay trong code: Render free instance sẽ "ngủ", scheduler trong app sẽ âm thầm không bao giờ chạy. Thay vào đó, mọi việc định kỳ là <strong>script CLI được trigger từ ngoài</strong> (Render Cron / QStash / GitHub Actions):</p>
-  <ul>
-    <li><code>jobs:crawl</code> — crawl ITviec; job còn thấy trong sitemap chỉ cần <code>UPDATE last_seen_at</code> (không fetch lại trang — "freshness for free").</li>
-    <li><code>jobs:import</code> — nạp seed thủ công.</li>
-    <li><code>trends:refresh</code> — snapshot nhu cầu skill hàng đêm (idempotent upsert theo skill/role/kỳ).</li>
-    <li><code>business-jobs:maintenance</code> — expire tin hết hạn, retention, xoá PII đơn ứng tuyển đến hạn (PDPL).</li>
-  </ul>
-  <p>Vòng đời job: <code>active → expired</code> khi <code>last_seen_at</code> cũ hơn <strong>3 ngày</strong> (ITviec, <code>EXPIRE_AFTER_DAYS=3</code>) hoặc employer job quá <code>expires_at</code>; job expired chỉ được <strong>revive</strong> khi crawler thấy lại slug VÀ re-fetch xác nhận HTTP 200. Status đầy đủ: <code>active / expired / draft / closed / removed</code>. Pool recommendation chỉ đọc <code>status='active'</code>.</p>
-  <p class="filerefs">jd-ingest.service.ts:143-154, 208-222 · itviec-crawler.service.ts:60, 107-124 · migration 1780700000000</p>
+    <h3>E.3 role_code — phân loại job</h3>
+    <p>Công việc được tự động phân loại vào các vai trò công nghệ thông tin phổ biến dựa trên phân tích tiêu đề. Việc phân loại này giúp tối ưu hóa kết quả tìm kiếm và gợi ý công việc phù hợp cho ứng viên.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống tự động phân loại công việc IT thành 9 vai trò kỹ thuật chính thông qua việc chạy bộ lọc biểu thức chính quy (regular expressions) trên chức danh tuyển dụng với thứ tự ưu tiên giảm dần:</p>
+        <div class="formula">Priority: AI-app > AI/ML > Data Analyst > DevOps > QA > Fullstack > Mobile > Frontend > Backend</div>
+        <p>Các tin tuyển dụng do doanh nghiệp tự đăng ký sẽ được nhà tuyển dụng tự lựa chọn trực tiếp từ danh mục vai trò cố định mà không cần thông qua bộ lọc tự động.</p>
+        <p class="filerefs">ingest-normalizers.ts · classifyRole</p>
+      </div>
+    </details>
 
-  <h3>E.2 Chống trùng JD/job (dedup)</h3>
-  <ul>
-    <li><strong><code>identityHash</code></strong> = sha256(công ty chuẩn hoá | title chuẩn hoá | địa điểm chuẩn hoá) — làm <code>external_id</code> fallback khi nguồn không cấp id → re-import cùng JD = UPSERT, không tạo bản ghi mới.</li>
-    <li><strong>Khoá idempotency ở DB:</strong> <code>UNIQUE (source_name, external_id)</code> + upsert <code>ON CONFLICT DO UPDATE</code>.</li>
-    <li><strong><code>contentHash</code></strong> = sha256(identity + danh sách skill canonical đã sort) — phát hiện JD trùng nội dung <em>giữa các nguồn khác nhau</em>: job mới trùng content sẽ được gắn <code>canonical_job_id</code> trỏ về bản đầu tiên ("first writer is canonical"), và pool recommendation chỉ lấy <code>canonical_job_id IS NULL</code> → một JD đăng trên nhiều board chỉ hiện <strong>một lần</strong>.</li>
-  </ul>
-  <p class="filerefs">jd-ingest.service.ts:176-191, 246-258 · job-recommendation.service.ts:200 · ingest-normalizers.ts:59-74 (dedup company theo name_normalized)</p>
+    <h3>E.4 match_score vs recommendation_score</h3>
+    <p>Điểm hiển thị trên thẻ công việc phản ánh mức độ phù hợp về kỹ năng thực tế, trong khi điểm xếp hạng được hệ thống sử dụng nội bộ để ưu tiên các công việc phù hợp nhất với cấp độ kinh nghiệm của bạn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Thuật toán xếp hạng công việc được thiết lập qua 4 bước xử lý liên tiếp:</p>
+        <ol>
+          <li><strong>Signal A (Kỹ năng thô):</strong> Chạy SkillDiff để tính toán điểm tương thích kỹ năng cơ bản (<code>match_score</code>).</li>
+          <li><strong>Signal B (Đặc trưng ngữ nghĩa):</strong> Tính độ tương đồng cosine (Cosine Similarity) giữa các vector đặc trưng kỹ năng của CV và JD bằng cách sử dụng cơ sở dữ liệu vector pgvector.</li>
+          <li><strong>Fusion (Tích hợp thứ hạng):</strong> Sử dụng thuật toán RRF (Reciprocal Rank Fusion) với hằng số phạt <code>k=60</code> để gộp kết quả từ hai tín hiệu trên.</li>
+          <li><strong>Re-rank (Hiệu chỉnh thâm niên):</strong> Nhân hệ số phạt thâm niên tương ứng để đưa ra điểm số xếp hạng cuối cùng (<code>recommendation_score</code>).</li>
+        </ol>
+        <p class="filerefs">job-recommendation.service.ts · rrf.ts · skill-diff.service.ts</p>
+      </div>
+    </details>
 
-  <h3>E.3 role_code — phân loại job</h3>
-  <p>9 role code cố định (pilot IT-only): <code>frontend_developer, backend_developer, fullstack_developer, data_analyst, mobile_developer, devops_engineer, qa_tester, ai_ml_engineer, ai_app_engineer</code>. Phân loại <span class="badge det">CODE</span> bằng <strong>regex trên title</strong> lúc ingest (<code>classifyRole</code>, thứ tự ưu tiên AI-app &gt; AI/ML &gt; data &gt; devops &gt; QA &gt; fullstack &gt; mobile &gt; frontend &gt; backend); không khớp → <code>null</code> (job vẫn trong pool, chỉ bị loại khỏi trends per-role). Job employer đăng thì employer <strong>tự chọn</strong> role_code từ dropdown — không qua classifier.</p>
-  <p class="filerefs">ingest-normalizers.ts:77-138 · jd-ingest.service.ts:192 · business-job.service.ts:578</p>
+    <h3>E.5 Seniority guard — chống gợi ý job senior cho CV fresher</h3>
+    <p>Để đảm bảo ứng viên không bị đề xuất các vị trí quá cao so với thực tế, hệ thống sẽ tự động ước lượng kinh nghiệm dựa trên thời gian làm việc thực tế trong CV để điều chỉnh xếp hạng đề xuất.</p>
 
-  <h3>E.4 match_score vs recommendation_score</h3>
-  <p>Pipeline gợi ý job cho 1 CV chạy <strong>4 bước</strong>, tất cả <span class="badge det">CODE</span>:</p>
-  <div class="formula">1. Signal A (sparse):  SkillDiffService.diff() — CÙNG engine MATCH_TUNING với CV-JD match (mục D)
-2. Signal B (dense):   cosine( embed(skill-set CV) , job_embeddings )   — pgvector
-3. Fusion:             RRF — fused(job) = Σ 1/(k + rank_job)  với k = 60
-4. Re-rank seniority:  adjusted = fused × seniorityFactor + experienceNudge(±0.0005 × confScale)</div>
-  <div class="tblwrap"><table>
-    <tr><th></th><th>match_score</th><th>recommendation_score</th></tr>
-    <tr><td><strong>Là gì</strong></td><td>Điểm khớp <em>skill thuần</em> = <code>diff.overall_score</code> — hiển thị trên card để giải thích được</td><td><code>round(match_score × seniority_factor)</code> — dùng để <em>xếp hạng</em></td></tr>
-    <tr><td><strong>Seniority guard</strong></td><td>KHÔNG bị ảnh hưởng (giữ nguyên để card trung thực)</td><td>Bị demote khi job vượt quá tầm CV</td></tr>
-  </table></div>
-  <p class="filerefs">job-recommendation.service.ts:37-52, 127-140, 364, 393 · rrf.ts:7-18 · skill-diff.service.ts:93-121</p>
-
-  <div class="callout warn">
-    <div class="ttl">Vì sao match trên trang Diagnosis có thể lệch với match_score trên card job?</div>
-    <p>Bốn lý do có thật trong code: (1) job-rec dùng <code>job_skills</code> trích bằng gazetteer deterministic lúc ingest, còn CV-JD match với JD user dán dùng LLM extraction mới mỗi lần — hai bộ requirement có thể khác nhau; (2) job-rec lấy proficiency CV từ review <em>đã lưu gần nhất</em>, CV-JD match trích lại live; (3) khi user chỉ chọn role (không dán JD), CV-JD match dùng <em>role rubric</em> theo band — path này job-rec không bao giờ đi vào (luôn có JD); (4) recommendation_score cố ý nhân hệ số demote. "match cao nhưng rank thấp" là <strong>thiết kế</strong>, không phải bug.</p>
-  </div>
-
-  <h3>E.5 Seniority guard — chống gợi ý job senior cho CV fresher</h3>
-  <p>Băng CV được suy <span class="badge det">CODE</span> từ <strong>bằng chứng cấu trúc</strong> trong CV (không tin "số năm kinh nghiệm" tự khai): parse ngày các entry experience → cộng dồn năm thật; không có experience → <code>fresher</code> (nếu có project) hoặc <code>intern</code>; toàn internship → fresher/intern; years&gt;4 → senior, ≥2 → mid, &lt;2 → junior. Kèm <code>confidence</code> (high/medium/low theo tỉ lệ entry parse được ngày). <strong>Fix PR #167 (07-05):</strong> khi KHÔNG entry nào parse được ngày, bucket <strong>cap ở junior</strong> (toàn internship không ngày → fresher/intern) — trước đó fallback đếm số entry (3 entry không ngày → "senior") khiến sinh viên liệt kê 3 dòng CLB có thể vô hiệu hoá chính guard này; đo prod 30 ngày: 0/64 CV dính, fix thuộc loại vá tiềm ẩn.</p>
-  <div class="formula">BUCKET_RANK (CV):        intern=0  fresher=1  junior=2  mid=3  senior=4
-JOB_LEVEL_RANK (job):    INTERN=0  FRESHER=1  JUNIOR=2  MIDDLE=3  SENIOR=4  LEAD=5
-
-verdict:  diff = rank(CV) − rank(job)
-          diff &lt; −1 → 'stretch'   ·   diff &gt; 1 → 'over_qualified'   ·   còn lại → 'fits'
-
-CHỈ demote khi verdict = 'stretch':
-  level_gap ≥ 3 (stretch nặng):  factor = 0.4   (0.7 nếu confidence low)
-  level_gap = 2 (stretch nhẹ):   factor = 0.65  (0.85 nếu confidence low)
-  'fits' / 'over_qualified' / 'unknown':  factor = 1 (không demote)</div>
-  <div class="callout ex">
-    <div class="ttl">Ví dụ</div>
-    <p>CV fresher (rank 1) gặp job LEAD (rank 5): level_gap = 4 ≥ 3 → stretch nặng → recommendation_score = match_score × <strong>0.4</strong>. Job match skill 80% vẫn tụt xuống 32 khi xếp hạng — card vẫn hiện match 80% kèm nhãn stretch để trung thực với user. Đây là câu trả lời cho "vì sao CV intern/fresher không nên được đề xuất senior jobs": <em>không giấu job đi, mà đánh tụt hạng có giải thích</em>.</p>
-  </div>
-  <p class="filerefs">seniority.ts:8-23, 59-129, 164-178 · job-side level thiếu → suy từ title (classifySeniority, ingest-normalizers.ts:152-172, conservative: không rõ → null → không demote)</p>
-
-  <h3>E.6 Hôm nay match 50%, mai có JD mới match 90% thì sao?</h3>
-  <div class="callout">
-    <div class="ttl">Recommendation là LIVE QUERY — không cache, không bảng kết quả</div>
-    <p>Mỗi lần gọi <code>GET /api/cvs/:cvId/job-recommendations</code>, toàn bộ pipeline (query pool active → SkillDiff → embed CV → RRF → re-rank) chạy lại từ đầu. <strong>Không có</strong> bảng recommendations, không Redis, không TTL. Job mới ingest hôm nay → user thấy ngay ở request tiếp theo, không cần "re-run" gì cả. Đánh đổi: embedding CV tính lại mỗi request (job embedding thì lưu sẵn, chỉ re-embed khi skill-set của job đổi). Cache duy nhất tồn tại gần đó là cache LLM-extraction của module cv-jd-match — track khác, không đụng job-rec.</p>
-  </div>
-  <p class="filerefs">job-recommendation.service.ts:153-315 · jobs.controller.ts:30-58 · jd-ingest.service.ts:365-371</p>
-
-  <h3>E.7 Proficiency và embeddings</h3>
-  <ul>
-    <li><strong>Proficiency CV</strong> lấy từ <code>ats_extracted.skills_extracted</code> của bản review <em>mới nhất</em> (fix de-inflation: trước đây mọi skill mặc định level 3 làm điểm phồng). Chưa từng review → fallback presence-only (level 3). Thang level: BEGINNER=1 → EXPERT=5.</li>
-    <li><strong>Embeddings:</strong> model <code>text-embedding-3-large</code>, <strong>1024 chiều</strong> (Joi ép cứng), version v1 — một "hình học" chung cho skill/CV/job vectors. Bảng <code>job_embeddings</code> (1 row/job, re-embed chỉ khi source_text đổi) + <code>skill_embeddings</code> (1 row/surface-form). Job embed thất bại → vẫn ở pool, RRF chạy mình Signal A (graceful degradation).</li>
-  </ul>
-  <p class="filerefs">job-recommendation.service.ts:224-231, 262-279, 330-352 · proficiency-calibration.ts:16-25 · configuration.ts:37,86,90 · migrations JobsPool/R2SkillEmbeddings</p>
-</section>
-
-<!-- ============ F ============ -->
-<section id="sec-f">
-  <h2 class="sec"><span class="idx">F</span>Learning flow</h2>
-
-  <h3>F.1 Roadmap lấy input từ GapReport thế nào</h3>
-  <p>Path production (<code>POST /api/cv-matches/:matchId/roadmap</code>) <strong>hoàn toàn deterministic</strong> — không LLM nào chọn skill hay xếp thứ tự:</p>
-  <div class="flow">
-    <div class="fnode"><div class="t">1. Rebuild GapReport từ match</div><div class="d">server-side, không tin FE</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">2. buildUnifiedPlan → track 'learn'</div><div class="d">chỉ gap <code>fixability='learn'</code> và type hard_skill/soft_skill/language; priority = severity × importance_weight (× 1.3 nếu gap cũng lộ ra ở interview — BOTH_BOOST)</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">3. FeasibilityPlanner</div><div class="d">ước lượng giờ học từng skill, greedy fill theo ngân sách giờ của user → feasible / not_feasible + strategy deep_build / crash_prep</div></div>
-    <div class="farrow">▼</div>
-    <div class="fnode"><div class="t">4. RoadmapComposer</div><div class="d">gắn resources đã curate + lesson content nội bộ; đảm bảo ≥1 video verified per step; cap 30 resource/step</div></div>
-  </div>
-  <p>Billing charge-first (reserve trước, refund nếu lỗi). Không còn gap học được → trả <code>no_learning_gaps: true</code> thay vì bịa roadmap. BE không có khái niệm "tuần" — FE tự dựng 1 step = 1 tuần.</p>
-  <p class="filerefs">cv-matches.service.ts:482-535 · unified-plan.ts:33-156 · roadmap-composer.service.ts:24-135. Ghi chú: còn một path LLM-sinh-cấu-trúc cũ (<code>/internal/ai/roadmap/generate</code> — LLM chỉ sinh phases/weeks, course thật do matcher gắn, có sanity-check skill) nhưng KHÔNG phải path FE đang dùng.</p>
-
-  <h3>F.2 FeasibilityPlanner — thời gian học tính thế nào</h3>
-  <div class="formula">estimated_hours = 8 × levelDelta × difficultyMult × evidenceMult
-  levelDelta     = max(0, required_level − cv_level)     // =0 → 0 giờ, khỏi học
-  difficultyMult = 1 + (required_level − 1) × 0.1        // L1=1.0 … L5=1.4
-  evidenceMult   = 1.5 nếu cần thêm evidence, else 1
-  floor          = max(công thức, resource_hours)         // không học nhanh hơn tài nguyên ngắn nhất
-
-priority = severity × importance_weight × (1 + market_demand/100 × 0.5) × (1.3 nếu interview xác nhận)
-budget_hours = available_days × hours_per_week / 7        // mặc định 30 ngày × 8h/tuần
-→ rank theo priority, greedy fill; hết budget → not_feasible_before_deadline
-strategy = deep_build (đủ thời gian) | crash_prep (≤7 ngày hoặc không feasible)</div>
-  <p class="filerefs">feasibility-planner.ts:23-121 · roadmap-from-match.dto.ts:10-25 (validate 1-365 ngày, 1-80h/tuần)</p>
-
-  <h3>F.3 Course / resource lấy từ đâu — và AI không được bịa khoá học ra sao</h3>
-  <ul>
-    <li><strong>Catalog = 2 file JSON tĩnh load vào RAM</strong> (không có bảng DB catalog): <code>course-catalog.json</code> (~8.167 khoá curate 06-2026, mọi URL đã live-fetch verify lúc curate; rating = điểm uy tín editorial, không phải review user) + <code>learning-resource-catalog.json</code> (~212 resource, validate nghiêm — entry sai schema bị drop). Ingest bán tự động chạy tay: MS Learn API, Docker sitemap, Viblo RSS, YouTube API — nguồn UGC luôn vào trạng thái <code>pending</code>.</li>
-    <li><strong>Curation CRAAP</strong> <span class="badge hyb">LLM chấm mức 0-3, code sở hữu quyết định</span>: 5 chiều (relevance 0.3 / authority 0.2 / currency 0.2 / accuracy 0.15 / purpose 0.15) → quality_score /100. Chokepoint verify duy nhất: <strong>chỉ auto-verify khi quality ≥ 75 VÀ provider tier T1/T2</strong> (allowlist domain chống spoof); nội dung quảng cáo/không dạy skill → flagged; LLM output rác → fallback pending/flagged, <strong>không bao giờ auto-verify</strong>. Freshness do code chấm (LLM không biết hôm nay là ngày nào).</li>
-    <li><strong>Matcher chọn resource per skill</strong> <span class="badge det">CODE</span>: <code>quality(30) + language_match(20, boost-only — không bao giờ filter chết resource khác ngôn ngữ) + free(15) + level_fit(20/10) + multi_skill(≤15)</code>, top 10/skill; loại flagged/dead_link; <strong>chỉ dùng pending khi không còn verified nào</strong>.</li>
-  </ul>
-  <p class="filerefs">learning-resource.ts:65-218 · curation-scoring.ts:22-167 · curation-signals.ts:14-113 · prompts/resource_curation_v1.md ("TUYỆT ĐỐI không bịa thông tin về tài nguyên")</p>
-
-  <h3>F.4 proof_of_completion + quiz mastery</h3>
-  <ul>
-    <li><strong>proof_of_completion</strong> có 2 lớp: (a) mô tả tĩnh trong lesson/resource — "cái gì được tính là hoàn thành" (vd: "lưu transcript + 1 self-correction"); (b) bằng chứng user nộp thật — free-text/link lưu ở <code>learning_session_progress.exercise_proofs</code> (jsonb). Hiện <strong>chưa có xác thực tự động nội dung proof</strong> — đúng tinh thần pending-verification.</li>
-    <li><strong>Quiz</strong>: mỗi lesson ≥20 câu, ≥2 câu/objective; pass policy 2 câu đúng + accuracy ≥0.7 per objective. <strong>Trả lời lại KHÔNG được chấm lại</strong> (chỉ lần đầu tính điểm — chống farm đáp án); adaptive next-questions ưu tiên objective chưa mastered. Skill được coi là mastered khi <strong>MỌI objective</strong> của lesson đạt.</li>
-    <li><strong>Wave 8 — learning_completed:</strong> mastered ∩ gap còn mở → hiện trong progress report + mascot nói "đã học xong X — sẽ kiểm chứng ở lần quét tới". <strong>Không bao giờ tự hạ severity/evidence_risk</strong> — học xong ≠ có bằng chứng trên CV; lần re-scan tới mới là trọng tài.</li>
-  </ul>
-  <p class="filerefs">skillbridge-lesson-content.ts:186-187, 2622-2625 · quiz-mastery.ts:28-73 · gap-progress.ts:102-135 · mastered-skills.ts:41-64</p>
-
-  <h3>F.5 Learning chatbot (RAG)</h3>
-  <p>Retrieval hybrid <span class="badge det">CODE</span>: dense (pgvector cosine trên <code>resource_embeddings</code>, 1024-d) ⊕ sparse (BM25 in-memory k1=1.5 b=0.75) → fuse RRF k=60 — <strong>cả 2 lane chỉ search trên resource đã verified</strong>. Chống bịa 3 tầng: (1) prompt "NEVER invent a course, a provider, or a URL — cite ONLY by resource_id"; (2) <strong>model không bao giờ thấy URL</strong> — chỉ nhận id/title/provider, URL thật do API resolve theo id phía client; (3) grounding code drop mọi <code>cited_resource_ids</code> không nằm trong tập retrieved + strip raw URL khỏi message; LLM lỗi → fallback trung thực là chính danh sách retrieved. Tool <code>resource.validate</code> (check link sống) chỉ chạy khi user hỏi thẳng về link, kết quả override qua code chứ không qua LLM lần 2. Quota: 50 request/24h/user.</p>
-  <p class="filerefs">learning-resource-retriever.service.ts:57-86 · chat-grounding.ts:44-146 · learning-chat.service.ts:61-71 · learning-chat-platform.service.ts:19, 154-166</p>
-</section>
-
-<!-- ============ G ============ -->
-<section id="sec-g">
-  <h2 class="sec"><span class="idx">G</span>Interview flow</h2>
-
-  <h3>G.1 Interview dùng CV + JD + GapReport thế nào</h3>
-  <p>Hai planner cùng output <code>InterviewFocusArea[]</code> (có chủ đích, đã audit — đừng gộp):</p>
-  <ul>
-    <li><strong>From-match</strong> (luồng chính): đọc <code>GapReport.gap_items</code> đã severity-ranked → mỗi gap thành một focus area với <code>focus_type</code>: <code>gap_probe</code> (thiếu thật) / <code>evidence_probe</code> (khai mà chưa chứng minh) / <code>depth_probe</code> (partial) / <code>strength_showcase</code> (điểm mạnh để khoe). Cap 6 probe + 1 showcase.</li>
-    <li><strong>CV-only</strong> (chưa có JD): re-derive từ skill của review — fallback hợp lệ duy nhất vì gap report cần match mới tồn tại.</li>
-  </ul>
-  <p>Mỗi focus area luôn có <code>template_question</code> deterministic — LLM chỉ "phrase" câu hỏi hay hơn qua 1 call, và guard <strong>drop mọi skill LLM tự bịa thêm</strong> (không nằm trong plan gốc → về template).</p>
-  <p class="filerefs">interview-planner.ts:4-19, 82-252 · interview-plan.service.ts:36-181 (mergeWithGuard "fabricated skill → DROP")</p>
-
-  <h3>G.2 AI Interviewer Engine — ai quyết cái gì</h3>
-  <div class="tblwrap"><table>
-    <tr><th>Thành phần</th><th>Ai làm</th><th>Logic</th></tr>
-    <tr><td><strong>Agenda</strong></td><td><span class="badge det">CODE</span></td><td>Rank focus theo priority (gap_probe=4 &gt; evidence_probe=3 &gt; depth_probe=2 &gt; showcase=1), phân bổ drill budget theo tier (free 6 turn / paid 10); khung cố định: screening → topics → (scenario + behavioral nếu đủ budget) → wrap.</td></tr>
-    <tr><td><strong>Turn decision</strong> (drill / push_harder / advance / wrap)</td><td><span class="badge det">CODE</span></td><td>Máy trạng thái: hết budget → wrap; né tránh 2 lần → advance; trả lời sâu → fresher/junior được advance, senior bị push_harder ("senior earns câu khó hơn"); mặc định drill.</td></tr>
-    <tr><td><strong>Assess</strong> (chấm câu trả lời)</td><td><span class="badge llm">LLM call A</span> temp=0 + seed cố định</td><td>Chấm theo BARS trong prompt; KHÔNG được viết câu hỏi.</td></tr>
-    <tr><td><strong>Ask</strong> (viết câu hỏi tiếp)</td><td><span class="badge llm">LLM call B</span></td><td>Persona "the hiring interviewer — a senior engineer, in character" với JD title + excerpt (3.000 ký tự) + CV excerpt (4.000 ký tự) + gap focus canonical trong context; nhận <code>decision</code> từ code như mệnh lệnh ("obey it") — KHÔNG được tự quyết hướng đi.</td></tr>
-  </table></div>
-  <p class="filerefs">interview-agenda.ts:38-213 · interviews.service.ts:378-391, 1313-1337 · interview-chain-llm.service.ts (ASSESS_SEED=20260621) · prompts/interview_ask_v1.md:2, 9-11, 29</p>
-
-  <h3>G.3 Answer Analyzer — đo gì</h3>
-  <ul>
-    <li><strong>Layer 1</strong> <span class="badge det">CODE</span> (không LLM, không IO): word/sentence count, conciseness (ideal 20–150 từ), filler + hedging terms, từ lặp ≥3 lần, <strong>jd_term_hits</strong> {hit, missed, coverage} — câu trả lời chạm được bao nhiêu thuật ngữ JD, <strong>STAR</strong> {situation, task, action, result} marker-based, is_quantified, flags (too_short / rambling_risk).</li>
-    <li><strong>Layer 2</strong> <span class="badge llm">LLM-judge</span> schema đóng 8 field: talking_point, relevance (0–100), clarity, off_topic, confidence_tone, note, has_specific_example, star_present. <strong><code>evidence_quality</code> cố ý KHÔNG cho LLM chấm</strong> — code derive: có ví dụ cụ thể hoặc có số liệu → strong; tone tự tin quá đà mà không ví dụ → overclaimed; else thin. Safety net: L1 thấy rambling + relevance&lt;40 → force off_topic (LLM không được "tha").</li>
-    <li>LLM parse fail → degrade an toàn: star_present all-true (thà bỏ sót gap còn hơn bịa gap).</li>
-  </ul>
-  <p class="filerefs">answer-analyzer.ts:433-488, 553-607 · answer-insight.ts:66-240</p>
-
-  <h3>G.4 Scoring aggregate — deterministic</h3>
-  <div class="formula">BARS 4 mức: 0-40 poor · 41-60 borderline · 61-80 solid · 81-100 outstanding
-5 dimension × 6 role family, bảng trọng số NẰM TRONG CODE ("HELD IN CODE, never the LLM"):
-  dimensions = technical_depth, problem_solving, communication, evidence_credibility, role_fit
-  families   = ic_eng, data_ai_ml, devops_sre, qa, lead_manager, fresher_intern (mỗi hàng sum=100)
-
-per-dimension = depth-weighted mean (deep 1.0 / adequate 0.75 / shallow 0.5 / evasive 0.3)
-overall       = role-weighted mean CHỈ trên dimension đã có câu trả lời (renormalize —
-                không phạt dimension chưa kịp hỏi tới)</div>
-  <p class="filerefs">interview-scoring.ts:24-201 · eval gate: interview-golden.json 13 case band-consistency</p>
-
-  <h3>G.5 InterviewGapReport — gap mới sinh từ buổi phỏng vấn</h3>
-  <p>Derive <span class="badge det">CODE</span> từ signals mỗi câu trả lời, 4 rule + dedupe (max severity per skill×loại):</p>
-  <div class="tblwrap"><table>
-    <tr><th>weakness_type</th><th>Khi nào</th><th>Severity</th></tr>
-    <tr><td><code>knowledge_gap</code></td><td>Topic kỹ năng mà jd_term coverage &lt; 0.5</td><td>Theo độ hụt coverage</td></tr>
-    <tr><td><code>evidence_gap</code></td><td>evidence_quality overclaimed / thin</td><td>0.8 / 0.5</td></tr>
-    <tr><td><code>communication_gap</code></td><td>off_topic + unclear + rambling + filler≥4 (đếm số cờ)</td><td>0.3 × số cờ</td></tr>
-    <tr><td><code>behavioral_gap</code></td><td>Thiếu thành phần STAR — <strong>CHỈ</strong> ở phase behavioral/scenario (không bao giờ phạt STAR cho câu kỹ thuật ngắn)</td><td>số phần thiếu / 4</td></tr>
-  </table></div>
-  <p><strong>Chokepoint anti-fabrication <code>groundInterviewGaps</code></strong>: loại mọi gap không có <code>linked_question_id</code> + <code>evidence_from_answer</code>, và mọi gap về skill <strong>chưa từng được hỏi trong session</strong> — AI không thể "phán" bạn yếu thứ nó chưa kiểm tra. Kết quả persist vào <code>interview_sessions.gap_items</code>, back-link <code>requirement_id</code> về gap report của match.</p>
-  <p class="filerefs">interview-gap-derive.ts:64-230 · interview-gap.ts:104-122 · interviews.service.ts:541</p>
-
-  <h3>G.6 Quay lại value chain</h3>
-  <ul>
-    <li><strong>UnifiedPlan</strong>: gộp CV gaps + interview gaps thành 3 track (learn / cv_fix / interview_practice); skill xuất hiện ở CẢ HAI nguồn → <code>source:'both'</code>, priority × 1.3 → roadmap ưu tiên.</li>
-    <li><strong>Wave 8</strong>: severity của gap report chính nhận signal từ session gần nhất — <code>interview_risk = max(derived, signal)</code>, chỉ nâng không hạ (một buổi tốt không xoá được thiếu evidence trên CV), kèm citation <code>{kind:'interview'}</code>. Path progress/calibration cố ý không nhận signal để giữ phép đo sạch.</li>
-  </ul>
-  <p class="filerefs">unified-plan.ts:33-59, 123-129 · gap-item.ts:147-160 · interview-signals.ts:28-57</p>
-</section>
-
-<!-- ============ H ============ -->
-<section id="sec-h">
-  <h2 class="sec"><span class="idx">H</span>Mascot Assistant</h2>
-
-  <h3>H.1 Mascot là gì trong business — và khác chatbot thường ở đâu</h3>
-  <p>Mascot là <strong>tư vấn viên career 2 chiều grounded</strong>, không phải chatbot gắn thêm. Ba khác biệt cốt lõi so với "chat với LLM":</p>
-  <ul>
-    <li><strong>Context-aware theo trang</strong>: FE đăng ký context per-section (page, section đang nhìn, cv_id, field đang sửa) qua IntersectionObserver — mascot biết bạn đang đứng ở đâu và nói đúng việc ở đó. Có 9 skill route theo ngữ cảnh: cv_builder, cv_intake, diagnosis_results/review/upload, diagnosis_chat, learning_chat…</li>
-    <li><strong>Facts-grounded, không đọc trực tiếp dữ liệu client</strong>: mọi con số mascot nói lấy từ <em>record đã lưu server-side</em> (review + gap report của match), đóng gói thành <code>DiagnosisFacts</code>: overall/ats/4 dimension, prioritized actions, ≤8 gap item (kèm severity/fixability/next action), progress (closed/improved/worsened/score_delta), learning_completed_pending_verification, ≤3 match khác để so sánh.</li>
-    <li><strong>Citation được code kiểm chứng</strong>: LLM muốn trích dẫn phải trỏ vào facts thật — <code>cited_gap_id</code> phải là requirement_id tồn tại, <code>cited_other_match_index</code> phải resolve được entry thật; trích sai → bị drop. <strong>match_id/cv_id thật không bao giờ vào prompt</strong> — LLM chỉ thấy index, platform mới đổi index → id thật SAU khi validate (chống lộ id + chống bịa deep-link).</li>
-  </ul>
-  <p class="filerefs">CompanionShell.tsx:370-481 · useCompanionContext.ts:17-61 · diagnosis-grounding.ts:64-99, 374-426 · diagnosis-chat-platform.service.ts:216-242, 311-320</p>
-
-  <h3>H.2 Ví dụ: user hỏi "JD nào hợp tôi nhất?"</h3>
-  <div class="callout ex">
-    <div class="ttl">Trace một câu trả lời</div>
-    <p>(1) Platform nạp facts: match hiện tại + tối đa 3 match khác của user, mỗi cái chỉ {jd_title, overall_score, top 2 gap} — không id. (2) LLM so sánh <em>trên các con số đã chấm sẵn</em> — nó không chấm lại — và trả lời kiểu "JD Backend ở FPT đang match 71%, cao nhất; gap chính là Docker", kèm <code>cited_other_match_index: 2</code>. (3) Code validate index 2 tồn tại → map ra match_id thật → FE render <strong>chip "Xem match này"</strong> deep-link sang JD đó. Nếu LLM bịa index 5 (không có) → citation bị drop, chip không hiện, câu chữ vẫn còn nhưng không có link sai.</p>
-  </div>
-
-  <h3>H.3 Mascot có được tự sửa CV không?</h3>
-  <div class="callout warn">
-    <div class="ttl">Chỉ SUGGEST — không bao giờ tự EDIT</div>
-    <p>Mọi đề xuất viết lại trả về dạng <code>field_patch {target, before, after, why}</code>, FE render <strong>DiffView</strong> before/after với 2 nút "Áp dụng" / "Bỏ". "Áp dụng" chỉ set state form phía client — user vẫn tự save. Không tồn tại API nào cho service AI ghi thẳng vào CV record.</p>
-  </div>
-
-  <h3>H.4 CV Builder skill — moi sự thật rồi mới viết (evidence-collector)</h3>
-  <div class="flow">
-    <div class="fnode"><div class="t">Turn 1 — Phát hiện thiếu gì</div><div class="d"><span class="badge det">CODE</span> không tốn LLM: phân tích bullet thiếu action/tech/result (hoặc summary thiếu role/strength/evidence) → hỏi user bằng chip + free-text: "Bạn làm điều đó bằng công nghệ gì? Kết quả đo được là gì?"</div></div>
-    <div class="farrow">▼ <span>user trả lời sự thật của chính mình</span></div>
-    <div class="fnode"><div class="t">Turn 2 — Ground rồi mới viết</div><div class="d">Câu trả lời được ground trước; thiếu chi tiết → <strong>hỏi lại TRƯỚC khi tốn LLM call</strong>. Đủ facts → 1 call temp=0 schema-enforced viết lại bullet.</div></div>
-    <div class="farrow">▼ <span>3 cổng kiểm sau khi LLM viết</span></div>
-    <div class="fnode"><div class="t">groundCvRewrite — 3 gate</div><div class="d">(a) used_facts ⊆ facts đã thu; (b) mọi số+đơn vị trong bản viết phải khớp EXACT token nguồn ("30%" ≠ "30ms"); (c) gazetteer ~90 tech name — bản viết chứa tech mà nguồn không có → reject UNGROUNDED, quay lại hỏi tiếp</div></div>
-  </div>
-  <p>Nút "Viết lại nhẹ hơn" re-fire với <code>tone:'softer'</code> (instruction: đổi giọng, "keep EVERY fact identical"); nút "Hỏi thêm để rõ hơn" mở field bổ sung không tính vào budget re-ask. Prompt tự nói với user: <em>"mình KHÔNG bịa số liệu, công ty hay thành tích"</em>. Với tailor rewrite (từ checklist JD) còn thêm cổng TailorVerifier ở mục D.7 — action <code>missing_required</code>/<code>add_evidence</code> <strong>không được reword</strong> ("phải giải quyết trung thực, không phải viết khéo đi").</p>
-  <p class="filerefs">cv-assistant.ts:358-421 · cv-assistant.service.ts:52-54, 103-200 · cv-assistant-rewrite.ts:165-300 · CvBuilderSkill.tsx:88-126, 359-439, 572-620</p>
-
-  <h3>H.5 Tools + chống lạm dụng</h3>
-  <ul>
-    <li><strong>2 tool</strong> chat gọi được: <code>resource.validate</code> (link còn sống — chỉ khi user hỏi thẳng về link) và <code>github.enrich</code> (lookup GitHub public — chỉ khi có username trong hội thoại). Loop tối đa <strong>2 hop</strong>, pre-gate regex rẻ tiền trước khi tốn LLM quyết định; kết quả tool wrap <code>{untrusted_data}</code> (injection-defense) và mọi cuộc gọi ghi bảng <code>ai_tool_calls</code>. Guard vận hành: rate-limit 20 call/h/user, timeout 10s, circuit-breaker (5 fail liên tiếp → ngắt 5 phút). FE hiện badge "Verified with tool" khi câu trả lời có <code>cited_tool</code> hợp lệ.</li>
-    <li><strong>Quota chat</strong>: 50 request/24h/user mỗi lane (diagnosis-chat, learning-chat) → 429 khi vượt. <strong>OFF_TOPIC/ABUSE_THROTTLED</strong> nằm ở flow khác cùng họ anti-abuse: JD paste và CV rewrite — reject OFF_TOPIC được hoàn quota (nhưng đốt cost thật) và ≥5 reject/giờ → throttle 429 <em>trước khi</em> tốn LLM.</li>
-  </ul>
-  <p class="filerefs">declarations.ts:6-53 · chat-tool-loop.ts:7-85 · tool-registry.service.ts:17-139 · diagnosis-chat-platform.service.ts:21, 244-256 · cv-jd-match.service.ts:89-103 · cv-rewrite.service.ts:124-138, 197-217</p>
-</section>
-
-<!-- ============ I ============ -->
-<section id="sec-i">
-  <h2 class="sec"><span class="idx">I</span>Data, audit, production readiness</h2>
-
-  <h3>I.1 Truy vết AI (tracing)</h3>
-  <ul>
-    <li><strong>Mọi AI call ghi <code>ai_requests</code> / <code>ai_results</code></strong>: request_type, user, model_code (backfill sau khi call xong), latency, cost, payload (ids/enums — <strong>không bao giờ lưu CV/JD text thô trong payload action</strong>; evidence email/phone bị redact). Payload được wrap dưới key <code>payload</code> chuẩn hoá — mọi query đọc phải đi qua <code>request_payload -&gt; 'payload'</code> (đã có test pin đường dẫn này sau một bug silent thật).</li>
-    <li><strong>Tool calls ghi <code>ai_tool_calls</code></strong>: tool_name, args_hash, status, latency, error — đủ audit "AI đã tra cứu gì, lúc nào, cho ai".</li>
-    <li><strong>Prompt version hoá</strong>: mỗi prompt là file <code>prompts/*_v1.md</code> có version trong tên + <code>scoring_weights_version</code> ghi thẳng vào response — biết chính xác bản chấm nào tạo ra con số nào.</li>
-    <li><strong>Model/provider</strong>: OpenAI (default <code>gpt-5.4-mini</code> qua env) + Gemini (<code>@google/genai</code>); embedding <code>text-embedding-3-large</code> 1024-d v1. Extraction temp 0.1; interview assess temp 0 + seed cố định. Model routing per-feature: <em>dự định, chưa implement</em>.</li>
-  </ul>
-
-  <h3>I.2 Eval gates trong CI</h3>
-  <p><strong>20 eval offline chạy mỗi PR</strong> (deterministic, không cần LLM key, tổng ~50 giây): gap · match · rubric · action · progress · chat-tools · role-infer · interview · answer-signals · answer-insight · interview-gaps · interview-coaching · learning · curation · cv-assistant · cv-intake · cv-builder · patch · proficiency · cv-signals — cộng ~2.180 unit test. Kỷ luật eval: <strong>không bao giờ sửa golden cho pass</strong>; re-baseline phải có justification ghi lại. Hai eval bị loại khỏi gate <em>có chủ đích kèm comment</em> (mentions/semantic — golden drift có sẵn đang chờ quyết); <code>eval:accuracy</code> (gọi LLM thật) chạy workflow riêng.</p>
-  <p class="filerefs">.github/workflows/ci.yml:52-78</p>
-
-  <h3>I.3 Vòng calibration</h3>
-  <ul>
-    <li><strong>impact_calibrations</strong>: mỗi lần user re-scan, hệ ghi lại {predicted score_min/max + severity_drop lúc đề xuất action} vs {actual delta đo được giữa 2 lần quét} + cờ <code>attempted</code> (user có dùng rewrite cho action đó không — join qua trace, scoped đúng user + match + khung thời gian). Attribution-noise policy khai báo thẳng trong code: delta toàn match được gán cho mọi action row vì không tách được action nào gây ra.</li>
-    <li><strong>Trạng thái trung thực:</strong> hiện mới có <strong>write path</strong> — chưa có job đọc/aggregate để chấm "dự đoán chính xác bao nhiêu %" hay tự tinh chỉnh ngưỡng. Đây là TODO có chủ đích: cần tích luỹ data thật trước.</li>
-    <li>Smoke e2e: tool <code>smoke-diagnosis</code> chạy review→match→gap-report trên DB thật, 8 invariant.</li>
-  </ul>
-  <p class="filerefs">impact-calibration.entity.ts · cv-matches.service.ts:841-930</p>
-
-  <h3>I.4 Confidence các tầng</h3>
-  <div class="kv">
-    <div class="k">confidence_score (review)</div><div><code>0.95 − failRate×0.4</code> — CV càng khó parse càng bớt tin.</div>
-    <div class="k">dimension_provenance</div><div>Từng dimension khai nguồn (deterministic/llm) + confidence + evidence.</div>
-    <div class="k">extraction_quality</div><div>HIGH/MEDIUM/LOW theo mojibake/wordlike/độ dài/OCR — chỉ cảnh báo, không bao giờ chặn hay đổi điểm.</div>
-    <div class="k">seniority confidence</div><div>high/medium/low theo tỉ lệ entry parse được ngày — confidence thấp thì demote nhẹ tay hơn (0.4→0.7).</div>
-  </div>
-
-  <h3>I.5 Đã production-grade vs còn TODO</h3>
-  <div class="fbranch">
-    <div class="callout"><div class="ttl">✅ Production-grade</div>
-      <ul>
-        <li>Deterministic scoring + eval gate mọi engine chính</li>
-        <li>Strict-schema validation toàn cục (whitelist + forbid unknown)</li>
-        <li>Billing charge-first + refund-on-error; quota/entitlements per-feature</li>
-        <li>Anti-abuse: OFF_TOPIC hoàn quota + throttle 5 reject/h; chat 50/ngày; tool rate-limit + circuit breaker</li>
-        <li>Anti-fabrication chokepoint tại MỌI ranh giới LLM (rewrite 3-gate, interview grounding, RAG resource-id-only, citation validation)</li>
-        <li>PII: maskPii trước prompt, redact evidence trong trace, cron purge PII đơn ứng tuyển (PDPL)</li>
-        <li>CD tự động cả 2 repo (merge main → prod ~4 phút)</li>
-      </ul>
+    <div class="callout ex">
+      <div class="ttl">Worked example (Hồ sơ fresher (cấp độ 1) đối chiếu với tin tuyển dụng Leader (cấp độ 5))</div>
+      <p>Khoảng cách thâm niên được xác định:</p>
+      <div class="formula">level_gap = rank(job) - rank(CV) = 5 - 1 = 4</div>
+      <p>Khoảng cách này vượt quá 3 cấp độ (level_gap ≥ 3) thuộc nhóm stretch nặng. Điểm xếp hạng đề xuất bị phạt nặng:</p>
+      <div class="formula">recommendation_score = match_score × 0.4</div>
+      <p>Mặc dù điểm tương khớp kỹ năng thực tế của ứng viên đối với công việc có thể đạt 80%, công việc này sẽ bị hạ thấp thứ tự xếp hạng (chỉ còn 32 điểm) để nhường chỗ cho các công việc vừa sức hơn. Nhãn cảnh báo "stretch nặng" vẫn được hiển thị công khai trên giao diện để giải thích lý do.</p>
     </div>
-    <div class="callout warn"><div class="ttl">🚧 TODO / giới hạn đã biết</div>
-      <ul>
-        <li>impact_calibrations: chưa có read/aggregate path (mới ghi)</li>
-        <li>JD-dimensions: 4/5 dimension chưa có grader (chỉ seniority) → deal-breaker "unverified" cap-at-stretch</li>
-        <li>Bug FE luồng quiz: gửi slug thay canonical → skill có underscore (node_js, ci_cd…) bị 404 — <strong>đang chờ fix</strong>, chặn luôn learning_completed cho ~nửa catalog</li>
-        <li>Quiz retry không chấm lại → sai 1 câu first-attempt ở objective 2-câu là mất mastery vĩnh viễn (cần quyết policy retry)</li>
-        <li>GitHub corroboration (opt-in) chưa đồng bộ với TailorVerifier (cùng class lỗi đã fix cho interview signal)</li>
-        <li>Interview signal theo per-match — re-scan là mất (nâng lineage-aware là follow-up)</li>
-        <li>Taxonomy pilot IT-only: một phần requirement JD thật chưa normalize được (đã đo ~4/10 trên 1 JD smoke)</li>
-        <li>Model routing per-feature + failover đa provider: chưa làm</li>
-        <li>PR #167 (chờ merge): đã vá seniority-fallback + band-sync; còn treo từ audit: label "điểm trình bày" + reweight theo band, eval noise cho extraction level/importance, chốt 1 nguồn skill/CV, đo phân bố match_score fresher</li>
-        <li>🔥 <strong>Pool job SỤP ngầm (phát hiện 05-07, FIX trong PR #168 + recovery crawl 06-07):</strong> 8 active / 1.387 expired — crawler chạy nhưng discovery gãy từ ~26-06 (run 26-06 expire 817 job, run 02-07 chỉ fetch 2); EXPIRE_AFTER_DAYS=3 gắt hơn nhịp cron thực tế; KHÔNG có alert khi active tụt</li>
-        <li>✅ (fix PR #168) Job-rec bỏ qua <code>job_skills.min_level</code> employer đã nhập → mọi requirement mặc định level 3, partial-credit gần như tắt với CV chưa review → con số match trên card đúng về THỨ HẠNG nhưng chưa đúng tuyệt đối (fix: copy pattern candidate-job.service.ts:389-400)</li>
-        <li>✅ (fix PR #168) Builder edit không sync skill → autosave giờ re-sync cv_skills</li>
-        <li>✅ (fix PR #168) trends_insight: strip số standalone khỏi văn xuôi + field stale >3 ngày + pin gpt-4o-mini cho 2 judge (trends/answer_insight)</li>
-      </ul>
+
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống tự động xác định cấp độ thâm niên thực tế của CV dựa trên việc cộng dồn thời gian làm việc thực tế được ghi nhận trong các mục kinh nghiệm của CV:</p>
+        <div class="formula">Seniority levels: intern(0) | fresher(1) | junior(2) | mid(3) | senior(4) | lead(5)</div>
+        <p><strong>Cập nhật PR #167:</strong> Nếu không có mục kinh nghiệm nào trong CV phân tích được mốc thời gian cụ thể, hệ thống sẽ tự động khống chế cấp độ tối đa của ứng viên ở mức <code>junior</code> để tránh lỗi thuật toán đếm số lượng mục kinh nghiệm không có ngày tháng nâng ứng viên lên cấp độ senior giả mạo.</p>
+        <p>Hệ số điều phạt thâm niên:</p>
+        <ul>
+          <li><code>level_gap ≥ 3</code>: Nhân hệ số 0.4 (nếu độ tin cậy dữ liệu thâm niên thấp, nhân 0.7).</li>
+          <li><code>level_gap = 2</code>: Nhân hệ số 0.65 (nếu độ tin cậy dữ liệu thâm niên thấp, nhân 0.85).</li>
+          <li>Các trường hợp thâm niên phù hợp hoặc vượt cấp độ yêu cầu: Giữ nguyên hệ số 1.0.</li>
+        </ul>
+        <p class="filerefs">seniority.ts · classifySeniority</p>
+      </div>
+    </details>
+
+    <h3>E.6 Hôm nay match 50%, mai có JD mới match 90% thì sao?</h3>
+    <p>Danh sách công việc được đề xuất được tính toán trực tiếp mỗi khi bạn yêu cầu, đảm bảo các cơ hội tuyển dụng mới nhất sẽ xuất hiện ngay lập tức mà không gặp bất kỳ độ trễ nào.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống thiết kế luồng truy vấn trực tiếp (Live Query):</p>
+        <ul>
+          <li>Hệ thống không lưu trữ bảng kết quả gợi ý công việc trong cơ sở dữ liệu hay bộ nhớ đệm Redis để tránh dữ liệu bị cũ.</li>
+          <li>Mỗi yêu cầu lấy gợi ý công việc của ứng viên sẽ thực hiện chạy lại toàn bộ quy trình so khớp từ đầu trên tập tin tuyển dụng đang hoạt động (active).</li>
+          <li>Vận hành này đảm bảo tính cập nhật tức thời khi có tin tuyển dụng mới được xuất bản.</li>
+        </ul>
+        <p class="filerefs">job-recommendation.service.ts · jobs.controller.ts</p>
+      </div>
+    </details>
+
+    <h3>E.7 Proficiency và embeddings</h3>
+    <p>Trình độ kỹ năng của bạn được đánh giá khách quan dựa trên các mô tả kinh nghiệm trong CV, tránh việc tự phóng đại năng lực. Các kỹ năng và công việc được chuyển đổi thành các vector hình học để tính toán độ tương đồng một cách chính xác.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống biểu diễn thông tin kỹ năng dưới dạng hình học:</p>
+        <ul>
+          <li><strong>Mô hình hóa Vector:</strong> Sử dụng mô hình biểu diễn ngôn ngữ <code>text-embedding-3-large</code> của OpenAI với chiều dài cố định 1024 chiều để ánh xạ thông tin.</li>
+          <li><strong>Trình độ kỹ năng:</strong> Lấy dữ liệu trình độ được kiểm chứng từ phần đánh giá CV gần nhất (thang đo từ 1-5). Nếu hồ sơ chưa được chạy đánh giá, hệ thống mặc định gán mức thạo cơ bản là 3 để tính toán.</li>
+        </ul>
+        <p class="filerefs">job-recommendation.service.ts · configuration.ts</p>
+      </div>
+    </details>
+
+    <h3>E.8 Trends &amp; Market Demand Engine</h3>
+    <p>Động cơ phân tích xu hướng tuyển dụng giúp ứng viên biết kỹ năng nào đang được thị trường săn đón nhiều nhất và mức lương trung bình tương ứng. Thông tin này được cập nhật hàng đêm từ dữ liệu các tin tuyển dụng thực tế.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Cơ chế hoạt động của động cơ phân tích xu hướng thị trường tuyển dụng:</p>
+        <ul>
+          <li><strong>Snapshot Nhu cầu (Demand Snapshot):</strong> Định kỳ chạy truy vấn SQL tổng hợp số lượng tin tuyển dụng đang hoạt động có đề cập đến từng kỹ năng theo từng vị trí (role) và mốc thời gian cụ thể:
+            <div class="formula">pct_of_postings = (Số lượng tin nhắc kỹ năng / Tổng số tin đang active của role) × 100</div>
+          </li>
+          <li><strong>Ứng dụng vào Gap Report:</strong> Chỉ số nhu cầu thị trường của kỹ năng sẽ được gắn trực tiếp vào trường <code>market_demand</code> của lỗ hổng tương ứng để tính toán hệ số nhân thị trường (<code>marketMult</code>). Nếu không có dữ liệu xu hướng, hệ thống mặc định gán mức trung bình là 0.5 (marketMult = 1.0).</li>
+          <li><strong>Mức lương &amp; Xu hướng:</strong> Thống kê mức lương trung vị <code>salary_p50</code> chỉ được tính toán dựa trên các tin tuyển dụng có ghi rõ khoảng lương bằng Việt Nam Đồng (VND) để tránh sai lệch tỷ giá. Trường <code>trend_delta</code> so sánh sự thay đổi vị trí của kỹ năng giữa các kỳ để xác định xu hướng mới nổi.</li>
+        </ul>
+        <p class="filerefs">skill-demand.service.ts · gap-report.service.ts</p>
+      </div>
+    </details>
+
+    <h3>E.9 Business Flow &amp; Application Matching</h3>
+    <p>Nhà tuyển dụng có thể trực tiếp đăng tin tuyển dụng và quản lý hồ sơ ứng viên nộp về. Khi ứng viên ứng tuyển, hệ thống ngay lập tức tính toán điểm phù hợp của hồ sơ đối với vị trí tuyển dụng để hiển thị cho nhà tuyển dụng.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình đăng tin và nộp hồ sơ của doanh nghiệp:</p>
+        <ul>
+          <li><strong>Xác thực tin tuyển dụng (Readiness Validation):</strong> Khi nhà tuyển dụng xuất bản tin tuyển dụng từ bản nháp (draft → publish), hệ thống chạy bộ kiểm tra <code>business-job.service.ts</code> để đảm bảo tin tuyển dụng điền đầy đủ các thông tin bắt buộc và có danh sách kỹ năng tối thiểu.</li>
+          <li><strong>So khớp khi nộp đơn (Apply Match):</strong> Ngay khi ứng viên thực hiện nộp đơn ứng tuyển, hệ thống kích hoạt chạy ngầm tiến trình tính toán điểm so khớp tương ứng thông qua cùng một động cơ <code>SkillDiff</code> của ứng viên:
+            <div class="formula">candidate-job.service.ts · computeMatch</div>
+            Nếu có lỗi phát sinh trong quá trình tính toán, hệ thống sẽ tự động hạ cấp trạng thái so khớp về <code>matchStatus = FAILED</code> nhưng hoàn toàn không chặn việc nộp đơn của ứng viên để bảo toàn trải nghiệm người dùng. Điểm số so khớp này được lưu trữ trực tiếp trong bản ghi ứng tuyển để phục vụ bộ lọc của nhà tuyển dụng.</li>
+          <li><strong>Retention &amp; Purge:</strong> Hệ thống lên lịch quét tự động để xóa bỏ hoàn toàn thông tin cá nhân của các đơn ứng tuyển đã quá hạn lưu trữ theo quy định bảo vệ dữ liệu cá nhân (PDPL).</li>
+        </ul>
+        <p class="filerefs">candidate-job.service.ts · business-job.service.ts</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ F ============ -->
+  <section id="sec-f">
+    <h2 class="sec"><span class="idx">F</span>Learning flow</h2>
+
+    <h3>F.1 Roadmap lấy input từ GapReport thế nào</h3>
+    <p>Lộ trình học tập được thiết lập tự động dựa trên các lỗ hổng kỹ năng cần cải thiện cho công việc mục tiêu. Hệ thống sẽ tính toán mức độ ưu tiên của từng kỹ năng và phân bổ chúng vào các tuần học hợp lý.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình sản sinh lộ trình học tập hoàn toàn tự động trên máy chủ:</p>
+        <ol>
+          <li>Tải dữ liệu <code>GapReport</code> gốc từ thông tin so khớp thực tế (không tin cậy dữ liệu do client gửi lên).</li>
+          <li>Lọc ra các lỗ hổng kỹ năng có thể cải thiện bằng học tập (<code>fixability = 'learn'</code> và thuộc nhóm kỹ năng cứng, mềm hoặc ngoại ngữ).</li>
+          <li><strong>Hệ số tăng cường (BOTH_BOOST):</strong> Nếu kỹ năng cần học vừa bị thiếu trong CV vừa bị đánh giá yếu trong buổi phỏng vấn thử, độ ưu tiên học của kỹ năng đó được nhân thêm hệ số 1.3. Lưu ý: Hệ số này chỉ được kích hoạt trong luồng hiển thị kế hoạch phát triển chung (<code>/development-plan</code>), không chạy trong luồng tạo lộ trình học từ một lượt so khớp đơn lẻ (<code>roadmap-from-match</code> - luôn trả về <code>interviewItems: []</code>).</li>
+          <li>Gọi bộ lên kế hoạch <code>FeasibilityPlanner</code> để tính toán thời lượng và sắp xếp thứ tự học.</li>
+          <li>Gán học liệu đã kiểm chứng tương ứng từ kho dữ liệu, đảm bảo có ít nhất 1 tài nguyên video cho mỗi bước học (chỉ ở mức cố gắng tối đa khi thư viện có sẵn học liệu tương ứng) để đa dạng hóa hình thức tiếp cận.</li>
+        </ol>
+        <p class="filerefs">cv-matches.service.ts · unified-plan.ts · roadmap-composer.service.ts</p>
+      </div>
+    </details>
+
+    <h3>F.2 FeasibilityPlanner — thời gian học tính thế nào</h3>
+    <p>Thời gian cần thiết để làm chủ một kỹ năng được ước tính dựa trên khoảng cách giữa trình độ hiện tại của bạn và yêu cầu của công việc. Hệ thống sẽ so sánh tổng thời gian này với quỹ thời gian rảnh của bạn để đưa ra lộ trình khả thi nhất.</p>
+
+    <div class="callout ex">
+      <div class="ttl">Worked example (Kỹ năng thiếu hụt mức thâm niên yêu cầu: required_level = 4, cv_level = 2)</div>
+      <p>Tính toán thời lượng học tập ước tính:</p>
+      <div class="formula">levelDelta = 4 - 2 = 2
+difficultyMult = 1 + (4 - 1) × 0.1 = 1.3
+Với kỹ năng thiếu bằng chứng thực hành, hệ số nhân evidenceMult = 1.5.
+estimated_hours = 8 × 2 × 1.3 × 1.5 = <strong>31.2 giờ học</strong>.</div>
+      <p>Nếu quỹ thời gian học tập do ứng viên tự khai báo không đáp ứng đủ tổng thời lượng học tập cần thiết cho đến ngày kết thúc mong muốn, hệ thống sẽ tự động gán nhãn trạng thái cảnh báo và chuyển đổi chiến lược lộ trình sang dạng học chuẩn bị ngắn hạn (<code>crash_prep</code>) thay vị học chuyên sâu (<code>deep_build</code>).</p>
     </div>
-  </div>
-</section>
 
-<!-- ============ J ============ -->
-<section id="sec-j">
-  <h2 class="sec"><span class="idx">J</span>Kết luận</h2>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Thuật toán lập lịch học tập FeasibilityPlanner:</p>
+        <div class="formula">estimated_hours = 8 × levelDelta × difficultyMult × evidenceMult
+levelDelta = max(0, required_level − cv_level)
+difficultyMult = 1 + (required_level − 1) × 0.1
+evidenceMult = 1.5 (nếu cần bổ sung bằng chứng thực tế), ngược lại = 1.0</div>
+        <p>Hệ thống sắp xếp thứ tự ưu tiên học dựa trên độ nghiêm trọng của lỗ hổng kỹ năng và lượng tin tuyển dụng thực tế đang cần kỹ năng đó, sau đó tiến hành phân bổ vào quỹ thời gian rảnh của người dùng cho đến khi hết quỹ thời gian cho phép.</p>
+        <p class="filerefs">feasibility-planner.ts</p>
+      </div>
+    </details>
 
-  <h3>J.1 Hệ thống mạnh ở đâu</h3>
-  <ul>
-    <li><strong>Kiến trúc AI đúng sách và hiếm gặp ở giai đoạn startup:</strong> LLM bị giới hạn vào extraction/phrasing/chat; 100% con số (điểm, severity, ranking, fit, impact) do code sở hữu — tái lập được, test được, giải thích được từng hằng số. Cùng một CV chấm 2 lần ra cùng kết quả ở mọi dimension deterministic.</li>
-    <li><strong>Honest-by-design ăn sâu vào công thức:</strong> partial credit dưới tuyến tính, coverage cap chặn "bù điểm", honest-zero cho action không tăng level, deal-breaker unverified cap-at-stretch, learning pending-verification, interview signal chỉ nâng không hạ. Sản phẩm thà nói "chưa chứng minh được" còn hơn hứa bừa — đây là lợi thế niềm tin dài hạn.</li>
-    <li><strong>Value chain thật sự khép vòng:</strong> gap → hành động → phỏng vấn/học → tín hiệu chảy ngược về severity/progress → re-scan đo delta → calibration ghi predicted-vs-actual. Đối thủ thường chỉ có 1-2 mắt xích rời.</li>
-    <li><strong>Khả năng audit:</strong> mọi quyết định AI truy vết được về prompt version + model + payload + tool calls; 20 eval gate chặn regression logic chấm ngay trong CI.</li>
-  </ul>
+    <h3>F.3 Course / resource lấy từ đâu — và AI không được bịa khoá học ra sao</h3>
+    <p>Tất cả học liệu trong hệ thống đều lấy từ kho dữ liệu đã được kiểm chứng và đánh giá chất lượng thủ công, ngăn chặn hoàn toàn việc AI tự tạo ra các liên kết hoặc khóa học không tồn tại.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình quản lý và phân phối tài nguyên học tập:</p>
+        <ul>
+          <li><strong>Cơ sở dữ liệu học tập:</strong> Lưu trữ trong bộ nhớ đệm tĩnh dưới dạng tệp JSON gồm danh mục khóa học (<code>course-catalog.json</code>) và danh mục tài nguyên ngắn (<code>learning-resource-catalog.json</code>). Mọi đường liên kết đều được kiểm tra trạng thái hoạt động định kỳ.</li>
+          <li><strong>Chấm điểm chất lượng CRAAP:</strong> Các tài nguyên mới thu thập được chấm điểm tự động từ 0-100 dựa trên 5 tiêu chí: độ tương thích (relevance), độ tin cậy nguồn (authority), độ mới (currency), độ chính xác (accuracy) và mục đích phi lợi nhuận (purpose). Tài nguyên chỉ được tự động duyệt hiển thị nếu đạt điểm chất lượng ≥ 75 và thuộc các nhà cung cấp uy tín trong danh sách whitelist.</li>
+          <li><strong>Thuật toán chọn lựa học liệu:</strong> Khi chọn học liệu cho một kỹ năng, hệ thống tính toán điểm số phù hợp của tài nguyên dựa trên tổng hợp các yếu tố chất lượng, ngôn ngữ, cấp độ kỹ năng đích và loại bỏ các liên kết bị báo lỗi.</li>
+        </ul>
+        <p class="filerefs">learning-resource.ts · curation-scoring.ts</p>
+      </div>
+    </details>
 
-  <h3>J.2 Rủi ro còn lại</h3>
-  <ul>
-    <li><strong>Coverage taxonomy</strong> là trần của mọi thứ: skill/JD ngoài pilot IT không normalize được → rơi khỏi scoring. Mở rộng taxonomy = việc gãi đúng chỗ ngứa nhất.</li>
-    <li><strong>Calibration mới có một nửa vòng</strong>: đang ghi predicted-vs-actual nhưng chưa đọc lại — các ngưỡng (fit 65/40, severity weights) vẫn là expert-set chưa được data thật xác nhận.</li>
-    <li><strong>Coupling ngầm FE↔BE</strong>: learning join theo convention session-id của FE (đã ponytail-comment 2 đầu, degrade an toàn nhưng là wart); bug quiz-slug đang sống là ví dụ đúng lớp rủi ro này.</li>
-    <li><strong>Nguồn job đơn độc</strong>: crawler mới có ITviec; pool nghèo thì job-rec và market_demand đều nghèo theo.</li>
-    <li><strong>Chi phí LLM per-request</strong>: chưa có model routing per-feature; extraction chạy lại mỗi lần match (có cache extraction nhưng phạm vi hẹp).</li>
-  </ul>
+    <h3>F.4 proof_of_completion + quiz mastery</h3>
+    <p>Để hoàn thành một bài học, bạn phải trả lời đúng các câu hỏi kiểm tra năng lực và cung cấp bằng chứng thực hành thực tế. Trình độ của bạn chỉ thực sự được cập nhật sau khi bạn vượt qua được các thử thách này.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình nghiệm thu tiến độ học tập:</p>
+        <ul>
+          <li><strong>Minh chứng hoàn thành (exercise_proofs):</strong> Người dùng tải lên các liên kết dự án cá nhân hoặc ảnh chụp kết quả thực hành. Dữ liệu này được lưu trữ dưới dạng bản ghi thô để phục vụ việc phê duyệt thủ công của quản trị viên (pending-verification).</li>
+          <li><strong>Bài kiểm tra năng lực (Quiz):</strong> Mỗi bài học bao gồm danh sách câu hỏi kiểm tra. Tiêu chuẩn vượt qua bài kiểm tra là trả lời đúng tối thiểu 2 câu hỏi cho mỗi mục tiêu học tập và đạt tỷ lệ chính xác chung ≥ 70%. <em>(Đính chính 2026-07-22 theo code thật: hệ thống hiện chấm lại theo <strong>lượt trả lời MỚI NHẤT</strong> với số lần thử <strong>không giới hạn</strong> — <code>quiz-mastery.ts</code>, test <code>quiz-mastery.spec.ts</code> "scores every practice retry using the latest answer". Cơ chế chống thử-sai (chỉ tính lượt đầu / giới hạn số lần) CHƯA được cài — hạng mục đang mở, lane Khoa.)</em></li>
+          <li><strong>Cập nhật trạng thái:</strong> Sau khi hoàn thành bài kiểm tra, kỹ năng được gán nhãn đã hoàn thành trên lộ trình học tập, nhưng chỉ số rủi ro kỹ năng trên CV chỉ thực sự được thay đổi sau khi ứng viên cập nhật lại CV và chạy quét chẩn đoán mới.</li>
+        </ul>
+        <p><strong>Ghi chú tiến độ PR #207:</strong> Nhánh phát triển bổ sung tính năng dịch nghĩa và vòng đời học tập của Khoa hiện vẫn đang ở trạng thái chờ duyệt (CHƯA merge) trên server chính. Hệ thống không loại bỏ các lỗ hổng phi học tập và không triển khai tính năng mở khóa khóa học tuần tự trên backend.</p>
+        <p class="filerefs">quiz-mastery.ts · gap-progress.ts</p>
+      </div>
+    </details>
 
-  <h3>J.3 Roadmap nâng cấp tiếp theo</h3>
-  <ol>
-    <li><strong>Đóng vòng calibration</strong>: job đọc impact_calibrations → báo cáo accuracy dự đoán → tinh chỉnh fit-policy/severity weights bằng data thật (đã có bảng, chỉ thiếu read path).</li>
-    <li><strong>Grader cho 4 JD-dimension còn lại</strong> (language/education/domain/work_mode) → deal-breaker verify thật, giảm cap-at-stretch giả.</li>
-    <li><strong>Fix ngay 2 điểm learning</strong>: quiz slug→canonical (1 dòng FE) + policy retry mastery.</li>
-    <li><strong>Interview signal lineage-aware</strong> (sống qua re-scan cùng JD) + đồng bộ github corroboration vào TailorVerifier.</li>
-    <li><strong>Resume Engine track</strong> (đang chạy song song): editor 3-panel vendored từ Reactive Resume, logic chấm giữ 100% SkillBridge.</li>
-    <li><strong>Mở rộng nguồn job</strong> (thêm board + employer self-serve) và taxonomy ngoài pilot.</li>
-  </ol>
+    <h3>F.5 Learning chatbot (RAG)</h3>
+    <p>Trợ lý học tập giúp bạn giải đáp các thắc mắc chuyên môn dựa trên tài liệu học tập có sẵn. Hệ thống cam kết không bao giờ tự tạo ra các đường link hay nguồn tài liệu giả mạo bên ngoài tài liệu gốc.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Kiến trúc tìm kiếm và trả lời của trợ lý học tập:</p>
+        <ul>
+          <li>Sử dụng phương pháp tìm kiếm lai ghép (Hybrid Retrieval) kết hợp tìm kiếm vector đặc trưng (pgvector) và tìm kiếm từ khóa tần suất (BM25 in-memory) để lọc ra các tài nguyên học tập phù hợp nhất.</li>
+          <li>Mô hình LLM không được cung cấp địa chỉ URL thực tế của các tài nguyên học tập trong prompt. Trợ lý chỉ nhận các định danh tài nguyên (resource_id). Địa chỉ URL thực tế được hệ thống tự động chèn vào ở tầng API sau khi LLM phản hồi để đảm bảo AI không bịa link giả.</li>
+          <li>Mọi đường liên kết lạ do LLM cố tình đưa vào trong nội dung phản hồi sẽ bị bộ lọc của hệ thống tự động bóc tách và loại bỏ trước khi hiển thị cho người dùng.</li>
+        </ul>
+        <p class="filerefs">learning-resource-retriever.service.ts · chat-grounding.ts</p>
+      </div>
+    </details>
+  </section>
 
-  <div class="callout">
-    <div class="ttl">Một câu chốt cho demo</div>
-    <p>"SkillBridge không phải một chatbot khuyên nghề nghiệp — nó là một <strong>engine chẩn đoán deterministic</strong> có AI làm giác quan: AI đọc hiểu CV/JD/câu trả lời phỏng vấn, còn mọi con số bạn thấy đều ra từ công thức công khai, có bằng chứng đính kèm, và được đo lại ở lần quét tiếp theo."</p>
-  </div>
-</section>
+  <!-- ============ G ============ -->
+  <section id="sec-g">
+    <h2 class="sec"><span class="idx">G</span>Interview flow</h2>
 
+    <h3>G.1 Interview dùng CV + JD + GapReport thế nào</h3>
+    <p>Buổi phỏng vấn giả định sẽ tập trung xoáy sâu vào các điểm thiếu hụt kỹ năng hoặc những kinh nghiệm chưa được làm rõ trong CV của bạn so với JD. Điều này giúp bạn luyện tập cách trả lời các câu hỏi khó nhất từ nhà tuyển dụng.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Bộ lên kế hoạch phỏng vấn (Interview Planner) trích xuất dữ liệu từ các nguồn:</p>
+        <ul>
+          <li><strong>From-match (Có JD):</strong> Đọc danh sách lỗ hổng kỹ năng từ <code>GapReport</code> đã sắp xếp theo độ nghiêm trọng, tự động phân chia thành các chủ đề phỏng vấn: hỏi sâu kỹ năng còn yếu (<code>gap_probe</code>), xác thực kỹ năng chỉ liệt kê thô (<code>evidence_probe</code>), kiểm tra độ thạo kỹ năng tương đối (<code>depth_probe</code>) và cho phép ứng viên trình bày điểm mạnh nổi bật (<code>strength_showcase</code>). Giới hạn tối đa 6 chủ đề hỏi và 1 chủ đề thế mạnh.</li>
+          <li><strong>CV-only (Không có JD):</strong> Tự động suy luận các câu hỏi kiểm tra năng lực cơ bản dựa trên các kỹ năng được khai báo trong phần Review CV.</li>
+        </ul>
+        <p><strong>Cơ chế phỏng vấn nâng cao (Interview waves v2):</strong> Tích hợp bộ đếm tỷ lệ xưng hô cá nhân (phát hiện ứng viên dùng nhiều từ "chúng tôi" thay vì "tôi" để đánh giá mức độ đóng góp cá nhân - <code>collective_answer</code>), kích hoạt các câu hỏi truy vấn quyền quyết định thực tế trong dự án (<code>decision_ownership</code>) và yêu cầu cung cấp số liệu thực tế chứng minh (<code>demandMetric</code>) khi ứng viên trả lời chung chung.</p>
+        <p class="filerefs">interview-planner.ts · interview-plan.service.ts</p>
+      </div>
+    </details>
+
+    <h3>G.2 AI Interviewer Engine — ai quyết cái gì</h3>
+    <p>Tiến trình của buổi phỏng vấn được điều khiển tự động bởi một máy trạng thái cứng để đảm bảo đi qua đầy đủ các phần cốt lõi. AI chỉ đóng vai trò diễn đạt câu hỏi tự nhiên và chấm điểm câu trả lời dựa trên thang đánh giá chuẩn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Sự phân chia vai trò vận hành trong buổi phỏng vấn giả lập:</p>
+        <ul>
+          <li><strong>Lập lịch và Tiến trình (Agenda):</strong> Code máy quyết định thứ tự hỏi dựa trên độ ưu tiên chủ đề kỹ năng, quản lý quỹ lượt hỏi của ứng viên theo gói tài khoản (FREE có 6 lượt hỏi, PAID được mở rộng lên 12 lượt).</li>
+          <li><strong>Quyết định chuyển câu hỏi (Turn decision):</strong> Code máy kiểm soát việc tiếp tục xoáy sâu (drill), bỏ qua câu hỏi khi ứng viên né tránh quá 2 lần, hoặc kết thúc buổi phỏng vấn. Các ứng viên ở cấp độ Senior sẽ bị hệ thống ép trả lời các câu hỏi phụ chi tiết hơn trước khi được chuyển chủ đề.</li>
+          <li><strong>Chấm điểm thô (Assess):</strong> Sử dụng LLM call chuyên biệt chạy với tham số nhiệt độ <code>temperature = 0</code> và <code>seed = 20260621</code> để chấm điểm câu trả lời theo thang đánh giá hành vi BARS chuẩn nhằm đảm bảo tính ổn định và nhất quán của kết quả chấm.</li>
+          <li><strong>Sinh câu hỏi tiếp theo (Ask):</strong> LLM đóng vai trò người phỏng vấn để chuyển đổi các yêu cầu trạng thái từ code thành câu hỏi tự nhiên, hoàn toàn không có quyền tự quyết định hướng đi hay chủ đề của buổi phỏng vấn.</li>
+        </ul>
+        <p class="filerefs">interview-agenda.ts · interviews.service.ts · interview-chain-llm.service.ts</p>
+      </div>
+    </details>
+
+    <h3>G.3 Answer Analyzer — đo gì</h3>
+    <p>Hệ thống tự động phân tích độ dài, số lượng từ thừa, cấu trúc câu trả lời của bạn theo chuẩn STAR và đối chiếu với các thuật ngữ trong JD. AI chỉ đánh giá mức độ liên quan và tính thuyết phục của câu trả lời để tránh các đánh giá thiên vị.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống phân tích câu trả lời qua 2 lớp độc lập:</p>
+        <ul>
+          <li><strong>Lớp 1 (Code máy):</strong> Đếm số lượng từ (quỹ lý tưởng từ 20-150 từ), đếm tần suất lặp từ sáo rỗng, đối chiếu số lượng thuật ngữ JD xuất hiện trong câu trả lời (<code>jd_term_hits</code>), quét biểu thức chính quy để phát hiện các chỉ số định lượng và cấu trúc trả lời theo mô hình STAR (Situation, Task, Action, Result).</li>
+          <li><strong>Lớp 2 (AI Judge):</strong> Đánh giá mức độ liên quan của nội dung (relevance), tính rõ ràng (clarity) và kiểm tra xem ứng viên có đưa ra ví dụ cụ thể không.</li>
+        </ul>
+        <p><strong>Cập nhật PR #211:</strong> Hệ thống đã loại bỏ hoàn toàn các chỉ số đo tốc độ nói (speaking-rate) và đếm từ thừa (filler count) khỏi các prompt chấm điểm chất lượng của AI để tránh phạt oan ứng viên. Các chỉ số này chỉ được code máy đếm thô để hiển thị làm gợi ý cải thiện kỹ năng giao tiếp trên giao diện kết quả.</p>
+        <p class="filerefs">answer-analyzer.ts · answer-insight.ts</p>
+      </div>
+    </details>
+
+    <h3>G.4 Scoring aggregate — deterministic</h3>
+    <p>Điểm phỏng vấn cuối cùng được tính toán bằng các công thức toán học có trọng số cố định tùy theo nhóm vai trò công việc. Điểm số phản ánh trung thực năng lực thực tế của bạn trên các khía cạnh chuyên môn, giải quyết vấn đề và giao tiếp.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Thang điểm BARS được phân thành 4 mức độ rõ rệt: 0-40 (Cần cải thiện nhiều), 41-60 (Mức sàn chấp nhận), 61-80 (Đạt yêu cầu), 81-100 (Xuất sắc).</p>
+        <p>Điểm số cuối cùng được tính bằng trung bình có trọng số của 5 khía cạnh năng lực chính, áp dụng tỷ lệ trọng số cố định trong code dựa trên 6 nhóm vị trí công việc:</p>
+        <div class="formula">Technical Depth (Độ sâu kỹ thuật) | Problem Solving (Giải quyết vấn đề) | Communication (Giao tiếp)
+Evidence Credibility (Độ tin cậy bằng chứng) | Role Fit (Độ phù hợp vai trò)</div>
+        <p>Hệ thống tự động quy đổi trọng số để chỉ tính điểm trên các khía cạnh năng lực thực tế đã được đặt câu hỏi trong buổi phỏng vấn, đảm bảo không phạt điểm ứng viên cho các chủ đề chưa kịp hỏi đến do hết thời lượng.</p>
+        <p class="filerefs">interview-scoring.ts · aggregateInterviewScore</p>
+      </div>
+    </details>
+
+    <h3>G.5 InterviewGapReport — gap mới sinh từ buổi phỏng vấn</h3>
+    <p>Những điểm yếu bộc lộ trong quá trình trả lời phỏng vấn sẽ được tổng hợp lại thành các lỗ hổng kiến thức hoặc bằng chứng thực tế. Hệ thống chỉ ghi nhận điểm yếu đối với những kỹ năng đã thực sự được kiểm tra trong buổi phỏng vấn.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Các lỗ hổng phát sinh sau buổi phỏng vấn được xác định qua các quy tắc cứng:</p>
+        <ul>
+          <li><code>knowledge_gap</code>: Kích hoạt khi độ phủ thuật ngữ kỹ thuật trong câu trả lời dưới mức 50% so với yêu cầu của JD.</li>
+          <li><code>evidence_gap</code>: Kích hoạt khi ứng viên khẳng định thạo kỹ năng nhưng câu trả lời không đưa ra được dự án hay số liệu cụ thể để chứng minh (Điểm phạt severity mặc định từ 0.5 - 0.8).</li>
+          <li><code>communication_gap</code>: Kích hoạt khi ứng viên trả lời lan man, lạc đề hoặc dùng quá nhiều từ thừa.</li>
+        </ul>
+        <p><strong>Chốt chặn kiểm chứng (groundInterviewGaps):</strong> Hệ thống tự động lọc bỏ các lỗi kỹ năng do AI đề xuất nếu kỹ năng đó chưa từng được hỏi hoặc không thể trỏ tới bất kỳ câu trả lời cụ thể nào của ứng viên trong suốt buổi phỏng vấn.</p>
+        <p class="filerefs">interview-gap-derive.ts · interview-gap.ts</p>
+      </div>
+    </details>
+
+    <h3>G.6 Quay lại value chain</h3>
+    <p>Kết quả phỏng vấn sẽ được đồng bộ ngược lại vào kế hoạch phát triển cá nhân của bạn. Điều này giúp điều chỉnh mức độ nghiêm trọng của các lỗ hổng kỹ năng ban đầu trên CV, giúp bạn tập trung cải thiện những điểm yếu thực sự.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Đồng bộ dữ liệu phỏng vấn ngược lại luồng chẩn đoán:</p>
+        <ul>
+          <li>Kế hoạch phát triển tích hợp (UnifiedPlan) thực hiện gộp các lỗ hổng trên CV và phỏng vấn. Các kỹ năng bị đánh dấu yếu ở cả hai phần sẽ được nhân hệ số tăng mức độ nghiêm trọng lên 1.3 để ưu tiên gợi ý trên lộ trình học tập.</li>
+          <li>Điểm rủi ro thực tế của lỗ hổng kỹ năng trên CV sẽ lấy giá trị cao nhất từ kết quả phỏng vấn gần nhất (<code>interview_risk = max(derived, signal)</code>).</li>
+          <li>Hệ thống chỉ cho phép nâng chỉ số rủi ro của kỹ năng lên khi phỏng vấn thất bại, tuyệt đối không tự ý hạ thấp rủi ro trên CV nếu ứng viên phỏng vấn tốt nhưng thông tin viết trên CV vẫn thiếu bằng chứng rõ ràng để đảm bảo tính khách quan của hồ sơ tuyển dụng.</li>
+        </ul>
+        <p class="filerefs">unified-plan.ts · gap-item.ts · interview-signals.ts</p>
+      </div>
+    </details>
+
+    <h3>G.7 Voice Interview Scorer Integration</h3>
+    <p>Buổi phỏng vấn bằng giọng nói sử dụng cùng một bộ chấm điểm và phân tích câu trả lời giống như phỏng vấn bằng văn bản. Công nghệ giọng nói chỉ đóng vai trò chuyển âm thanh thành chữ viết và truyền tải câu hỏi.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình vận hành phỏng vấn bằng giọng nói trên server:</p>
+        <ul>
+          <li>Buổi phỏng vấn thoại (VOICE mode) thu nhận các lượt thoại trực tiếp từ ứng viên, sử dụng dịch vụ OpenAI Realtime làm môi trường trung gian xử lý giọng nói, phát hiện điểm dừng nói tự động (server_vad) và chuyển đổi thành văn bản thô (gpt-4o-mini-transcribe).</li>
+          <li>Văn bản thô sau khi chuyển đổi được đưa vào cùng một đường ống phân tích câu trả lời <code>AnswerAnalyzer</code> và tính toán điểm số giống như phỏng vấn dạng chữ.</li>
+          <li>Kiến trúc này đảm bảo tính nhất quán tuyệt đối về kết quả chấm điểm giữa hai hình thức phỏng vấn, loại bỏ hoàn toàn khả năng phỏng vấn thoại có bộ chấm điểm riêng biệt thiếu kiểm chứng.</li>
+        </ul>
+        <p class="filerefs">interviews.service.ts · ensureTurnAnalysis / syncReviewedLiveTurns</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ H ============ -->
+  <section id="sec-h">
+    <h2 class="sec"><span class="idx">H</span>Mascot Assistant</h2>
+
+    <h3>H.1 Mascot là gì trong business — và khác chatbot thường ở đâu</h3>
+    <p>Trợ lý linh vật là người bạn đồng hành thông thái, biết rõ bạn đang xem phần nào của trang web để đưa ra lời khuyên phù hợp nhất. Mọi câu trả lời của trợ lý đều phải căn cứ trên dữ liệu chẩn đoán thực tế của bạn đã được máy chủ xác thực.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Đặc tính kỹ thuật của trợ lý linh vật Mascot:</p>
+        <ul>
+          <li><strong>Nhận diện ngữ cảnh (Context-aware):</strong> Trình duyệt theo dõi vị trí cuộn trang của người dùng để đăng ký trạng thái ngữ cảnh hiện tại lên server. Trợ lý sở hữu 12 kỹ năng xử lý chuyên biệt (useCompanionStore) để phản hồi chính xác theo từng trang (ví dụ: tư vấn sửa đổi dự án trong CV Studio, hướng dẫn giải bài tập, phân tích lỗi định dạng...).</li>
+          <li><strong>Cơ sở dữ liệu thực chứng (DiagnosisFacts):</strong> Trợ lý tuyệt đối không đọc trực tiếp thông tin thô từ trình duyệt. Mọi câu trả lời được sinh ra dựa trên tệp dữ liệu đã lưu trữ trên server gồm kết quả đánh giá CV, chi tiết lỗ hổng kỹ năng, tiến độ học tập và kết quả phỏng vấn.</li>
+          <li><strong>Xác thực nguồn trích dẫn:</strong> Các liên kết hoặc kỹ năng được trợ lý đề cập trong câu trả lời bắt buộc phải đi kèm mã định danh kiểm chứng (cited_gap_id). Nếu AI tự tạo ra một mã liên kết không tồn tại trên máy chủ, hệ thống sẽ tự động lọc bỏ liên kết đó khỏi nội dung hiển thị để ngăn chặn AI nói bừa.</li>
+        </ul>
+        <p class="filerefs">CompanionShell.tsx · useCompanionContext.ts · diagnosis-grounding.ts</p>
+      </div>
+    </details>
+
+    <h3>H.2 Ví dụ: user hỏi "JD nào hợp tôi nhất?"</h3>
+    <p>Khi bạn nhờ gợi ý công việc phù hợp nhất, trợ lý sẽ so sánh các kết quả so khớp đã có sẵn trên máy chủ để đưa ra đề xuất kèm đường link trực tiếp. Trợ lý không tự tính toán lại điểm số hay bịa ra các đường link không tồn tại.</p>
+
+    <div class="callout ex">
+      <div class="ttl">Worked example (User hỏi về công việc phù hợp nhất trong danh sách đề xuất)</div>
+      <p>Quy trình xử lý phản hồi của trợ lý Mascot:</p>
+      <ol>
+        <li>Hệ thống nạp tệp thông tin so khớp thực tế của người dùng trên server vào ngữ cảnh (LLM hoàn toàn không biết mã định danh thực tế của tin tuyển dụng).</li>
+        <li>AI so sánh các điểm số và đưa ra câu trả lời tự nhiên: "Hồ sơ của bạn phù hợp nhất với vị trí Backend Developer tại FPT với điểm khớp là 71%". Kèm theo tham số trích dẫn chỉ mục <code>cited_other_match_index: 2</code>.</li>
+        <li>Code máy chủ kiểm tra chỉ mục số 2 tồn tại trong danh sách thực tế của người dùng, thực hiện ánh xạ chỉ mục đó sang mã tuyển dụng thật để hiển thị nút liên kết trực tiếp trên khung chat. Nếu AI trả về chỉ mục không tồn tại, nút liên kết sẽ bị hủy bỏ.</li>
+      </ol>
+    </div>
+
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Thuật toán xác thực trích dẫn của Mascot:</p>
+        <ul>
+          <li>LLM chỉ nhìn thấy các thông tin đã được làm sạch và ẩn mã định danh gốc để tránh rò rỉ dữ liệu.</li>
+          <li>Mọi đường dẫn hiển thị trên khung chat đều được code máy kiểm tra và chèn mã định danh thật sau khi AI hoàn thành câu trả lời.</li>
+        </ul>
+        <p class="filerefs">diagnosis-chat-platform.service.ts · validateCitations</p>
+      </div>
+    </details>
+
+    <h3>H.3 Mascot có được tự sửa CV không?</h3>
+    <p>Trợ lý chỉ đề xuất các đoạn văn bản viết lại để bạn xem xét so sánh trước sau. Bạn hoàn toàn làm chủ việc có đồng ý áp dụng những thay đổi này vào CV của mình hay không.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Nguyên tắc kiểm soát sửa đổi hồ sơ:</p>
+        <ul>
+          <li>Các đề xuất viết lại câu chữ từ AI được trả về dưới dạng cấu trúc bản vá <code>field_patch {target, before, after, why}</code>.</li>
+          <li>Trình duyệt hiển thị giao diện so sánh trước sau (DiffView) kèm nút đồng ý áp dụng. Nút này chỉ điền nội dung mới vào ô nhập liệu của ứng viên ở phía client, hoàn toàn không tự động lưu dữ liệu lên server.</li>
+          <li>Hệ thống không cung cấp bất kỳ cổng kết nối API nào cho phép AI tự động ghi dữ liệu đè lên hồ sơ của ứng viên.</li>
+        </ul>
+        <p class="filerefs">cv-assistant.service.ts · handleRewrite</p>
+      </div>
+    </details>
+
+    <h3>H.4 CV Builder skill — moi sự thật rồi mới viết (evidence-collector)</h3>
+    <p>Trước khi viết lại một đoạn thông tin trong CV, trợ lý sẽ hỏi thêm bạn về công nghệ sử dụng và kết quả thực tế đạt được. Bản viết lại cuối cùng phải tôn trọng tuyệt đối các sự thật bạn đã cung cấp, không được tự ý thêm thắt số liệu giả.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p><strong>Đặc tả Mascot Advisor v3 (PR #196→#222):</strong></p>
+        <ul>
+          <li><strong>Cơ chế Bản quyền Con số (Token-licensing):</strong> AI tuyệt đối không được phép tự ý bịa ra các con số phần trăm hoặc số lượng trong nội dung viết lại. Các chữ số chỉ được xuất hiện trong câu trả lời nếu chúng nằm trong dữ liệu thực tế do ứng viên cung cấp hoặc trích dẫn trực tiếp từ số liệu nhu cầu thị trường đã được kiểm chứng.</li>
+          <li><strong>Phản hồi từ chối khéo léo (Refusal Escalation):</strong> Khi người dùng yêu cầu làm các việc ngoài phạm vi hoặc yêu cầu bịa đặt thông tin, Mascot kích hoạt máy trạng thái từ chối gồm 5 nhóm chủ đề và 3 cấp độ leo thang từ chối (bằng cả tiếng Anh và tiếng Việt). Phản hồi từ chối luôn hướng người dùng quay lại các công cụ hỗ trợ thực tế và kết thúc bằng một câu hỏi gợi mở để tiếp tục hội thoại.</li>
+          <li><strong>Kiểm soát từ chối oan (Buy-back harness):</strong> Sử dụng bộ kiểm tra tự động để cho phép AI bỏ qua các luật cấm số khi ứng viên chỉ dùng các từ chỉ thứ tự (ví dụ: "dự án số 1", "lỗ hổng thứ hai") để tránh việc AI từ chối oan các yêu cầu hợp lệ của ứng viên.</li>
+          <li><strong>CV Builder chat &amp; Cửa ngõ hai kho dữ liệu (Two-corpus gate):</strong> Phân biệt rõ quyền hạn của AI khi chat hỗ trợ. AI chỉ được phép tư vấn cấu trúc câu chữ dựa trên dữ liệu đánh giá, hoàn toàn bị khóa quyền tự động thay đổi dữ liệu của CV nếu chưa được ứng viên đồng ý trên giao diện soạn thảo. Hệ thống chuẩn hóa câu chữ theo toàn bộ văn bản để tránh việc trích xuất lỗi dòng do các ký tự thụt lề.</li>
+        </ul>
+        <p>Quy trình thu thập thông tin viết lại Bullet 2 bước:</p>
+        <ol>
+          <li>Code máy quét câu mô tả hiện tại của ứng viên để phát hiện thiếu từ hành động hoặc thiếu số liệu kết quả định lượng → Tự động sinh câu hỏi bổ sung thông tin thực tế.</li>
+          <li>Sau khi ứng viên cung cấp thông tin thực tế, hệ thống chạy 3 bộ lọc kiểm duyệt (used_facts, so khớp chính xác số liệu gốc, và đối chiếu từ điển công nghệ) trước khi duyệt hiển thị bản viết lại để ngăn chặn AI tự bổ sung công nghệ lạ hoặc phóng đại kết quả.</li>
+        </ol>
+        <p class="filerefs">cv-assistant.ts · cv-assistant-rewrite.ts · CvBuilderSkill.tsx</p>
+      </div>
+    </details>
+
+    <h3>H.5 Tools + chống lạm dụng</h3>
+    <p>Trợ lý có thể sử dụng các công cụ bổ trợ để xác thực đường dẫn tài nguyên hoặc tra cứu hồ sơ lập trình của bạn. Để đảm bảo hệ thống hoạt động ổn định, các lượt hội thoại và cuộc gọi công cụ đều bị giới hạn số lượng và giám sát chặt chẽ.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Các công cụ bổ trợ và cơ chế vận hành an toàn của Mascot:</p>
+        <ul>
+          <li><strong>4 công cụ được cấp quyền:</strong> Kiểm tra trạng thái liên kết (<code>resource.validate</code>), tra cứu thông tin lập trình GitHub (<code>github.enrich</code>), theo dõi tiến độ lộ trình học (<code>roadmap.progress</code>) và xem lịch sử phỏng vấn (<code>interview.history</code>). Các cuộc gọi công cụ chỉ được phép thực hiện trong phạm vi tài khoản của người dùng yêu cầu (userId-scoped).</li>
+          <li><strong>Hạn ngạch sử dụng (Quota):</strong> Giới hạn tối đa 50 lượt chat mỗi ngày cho mỗi người dùng trên từng luồng tư vấn. Các yêu cầu dán JD lạ hoặc yêu cầu viết lại CV bị phát hiện lạc đề (off-topic) quá 5 lần trong một giờ sẽ bị hệ thống tự động khóa tài khoản tạm thời để chống lạm dụng tài nguyên.</li>
+        </ul>
+        <p class="filerefs">declarations.ts · tool-registry.service.ts · chat-tool-loop.ts</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ I ============ -->
+  <section id="sec-i">
+    <h2 class="sec"><span class="idx">I</span>Data, audit, readiness</h2>
+
+    <h3>I.1 Truy vết AI (tracing)</h3>
+    <p>Mọi tương tác và yêu cầu gửi tới AI đều được lưu vết chi tiết bao gồm mô hình sử dụng, độ trễ, chi phí và phiên bản prompt. Việc lưu vết này giúp giám sát chất lượng và phát hiện lỗi kịp thời mà không làm rò rỉ dữ liệu cá nhân của người dùng.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống giám sát và lưu vết hoạt động AI:</p>
+        <ul>
+          <li>Mọi yêu cầu gửi tới mô hình AI được ghi nhận vào bảng cơ sở dữ liệu <code>ai_requests</code> và <code>ai_results</code> để phục vụ công tác đối chiếu chất lượng.</li>
+          <li><strong>Bảo mật thông tin:</strong> Toàn bộ dữ liệu văn bản thô của CV và JD được loại bỏ trước khi lưu vết. Hệ thống chỉ lưu trữ các mã định danh tài liệu và các kết quả phân tích dạng cấu trúc. Các thông tin liên hệ như số điện thoại hoặc email được tự động lọc bỏ (redact) để bảo vệ quyền riêng tư.</li>
+          <li><strong>Phiên bản Prompt:</strong> Các prompt được quản lý theo phiên bản tệp tin (ví dụ: <code>prompts/cv_jd_match_v2.md</code>). Các phản hồi chấm điểm từ AI được gắn kèm mã phiên bản cấu hình trọng số để xác định chính xác bộ quy tắc chấm điểm đã áp dụng.</li>
+        </ul>
+        <p class="filerefs">llm.service.ts · chat-tool-loop.ts</p>
+      </div>
+    </details>
+
+    <h3>I.2 Eval gates trong CI</h3>
+    <p>Các bài kiểm tra tự động chạy trên máy chủ mỗi khi có thay đổi mã nguồn để đảm bảo các công thức chấm điểm và logic so khớp không bị sai lệch. Quy trình này giúp duy trì sự ổn định của hệ thống mà không phụ thuộc vào kết quả ngẫu nhiên từ AI.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống kiểm thử tự động chất lượng chẩn đoán (Evaluation Gates):</p>
+        <ul>
+          <li>Hệ thống tích hợp <strong>22 bài kiểm thử chất lượng offline</strong> chạy tự động trong quy trình tích hợp liên tục (CI) mỗi khi có yêu cầu gộp mã nguồn (PR). Các bài kiểm thử này kiểm tra tính ổn định của các công thức so khớp kỹ năng, phân bổ lộ trình học tập, tính thâm niên và chấm điểm phỏng vấn.</li>
+          <li>Các bài kiểm thử chất lượng chạy độc lập hoàn toàn bằng mã nguồn giả lập trên máy chủ mà không cần kết nối tới mô hình AI thật để đảm bảo tốc độ và không tốn chi phí vận hành (thời gian chạy trung bình dưới 50 giây cho toàn bộ tập kiểm thử).</li>
+          <li>Hệ thống áp dụng kỷ luật nghiêm ngặt: không tự ý cập nhật dữ liệu mẫu (golden-dataset) để vượt qua bài test lỗi. Mọi thay đổi về điểm số chuẩn phải đi kèm tài liệu giải trình kỹ thuật chi tiết.</li>
+        </ul>
+        <p class="filerefs">.github/workflows/ci.yml · runEvals</p>
+      </div>
+    </details>
+
+    <h3>I.3 Vòng calibration</h3>
+    <p>Hệ thống tự động ghi nhận sự chênh lệch giữa điểm số dự báo và thực tế sau khi ứng viên cải thiện CV hoặc hoàn thành khóa học. Dữ liệu này được tích lũy để phục vụ việc tối ưu hóa các công thức tính điểm trong tương lai.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Quy trình hiệu chuẩn và kiểm chứng thực tế (Calibration):</p>
+        <ul>
+          <li><strong>Ghi nhận dữ liệu (Write Path):</strong> Khi ứng viên tiến hành quét lại CV mới sau khi sửa đổi, hệ thống sẽ lưu trữ thông tin đối chiếu gồm: khoảng điểm tăng dự kiến của hành động đề xuất trước đó và sự thay đổi điểm số thực tế đạt được giữa hai lần quét chẩn đoán. Dữ liệu này được liên kết chính xác với thông tin tài khoản và hành động sửa đổi tương ứng.</li>
+          <li><strong>Phân tích hiệu chuẩn (Read Path):</strong> Hệ thống đã xuất bản công cụ phân tích <code>pnpm calibration:report</code> để trích xuất các thống kê về độ lệch điểm số dự báo và thực tế đạt được của toàn bộ ứng viên trên hệ thống. Dữ liệu này giúp nhà quản trị đánh giá độ chính xác của các công thức chấm điểm hiện tại.</li>
+          <li><strong>Kiểm tra tính toàn vẹn (Smoke test):</strong> Công cụ <code>smoke-diagnosis</code> chạy tự động trên cơ sở dữ liệu thật để kiểm tra tính toàn vẹn của 10 quy tắc nghiệp vụ cốt lõi sau mỗi lượt cập nhật hệ thống.</li>
+        </ul>
+        <p class="filerefs">impact-calibration.entity.ts · cv-matches.service.ts · tools/report-impact-calibration.ts</p>
+      </div>
+    </details>
+
+    <h3>I.4 Confidence các tầng</h3>
+    <p>Các chỉ số tin cậy ở nhiều cấp độ giúp người dùng và quản trị viên biết được mức độ chính xác của các kết quả phân tích. Càng nhiều dữ liệu bị lỗi hoặc thiếu ngày tháng, chỉ số tin cậy càng giảm tương ứng.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Hệ thống quản lý 4 chỉ số tin cậy chính:</p>
+        <ul>
+          <li><code>confidence_score</code> (Đánh giá CV): Đo lường khả năng đọc hiểu hồ sơ của máy quét, giảm dần khi CV vi phạm nhiều lỗi định dạng ATS.</li>
+          <li><code>dimension_provenance</code> (Tiêu chí chất lượng): Chỉ rõ nguồn gốc chấm điểm của từng tiêu chí (tự động bằng code hay dựa trên gợi ý của AI) kèm dữ liệu bằng chứng đi kèm.</li>
+          <li><code>extraction_quality</code> (Chất lượng trích xuất): Cảnh báo chất lượng chuyển đổi văn bản của tài liệu tải lên (HIGH/MEDIUM/LOW) dựa trên tỷ lệ lỗi font chữ hoặc bố cục ảnh quét.</li>
+          <li><code>seniority confidence</code> (Độ tin cậy thâm niên): Đánh giá mức độ chính xác của thâm niên kinh nghiệm tính toán được dựa trên tỷ lệ các mục công việc trong CV ghi nhận đầy đủ thông tin ngày tháng bắt đầu và kết thúc.</li>
+        </ul>
+        <p class="filerefs">cv-review.service.ts · seniority.ts</p>
+      </div>
+    </details>
+
+    <h3>I.5 Đã production-grade vs còn TODO</h3>
+    <p>Danh sách các tính năng đã đạt tiêu chuẩn vận hành thực tế và những công việc cần tiếp tục hoàn thiện trong tương lai. Điều này giúp đội ngũ phát triển nắm rõ lộ trình và các rủi ro kỹ thuật còn tồn tại.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <div class="fbranch">
+          <div class="callout"><div class="ttl">✅ Đã đạt chuẩn Production</div>
+            <ul>
+              <li>Công thức chấm điểm tự động bằng code máy kèm 22 bài kiểm thử chất lượng chạy offline.</li>
+              <li>Bộ lọc bảo mật chống AI bịa đặt thông tin áp dụng tại toàn bộ các ranh giới xử lý của AI (Viết lại CV, gợi ý lộ trình học, trích dẫn Mascot).</li>
+              <li>Kiểm soát hạn ngạch sử dụng tự động chống spam tài nguyên và phòng thủ chống tấn công prompt-injection.</li>
+              <li>Quy trình xuất bản và cập nhật tự động toàn bộ hệ thống từ mã nguồn lên máy chủ vận hành chỉ trong 4 phút.</li>
+              <li>Lọc bỏ hoàn toàn các thông tin cá nhân nhạy cảm của ứng viên trước khi lưu vết hoạt động AI.</li>
+              <li>Đã hoàn thành vá lỗi thâm niên và đồng bộ hóa cấp độ chấm điểm. (PR #167, PR #168 đã được gộp thành công ngày 2026-07-06).</li>
+              <li>Các tiêu chí phi kỹ năng (ngoại ngữ, học vấn, lĩnh vực hoạt động) đã được phát triển bộ chấm điểm tự động tích hợp (PR3c).</li>
+            </ul>
+          </div>
+          <div class="callout warn"><div class="ttl">🚧 Các hạng mục còn TODO / Hạn chế kỹ thuật</div>
+            <ul>
+              <li><strong>Vòng hiệu chuẩn:</strong> Mới chỉ hỗ trợ lưu dữ liệu hiệu chuẩn điểm số và xuất báo cáo thủ công, chưa có thuật toán tự động tinh chỉnh các hệ số chấm điểm dựa trên kết quả phân tích.</li>
+              <li><strong>Cơ chế thử lại bài kiểm tra:</strong> Code hiện cho thử lại <strong>không giới hạn</strong> và chấm theo <strong>lượt trả lời mới nhất</strong> (không "ghi lỗi vĩnh viễn" như mô tả cũ). Cái CHƯA có là <em>chống lạm phát</em>: giới hạn số lần thử hoặc chỉ tính lượt đầu để ngăn dò đáp án. Hạng mục đang mở (lane Khoa, liên quan PR #207 chưa merge).</li>
+              <li><strong>Rủi ro đồng bộ thông tin:</strong> Công cụ kiểm chứng GitHub (GitHub Corroboration) chưa được đồng bộ hoàn toàn với bộ xác thực viết lại CV (TailorVerifier) trên server dẫn đến nguy cơ báo lỗi không tìm thấy hành động hợp lệ khi ứng viên cập nhật hồ sơ bằng đóng góp GitHub.</li>
+              <li><strong>Lưu trữ kết quả phỏng vấn:</strong> Dữ liệu phỏng vấn giả lập hiện đang được lưu trữ theo lượt so khớp hiện tại. Khi ứng viên tiến hành quét chẩn đoán CV mới, các kết quả phỏng vấn trước đó chưa tự động đồng bộ sang lượt so khớp mới.</li>
+              <li><strong>Danh mục vị trí hỗ trợ:</strong> Bản đồ kỹ năng chuẩn mới chỉ hỗ trợ tốt các vị trí thuộc ngành Công nghệ thông tin (IT), chưa đáp ứng tốt việc phân tích và so khớp các vị trí công việc ngoài ngành.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="filerefs">fit-strategy.ts · quiz-mastery.ts · gap-report.ts</p>
+      </div>
+    </details>
+
+    <h3>I.6 Quota, Entitlements and Billing Matrix</h3>
+    <p>Mỗi tính năng AI đều có hạn ngạch sử dụng riêng để chống lạm dụng và kiểm soát chi phí. Nguyên tắc chung: trừ lượt TRƯỚC khi chạy, lỗi thì hoàn lại (charge-first / refund-on-error); vượt hạn ngạch trả về lỗi 429.</p>
+    <details>
+      <summary>Chi tiết kỹ thuật / công thức</summary>
+      <div class="details-content">
+        <p>Các hạn ngạch đã xác minh trong code (những giới hạn không liệt kê ở đây do gói tài khoản quyết định qua entitlements, không phải hằng số cứng):</p>
+        <div class="tblwrap"><table>
+          <tr><th>Tính năng</th><th>Giới hạn (mọi gói, trừ khi ghi khác)</th><th>Cơ chế khi vượt / lỗi</th></tr>
+          <tr>
+            <td><strong>Chat companion</strong> (diagnosis-chat và learning-chat, đếm riêng từng lane)</td>
+            <td>50 request / 24 giờ / user mỗi lane</td>
+            <td>429 <code>FEATURE_USAGE_LIMIT_REACHED</code>.</td>
+          </tr>
+          <tr>
+            <td><strong>Tool call của mascot</strong> (github.enrich, resource.validate, roadmap.progress, interview.history)</td>
+            <td>20 call / giờ / user / tool · timeout 10s</td>
+            <td>Circuit-breaker: 5 lần fail liên tiếp → ngắt tool 5 phút.</td>
+          </tr>
+          <tr>
+            <td><strong>Interview practice</strong></td>
+            <td>FREE: entitlement = 0 (không tạo được session). Gói trả phí: turn budget 12 lượt hỏi <em>trong một session</em> (FREE 6 nếu được cấp) — xem G.2.</td>
+            <td>Không cho khởi tạo session khi hết entitlement.</td>
+          </tr>
+          <tr>
+            <td><strong>JD paste &amp; CV rewrite (anti-abuse)</strong></td>
+            <td>Nội dung lạc đề bị từ chối <code>OFF_TOPIC</code> — có hoàn quota (nhưng cost LLM đã tốn)</td>
+            <td>≥5 lần bị từ chối trong 1 giờ → 429 <code>ABUSE_THROTTLED</code> chặn TRƯỚC khi tốn LLM.</td>
+          </tr>
+          <tr>
+            <td><strong>CV Review / Diagnosis, Roadmap, Tailor…</strong></td>
+            <td>Trừ lượt theo gói qua entitlements per-feature (reserve nguyên tử, race-free)</td>
+            <td>Refund khi pipeline lỗi; confirm khi thành công.</td>
+          </tr>
+        </table></div>
+        <p class="filerefs">billing/entitlements.service.ts · cv-analysis-quota.service.ts (charge-first reserve/refund/confirm) · diagnosis-chat-platform.service.ts / learning-chat-platform.service.ts (DAILY_CHAT_LIMIT) · tool-registry.service.ts · cv-rewrite.service.ts (OFF_TOPIC / ABUSE_THROTTLED)</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ J ============ -->
+  <section id="sec-j">
+    <h2 class="sec"><span class="idx">J</span>Kết luận</h2>
+
+    <h3>J.1 Hệ thống mạnh ở đâu</h3>
+    <ul>
+      <li><strong>Kiến trúc AI đúng sách và hiếm gặp ở giai đoạn startup:</strong> LLM bị giới hạn vào extraction/phrasing/chat; 100% con số (điểm, severity, ranking, fit, impact) do code sở hữu — tái lập được, test được, giải thích được từng hằng số. Cùng một CV chấm 2 lần ra cùng kết quả ở mọi dimension deterministic.</li>
+      <li><strong>Honest-by-design ăn sâu vào công thức:</strong> partial credit dưới tuyến tính, coverage cap chặn "bù điểm", honest-zero cho action không tăng level, deal-breaker unverified cap-at-stretch, learning pending-verification, interview signal chỉ nâng không hạ. Sản phẩm thà nói "chưa chứng minh được" còn hơn hứa bừa — đây là lợi thế niềm tin dài hạn.</li>
+      <li><strong>Value chain thật sự khép vòng:</strong> gap → hành động → phỏng vấn/học → tín hiệu chảy ngược về severity/progress → re-scan đo delta → calibration ghi predicted-vs-actual. Đối thủ thường chỉ có 1-2 mắt xích rời.</li>
+      <li><strong>Khả năng audit:</strong> mọi quyết định AI truy vết được về prompt version + model + payload + tool calls; 22 eval gate chặn regression logic chấm ngay trong CI.</li>
+    </ul>
+
+    <h3>J.2 Rủi ro còn lại</h3>
+    <ul>
+      <li><strong>Coverage taxonomy</strong> là trần của mọi thứ: skill/JD ngoài pilot IT không normalize được → rơi khỏi scoring. Mở rộng taxonomy = việc gãi đúng chỗ ngứa nhất.</li>
+      <li><strong>Calibration mới có một nửa vòng</strong>: đang ghi predicted-vs-actual nhưng chưa đọc lại — các ngưỡng (fit 65/40, severity weights) vẫn là expert-set chưa được data thật xác nhận.</li>
+      <li><strong>Nguồn job tuyển dụng đơn độc:</strong> Công cụ thu thập tự động hiện tại chỉ hoạt động trên một trang tuyển dụng ITviec. Khi nguồn tuyển dụng này gặp sự cố thay đổi cấu trúc trang web, hệ thống sẽ rơi vào rủi ro cạn kiệt nguồn công việc đề xuất (như sự cố sụp pool job ngầm ngày 26-06 khiến số lượng tin tuyển dụng hoạt động giảm từ hơn 1300 xuống chỉ còn 8 tin). Việc bổ sung các nguồn tuyển dụng và tính năng tự đăng tuyển của doanh nghiệp là tối quan trọng để giảm thiểu rủi ro này.</li>
+      <li><strong>Độ tin cậy dữ liệu xu hướng (data_confidence):</strong> Chỉ số nhu cầu thị trường hiện dùng trực tiếp tỷ lệ phần trăm số tin tuyển dụng đề cập đến kỹ năng mà chưa có trọng số chiết khấu theo quy mô mẫu dữ liệu thực tế thu thập được, dẫn đến nguy cơ một kỹ năng xuất hiện ở 2 tin tuyển dụng trong tệp mẫu nhỏ cũng được đánh giá có nhu cầu thị trường tương đương với kỹ năng xuất hiện ở 200 tin tuyển dụng trong tệp mẫu lớn.</li>
+      <li><strong>Chi phí LLM per-request</strong>: chưa có model routing per-feature; extraction chạy lại mỗi lần match (có cache extraction nhưng phạm vi hẹp).</li>
+    </ul>
+
+    <h3>J.3 Roadmap nâng cấp tiếp theo</h3>
+    <ol>
+      <li><strong>Đóng vòng calibration</strong>: job đọc impact_calibrations → báo cáo accuracy dự đoán → tinh chỉnh fit-policy/severity weights bằng data thật (đã có bảng, chỉ thiếu read path).</li>
+      <li><strong>Grader cho 4 JD-dimension còn lại</strong> (language/education/domain/work_mode) → deal-breaker verify thật, giảm cap-at-stretch giả.</li>
+      <li><strong>Phát triển công cụ khởi động nhanh (Cold-start Engine):</strong> Xây dựng lộ trình chuyển đổi câu chuyện dự án thực tế của ứng viên thành bộ khung thông tin CV hoàn chỉnh (luồng <code>story→CV</code> đang được triển khai thử nghiệm lát cắt đầu tiên).</li>
+      <li><strong>Interview signal lineage-aware</strong> (sống qua re-scan cùng JD) + đồng bộ github corroboration vào TailorVerifier.</li>
+      <li><strong>Mở rộng nguồn job</strong> (thêm board + employer self-serve) và taxonomy ngoài pilot.</li>
+    </ol>
+
+    <div class="callout">
+      <div class="ttl">Một câu chốt cho demo</div>
+      <p>"SkillBridge không phải một chatbot khuyên nghề nghiệp — nó là một <strong>engine chẩn đoán deterministic</strong> có AI làm giác quan: AI đọc hiểu CV/JD/câu trả lời phỏng vấn, còn mọi con số bạn thấy đều ra từ công thức công khai, có bằng chứng đính kèm, và được đo lại ở lần quét tiếp theo."</p>
+    </div>
+  </section>
 </main>
 </div>
 
-<footer>SkillBridge Architecture Handbook · 2026-07-05 · nguồn: code thật skillbridge-ai + skillbridge-fe-official · tài liệu nội bộ, không commit</footer>
+<footer>SkillBridge Architecture Handbook · Cập nhật 2026-07-21 · nguồn: đối chiếu code thật skillbridge-ai + skillbridge-fe-official · tài liệu nội bộ, không commit</footer>
+
+<script>
+  function toggleAllDetails() {
+    const details = document.querySelectorAll('details');
+    const btn = document.getElementById('toggle-all-btn');
+    const anyClosed = Array.from(details).some(d => !d.open);
+    
+    details.forEach(d => {
+      d.open = anyClosed;
+    });
+    
+    btn.textContent = anyClosed ? "Đóng tất cả chi tiết kỹ thuật" : "Mở tất cả chi tiết kỹ thuật";
+  }
+</script>
 </body>
 </html>
