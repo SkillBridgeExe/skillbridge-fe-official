@@ -2108,6 +2108,7 @@ export default {
       },
     },
     jobs: {
+      seniorityTooltip: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
       title: "Việc làm khớp với CV của bạn",
       empty: "Chưa có việc khớp cho vai trò này — quay lại sau nhé.",
       missing: "Còn thiếu:",
