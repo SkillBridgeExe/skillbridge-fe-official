@@ -218,6 +218,12 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           authSource: state.authSource,
           isAuthenticated: state.isAuthenticated,
+          // MUST persist: the cross-account wipe compares the incoming login to
+          // this id. It has to outlive reloads/restarts — the same lifetime as
+          // the persisted per-user data (cv-studio localStorage / diagnosis
+          // sessionStorage) — or a different user's login after a reload would
+          // skip the wipe and read the previous user's data (bug hunt R5 07-22).
+          lastAuthedUserId: state.lastAuthedUserId,
           // Strip blob: URLs before persisting — they die on page reload
           currentUser: state.currentUser
             ? {
