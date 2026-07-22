@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AdminIconActionButton from "@/components/admin/AdminIconActionButton";
@@ -55,6 +55,8 @@ export default function AdminBillingSubscriptions() {
   const subscriptionsQuery = useQuery({
     queryKey: QUERY_KEYS.ADMIN_BILLING_SUBSCRIPTIONS(query),
     queryFn: () => getAdminSubscriptions(query),
+    // Keep the prior page rendered during a paged fetch (no pager flicker; R4).
+    placeholderData: keepPreviousData,
   });
 
   const subscriptions = subscriptionsQuery.data?.items ?? [];

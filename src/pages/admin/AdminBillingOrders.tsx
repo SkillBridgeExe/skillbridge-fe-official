@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AdminIconActionButton from "@/components/admin/AdminIconActionButton";
@@ -62,6 +62,9 @@ export default function AdminBillingOrders() {
   const ordersQuery = useQuery({
     queryKey: QUERY_KEYS.ADMIN_BILLING_ORDERS(query),
     queryFn: () => getAdminPaymentOrders(query),
+    // Keep the prior page rendered during a paged fetch so the pager doesn't
+    // flicker out (data→undefined→totalPages 1) on every Next (bug hunt R4).
+    placeholderData: keepPreviousData,
   });
 
   const orders = ordersQuery.data?.items ?? [];

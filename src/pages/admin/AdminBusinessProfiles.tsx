@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   Building2,
@@ -422,6 +422,15 @@ export default function AdminBusinessProfiles() {
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (query.limit ?? 20)));
   const setPage = (next: number) =>
     setQuery((prev) => ({ ...prev, page: Math.min(totalPages, Math.max(1, next)) }));
+
+  // Unlike the read-only billing lists, approve/reject SHRINKS a filtered result
+  // set: resolving the last item on the last page collapses totalPages and
+  // unmounts the pager, stranding the admin on an empty page. Clamp back once
+  // data is present (guarded so a mid-fetch undefined doesn't bounce; R4).
+  useEffect(() => {
+    if (data && page > totalPages) setPage(totalPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, page, totalPages]);
 
   const TABS: { label: string; value: BusinessProfileStatus | undefined }[] = [
     { label: "All", value: undefined },
