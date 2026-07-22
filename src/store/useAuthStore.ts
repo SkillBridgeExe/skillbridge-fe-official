@@ -109,6 +109,10 @@ interface AuthState {
   authSource: AuthSource;
   isAuthenticated: boolean;
   currentUser: AuthUser | null;
+  /** Id of the last user who authenticated on this tab; survives logout/expiry
+   *  (in-memory only) so a NEW user's login can wipe the previous user's cached
+   *  data, without wiping on a transient 401 for the SAME user (bug hunt R4). */
+  lastAuthedUserId: string | null;
   login: (role: UserRole) => void;
   loginWithMockAccount: (email: string, password: string) => LoginResult;
   setChecking: () => void;
@@ -127,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
         authSource: null,
         isAuthenticated: false,
         currentUser: null,
+        lastAuthedUserId: null,
         login: (role) =>
           set({
             authStatus: "authenticated",
@@ -213,6 +218,12 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           authSource: state.authSource,
           isAuthenticated: state.isAuthenticated,
+          // MUST persist: the cross-account wipe compares the incoming login to
+          // this id. It has to outlive reloads/restarts — the same lifetime as
+          // the persisted per-user data (cv-studio localStorage / diagnosis
+          // sessionStorage) — or a different user's login after a reload would
+          // skip the wipe and read the previous user's data (bug hunt R5 07-22).
+          lastAuthedUserId: state.lastAuthedUserId,
           // Strip blob: URLs before persisting — they die on page reload
           currentUser: state.currentUser
             ? {

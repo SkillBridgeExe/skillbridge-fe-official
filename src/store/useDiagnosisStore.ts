@@ -165,6 +165,11 @@ export const useDiagnosisStore = create<DiagnosisState>()(
     isFromBuilder: false,
     builderCvId: null,
     builderCvName: null,
+    // Persisted GitHub creds must clear too — useGapReportQuery sends them with
+    // every gap-report request, so a leftover handle would attach the previous
+    // user's GitHub identity to the next account's diagnosis (bug hunt R3 07-22).
+    githubUsername: null,
+    githubConsent: false,
   }),
 
   scanAgain: () => set({

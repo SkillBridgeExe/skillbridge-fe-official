@@ -330,7 +330,16 @@ export function useCvBuilderChatCompanion(
         },
       }),
     });
-    store.activateContext(CV_BUILDER_CHAT_CONTEXT_ID);
+    // Don't steal the bubble from a LIVE cross-page context: the prove-it flow
+    // activates diagnosis_anchor_fix and THEN navigates here, and this mount
+    // effect runs after that handler — activating unconditionally dumped the
+    // user into generic chat instead of the anchored fix coach (bug hunt 07-21).
+    // A dead activeId can't linger (unregisterContext nulls it), so any live
+    // activeId here is a deliberate cross-page handoff — leave it alone.
+    const { activeId, contexts } = useCompanionStore.getState();
+    if (!activeId || !contexts[activeId]) {
+      store.activateContext(CV_BUILDER_CHAT_CONTEXT_ID);
+    }
 
     return () => {
       const s = useCompanionStore.getState();

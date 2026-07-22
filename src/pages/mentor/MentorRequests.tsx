@@ -39,7 +39,10 @@ const STATUS_STYLES: Record<string, string> = {
 export default function MentorRequests() {
   const { t } = useTranslation("common");
   const bookingsQuery = useMentorOwnedBookings();
-  const [selectedBooking, setSelectedBooking] = useState<MentorBookingDto | null>(null);
+  // Track the id, not a snapshot: the drawer must re-derive from live query data
+  // so set-link / complete / cancel mutations reflect immediately instead of
+  // showing frozen pre-mutation state (bug hunt R3 07-22).
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   if (bookingsQuery.isLoading) {
     return (
@@ -53,13 +56,14 @@ export default function MentorRequests() {
   }
 
   const bookings = bookingsQuery.data ?? [];
+  const selectedBooking = bookings.find((b) => b.id === selectedBookingId) ?? null;
 
   return (
     <div className="space-y-6">
       {selectedBooking && (
         <BookingDetailDrawer
           booking={selectedBooking}
-          onClose={() => setSelectedBooking(null)}
+          onClose={() => setSelectedBookingId(null)}
         />
       )}
 
@@ -82,7 +86,7 @@ export default function MentorRequests() {
       ) : (
         <div className="space-y-4">
           {bookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} onClick={() => setSelectedBooking(booking)} />
+            <BookingCard key={booking.id} booking={booking} onClick={() => setSelectedBookingId(booking.id)} />
           ))}
         </div>
       )}

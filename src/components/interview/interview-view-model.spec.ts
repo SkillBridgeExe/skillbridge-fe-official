@@ -813,6 +813,54 @@ describe("interview view model", () => {
     ).toBe("answer");
   });
 
+  it("never lets a command keyword inside a flowing answer hijack the turn", () => {
+    // >6 tokens → command regexes are not consulted at all.
+    expect(
+      classifyRealtimeTranscriptIntent("dự án đó đã kết thúc vào tháng ba năm ngoái"),
+    ).toBe("answer");
+    expect(
+      classifyRealtimeTranscriptIntent("sau đó bọn em bỏ qua bước cache và refactor lại"),
+    ).toBe("answer");
+    // "cho em"/"wait" are no longer pause vocabulary (common inside answers).
+    expect(classifyRealtimeTranscriptIntent("anh cho em bổ sung thêm")).toBe("answer");
+    expect(classifyRealtimeTranscriptIntent("we had to wait for replication")).toBe(
+      "answer",
+    );
+    // Short filler / one-word answers append to the buffer instead of being
+    // classified off-topic (off_topic used to erase the buffered answer).
+    expect(classifyRealtimeTranscriptIntent("PostgreSQL")).toBe("answer");
+    expect(classifyRealtimeTranscriptIntent("ừm")).toBe("answer");
+  });
+
+  it("does not classify answer-opening phrases with bare explain/skip as commands", () => {
+    // "explain" / "giải thích" lead genuine answers far more than requests.
+    expect(classifyRealtimeTranscriptIntent("let me explain our approach")).toBe(
+      "answer",
+    );
+    expect(classifyRealtimeTranscriptIntent("em giải thích thêm về dự án")).toBe(
+      "answer",
+    );
+    // Short answer segments that merely contain "skip" are still answers; the
+    // Interview handler only treats skip as a command at the start of a turn.
+    expect(classifyRealtimeTranscriptIntent("we use skip connections")).toBe(
+      "skip_question",
+    );
+    // ...but an explicit QUESTION-DIRECTED clarification request is recognized.
+    expect(classifyRealtimeTranscriptIntent("em chưa hiểu câu hỏi")).toBe(
+      "clarify_question",
+    );
+    // Both "chưa hiểu" and "không hiểu" answer openers stay answers (they used
+    // to be hijacked into clarify and drop the answer — bug hunt R4/R5).
+    expect(
+      classifyRealtimeTranscriptIntent("ban đầu em chưa hiểu codebase"),
+    ).toBe("answer");
+    // A genuine answer opener containing "không hiểu" must NOT be hijacked into
+    // clarify (that would drop the answer) — bare "không hiểu" is not a command.
+    expect(
+      classifyRealtimeTranscriptIntent("ban đầu em không hiểu codebase"),
+    ).toBe("answer");
+  });
+
   it.each([
     [
       {

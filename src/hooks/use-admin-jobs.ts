@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   getAdminBusinessProfilesApi, getAdminBusinessProfileApi,
   downloadAdminBusinessMediaApi,
@@ -23,6 +23,9 @@ export function useAdminBusinessProfilesQuery(query: AdminBusinessProfilesQuery 
   return useQuery({
     queryKey: keys.profiles(query),
     queryFn: () => getAdminBusinessProfilesApi(query),
+    // Keep the prior page rendered during a paged fetch so the pager (gated on
+    // totalPages) doesn't flicker out and back on every Next (bug hunt R4).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -62,6 +65,7 @@ export function useAdminJobReportsQuery(query: AdminJobReportsQuery = {}) {
   return useQuery({
     queryKey: keys.reports(query),
     queryFn: () => getAdminJobReportsApi(query),
+    placeholderData: keepPreviousData,
   });
 }
 
