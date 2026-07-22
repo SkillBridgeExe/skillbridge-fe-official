@@ -13,15 +13,15 @@ import {
   getAccessToken,
   setAccessToken,
 } from "@/services/auth-token.service";
-import { clearPerUserClientState } from "@/services/session-cleanup";
 
-/** Involuntary session end (401/refresh-fail). Mirrors the manual logout PII wipe
- *  so the next account on the tab can't read the previous user's cached data —
- *  the R2 fix only covered the manual logout button (bug hunt R3 07-22). */
+/** Involuntary session end (401/refresh-fail). Only drops the token + flips to
+ *  anonymous — it must NOT wipe the per-user stores here: a transient refresh
+ *  blip (Cloud Run cold-start 503 on the refresh POST) would otherwise destroy
+ *  the SAME user's unsaved CV/diagnosis work. The cross-account cache wipe runs
+ *  at the next DIFFERENT user's login instead (bug hunt R4 07-22). */
 function forceAnonymous(): void {
   clearAccessToken();
   useAuthStore.getState().setAnonymous();
-  clearPerUserClientState();
 }
 
 export interface AuthAxiosRequestConfig extends AxiosRequestConfig {

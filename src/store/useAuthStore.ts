@@ -109,6 +109,10 @@ interface AuthState {
   authSource: AuthSource;
   isAuthenticated: boolean;
   currentUser: AuthUser | null;
+  /** Id of the last user who authenticated on this tab; survives logout/expiry
+   *  (in-memory only) so a NEW user's login can wipe the previous user's cached
+   *  data, without wiping on a transient 401 for the SAME user (bug hunt R4). */
+  lastAuthedUserId: string | null;
   login: (role: UserRole) => void;
   loginWithMockAccount: (email: string, password: string) => LoginResult;
   setChecking: () => void;
@@ -127,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
         authSource: null,
         isAuthenticated: false,
         currentUser: null,
+        lastAuthedUserId: null,
         login: (role) =>
           set({
             authStatus: "authenticated",

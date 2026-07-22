@@ -20,7 +20,10 @@ import { forgotPasswordApi } from "@/api/auth/forgotPassword";
 import { resetPasswordApi } from "@/api/auth/resetPassword";
 import type { AuthUserDto } from "@/api/auth/envelope";
 import { useAuthStore, type UserRole } from "@/store/useAuthStore";
-import { clearPerUserClientState } from "@/services/session-cleanup";
+import {
+  clearPerUserClientState,
+  wipeClientStateIfUserChanged,
+} from "@/services/session-cleanup";
 import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { setAccessToken } from "@/services/auth-token.service";
 import { toAuthUser, toUserRole } from "@/services/auth-session.service";
@@ -69,6 +72,9 @@ function persistSession(
 ) {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("user");
+  // Clear the previous account's cached data BEFORE this user's queries run —
+  // but only if it's actually a different user (no-op on same-user re-login).
+  wipeClientStateIfUserChanged(user.id);
   if (accessToken) setAccessToken(accessToken, expiresIn);
   useAuthStore.getState().setAuthenticated({ ...toAuthUser(user), role }, "api");
 }
@@ -91,6 +97,7 @@ export async function login(email: string, password: string): Promise<LoginOutco
     const mock = useAuthStore.getState().loginWithMockAccount(email, password);
     if (mock.success) {
       const currentUser = useAuthStore.getState().currentUser;
+      if (currentUser) wipeClientStateIfUserChanged(currentUser.id);
       return { role: mock.role, source: "mock", displayName: currentUser?.name };
     }
     throw apiError;
