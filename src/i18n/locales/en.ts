@@ -338,6 +338,7 @@ export default {
     },
     learning: {
       wizard: {
+        close: "Close roadmap wizard",
         subtitle: "Set the goal and calendar before SkillBridge creates any roadmap.",
         progress: "Roadmap setup progress",
         steps: {
@@ -394,6 +395,7 @@ export default {
         aiGenerated: "AI Generated",
         meta: "{{count}} modules · {{hours}}h budget",
         emptyMeta: "Generate a roadmap from Diagnosis to see real BE resources",
+        loading: "Loading roadmap...",
         clearRoadmap: "Clear roadmap",
         archiveSuccess: "The current roadmap was archived.",
         archiveError: "The roadmap could not be archived. Your current data was kept.",

@@ -60,7 +60,14 @@ export function LearningSidebar() {
 
         <div className="space-y-3">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("learning.sidebar.unitsWithStars")}</p>
-          <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden relative w-full">
+          <div
+            role="progressbar"
+            aria-label={t("learning.sidebar.unitsWithStars")}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={starQualifiedPct}
+            className="h-2.5 rounded-full bg-slate-100 overflow-hidden relative w-full"
+          >
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-primary to-blue-500 transition-all duration-1000 ease-out relative overflow-hidden"
               style={{ width: `${starQualifiedPct}%` }}

@@ -151,4 +151,12 @@ describe("auth service session persistence", () => {
     finishRequest();
     await pending;
   });
+
+  it("removes the persisted roadmap cache on logout", () => {
+    localStorage.setItem("roadmap-store", JSON.stringify({ state: { weekPlans: ["private"] } }));
+
+    useAuthStore.getState().logout();
+
+    expect(localStorage.getItem("roadmap-store")).toBeNull();
+  });
 });

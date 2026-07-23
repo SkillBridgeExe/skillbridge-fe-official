@@ -201,7 +201,7 @@ export default function Learning() {
 
             {isLoadingRoadmap && !hasRoadmap ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-                {t("common.loading", { defaultValue: "Loading..." })}
+                {t("learning.page.loading", { defaultValue: "Loading..." })}
               </div>
             ) : hasRoadmap ? (
               <div className="animate-in fade-in duration-300">

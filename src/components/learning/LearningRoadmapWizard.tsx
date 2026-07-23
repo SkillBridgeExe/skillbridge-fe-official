@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import * as Dialog from "@radix-ui/react-dialog";
 import { getCvListApi } from "@/api/cv/list";
 import { Button } from "@/components/ui/button";
 import { IT_ROLES } from "@/constants/it-roles";
@@ -254,8 +255,22 @@ export function LearningRoadmapWizard({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="mx-auto my-4 w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-10">
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !isBusy) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm" />
+        <Dialog.Content
+          aria-modal="true"
+          className="fixed inset-0 z-[101] overflow-y-auto p-4 outline-none"
+          onEscapeKeyDown={(event) => {
+            if (isBusy) event.preventDefault();
+          }}
+        >
+          <div className="mx-auto my-4 w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-10">
         <header className="flex items-start justify-between border-b border-slate-100 p-6">
           <div>
             <div
@@ -269,20 +284,23 @@ export function LearningRoadmapWizard({
                 />
               ))}
             </div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <Dialog.Title className="text-xl font-bold text-slate-900">
               {t(`learning.wizard.steps.${step}`)}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            </Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-slate-500">
               {t("learning.wizard.subtitle")}
-            </p>
+            </Dialog.Description>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isBusy}
-            className="rounded-full p-2 hover:bg-slate-100"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              disabled={isBusy}
+              aria-label={t("learning.wizard.close")}
+              className="rounded-full p-2 hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </Dialog.Close>
         </header>
 
         <main className="min-h-[390px] space-y-5 p-6">
@@ -606,8 +624,10 @@ export function LearningRoadmapWizard({
             </p>
           ) : null}
         </main>
-      </div>
-    </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

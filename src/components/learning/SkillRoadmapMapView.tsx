@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -56,6 +56,23 @@ export function SkillRoadmapMapView() {
   const [expanded, setExpanded] = useState(false);
   const sidebarCollapsed = useSidebarStore((state) => state.collapsed);
   const selectedId = drawerTarget?.type === "session" ? drawerTarget.item.id : null;
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (drawerTarget) {
+        setDrawerTarget(null);
+        return;
+      }
+      setExpanded(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [drawerTarget, expanded]);
 
   if (subjects.length === 0) return null;
 

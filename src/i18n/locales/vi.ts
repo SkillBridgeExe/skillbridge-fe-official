@@ -339,6 +339,7 @@ export default {
     },
     learning: {
       wizard: {
+        close: "Đóng trình tạo lộ trình",
         subtitle: "Chọn đúng mục tiêu và lịch học trước khi SkillBridge tạo lộ trình.",
         progress: "Tiến trình thiết lập lộ trình",
         steps: {
@@ -395,6 +396,7 @@ export default {
         aiGenerated: "AI tạo",
         meta: "{{count}} module · ngân sách {{hours}}h",
         emptyMeta: "Tạo lộ trình từ Chẩn đoán để xem tài nguyên thật từ BE",
+        loading: "Đang tải lộ trình...",
         clearRoadmap: "Xóa lộ trình",
         archiveSuccess: "Đã lưu trữ lộ trình hiện tại.",
         archiveError: "Không thể lưu trữ lộ trình. Dữ liệu hiện tại vẫn được giữ nguyên.",
