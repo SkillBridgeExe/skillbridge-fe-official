@@ -125,6 +125,25 @@ describe("Learning Roadmaps V2 service", () => {
               title: "TypeScript · Session 1",
               scheduled_start_at: "2026-07-27T12:00:00.000Z",
               duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+            {
+              id: "session-uuid-2",
+              sequence: 2,
+              title: "TypeScript · Session 2",
+              scheduled_start_at: "2026-07-26T12:00:00.000Z",
+              duration_minutes: 60,
+              status: "COMPLETED",
+              required_tasks: [],
+            },
+            {
+              id: "session-uuid-3",
+              sequence: 3,
+              title: "TypeScript · Session 3",
+              scheduled_start_at: "2026-07-29T12:00:00.000Z",
+              duration_minutes: 60,
+              status: "LOCKED",
               required_tasks: [],
             },
           ],
@@ -141,7 +160,13 @@ describe("Learning Roadmaps V2 service", () => {
         skillCanonical: "typescript",
         scheduledStartAt: "2026-07-27T12:00:00.000Z",
         dayOfWeek: 1,
+        status: "in-progress",
       }),
     );
+    expect(weeks[0].sessions.map((session) => session.status)).toEqual([
+      "in-progress",
+      "completed",
+      "locked",
+    ]);
   });
 });

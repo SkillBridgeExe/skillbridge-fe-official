@@ -29,7 +29,33 @@ interface RoadmapStore {
   setComposedRoadmap: (roadmap: ComposedRoadmap) => void;
   setActiveRoadmap: (roadmap: ActiveLearningRoadmap) => void;
   setWeekPlans: (plans: WeekPlan[]) => void;
+  applySessionCompletion: (
+    sessionId: string,
+    unlockedSessionIds: string[],
+  ) => void;
   clearRoadmap: () => void;
+}
+
+export function applySessionCompletionToWeekPlans(
+  plans: WeekPlan[],
+  sessionId: string,
+  unlockedSessionIds: string[],
+): WeekPlan[] {
+  const unlocked = new Set(unlockedSessionIds);
+  return sanitizeWeekPlans(
+    plans.map((week) => ({
+      ...week,
+      sessions: week.sessions.map((session) => {
+        if (session.id === sessionId) {
+          return { ...session, status: "completed" as const };
+        }
+        if (unlocked.has(session.id)) {
+          return { ...session, status: "in-progress" as const };
+        }
+        return session;
+      }),
+    })),
+  );
 }
 
 export const useRoadmapStore = create<RoadmapStore>()(
@@ -58,6 +84,14 @@ export const useRoadmapStore = create<RoadmapStore>()(
           ownerUserId: useAuthStore.getState().currentUser?.id ?? null,
         }),
       setWeekPlans: (plans) => set({ weekPlans: sanitizeWeekPlans(plans) }),
+      applySessionCompletion: (sessionId, unlockedSessionIds) =>
+        set((state) => ({
+          weekPlans: applySessionCompletionToWeekPlans(
+            state.weekPlans,
+            sessionId,
+            unlockedSessionIds,
+          ),
+        })),
       clearRoadmap: () =>
         set({
           composedRoadmap: null,
@@ -77,9 +111,13 @@ export const useRoadmapStore = create<RoadmapStore>()(
 // Gọi: const weeks = useActiveWeekPlans();
 
 export function useActiveWeekPlans() {
-  const { composedRoadmap, isAIGenerated, ownerUserId, weekPlans } = useRoadmapStore();
+  const { activeRoadmap, composedRoadmap, isAIGenerated, ownerUserId, weekPlans } =
+    useRoadmapStore();
   const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null);
   if (!canUsePersistedRoadmap(ownerUserId, currentUserId)) return [];
+  if (isAIGenerated && activeRoadmap && weekPlans.length > 0) {
+    return sanitizeWeekPlans(weekPlans);
+  }
   if (isAIGenerated && weekPlans.length > 0) {
     return deriveSessionStatuses(sanitizeWeekPlans(weekPlans));
   }

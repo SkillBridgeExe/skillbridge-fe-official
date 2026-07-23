@@ -78,8 +78,10 @@ function toSessionProgressState(dto: LearningSessionProgressDto): SessionProgres
 function toUpsertSessionProgressRequest(
   progress: SessionProgressState,
 ): UpsertLearningSessionProgressRequest {
+  const checkedChecklistItems = { ...progress.checkedChecklistItems };
+  delete checkedChecklistItems.__session;
   return {
-    checked_checklist_items: progress.checkedChecklistItems,
+    checked_checklist_items: checkedChecklistItems,
     exercise_proofs: progress.exerciseProofs,
   };
 }
@@ -106,6 +108,27 @@ export async function saveLearningSessionProgress(
     "Failed to save the learning session progress.",
   );
   return toSessionProgressState(envelope.data);
+}
+
+export interface CompleteLearningSessionResponse {
+  session_id: string;
+  status: "COMPLETED";
+  module_completed: boolean;
+  next_session_id: string | null;
+  unlocked_session_ids: string[];
+}
+
+export async function completeLearningSession(
+  sessionId: string,
+): Promise<CompleteLearningSessionResponse> {
+  requireSession();
+  const envelope = await unwrapEnvelope<
+    ApiEnvelope<CompleteLearningSessionResponse>
+  >(
+    httpClient.post(API_ROUTES.LEARNING.COMPLETE_SESSION(sessionId), {}),
+    "Failed to complete the learning session.",
+  );
+  return envelope.data;
 }
 
 export async function answerLearningQuizQuestion(

@@ -135,6 +135,7 @@ export interface ActiveLearningRoadmap {
       title: string;
       scheduled_start_at: string;
       duration_minutes: number;
+      status: "COMPLETED" | "AVAILABLE" | "LOCKED";
       required_tasks: PersistedTask[];
     }>;
   }>;
@@ -246,10 +247,11 @@ export function roadmapV2ToWeekPlans(
       sessions: [...module.sessions]
         .sort(
           (a, b) =>
+            a.sequence - b.sequence ||
             Date.parse(a.scheduled_start_at) -
-              Date.parse(b.scheduled_start_at) || a.sequence - b.sequence,
+              Date.parse(b.scheduled_start_at),
         )
-        .map((session, index) => {
+        .map((session) => {
           const resourcesTask = session.required_tasks.find(
             (task) => task.type === "resources",
           );
@@ -272,7 +274,12 @@ export function roadmapV2ToWeekPlans(
             ),
             scheduledStartAt: session.scheduled_start_at,
             estimatedMinutes: session.duration_minutes,
-            status: module.rank === 1 && index === 0 ? "in-progress" : "locked",
+            status:
+              session.status === "COMPLETED"
+                ? "completed"
+                : session.status === "AVAILABLE"
+                  ? "in-progress"
+                  : "locked",
             stars: 0,
             maxStars: 5,
             sections: toSections(lessonContent, resources),
