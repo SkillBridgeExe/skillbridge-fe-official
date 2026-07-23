@@ -255,13 +255,13 @@ export default function Index() {
                 className="font-display text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.14] sm:leading-[1.22] text-slate-900 [text-wrap:balance] break-words"
               >
                 {t("hero.titleLead")}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
+                <span className="inline-block whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
                   {t("hero.titleSkills")}
                 </span>
                 <br className="hidden lg:inline" />
-                <span>
+                <span className="inline-block sm:inline">
                   {t("hero.titleMid")}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
+                  <span className="inline-block whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
                     {t("hero.titleDream")}
                   </span>
                 </span>
