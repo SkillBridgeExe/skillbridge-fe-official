@@ -5,6 +5,8 @@ import {
   archiveActiveLearningRoadmap,
   createLearningRoadmapDraft,
   generateLearningRoadmap,
+  getCurrentActiveLearningRoadmap,
+  hydrateActiveLearningRoadmap,
   rescheduleLearningRoadmap,
   roadmapV2ToWeekPlans,
   translateLearningDisplay,
@@ -133,6 +135,40 @@ describe("Learning Roadmaps V2 service", () => {
     ).toBe("/api/learning/roadmaps/active");
   });
 
+  it("loads the current active roadmap directly without listing every draft", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(
+      ok({ id: "roadmap-active", status: "ACTIVE" }) as never,
+    );
+
+    await expect(getCurrentActiveLearningRoadmap()).resolves.toEqual({
+      id: "roadmap-active",
+      status: "ACTIVE",
+    });
+    expect(httpClient.get).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.ACTIVE_ROADMAP,
+    );
+  });
+
+  it("hydrates or clears the roadmap store from the server result", async () => {
+    const setActive = vi.fn();
+    const clear = vi.fn();
+    const roadmap = { id: "roadmap-active", status: "ACTIVE" } as ActiveLearningRoadmap;
+
+    await hydrateActiveLearningRoadmap(
+      () => Promise.resolve(roadmap),
+      setActive,
+      clear,
+    );
+    await hydrateActiveLearningRoadmap(
+      () => Promise.resolve(null),
+      setActive,
+      clear,
+    );
+
+    expect(setActive).toHaveBeenCalledWith(roadmap);
+    expect(clear).toHaveBeenCalledOnce();
+  });
+
   it("maps persisted session UUIDs and exact scheduled dates into the existing learning UI", () => {
     const roadmap: ActiveLearningRoadmap = {
       id: "roadmap-1",
@@ -197,7 +233,7 @@ describe("Learning Roadmaps V2 service", () => {
               title: "TypeScript · Session 3",
               scheduled_start_at: "2026-07-29T12:00:00.000Z",
               duration_minutes: 60,
-              status: "LOCKED",
+              status: "AVAILABLE",
               required_tasks: [],
             },
           ],

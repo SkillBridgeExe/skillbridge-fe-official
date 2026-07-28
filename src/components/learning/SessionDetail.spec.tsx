@@ -16,7 +16,13 @@ const navigationMocks = vi.hoisted(() => ({
 
 const roadmapStoreMocks = vi.hoisted(() => ({
   applySessionCompletion: vi.fn(),
+  setActiveRoadmap: vi.fn(),
   setWeekPlans: vi.fn(),
+}));
+
+const learningV2Mocks = vi.hoisted(() => ({
+  getCurrentActiveLearningRoadmap: vi.fn(),
+  translateLearningDisplay: vi.fn(),
 }));
 
 const learningServiceMocks = vi.hoisted(() => ({
@@ -93,6 +99,7 @@ vi.mock("@/components/learning/roadmap-store", () => ({
   useActiveWeekPlans: () => [],
   useRoadmapStore: () => ({
     applySessionCompletion: roadmapStoreMocks.applySessionCompletion,
+    setActiveRoadmap: roadmapStoreMocks.setActiveRoadmap,
     weekPlans: [],
     setWeekPlans: roadmapStoreMocks.setWeekPlans,
   }),
@@ -103,6 +110,7 @@ vi.mock("@/services/auth-session.service", () => ({
 }));
 
 vi.mock("@/services/learning-roadmap.service", () => learningServiceMocks);
+vi.mock("@/services/learning-roadmaps-v2.service", () => learningV2Mocks);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -340,6 +348,48 @@ describe("SessionDetail", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 650));
     expect(learningServiceMocks.saveLearningSessionProgress).not.toHaveBeenCalled();
+  });
+  learningV2Mocks.getCurrentActiveLearningRoadmap.mockResolvedValue({
+    id: "roadmap-refreshed",
+    status: "ACTIVE",
+  });
+
+  it("rolls back an optimistic checklist update and exposes a retryable save error", async () => {
+    authMocks.hasApiAuthSession.mockReturnValue(true);
+    learningServiceMocks.patchLearningChecklistItem.mockRejectedValueOnce(
+      new Error("Network unavailable"),
+    );
+    const checklistSession: LearningSession = {
+      ...session,
+      id: "session-checklist-error",
+      sections: [
+        {
+          id: "section-one",
+          title: "Section One",
+          completed: false,
+          exercises: 1,
+          completedExercises: 0,
+          type: "reading",
+          checklist: [{ id: "check-one", label: "Check one" }],
+        },
+      ],
+    };
+
+    render(<SessionDetail session={checklistSession} />);
+    await waitFor(() => {
+      expect(learningServiceMocks.getLearningNextQuestions).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+    fireEvent.click(screen.getByRole("button", { name: /Lab 01 Check one/ }));
+    fireEvent.change(screen.getByLabelText("Proof for Check one"), {
+      target: { value: "Completed check one with proof." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check task" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể lưu tiến độ",
+    );
+    expect(screen.queryByText("Done")).not.toBeInTheDocument();
   });
 
   it("seeks the YouTube lesson when a lesson content chapter is clicked", () => {
@@ -647,10 +697,11 @@ describe("SessionDetail", () => {
         "session-ready",
       );
     });
-    expect(roadmapStoreMocks.applySessionCompletion).toHaveBeenCalledWith(
-      "session-ready",
-      ["session-next"],
+    expect(learningV2Mocks.getCurrentActiveLearningRoadmap).toHaveBeenCalledOnce();
+    expect(roadmapStoreMocks.setActiveRoadmap).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "roadmap-refreshed" }),
     );
+    expect(roadmapStoreMocks.applySessionCompletion).not.toHaveBeenCalled();
     expect(navigationMocks.navigate).toHaveBeenCalledWith(
       "/learning/session/session-next",
     );

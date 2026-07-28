@@ -207,7 +207,7 @@ export interface ActiveLearningRoadmap {
       title: string;
       scheduled_start_at: string;
       duration_minutes: number;
-      status: "COMPLETED" | "AVAILABLE" | "LOCKED";
+      status: "COMPLETED" | "AVAILABLE";
       required_tasks: PersistedTask[];
     }>;
   }>;
@@ -289,6 +289,25 @@ export function getActiveLearningRoadmap(
     httpClient.get(API_ROUTES.LEARNING.ROADMAP(roadmapId)),
     "Failed to load the active learning roadmap.",
   );
+}
+
+export function getCurrentActiveLearningRoadmap(): Promise<ActiveLearningRoadmap | null> {
+  requireSession();
+  return unwrap(
+    httpClient.get(API_ROUTES.LEARNING.ACTIVE_ROADMAP),
+    "Failed to load the active learning roadmap.",
+  );
+}
+
+export async function hydrateActiveLearningRoadmap(
+  load: () => Promise<ActiveLearningRoadmap | null>,
+  setActive: (roadmap: ActiveLearningRoadmap) => void,
+  clear: () => void,
+): Promise<ActiveLearningRoadmap | null> {
+  const roadmap = await load();
+  if (roadmap) setActive(roadmap);
+  else clear();
+  return roadmap;
 }
 
 export function listLearningRoadmaps(): Promise<LearningRoadmapDraft[]> {

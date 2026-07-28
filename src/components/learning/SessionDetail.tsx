@@ -82,6 +82,7 @@ import {
   type QuizQuestionForProgress,
 } from "./quiz-progress";
 import {
+  getCurrentActiveLearningRoadmap,
   translateLearningDisplay,
   type LearningDisplayTranslationResult,
 } from "@/services/learning-roadmaps-v2.service";
@@ -2542,6 +2543,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
+  const [progressSaveError, setProgressSaveError] = useState<string | null>(null);
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [videoStartSeconds, setVideoStartSeconds] = useState<number | undefined>(undefined);
   const [adaptiveQuiz, setAdaptiveQuiz] = useState<AdaptiveQuizState | null>(null);
   const [displayTranslations, setDisplayTranslations] = useState<
@@ -2561,6 +2564,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const {
     activeRoadmap,
     applySessionCompletion,
+    setActiveRoadmap,
     weekPlans,
     setWeekPlans,
   } = useRoadmapStore();
@@ -2588,6 +2592,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
     setAdaptiveQuiz(null);
     setShowValidationErrors(false);
     setCompletionError(null);
+    setProgressSaveError(null);
+    setIsSavingProgress(false);
     setIsCompleting(false);
     setDisplayTranslations(null);
     setTranslationError(null);
@@ -2642,7 +2648,13 @@ export function SessionDetail({ session }: SessionDetailProps) {
         if (!isActive) return;
         progressHydratedRef.current = true;
         if (locallyChangedProgressRef.current) {
-          void saveLearningSessionProgress(session.id, progressRef.current).catch(() => undefined);
+          setIsSavingProgress(true);
+          void saveLearningSessionProgress(session.id, progressRef.current)
+            .then(() => setProgressSaveError(null))
+            .catch(() =>
+              setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại."),
+            )
+            .finally(() => setIsSavingProgress(false));
         }
       });
 
@@ -2664,7 +2676,13 @@ export function SessionDetail({ session }: SessionDetailProps) {
     }
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
-      void saveLearningSessionProgress(session.id, progress).catch(() => undefined);
+      setIsSavingProgress(true);
+      void saveLearningSessionProgress(session.id, progress)
+        .then(() => setProgressSaveError(null))
+        .catch(() =>
+          setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại."),
+        )
+        .finally(() => setIsSavingProgress(false));
     }, 500);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
@@ -2765,10 +2783,22 @@ export function SessionDetail({ session }: SessionDetailProps) {
       writeStoredSessionProgress(session.id, updatedProgress);
 
       if (hasApiAuthSession()) {
-        applySessionCompletion(
-          completion.session_id,
-          completion.unlocked_session_ids,
-        );
+        try {
+          const refreshedRoadmap = await getCurrentActiveLearningRoadmap();
+          if (refreshedRoadmap) {
+            setActiveRoadmap(refreshedRoadmap);
+          } else {
+            applySessionCompletion(
+              completion.session_id,
+              completion.unlocked_session_ids,
+            );
+          }
+        } catch {
+          applySessionCompletion(
+            completion.session_id,
+            completion.unlocked_session_ids,
+          );
+        }
       } else if (weekPlans.length > 0) {
         setWeekPlans(
           weekPlans.map((week) => ({
@@ -2851,6 +2881,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   };
 
   const handleToggleChecklistItem = (sectionId: string, item: string) => {
+    setProgressSaveError(null);
     locallyChangedProgressRef.current = true;
     setProgressSessionId(session.id);
     const baseProgress = progressBelongsToCurrentSession ? progressRef.current : visibleProgress;
@@ -2876,7 +2907,12 @@ export function SessionDetail({ session }: SessionDetailProps) {
           suppressNextProgressSaveRef.current = true;
           setProgress(hydrated);
         })
-        .catch(() => undefined);
+        .catch(() => {
+          progressRef.current = baseProgress;
+          suppressNextProgressSaveRef.current = true;
+          setProgress(baseProgress);
+          setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại.");
+        });
     }
   };
 
@@ -3083,6 +3119,28 @@ export function SessionDetail({ session }: SessionDetailProps) {
           )}
         </div>
       </div>
+      {progressSaveError ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 lg:px-6"
+        >
+          <span>{progressSaveError}</span>
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-2"
+            onClick={() => setProgressSaveError(null)}
+          >
+            Đóng
+          </button>
+        </div>
+      ) : isSavingProgress ? (
+        <div
+          role="status"
+          className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs text-slate-500 lg:px-6"
+        >
+          Đang lưu tiến độ...
+        </div>
+      ) : null}
 
       {/* Locked overlay */}
       {session.status === "locked" && (

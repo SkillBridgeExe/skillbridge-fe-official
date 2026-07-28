@@ -1,4 +1,4 @@
-import { ArrowRight, Calendar, Flame, Sparkles, TrendingUp, Trophy } from "lucide-react";
+import { Calendar, Flame, Sparkles, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import type { WeekPlan } from "@/components/learning/types";
@@ -7,7 +7,6 @@ import { LearningProjectionCard } from "./LearningProjectionCard";
 export function LearningSidebar() {
   const { t } = useTranslation("common");
   const weeks = useActiveWeekPlans();
-  const composedRoadmap = useRoadmapStore((state) => state.composedRoadmap);
   const activeRoadmap = useRoadmapStore((state) => state.activeRoadmap);
   const {
     completedDays,
@@ -102,27 +101,6 @@ export function LearningSidebar() {
             </span>
           </div>
         </div>
-        </div>
-      )}
-
-      {composedRoadmap?.ai_summary && (
-        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-primary to-violet-700 p-5 text-white shadow-lg shadow-primary/10 relative overflow-hidden border border-white/10 group">
-          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-          
-          <div className="flex items-start gap-3 relative z-10">
-            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 border border-white/10">
-              <Sparkles className="w-4 h-4 text-white animate-pulse" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-200/80 mb-1">AI Recommendation</h4>
-              <p className="text-xs font-bold leading-snug text-white/95">{composedRoadmap.ai_summary}</p>
-            </div>
-          </div>
-          <button className="mt-4 w-full flex items-center justify-center gap-2 bg-white text-primary hover:bg-white/95 active:scale-[0.98] rounded-xl py-2.5 text-xs font-extrabold transition-all duration-300 shadow-md shadow-black/5">
-            <TrendingUp className="w-3.5 h-3.5" />
-            {t("learning.sidebar.learnNow")}
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
-          </button>
         </div>
       )}
 

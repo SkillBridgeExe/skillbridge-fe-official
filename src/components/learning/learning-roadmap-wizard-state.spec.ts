@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCadenceDraft,
   buildPrioritySelection,
+  buildResourceSelection,
 } from "./learning-roadmap-wizard-state";
 
 const candidates = [
@@ -56,5 +57,30 @@ describe("learning roadmap wizard state", () => {
         studyDaysPerWeek: 0,
       }),
     ).toThrow("Choose between 1 and 7 learning days");
+  });
+
+  it("selects only server-curated primary resources by default", () => {
+    expect(
+      buildResourceSelection({
+        modules: [
+          {
+            skill_canonical: "react",
+            resources: [
+              { id: "long-course", resource_role: "SUPPLEMENTARY" },
+            ],
+          },
+          {
+            skill_canonical: "typescript",
+            resources: [
+              { id: "primary-video", resource_role: "PRIMARY" },
+              { id: "reference", resource_role: "SUPPLEMENTARY" },
+            ],
+          },
+        ],
+      }),
+    ).toEqual({
+      react: [],
+      typescript: ["primary-video"],
+    });
   });
 });

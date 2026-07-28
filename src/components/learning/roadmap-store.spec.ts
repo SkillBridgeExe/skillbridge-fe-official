@@ -93,7 +93,7 @@ describe("roadmap completion status patch", () => {
               title: "Two",
               scheduled_start_at: "2026-08-03T12:00:00.000Z",
               duration_minutes: 60,
-              status: "LOCKED",
+              status: "AVAILABLE",
               required_tasks: [],
             },
           ],

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Calendar, GitBranch, Info, LayoutGrid, List, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, GitBranch, LayoutGrid, List, Sparkles } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,9 @@ import {
 import { AIChatbot } from "@/components/learning/AIChatbot";
 import { useRoadmapStore } from "@/components/learning/roadmap-store";
 import { LearningRoadmapWizard } from "@/components/learning/LearningRoadmapWizard";
+import { useActiveLearningRoadmapBootstrap } from "@/components/learning/use-active-learning-roadmap";
 import {
   archiveActiveLearningRoadmap,
-  getActiveLearningRoadmap,
-  listLearningRoadmaps,
 } from "@/services/learning-roadmaps-v2.service";
 
 type ViewMode = "map" | "overview" | "grid" | "list";
@@ -36,37 +35,18 @@ export default function Learning() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<ViewMode>("map");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(true);
   const [isArchivingRoadmap, setIsArchivingRoadmap] = useState(false);
-  const { activeRoadmap, composedRoadmap, isAIGenerated, clearRoadmap, setActiveRoadmap } =
-    useRoadmapStore();
-  const hasRoadmap = Boolean(activeRoadmap || composedRoadmap);
-  const moduleCount = activeRoadmap?.modules.length ?? composedRoadmap?.steps.length ?? 0;
+  const { activeRoadmap, clearRoadmap, setActiveRoadmap } = useRoadmapStore();
+  const roadmapBootstrap = useActiveLearningRoadmapBootstrap();
+  const isLoadingRoadmap = roadmapBootstrap.status === "loading";
+  const hasRoadmap = Boolean(activeRoadmap);
+  const moduleCount = activeRoadmap?.modules.length ?? 0;
   const totalHours = activeRoadmap
     ? Math.round(
         (activeRoadmap.modules.reduce((sum, module) => sum + module.estimated_minutes, 0) / 60) *
           10,
       ) / 10
-    : composedRoadmap?.budget_hours ?? 0;
-
-  useEffect(() => {
-    let cancelled = false;
-    listLearningRoadmaps()
-      .then((roadmaps) => {
-        const active = roadmaps.find((roadmap) => roadmap.status === "ACTIVE");
-        return active ? getActiveLearningRoadmap(active.id) : null;
-      })
-      .then((roadmap) => {
-        if (!cancelled && roadmap) setActiveRoadmap(roadmap);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setIsLoadingRoadmap(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [setActiveRoadmap]);
+    : 0;
 
   const handleClearRoadmap = async () => {
     if (!activeRoadmap) {
@@ -118,9 +98,6 @@ export default function Learning() {
                       · {activeRoadmap.coverage_percentage}%
                     </Badge>
                   ) : null}
-                  <button className="h-5 w-5 text-slate-400 hover:text-primary" aria-label={t("learning.page.info")}>
-                    <Info className="h-5 w-5" />
-                  </button>
                 </div>
                 <p className="text-sm text-slate-500">
                   {hasRoadmap
@@ -133,7 +110,7 @@ export default function Learning() {
               </div>
 
               <div className="flex w-full flex-col gap-2 min-[420px]:flex-row sm:w-auto sm:flex-shrink-0 sm:items-center">
-                {isAIGenerated && (
+                {activeRoadmap && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -161,33 +138,6 @@ export default function Learning() {
                 </Button>
               </div>
             </header>
-
-            {composedRoadmap?.ai_summary && (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
-                <p className="text-sm leading-relaxed text-amber-800">
-                  <span className="font-semibold">{t("learning.page.aiTip")} </span>
-                  {composedRoadmap.ai_summary}
-                </p>
-              </div>
-            )}
-
-            {composedRoadmap?.not_feasible_items.length ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-bold text-slate-900">{t("learning.page.notFeasible")}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {composedRoadmap.not_feasible_items.map((item) => (
-                    <Badge
-                      key={item.skill_canonical}
-                      variant="outline"
-                      className="border-amber-200 bg-amber-50 text-amber-700"
-                    >
-                      {item.display_name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {hasRoadmap && (
               <div className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:mx-0 sm:w-fit">

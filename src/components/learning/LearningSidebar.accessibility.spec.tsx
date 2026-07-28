@@ -7,8 +7,8 @@ import { LearningSidebar } from "./LearningSidebar";
 
 vi.mock("@/components/learning/roadmap-store", () => ({
   useActiveWeekPlans: () => [],
-  useRoadmapStore: (selector: (state: { composedRoadmap: null }) => unknown) =>
-    selector({ composedRoadmap: null }),
+  useRoadmapStore: (selector: (state: { activeRoadmap: null }) => unknown) =>
+    selector({ activeRoadmap: null }),
 }));
 
 vi.mock("react-i18next", () => ({

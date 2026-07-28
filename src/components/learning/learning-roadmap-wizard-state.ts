@@ -41,3 +41,19 @@ export function buildCadenceDraft(input: {
     session_minutes: 60,
   };
 }
+
+export function buildResourceSelection(preview: {
+  modules: Array<{
+    skill_canonical: string;
+    resources: Array<{ id: string; resource_role?: "PRIMARY" | "SUPPLEMENTARY" }>;
+  }>;
+}): Record<string, string[]> {
+  return Object.fromEntries(
+    preview.modules.map((module) => [
+      module.skill_canonical,
+      module.resources
+        .filter((resource) => resource.resource_role === "PRIMARY")
+        .map((resource) => resource.id),
+    ]),
+  );
+}

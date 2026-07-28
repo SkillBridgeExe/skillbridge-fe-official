@@ -30,6 +30,7 @@ import type { CvListItemDto } from "@shared/api";
 import {
   buildCadenceDraft,
   buildPrioritySelection,
+  buildResourceSelection,
 } from "./learning-roadmap-wizard-state";
 
 type Step = "goal" | "context" | "priorities" | "schedule" | "preview";
@@ -184,7 +185,7 @@ export function LearningRoadmapWizard({
       );
       setDraft(updated);
       setPreview(nextPreview);
-      setSelectedResources(resourceSelectionFromPreview(nextPreview));
+      setSelectedResources(buildResourceSelection(nextPreview));
       // Preview resources are server-verified, but the primary-only default is a
       // learner choice that still needs to be persisted before generation.
       setResourceSelectionDirty(true);
@@ -215,7 +216,7 @@ export function LearningRoadmapWizard({
         );
         setDraft(currentDraft);
         setPreview(currentPreview);
-        setSelectedResources(resourceSelectionFromPreview(currentPreview));
+        setSelectedResources(buildResourceSelection(currentPreview));
         setResourceSelectionDirty(false);
       }
 
@@ -595,22 +596,6 @@ export function LearningRoadmapWizard({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  );
-}
-
-function resourceSelectionFromPreview(
-  preview: LearningRoadmapPreview,
-): Record<string, string[]> {
-  return Object.fromEntries(
-    preview.modules.map((module) => {
-      const primary = module.resources
-        .filter((resource) => resource.resource_role === "PRIMARY")
-        .map((resource) => resource.id);
-      return [
-        module.skill_canonical,
-        primary.length > 0 ? primary : module.resources.slice(0, 1).map(({ id }) => id),
-      ];
-    }),
   );
 }
 

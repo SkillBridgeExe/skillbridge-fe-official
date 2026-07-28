@@ -6,14 +6,17 @@ import { useParams, Navigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { SessionDetail } from "@/components/learning";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
+import { useActiveLearningRoadmapBootstrap } from "@/components/learning/use-active-learning-roadmap";
 import { useSidebarStore } from "@/store/useSidebarStore";
 import type { LearningSession as LearningSessionType } from "@/components/learning";
+import { Button } from "@/components/ui/button";
 
 export default function LearningSession() {
   const { id } = useParams<{ id: string }>();
   const weekPlans = useActiveWeekPlans();
   const allSessions = weekPlans.flatMap(w => w.sessions);
   const session = allSessions.find(s => s.id === id);
+  const bootstrap = useActiveLearningRoadmapBootstrap();
   const setCollapsed = useSidebarStore((state) => state.setCollapsed);
   const setForceCollapsed = useSidebarStore((state) => state.setForceCollapsed);
 
@@ -31,6 +34,29 @@ export default function LearningSession() {
     };
   }, [setCollapsed, setForceCollapsed]);
 
+  if (bootstrap.status === "loading") {
+    return (
+      <Layout hideFooter>
+        <div role="status" className="grid min-h-[50vh] place-items-center text-sm text-slate-500">
+          Đang tải lộ trình...
+        </div>
+      </Layout>
+    );
+  }
+  if (bootstrap.status === "error") {
+    return (
+      <Layout hideFooter>
+        <div className="grid min-h-[50vh] place-items-center px-4">
+          <div role="alert" className="space-y-3 text-center">
+            <p className="text-sm text-red-600">{bootstrap.error?.message}</p>
+            <Button type="button" variant="outline" onClick={bootstrap.retry}>
+              Thử lại
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
   if (!session) return <Navigate to="/learning" replace />;
 
   return (
