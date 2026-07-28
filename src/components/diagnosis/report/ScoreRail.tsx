@@ -12,6 +12,7 @@ import { triggerCvDownload } from "@/services/diagnosis.service";
 import { CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import { matchScoreBand } from "@/lib/match-score-band";
 import { FitBadge } from "../FitBadge";
+import { diagnosisScoreStatus } from "@/lib/diagnosis-score-status";
 
 /** Match-mode stats passed from DiagnosisStep3Results. */
 export interface MatchStatsData {
@@ -159,24 +160,32 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
             </span>
           </div>
         )}
-        {!isMatch && groups.map((group) => (
-          <button
-            key={group.id}
-            onClick={() => scrollToGroup(group.id)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#EAEAEA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F3437] transition-all hover:bg-slate-50 shrink-0 active:scale-[0.98]"
-          >
-            <span>{group.label}</span>
-            {group.issueCount > 0 ? (
-              <span className="rounded-full bg-[#FDEBEC] text-[#9F2F2D] border border-[#F6D4D5] px-1.5 text-[10px] font-bold tabular-nums">
-                {group.issueCount}
-              </span>
-            ) : (
-              <span className="w-3.5 h-3.5 rounded-full bg-[#EDF3EC] flex items-center justify-center border border-[#DCE9D7]">
-                <Check className="w-2.5 h-2.5 text-[#346538]" />
-              </span>
-            )}
-          </button>
-        ))}
+        {!isMatch && groups.map((group) => {
+          const status = diagnosisScoreStatus(group.score);
+          const passed = group.issueCount === 0 && (status === "pass" || status === "unknown");
+          return (
+            <button
+              key={group.id}
+              onClick={() => scrollToGroup(group.id)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#EAEAEA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F3437] transition-all hover:bg-slate-50 shrink-0 active:scale-[0.98]"
+            >
+              <span>{group.label}</span>
+              {group.issueCount > 0 ? (
+                <span className="rounded-full bg-[#FDEBEC] text-[#9F2F2D] border border-[#F6D4D5] px-1.5 text-[10px] font-bold tabular-nums">
+                  {group.issueCount}
+                </span>
+              ) : passed ? (
+                <span className="w-3.5 h-3.5 rounded-full bg-[#EDF3EC] flex items-center justify-center border border-[#DCE9D7]">
+                  <Check className="w-2.5 h-2.5 text-[#346538]" />
+                </span>
+              ) : status === "warn" ? (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-rose-600" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Desktop (>=lg): report sidebar contents mapped directly inside parent aside container */}
@@ -298,7 +307,9 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
           <nav className="border-t border-[#EAEAEA] divide-y divide-[#F1F1EF] w-full flex-1">
             {groups.map((group) => {
               const score = getCategoryScore(group.id);
+              const status = diagnosisScoreStatus(score ?? group.score);
               const hasIssues = group.issueCount > 0;
+              const passed = !hasIssues && (status === "pass" || status === "unknown");
 
               return (
                 <button
@@ -314,9 +325,18 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
                       <span className="text-[12px] font-bold text-[#00AEEF] whitespace-nowrap tabular-nums hover:underline">
                         {t("report.rail.issuesBadge", { count: group.issueCount, defaultValue: `${group.issueCount} lỗi` })}
                       </span>
-                    ) : (
+                    ) : passed ? (
                       <span className="w-4 h-4 rounded-full bg-[#EDF3EC] flex items-center justify-center border border-[#DCE9D7] shrink-0">
                         <Check className="w-2.5 h-2.5 text-[#346538]" />
+                      </span>
+                    ) : (
+                      <span
+                        className={cn(
+                          "text-[11px] font-bold whitespace-nowrap",
+                          status === "warn" ? "text-amber-700" : "text-rose-700",
+                        )}
+                      >
+                        {t(status === "warn" ? "report.rail.needsImprovement" : "report.rail.notMet")}
                       </span>
                     )}
                   </div>

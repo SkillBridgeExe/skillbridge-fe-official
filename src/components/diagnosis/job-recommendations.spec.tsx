@@ -102,7 +102,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
-    render(<JobRecommendations cvId="cv-123" />);
+    render(<JobRecommendations cvId="cv-123" targetRole="frontend_developer" />);
 
     expect(screen.getByText("Top 5 việc làm phù hợp nhất")).toBeInTheDocument();
     expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
@@ -168,6 +168,23 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(mockQuery).toHaveBeenLastCalledWith(
       "cv-123",
       expect.objectContaining({ role: "frontend_developer", offset: 0 })
+    );
+  });
+
+  it("uses the CV target role on the first request and keeps it visible when the API fails", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: true,
+      error: new Error("Network error"),
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" targetRole="frontend_developer" />);
+
+    expect(useJobRecommendationsQuery).toHaveBeenLastCalledWith(
+      "cv-123",
+      expect.objectContaining({ role: "frontend_developer" }),
     );
   });
 
@@ -277,6 +294,20 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     render(<JobRecommendations cvId="cv-123" />);
     expect(screen.getByText("Hết lượt đề xuất")).toBeInTheDocument();
+  });
+
+  it("renders quota blocked state after the API envelope preserves status 402", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: true,
+      error: Object.assign(new Error("Quota blocked"), { status: 402 }),
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Hết lượt đề xuất")).toBeInTheDocument();
+    expect(screen.queryByText("Lỗi tải đề xuất")).not.toBeInTheDocument();
   });
 
   it("appends later pages and deduplicates jobs by job_id", () => {

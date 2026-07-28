@@ -2152,6 +2152,8 @@ export default {
         unnormalizedChip: "Scored {{scored}}/{{total}} readable requirements — {{unscored}} out-of-scope requirements could not be evaluated",
         issuesBadge: "{{count}} to fix",
         resolved: "Passed",
+        needsImprovement: "Needs improvement",
+        notMet: "Not met",
         askCompanion: "Ask your AI coach",
         downloadCv: "Download original CV",
       },

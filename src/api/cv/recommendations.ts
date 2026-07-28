@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { unwrapEnvelope, type ApiEnvelope } from "@/api/auth/envelope";
@@ -43,9 +44,26 @@ export async function getJobRecommendationsApi(
     params.fit = query.fit.join(",");
   }
 
-  const envelope = await unwrapEnvelope<ApiEnvelope<JobRecommendationsResponse>>(
-    httpClient.get(API_ROUTES.CV.JOB_RECOMMENDATIONS(cvId), { params }),
-    "Failed to load job recommendations.",
-  );
-  return envelope.data;
+  let rawStatus: number | undefined;
+  const request = httpClient
+    .get<ApiEnvelope<JobRecommendationsResponse>>(API_ROUTES.CV.JOB_RECOMMENDATIONS(cvId), {
+      params,
+    })
+    .catch((error: unknown) => {
+      if (isAxiosError(error)) rawStatus = error.response?.status;
+      throw error;
+    });
+
+  try {
+    const envelope = await unwrapEnvelope<ApiEnvelope<JobRecommendationsResponse>>(
+      request,
+      "Failed to load job recommendations.",
+    );
+    return envelope.data;
+  } catch (error) {
+    if (rawStatus && error && typeof error === "object") {
+      (error as { status?: number }).status = rawStatus;
+    }
+    throw error;
+  }
 }

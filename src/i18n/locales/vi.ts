@@ -2147,6 +2147,8 @@ export default {
         unnormalizedChip: "Chấm trên {{scored}}/{{total}} yêu cầu đọc được — {{unscored}} yêu cầu ngoài phạm vi chưa đánh giá được",
         issuesBadge: "{{count}} cần sửa",
         resolved: "Đạt chuẩn",
+        needsImprovement: "Cần cải thiện",
+        notMet: "Chưa đạt",
         askCompanion: "Hỏi AI đồng hành",
         downloadCv: "Tải CV gốc",
       },

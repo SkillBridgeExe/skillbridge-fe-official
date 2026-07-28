@@ -3,6 +3,7 @@ import { Check, AlertTriangle, X, ArrowRight, ChevronDown, MessageCircle } from 
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { CheckGroupData, CheckRowData } from "@/lib/diagnosis-report";
+import { diagnosisScoreStatus } from "@/lib/diagnosis-score-status";
 
 const PASTEL = {
   green: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-sm shadow-emerald-500/5",
@@ -99,8 +100,9 @@ interface CheckGroupProps {
 
 export function CheckGroup({ group, children, onAskDimension }: CheckGroupProps) {
   const { t } = useTranslation("diagnosis");
-  const [open, setOpen] = useState(group.issueCount > 0);
-  const clean = group.issueCount === 0;
+  const scoreStatus = diagnosisScoreStatus(group.score);
+  const clean = group.issueCount === 0 && (scoreStatus === "pass" || scoreStatus === "unknown");
+  const [open, setOpen] = useState(group.issueCount > 0 || scoreStatus === "fail");
 
   useEffect(() => {
     const onReveal = (e: Event) => {
@@ -130,6 +132,20 @@ export function CheckGroup({ group, children, onAskDimension }: CheckGroupProps)
           <span className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold", PASTEL.green)}>
             <Check className="w-3 h-3 stroke-[3.5]" />
             {t("report.rail.resolved")}
+          </span>
+        ) : group.issueCount === 0 ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold",
+              scoreStatus === "warn" ? PASTEL.yellow : PASTEL.red,
+            )}
+          >
+            {scoreStatus === "warn" ? (
+              <AlertTriangle className="w-3 h-3 stroke-[3]" />
+            ) : (
+              <X className="w-3 h-3 stroke-[3]" />
+            )}
+            {t(scoreStatus === "warn" ? "report.rail.needsImprovement" : "report.rail.notMet")}
           </span>
         ) : (
           <span className={cn("rounded-full border px-2.5 py-0.5 text-[11px] font-bold", PASTEL.red)}>

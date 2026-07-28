@@ -1012,7 +1012,11 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
         {/* Tab 3: Market Insights / Jobs */}
         {(activeTab === 'market' || activeTab === 'jobs') && (
           <div className="w-full px-2 lg:px-4 space-y-10 animate-in fade-in duration-300">
-            <JobRecommendations key={lastCvId ?? "no-cv"} cvId={lastCvId} />
+            <JobRecommendations
+              key={lastCvId ?? "no-cv"}
+              cvId={lastCvId}
+              targetRole={targetRole}
+            />
 
             {/* AI trends insight */}
             <AiTrendsInsight cvId={lastCvId} role={targetRole} />

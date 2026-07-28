@@ -258,7 +258,13 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
 }
 
 /** Job Recommendations & Job Explorer Component. */
-export function JobRecommendations({ cvId }: { cvId: string | null }) {
+export function JobRecommendations({
+  cvId,
+  targetRole,
+}: {
+  cvId: string | null;
+  targetRole?: string | null;
+}) {
   const { t } = useTranslation("diagnosis");
 
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
@@ -275,12 +281,23 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
 
   const activeQuery = useMemo(() => {
     if (cvChanged) {
-      return { limit: 5, offset: 0, sort: "RECOMMENDED" as const };
+      return {
+        limit: 5,
+        offset: 0,
+        sort: "RECOMMENDED" as const,
+        ...(targetRole ? { role: targetRole } : {}),
+      };
     }
+    const role = queryState.role ?? targetRole ?? undefined;
     return isExplorerOpen
-      ? { ...queryState, limit: 10 }
-      : { limit: 5, offset: 0, sort: "RECOMMENDED" as const };
-  }, [cvChanged, isExplorerOpen, queryState]);
+      ? { ...queryState, ...(role ? { role } : {}), limit: 10 }
+      : {
+          limit: 5,
+          offset: 0,
+          sort: "RECOMMENDED" as const,
+          ...(role ? { role } : {}),
+        };
+  }, [cvChanged, isExplorerOpen, queryState, targetRole]);
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useJobRecommendationsQuery(
     cvId,
@@ -324,7 +341,9 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
 
   if (!cvId) return null;
 
-  const quotaBlocked = isAxiosError(error) && error.response?.status === 402;
+  const quotaBlocked =
+    (isAxiosError(error) && error.response?.status === 402) ||
+    (error && typeof error === "object" && (error as { status?: number }).status === 402);
 
   const activeFilterCount =
     (queryState.cityCodes?.length ? 1 : 0) +
@@ -497,6 +516,7 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
                   value={
                     filterQuery.role ??
                     data?.role_scope?.role_code ??
+                    targetRole ??
                     (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                   }
                   onChange={(e) => handleSetRole(e.target.value)}
@@ -754,6 +774,7 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
                       value={
                         filterQuery.role ??
                         data?.role_scope?.role_code ??
+                        targetRole ??
                         (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                       }
                       onChange={(e) => handleSetRole(e.target.value)}

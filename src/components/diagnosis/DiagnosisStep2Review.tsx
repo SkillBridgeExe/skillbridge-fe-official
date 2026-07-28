@@ -450,7 +450,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
 
                 {activeTab === 'market' && (
                   <div className="space-y-8 animate-in fade-in duration-300">
-                    <JobRecommendations cvId={lastCvId} />
+                    <JobRecommendations cvId={lastCvId} targetRole={targetRole} />
 
                     {/* AI trends insight */}
                     <AiTrendsInsight cvId={lastCvId} role={targetRole} />
