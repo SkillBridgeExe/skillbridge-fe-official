@@ -281,7 +281,7 @@ export default function BusinessApplicants() {
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <span className="text-xs text-slate-500">{app.candidateEmail}</span>
                           {app.candidatePhone && <span className="text-xs text-slate-500">{app.candidatePhone}</span>}
-                          {app.matchScore && <span className="text-xs text-sky-600 font-medium">Match: {app.matchScore}%</span>}
+                          {app.matchScore && <span className="text-xs text-sky-600 font-medium">Match: {Math.round(Number(app.matchScore))}%</span>}
                           <span className="text-xs text-slate-400 flex items-center gap-1">
                             <Clock size={11} />
                             {new Date(app.submittedAt).toLocaleDateString("en-US")}
@@ -419,7 +419,13 @@ export default function BusinessApplicants() {
                   <div className="rounded-xl border border-slate-200 p-3">
                     <p className="text-xs font-semibold uppercase text-slate-400">Match</p>
                     <p className="mt-1 text-slate-700">
-                      {selectedApplicationDetail.matchScore ? `${selectedApplicationDetail.matchScore}%` : selectedApplicationDetail.matchStatus}
+                      {/* Never print the raw status enum ("READY"/"FAILED"): a
+                          scoreless-but-READY match would read as a valid verdict
+                          contradicting the honest panel below (bug hunt R2). The
+                          ApplicationMatchExplanation carries the real state. */}
+                      {selectedApplicationDetail.matchScore
+                        ? `${Math.round(Number(selectedApplicationDetail.matchScore))}%`
+                        : "—"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200 p-3">

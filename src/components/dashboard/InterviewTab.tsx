@@ -27,6 +27,10 @@ export default function InterviewTab() {
   const recentItems = scoredItems.slice(0, VISIBLE_SESSION_LIMIT);
   const summary = buildInterviewSummary(scoredItems);
   const scoredTotal = query.data?.total ?? scoredItems.length;
+  // The averages cover only the fetched window (≤10), while "Scored sessions"
+  // is the all-time total. Qualify the average labels when the two scopes
+  // differ so the headline numbers don't silently disagree (bug hunt R2 07-22).
+  const avgScope = scoredTotal > scoredItems.length ? ` (recent ${scoredItems.length})` : "";
 
   if (query.isLoading) {
     return (
@@ -85,17 +89,17 @@ export default function InterviewTab() {
         />
         <Metric
           icon={<Video />}
-          label="Overall"
+          label={`Overall${avgScope}`}
           value={formatAverageScore(summary.averageOverall)}
         />
         <Metric
           icon={<Trophy />}
-          label="Technical"
+          label={`Technical${avgScope}`}
           value={formatAverageScore(summary.averageSemantic)}
         />
         <Metric
           icon={<MessageSquare />}
-          label="Communication"
+          label={`Communication${avgScope}`}
           value={formatAverageScore(summary.averageCommunication)}
         />
       </div>

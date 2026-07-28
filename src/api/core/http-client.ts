@@ -14,6 +14,16 @@ import {
   setAccessToken,
 } from "@/services/auth-token.service";
 
+/** Involuntary session end (401/refresh-fail). Only drops the token + flips to
+ *  anonymous — it must NOT wipe the per-user stores here: a transient refresh
+ *  blip (Cloud Run cold-start 503 on the refresh POST) would otherwise destroy
+ *  the SAME user's unsaved CV/diagnosis work. The cross-account cache wipe runs
+ *  at the next DIFFERENT user's login instead (bug hunt R4 07-22). */
+function forceAnonymous(): void {
+  clearAccessToken();
+  useAuthStore.getState().setAnonymous();
+}
+
 export interface AuthAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean;
   _retry503?: number;
@@ -170,8 +180,7 @@ httpClient.interceptors.response.use(
         return httpClient(originalRequest);
       } catch (refreshError) {
         if (!isUsingMockAuth()) {
-          clearAccessToken();
-          useAuthStore.getState().setAnonymous();
+          forceAnonymous();
         }
         return Promise.reject(refreshError);
       }
@@ -179,8 +188,7 @@ httpClient.interceptors.response.use(
 
     if (status === 401 && originalRequest && !isAuthRefreshExcluded(originalRequest)) {
       if (!isUsingMockAuth()) {
-        clearAccessToken();
-        useAuthStore.getState().setAnonymous();
+        forceAnonymous();
       }
     }
 

@@ -5,6 +5,9 @@ export type RealtimeEventType =
   | "ai_transcript"
   | "ai_speaking"
   | "ai_stopped"
+  // One STT segment failed — per-utterance and recoverable; the session and any
+  // buffered answer segments are still valid. Distinct from fatal "error".
+  | "transcript_failed"
   | "error";
 
 export interface RealtimeEvent {
@@ -239,7 +242,7 @@ export class OpenAIRealtimeSession {
 
     if (event.type === "conversation.item.input_audio_transcription.failed") {
       this.emit({
-        type: "error",
+        type: "transcript_failed",
         data: (event.error?.message ?? "Realtime transcription failed.").normalize("NFC"),
       });
       return;

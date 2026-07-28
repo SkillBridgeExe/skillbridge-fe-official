@@ -19,7 +19,7 @@ import { GithubEvidence } from "./GithubEvidence";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useCompareJdMutation, useInterviewPlanQuery, useGapReportQuery } from "@/hooks/use-diagnosis";
+import { useCompareJdMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
 import type { CvIssue } from "@shared/api";
@@ -72,10 +72,6 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   const posthog = usePostHog();
   const compareJdMutation = useCompareJdMutation();
   const diagnosisLang = i18n.language?.startsWith("vi") ? "vi" : "en";
-
-  // Prefetch W11 as soon as the CV review has enough context. The visible
-  // InterviewPrepPack still renders in the Market tab and reuses this cache.
-  useInterviewPlanQuery(lastCvId, targetRole, diagnosisLang);
 
   const compareFromCvReview = async () => {
     if (!lastCvId) {

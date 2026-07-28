@@ -31,31 +31,48 @@ import { useHasApiSession } from "@/hooks/use-api-session";
 import { QUERY_KEYS } from "@/constants/app";
 import type { TailorAction } from "@shared/api";
 
+/** Các mutation dưới đây tiêu quota — counter "Còn x/y lượt" đọc từ
+ *  BILLING_ENTITLEMENTS nên phải invalidate sau mỗi lần tiêu, kẻo màn upload
+ *  vẫn khoe lượt cũ rồi click tiếp mới ăn 402 (bug hunt 07-21). */
+function useInvalidateEntitlements() {
+  const queryClient = useQueryClient();
+  return () =>
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
+}
+
 /** Chấm CV (không JD) — POST /api/cvs thật, trả { cvId, review }. */
 export function useAnalyzeCvMutation() {
+  const invalidateEntitlements = useInvalidateEntitlements();
   return useMutation({
     mutationFn: analyzeCv,
+    onSuccess: invalidateEntitlements,
   });
 }
 
 /** Chấm CV + so JD — upload/chấm rồi match cvId × jdText (2 call tuần tự). */
 export function useAnalyzeCvWithJdMutation() {
+  const invalidateEntitlements = useInvalidateEntitlements();
   return useMutation({
     mutationFn: analyzeCvWithJd,
+    onSuccess: invalidateEntitlements,
   });
 }
 
 /** So CV ĐÃ chấm (lastCvId) với JD — chỉ 1 call match, không upload lại. */
 export function useCompareJdMutation() {
+  const invalidateEntitlements = useInvalidateEntitlements();
   return useMutation({
     mutationFn: compareJdForCv,
+    onSuccess: invalidateEntitlements,
   });
 }
 
 /** "Phân tích lại" CV đã có trên BE theo cvId — tốn 1 lượt quota chấm, không upload lại. */
 export function useReanalyzeCvMutation() {
+  const invalidateEntitlements = useInvalidateEntitlements();
   return useMutation({
     mutationFn: reanalyzeCv,
+    onSuccess: invalidateEntitlements,
   });
 }
 
@@ -105,7 +122,11 @@ export function useJobRecommendationsQuery(
     ],
     queryFn: () => getJobRecommendations(cvId!, query),
     enabled: Boolean(cvId) && canUseApi,
-    staleTime: 5 * 60_000,
+    // Every fetch is BE-metered (JOB_RECOMMENDATION quota). Keep the result
+    // fresh for the whole sitting so passive dashboard/diagnosis remounts do
+    // not silently burn another slot on the same CV (bug hunt 07-21).
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
   });
 }
 
@@ -151,7 +172,11 @@ export function useInterviewPlanQuery(
     queryFn: () => getInterviewPlan({ cvId: cvId!, role: role!, lang }),
     enabled:
       ENABLE_DIAGNOSIS_ADDONS && Boolean(cvId) && Boolean(role) && canUseApi,
-    staleTime: 10 * 60_000,
+    staleTime: 30 * 60_000,
+    // Each generate reserves an INTERVIEW_SESSION slot. The pack unmounts on a
+    // diagnosis tab switch; without a long gcTime the cached plan is evicted
+    // (default 5min) and a re-visit + re-click silently re-charges (bug hunt R3).
+    gcTime: 60 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
   });
