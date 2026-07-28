@@ -143,6 +143,22 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shrink-0", bandChip)}>
           <span className="font-mono text-sm font-black tabular-nums">{overallScore}</span>/100 · {bandLabel}
         </span>
+        {isMatch && matchStats && (
+          <div className="flex items-center gap-1.5 shrink-0 text-xs font-semibold text-[#2F3437]">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#EDF3EC] text-[#346538]">
+              <CheckCircle2 className="w-3 h-3" />
+              {matchStats.matched}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#FBF3DB] text-[#956400]">
+              <AlertTriangle className="w-3 h-3" />
+              {matchStats.partial}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#FDEBEC] text-[#9F2F2D]">
+              <XCircle className="w-3 h-3" />
+              {matchStats.missing}
+            </span>
+          </div>
+        )}
         {!isMatch && groups.map((group) => (
           <button
             key={group.id}
@@ -169,7 +185,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
         <div className="flex flex-col items-center mb-5 shrink-0">
           <h3 className="text-xs font-bold text-[#787774] uppercase tracking-wider mb-4">
             {isMatch
-              ? t("report.rail.matchScoreTitle", { defaultValue: "Điểm khớp JD" })
+              ? t("review.matchScoreTitle", { defaultValue: "Điểm khớp CV–JD" })
               : t("report.rail.scoreTitle", { defaultValue: "Điểm tương thích" })}
           </h3>
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>

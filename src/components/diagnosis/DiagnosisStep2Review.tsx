@@ -42,9 +42,11 @@ const bandOf = (score: number) =>
       ? { key: "review.band.watch", chip: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-sm shadow-amber-500/5" }
       : { key: "review.band.priority", chip: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-sm shadow-rose-500/5" };
 
+import type { ReportTab } from "@/pages/user/Diagnosis";
+
 interface DiagnosisStep2ReviewProps {
-  activeTab: 'audit' | 'cv' | 'market';
-  setActiveTab: (tab: 'audit' | 'cv' | 'market') => void;
+  activeTab: ReportTab;
+  setActiveTab: (tab: ReportTab) => void;
 }
 
 export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
@@ -265,10 +267,10 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   }, [completenessGap, summary.experiences, summary.skills, chatContextActive]);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500">
+    <div className="min-h-full flex flex-col lg:flex-row select-none animate-in fade-in duration-500">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && (
-        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-hidden h-full">
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 lg:h-full">
           <ScoreRail
             overallScore={overallCvScore}
             groups={reportGroups}

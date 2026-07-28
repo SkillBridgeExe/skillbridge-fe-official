@@ -1,14 +1,56 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp,
+  CheckCircle2, AlertCircle, RefreshCw, SlidersHorizontal, ArrowUpDown, X
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import { matchScoreBand } from "@/lib/match-score-band";
 import type { JobRecommendationDto } from "@shared/api";
+import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { FitBadge } from "./FitBadge";
 import { InfoPopover } from "./InfoPopover";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+  SheetClose,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { IT_ROLES } from "@/constants/it-roles";
+
+type WorkModeType = "ONSITE" | "HYBRID" | "REMOTE";
+type ExperienceLevelType = "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD";
+type EmploymentTypeVal = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "FREELANCE";
+type FitVerdictType = "safe_apply" | "stretch" | "not_recommended";
+type SortOptionType = "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
+
+function asWorkMode(val: string): WorkModeType | undefined {
+  return val === "ONSITE" || val === "HYBRID" || val === "REMOTE" ? val : undefined;
+}
+
+function asExperienceLevel(val: string): ExperienceLevelType | undefined {
+  return val === "INTERN" || val === "FRESHER" || val === "JUNIOR" || val === "MIDDLE" || val === "SENIOR" || val === "LEAD" ? val : undefined;
+}
+
+function asEmploymentType(val: string): EmploymentTypeVal | undefined {
+  return val === "FULL_TIME" || val === "PART_TIME" || val === "CONTRACT" || val === "INTERNSHIP" || val === "FREELANCE" ? val : undefined;
+}
+
+function asFitVerdict(val: string): FitVerdictType | undefined {
+  return val === "safe_apply" || val === "stretch" || val === "not_recommended" ? val : undefined;
+}
+
+function asSortOption(val: string): SortOptionType {
+  return val === "SKILL_MATCH" || val === "NEWEST" || val === "SALARY_DESC" ? val : "RECOMMENDED";
+}
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
@@ -31,12 +73,12 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, options?: Record<string, unknown>) => string }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = formatSalary(job.salary_min, job.salary_max, job.currency);
-  // recommendation_score (seniority-adjusted) is what BE ranks by; fall back to match_score for
-  // older responses. When it's lower, the job is a seniority stretch — show why, keep the skill score.
+
   const recScore = job.recommendation_score ?? job.match_score;
-  const demoted = recScore < job.match_score;
+  const matchScoreVal = job.match_score;
+  const demoted = typeof matchScoreVal === "number" && recScore < matchScoreVal;
   const severe = job.severe_stretch === true;
-  // BE trả envelope.data thô (không chuẩn hoá) — guard kẻo 1 job thiếu missing_skills làm trắng cả lưới.
+
   const missing = job.missing_skills ?? [];
   const partial = job.partial_skills ?? [];
   const breakdown = job.scoring_breakdown;
@@ -46,8 +88,21 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     : experienceFit?.verdict === "stretch"
       ? "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]"
       : "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
-  const body = (
-    <>
+
+  const workModeLabel = job.work_mode
+    ? t(`jobs.workModes.${job.work_mode}`, { defaultValue: job.work_mode })
+    : null;
+
+  const employmentTypeLabel = job.employment_type
+    ? t(`jobs.employmentTypes.${job.employment_type}`, { defaultValue: job.employment_type })
+    : null;
+
+  const experienceLevelLabel = job.experience_level
+    ? t(`jobs.experienceLevels.${job.experience_level}`, { defaultValue: job.experience_level })
+    : null;
+
+  return (
+    <div className={cn(CARD, "block p-5 border-[#EAEAEA] rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200")}>
       <div className="flex items-start justify-between gap-3">
         <h4 className="text-[13px] font-semibold text-[#2F3437] leading-snug line-clamp-2">{job.title}</h4>
         {job.seniority_factor && job.seniority_factor < 1 ? (
@@ -63,7 +118,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
             <p className="text-xs leading-relaxed text-[#2F3437]">
               {t("jobs.seniorityTooltip", {
                 defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
-                match: job.match_score,
+                match: matchScoreVal,
                 factor: job.seniority_factor.toFixed(2),
                 level: job.level_gap ?? 0,
               })}
@@ -75,10 +130,12 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           </span>
         )}
       </div>
+
+      {/* Fit Badge & Score Sublabels */}
       {job.fit && <FitBadge fit={job.fit} className="mt-2" />}
-      {job.fit && demoted && (
+      {typeof matchScoreVal === "number" && (job.fit || demoted) && (
         <span className="mt-1 block text-[10px] font-mono tabular-nums text-[#787774]">
-          {t("jobs.skillMatch", { score: job.match_score })}
+          {t("jobs.skillMatch", { score: matchScoreVal, defaultValue: `Kỹ năng ${matchScoreVal}%` })}
         </span>
       )}
       {!job.fit && demoted && (
@@ -89,7 +146,6 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           )}>
             {t(severe ? "jobs.severeStretch" : "jobs.stretch")}
           </span>
-          <span className="text-[10px] font-mono tabular-nums text-[#787774]">{t("jobs.skillMatch", { score: job.match_score })}</span>
         </div>
       )}
       {!job.fit && experienceFit && !demoted && (
@@ -101,21 +157,33 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
       {job.score_basis && (
         <p className="mt-1 text-[10px] text-[#9B9A97]">{t(`jobs.scoreBasis.${job.score_basis}`)}</p>
       )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[12px] text-[#787774]">
-        <span className="flex items-center gap-1 min-w-0">
-          <Building2 className="w-3.5 h-3.5 shrink-0" />
+
+      {/* Metadata Badges */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] text-[#787774]">
+        <span className="flex items-center gap-1 min-w-0 font-medium text-[#2F3437]">
+          <Building2 className="w-3.5 h-3.5 shrink-0 text-[#787774]" />
           <span className="truncate">{job.company_name}</span>
         </span>
         {job.location && (
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 shrink-0" />{job.location}</span>
         )}
+        {workModeLabel && (
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{workModeLabel}</span>
+        )}
+        {experienceLevelLabel && (
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{experienceLevelLabel}</span>
+        )}
+        {employmentTypeLabel && (
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{employmentTypeLabel}</span>
+        )}
         {salary && <span className="font-mono tabular-nums text-[#346538] font-semibold">{salary}</span>}
       </div>
+
+      {/* Skills breakdown tags */}
       {partial.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           <span className="text-[11px] text-[#787774]">{t("matchDepth.partial")}</span>
           {partial.slice(0, 3).map((s) => (
-            // Key by display_name — the BE does not send canonical_name on partial_skills.
             <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
               {s.display_name}
               {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
@@ -137,23 +205,13 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           )}
         </div>
       )}
-      {(job.interview_signals ?? []).length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          <span className="text-[11px] text-[#787774]">{t("jobs.interviewFlag")}</span>
-          {(job.interview_signals ?? []).slice(0, 3).map((s) => (
-            <span key={s.skill_canonical} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
-              {s.display_name ?? s.skill_canonical}
-            </span>
-          ))}
-          {(job.interview_signals ?? []).length > 3 && (
-            <span className="text-[10px] text-[#787774]">+{(job.interview_signals ?? []).length - 3}</span>
-          )}
-        </div>
-      )}
+
+      {/* Why Score collapsible */}
       {breakdown && (
         <div className="mt-3 border-t border-[#F1F1EF] pt-2">
           <button
             type="button"
+            aria-expanded={whyOpen}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -175,13 +233,8 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           )}
         </div>
       )}
-    </>
-  );
 
-  const base = cn(CARD, "block p-5 border-[#EAEAEA] rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200");
-  return (
-    <div className={base}>
-      {body}
+      {/* Apply CTAs */}
       {job.source_url ? (
         <a
           href={job.source_url}
@@ -204,34 +257,733 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
   );
 }
 
-/** Render khi có cvId + đã login (hook tự gate). pool rỗng → empty-state.
-    Lỗi KHÔNG được nuốt (`return null` cũ làm user FREE hết quota thấy trống
-    không lời giải thích): 402 → card hết lượt + CTA nâng cấp; lỗi khác → retry. */
+/** Job Recommendations & Job Explorer Component. */
 export function JobRecommendations({ cvId }: { cvId: string | null }) {
   const { t } = useTranslation("diagnosis");
+
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
+  const [stateCvId, setStateCvId] = useState(cvId);
+  const [queryState, setQueryState] = useState<JobRecommendationsQuery>({
+    limit: 5,
+    offset: 0,
+    sort: "RECOMMENDED",
+  });
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [mobileDraftQuery, setMobileDraftQuery] = useState<JobRecommendationsQuery>(queryState);
+  const [accumulatedRecs, setAccumulatedRecs] = useState<JobRecommendationDto[]>([]);
+  const cvChanged = stateCvId !== cvId;
+
+  const activeQuery = useMemo(() => {
+    if (cvChanged) {
+      return { limit: 5, offset: 0, sort: "RECOMMENDED" as const };
+    }
+    return isExplorerOpen
+      ? { ...queryState, limit: 10 }
+      : { limit: 5, offset: 0, sort: "RECOMMENDED" as const };
+  }, [cvChanged, isExplorerOpen, queryState]);
+
   const { data, isLoading, isError, error, refetch, isRefetching } = useJobRecommendationsQuery(
     cvId,
-    { limit: 5 },
+    activeQuery,
   );
-  const recs = data?.recommendations ?? [];
+
+  const rawRecs = data?.recommendations ?? [];
+  const total = data?.total ?? data?.eligible_pool_size ?? data?.pool_size ?? rawRecs.length;
+  const facets = data?.facets;
+  const lastPageCount = rawRecs.length;
+  const loadedThrough = (data?.offset ?? activeQuery.offset ?? 0) + lastPageCount;
+  const hasMore = isExplorerOpen && lastPageCount > 0 && loadedThrough < total;
+  const filterQuery = mobileFilterOpen ? mobileDraftQuery : queryState;
+
+  useEffect(() => {
+    setStateCvId(cvId);
+    setIsExplorerOpen(false);
+    setMobileFilterOpen(false);
+    setQueryState({ limit: 5, offset: 0, sort: "RECOMMENDED" });
+    setMobileDraftQuery({ limit: 5, offset: 0, sort: "RECOMMENDED" });
+    setAccumulatedRecs([]);
+  }, [cvId]);
+
+  // Accumulated pagination ("Tải thêm"): append newly fetched recommendations to existing list
+  useEffect(() => {
+    if (!data?.recommendations) return;
+    if (!isExplorerOpen || (queryState.offset ?? 0) === 0) {
+      setAccumulatedRecs(data.recommendations);
+    } else {
+      setAccumulatedRecs((prev) => {
+        const existingMap = new Map(prev.map((item) => [item.job_id, item]));
+        for (const item of data.recommendations) {
+          existingMap.set(item.job_id, item);
+        }
+        return Array.from(existingMap.values());
+      });
+    }
+  }, [data?.recommendations, queryState.offset, isExplorerOpen]);
+
+  const displayRecs = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
 
   if (!cvId) return null;
 
   const quotaBlocked = isAxiosError(error) && error.response?.status === 402;
 
+  const activeFilterCount =
+    (queryState.cityCodes?.length ? 1 : 0) +
+    (queryState.workModes?.length ? 1 : 0) +
+    (queryState.experienceLevels?.length ? 1 : 0) +
+    (queryState.employmentTypes?.length ? 1 : 0) +
+    (queryState.fit?.length ? 1 : 0) +
+    (queryState.role && queryState.role !== "all" ? 1 : 0) +
+    (queryState.salaryOnly ? 1 : 0);
+
+  const handleResetFilters = () => {
+    const reset = {
+      limit: 10,
+      offset: 0,
+      sort: "RECOMMENDED",
+    } satisfies JobRecommendationsQuery;
+    if (mobileFilterOpen) {
+      setMobileDraftQuery(reset);
+      return;
+    }
+    setQueryState(reset);
+    setAccumulatedRecs([]);
+  };
+
+  const updateFilterQuery = (
+    updater: (previous: JobRecommendationsQuery) => JobRecommendationsQuery,
+  ) => {
+    if (mobileFilterOpen) {
+      setMobileDraftQuery(updater);
+      return;
+    }
+    setQueryState(updater);
+    setAccumulatedRecs([]);
+  };
+
+  const handleSetRole = (roleCode: string) => {
+    updateFilterQuery((prev) => ({
+      ...prev,
+      // `undefined` means "use the CV target role" in the BE contract. Preserve
+      // the explicit "all" token so the user can genuinely browse every role.
+      role: roleCode,
+      offset: 0,
+    }));
+  };
+
+  const handleToggleCity = (code: string) => {
+    updateFilterQuery((prev) => {
+      const current = prev.cityCodes ?? [];
+      const updated = current.includes(code)
+        ? current.filter((c) => c !== code)
+        : [...current, code];
+      return { ...prev, cityCodes: updated.length ? updated : undefined, offset: 0 };
+    });
+  };
+
+  const handleToggleWorkMode = (mode: "ONSITE" | "HYBRID" | "REMOTE") => {
+    updateFilterQuery((prev) => {
+      const current = prev.workModes ?? [];
+      const updated = current.includes(mode)
+        ? current.filter((m) => m !== mode)
+        : [...current, mode];
+      return { ...prev, workModes: updated.length ? updated : undefined, offset: 0 };
+    });
+  };
+
+  const handleToggleExperienceLevel = (level: "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD") => {
+    updateFilterQuery((prev) => {
+      const current = prev.experienceLevels ?? [];
+      const updated = current.includes(level)
+        ? current.filter((l) => l !== level)
+        : [...current, level];
+      return { ...prev, experienceLevels: updated.length ? updated : undefined, offset: 0 };
+    });
+  };
+
+  const handleToggleEmploymentType = (type: EmploymentTypeVal) => {
+    updateFilterQuery((prev) => {
+      const current = prev.employmentTypes ?? [];
+      const updated = current.includes(type)
+        ? current.filter((tVal) => tVal !== type)
+        : [...current, type];
+      return { ...prev, employmentTypes: updated.length ? updated : undefined, offset: 0 };
+    });
+  };
+
+  const handleToggleFit = (fitVal: "safe_apply" | "stretch" | "not_recommended") => {
+    updateFilterQuery((prev) => {
+      const current = prev.fit ?? [];
+      const updated = current.includes(fitVal)
+        ? current.filter((f) => f !== fitVal)
+        : [...current, fitVal];
+      return { ...prev, fit: updated.length ? updated : undefined, offset: 0 };
+    });
+  };
+
+  const handleToggleSalaryOnly = () => {
+    updateFilterQuery((prev) => ({ ...prev, salaryOnly: !prev.salaryOnly, offset: 0 }));
+  };
+
+  const handleSetSort = (sortVal: "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC") => {
+    setQueryState((prev) => ({ ...prev, sort: sortVal, offset: 0 }));
+    setAccumulatedRecs([]);
+  };
+
   return (
-    <section className="mt-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-2 mb-3">
-        <Briefcase className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-[#2F3437]">{t("jobs.title")}</h3>
+    <section className="mt-6 animate-in fade-in duration-500 space-y-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EAEAEA]">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-[#00AEEF]/10 flex items-center justify-center text-[#00AEEF] shrink-0">
+            <Briefcase className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[#2F3437]">
+              {isExplorerOpen
+                ? t("jobs.explorerTitle", { defaultValue: "Khám phá việc làm phù hợp" })
+                : t("jobs.top5Title", { defaultValue: "Top 5 việc làm phù hợp nhất" })}
+            </h3>
+            {total > 0 && (
+              <p className="text-[11px] text-[#787774]">
+                {t("jobs.totalMatching", { count: total, defaultValue: `Tìm thấy ${total} vị trí trong kho dữ liệu` })}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* View All / Show Top 5 toggle button */}
+        {!isLoading && !quotaBlocked && !isError && total > 5 && (
+          <Button
+            size="sm"
+            variant={isExplorerOpen ? "outline" : "default"}
+            onClick={() => {
+              setIsExplorerOpen((v) => !v);
+              setQueryState({ limit: isExplorerOpen ? 5 : 10, offset: 0, sort: "RECOMMENDED" });
+              setAccumulatedRecs([]);
+            }}
+            className={cn(
+              "rounded-full text-xs font-bold shrink-0 gap-1.5 h-8 px-4 transition-all",
+              !isExplorerOpen
+                ? "bg-[#00AEEF] hover:bg-[#049bd7] text-white border-0"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            {isExplorerOpen ? (
+              <span>{t("jobs.showTop5", { defaultValue: "Xem Top 5 gọn" })}</span>
+            ) : (
+              <span>{t("jobs.viewAllJobs", { total, defaultValue: `Xem tất cả ${total} việc làm` })}</span>
+            )}
+          </Button>
+        )}
       </div>
 
+      {/* Explorer Controls Toolbar (Only active in Explorer Mode) */}
+      {isExplorerOpen && (
+        <div className="space-y-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
+          {/* Desktop Toolbar */}
+          <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 flex items-center gap-1 mr-1">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                {t("jobs.filterTitle", { defaultValue: "Bộ lọc:" })}
+              </span>
+
+              {/* Role Select Dropdown */}
+              <div className="flex items-center gap-1.5 border-r border-slate-200 pr-2">
+                <span className="text-xs font-semibold text-slate-600">{t("jobs.roleLabel", { defaultValue: "Vai trò:" })}</span>
+                <select
+                  id="job-role-filter-desktop"
+                  aria-label={t("jobs.roleLabel", { defaultValue: "Vai trò" })}
+                  value={
+                    filterQuery.role ??
+                    data?.role_scope?.role_code ??
+                    (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
+                  }
+                  onChange={(e) => handleSetRole(e.target.value)}
+                  className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+                >
+                  {data?.role_scope?.source === "cv_target_missing" && (
+                    <option value="" disabled>
+                      {t("jobs.roleMissing", { defaultValue: "Chọn vai trò mục tiêu" })}
+                    </option>
+                  )}
+                  <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
+                  {IT_ROLES.map((r) => (
+                    <option key={r.code} value={r.code}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* City facet buttons */}
+              {facets?.city_codes && facets.city_codes.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  {facets.city_codes.map((city) => {
+                    const isSelected = filterQuery.cityCodes?.includes(city.value);
+                    return (
+                      <button
+                        key={city.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => handleToggleCity(city.value)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
+                          isSelected
+                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {city.value} ({city.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Work mode facet buttons */}
+              {facets?.work_modes && facets.work_modes.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  {facets.work_modes.map((modeItem) => {
+                    const modeVal = asWorkMode(modeItem.value);
+                    if (!modeVal) return null;
+                    const isSelected = filterQuery.workModes?.includes(modeVal);
+                    const modeLabel = t(`jobs.workModes.${modeItem.value}`, { defaultValue: modeItem.value });
+                    return (
+                      <button
+                        key={modeItem.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => handleToggleWorkMode(modeVal)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
+                          isSelected
+                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {modeLabel} ({modeItem.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Employment type facet buttons */}
+              {facets?.employment_types && facets.employment_types.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  {facets.employment_types.map((typeItem) => {
+                    const typeVal = asEmploymentType(typeItem.value);
+                    if (!typeVal) return null;
+                    const isSelected = filterQuery.employmentTypes?.includes(typeVal);
+                    const typeLabel = t(`jobs.employmentTypes.${typeItem.value}`, { defaultValue: typeItem.value });
+                    return (
+                      <button
+                        key={typeItem.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => handleToggleEmploymentType(typeVal)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
+                          isSelected
+                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {typeLabel} ({typeItem.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Seniority / Experience level facet buttons */}
+              {facets?.experience_levels && facets.experience_levels.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  {facets.experience_levels.map((expItem) => {
+                    const expVal = asExperienceLevel(expItem.value);
+                    if (!expVal) return null;
+                    const isSelected = filterQuery.experienceLevels?.includes(expVal);
+                    const expLabel = t(`jobs.experienceLevels.${expItem.value}`, { defaultValue: expItem.value });
+                    return (
+                      <button
+                        key={expItem.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => handleToggleExperienceLevel(expVal)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
+                          isSelected
+                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {expLabel} ({expItem.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Fit facet buttons */}
+              {facets?.fit && facets.fit.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {facets.fit.map((fitItem) => {
+                    const fitVal = asFitVerdict(fitItem.value);
+                    if (!fitVal) return null;
+                    const isSelected = filterQuery.fit?.includes(fitVal);
+                    const labelKey = fitItem.value === "safe_apply" ? "safe_apply" : fitItem.value === "stretch" ? "stretch" : "not_recommended";
+                    const label = t(`jobs.fitFilter.${labelKey}`, { defaultValue: fitItem.value });
+                    return (
+                      <button
+                        key={fitItem.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => handleToggleFit(fitVal)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {label} ({fitItem.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Salary-only toggle */}
+              <button
+                type="button"
+                aria-pressed={Boolean(filterQuery.salaryOnly)}
+                onClick={handleToggleSalaryOnly}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all ml-1",
+                  filterQuery.salaryOnly
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                )}
+              >
+                {t("jobs.salaryOnly", { defaultValue: "Có hiển thị mức lương" })}
+              </button>
+
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-bold text-rose-600 hover:underline flex items-center gap-1 ml-1"
+                >
+                  <X className="w-3 h-3" />
+                  {t("jobs.clearFilters", { defaultValue: "Xóa bộ lọc" })}
+                </button>
+              )}
+            </div>
+
+            {/* Sort Select */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <ArrowUpDown className="w-3 h-3" />
+                {t("jobs.sortLabel", { defaultValue: "Sắp xếp:" })}
+              </span>
+              <select
+                aria-label={t("jobs.sortLabel", { defaultValue: "Sắp xếp" })}
+                value={queryState.sort ?? "RECOMMENDED"}
+                onChange={(e) => handleSetSort(asSortOption(e.target.value))}
+                className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+              >
+                <option value="RECOMMENDED">{t("jobs.sort.RECOMMENDED", { defaultValue: "Đề xuất tốt nhất" })}</option>
+                <option value="SKILL_MATCH">{t("jobs.sort.SKILL_MATCH", { defaultValue: "Khớp kỹ năng" })}</option>
+                <option value="NEWEST">{t("jobs.sort.NEWEST", { defaultValue: "Mới đăng" })}</option>
+                <option value="SALARY_DESC" disabled={data?.data_quality?.salary_sort_supported === false}>
+                  {t("jobs.sort.SALARY_DESC", { defaultValue: "Lương cao" })}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          {/* Mobile Filter Button & Drawer */}
+          <div className="md:hidden flex items-center justify-between gap-2">
+            <Sheet
+              open={mobileFilterOpen}
+              onOpenChange={(open) => {
+                if (open) setMobileDraftQuery({ ...queryState, offset: 0 });
+                setMobileFilterOpen(open);
+              }}
+            >
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs font-bold border-slate-200 bg-white">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#00AEEF]" />
+                  <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc" })}</span>
+                  {activeFilterCount > 0 && (
+                    <span className="ml-1 w-4 h-4 rounded-full bg-[#00AEEF] text-white text-[10px] font-mono flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto p-6 space-y-6">
+                <SheetHeader>
+                  <SheetTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
+                    <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc việc làm" })}</span>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="text-xs font-bold text-rose-600 hover:underline"
+                      >
+                        {t("jobs.clearFilters", { defaultValue: "Xóa bộ lọc" })}
+                      </button>
+                    )}
+                  </SheetTitle>
+                  <SheetDescription className="sr-only">
+                    {t("jobs.filterDescription", {
+                      defaultValue:
+                        "Chọn vai trò, địa điểm, hình thức làm việc và mức độ phù hợp trước khi áp dụng.",
+                    })}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-5 text-left">
+                  {/* Role Select */}
+                  <div className="space-y-2">
+                    <label htmlFor="job-role-filter-mobile" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {t("jobs.roleLabel", { defaultValue: "Vai trò" })}
+                    </label>
+                    <select
+                      id="job-role-filter-mobile"
+                      value={
+                        filterQuery.role ??
+                        data?.role_scope?.role_code ??
+                        (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
+                      }
+                      onChange={(e) => handleSetRole(e.target.value)}
+                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+                    >
+                      {data?.role_scope?.source === "cv_target_missing" && (
+                        <option value="" disabled>
+                          {t("jobs.roleMissing", { defaultValue: "Chọn vai trò mục tiêu" })}
+                        </option>
+                      )}
+                      <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
+                      {IT_ROLES.map((r) => (
+                        <option key={r.code} value={r.code}>{r.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* City facet */}
+                  {facets?.city_codes && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        {t("jobs.cityLabel", { defaultValue: "Địa điểm" })}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.city_codes.map((city) => {
+                          const isSelected = filterQuery.cityCodes?.includes(city.value);
+                          return (
+                            <button
+                              key={city.value}
+                              type="button"
+                              aria-pressed={Boolean(isSelected)}
+                              onClick={() => handleToggleCity(city.value)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
+                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                              )}
+                            >
+                              {city.value} ({city.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Work mode facet */}
+                  {facets?.work_modes && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        {t("jobs.workModeLabel", { defaultValue: "Hình thức làm việc" })}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.work_modes.map((modeItem) => {
+                          const modeVal = asWorkMode(modeItem.value);
+                          if (!modeVal) return null;
+                          const isSelected = filterQuery.workModes?.includes(modeVal);
+                          const modeLabel = t(`jobs.workModes.${modeItem.value}`, { defaultValue: modeItem.value });
+                          return (
+                            <button
+                              key={modeItem.value}
+                              type="button"
+                              aria-pressed={Boolean(isSelected)}
+                              onClick={() => handleToggleWorkMode(modeVal)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
+                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                              )}
+                            >
+                              {modeLabel} ({modeItem.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Employment type facet */}
+                  {facets?.employment_types && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        {t("jobs.employmentTypeLabel", { defaultValue: "Loại hợp đồng" })}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.employment_types.map((typeItem) => {
+                          const typeVal = asEmploymentType(typeItem.value);
+                          if (!typeVal) return null;
+                          const isSelected = filterQuery.employmentTypes?.includes(typeVal);
+                          const typeLabel = t(`jobs.employmentTypes.${typeItem.value}`, { defaultValue: typeItem.value });
+                          return (
+                            <button
+                              key={typeItem.value}
+                              type="button"
+                              aria-pressed={Boolean(isSelected)}
+                              onClick={() => handleToggleEmploymentType(typeVal)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
+                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                              )}
+                            >
+                              {typeLabel} ({typeItem.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seniority / Experience level facet */}
+                  {facets?.experience_levels && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        {t("jobs.experienceLevelLabel", { defaultValue: "Cấp bậc kinh nghiệm" })}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.experience_levels.map((expItem) => {
+                          const expVal = asExperienceLevel(expItem.value);
+                          if (!expVal) return null;
+                          const isSelected = filterQuery.experienceLevels?.includes(expVal);
+                          const expLabel = t(`jobs.experienceLevels.${expItem.value}`, { defaultValue: expItem.value });
+                          return (
+                            <button
+                              key={expItem.value}
+                              type="button"
+                              aria-pressed={Boolean(isSelected)}
+                              onClick={() => handleToggleExperienceLevel(expVal)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
+                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                              )}
+                            >
+                              {expLabel} ({expItem.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fit facet */}
+                  {facets?.fit && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        {t("jobs.fitLabel", { defaultValue: "Mức độ phù hợp" })}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.fit.map((fitItem) => {
+                          const fitVal = asFitVerdict(fitItem.value);
+                          if (!fitVal) return null;
+                          const isSelected = filterQuery.fit?.includes(fitVal);
+                          const labelKey = fitItem.value === "safe_apply" ? "safe_apply" : fitItem.value === "stretch" ? "stretch" : "not_recommended";
+                          const label = t(`jobs.fitFilter.${labelKey}`, { defaultValue: fitItem.value });
+                          return (
+                            <button
+                              key={fitItem.value}
+                              type="button"
+                              aria-pressed={Boolean(isSelected)}
+                              onClick={() => handleToggleFit(fitVal)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
+                                isSelected ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-50 text-slate-700 border-slate-200"
+                              )}
+                            >
+                              {label} ({fitItem.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Salary Only Toggle */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      aria-pressed={Boolean(filterQuery.salaryOnly)}
+                      onClick={handleToggleSalaryOnly}
+                      className={cn(
+                        "w-full py-2.5 px-4 text-xs font-bold rounded-xl border text-center transition-all",
+                        filterQuery.salaryOnly ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 border-slate-200"
+                      )}
+                    >
+                      {t("jobs.salaryOnly", { defaultValue: "Có hiển thị mức lương" })}
+                    </button>
+                  </div>
+                </div>
+
+                <SheetFooter className="pt-4 border-t border-slate-100">
+                  <SheetClose asChild>
+                    <Button
+                      onClick={() => {
+                        setQueryState({ ...mobileDraftQuery, offset: 0, limit: 10 });
+                        setAccumulatedRecs([]);
+                      }}
+                      className="w-full bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold rounded-xl h-11"
+                    >
+                      {t("actions.apply", { defaultValue: "Áp dụng bộ lọc" })}
+                    </Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+
+            {/* Mobile Sort */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-500">{t("jobs.sortLabel", { defaultValue: "Sắp xếp:" })}</span>
+              <select
+                aria-label={t("jobs.sortLabel", { defaultValue: "Sắp xếp" })}
+                value={queryState.sort ?? "RECOMMENDED"}
+                onChange={(e) => handleSetSort(asSortOption(e.target.value))}
+                className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700"
+              >
+                <option value="RECOMMENDED">{t("jobs.sort.RECOMMENDED", { defaultValue: "Đề xuất tốt nhất" })}</option>
+                <option value="SKILL_MATCH">{t("jobs.sort.SKILL_MATCH", { defaultValue: "Khớp kỹ năng" })}</option>
+                <option value="NEWEST">{t("jobs.sort.NEWEST", { defaultValue: "Mới đăng" })}</option>
+                <option value="SALARY_DESC" disabled={data?.data_quality?.salary_sort_supported === false}>
+                  {t("jobs.sort.SALARY_DESC", { defaultValue: "Lương cao" })}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main List & Data States */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 bg-[#F1F1EF] animate-pulse rounded-2xl" />)}
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-32 bg-[#F1F1EF] animate-pulse rounded-2xl" />)}
         </div>
       ) : quotaBlocked ? (
-        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
           <AlertCircle className="w-4 h-4 shrink-0 text-[#956400]" />
           <p className="min-w-0 flex-1 text-[13px] text-[#2F3437]">{t("jobs.quotaBlocked")}</p>
           <Link
@@ -242,7 +994,7 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
           </Link>
         </div>
       ) : isError ? (
-        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-4")}>
+        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
           <AlertCircle className="w-4 h-4 shrink-0 text-[#9F2F2D]" />
           <p className="min-w-0 flex-1 text-[13px] text-[#787774]">{t("jobs.error")}</p>
           <button
@@ -255,16 +1007,60 @@ export function JobRecommendations({ cvId }: { cvId: string | null }) {
             {t("jobs.retry")}
           </button>
         </div>
-      ) : recs.length === 0 ? (
-        <div className={cn(CARD, "p-6 text-center")}>
-          <Briefcase className="w-7 h-7 text-[#B9B9B7] mx-auto mb-2" />
-          <p className="text-[13px] text-[#787774]">{t("jobs.empty")}</p>
+      ) : displayRecs.length === 0 ? (
+        <div className={cn(CARD, "p-8 text-center space-y-3")}>
+          <Briefcase className="w-8 h-8 text-[#B9B9B7] mx-auto" />
+          <p className="text-[13px] text-[#787774] font-medium">
+            {activeFilterCount > 0
+              ? t("jobs.emptyFilter", { defaultValue: "Không có kết quả với bộ lọc này." })
+              : t("jobs.emptyPool", { defaultValue: "Chưa có việc làm phù hợp cho vị trí này — thử đổi vị trí hoặc quay lại sau." })}
+          </p>
+          {activeFilterCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleResetFilters}
+              className="rounded-full text-xs font-bold border-slate-200"
+            >
+              {t("jobs.clearFilters", { defaultValue: "Xóa bộ lọc" })}
+            </Button>
+          )}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {recs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
+          {/* Background refetch indicator */}
+          {isRefetching && (
+            <div className="h-1 w-full bg-[#00AEEF]/20 rounded-full overflow-hidden">
+              <div className="h-full bg-[#00AEEF] animate-pulse w-2/3" />
+            </div>
+          )}
+
+          {/* Job Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {displayRecs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
           </div>
+
+          {/* Accumulated Load More Pagination for Explorer */}
+          {hasMore && (
+            <div className="pt-2 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRefetching}
+                onClick={() =>
+                  setQueryState((prev) => ({
+                    ...prev,
+                    offset: (data?.offset ?? prev.offset ?? 0) + (data?.limit ?? 10),
+                  }))
+                }
+                className="rounded-full px-6 text-xs font-bold border-slate-200 bg-white hover:bg-slate-50"
+              >
+                {isRefetching && <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                {t("jobs.loadMore", { defaultValue: "Tải thêm việc làm" })}
+              </Button>
+            </div>
+          )}
+
           <p className="text-[11px] text-[#787774] mt-2.5 leading-relaxed">{t("jobs.disclaimer")}</p>
         </>
       )}

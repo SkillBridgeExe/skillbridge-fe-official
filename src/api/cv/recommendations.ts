@@ -5,8 +5,16 @@ import type { JobRecommendationsResponse } from "@shared/api";
 
 export interface JobRecommendationsQuery {
   limit?: number;
-  /** Role code filter; BE mặc định theo targetRole của CV. */
+  offset?: number;
+  /** Role code filter; BE mặc định theo targetRole của CV, hoặc "all". */
   role?: string;
+  cityCodes?: string[];
+  workModes?: ("ONSITE" | "HYBRID" | "REMOTE")[];
+  employmentTypes?: ("FULL_TIME" | "PART_TIME" | "INTERNSHIP" | "CONTRACT" | "FREELANCE")[];
+  experienceLevels?: ("INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD")[];
+  fit?: ("safe_apply" | "stretch" | "not_recommended")[];
+  sort?: "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
+  salaryOnly?: boolean;
 }
 
 /**
@@ -18,8 +26,25 @@ export async function getJobRecommendationsApi(
   cvId: string,
   query: JobRecommendationsQuery = {},
 ): Promise<JobRecommendationsResponse> {
+  const params: Record<string, unknown> = { ...query };
+  if (Array.isArray(query.cityCodes) && query.cityCodes.length > 0) {
+    params.cityCodes = query.cityCodes.join(",");
+  }
+  if (Array.isArray(query.workModes) && query.workModes.length > 0) {
+    params.workModes = query.workModes.join(",");
+  }
+  if (Array.isArray(query.employmentTypes) && query.employmentTypes.length > 0) {
+    params.employmentTypes = query.employmentTypes.join(",");
+  }
+  if (Array.isArray(query.experienceLevels) && query.experienceLevels.length > 0) {
+    params.experienceLevels = query.experienceLevels.join(",");
+  }
+  if (Array.isArray(query.fit) && query.fit.length > 0) {
+    params.fit = query.fit.join(",");
+  }
+
   const envelope = await unwrapEnvelope<ApiEnvelope<JobRecommendationsResponse>>(
-    httpClient.get(API_ROUTES.CV.JOB_RECOMMENDATIONS(cvId), { params: query }),
+    httpClient.get(API_ROUTES.CV.JOB_RECOMMENDATIONS(cvId), { params }),
     "Failed to load job recommendations.",
   );
   return envelope.data;

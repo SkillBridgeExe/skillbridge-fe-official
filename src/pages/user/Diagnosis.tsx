@@ -36,6 +36,10 @@ const CvPreviewPanel = lazy(() => import("@/components/cv-builder/CvPreviewPanel
 const CvSectionNav = lazy(() => import("@/components/cv-builder/CvSectionNav").then(m => ({ default: m.CvSectionNav })));
 const StudioInspector = lazy(() => import("@/components/cv-builder/studio/StudioInspector").then(m => ({ default: m.StudioInspector })));
 
+export type ReviewTab = 'audit' | 'cv' | 'market';
+export type MatchTab = 'fit' | 'cv_jd' | 'jobs';
+export type ReportTab = ReviewTab | MatchTab;
+
 /* ── Main Diagnosis Page ── */
 export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
@@ -47,11 +51,24 @@ export default function Diagnosis() {
   } = useDiagnosisStore();
 
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'audit' | 'cv' | 'market'>('audit');
+  const [activeTab, setActiveTab] = useState<ReportTab>('audit');
   const canUseApi = useHasApiSession();
   const setCompanionSuspended = useCompanionStore((s) => s.setSuspended);
   const posthog = usePostHog();
   useUnsavedGuard();
+
+  // Tab State Machine: ensure activeTab matches current step mode
+  useEffect(() => {
+    if (step === "results") {
+      if (!["fit", "cv_jd", "jobs"].includes(activeTab)) {
+        setActiveTab("fit");
+      }
+    } else if (step === "cv-review") {
+      if (!["audit", "cv", "market"].includes(activeTab)) {
+        setActiveTab("audit");
+      }
+    }
+  }, [step, activeTab]);
 
   useEffect(() => {
     setCompanionSuspended(isAnalyzing);
@@ -482,6 +499,11 @@ export default function Diagnosis() {
         <ReportTopBar
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          mode={step === "results" ? "match" : "review"}
+          onBackToReview={() => {
+            setStep("cv-review");
+            setActiveTab("audit");
+          }}
         />
       )}
       <div
@@ -489,7 +511,7 @@ export default function Diagnosis() {
         className={cn(
           "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
           reportMode
-            ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-104px)] max-h-[calc(100dvh-104px)] overflow-hidden"
+            ? "max-w-none w-full px-0 pt-0 pb-0 min-h-[calc(100dvh-104px)] lg:h-[calc(100dvh-104px)] lg:overflow-hidden"
             : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
         )}
       >

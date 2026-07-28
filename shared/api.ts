@@ -98,6 +98,9 @@ export interface CvJdMatch {
   unnormalized_jd_requirements?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   unnormalized_cv_skills?: Array<{ raw_input: string; evidence_text?: string; reason: string }>;
   keyword_frequency?: KeywordFrequency[];
+  target_role?: string | null;
+  job_title?: string | null;
+  source_url?: string | null;
 }
 
 export type RubricBand = "intern" | "fresher" | "mid";
@@ -555,19 +558,23 @@ export interface CvMatchDto {
 
 export interface JobRecommendationDto {
   job_id: string;
+  slug: string;
+  application_mode: "NATIVE" | "EXTERNAL";
+  saved: boolean;
   title: string;
   company_name: string;
   location: string | null;
+  city_codes: string[];
   role_code: string | null;
   experience_level: string | null;
+  work_mode: "ONSITE" | "HYBRID" | "REMOTE" | null;
+  employment_type: "FULL_TIME" | "PART_TIME" | "INTERNSHIP" | "CONTRACT" | "FREELANCE" | null;
   salary_min: number | null;
   salary_max: number | null;
+  salary_visible: boolean;
+  salary_period: "MONTH" | "YEAR" | null;
   currency: string;
   source_url: string | null;
-  /** URL-safe id for the in-app job page (BE will start sending — type-ready). */
-  slug?: string;
-  /** NATIVE = apply inside SkillBridge; EXTERNAL = follow source_url. */
-  application_mode?: "NATIVE" | "EXTERNAL";
   posted_at: string | null;
   /** 0-100, deterministic — cùng engine với CV/JD match. CHỈ skill match (để giải thích minh bạch);
    *  KHÔNG bị seniority guard tác động. */
@@ -604,6 +611,46 @@ export interface JobRecommendationDto {
 export interface JobRecommendationsResponse {
   cv_id: string;
   pool_size: number;
+  eligible_pool_size: number;
+  total: number;
+  limit: number;
+  offset: number;
+  role_scope: {
+    role_code: string | null;
+    source: "explicit" | "cv_target" | "all" | "cv_target_missing";
+  };
+  filters_applied: {
+    city_codes: string[];
+    work_modes: string[];
+    employment_types: string[];
+    experience_levels: string[];
+    fit: string[];
+    salary_only: boolean;
+    sort: string;
+  };
+  facets: {
+    city_codes: Array<{ value: string; count: number }>;
+    work_modes: Array<{ value: string; count: number }>;
+    employment_types: Array<{ value: string; count: number }>;
+    experience_levels: Array<{ value: string; count: number }>;
+    fit: Array<{ value: string; count: number }>;
+  };
+  data_quality: {
+    missing_role: number;
+    missing_experience_level: number;
+    missing_location: number;
+    missing_city_code: number;
+    missing_work_mode: number;
+    missing_employment_type: number;
+    facet_coverage: {
+      city_codes: number;
+      work_modes: number;
+      employment_types: number;
+      experience_levels: number;
+    };
+    salary_sort_supported: boolean;
+  };
+  generation: { cache_hit: boolean; snapshot_size: number };
   recommendations: JobRecommendationDto[];
 }
 
