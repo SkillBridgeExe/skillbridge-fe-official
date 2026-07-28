@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import * as Dialog from "@radix-ui/react-dialog";
 import { getCvListApi } from "@/api/cv/list";
 import { Button } from "@/components/ui/button";
 import { IT_ROLES } from "@/constants/it-roles";
@@ -20,15 +21,16 @@ import {
   previewLearningRoadmap,
   updateLearningRoadmapDraft,
   type ActiveLearningRoadmap,
-  type LearningLanguagePreference,
+  type LearningPresentedResource,
   type LearningRoadmapDraft,
   type LearningRoadmapIntent,
   type LearningRoadmapPreview,
 } from "@/services/learning-roadmaps-v2.service";
 import type { CvListItemDto } from "@shared/api";
 import {
+  buildCadenceDraft,
   buildPrioritySelection,
-  buildScheduleDraft,
+  buildResourceSelection,
 } from "./learning-roadmap-wizard-state";
 
 type Step = "goal" | "context" | "priorities" | "schedule" | "preview";
@@ -39,31 +41,28 @@ interface LearningRoadmapWizardProps {
   onGenerated: (roadmap: ActiveLearningRoadmap) => void;
 }
 
-const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+const STUDY_DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export function LearningRoadmapWizard({
   initialMatchId,
   onClose,
   onGenerated,
 }: LearningRoadmapWizardProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(initialMatchId ? "context" : "goal");
   const [intent, setIntent] = useState<LearningRoadmapIntent | null>(
     initialMatchId ? "JD_APPLICATION" : null,
   );
-  const [language, setLanguage] = useState<LearningLanguagePreference>("both");
   const [role, setRole] = useState("frontend_developer");
   const [level, setLevel] = useState<"intern" | "fresher" | "mid">("fresher");
   const [cvs, setCvs] = useState<CvListItemDto[]>([]);
   const [cvId, setCvId] = useState("");
   const [draft, setDraft] = useState<LearningRoadmapDraft | null>(null);
   const [orderedSkills, setOrderedSkills] = useState<string[]>([]);
-  const [weekdays, setWeekdays] = useState<number[]>([1, 3, 5]);
-  const [startTime, setStartTime] = useState("19:00");
-  const [sessionMinutes, setSessionMinutes] = useState<30 | 45 | 60 | 90>(60);
-  const [slotMinutes, setSlotMinutes] = useState(60);
-  const [deadline, setDeadline] = useState(defaultDeadline);
+  const [startDate, setStartDate] = useState(today);
+  const [studyDaysPerWeek, setStudyDaysPerWeek] =
+    useState<(typeof STUDY_DAY_OPTIONS)[number]>(3);
   const [preview, setPreview] = useState<LearningRoadmapPreview | null>(null);
   const [selectedResources, setSelectedResources] = useState<
     Record<string, string[]>
@@ -90,12 +89,12 @@ export function LearningRoadmapWizard({
         setCvId((current) => current || result.items[0]?.id || "");
       })
       .catch((cause) => {
-        if (!cancelled) setError(messageOf(cause));
+        if (!cancelled) setError(messageOf(cause, t));
       });
     return () => {
       cancelled = true;
     };
-  }, [intent]);
+  }, [intent, t]);
 
   const stepIndex = [
     "goal",
@@ -140,13 +139,12 @@ export function LearningRoadmapWizard({
     try {
       const created = await createLearningRoadmapDraft(
         intent === "JD_APPLICATION"
-          ? { intent, cv_match_id: initialMatchId!, language_pref: language }
+          ? { intent, cv_match_id: initialMatchId! }
           : {
               intent,
               cv_id: cvId,
               target_role: role,
               target_level: level,
-              language_pref: language,
             },
       );
       setDraft(created);
@@ -155,7 +153,7 @@ export function LearningRoadmapWizard({
       );
       setStep("priorities");
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -166,15 +164,12 @@ export function LearningRoadmapWizard({
     setIsBusy(true);
     setError(null);
     try {
-      const schedule = buildScheduleDraft({
+      const cadence = buildCadenceDraft({
         timezone:
           Intl.DateTimeFormat().resolvedOptions().timeZone ||
           "Asia/Ho_Chi_Minh",
-        deadline,
-        sessionMinutes,
-        weekdays,
-        startTime,
-        slotMinutes,
+        startDate,
+        studyDaysPerWeek,
       });
       const updated = await updateLearningRoadmapDraft(draft.id, {
         expected_revision: draft.revision,
@@ -182,7 +177,7 @@ export function LearningRoadmapWizard({
           draft.candidate_skills,
           orderedSkills,
         ),
-        schedule,
+        cadence,
       });
       const nextPreview = await previewLearningRoadmap(
         updated.id,
@@ -190,11 +185,13 @@ export function LearningRoadmapWizard({
       );
       setDraft(updated);
       setPreview(nextPreview);
-      setSelectedResources(resourceSelectionFromPreview(nextPreview));
-      setResourceSelectionDirty(false);
+      setSelectedResources(buildResourceSelection(nextPreview));
+      // Preview resources are server-verified, but the primary-only default is a
+      // learner choice that still needs to be persisted before generation.
+      setResourceSelectionDirty(true);
       setStep("preview");
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -219,14 +216,14 @@ export function LearningRoadmapWizard({
         );
         setDraft(currentDraft);
         setPreview(currentPreview);
-        setSelectedResources(resourceSelectionFromPreview(currentPreview));
+        setSelectedResources(buildResourceSelection(currentPreview));
         setResourceSelectionDirty(false);
       }
 
       await generateLearningRoadmap(currentDraft.id, currentPreview.revision);
       onGenerated(await getActiveLearningRoadmap(currentDraft.id));
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -254,8 +251,22 @@ export function LearningRoadmapWizard({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="mx-auto my-4 w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-10">
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !isBusy) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm" />
+        <Dialog.Content
+          aria-modal="true"
+          className="fixed inset-0 z-[101] overflow-y-auto p-4 outline-none"
+          onEscapeKeyDown={(event) => {
+            if (isBusy) event.preventDefault();
+          }}
+        >
+          <div className="mx-auto my-4 w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-10">
         <header className="flex items-start justify-between border-b border-slate-100 p-6">
           <div>
             <div
@@ -269,20 +280,23 @@ export function LearningRoadmapWizard({
                 />
               ))}
             </div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <Dialog.Title className="text-xl font-bold text-slate-900">
               {t(`learning.wizard.steps.${step}`)}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            </Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-slate-500">
               {t("learning.wizard.subtitle")}
-            </p>
+            </Dialog.Description>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isBusy}
-            className="rounded-full p-2 hover:bg-slate-100"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              disabled={isBusy}
+              aria-label={t("learning.wizard.close")}
+              className="rounded-full p-2 hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </Dialog.Close>
         </header>
 
         <main className="min-h-[390px] space-y-5 p-6">
@@ -354,19 +368,6 @@ export function LearningRoadmapWizard({
                   </Field>
                 </div>
               ) : null}
-              <Field label={t("learning.wizard.context.language")}>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["vi", "en", "both"] as const).map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => setLanguage(value)}
-                      className={choiceClass(language === value)}
-                    >
-                      {t(`learning.wizard.languages.${value}`)}
-                    </button>
-                  ))}
-                </div>
-              </Field>
               <WizardFooter
                 onBack={() => setStep("goal")}
                 onNext={createDraft}
@@ -430,76 +431,46 @@ export function LearningRoadmapWizard({
 
           {step === "schedule" ? (
             <div className="space-y-5">
-              <Field label={t("learning.wizard.schedule.days")}>
-                <div className="grid grid-cols-7 gap-2">
-                  {WEEKDAYS.map((day) => (
-                    <button
-                      key={day}
-                      onClick={() =>
-                        setWeekdays((current) =>
-                          current.includes(day)
-                            ? current.filter((item) => item !== day)
-                            : [...current, day],
-                        )
-                      }
-                      className={choiceClass(weekdays.includes(day))}
-                    >
-                      {t(`learning.wizard.weekdays.${day}`)}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <div className="grid gap-4 md:grid-cols-4">
-                <Field label={t("learning.wizard.schedule.time")}>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(event) => setStartTime(event.target.value)}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label={t("learning.wizard.schedule.session")}>
-                  <select
-                    value={sessionMinutes}
-                    onChange={(event) =>
-                      setSessionMinutes(
-                        Number(event.target.value) as typeof sessionMinutes,
-                      )
-                    }
-                    className={inputClass}
-                  >
-                    {[30, 45, 60, 90].map((value) => (
-                      <option key={value} value={value}>
-                        {value} min
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label={t("learning.wizard.schedule.slot")}>
-                  <select
-                    value={slotMinutes}
-                    onChange={(event) =>
-                      setSlotMinutes(Number(event.target.value))
-                    }
-                    className={inputClass}
-                  >
-                    {[30, 60, 90, 120].map((value) => (
-                      <option key={value} value={value}>
-                        {value} min
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label={t("learning.wizard.schedule.deadline")}>
+              <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
+                <p className="font-semibold text-sky-950">
+                  {t("learning.wizard.schedule.flexibleTitle")}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-sky-800">
+                  {t("learning.wizard.schedule.flexibleBody")}
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label={t("learning.wizard.schedule.startDate")}>
                   <input
                     type="date"
-                    value={deadline}
+                    value={startDate}
                     min={today()}
-                    onChange={(event) => setDeadline(event.target.value)}
+                    onChange={(event) => setStartDate(event.target.value)}
                     className={inputClass}
                   />
                 </Field>
+                <Field label={t("learning.wizard.schedule.daysPerWeek")}>
+                  <div className="grid grid-cols-7 gap-2">
+                    {STUDY_DAY_OPTIONS.map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => setStudyDaysPerWeek(days)}
+                        className={choiceClass(studyDaysPerWeek === days)}
+                        aria-label={t(
+                          "learning.wizard.schedule.daysPerWeekOption",
+                          { count: days },
+                        )}
+                      >
+                        {days}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
               </div>
+              <p className="text-sm text-slate-500">
+                {t("learning.wizard.schedule.sessionHint")}
+              </p>
               <WizardFooter
                 onBack={() => setStep("priorities")}
                 onNext={saveScheduleAndPreview}
@@ -511,18 +482,29 @@ export function LearningRoadmapWizard({
 
           {step === "preview" && preview ? (
             <div className="space-y-5">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <TrackSummary preview={preview} />
+              <div className="grid gap-3 sm:grid-cols-4">
                 <Metric
                   label={t("learning.wizard.preview.modules")}
                   value={preview.modules.length}
                 />
                 <Metric
-                  label={t("learning.wizard.preview.capacity")}
-                  value={`${Math.round(preview.capacity_minutes / 60)}h`}
+                  label={t("learning.wizard.preview.totalSessions")}
+                  value={preview.sessions.length}
                 />
                 <Metric
-                  label={t("learning.wizard.preview.scheduled")}
-                  value={`${Math.round(preview.scheduled_minutes / 60)}h`}
+                  label={t("learning.wizard.preview.cadence")}
+                  value={t("learning.wizard.preview.daysPerWeek", {
+                    count: preview.cadence.study_days_per_week,
+                  })}
+                />
+                <Metric
+                  label={t("learning.wizard.preview.estimatedCompletion")}
+                  value={formatDisplayDate(
+                    preview.estimated_completion_date,
+                    i18n.language,
+                    t,
+                  )}
                 />
               </div>
               <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
@@ -532,9 +514,17 @@ export function LearningRoadmapWizard({
                     className="rounded-xl border border-slate-200 px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium text-slate-800">
-                        {module.rank}. {module.display_name}
-                      </span>
+                      <div>
+                        <span className="font-medium text-slate-800">
+                          {module.rank}. {module.display_name}
+                        </span>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Quick-win {module.quick_win_score}/100 ·{" "}
+                          {t(
+                            `learning.wizard.scope.${module.scope_status.toLowerCase()}`,
+                          )}
+                        </p>
+                      </div>
                       <span
                         className={
                           module.feasibility === "FEASIBLE"
@@ -547,6 +537,7 @@ export function LearningRoadmapWizard({
                         )}
                       </span>
                     </div>
+                    <LessonOutline lessons={module.lessons} />
                     {module.resources.length > 0 ? (
                       <fieldset className="mt-3 space-y-2">
                         <legend className="text-xs font-semibold text-slate-500">
@@ -575,9 +566,16 @@ export function LearningRoadmapWizard({
                                 {resource.title}
                               </span>
                               <span className="text-xs text-slate-500">
-                                {t("learning.wizard.preview.resourceMinutes", {
-                                  count: resource.duration_minutes,
-                                })}
+                                {resource.resource_role === "PRIMARY"
+                                  ? t("learning.wizard.preview.primaryResource")
+                                  : t(
+                                      "learning.wizard.preview.supplementaryResource",
+                                    )}
+                                {" · "}
+                                {formatResourceDuration(resource, t)}
+                                {resource.provider
+                                  ? ` · ${resource.provider}`
+                                  : ""}
                               </span>
                             </span>
                           </label>
@@ -606,19 +604,10 @@ export function LearningRoadmapWizard({
             </p>
           ) : null}
         </main>
-      </div>
-    </div>
-  );
-}
-
-function resourceSelectionFromPreview(
-  preview: LearningRoadmapPreview,
-): Record<string, string[]> {
-  return Object.fromEntries(
-    preview.modules.map((module) => [
-      module.skill_canonical,
-      module.resources.map((resource) => resource.id),
-    ]),
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -703,19 +692,103 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function messageOf(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Could not continue. Please try again.";
+function TrackSummary({ preview }: { preview: LearningRoadmapPreview }) {
+  const { t } = useTranslation("common");
+  const fastTrack = preview.learning_track === "FAST_TRACK";
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        fastTrack
+          ? "border-sky-200 bg-sky-50 text-sky-900"
+          : "border-violet-200 bg-violet-50 text-violet-900"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-bold">
+          {fastTrack
+            ? t("learning.wizard.track.fastTitle")
+            : t("learning.wizard.track.foundationTitle")}
+        </p>
+        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold">
+          {t("learning.wizard.track.sessionSummary", {
+            count: preview.sessions.length,
+            minutes: 60,
+          })}
+        </span>
+      </div>
+      <p className="mt-1 text-sm opacity-80">
+        {fastTrack
+          ? t("learning.wizard.track.fastBody")
+          : t("learning.wizard.track.foundationBody")}
+      </p>
+    </div>
+  );
+}
+
+function LessonOutline({
+  lessons,
+}: {
+  lessons: LearningRoadmapPreview["modules"][number]["lessons"];
+}) {
+  const { t } = useTranslation("common");
+  if (lessons.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+      {lessons.map((lesson) => {
+        const included = lesson.scope_status === "INCLUDED";
+        return (
+          <div
+            key={lesson.id}
+            className={`flex items-start gap-3 rounded-lg px-3 py-2 ${
+              included ? "bg-slate-50" : "bg-amber-50/70 opacity-75"
+            }`}
+          >
+            <span
+              className={`mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                lesson.importance === "CORE"
+                  ? "bg-sky-100 text-sky-700"
+                  : "bg-slate-200 text-slate-600"
+              }`}
+            >
+              {lesson.importance}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-800">{lesson.title}</p>
+              <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                {lesson.summary}
+              </p>
+              {!included ? (
+                <p className="mt-1 text-[11px] font-medium text-amber-700">
+                  {t("learning.wizard.preview.deferredLesson")}
+                </p>
+              ) : null}
+            </div>
+            <span className="shrink-0 text-xs text-slate-500">
+              {t("learning.wizard.preview.lessonMinutes", {
+                count: lesson.estimated_minutes,
+              })}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function messageOf(
+  error: unknown,
+  translate: (key: string) => string,
+): string {
+  if (error instanceof Error) {
+    return error.message.startsWith("learning.")
+      ? translate(error.message)
+      : error.message;
+  }
+  return translate("learning.wizard.errors.generic");
 }
 
 function today(): string {
   return formatLocalDate(new Date());
-}
-
-function defaultDeadline(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 56);
-  return formatLocalDate(date);
 }
 
 function formatLocalDate(date: Date): string {
@@ -723,4 +796,47 @@ function formatLocalDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(
+  value: string | null,
+  locale: string,
+  translate: (key: string) => string,
+): string {
+  if (!value) return translate("learning.wizard.preview.calculating");
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatResourceDuration(
+  resource: LearningPresentedResource,
+  translate: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (resource.duration_kind === "UNKNOWN") {
+    return translate("learning.wizard.preview.durationUnknown");
+  }
+  const minutes = resource.recommended_minutes ?? resource.duration_minutes;
+  if (!minutes || minutes <= 0) {
+    return translate("learning.wizard.preview.durationUnknown");
+  }
+  const keyPrefix =
+    resource.duration_kind === "EXACT" ? "exact" : "estimated";
+  if (minutes < 60) {
+    return translate(`learning.wizard.preview.duration.${keyPrefix}Minutes`, {
+      minutes,
+    });
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder
+    ? translate(`learning.wizard.preview.duration.${keyPrefix}HoursMinutes`, {
+        hours,
+        minutes: remainder,
+      })
+    : translate(`learning.wizard.preview.duration.${keyPrefix}Hours`, {
+        hours,
+      });
 }

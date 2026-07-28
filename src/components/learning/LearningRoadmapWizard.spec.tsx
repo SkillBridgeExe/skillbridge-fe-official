@@ -1,185 +1,169 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import "@testing-library/jest-dom/vitest";
 import {
-  createLearningRoadmapDraft,
-  generateLearningRoadmap,
-  getActiveLearningRoadmap,
-  previewLearningRoadmap,
-  updateLearningRoadmapDraft,
-} from "@/services/learning-roadmaps-v2.service";
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { LearningRoadmapWizard } from "./LearningRoadmapWizard";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+const mocks = vi.hoisted(() => ({
+  getCvList: vi.fn(),
+  createDraft: vi.fn(),
+  updateDraft: vi.fn(),
+  previewRoadmap: vi.fn(),
+  generateRoadmap: vi.fn(),
+  getActiveRoadmap: vi.fn(),
 }));
-vi.mock("@/api/cv/list", () => ({
-  getCvListApi: vi
-    .fn()
-    .mockResolvedValue({ items: [], total: 0, page: 1, limit: 50 }),
-}));
+
+vi.mock("react-i18next", () => {
+  const t = (key: string) => key;
+  return {
+    useTranslation: () => ({
+      t,
+      i18n: { language: "en" },
+    }),
+  };
+});
+vi.mock("@/api/cv/list", () => ({ getCvListApi: mocks.getCvList }));
 vi.mock("@/services/learning-roadmaps-v2.service", () => ({
-  createLearningRoadmapDraft: vi.fn(),
-  generateLearningRoadmap: vi.fn(),
-  getActiveLearningRoadmap: vi.fn(),
-  previewLearningRoadmap: vi.fn(),
-  updateLearningRoadmapDraft: vi.fn(),
+  createLearningRoadmapDraft: mocks.createDraft,
+  updateLearningRoadmapDraft: mocks.updateDraft,
+  previewLearningRoadmap: mocks.previewRoadmap,
+  generateLearningRoadmap: mocks.generateRoadmap,
+  getActiveLearningRoadmap: mocks.getActiveRoadmap,
 }));
 
-afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
+describe("LearningRoadmapWizard accessibility", () => {
+  afterEach(cleanup);
 
-describe("LearningRoadmapWizard", () => {
-  it("persists the learner resource selection and previews that revision before generating", async () => {
-    const candidate = {
-      skill_canonical: "typescript",
-      display_name: "TypeScript",
-      system_priority: 1,
-      rationale: "Required by the target role",
-      prerequisites: [],
-    };
+  it("exposes a modal dialog with a labeled close button and supports Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <MemoryRouter>
+        <LearningRoadmapWizard onClose={onClose} onGenerated={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+    expect(
+      screen.getByRole("button", { name: "learning.wizard.close" }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("runs the career draft, cadence, primary-resource, preview, and generation flow", async () => {
     const draft = {
       id: "roadmap-1",
-      intent: "JD_APPLICATION" as const,
-      status: "DRAFT" as const,
-      revision: 0,
-      cv_match_id: "match-1",
-      cv_id: null,
-      target_role: null,
-      target_level: null,
-      language_pref: "both" as const,
-      candidate_skills: [candidate],
-      selected_priorities: [],
-      selected_resources: {},
-      schedule: null,
-    };
-    const resources = [
-      resource("resource-1", "Official docs"),
-      resource("resource-2", "Video tutorial"),
-    ];
-    const preview = {
-      roadmap_id: draft.id,
       revision: 1,
-      target_role: "Frontend developer",
-      summary: "A feasible plan",
-      capacity_minutes: 180,
-      scheduled_minutes: 120,
+      candidate_skills: [
+        {
+          skill_canonical: "typescript",
+          display_name: "TypeScript",
+          system_priority: 0.9,
+          rationale: "Required for the target role",
+          prerequisites: [],
+        },
+      ],
+    };
+    const cadenceDraft = { ...draft, revision: 2 };
+    const resourceDraft = { ...draft, revision: 3 };
+    const preview = {
+      revision: 2,
+      learning_track: "FAST_TRACK",
+      cadence: {
+        start_date: "2026-07-28",
+        study_days_per_week: 3,
+        session_minutes: 60,
+        timezone: "Asia/Ho_Chi_Minh",
+      },
+      estimated_completion_date: "2026-08-10",
+      sessions: [{ id: "session-1" }],
       modules: [
         {
           skill_canonical: "typescript",
           display_name: "TypeScript",
           rank: 1,
-          estimated_minutes: 120,
-          feasibility: "FEASIBLE" as const,
-          resources,
-          lesson_content: null,
+          quick_win_score: 90,
+          scope_status: "CORE_ONLY",
+          feasibility: "FEASIBLE",
+          lessons: [],
+          resources: [
+            {
+              id: "primary-resource",
+              title: "TypeScript quick start",
+              resource_role: "PRIMARY",
+              duration_kind: "EXACT",
+              recommended_minutes: 60,
+            },
+          ],
         },
       ],
-      sessions: [],
-      deferred: [],
+      summary: "Focused roadmap",
     };
-
-    vi.mocked(createLearningRoadmapDraft).mockResolvedValue(draft);
-    vi.mocked(updateLearningRoadmapDraft)
-      .mockResolvedValueOnce({ ...draft, revision: 1 })
-      .mockResolvedValueOnce({
-        ...draft,
-        revision: 2,
-        selected_resources: { typescript: ["resource-1"] },
-      });
-    vi.mocked(previewLearningRoadmap)
+    mocks.getCvList.mockResolvedValue({
+      items: [{ id: "cv-1", title: "Frontend CV" }],
+    });
+    mocks.createDraft.mockResolvedValue(draft);
+    mocks.updateDraft
+      .mockResolvedValueOnce(cadenceDraft)
+      .mockResolvedValueOnce(resourceDraft);
+    mocks.previewRoadmap
       .mockResolvedValueOnce(preview)
-      .mockResolvedValueOnce({
-        ...preview,
-        revision: 2,
-        modules: [{ ...preview.modules[0], resources: [resources[0]] }],
-      });
-    vi.mocked(generateLearningRoadmap).mockResolvedValue({
-      ...preview,
-      revision: 3,
-      version_id: "version-1",
+      .mockResolvedValueOnce({ ...preview, revision: 3 });
+    mocks.generateRoadmap.mockResolvedValue({ status: "ACTIVE" });
+    mocks.getActiveRoadmap.mockResolvedValue({
+      id: "roadmap-1",
       status: "ACTIVE",
     });
-    vi.mocked(getActiveLearningRoadmap).mockResolvedValue({ id: draft.id } as never);
+    const onGenerated = vi.fn();
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <LearningRoadmapWizard
-          initialMatchId="match-1"
-          onClose={vi.fn()}
-          onGenerated={vi.fn()}
-        />
+      <MemoryRouter>
+        <LearningRoadmapWizard onClose={vi.fn()} onGenerated={onGenerated} />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByText("learning.wizard.next"));
-    await screen.findByText("learning.wizard.steps.priorities");
-    fireEvent.click(screen.getByText("learning.wizard.next"));
-    fireEvent.click(screen.getByText("learning.wizard.previewAction"));
-    await screen.findByText("Video tutorial");
-
-    fireEvent.click(screen.getByRole("checkbox", { name: /Video tutorial/ }));
-    fireEvent.click(screen.getByText("learning.wizard.generateAction"));
-
-    await waitFor(() =>
-      expect(updateLearningRoadmapDraft).toHaveBeenLastCalledWith("roadmap-1", {
-        expected_revision: 1,
-        selected_resources: { typescript: ["resource-1"] },
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /learning\.wizard\.goal\.careerTitle/,
       }),
     );
-    expect(previewLearningRoadmap).toHaveBeenLastCalledWith("roadmap-1", 2);
-    expect(generateLearningRoadmap).toHaveBeenCalledWith("roadmap-1", 2);
-  });
-
-  it("asks the learning goal first and reveals career CV context after selection", () => {
-    render(
-      <MemoryRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <LearningRoadmapWizard onClose={vi.fn()} onGenerated={vi.fn()} />
-      </MemoryRouter>,
+    await screen.findByRole("option", { name: "Frontend CV" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "learning.wizard.next" }),
+    );
+    await screen.findByText("TypeScript");
+    fireEvent.click(
+      screen.getByRole("button", { name: "learning.wizard.next" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "learning.wizard.previewAction",
+      }),
+    );
+    await screen.findByText("TypeScript quick start");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "learning.wizard.generateAction",
+      }),
     );
 
-    expect(screen.getByText("learning.wizard.steps.goal")).toBeTruthy();
-    fireEvent.click(screen.getByText("learning.wizard.goal.careerTitle"));
-    expect(screen.getByText("learning.wizard.steps.context")).toBeTruthy();
-    expect(screen.getByText("learning.wizard.context.cv")).toBeTruthy();
-    expect(screen.getByText("learning.wizard.context.role")).toBeTruthy();
-  });
-
-  it("enters the JD context directly when diagnosis supplies a match id", () => {
-    render(
-      <MemoryRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <LearningRoadmapWizard
-          initialMatchId="match-1"
-          onClose={vi.fn()}
-          onGenerated={vi.fn()}
-        />
-      </MemoryRouter>,
+    await waitFor(() => expect(onGenerated).toHaveBeenCalledOnce());
+    expect(mocks.updateDraft).toHaveBeenNthCalledWith(
+      2,
+      "roadmap-1",
+      expect.objectContaining({
+        selected_resources: { typescript: ["primary-resource"] },
+      }),
     );
-
-    expect(screen.getByText("learning.wizard.steps.context")).toBeTruthy();
-    expect(screen.queryByText("learning.wizard.steps.goal")).toBeNull();
-    expect(
-      screen.queryByText("learning.wizard.goal.jdNeedsDiagnosis"),
-    ).toBeNull();
+    expect(mocks.generateRoadmap).toHaveBeenCalledWith("roadmap-1", 3);
   });
 });
-
-function resource(id: string, title: string) {
-  return {
-    id,
-    source_type: "official_doc" as const,
-    title,
-    is_internal: false,
-    duration_minutes: 30,
-    outcome_type: "knowledge",
-    match_score: 1,
-    quality_score: 1,
-    freshness_score: 1,
-    low_confidence: false,
-  };
-}

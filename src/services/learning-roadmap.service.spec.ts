@@ -3,6 +3,7 @@ import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
   answerLearningQuizQuestion,
+  completeLearningSession,
   getLearningNextQuestions,
   getLearningSessionProgress,
   patchLearningChecklistItem,
@@ -203,7 +204,10 @@ describe("learning-roadmap.service", () => {
     }) as never);
 
     await saveLearningSessionProgress("roadmap-react", {
-      checkedChecklistItems: { "react-components": ["Create a parent component"] },
+      checkedChecklistItems: {
+        "react-components": ["Create a parent component"],
+        __session: ["completed"],
+      },
       exerciseProofs: { "react-ex1": "Saved screenshot" },
     });
 
@@ -253,6 +257,29 @@ describe("learning-roadmap.service", () => {
       is_correct: true,
       attempt_count: 1,
     });
+  });
+
+  it("completes a session through the dedicated BE endpoint", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(
+      ok({
+        session_id: "session-1",
+        status: "COMPLETED",
+        module_completed: true,
+        next_session_id: "session-2",
+        unlocked_session_ids: ["session-2"],
+      }) as never,
+    );
+
+    await expect(completeLearningSession("session-1")).resolves.toEqual(
+      expect.objectContaining({
+        session_id: "session-1",
+        next_session_id: "session-2",
+      }),
+    );
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.LEARNING.COMPLETE_SESSION("session-1"),
+      {},
+    );
   });
 
   it("loads adaptive next questions from the BE learning endpoint", async () => {

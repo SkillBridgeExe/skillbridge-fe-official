@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { cn } from "@/lib/utils";
+import { ApiError } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,10 +31,10 @@ import {
   Terminal,
   AlertCircle,
   ExternalLink,
-  Plus,
   Trash,
+  Languages,
+  Loader2,
 } from "lucide-react";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
 import { CodeSandboxPanel } from "./CodeSandboxPanel";
@@ -41,6 +43,7 @@ import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadm
 import { hasApiAuthSession } from "@/services/auth-session.service";
 import {
   answerLearningQuizQuestion,
+  completeLearningSession,
   getLearningNextQuestions,
   getLearningSessionProgress,
   patchLearningChecklistItem,
@@ -48,7 +51,17 @@ import {
 } from "@/services/learning-roadmap.service";
 import { buildInternalResourceTask } from "./internal-resource-content";
 import { getActiveSessionResource } from "./session-content";
-import { getNextLearningSectionId, selectLearningSection } from "./session-navigation";
+import {
+  getOfflineNextLearningSessionId,
+  getNextLearningSectionId,
+  orderLearningSessions,
+  selectLearningSection,
+} from "./session-navigation";
+import {
+  getLearningContinueAction,
+  isLearningSessionCompleted,
+  type LearningMode,
+} from "./learning-session-flow";
 import {
   applyProgressToSession,
   createInitialSessionProgress,
@@ -69,6 +82,15 @@ import {
   getQuizStats,
   type QuizQuestionForProgress,
 } from "./quiz-progress";
+import {
+  getCurrentActiveLearningRoadmap,
+  translateLearningDisplay,
+  type LearningDisplayTranslationResult,
+} from "@/services/learning-roadmaps-v2.service";
+import {
+  applyLearningDisplayTranslations,
+  buildLearningDisplayTranslationItems,
+} from "./learning-display-translation";
 
 interface AdaptiveQuizState {
   weakObjectives: Array<{
@@ -135,6 +157,16 @@ function orderSessionForDisplay(session: LearningSession): LearningSession {
     ...session,
     sections: orderLearningSectionsForDisplay(session.sections),
   };
+}
+
+function getRequiredPracticeSections(
+  session: LearningSession,
+): LearningSession["sections"] {
+  return session.sections.filter(
+    (section) =>
+      section.type !== "quiz" &&
+      (!session.lessonContent || section.type !== "video"),
+  );
 }
 
 function buildTimeline(session: LearningSession) {
@@ -213,7 +245,6 @@ function isQuizPassed(session: LearningSession, progress: SessionProgressState):
   return stats.correct >= getQuizPassingCount(quiz.length);
 }
 
-type LearningMode = "learn" | "practice" | "check";
 type QuizKind = "concept" | "scenario" | "debug" | "mini_case";
 type SectionMasteryStatus = "Learning" | "Practice needed" | "Quiz passed" | "Completed";
 
@@ -402,9 +433,6 @@ function fallbackOutcomeLabel(value?: string): string {
 }
 
 type SessionResource = LearningSession["resources"][number];
-type RecommendedCourse = NonNullable<LearningSession["recommendedCourses"]>[number];
-
-
 
 function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
   const { t } = useTranslation("common");
@@ -457,11 +485,13 @@ function ResourceMetaBadges({ resource }: { resource: SessionResource }) {
 function ResourceCard({
   resource,
   primary = false,
+  compact = false,
   onToggleSaveCourse,
   progress,
 }: {
   resource: SessionResource;
   primary?: boolean;
+  compact?: boolean;
   onToggleSaveCourse?: (courseId: string) => void;
   progress?: SessionProgressState;
 }) {
@@ -523,7 +553,12 @@ function ResourceCard({
       getBorderAccent(resource.type),
       primary ? "border-primary/20 bg-primary/[0.02]" : "border-slate-200 bg-white",
     )}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          !compact && "sm:flex-row sm:items-start sm:justify-between",
+        )}
+      >
         <div className="min-w-0 space-y-2">
           <h3 className="text-base font-bold text-slate-900 leading-snug">{resource.title}</h3>
           <ResourceMetaBadges resource={resource} />
@@ -531,7 +566,7 @@ function ResourceCard({
         {resource.isInternal ? (
           <Badge className="w-fit bg-primary/10 text-primary">{internalTask?.label ?? t("learning.common.internal")}</Badge>
         ) : (
-          <div className="flex gap-2 shrink-0">
+          <div className={cn("flex flex-wrap gap-2", !compact && "shrink-0")}>
             {progress?.savedCourseIds?.includes(resource.id) && onToggleSaveCourse && (
               <button
                 type="button"
@@ -579,138 +614,6 @@ function ResourceCard({
   );
 }
 
-function RecommendedCourseCard({
-  course,
-  rank,
-  onToggleSaveCourse,
-}: {
-  course: RecommendedCourse;
-  rank?: number;
-  onToggleSaveCourse?: (courseId: string) => void;
-}) {
-  const { t } = useTranslation("common");
-  const matchScore = displayScore(course.matchScore);
-
-  const getRankBadgeColor = (r: number) => {
-    if (r === 1) return "bg-orange-500 text-white shadow-sm shadow-orange-500/20";
-    if (r === 2) return "bg-amber-500 text-white shadow-sm shadow-amber-500/20";
-    if (r === 3) return "bg-yellow-500 text-white shadow-sm shadow-yellow-500/20";
-    return "bg-slate-100 text-slate-500";
-  };
-
-  const isTopRank = rank !== undefined && rank <= 3;
-
-  return (
-    <div className={cn(
-      "flex items-start gap-2.5 transition-all duration-200",
-      isTopRank 
-        ? "bg-slate-50 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl p-2.5" 
-        : "p-2.5 border-b border-slate-100 hover:bg-slate-50/50"
-    )}>
-      {rank !== undefined && (
-        <div className={cn(
-          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold mt-0.5 font-poppins",
-          getRankBadgeColor(rank)
-        )}>
-          {rank}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <h4 className="text-[13px] font-semibold text-slate-800 leading-snug hover:text-primary transition-colors">
-          {course.url ? (
-            <a href={course.url} target="_blank" rel="noreferrer">
-              {course.title}
-            </a>
-          ) : (
-            course.title
-          )}
-        </h4>
-        <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-slate-500 font-medium">
-          {course.provider && <span>{course.provider}</span>}
-          {course.duration && (
-            <>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {course.duration}</span>
-            </>
-          )}
-          {matchScore && (
-            <>
-              <span className="text-slate-300">•</span>
-              {course.matchBreakdown ? (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <span className="text-emerald-600 font-bold cursor-pointer hover:underline">
-                      {t("learning.common.matchScore", { score: matchScore })}
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-4 w-72 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-xl space-y-3 z-50 text-slate-800">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 font-poppins">
-                      {t("learning.common.matchBreakdown.title")}
-                    </p>
-                    <div className="space-y-2.5">
-                      {[
-                        { labelKey: "learning.common.matchBreakdown.rating", points: course.matchBreakdown.ratingPts, max: 30 },
-                        { labelKey: "learning.common.matchBreakdown.language", points: course.matchBreakdown.languagePts, max: 20 },
-                        { labelKey: "learning.common.matchBreakdown.level", points: course.matchBreakdown.levelFitPts, max: 20 },
-                        { labelKey: "learning.common.matchBreakdown.price", points: course.matchBreakdown.freePts, max: 15 },
-                        { labelKey: "learning.common.matchBreakdown.skills", points: course.matchBreakdown.multiSkillPts, max: 15 },
-                      ].map(({ labelKey, points, max }) => {
-                        const percent = (points / max) * 100;
-                        return (
-                          <div key={labelKey} className="space-y-1">
-                            <div className="text-xs font-semibold text-slate-700">
-                              {t(labelKey, { points })}
-                            </div>
-                            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-900">
-                      <span>{t("learning.common.matchBreakdown.total", { score: matchScore })}</span>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <span className="text-emerald-600 font-bold">
-                  {t("learning.common.matchScore", { score: matchScore })}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 shrink-0 self-center">
-        {onToggleSaveCourse && (
-          <button
-            type="button"
-            onClick={() => onToggleSaveCourse(course.id)}
-            title={t("learning.common.save")}
-            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
-        {course.url && (
-          <a
-            href={course.url}
-            target="_blank"
-            rel="noreferrer"
-            title={t("learning.common.openCourse")}
-            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-
 // ─── YouTube Embed helper ───────────────────────────
 function getYouTubeId(url: string): string | null {
   const match = url.match(/(?:watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -734,6 +637,8 @@ interface SidebarProps {
   activeSectionId: string;
   progress: SessionProgressState;
   onSelectSection: (id: string) => void;
+  activeMode: LearningMode;
+  onSelectMode: (mode: LearningMode) => void;
   onToggle: () => void;
   showValidationErrors?: boolean;
 }
@@ -745,6 +650,8 @@ function SessionSidebar({
   activeSectionId,
   progress: sessionProgress,
   onSelectSection,
+  activeMode,
+  onSelectMode,
   onToggle,
   showValidationErrors = false,
 }: SidebarProps) {
@@ -776,7 +683,7 @@ function SessionSidebar({
   };
 
   return (
-    <aside className="absolute top-0 left-0 z-30 w-72 h-full border-r border-slate-200 bg-white shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-left duration-300">
+    <aside className="flex h-full w-full flex-col overflow-y-auto bg-white">
       {/* Toggle + Module info header */}
       <div className="p-5 border-b border-slate-100 sticky top-0 bg-slate-50/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between mb-3">
@@ -835,7 +742,8 @@ function SessionSidebar({
       {/* Section list */}
       <nav aria-label="Session lesson list" className="p-3 space-y-1">
         {filteredSections.map(section => {
-          const isActive = section.id === activeSectionId;
+          const isActive =
+            activeMode !== "check" && section.id === activeSectionId;
           const sectionStatus = getSectionMasteryStatus(session, sessionProgress, section);
           const isCompletedStatus = sectionStatus === "Completed";
           const isSectionIncomplete = sectionStatus !== "Completed";
@@ -843,7 +751,10 @@ function SessionSidebar({
           return (
             <button
               key={section.id}
-              onClick={() => selectLearningSection(section.id, onSelectSection)}
+              onClick={() => {
+                if (activeMode === "check") onSelectMode("learn");
+                selectLearningSection(section.id, onSelectSection);
+              }}
               className={cn(
                 "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
                 isActive
@@ -911,14 +822,38 @@ function SessionSidebar({
           <button
             type="button"
             aria-label="Open quiz section"
-            onClick={() => document.getElementById("quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border text-slate-700 border-transparent hover:bg-white hover:shadow-sm"
+            onClick={() => {
+              onSelectMode("check");
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById("quiz-panel")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                0,
+              );
+            }}
+            className={cn(
+              "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
+              activeMode === "check"
+                ? "bg-primary text-white border-primary shadow-sm"
+                : "text-slate-700 border-transparent hover:bg-white hover:shadow-sm",
+            )}
           >
             <span className="mt-0.5 flex-shrink-0">
-              <HelpCircle className="w-4 h-4 text-amber-500" />
+              <HelpCircle
+                className={cn(
+                  "w-4 h-4",
+                  activeMode === "check" ? "text-white" : "text-amber-500",
+                )}
+              />
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium leading-snug text-slate-800">
+              <p
+                className={cn(
+                  "text-sm font-medium leading-snug",
+                  activeMode === "check" ? "text-white" : "text-slate-800",
+                )}
+              >
                 {t("learning.session.knowledgeCheck")}
               </p>
               <div className="mt-1 flex items-center gap-2 text-slate-400">
@@ -1665,6 +1600,119 @@ const getSectionEnrichments = (skillCanonical: string, title: string) => {
   return null;
 };
 
+function SessionResourcesPanel({
+  session,
+  progress,
+  activeSectionId,
+  onToggleSaveCourse,
+}: {
+  session: LearningSession;
+  progress: SessionProgressState;
+  activeSectionId: string;
+  onToggleSaveCourse: (courseId: string) => void;
+}) {
+  const { t } = useTranslation("common");
+  const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => setCurrentPage(1), [activeSectionId]);
+
+  const panelItems = session.resources;
+
+  if (panelItems.length === 0) return null;
+
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(panelItems.length / itemsPerPage);
+  const effectivePage = Math.min(currentPage, totalPages);
+  const startIndex = (effectivePage - 1) * itemsPerPage;
+  const visibleItems = panelItems.slice(startIndex, startIndex + itemsPerPage);
+
+  return (
+    <aside
+      aria-label={t("learning.session.recommendedResources")}
+      className="min-w-0 self-start rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm xl:sticky xl:top-6"
+    >
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+        <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
+        <h4 className="font-poppins text-sm font-bold uppercase tracking-wider text-slate-800">
+          {t("learning.session.recommendedResources")}
+        </h4>
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
+          {panelItems.length}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-3">
+        {visibleItems.map((resource) => (
+          <ResourceCard
+            key={resource.id}
+            resource={resource}
+            compact
+            progress={progress}
+            onToggleSaveCourse={onToggleSaveCourse}
+          />
+        ))}
+
+        {totalPages > 1 && (
+          <div className="mt-5 flex items-center justify-center gap-3 border-t border-slate-100 pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCurrentPage((previous) => Math.max(1, previous - 1))
+              }
+              disabled={effectivePage === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border-slate-200 p-0 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs font-semibold text-slate-500">
+              {t("learning.common.pageOf", {
+                current: effectivePage,
+                total: totalPages,
+                defaultValue: `Trang ${effectivePage} / ${totalPages}`,
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCurrentPage((previous) =>
+                  Math.min(totalPages, previous + 1),
+                )
+              }
+              disabled={effectivePage === totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border-slate-200 p-0 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+interface CompletionMissingWork {
+  sectionIds: string[];
+  checklistItemIds: string[];
+  exerciseIds: string[];
+}
+
+function getCompletionMissingWork(error: unknown): CompletionMissingWork | null {
+  if (!(error instanceof ApiError) || !error.errors || typeof error.errors !== "object") {
+    return null;
+  }
+  const errors = error.errors as Record<string, unknown>;
+  const strings = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  return {
+    sectionIds: strings(errors.missing_section_ids),
+    checklistItemIds: strings(errors.missing_checklist_item_ids),
+    exerciseIds: strings(errors.missing_exercise_ids),
+  };
+}
+
 function DocContentPanel({
   session,
   activeSectionId,
@@ -1695,10 +1743,8 @@ function DocContentPanel({
   onOpenSandboxWithSection?: (sectionTitle: string) => void;
 }) {
   const { t } = useTranslation("common");
-  const [currentPage, setCurrentPage] = useState(1);
   const [taskProofErrors, setTaskProofErrors] = useState<Record<string, boolean>>({});
   const [expandedTaskProofId, setExpandedTaskProofId] = useState<string | null>(null);
-  useEffect(() => setCurrentPage(1), [activeSectionId]);
   const lessonSections = session.sections.filter((section) => section.type !== "video");
   const contentSections = lessonSections.length > 0 ? lessonSections : session.sections;
   const activeSection = contentSections.find(s => s.id === activeSectionId) ?? contentSections[0];
@@ -1718,15 +1764,6 @@ function DocContentPanel({
     }));
   const allSupplementalResources = convertedSavedCourses;
 
-  const visibleRecommendedCourses = (session.recommendedCourses ?? []).filter((c) => !progress.savedCourseIds?.includes(c.id));
-  const nextSectionId = getNextLearningSectionId(contentSections, activeSection?.id ?? activeSectionId);
-  const nextSection = contentSections.find((section) => section.id === nextSectionId);
-
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(visibleRecommendedCourses.length / ITEMS_PER_PAGE);
-  const effectivePage = Math.min(currentPage, Math.max(1, totalPages));
-  const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
-  const paginatedCourses = visibleRecommendedCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   const activeSectionOutcomes = getSectionLearningOutcomes(activeSection);
 
   const handleCheckPracticeTask = (sectionId: string, itemId: string) => {
@@ -1744,9 +1781,9 @@ function DocContentPanel({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="w-full min-w-0">
       {/* Left Column (Main Content) */}
-      <div className="w-full space-y-6">
+      <div className="min-w-0 space-y-6">
         {/* Doc Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
@@ -2124,8 +2161,9 @@ function DocContentPanel({
             return (
               <div
                 key={exercise.id}
+                id={`exercise-${exercise.id}`}
                 className={cn(
-                  "rounded-xl border transition-all duration-300 p-4",
+                  "scroll-mt-6 rounded-xl border transition-all duration-300 p-4",
                   shouldHighlightExercise
                     ? "border-red-400 bg-red-50/20 shadow-sm"
                     : "border-slate-200 bg-white"
@@ -2236,75 +2274,8 @@ function DocContentPanel({
         </>
       )}
 
-      {/* Next Section CTA */}
-      <div className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 border border-slate-200">
-        <div>
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">{t("learning.session.nextSection")}</p>
-          <p className="text-sm font-semibold text-slate-800 mt-1">{nextSection?.title ?? activeSection?.title}</p>
-        </div>
-        <Button
-          className="rounded-full"
-          disabled={!nextSection}
-          onClick={() =>
-            nextSection &&
-            selectLearningSection(nextSection.id, onSelectSection)
-          }
-        >
-          {t("learning.session.continue")} <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
       </div>
 
-      {/* Right Column (Recommended Courses Only) */}
-      <div className="w-full xl:absolute xl:top-[90px] xl:left-[calc(100%+48px)] xl:w-[280px] 2xl:left-[calc(100%+64px)] 2xl:w-[320px] shrink-0 space-y-4 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm mt-8 xl:mt-0">
-        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-          <GraduationCap className="w-5 h-5 text-primary shrink-0" />
-          <h4 className="font-poppins font-bold text-slate-800 text-sm tracking-wider uppercase">
-            {t("learning.session.recommendedCourses")}
-          </h4>
-          <span className="ml-auto h-5 min-w-5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center">
-            {visibleRecommendedCourses.length}
-          </span>
-        </div>
-
-        {visibleRecommendedCourses.length ? (
-          <div className="space-y-1">
-            {paginatedCourses.map((course, idx) => (
-              <RecommendedCourseCard key={course.id} course={course} rank={startIndex + idx + 1} onToggleSaveCourse={onToggleSaveCourse} />
-            ))}
-
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-5 pt-3 border-t border-slate-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={effectivePage === 1}
-                  className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs font-semibold text-slate-500">
-                  {t("learning.common.pageOf", { current: effectivePage, total: totalPages, defaultValue: `Trang ${effectivePage} / ${totalPages}` })}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={effectivePage === totalPages}
-                  className="h-8 w-8 p-0 rounded-lg flex items-center justify-center border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400 text-center py-6">
-            {t("learning.session.noRecommendedCourses", { defaultValue: "Chưa có khóa học đề xuất" })}
-          </p>
-        )}
-      </div>
     </div>
   );
 }
@@ -2325,6 +2296,11 @@ function MainContentPanel({
   adaptiveQuiz,
   showValidationErrors = false,
   onOpenSandboxWithSection,
+  onComplete,
+  onShowIncomplete,
+  isCompleting,
+  activeMode,
+  onActiveModeChange,
 }: {
   session: LearningSession;
   activeSectionId: string;
@@ -2340,19 +2316,66 @@ function MainContentPanel({
   adaptiveQuiz?: AdaptiveQuizState | null;
   showValidationErrors?: boolean;
   onOpenSandboxWithSection?: (sectionTitle: string) => void;
+  onComplete: () => void;
+  onShowIncomplete: (sectionId?: string) => void;
+  isCompleting: boolean;
+  activeMode: LearningMode;
+  onActiveModeChange: (mode: LearningMode) => void;
 }) {
   const { t } = useTranslation("common");
-  const [activeMode, setActiveMode] = useState<LearningMode>("learn");
   const activeSection = session.sections.find(s => s.id === activeSectionId) ?? session.sections[0];
   const isVideoSection = activeSection?.type === "video" || activeSection?.type === "quiz" || activeSection?.type === "practice";
   const isDocSection = activeSection?.type === "reading";
 
   // If the session has a YouTube resource and the section is video/practice/quiz, show video
   const hasYouTube = session.resources.some(r => r.type === "youtube");
+  const contentSections = getRequiredPracticeSections(session);
+  const flowSections = contentSections.length > 0 ? contentSections : session.sections;
+  const nextSectionId = getNextLearningSectionId(
+    flowSections,
+    activeSection?.id ?? activeSectionId,
+  );
+  const firstIncompleteSection = flowSections.find(
+    (section) => !isSectionComplete(session, progress, section.id),
+  );
+  const hasIncompleteExercise =
+    session.lessonContent?.exercises.some(
+      (exercise) => !progress.exerciseProofs[exercise.id]?.trim(),
+    ) ?? false;
+  const hasPracticeRequirements =
+    flowSections.length > 0 ||
+    (session.lessonContent?.exercises.length ?? 0) > 0;
+  const continueAction = getLearningContinueAction({
+    mode: activeMode,
+    nextSectionId,
+    hasPracticeRequirements,
+    hasIncompletePractice:
+      Boolean(firstIncompleteSection) || hasIncompleteExercise,
+    firstIncompleteSectionId: firstIncompleteSection?.id,
+    hasQuiz: buildQuiz(session).length > 0,
+  });
+  const hasResourcePanel = session.resources.length > 0;
+
+  const handleContinue = () => {
+    if (continueAction.type === "section") {
+      selectLearningSection(continueAction.sectionId, onSelectSection);
+      return;
+    }
+    if (continueAction.type === "mode") {
+      onActiveModeChange(continueAction.mode);
+      return;
+    }
+    if (continueAction.type === "incomplete") {
+      onActiveModeChange("practice");
+      onShowIncomplete(continueAction.sectionId);
+      return;
+    }
+    onComplete();
+  };
 
   return (
-    <main className="flex-1 overflow-y-auto min-w-0">
-      <div className="max-w-5xl mx-auto px-6 lg:px-10 py-6 space-y-6 relative">
+    <main className="min-w-0 flex-1 overflow-y-auto">
+      <div className="relative mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span>{t("learning.common.week", { number: session.moduleId.replace("demo-", "") })}</span>
@@ -2376,7 +2399,7 @@ function MainContentPanel({
                 type="button"
                 role="tab"
                 aria-selected={isActiveMode}
-                onClick={() => setActiveMode(tab.id)}
+                onClick={() => onActiveModeChange(tab.id)}
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors",
                   isActiveMode ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-800",
@@ -2389,49 +2412,96 @@ function MainContentPanel({
           })}
         </div>
 
-        {/* Render based on content type */}
-        {activeMode === "check" ? (
-          <div className="space-y-4">
-            <EvidenceSummary session={session} progress={progress} />
-            <SessionQuiz
-              session={session}
-              progress={progress}
-              onAnswer={onAnswerQuizQuestion}
-              onRetry={onRetryQuiz}
-              adaptiveQuiz={adaptiveQuiz}
-            />
+        <div
+          className={cn(
+            "grid min-w-0 gap-6",
+            hasResourcePanel &&
+              "xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]",
+          )}
+        >
+          <div className="min-w-0">
+            {/* Render based on content type */}
+            {activeMode === "check" ? (
+              <div className="space-y-4">
+                <EvidenceSummary session={session} progress={progress} />
+                <SessionQuiz
+                  session={session}
+                  progress={progress}
+                  onAnswer={onAnswerQuizQuestion}
+                  onRetry={onRetryQuiz}
+                  adaptiveQuiz={adaptiveQuiz}
+                />
+              </div>
+            ) : activeMode === "learn" &&
+              hasYouTube &&
+              (isVideoSection || !isDocSection) ? (
+              <VideoContentPanel
+                session={session}
+                activeSectionId={activeSectionId}
+                progress={progress}
+                onToggleChecklistItem={onToggleChecklistItem}
+                onAnswerQuizQuestion={onAnswerQuizQuestion}
+                onRetryQuiz={onRetryQuiz}
+                videoStartSeconds={videoStartSeconds}
+                onSeekVideo={onSeekVideo}
+                adaptiveQuiz={adaptiveQuiz}
+                showValidationErrors={showValidationErrors}
+                showQuiz={false}
+              />
+            ) : (
+              <DocContentPanel
+                session={session}
+                activeSectionId={activeSectionId}
+                onSelectSection={onSelectSection}
+                progress={progress}
+                onToggleChecklistItem={onToggleChecklistItem}
+                onExerciseProofChange={onExerciseProofChange}
+                onToggleSaveCourse={onToggleSaveCourse}
+                onAnswerQuizQuestion={onAnswerQuizQuestion}
+                onRetryQuiz={onRetryQuiz}
+                adaptiveQuiz={adaptiveQuiz}
+                showValidationErrors={showValidationErrors}
+                mode={activeMode}
+                onOpenSandboxWithSection={onOpenSandboxWithSection}
+              />
+            )}
           </div>
-        ) : activeMode === "learn" && (hasYouTube && (isVideoSection || !isDocSection)) ? (
-          <VideoContentPanel
+          <SessionResourcesPanel
             session={session}
-            activeSectionId={activeSectionId}
             progress={progress}
-            onToggleChecklistItem={onToggleChecklistItem}
-            onAnswerQuizQuestion={onAnswerQuizQuestion}
-            onRetryQuiz={onRetryQuiz}
-            videoStartSeconds={videoStartSeconds}
-            onSeekVideo={onSeekVideo}
-            adaptiveQuiz={adaptiveQuiz}
-            showValidationErrors={showValidationErrors}
-            showQuiz={false}
-          />
-        ) : (
-          <DocContentPanel
-            session={session}
             activeSectionId={activeSectionId}
-            onSelectSection={onSelectSection}
-            progress={progress}
-            onToggleChecklistItem={onToggleChecklistItem}
-            onExerciseProofChange={onExerciseProofChange}
             onToggleSaveCourse={onToggleSaveCourse}
-            onAnswerQuizQuestion={onAnswerQuizQuestion}
-            onRetryQuiz={onRetryQuiz}
-            adaptiveQuiz={adaptiveQuiz}
-            showValidationErrors={showValidationErrors}
-            mode={activeMode}
-            onOpenSandboxWithSection={onOpenSandboxWithSection}
           />
-        )}
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              {t("learning.session.nextSection")}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {continueAction.type === "section"
+                ? flowSections.find(
+                    (section) => section.id === continueAction.sectionId,
+                  )?.title
+                : continueAction.type === "mode"
+                  ? t(`learning.session.mode.${continueAction.mode}`)
+                  : continueAction.type === "incomplete"
+                    ? t("learning.session.completeRequiredWork")
+                    : t("learning.session.readyToComplete")}
+            </p>
+          </div>
+          <Button
+            className="rounded-full sm:shrink-0"
+            disabled={isCompleting}
+            onClick={handleContinue}
+          >
+            {isCompleting
+              ? t("learning.session.completing")
+              : t("learning.session.continue")}{" "}
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </main>
   );
@@ -2444,6 +2514,9 @@ interface SessionDetailProps {
 
 export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
+  const progressSaveFailedMessage = t(
+    "learning.session.progressSaveFailed",
+  );
   const navigate = useNavigate();
   // BE lookup key. moduleId is a SLUG ("node-js") — sending it as skill_canonical 404s every
   // underscore skill ("node_js", "ci_cd", …) and starves learning_completed for half the
@@ -2459,7 +2532,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   const initialSectionId = orderLearningSectionsForDisplay(session.sections)[0]?.id ?? "";
   const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
+  const [activeMode, setActiveMode] = useState<LearningMode>("learn");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [sandboxSectionTitle, setSandboxSectionTitle] = useState<string | undefined>(undefined);
@@ -2470,8 +2545,17 @@ export function SessionDetail({ session }: SessionDetailProps) {
   };
 
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [progressSaveError, setProgressSaveError] = useState<string | null>(null);
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [videoStartSeconds, setVideoStartSeconds] = useState<number | undefined>(undefined);
   const [adaptiveQuiz, setAdaptiveQuiz] = useState<AdaptiveQuizState | null>(null);
+  const [displayTranslations, setDisplayTranslations] = useState<
+    LearningDisplayTranslationResult[] | null
+  >(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
   const [progress, setProgress] = useState<SessionProgressState>(() =>
     createInitialSessionProgress(session, readStoredSessionProgress(session.id)),
   );
@@ -2481,15 +2565,25 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const locallyChangedProgressRef = useRef(false);
   const suppressNextProgressSaveRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
+  const {
+    activeRoadmap,
+    applySessionCompletion,
+    setActiveRoadmap,
+    weekPlans,
+    setWeekPlans,
+  } = useRoadmapStore();
 
   const progressBelongsToCurrentSession = progressSessionId === session.id;
   const visibleProgress = progressBelongsToCurrentSession
     ? progress
     : createInitialSessionProgress(session, readStoredSessionProgress(session.id));
-  const isCompleted =
-    session.status === "completed" ||
-    (progressBelongsToCurrentSession &&
-      (progress.checkedChecklistItems["__session"]?.includes("completed") ?? false));
+  const isCompleted = isLearningSessionCompleted({
+    status: session.status,
+    hasServerRoadmap: Boolean(activeRoadmap),
+    hasLocalCompletionMarker:
+      progressBelongsToCurrentSession &&
+      (progress.checkedChecklistItems["__session"]?.includes("completed") ?? false),
+  });
 
   useEffect(() => {
     progressRef.current = progress;
@@ -2497,9 +2591,16 @@ export function SessionDetail({ session }: SessionDetailProps) {
 
   useEffect(() => {
     setActiveSectionId(initialSectionId);
+    setActiveMode("learn");
     setVideoStartSeconds(undefined);
     setAdaptiveQuiz(null);
     setShowValidationErrors(false);
+    setCompletionError(null);
+    setProgressSaveError(null);
+    setIsSavingProgress(false);
+    setIsCompleting(false);
+    setDisplayTranslations(null);
+    setTranslationError(null);
   }, [initialSectionId, session.id]);
 
   useEffect(() => {
@@ -2551,7 +2652,15 @@ export function SessionDetail({ session }: SessionDetailProps) {
         if (!isActive) return;
         progressHydratedRef.current = true;
         if (locallyChangedProgressRef.current) {
-          void saveLearningSessionProgress(session.id, progressRef.current).catch(() => undefined);
+          setIsSavingProgress(true);
+          void saveLearningSessionProgress(session.id, progressRef.current)
+            .then(() => setProgressSaveError(null))
+            .catch(() =>
+              setProgressSaveError(
+                progressSaveFailedMessage,
+              ),
+            )
+            .finally(() => setIsSavingProgress(false));
         }
       });
 
@@ -2561,7 +2670,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
     };
     // skillCanonical derives from session — listed to keep exhaustive-deps honest; it never
     // changes without `session` changing, so the effect re-runs exactly as before.
-  }, [session, skillCanonical]);
+  }, [progressSaveFailedMessage, session, skillCanonical]);
 
   useEffect(() => {
     if (!progressBelongsToCurrentSession) return;
@@ -2573,26 +2682,78 @@ export function SessionDetail({ session }: SessionDetailProps) {
     }
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
-      void saveLearningSessionProgress(session.id, progress).catch(() => undefined);
+      setIsSavingProgress(true);
+      void saveLearningSessionProgress(session.id, progress)
+        .then(() => setProgressSaveError(null))
+        .catch(() =>
+          setProgressSaveError(progressSaveFailedMessage),
+        )
+        .finally(() => setIsSavingProgress(false));
     }, 500);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
-  }, [progress, progressBelongsToCurrentSession, session.id]);
+  }, [
+    progress,
+    progressBelongsToCurrentSession,
+    progressSaveFailedMessage,
+    session.id,
+  ]);
 
-  const displaySession = orderSessionForDisplay(applyProgressToSession(session, visibleProgress));
+  const translatedSession = displayTranslations
+    ? applyLearningDisplayTranslations(session, displayTranslations)
+    : session;
+  const displaySession = orderSessionForDisplay(
+    applyProgressToSession(translatedSession, visibleProgress),
+  );
 
   const weeks = useActiveWeekPlans();
-  const ALL_SESSIONS = weeks.flatMap(w => w.sessions).sort((a, b) => a.sessionNumber - b.sessionNumber);
+  const allSessions = orderLearningSessions(weeks);
 
-  const currentIdx = ALL_SESSIONS.findIndex(s => s.id === session.id);
+  const currentIdx = allSessions.findIndex(s => s.id === session.id);
 
-  const { weekPlans, setWeekPlans } = useRoadmapStore();
-  const handleComplete = () => {
+  const focusIncompleteWork = (sectionId?: string, exerciseId?: string) => {
+    setShowValidationErrors(true);
+    setActiveMode("practice");
+    if (sectionId) setActiveSectionId(sectionId);
+    window.setTimeout(() => {
+      const target = sectionId
+        ? document.getElementById(`section-${sectionId}`)
+        : exerciseId
+          ? document.getElementById(`exercise-${exerciseId}`)
+          : null;
+      if (typeof target?.scrollIntoView === "function") {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      const focusTarget =
+        target?.querySelector<HTMLElement>("textarea") ??
+        target?.querySelector<HTMLElement>("input, button");
+      focusTarget?.focus();
+    }, 0);
+  };
+
+  const handleShowIncomplete = (preferredSectionId?: string) => {
+    const incompleteSection =
+      getRequiredPracticeSections(session).find(
+        (section) =>
+          section.id === preferredSectionId &&
+          !isSectionComplete(session, visibleProgress, section.id),
+      ) ??
+      getRequiredPracticeSections(session).find(
+        (section) => !isSectionComplete(session, visibleProgress, section.id),
+      );
+    const incompleteExercise = session.lessonContent?.exercises.find(
+      (exercise) => !visibleProgress.exerciseProofs[exercise.id]?.trim(),
+    );
+    setCompletionError(t("learning.session.completeRequiredWork"));
+    focusIncompleteWork(incompleteSection?.id, incompleteExercise?.id);
+  };
+
+  const handleComplete = async () => {
     if (isCompleted) return;
 
     // Validate that all sections are completed
-    const incompleteSections = session.sections.filter(
+    const incompleteSections = getRequiredPracticeSections(session).filter(
       (sec) => !isSectionComplete(session, visibleProgress, sec.id)
     );
     const exercises = session.lessonContent?.exercises ?? [];
@@ -2600,62 +2761,141 @@ export function SessionDetail({ session }: SessionDetailProps) {
       (ex) => !visibleProgress.exerciseProofs[ex.id]?.trim()
     );
     if (incompleteSections.length > 0 || incompleteExercises.length > 0) {
-      setShowValidationErrors(true);
-      
-      // Optionally scroll to the first uncompleted section
-      if (incompleteSections.length > 0) {
-        const firstIncompleteId = incompleteSections[0].id;
-        const element = document.getElementById(`section-${firstIncompleteId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
+      setCompletionError(t("learning.session.completeRequiredWork"));
+      focusIncompleteWork(
+        incompleteSections[0]?.id,
+        incompleteExercises[0]?.id,
+      );
       return;
     }
 
-    const updatedProgress = {
-      ...visibleProgress,
-      checkedChecklistItems: {
-        ...visibleProgress.checkedChecklistItems,
-        "__session": ["completed"],
-      },
-    };
-    locallyChangedProgressRef.current = true;
-    setProgressSessionId(session.id);
-    setProgress(updatedProgress);
-    writeStoredSessionProgress(session.id, updatedProgress);
-    if (hasApiAuthSession()) {
-      void saveLearningSessionProgress(session.id, updatedProgress).catch(() => undefined);
-    }
+    setCompletionError(null);
+    setIsCompleting(true);
+    try {
+      const completion = hasApiAuthSession()
+        ? await completeLearningSession(session.id)
+        : {
+            session_id: session.id,
+            status: "COMPLETED" as const,
+            module_completed: false,
+            next_session_id: getOfflineNextLearningSessionId(
+              allSessions,
+              session.id,
+            ),
+            unlocked_session_ids: [] as string[],
+          };
+      const updatedProgress = {
+        ...visibleProgress,
+        checkedChecklistItems: {
+          ...visibleProgress.checkedChecklistItems,
+          "__session": ["completed"],
+        },
+      };
+      locallyChangedProgressRef.current = true;
+      setProgressSessionId(session.id);
+      setProgress(updatedProgress);
+      writeStoredSessionProgress(session.id, updatedProgress);
 
-    if (weekPlans.length > 0) {
-      const updated = weekPlans.map(week => ({
-        ...week,
-        sessions: week.sessions.map((s) => {
-          if (s.id === session.id) {
-            return { ...s, status: "completed" as const };
+      if (hasApiAuthSession()) {
+        try {
+          const refreshedRoadmap = await getCurrentActiveLearningRoadmap();
+          if (refreshedRoadmap) {
+            setActiveRoadmap(refreshedRoadmap);
+          } else {
+            applySessionCompletion(
+              completion.session_id,
+              completion.unlocked_session_ids,
+            );
           }
-          return s;
-        }),
-      }));
-      setWeekPlans(updated);
+        } catch {
+          applySessionCompletion(
+            completion.session_id,
+            completion.unlocked_session_ids,
+          );
+        }
+      } else if (weekPlans.length > 0) {
+        setWeekPlans(
+          weekPlans.map((week) => ({
+            ...week,
+            sessions: week.sessions.map((item) =>
+              item.id === session.id
+                ? { ...item, status: "completed" as const }
+                : item,
+            ),
+          })),
+        );
+      }
+
+      posthog?.capture("learning_session_completed", {
+        session_id: session.id,
+        skill: session.skill,
+        completion_percent: 100,
+      });
+
+      navigate(
+        completion.next_session_id
+          ? `/learning/session/${completion.next_session_id}`
+          : "/learning",
+      );
+    } catch (error) {
+      const missing = getCompletionMissingWork(error);
+      if (missing) {
+        const missingSection = session.sections.find(
+          (section) =>
+            missing.sectionIds.includes(section.id) ||
+            missing.checklistItemIds.some((itemId) =>
+              itemId.startsWith(`${section.id}:`),
+            ),
+        );
+        const missingExercise = session.lessonContent?.exercises.find(
+          (exercise) => missing.exerciseIds.includes(exercise.id),
+        );
+        focusIncompleteWork(missingSection?.id, missingExercise?.id);
+      }
+      setCompletionError(
+        error instanceof Error
+          ? error.message
+          : t("learning.session.completeFailed"),
+      );
+    } finally {
+      setIsCompleting(false);
     }
-
-    posthog?.capture("learning_session_completed", {
-      session_id: session.id,
-      skill: session.skill,
-      completion_percent: 100,
-    });
-
-    const next = ALL_SESSIONS[currentIdx + 1];
-    setTimeout(() => next ? navigate(`/learning/session/${next.id}`) : navigate("/learning"), 800);
   };
-  const prevSession = currentIdx > 0 ? ALL_SESSIONS[currentIdx - 1] : null;
-  const nextSession = currentIdx < ALL_SESSIONS.length - 1 ? ALL_SESSIONS[currentIdx + 1] : null;
+  const prevSession = currentIdx > 0 ? allSessions[currentIdx - 1] : null;
+  const nextSession =
+    currentIdx >= 0 && currentIdx < allSessions.length - 1
+      ? allSessions[currentIdx + 1]
+      : null;
 
   const isLocked = (s: LearningSession) => s.status === "locked";
 
+  const handleToggleTranslation = async () => {
+    if (displayTranslations) {
+      setDisplayTranslations(null);
+      setTranslationError(null);
+      return;
+    }
+    setIsTranslating(true);
+    setTranslationError(null);
+    try {
+      const translated = await translateLearningDisplay({
+        locale: "vi",
+        items: buildLearningDisplayTranslationItems(session),
+      });
+      setDisplayTranslations(translated);
+    } catch (cause) {
+      setTranslationError(
+        cause instanceof Error
+          ? cause.message
+          : t("learning.session.translationFailed"),
+      );
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleToggleChecklistItem = (sectionId: string, item: string) => {
+    setProgressSaveError(null);
     locallyChangedProgressRef.current = true;
     setProgressSessionId(session.id);
     const baseProgress = progressBelongsToCurrentSession ? progressRef.current : visibleProgress;
@@ -2681,7 +2921,12 @@ export function SessionDetail({ session }: SessionDetailProps) {
           suppressNextProgressSaveRef.current = true;
           setProgress(hydrated);
         })
-        .catch(() => undefined);
+        .catch(() => {
+          progressRef.current = baseProgress;
+          suppressNextProgressSaveRef.current = true;
+          setProgress(baseProgress);
+          setProgressSaveError(progressSaveFailedMessage);
+        });
     }
   };
 
@@ -2819,9 +3064,49 @@ export function SessionDetail({ session }: SessionDetailProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {session.status !== "locked" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleToggleTranslation()}
+              disabled={isTranslating}
+              className="rounded-xl border-slate-200 text-slate-600"
+              title={translationError ?? undefined}
+            >
+              {isTranslating ? (
+                <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
+              ) : (
+                <Languages className="h-4 w-4 sm:mr-1.5" />
+              )}
+              <span className="hidden sm:inline">
+                {displayTranslations
+                  ? t("learning.session.viewOriginal")
+                  : t("learning.session.translateToVietnamese")}
+              </span>
+            </Button>
+          ) : null}
+          {session.status !== "locked" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="rounded-xl border-slate-200 text-slate-600 xl:hidden"
+            >
+              <PanelLeftOpen className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">
+                {t("learning.session.lessons")}
+              </span>
+            </Button>
+          )}
           {!isSidebarOpen && session.status !== "locked" && (
-            <Button variant="outline" size="sm" onClick={() => setIsSidebarOpen(true)} className="rounded-xl border-slate-200 text-slate-600">
-              <PanelLeftOpen className="w-4 h-4 mr-2" /> {t("learning.session.lessons")}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSidebarOpen(true)}
+              className="hidden rounded-xl border-slate-200 text-slate-600 xl:inline-flex"
+            >
+              <PanelLeftOpen className="mr-2 h-4 w-4" />
+              {t("learning.session.lessons")}
             </Button>
           )}
 
@@ -2835,7 +3120,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
           {session.status !== "locked" && !isCompleted && (
             <Button
               size="sm"
-              onClick={handleComplete}
+              onClick={() => void handleComplete()}
+              disabled={isCompleting}
               className="rounded-xl gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -2849,6 +3135,36 @@ export function SessionDetail({ session }: SessionDetailProps) {
           )}
         </div>
       </div>
+      {translationError ? (
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 lg:px-6"
+        >
+          {translationError}
+        </div>
+      ) : null}
+      {progressSaveError ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 lg:px-6"
+        >
+          <span>{progressSaveError}</span>
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-2"
+            onClick={() => setProgressSaveError(null)}
+          >
+            {t("learning.session.close")}
+          </button>
+        </div>
+      ) : isSavingProgress ? (
+        <div
+          role="status"
+          className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs text-slate-500 lg:px-6"
+        >
+          {t("learning.session.savingProgress")}
+        </div>
+      ) : null}
 
       {/* Locked overlay */}
       {session.status === "locked" && (
@@ -2866,20 +3182,63 @@ export function SessionDetail({ session }: SessionDetailProps) {
         </div>
       )}
 
+      {session.status !== "locked" && completionError && (
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 lg:px-6"
+        >
+          {completionError}
+        </div>
+      )}
+
       {/* Main 3-column layout: sidebar (sticky) + content (scrollable) + AI chat (sticky) */}
       {session.status !== "locked" && (
-        <div className="flex flex-1 overflow-hidden relative bg-white">
+        <div className="relative flex min-w-0 flex-1 overflow-hidden bg-white">
           {/* Left sidebar — sticky */}
           {isSidebarOpen && (
-            <SessionSidebar
-              session={displaySession}
-              activeSectionId={activeSectionId}
-              progress={visibleProgress}
-              onSelectSection={handleSelectSection}
-              onToggle={() => setIsSidebarOpen(false)}
-              showValidationErrors={showValidationErrors}
-            />
+            <div className="hidden h-full w-72 shrink-0 border-r border-slate-200 bg-white xl:block">
+              <SessionSidebar
+                session={displaySession}
+                activeSectionId={activeSectionId}
+                progress={visibleProgress}
+                onSelectSection={handleSelectSection}
+                activeMode={activeMode}
+                onSelectMode={setActiveMode}
+                onToggle={() => setIsSidebarOpen(false)}
+                showValidationErrors={showValidationErrors}
+              />
+            </div>
           )}
+
+          <Sheet
+            open={isMobileSidebarOpen}
+            onOpenChange={setIsMobileSidebarOpen}
+          >
+            <SheetContent
+              side="left"
+              className="w-[min(88vw,20rem)] max-w-none p-0 xl:hidden"
+            >
+              <SheetTitle className="sr-only">
+                {t("learning.session.lessons")}
+              </SheetTitle>
+              <SessionSidebar
+                session={displaySession}
+                activeSectionId={activeSectionId}
+                progress={visibleProgress}
+                onSelectSection={(sectionId) => {
+                  handleSelectSection(sectionId);
+                  setIsMobileSidebarOpen(false);
+                }}
+                activeMode={activeMode}
+                onSelectMode={(mode) => {
+                  setActiveMode(mode);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onToggle={() => setIsMobileSidebarOpen(false)}
+                showValidationErrors={showValidationErrors}
+              />
+            </SheetContent>
+          </Sheet>
 
           {/* Center content — scrollable */}
           <MainContentPanel
@@ -2897,6 +3256,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
             adaptiveQuiz={adaptiveQuiz}
             showValidationErrors={showValidationErrors}
             onOpenSandboxWithSection={handleOpenSandboxWithSection}
+            onComplete={() => void handleComplete()}
+            onShowIncomplete={handleShowIncomplete}
+            isCompleting={isCompleting}
+            activeMode={activeMode}
+            onActiveModeChange={setActiveMode}
           />
 
           {/* Right AI Chat Panel — sticky */}

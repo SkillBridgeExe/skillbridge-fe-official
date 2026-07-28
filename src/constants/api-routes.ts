@@ -132,10 +132,15 @@ export const API_ROUTES = {
     ROADMAP_DRAFT: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/draft`,
     ROADMAP_PREVIEW: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/preview`,
     ROADMAP_GENERATE: (roadmapId: string) => `${API}/learning/roadmaps/${roadmapId}/generate`,
+    ROADMAP_RESCHEDULE: (roadmapId: string) =>
+      `${API}/learning/roadmaps/${roadmapId}/reschedule`,
+    TRANSLATE_DISPLAY: `${API}/learning/translate-display`,
     CHAT: `${API}/learning/chat`,
     CHAT_HISTORY: (conversationId: string) => `${API}/learning/chat/${conversationId}`,
     SESSION_PROGRESS: (sessionId: string) =>
       `${API}/learning/sessions/${encodeURIComponent(sessionId)}/progress`,
+    COMPLETE_SESSION: (sessionId: string) =>
+      `${API}/learning/sessions/${encodeURIComponent(sessionId)}/complete`,
     QUIZ_ANSWER: (sessionId: string) =>
       `${API}/learning/sessions/${encodeURIComponent(sessionId)}/quiz/answer`,
     NEXT_QUESTIONS: (sessionId: string, skill: string) =>

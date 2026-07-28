@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Calendar, GitBranch, Info, LayoutGrid, List, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, GitBranch, LayoutGrid, List, Sparkles } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,15 @@ import {
   SkillRoadmapMapView,
 } from "@/components/learning";
 import { AIChatbot } from "@/components/learning/AIChatbot";
-import { useRoadmapStore } from "@/components/learning/roadmap-store";
+import {
+  useActiveRoadmapV2,
+  useRoadmapStore,
+} from "@/components/learning/roadmap-store";
+import { getLearningPageState } from "@/components/learning/learning-page-state";
 import { LearningRoadmapWizard } from "@/components/learning/LearningRoadmapWizard";
+import { useActiveLearningRoadmapBootstrap } from "@/components/learning/use-active-learning-roadmap";
 import {
   archiveActiveLearningRoadmap,
-  getActiveLearningRoadmap,
-  listLearningRoadmaps,
 } from "@/services/learning-roadmaps-v2.service";
 
 type ViewMode = "map" | "overview" | "grid" | "list";
@@ -36,37 +39,20 @@ export default function Learning() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<ViewMode>("map");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(true);
   const [isArchivingRoadmap, setIsArchivingRoadmap] = useState(false);
-  const { activeRoadmap, composedRoadmap, isAIGenerated, clearRoadmap, setActiveRoadmap } =
-    useRoadmapStore();
-  const hasRoadmap = Boolean(activeRoadmap || composedRoadmap);
-  const moduleCount = activeRoadmap?.modules.length ?? composedRoadmap?.steps.length ?? 0;
+  const activeRoadmap = useActiveRoadmapV2();
+  const clearRoadmap = useRoadmapStore((state) => state.clearRoadmap);
+  const setActiveRoadmap = useRoadmapStore((state) => state.setActiveRoadmap);
+  const roadmapBootstrap = useActiveLearningRoadmapBootstrap();
+  const hasRoadmap = Boolean(activeRoadmap);
+  const pageState = getLearningPageState(roadmapBootstrap.status, hasRoadmap);
+  const moduleCount = activeRoadmap?.modules.length ?? 0;
   const totalHours = activeRoadmap
     ? Math.round(
         (activeRoadmap.modules.reduce((sum, module) => sum + module.estimated_minutes, 0) / 60) *
           10,
       ) / 10
-    : composedRoadmap?.budget_hours ?? 0;
-
-  useEffect(() => {
-    let cancelled = false;
-    listLearningRoadmaps()
-      .then((roadmaps) => {
-        const active = roadmaps.find((roadmap) => roadmap.status === "ACTIVE");
-        return active ? getActiveLearningRoadmap(active.id) : null;
-      })
-      .then((roadmap) => {
-        if (!cancelled && roadmap) setActiveRoadmap(roadmap);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setIsLoadingRoadmap(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [setActiveRoadmap]);
+    : 0;
 
   const handleClearRoadmap = async () => {
     if (!activeRoadmap) {
@@ -104,12 +90,20 @@ export default function Learning() {
                   </h1>
                   {hasRoadmap && (
                     <Badge className="flex items-center gap-1 border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
-                      <Sparkles className="h-3 w-3" /> {t("learning.page.aiGenerated")}
+                      <Sparkles className="h-3 w-3" />{" "}
+                      {activeRoadmap?.content_source === "AI_ENHANCED"
+                        ? t("learning.page.contentSourceAi")
+                        : t("learning.page.contentSourceStandard")}
                     </Badge>
                   )}
-                  <button className="h-5 w-5 text-slate-400 hover:text-primary" aria-label={t("learning.page.info")}>
-                    <Info className="h-5 w-5" />
-                  </button>
+                  {activeRoadmap ? (
+                    <Badge variant="outline" className="text-xs">
+                      {activeRoadmap.learning_track === "FAST_TRACK"
+                        ? t("learning.page.trackFast")
+                        : t("learning.page.trackFoundation")}{" "}
+                      · {activeRoadmap.coverage_percentage}%
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="text-sm text-slate-500">
                   {hasRoadmap
@@ -122,7 +116,7 @@ export default function Learning() {
               </div>
 
               <div className="flex w-full flex-col gap-2 min-[420px]:flex-row sm:w-auto sm:flex-shrink-0 sm:items-center">
-                {isAIGenerated && (
+                {activeRoadmap && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -143,39 +137,13 @@ export default function Learning() {
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setActiveView("list")}
                   className="w-full rounded-full border-slate-200 text-sm font-semibold text-slate-700 min-[420px]:w-auto"
                 >
                   <BookOpen className="mr-2 h-4 w-4" /> {t("learning.page.viewSyllabus")}
                 </Button>
               </div>
             </header>
-
-            {composedRoadmap?.ai_summary && (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
-                <p className="text-sm leading-relaxed text-amber-800">
-                  <span className="font-semibold">{t("learning.page.aiTip")} </span>
-                  {composedRoadmap.ai_summary}
-                </p>
-              </div>
-            )}
-
-            {composedRoadmap?.not_feasible_items.length ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-bold text-slate-900">{t("learning.page.notFeasible")}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {composedRoadmap.not_feasible_items.map((item) => (
-                    <Badge
-                      key={item.skill_canonical}
-                      variant="outline"
-                      className="border-amber-200 bg-amber-50 text-amber-700"
-                    >
-                      {item.display_name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             {hasRoadmap && (
               <div className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:mx-0 sm:w-fit">
@@ -199,16 +167,30 @@ export default function Learning() {
               </div>
             )}
 
-            {isLoadingRoadmap && !hasRoadmap ? (
+            {pageState === "loading" ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-                {t("common.loading", { defaultValue: "Loading..." })}
+                {t("learning.page.loading", { defaultValue: "Loading..." })}
               </div>
-            ) : hasRoadmap ? (
+            ) : pageState === "content" ? (
               <div className="animate-in fade-in duration-300">
                 {activeView === "map" && <SkillRoadmapMapView />}
                 {activeView === "overview" && <OverviewView />}
                 {activeView === "grid" && <GridRoadmapView />}
                 {activeView === "list" && <ListRoadmapView />}
+              </div>
+            ) : pageState === "error" ? (
+              <div className="rounded-2xl border border-red-200 bg-white p-8 text-center">
+                <p role="alert" className="text-sm text-red-600">
+                  {roadmapBootstrap.error?.message ||
+                    t("learning.page.loadError")}
+                </p>
+                <Button
+                  type="button"
+                  onClick={roadmapBootstrap.retry}
+                  className="mt-4 rounded-full font-semibold"
+                >
+                  {t("learning.page.retry")}
+                </Button>
               </div>
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">

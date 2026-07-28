@@ -17,7 +17,6 @@ export const Dashboard = lazy(() => import("@/pages/user/Dashboard"));
 export const UserProfile = lazy(() => import("@/pages/user/Profile"));
 export const Diagnosis = lazy(() => import("@/pages/user/Diagnosis"));
 export const Learning = lazy(() => import("@/pages/user/Learning"));
-export const LearningComingSoon = lazy(() => import("@/pages/user/LearningComingSoon"));
 export const Practice = lazy(() => import("@/pages/user/Practice"));
 export const LearningSession = lazy(() => import("@/pages/user/LearningSession"));
 export const Interview = lazy(() => import("@/pages/user/Interview"));

@@ -4,13 +4,30 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionDetail } from "./SessionDetail";
 import type { LearningSession } from "./types";
+import { ApiError } from "@/lib/api-error";
 
 const authMocks = vi.hoisted(() => ({
   hasApiAuthSession: vi.fn(() => false),
 }));
 
+const navigationMocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
+}));
+
+const roadmapStoreMocks = vi.hoisted(() => ({
+  applySessionCompletion: vi.fn(),
+  setActiveRoadmap: vi.fn(),
+  setWeekPlans: vi.fn(),
+}));
+
+const learningV2Mocks = vi.hoisted(() => ({
+  getCurrentActiveLearningRoadmap: vi.fn(),
+  translateLearningDisplay: vi.fn(),
+}));
+
 const learningServiceMocks = vi.hoisted(() => ({
   answerLearningQuizQuestion: vi.fn(),
+  completeLearningSession: vi.fn(),
   getLearningNextQuestions: vi.fn(),
   getLearningSessionProgress: vi.fn(),
   patchLearningChecklistItem: vi.fn(),
@@ -26,6 +43,7 @@ vi.mock("react-i18next", () => ({
       const labels: Record<string, string> = {
         "learning.common.pageOf": `Page ${options?.current} / ${options?.total}`,
         "learning.session.recommendedCourses": "Recommended courses",
+        "learning.session.recommendedResources": "Recommended learning resources",
         "learning.session.savedCourses": "Saved courses",
         "learning.session.documentation": "Documentation",
         "learning.session.minRead": `${options?.count} min read`,
@@ -38,6 +56,7 @@ vi.mock("react-i18next", () => ({
         "learning.session.done": "Done",
         "learning.session.nextSection": "Next section",
         "learning.session.continue": "Continue",
+        "learning.session.completeRequiredWork": "Complete required work",
         "learning.session.backToRoadmap": "Back to roadmap",
         "learning.common.session": `Session ${options?.number}`,
         "learning.session.previous": "Previous",
@@ -55,6 +74,11 @@ vi.mock("react-i18next", () => ({
         "learning.session.correctCount": `${options?.correct} / ${options?.total} correct`,
         "learning.session.checkAnswers": "Check answer",
         "learning.session.questionCount": `${options?.count} questions`,
+        "learning.session.translateToVietnamese": "Translate to Vietnamese",
+        "learning.session.viewOriginal": "View original",
+        "learning.session.progressSaveFailed":
+          "Không thể lưu tiến độ. Vui lòng thử lại.",
+        "learning.session.close": "Đóng",
       };
       // useLearningChatCompanion (Task M3) requests the static suggestion chips
       // with { returnObjects: true } — this fake `t` otherwise only ever returns
@@ -69,7 +93,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("react-router-dom", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigationMocks.navigate,
 }));
 
 vi.mock("@posthog/react", () => ({
@@ -79,8 +103,10 @@ vi.mock("@posthog/react", () => ({
 vi.mock("@/components/learning/roadmap-store", () => ({
   useActiveWeekPlans: () => [],
   useRoadmapStore: () => ({
+    applySessionCompletion: roadmapStoreMocks.applySessionCompletion,
+    setActiveRoadmap: roadmapStoreMocks.setActiveRoadmap,
     weekPlans: [],
-    setWeekPlans: vi.fn(),
+    setWeekPlans: roadmapStoreMocks.setWeekPlans,
   }),
 }));
 
@@ -89,6 +115,7 @@ vi.mock("@/services/auth-session.service", () => ({
 }));
 
 vi.mock("@/services/learning-roadmap.service", () => learningServiceMocks);
+vi.mock("@/services/learning-roadmaps-v2.service", () => learningV2Mocks);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -112,6 +139,17 @@ beforeEach(() => {
     exerciseProofs: {},
     quizAttempts: {},
   });
+  learningServiceMocks.completeLearningSession.mockResolvedValue({
+    session_id: "session-ready",
+    status: "COMPLETED",
+    module_completed: true,
+    next_session_id: "session-next",
+    unlocked_session_ids: ["session-next"],
+  });
+  learningV2Mocks.getCurrentActiveLearningRoadmap.mockResolvedValue({
+    id: "roadmap-refreshed",
+    status: "ACTIVE",
+  });
 });
 
 afterEach(() => {
@@ -119,13 +157,13 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const makeCourse = (index: number) => ({
-  id: `course-${index}`,
-  title: `Course ${index}`,
-  url: `https://example.test/course-${index}`,
-  provider: "SkillBridge",
+const makeResource = (index: number) => ({
+  id: `resource-${index}`,
+  title: `Resource ${index}`,
+  url: `https://example.test/resource-${index}`,
+  type: "course" as const,
+  platform: "SkillBridge",
   duration: "1h",
-  isFree: true,
 });
 
 const session: LearningSession = {
@@ -157,8 +195,8 @@ const session: LearningSession = {
       type: "reading",
     },
   ],
-  resources: [],
-  recommendedCourses: Array.from({ length: 9 }, (_, index) => makeCourse(index + 1)),
+  resources: Array.from({ length: 9 }, (_, index) => makeResource(index + 1)),
+  recommendedCourses: [],
 };
 
 const sqlDocVideoSession: LearningSession = {
@@ -234,25 +272,28 @@ const sqlDocVideoSession: LearningSession = {
 };
 
 describe("SessionDetail", () => {
-  it("resets recommended-course pagination when the active section changes", () => {
+  it("resets resource pagination when the active section changes", () => {
     render(<SessionDetail session={session} />);
+    const resourcePanel = screen.getByRole("complementary", {
+      name: "Recommended learning resources",
+    });
 
-    expect(screen.getByText("Course 1")).toBeInTheDocument();
-    expect(screen.queryByText("Course 9")).not.toBeInTheDocument();
+    expect(within(resourcePanel).getByText("Resource 1")).toBeInTheDocument();
+    expect(within(resourcePanel).queryByText("Resource 9")).not.toBeInTheDocument();
 
-    const pagination = screen.getByText("Page 1 / 2").parentElement;
+    const pagination = within(resourcePanel).getByText("Page 1 / 2").parentElement;
     expect(pagination).not.toBeNull();
     const [, nextPageButton] = within(pagination as HTMLElement).getAllByRole("button");
     fireEvent.click(nextPageButton);
 
-    expect(screen.getByText("Page 2 / 2")).toBeInTheDocument();
-    expect(screen.getByText("Course 9")).toBeInTheDocument();
+    expect(within(resourcePanel).getByText("Page 2 / 2")).toBeInTheDocument();
+    expect(within(resourcePanel).getByText("Resource 9")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: /Section Two/ })[0]);
 
-    expect(screen.getByText("Page 1 / 2")).toBeInTheDocument();
-    expect(screen.getByText("Course 1")).toBeInTheDocument();
-    expect(screen.queryByText("Course 9")).not.toBeInTheDocument();
+    expect(within(resourcePanel).getByText("Page 1 / 2")).toBeInTheDocument();
+    expect(within(resourcePanel).getByText("Resource 1")).toBeInTheDocument();
+    expect(within(resourcePanel).queryByText("Resource 9")).not.toBeInTheDocument();
   });
 
   it("shows the complete button after switching from a completed session to an in-progress session", () => {
@@ -316,6 +357,58 @@ describe("SessionDetail", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 650));
     expect(learningServiceMocks.saveLearningSessionProgress).not.toHaveBeenCalled();
+  });
+
+  it("announces translation failures instead of exposing them only as a tooltip", async () => {
+    learningV2Mocks.translateLearningDisplay.mockRejectedValueOnce(
+      new Error("Translation unavailable"),
+    );
+
+    render(<SessionDetail session={session} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Translate to Vietnamese" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Translation unavailable",
+    );
+  });
+  it("rolls back an optimistic checklist update and exposes a retryable save error", async () => {
+    authMocks.hasApiAuthSession.mockReturnValue(true);
+    learningServiceMocks.patchLearningChecklistItem.mockRejectedValueOnce(
+      new Error("Network unavailable"),
+    );
+    const checklistSession: LearningSession = {
+      ...session,
+      id: "session-checklist-error",
+      sections: [
+        {
+          id: "section-one",
+          title: "Section One",
+          completed: false,
+          exercises: 1,
+          completedExercises: 0,
+          type: "reading",
+          checklist: [{ id: "check-one", label: "Check one" }],
+        },
+      ],
+    };
+
+    render(<SessionDetail session={checklistSession} />);
+    await waitFor(() => {
+      expect(learningServiceMocks.getLearningNextQuestions).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+    fireEvent.click(screen.getByRole("button", { name: /Lab 01 Check one/ }));
+    fireEvent.change(screen.getByLabelText("Proof for Check one"), {
+      target: { value: "Completed check one with proof." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check task" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể lưu tiến độ",
+    );
+    expect(screen.queryByText("Done")).not.toBeInTheDocument();
   });
 
   it("seeks the YouTube lesson when a lesson content chapter is clicked", () => {
@@ -599,6 +692,158 @@ describe("SessionDetail", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Mark complete" })[0]);
 
     expect(screen.getByText("Done")).toBeInTheDocument();
+  });
+
+  it("completes through BE once, patches server statuses, and follows next_session_id", async () => {
+    authMocks.hasApiAuthSession.mockReturnValue(true);
+    const readySession: LearningSession = {
+      ...session,
+      id: "session-ready",
+      sections: session.sections.map((section) => ({
+        ...section,
+        completed: true,
+      })),
+    };
+
+    render(<SessionDetail session={readySession} />);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Mark complete" })[0],
+    );
+
+    await waitFor(() => {
+      expect(learningServiceMocks.completeLearningSession).toHaveBeenCalledTimes(1);
+      expect(learningServiceMocks.completeLearningSession).toHaveBeenCalledWith(
+        "session-ready",
+      );
+    });
+    expect(learningV2Mocks.getCurrentActiveLearningRoadmap).toHaveBeenCalledOnce();
+    expect(roadmapStoreMocks.setActiveRoadmap).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "roadmap-refreshed" }),
+    );
+    expect(roadmapStoreMocks.applySessionCompletion).not.toHaveBeenCalled();
+    expect(navigationMocks.navigate).toHaveBeenCalledWith(
+      "/learning/session/session-next",
+    );
+  });
+
+  it("uses BE missing-work details to return to Practice after rejection", async () => {
+    authMocks.hasApiAuthSession.mockReturnValue(true);
+    learningServiceMocks.getLearningSessionProgress.mockResolvedValue({
+      checkedChecklistItems: {
+        "select-filter": ["select-columns"],
+        "join-related": ["explicit-join"],
+      },
+      exerciseProofs: {
+        "task:select-filter:select-columns": "Selected only the needed columns.",
+        "task:join-related:explicit-join": "Used an explicit join with matching keys.",
+      },
+      quizAttempts: {},
+    });
+    learningServiceMocks.completeLearningSession.mockRejectedValue(
+      new ApiError("Complete required work", null, {
+        missing_section_ids: [],
+        missing_checklist_item_ids: ["select-filter:select-columns"],
+        missing_exercise_ids: [],
+      }),
+    );
+
+    render(<SessionDetail session={sqlDocVideoSession} />);
+    await waitFor(() => {
+      expect(
+        learningServiceMocks.getLearningSessionProgress,
+      ).toHaveBeenCalledWith(sqlDocVideoSession.id);
+    });
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Mark complete" })[0],
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Complete required work",
+      );
+      expect(screen.getByRole("tab", { name: "Practice" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+    expect(learningServiceMocks.completeLearningSession).toHaveBeenCalledTimes(1);
+    expect(roadmapStoreMocks.applySessionCompletion).not.toHaveBeenCalled();
+  });
+
+  it("continues from the final learning section into Practice instead of disabling", () => {
+    render(<SessionDetail session={{ ...session, recommendedCourses: [] }} />);
+
+    const continueButton = screen.getByRole("button", { name: /Continue/ });
+    fireEvent.click(continueButton);
+    expect(screen.getAllByRole("button", { name: /Section Two/ })[0]).toHaveClass(
+      "bg-primary",
+    );
+
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+
+    expect(screen.getByRole("tab", { name: "Practice" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("keeps Continue actionable and focuses the first missing proof", async () => {
+    render(<SessionDetail session={sqlDocVideoSession} />);
+    const lessonList = screen.getByLabelText("Session lesson list");
+    fireEvent.click(
+      within(lessonList).getByRole("button", { name: /Select and filter/ }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Practice" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Complete required work",
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/Proof for Select only needed columns/),
+      ).toHaveFocus();
+    });
+  });
+
+  it("renders session resources in the responsive recommendation panel", () => {
+    render(
+      <SessionDetail
+        session={{
+          ...session,
+          recommendedCourses: [],
+          resources: [
+            {
+              id: "html-course",
+              title: "Accessible HTML course",
+              url: "https://example.test/html",
+              type: "course",
+              platform: "SkillBridge",
+            },
+          ],
+        }}
+      />,
+    );
+
+    const panel = screen.getByRole("complementary", {
+      name: "Recommended learning resources",
+    });
+    expect(within(panel).getByText("Accessible HTML course")).toBeInTheDocument();
+  });
+
+  it("omits the recommendation panel when a session has no resources", () => {
+    render(
+      <SessionDetail
+        session={{ ...session, recommendedCourses: [], resources: [] }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("complementary", {
+        name: "Recommended learning resources",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("uses video duration and hides the full-video row when timeline chapters are missing", () => {

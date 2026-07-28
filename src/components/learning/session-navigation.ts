@@ -1,4 +1,4 @@
-import type { LearningSection } from "./types";
+import type { LearningSection, LearningSession, WeekPlan } from "./types";
 
 type ScrollableSectionElement = {
   scrollIntoView: (arg?: boolean | ScrollIntoViewOptions) => void;
@@ -30,4 +30,27 @@ export function selectLearningSection(
       block: "start",
     });
   }
+}
+
+export function orderLearningSessions(weeks: WeekPlan[]): LearningSession[] {
+  return [...weeks]
+    .sort((a, b) => a.weekNumber - b.weekNumber)
+    .flatMap((week) =>
+      [...week.sessions].sort(
+        (a, b) =>
+          a.sessionNumber - b.sessionNumber ||
+          (a.scheduledStartAt ?? "").localeCompare(b.scheduledStartAt ?? "") ||
+          a.id.localeCompare(b.id),
+      ),
+    );
+}
+
+export function getOfflineNextLearningSessionId(
+  sessions: LearningSession[],
+  currentSessionId: string,
+): string | null {
+  const currentIndex = sessions.findIndex(
+    (session) => session.id === currentSessionId,
+  );
+  return currentIndex >= 0 ? (sessions[currentIndex + 1]?.id ?? null) : null;
 }

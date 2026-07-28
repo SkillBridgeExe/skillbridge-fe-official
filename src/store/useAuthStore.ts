@@ -174,6 +174,7 @@ export const useAuthStore = create<AuthState>()(
           clearAccessToken();
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
+          localStorage.removeItem("roadmap-store");
           set({
             authStatus: "anonymous",
             authSource: null,
@@ -201,6 +202,7 @@ export const useAuthStore = create<AuthState>()(
           // Key literal matches useCvBuilderStore's persist `name`.
           try {
             localStorage.removeItem("skillbridge-cv-studio");
+            localStorage.removeItem("roadmap-store");
           } catch {
             // storage unavailable — nothing persisted to clear
           }

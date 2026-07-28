@@ -1,6 +1,3 @@
-export { ModeCard } from "./ModeCard";
-export { LockedContent } from "./LockedContent";
-export { WeeklyPlan } from "./WeeklyPlan";
 export { AIChatbot } from "./AIChatbot";
 export { SessionDetail } from "./SessionDetail";
 export { LearningSidebar } from "./LearningSidebar";

@@ -10,3 +10,11 @@ export function canUsePersistedRoadmap(
 ): boolean {
   return Boolean(ownerUserId && currentUserId && ownerUserId === currentUserId);
 }
+
+export function selectOwnedRoadmap<T>(
+  roadmap: T | null,
+  ownerUserId: string | null | undefined,
+  currentUserId: string | null | undefined,
+): T | null {
+  return canUsePersistedRoadmap(ownerUserId, currentUserId) ? roadmap : null;
+}
