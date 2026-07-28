@@ -6,7 +6,9 @@ import {
   getMyUsageApi,
   getOrderStatusApi,
   reconcileOrderApi,
+  validateVoucherApi,
   type CreateCheckoutDto,
+  type ValidateVoucherDto,
 } from "@/api/billing";
 import { hasApiAuthSession } from "@/services/auth-session.service";
 
@@ -18,7 +20,10 @@ export type {
   CreateCheckoutDto,
   MeEntitlementDto,
   OrderStatusResponseDto,
+  PricingBreakdownDto,
   SubscriptionResponseDto,
+  ValidateVoucherDto,
+  VoucherQuoteDto,
 } from "@/api/billing";
 
 export function getBillingPlans() {
@@ -30,6 +35,13 @@ export function createCheckout(payload: CreateCheckoutDto) {
     throw new Error("Please sign in with a real account to continue checkout.");
   }
   return createCheckoutApi(payload);
+}
+
+export function validateVoucher(payload: ValidateVoucherDto) {
+  if (!hasApiAuthSession()) {
+    throw new Error("Please sign in with a real account to validate a voucher.");
+  }
+  return validateVoucherApi(payload);
 }
 
 export function getOrderStatus(orderCode: string | number) {

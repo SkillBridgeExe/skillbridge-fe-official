@@ -152,6 +152,7 @@ export const API_ROUTES = {
   BILLING: {
     PLANS: `${API}/billing/plans`,
     CHECKOUT: `${API}/billing/checkout`,
+    VALIDATE_VOUCHER: `${API}/billing/vouchers/validate`,
     ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}`,
     RECONCILE_ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}/reconcile`,
     MY_SUBSCRIPTION: `${API}/billing/me/subscription`,
@@ -160,6 +161,8 @@ export const API_ROUTES = {
 
   ADMIN_BILLING: {
     PLANS: `${API}/admin/billing/plans`,
+    VOUCHERS: `${API}/admin/billing/vouchers`,
+    VOUCHER: (id: string) => `${API}/admin/billing/vouchers/${id}`,
     FEATURES: `${API}/admin/billing/features`,
     PLAN: (code: string) => `${API}/admin/billing/plans/${code}`,
     PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,

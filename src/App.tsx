@@ -125,6 +125,7 @@ const router = createBrowserRouter(
                 <Route path="billing/plans" element={<Pages.AdminBillingPlans />} />
                 <Route path="billing/orders" element={<Pages.AdminBillingOrders />} />
                 <Route path="billing/subscriptions" element={<Pages.AdminBillingSubscriptions />} />
+                <Route path="billing/vouchers" element={<Pages.AdminBillingVouchers />} />
                 <Route path="billing/mentor-bookings" element={<Pages.AdminBillingMentorBookings />} />
                 <Route path="reports" element={<Pages.AdminJobReports />} />
                 <Route path="business-profiles" element={<Pages.AdminBusinessProfiles />} />

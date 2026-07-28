@@ -49,6 +49,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       { key: "billing-plans", label: "Plans", href: "/admin/billing/plans" },
       { key: "billing-orders", label: "Orders", href: "/admin/billing/orders" },
       { key: "billing-subscriptions", label: "Subscriptions", href: "/admin/billing/subscriptions" },
+      { key: "billing-vouchers", label: "Vouchers", href: "/admin/billing/vouchers" },
     ],
   },
 ];
@@ -78,6 +79,7 @@ export default function AdminSidebar({
       "billing-plans": t("billing.admin.nav.plans"),
       "billing-orders": t("billing.admin.nav.orders"),
       "billing-subscriptions": t("billing.admin.nav.subscriptions"),
+      "billing-vouchers": t("billing.admin.nav.vouchers"),
     };
     return labels[key] ?? fallback;
   };

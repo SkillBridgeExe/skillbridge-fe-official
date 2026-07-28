@@ -106,6 +106,14 @@ describe("billing checkout helpers", () => {
       paidAt: null,
       createdAt: "2026-06-16T15:39:00.000Z",
       expiresAt: null,
+      pricing: {
+        originalAmountVnd: 10000,
+        discountPercent: 0,
+        discountAmountVnd: 0,
+        finalAmountVnd: 10000,
+        voucherCode: null,
+        currency: "VND",
+      },
     };
     const items = getPublicCheckoutSummaryItems(order);
 
@@ -137,6 +145,14 @@ describe("billing checkout helpers", () => {
       paidAt: "2026-06-16T15:39:00.000Z",
       createdAt: "2026-06-16T15:39:00.000Z",
       expiresAt: null,
+      pricing: {
+        originalAmountVnd: 10000,
+        discountPercent: 0,
+        discountAmountVnd: 0,
+        finalAmountVnd: 10000,
+        voucherCode: null,
+        currency: "VND",
+      },
     };
 
     expect(shouldCaptureSubscriptionPaymentPaid(baseOrder)).toBe(true);
@@ -166,6 +182,14 @@ describe("billing checkout helpers", () => {
       paidAt: "2026-06-16T15:39:00.000Z",
       createdAt: "2026-06-16T15:39:00.000Z",
       expiresAt: null,
+      pricing: {
+        originalAmountVnd: 500000,
+        discountPercent: 0,
+        discountAmountVnd: 0,
+        finalAmountVnd: 500000,
+        voucherCode: null,
+        currency: "VND",
+      },
     };
 
     expect(getMentorCheckoutStage(baseOrder)).toEqual({

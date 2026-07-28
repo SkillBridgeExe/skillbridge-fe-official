@@ -1,18 +1,24 @@
 import {
   createAdminBillingPlanApi,
+  createAdminVoucherApi,
   getAdminBillingFeaturesApi,
   getAdminBillingPlansApi,
   getAdminPaymentOrdersApi,
   getAdminSubscriptionsApi,
+  getAdminVouchersApi,
   replaceAdminPlanFeaturesApi,
   updateAdminPlanFeatureApi,
   updateAdminBillingPlanApi,
+  updateAdminVoucherApi,
   type AdminOrdersQuery,
   type AdminSubscriptionsQuery,
   type CreateAdminBillingPlanDto,
+  type CreateAdminVoucherDto,
   type ReplaceAdminPlanFeaturesDto,
   type UpdateAdminPlanFeatureDto,
   type UpdateAdminBillingPlanDto,
+  type UpdateAdminVoucherDto,
+  type AdminVouchersQuery,
 } from "@/api/admin-billing";
 
 export type {
@@ -22,10 +28,15 @@ export type {
   AdminPlanFeatureInput,
   AdminSubscriptionDto,
   AdminSubscriptionsQuery,
+  AdminVoucherDto,
+  AdminVouchersQuery,
+  AdminVoucherStatus,
   CreateAdminBillingPlanDto,
+  CreateAdminVoucherDto,
   ReplaceAdminPlanFeaturesDto,
   UpdateAdminPlanFeatureDto,
   UpdateAdminBillingPlanDto,
+  UpdateAdminVoucherDto,
 } from "@/api/admin-billing";
 export type { BillingPlanDto } from "@/api/billing";
 
@@ -63,4 +74,16 @@ export function getAdminPaymentOrders(query: AdminOrdersQuery) {
 
 export function getAdminSubscriptions(query: AdminSubscriptionsQuery) {
   return getAdminSubscriptionsApi(query);
+}
+
+export function getAdminVouchers(query: AdminVouchersQuery) {
+  return getAdminVouchersApi(query);
+}
+
+export function createAdminVoucher(payload: CreateAdminVoucherDto) {
+  return createAdminVoucherApi(payload);
+}
+
+export function updateAdminVoucher(id: string, payload: UpdateAdminVoucherDto) {
+  return updateAdminVoucherApi(id, payload);
 }
