@@ -203,13 +203,18 @@ function sourceTypeToUiType(
   return "course";
 }
 
-export function toSessionResource(resource: LearningResourceDto) {
+type PresentedLearningResourceDto = LearningResourceDto & {
+  duration_kind?: "EXACT" | "ESTIMATED" | "UNKNOWN";
+  recommended_minutes?: number;
+};
+
+export function toSessionResource(resource: PresentedLearningResourceDto) {
   return {
     id: resource.id,
     title: resource.title,
     url: resource.url ?? "",
     type: sourceTypeToUiType(resource.source_type),
-    duration: formatHours(resource.duration_minutes),
+    duration: formatPresentedResourceDuration(resource),
     platform: sourcePlatform(resource),
     isInternal: resource.is_internal,
     lowConfidence: resource.low_confidence,
@@ -228,6 +233,18 @@ export function toSessionResource(resource: LearningResourceDto) {
       objectiveId: chapter.objective_id,
     })),
   };
+}
+
+function formatPresentedResourceDuration(
+  resource: PresentedLearningResourceDto,
+): string | undefined {
+  if (resource.duration_kind === "UNKNOWN") return undefined;
+  const minutes = resource.recommended_minutes ?? resource.duration_minutes;
+  if (!Number.isFinite(minutes) || minutes <= 0) return undefined;
+  const formatted = formatHours(minutes);
+  return resource.duration_kind === "ESTIMATED"
+    ? `Khoảng ${formatted}`
+    : formatted;
 }
 
 function toModuleResource(resource: LearningResourceDto) {

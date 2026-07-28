@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCadenceDraft,
   buildPrioritySelection,
-  buildScheduleDraft,
 } from "./learning-roadmap-wizard-state";
 
 const candidates = [
@@ -36,30 +36,25 @@ describe("learning roadmap wizard state", () => {
     ]);
   });
 
-  it("builds ISO weekday slots and rejects an empty schedule", () => {
+  it("builds a deadline-free cadence and rejects an invalid frequency", () => {
     expect(
-      buildScheduleDraft({
+      buildCadenceDraft({
         timezone: "Asia/Ho_Chi_Minh",
-        deadline: "2026-09-01",
-        sessionMinutes: 60,
-        weekdays: [1, 3, 5],
-        startTime: "19:00",
-        slotMinutes: 90,
-      }).slots,
-    ).toEqual([
-      { iso_weekday: 1, start_time: "19:00", duration_minutes: 90 },
-      { iso_weekday: 3, start_time: "19:00", duration_minutes: 90 },
-      { iso_weekday: 5, start_time: "19:00", duration_minutes: 90 },
-    ]);
-    expect(() =>
-      buildScheduleDraft({
-        timezone: "Asia/Ho_Chi_Minh",
-        deadline: "2026-09-01",
-        sessionMinutes: 60,
-        weekdays: [],
-        startTime: "19:00",
-        slotMinutes: 60,
+        startDate: "2026-09-01",
+        studyDaysPerWeek: 3,
       }),
-    ).toThrow("Choose at least one learning day");
+    ).toEqual({
+      timezone: "Asia/Ho_Chi_Minh",
+      start_date: "2026-09-01",
+      study_days_per_week: 3,
+      session_minutes: 60,
+    });
+    expect(() =>
+      buildCadenceDraft({
+        timezone: "Asia/Ho_Chi_Minh",
+        startDate: "2026-09-01",
+        studyDaysPerWeek: 0,
+      }),
+    ).toThrow("Choose between 1 and 7 learning days");
   });
 });

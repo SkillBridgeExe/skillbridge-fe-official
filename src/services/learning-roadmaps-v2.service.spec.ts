@@ -5,7 +5,9 @@ import {
   archiveActiveLearningRoadmap,
   createLearningRoadmapDraft,
   generateLearningRoadmap,
+  rescheduleLearningRoadmap,
   roadmapV2ToWeekPlans,
+  translateLearningDisplay,
   updateLearningRoadmapDraft,
   type ActiveLearningRoadmap,
 } from "./learning-roadmaps-v2.service";
@@ -77,6 +79,42 @@ describe("Learning Roadmaps V2 service", () => {
     );
   });
 
+  it("reschedules pending units and translates display text through typed routes", async () => {
+    vi.mocked(httpClient.post)
+      .mockReturnValueOnce(ok({ id: "roadmap-1", revision: 5 }) as never)
+      .mockReturnValueOnce(
+        ok([{ id: "session-title", locale: "vi", title: "Tiêu đề" }]) as never,
+      );
+
+    await rescheduleLearningRoadmap("roadmap-1", {
+      expected_revision: 4,
+      start_date: "2026-08-03",
+      study_days_per_week: 3,
+    });
+    await translateLearningDisplay({
+      locale: "vi",
+      items: [{ id: "session-title", title: "Title" }],
+    });
+
+    expect(httpClient.post).toHaveBeenNthCalledWith(
+      1,
+      API_ROUTES.LEARNING.ROADMAP_RESCHEDULE("roadmap-1"),
+      {
+        expected_revision: 4,
+        start_date: "2026-08-03",
+        study_days_per_week: 3,
+      },
+    );
+    expect(httpClient.post).toHaveBeenNthCalledWith(
+      2,
+      API_ROUTES.LEARNING.TRANSLATE_DISPLAY,
+      {
+        locale: "vi",
+        items: [{ id: "session-title", title: "Title" }],
+      },
+    );
+  });
+
   it("archives the active roadmap on the server instead of clearing only local state", async () => {
     vi.mocked(httpClient.delete).mockReturnValueOnce(
       ok({ archived: 1 }) as never,
@@ -103,6 +141,21 @@ describe("Learning Roadmaps V2 service", () => {
       revision: 3,
       target_role: "frontend_developer",
       target_level: "fresher",
+      learning_track: "FOUNDATION",
+      content_source: "AI_ENHANCED",
+      coverage_percentage: 100,
+      projection: {
+        start_date: "2026-07-26",
+        estimated_completion_date: "2026-07-29",
+        study_days_per_week: 3,
+        session_minutes: 60,
+        total_units: 3,
+        completed_units: 1,
+        planned_units_by_today: 2,
+        missed_units: 0,
+        pace_percentage: 100,
+        days_remaining: 2,
+      },
       version: {
         id: "version-1",
         version_no: 1,
@@ -118,6 +171,7 @@ describe("Learning Roadmaps V2 service", () => {
           rank: 1,
           estimated_minutes: 120,
           feasibility: "FEASIBLE",
+          prerequisite_warnings: [],
           sessions: [
             {
               id: "session-uuid-1",
@@ -166,7 +220,7 @@ describe("Learning Roadmaps V2 service", () => {
     expect(weeks[0].sessions.map((session) => session.status)).toEqual([
       "in-progress",
       "completed",
-      "locked",
+      "in-progress",
     ]);
   });
 });

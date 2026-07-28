@@ -19,6 +19,11 @@ import type { LearningRoadmap } from "@/types/user";
 
 export type LearningRoadmapIntent = "JD_APPLICATION" | "CAREER_ROLE";
 export type LearningLanguagePreference = "vi" | "en" | "both";
+export type LearningTrack = "FAST_TRACK" | "FOUNDATION";
+export type LearningContentSource =
+  | "DETERMINISTIC"
+  | "AI_ENHANCED"
+  | "DETERMINISTIC_FALLBACK";
 
 export interface LearningCandidateSkill {
   skill_canonical: string;
@@ -39,6 +44,45 @@ export interface LearningScheduleDraft {
   }>;
 }
 
+export interface LearningCadenceDraft {
+  timezone: string;
+  start_date: string;
+  study_days_per_week: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  session_minutes: 30 | 45 | 60 | 90;
+}
+
+export interface LearningProjection {
+  start_date: string;
+  estimated_completion_date: string | null;
+  study_days_per_week: number;
+  session_minutes: number;
+  total_units: number;
+  completed_units: number;
+  planned_units_by_today: number;
+  missed_units: number;
+  pace_percentage: number;
+  days_remaining: number;
+}
+
+export interface LearningPresentedResource extends LearningResourceDto {
+  provider?: string;
+  language?: string;
+  validation_status?: "verified" | "pending" | "rejected";
+  resource_role?: "PRIMARY" | "SUPPLEMENTARY";
+  duration_kind?: "EXACT" | "ESTIMATED" | "UNKNOWN";
+  language_verification?:
+    | "AUDIO_METADATA"
+    | "PUBLISHER_METADATA"
+    | "MANUAL"
+    | "UNKNOWN";
+  recommended_minutes?: number;
+  recommended_segment?: {
+    label: string;
+    chapter_ids: string[];
+    start_seconds: number;
+  };
+}
+
 export interface LearningRoadmapDraft {
   id: string;
   intent: LearningRoadmapIntent;
@@ -52,6 +96,7 @@ export interface LearningRoadmapDraft {
   candidate_skills: LearningCandidateSkill[];
   selected_priorities: Array<{ skill_canonical: string; rank: number }>;
   selected_resources: Record<string, string[]>;
+  cadence: LearningCadenceDraft | null;
   schedule: LearningScheduleDraft | null;
 }
 
@@ -59,14 +104,14 @@ export type CreateLearningRoadmapDraftRequest =
   | {
       intent: "JD_APPLICATION";
       cv_match_id: string;
-      language_pref: LearningLanguagePreference;
+      language_pref?: LearningLanguagePreference;
     }
   | {
       intent: "CAREER_ROLE";
       cv_id: string;
       target_role: string;
       target_level: "intern" | "fresher" | "mid";
-      language_pref: LearningLanguagePreference;
+      language_pref?: LearningLanguagePreference;
     };
 
 export interface UpdateLearningRoadmapDraftRequest {
@@ -74,6 +119,7 @@ export interface UpdateLearningRoadmapDraftRequest {
   language_pref?: LearningLanguagePreference;
   selected_priorities?: Array<{ skill_canonical: string; rank: number }>;
   selected_resources?: Record<string, string[]>;
+  cadence?: LearningCadenceDraft;
   schedule?: LearningScheduleDraft;
 }
 
@@ -82,22 +128,43 @@ export interface LearningRoadmapPreview {
   revision: number;
   target_role: string | null;
   summary: string;
+  learning_track: LearningTrack;
+  content_source: LearningContentSource;
   capacity_minutes: number;
   scheduled_minutes: number;
+  coverage_percentage: number;
+  cadence: LearningCadenceDraft;
+  estimated_completion_date: string | null;
   modules: Array<{
     skill_canonical: string;
     display_name: string;
     rank: number;
     estimated_minutes: number;
     feasibility: "FEASIBLE" | "DEFERRED";
-    resources: LearningResourceDto[];
+    resources: LearningPresentedResource[];
     lesson_content: SkillBridgeLessonContentDto | null;
+    quick_win_score: number;
+    scope_status: "FULL" | "CORE_ONLY" | "INTRO_ONLY" | "DEFERRED";
+    prerequisite_warnings: string[];
+    lessons: Array<{
+      id: string;
+      title: string;
+      summary: string;
+      key_points: string[];
+      estimated_minutes: number;
+      importance: "CORE" | "EXTENSION";
+      kind: "LEARN" | "PRACTICE";
+      scope_status: "INCLUDED" | "OMITTED";
+      omission_reason?: "TIME_LIMIT" | "PREREQUISITE" | "LOWER_PRIORITY";
+      content_source: LearningContentSource;
+    }>;
   }>;
   sessions: Array<{
     skill_canonical: string;
     sequence: number;
     scheduled_start_at: string;
     duration_minutes: number;
+    lesson_ids: string[];
   }>;
   deferred: Array<{ skill_canonical: string; remaining_minutes: number }>;
 }
@@ -115,6 +182,10 @@ export interface ActiveLearningRoadmap {
   revision: number;
   target_role: string | null;
   target_level: string | null;
+  learning_track: LearningTrack;
+  content_source: LearningContentSource;
+  coverage_percentage: number;
+  projection: LearningProjection;
   version: {
     id: string;
     version_no: number;
@@ -129,6 +200,7 @@ export interface ActiveLearningRoadmap {
     rank: number;
     estimated_minutes: number;
     feasibility: "FEASIBLE" | "DEFERRED";
+    prerequisite_warnings: string[];
     sessions: Array<{
       id: string;
       sequence: number;
@@ -235,6 +307,50 @@ export function archiveActiveLearningRoadmap(): Promise<{ archived: number }> {
   );
 }
 
+export interface RescheduleLearningRoadmapRequest {
+  expected_revision: number;
+  start_date: string;
+  study_days_per_week: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  session_minutes?: 30 | 45 | 60 | 90;
+}
+
+export function rescheduleLearningRoadmap(
+  roadmapId: string,
+  body: RescheduleLearningRoadmapRequest,
+): Promise<ActiveLearningRoadmap> {
+  requireSession();
+  return unwrap(
+    httpClient.post(API_ROUTES.LEARNING.ROADMAP_RESCHEDULE(roadmapId), body),
+    "Failed to reschedule the learning roadmap.",
+  );
+}
+
+export interface LearningDisplayTranslationItem {
+  id: string;
+  title?: string;
+  description?: string;
+  reason?: string;
+  summary?: string;
+}
+
+export interface TranslateLearningDisplayRequest {
+  locale: "vi" | "en";
+  items: LearningDisplayTranslationItem[];
+}
+
+export type LearningDisplayTranslationResult =
+  LearningDisplayTranslationItem & { locale: "vi" | "en" };
+
+export function translateLearningDisplay(
+  body: TranslateLearningDisplayRequest,
+): Promise<LearningDisplayTranslationResult[]> {
+  requireSession();
+  return unwrap(
+    httpClient.post(API_ROUTES.LEARNING.TRANSLATE_DISPLAY, body),
+    "Failed to translate the learning content.",
+  );
+}
+
 export function roadmapV2ToWeekPlans(
   roadmap: ActiveLearningRoadmap,
 ): WeekPlan[] {
@@ -277,9 +393,7 @@ export function roadmapV2ToWeekPlans(
             status:
               session.status === "COMPLETED"
                 ? "completed"
-                : session.status === "AVAILABLE"
-                  ? "in-progress"
-                  : "locked",
+                : "in-progress",
             stars: 0,
             maxStars: 5,
             sections: toSections(lessonContent, resources),
@@ -296,7 +410,7 @@ export function roadmapV2ToLearningRoadmap(
 ): LearningRoadmap {
   const modules = [...roadmap.modules]
     .sort((a, b) => a.rank - b.rank)
-    .map((module, index) => {
+    .map((module) => {
       const resourceTasks = module.sessions.flatMap((session) =>
         session.required_tasks.filter((task) => task.type === "resources"),
       );
@@ -310,7 +424,9 @@ export function roadmapV2ToLearningRoadmap(
           module.feasibility === "FEASIBLE"
             ? `${module.estimated_minutes} minutes scheduled`
             : `${module.estimated_minutes} minutes · needs more availability`,
-        status: index === 0 ? ("in-progress" as const) : ("locked" as const),
+        status: module.sessions.every((session) => session.status === "COMPLETED")
+          ? ("completed" as const)
+          : ("in-progress" as const),
         weekNumber: module.rank,
         estimatedHours: module.estimated_minutes / 60,
         topics: resources.slice(0, 4).map((resource) => ({
@@ -326,9 +442,19 @@ export function roadmapV2ToLearningRoadmap(
   );
   return {
     modules,
-    estimatedCompletionWeeks: Math.max(1, roadmap.modules.length),
+    estimatedCompletionWeeks: estimateCompletionWeeks(roadmap),
     totalHours: Math.round((totalMinutes / 60) * 10) / 10,
   };
+}
+
+function estimateCompletionWeeks(roadmap: ActiveLearningRoadmap): number {
+  const dates = roadmap.modules.flatMap((module) =>
+    module.sessions.map((session) => Date.parse(session.scheduled_start_at)),
+  );
+  if (dates.length < 2) return 1;
+  const first = Math.min(...dates);
+  const last = Math.max(...dates);
+  return Math.max(1, Math.ceil((last - first + 86_400_000) / (7 * 86_400_000)));
 }
 
 function toIsoWeekday(jsWeekday: number): number {

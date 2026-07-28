@@ -1,6 +1,6 @@
 import type {
+  LearningCadenceDraft,
   LearningCandidateSkill,
-  LearningScheduleDraft,
 } from "@/services/learning-roadmaps-v2.service";
 
 export function buildPrioritySelection(
@@ -20,26 +20,24 @@ export function buildPrioritySelection(
   return selected;
 }
 
-export function buildScheduleDraft(input: {
+export function buildCadenceDraft(input: {
   timezone: string;
-  deadline: string;
-  sessionMinutes: 30 | 45 | 60 | 90;
-  weekdays: number[];
-  startTime: string;
-  slotMinutes: number;
-}): LearningScheduleDraft {
-  const weekdays = [...new Set(input.weekdays)].sort((a, b) => a - b);
-  if (weekdays.length === 0)
-    throw new Error("Choose at least one learning day.");
-  if (!input.deadline) throw new Error("Choose a learning deadline.");
+  startDate: string;
+  studyDaysPerWeek: number;
+}): LearningCadenceDraft {
+  if (!input.startDate) throw new Error("Choose a learning start date.");
+  if (
+    !Number.isInteger(input.studyDaysPerWeek) ||
+    input.studyDaysPerWeek < 1 ||
+    input.studyDaysPerWeek > 7
+  ) {
+    throw new Error("Choose between 1 and 7 learning days.");
+  }
   return {
     timezone: input.timezone,
-    deadline: input.deadline,
-    session_minutes: input.sessionMinutes,
-    slots: weekdays.map((isoWeekday) => ({
-      iso_weekday: isoWeekday,
-      start_time: input.startTime,
-      duration_minutes: input.slotMinutes,
-    })),
+    start_date: input.startDate,
+    study_days_per_week:
+      input.studyDaysPerWeek as LearningCadenceDraft["study_days_per_week"],
+    session_minutes: 60,
   };
 }
