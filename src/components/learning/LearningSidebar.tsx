@@ -2,11 +2,13 @@ import { ArrowRight, Calendar, Flame, Sparkles, TrendingUp, Trophy } from "lucid
 import { useTranslation } from "react-i18next";
 import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
 import type { WeekPlan } from "@/components/learning/types";
+import { LearningProjectionCard } from "./LearningProjectionCard";
 
 export function LearningSidebar() {
   const { t } = useTranslation("common");
   const weeks = useActiveWeekPlans();
   const composedRoadmap = useRoadmapStore((state) => state.composedRoadmap);
+  const activeRoadmap = useRoadmapStore((state) => state.activeRoadmap);
   const {
     completedDays,
     earnedStars,
@@ -21,7 +23,10 @@ export function LearningSidebar() {
 
   return (
     <aside className="w-full space-y-5">
-      <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-5 space-y-5">
+      {activeRoadmap ? (
+        <LearningProjectionCard roadmap={activeRoadmap} />
+      ) : (
+        <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-5 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{t("learning.sidebar.progress")}</h3>
         </div>
@@ -97,7 +102,8 @@ export function LearningSidebar() {
             </span>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {composedRoadmap?.ai_summary && (
         <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-primary to-violet-700 p-5 text-white shadow-lg shadow-primary/10 relative overflow-hidden border border-white/10 group">

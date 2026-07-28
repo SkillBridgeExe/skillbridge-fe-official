@@ -58,6 +58,57 @@ export function applySessionCompletionToWeekPlans(
   );
 }
 
+export function applySessionCompletionToActiveRoadmap(
+  roadmap: ActiveLearningRoadmap,
+  sessionId: string,
+  unlockedSessionIds: string[],
+): ActiveLearningRoadmap {
+  const unlocked = new Set(unlockedSessionIds);
+  const completedSession = roadmap.modules
+    .flatMap((module) => module.sessions)
+    .find((session) => session.id === sessionId);
+  const isNewCompletion =
+    Boolean(completedSession) && completedSession?.status !== "COMPLETED";
+  const completedUnits = Math.min(
+    roadmap.projection.total_units,
+    roadmap.projection.completed_units + (isNewCompletion ? 1 : 0),
+  );
+  const completedMissedUnit =
+    isNewCompletion &&
+    completedSession !== undefined &&
+    Date.parse(completedSession.scheduled_start_at) < Date.now();
+
+  return {
+    ...roadmap,
+    projection: {
+      ...roadmap.projection,
+      completed_units: completedUnits,
+      missed_units: completedMissedUnit
+        ? Math.max(0, roadmap.projection.missed_units - 1)
+        : roadmap.projection.missed_units,
+      pace_percentage:
+        roadmap.projection.planned_units_by_today > 0
+          ? Math.round(
+              (completedUnits / roadmap.projection.planned_units_by_today) *
+                100,
+            )
+          : 100,
+    },
+    modules: roadmap.modules.map((module) => ({
+      ...module,
+      sessions: module.sessions.map((session) => {
+        if (session.id === sessionId) {
+          return { ...session, status: "COMPLETED" as const };
+        }
+        if (unlocked.has(session.id)) {
+          return { ...session, status: "AVAILABLE" as const };
+        }
+        return session;
+      }),
+    })),
+  };
+}
+
 export const useRoadmapStore = create<RoadmapStore>()(
   persist(
     (set) => ({
@@ -91,6 +142,13 @@ export const useRoadmapStore = create<RoadmapStore>()(
             sessionId,
             unlockedSessionIds,
           ),
+          activeRoadmap: state.activeRoadmap
+            ? applySessionCompletionToActiveRoadmap(
+                state.activeRoadmap,
+                sessionId,
+                unlockedSessionIds,
+              )
+            : null,
         })),
       clearRoadmap: () =>
         set({

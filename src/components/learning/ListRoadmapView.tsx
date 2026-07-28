@@ -259,7 +259,6 @@ export function formatSessionSchedule(
   if (Number.isNaN(value.getTime())) return scheduledStartAt;
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
-    timeStyle: "short",
     ...(timeZone ? { timeZone } : {}),
   }).format(value);
 }

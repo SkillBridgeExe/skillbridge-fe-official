@@ -104,9 +104,20 @@ export default function Learning() {
                   </h1>
                   {hasRoadmap && (
                     <Badge className="flex items-center gap-1 border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
-                      <Sparkles className="h-3 w-3" /> {t("learning.page.aiGenerated")}
+                      <Sparkles className="h-3 w-3" />{" "}
+                      {activeRoadmap?.content_source === "AI_ENHANCED"
+                        ? "Nội dung AI tối ưu"
+                        : "Nội dung tiêu chuẩn"}
                     </Badge>
                   )}
+                  {activeRoadmap ? (
+                    <Badge variant="outline" className="text-xs">
+                      {activeRoadmap.learning_track === "FAST_TRACK"
+                        ? "Cấp tốc"
+                        : "Nền tảng"}{" "}
+                      · {activeRoadmap.coverage_percentage}%
+                    </Badge>
+                  ) : null}
                   <button className="h-5 w-5 text-slate-400 hover:text-primary" aria-label={t("learning.page.info")}>
                     <Info className="h-5 w-5" />
                   </button>
@@ -143,6 +154,7 @@ export default function Learning() {
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setActiveView("list")}
                   className="w-full rounded-full border-slate-200 text-sm font-semibold text-slate-700 min-[420px]:w-auto"
                 >
                   <BookOpen className="mr-2 h-4 w-4" /> {t("learning.page.viewSyllabus")}

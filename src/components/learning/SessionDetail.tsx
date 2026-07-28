@@ -32,6 +32,8 @@ import {
   AlertCircle,
   ExternalLink,
   Trash,
+  Languages,
+  Loader2,
 } from "lucide-react";
 import type { LearningSession } from "./types";
 import { AIChatPanel } from "./AIChatPanel";
@@ -79,6 +81,14 @@ import {
   getQuizStats,
   type QuizQuestionForProgress,
 } from "./quiz-progress";
+import {
+  translateLearningDisplay,
+  type LearningDisplayTranslationResult,
+} from "@/services/learning-roadmaps-v2.service";
+import {
+  applyLearningDisplayTranslations,
+  buildLearningDisplayTranslationItems,
+} from "./learning-display-translation";
 
 interface AdaptiveQuizState {
   weakObjectives: Array<{
@@ -2534,6 +2544,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [videoStartSeconds, setVideoStartSeconds] = useState<number | undefined>(undefined);
   const [adaptiveQuiz, setAdaptiveQuiz] = useState<AdaptiveQuizState | null>(null);
+  const [displayTranslations, setDisplayTranslations] = useState<
+    LearningDisplayTranslationResult[] | null
+  >(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
   const [progress, setProgress] = useState<SessionProgressState>(() =>
     createInitialSessionProgress(session, readStoredSessionProgress(session.id)),
   );
@@ -2574,6 +2589,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
     setShowValidationErrors(false);
     setCompletionError(null);
     setIsCompleting(false);
+    setDisplayTranslations(null);
+    setTranslationError(null);
   }, [initialSectionId, session.id]);
 
   useEffect(() => {
@@ -2654,7 +2671,12 @@ export function SessionDetail({ session }: SessionDetailProps) {
     };
   }, [progress, progressBelongsToCurrentSession, session.id]);
 
-  const displaySession = orderSessionForDisplay(applyProgressToSession(session, visibleProgress));
+  const translatedSession = displayTranslations
+    ? applyLearningDisplayTranslations(session, displayTranslations)
+    : session;
+  const displaySession = orderSessionForDisplay(
+    applyProgressToSession(translatedSession, visibleProgress),
+  );
 
   const weeks = useActiveWeekPlans();
   const allSessions = orderLearningSessions(weeks);
@@ -2802,6 +2824,31 @@ export function SessionDetail({ session }: SessionDetailProps) {
       : null;
 
   const isLocked = (s: LearningSession) => s.status === "locked";
+
+  const handleToggleTranslation = async () => {
+    if (displayTranslations) {
+      setDisplayTranslations(null);
+      setTranslationError(null);
+      return;
+    }
+    setIsTranslating(true);
+    setTranslationError(null);
+    try {
+      const translated = await translateLearningDisplay({
+        locale: "vi",
+        items: buildLearningDisplayTranslationItems(session),
+      });
+      setDisplayTranslations(translated);
+    } catch (cause) {
+      setTranslationError(
+        cause instanceof Error
+          ? cause.message
+          : "Không thể dịch nội dung lúc này.",
+      );
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleToggleChecklistItem = (sectionId: string, item: string) => {
     locallyChangedProgressRef.current = true;
@@ -2967,6 +3014,25 @@ export function SessionDetail({ session }: SessionDetailProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {session.status !== "locked" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleToggleTranslation()}
+              disabled={isTranslating}
+              className="rounded-xl border-slate-200 text-slate-600"
+              title={translationError ?? undefined}
+            >
+              {isTranslating ? (
+                <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
+              ) : (
+                <Languages className="h-4 w-4 sm:mr-1.5" />
+              )}
+              <span className="hidden sm:inline">
+                {displayTranslations ? "Xem bản gốc" : "Dịch tiếng Việt"}
+              </span>
+            </Button>
+          ) : null}
           {session.status !== "locked" && (
             <Button
               variant="outline"
