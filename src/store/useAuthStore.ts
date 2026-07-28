@@ -174,6 +174,7 @@ export const useAuthStore = create<AuthState>()(
           clearAccessToken();
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
+          localStorage.removeItem("roadmap-store");
           set({
             authStatus: "anonymous",
             authSource: null,

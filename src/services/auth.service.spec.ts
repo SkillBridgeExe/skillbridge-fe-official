@@ -159,4 +159,15 @@ describe("auth service session persistence", () => {
 
     expect(localStorage.getItem("roadmap-store")).toBeNull();
   });
+
+  it("removes the persisted roadmap cache when the session expires", () => {
+    localStorage.setItem(
+      "roadmap-store",
+      JSON.stringify({ state: { weekPlans: ["private"] } }),
+    );
+
+    useAuthStore.getState().setAnonymous();
+
+    expect(localStorage.getItem("roadmap-store")).toBeNull();
+  });
 });

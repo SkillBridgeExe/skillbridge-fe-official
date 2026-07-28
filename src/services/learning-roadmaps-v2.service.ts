@@ -443,9 +443,11 @@ export function roadmapV2ToLearningRoadmap(
           module.feasibility === "FEASIBLE"
             ? `${module.estimated_minutes} minutes scheduled`
             : `${module.estimated_minutes} minutes · needs more availability`,
-        status: module.sessions.every((session) => session.status === "COMPLETED")
-          ? ("completed" as const)
-          : ("in-progress" as const),
+        status:
+          module.sessions.length > 0 &&
+          module.sessions.every((session) => session.status === "COMPLETED")
+            ? ("completed" as const)
+            : ("in-progress" as const),
         weekNumber: module.rank,
         estimatedHours: module.estimated_minutes / 60,
         topics: resources.slice(0, 4).map((resource) => ({

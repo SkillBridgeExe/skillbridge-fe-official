@@ -52,6 +52,7 @@ import {
 import { buildInternalResourceTask } from "./internal-resource-content";
 import { getActiveSessionResource } from "./session-content";
 import {
+  getOfflineNextLearningSessionId,
   getNextLearningSectionId,
   orderLearningSessions,
   selectLearningSection,
@@ -2513,6 +2514,9 @@ interface SessionDetailProps {
 
 export function SessionDetail({ session }: SessionDetailProps) {
   const { t } = useTranslation("common");
+  const progressSaveFailedMessage = t(
+    "learning.session.progressSaveFailed",
+  );
   const navigate = useNavigate();
   // BE lookup key. moduleId is a SLUG ("node-js") — sending it as skill_canonical 404s every
   // underscore skill ("node_js", "ci_cd", …) and starves learning_completed for half the
@@ -2652,7 +2656,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
           void saveLearningSessionProgress(session.id, progressRef.current)
             .then(() => setProgressSaveError(null))
             .catch(() =>
-              setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại."),
+              setProgressSaveError(
+                progressSaveFailedMessage,
+              ),
             )
             .finally(() => setIsSavingProgress(false));
         }
@@ -2664,7 +2670,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
     };
     // skillCanonical derives from session — listed to keep exhaustive-deps honest; it never
     // changes without `session` changing, so the effect re-runs exactly as before.
-  }, [session, skillCanonical]);
+  }, [progressSaveFailedMessage, session, skillCanonical]);
 
   useEffect(() => {
     if (!progressBelongsToCurrentSession) return;
@@ -2680,14 +2686,19 @@ export function SessionDetail({ session }: SessionDetailProps) {
       void saveLearningSessionProgress(session.id, progress)
         .then(() => setProgressSaveError(null))
         .catch(() =>
-          setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại."),
+          setProgressSaveError(progressSaveFailedMessage),
         )
         .finally(() => setIsSavingProgress(false));
     }, 500);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
-  }, [progress, progressBelongsToCurrentSession, session.id]);
+  }, [
+    progress,
+    progressBelongsToCurrentSession,
+    progressSaveFailedMessage,
+    session.id,
+  ]);
 
   const translatedSession = displayTranslations
     ? applyLearningDisplayTranslations(session, displayTranslations)
@@ -2767,7 +2778,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
             session_id: session.id,
             status: "COMPLETED" as const,
             module_completed: false,
-            next_session_id: allSessions[currentIdx + 1]?.id ?? null,
+            next_session_id: getOfflineNextLearningSessionId(
+              allSessions,
+              session.id,
+            ),
             unlocked_session_ids: [] as string[],
           };
       const updatedProgress = {
@@ -2873,7 +2887,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
       setTranslationError(
         cause instanceof Error
           ? cause.message
-          : "Không thể dịch nội dung lúc này.",
+          : t("learning.session.translationFailed"),
       );
     } finally {
       setIsTranslating(false);
@@ -2911,7 +2925,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
           progressRef.current = baseProgress;
           suppressNextProgressSaveRef.current = true;
           setProgress(baseProgress);
-          setProgressSaveError("Không thể lưu tiến độ. Vui lòng thử lại.");
+          setProgressSaveError(progressSaveFailedMessage);
         });
     }
   };
@@ -3065,7 +3079,9 @@ export function SessionDetail({ session }: SessionDetailProps) {
                 <Languages className="h-4 w-4 sm:mr-1.5" />
               )}
               <span className="hidden sm:inline">
-                {displayTranslations ? "Xem bản gốc" : "Dịch tiếng Việt"}
+                {displayTranslations
+                  ? t("learning.session.viewOriginal")
+                  : t("learning.session.translateToVietnamese")}
               </span>
             </Button>
           ) : null}
@@ -3119,6 +3135,14 @@ export function SessionDetail({ session }: SessionDetailProps) {
           )}
         </div>
       </div>
+      {translationError ? (
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 lg:px-6"
+        >
+          {translationError}
+        </div>
+      ) : null}
       {progressSaveError ? (
         <div
           role="alert"
@@ -3130,7 +3154,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
             className="font-semibold underline underline-offset-2"
             onClick={() => setProgressSaveError(null)}
           >
-            Đóng
+            {t("learning.session.close")}
           </button>
         </div>
       ) : isSavingProgress ? (
@@ -3138,7 +3162,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
           role="status"
           className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs text-slate-500 lg:px-6"
         >
-          Đang lưu tiến độ...
+          {t("learning.session.savingProgress")}
         </div>
       ) : null}
 

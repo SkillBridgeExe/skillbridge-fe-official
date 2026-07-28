@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { SkillRoadmapMapView } from "./SkillRoadmapMapView";
 
-vi.mock("@/components/learning/roadmap-store", () => ({
-  useActiveWeekPlans: () => [
+const roadmapMocks = vi.hoisted(() => ({
+  weeks: [
     {
       weekNumber: 1,
       moduleId: "module-1",
@@ -32,7 +32,11 @@ vi.mock("@/components/learning/roadmap-store", () => ({
         },
       ],
     },
-  ],
+  ] as Array<Record<string, unknown>>,
+}));
+
+vi.mock("@/components/learning/roadmap-store", () => ({
+  useActiveWeekPlans: () => roadmapMocks.weeks,
 }));
 
 vi.mock("@/store/useSidebarStore", () => ({
@@ -45,7 +49,33 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("SkillRoadmapMapView integration", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    roadmapMocks.weeks = [
+      {
+        weekNumber: 1,
+        moduleId: "module-1",
+        moduleTitle: "TypeScript",
+        sessions: [
+          {
+            id: "session-1",
+            moduleId: "module-1",
+            skillCanonical: "typescript",
+            sessionNumber: 1,
+            title: "TypeScript foundations",
+            skill: "TypeScript",
+            dayOfWeek: 1,
+            estimatedMinutes: 60,
+            status: "in-progress",
+            stars: 0,
+            maxStars: 3,
+            sections: [],
+            resources: [],
+          },
+        ],
+      },
+    ];
+  });
 
   it("renders from normalized active week plans without depending on the legacy composed roadmap", () => {
     const componentPath = path.join(
@@ -85,5 +115,29 @@ describe("SkillRoadmapMapView integration", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.getByRole("button", { name: "Full screen" })).toBeInTheDocument();
+  });
+
+  it("removes the Escape listener when the active roadmap is cleared", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <SkillRoadmapMapView />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+
+    roadmapMocks.weeks = [];
+    rerender(
+      <MemoryRouter>
+        <SkillRoadmapMapView />
+      </MemoryRouter>,
+    );
+
+    const escape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(false);
   });
 });

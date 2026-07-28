@@ -8,6 +8,7 @@ import {
   getCurrentActiveLearningRoadmap,
   hydrateActiveLearningRoadmap,
   rescheduleLearningRoadmap,
+  roadmapV2ToLearningRoadmap,
   roadmapV2ToWeekPlans,
   translateLearningDisplay,
   updateLearningRoadmapDraft,
@@ -258,5 +259,54 @@ describe("Learning Roadmaps V2 service", () => {
       "completed",
       "in-progress",
     ]);
+  });
+
+  it("does not mark a deferred module with no sessions as completed", () => {
+    const roadmap = {
+      id: "roadmap-empty-module",
+      intent: "CAREER_ROLE",
+      status: "ACTIVE",
+      revision: 1,
+      target_role: null,
+      target_level: null,
+      learning_track: "FOUNDATION",
+      content_source: "DETERMINISTIC",
+      coverage_percentage: 100,
+      projection: {
+        start_date: "2026-07-28",
+        estimated_completion_date: null,
+        study_days_per_week: 3,
+        session_minutes: 60,
+        total_units: 0,
+        completed_units: 0,
+        planned_units_by_today: 0,
+        missed_units: 0,
+        pace_percentage: 100,
+        days_remaining: 0,
+      },
+      version: {
+        id: "version-empty",
+        version_no: 1,
+        resource_catalog_version: "catalog-v1",
+        content_version: "content-v1",
+        created_at: "2026-07-28T00:00:00.000Z",
+      },
+      modules: [
+        {
+          id: "module-deferred",
+          skill_canonical: "advanced-react",
+          display_name: "Advanced React",
+          rank: 1,
+          estimated_minutes: 0,
+          feasibility: "DEFERRED",
+          prerequisite_warnings: [],
+          sessions: [],
+        },
+      ],
+    } satisfies ActiveLearningRoadmap;
+
+    expect(roadmapV2ToLearningRoadmap(roadmap).modules[0].status).toBe(
+      "in-progress",
+    );
   });
 });

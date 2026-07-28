@@ -6,9 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LearningSidebar } from "./LearningSidebar";
 
 vi.mock("@/components/learning/roadmap-store", () => ({
+  useActiveRoadmapV2: () => null,
   useActiveWeekPlans: () => [],
-  useRoadmapStore: (selector: (state: { activeRoadmap: null }) => unknown) =>
-    selector({ activeRoadmap: null }),
 }));
 
 vi.mock("react-i18next", () => ({

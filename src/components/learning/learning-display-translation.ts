@@ -30,6 +30,11 @@ export function buildLearningDisplayTranslationItems(
       summary: session.lessonContent.summary,
     });
     items.push(
+      ...session.lessonContent.sections.map((section) => ({
+        id: `lesson-section:${section.id}`,
+        title: section.title,
+        summary: section.body,
+      })),
       ...session.lessonContent.learningObjectives.map((objective) => ({
         id: `objective:${objective.id}`,
         title: objective.title,
@@ -83,7 +88,7 @@ export function applyLearningDisplayTranslations(
           summary:
             lessonTranslation?.summary ?? session.lessonContent.summary,
           sections: session.lessonContent.sections.map((section) => {
-            const translated = byId.get(`section:${section.id}`);
+            const translated = byId.get(`lesson-section:${section.id}`);
             return {
               ...section,
               title: translated?.title ?? section.title,

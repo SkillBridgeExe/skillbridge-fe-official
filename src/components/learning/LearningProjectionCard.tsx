@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlarmClock, CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,11 @@ import {
   type ActiveLearningRoadmap,
 } from "@/services/learning-roadmaps-v2.service";
 import { useRoadmapStore } from "./roadmap-store";
-import { getLearningProjectionView } from "./learning-projection";
+import {
+  clampLearningStartDate,
+  getLearningProjectionView,
+  toStudyDaysPerWeek,
+} from "./learning-projection";
 
 interface LearningProjectionCardProps {
   roadmap: ActiveLearningRoadmap;
@@ -23,32 +28,39 @@ interface LearningProjectionCardProps {
 export function LearningProjectionCard({
   roadmap,
 }: LearningProjectionCardProps) {
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const setActiveRoadmap = useRoadmapStore((state) => state.setActiveRoadmap);
+  const minimumStartDate = today();
   const [open, setOpen] = useState(false);
-  const [startDate, setStartDate] = useState(roadmap.projection.start_date);
-  const [daysPerWeek, setDaysPerWeek] = useState(
-    roadmap.projection.study_days_per_week,
+  const [startDate, setStartDate] = useState(() =>
+    clampLearningStartDate(roadmap.projection.start_date, minimumStartDate),
+  );
+  const [daysPerWeek, setDaysPerWeek] = useState(() =>
+    toStudyDaysPerWeek(roadmap.projection.study_days_per_week),
   );
   const [saving, setSaving] = useState(false);
   const view = getLearningProjectionView(roadmap.projection);
 
   const save = async () => {
+    if (!startDate || startDate < minimumStartDate) return;
     setSaving(true);
     try {
       const updated = await rescheduleLearningRoadmap(roadmap.id, {
         expected_revision: roadmap.revision,
         start_date: startDate,
-        study_days_per_week: daysPerWeek as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+        study_days_per_week: daysPerWeek,
       });
       setActiveRoadmap(updated);
       setOpen(false);
-      toast({ title: "Đã xếp lại lịch cho các buổi chưa hoàn thành" });
+      toast({ title: t("learning.projection.rescheduleSuccess") });
     } catch (cause) {
       toast({
-        title: "Không thể xếp lại lịch",
+        title: t("learning.projection.rescheduleError"),
         description:
-          cause instanceof Error ? cause.message : "Vui lòng thử lại.",
+          cause instanceof Error
+            ? cause.message
+            : t("learning.projection.retry"),
         variant: "destructive",
       });
     } finally {
@@ -60,34 +72,48 @@ export function LearningProjectionCard({
     <>
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="font-bold text-slate-950">Tiến độ học</h3>
+          <h3 className="font-bold text-slate-950">
+            {t("learning.projection.title")}
+          </h3>
           <button
             type="button"
             className="text-xs font-semibold text-primary hover:underline"
             onClick={() => setOpen(true)}
           >
-            Xếp lại lịch
+            {t("learning.projection.reschedule")}
           </button>
         </div>
 
         <dl className="divide-y divide-slate-100 text-sm">
           <div className="flex justify-between gap-3 py-2">
-            <dt className="font-medium text-slate-700">Số ngày còn lại</dt>
+            <dt className="font-medium text-slate-700">
+              {t("learning.projection.daysRemaining")}
+            </dt>
             <dd className="text-slate-500">
-              {roadmap.projection.days_remaining} ngày
+              {t("learning.projection.days", {
+                count: roadmap.projection.days_remaining,
+              })}
             </dd>
           </div>
           <div className="flex justify-between gap-3 py-2">
-            <dt className="font-medium text-slate-700">Buổi đã hoàn thành</dt>
+            <dt className="font-medium text-slate-700">
+              {t("learning.projection.completedSessions")}
+            </dt>
             <dd className="text-slate-500">
               {roadmap.projection.completed_units}/
               {roadmap.projection.total_units}
             </dd>
           </div>
           <div className="flex justify-between gap-3 py-2">
-            <dt className="font-medium text-slate-700">Dự kiến hoàn thành</dt>
+            <dt className="font-medium text-slate-700">
+              {t("learning.projection.estimatedCompletion")}
+            </dt>
             <dd className="text-right text-slate-500">
-              {formatDate(roadmap.projection.estimated_completion_date)}
+              {formatDate(
+                roadmap.projection.estimated_completion_date,
+                i18n.language,
+                t,
+              )}
             </dd>
           </div>
         </dl>
@@ -95,7 +121,7 @@ export function LearningProjectionCard({
         <div className="space-y-2">
           <div
             role="progressbar"
-            aria-label="Tiến độ hoàn thành lộ trình"
+            aria-label={t("learning.projection.progressLabel")}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={view.completionPercentage}
@@ -111,6 +137,7 @@ export function LearningProjectionCard({
               view.paceTone,
               roadmap.projection.pace_percentage,
               roadmap.projection.missed_units,
+              t,
             )}
           </p>
         </div>
@@ -118,8 +145,9 @@ export function LearningProjectionCard({
         {roadmap.projection.missed_units > 0 ? (
           <div className="flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-medium text-amber-800">
             <AlarmClock className="h-4 w-4 shrink-0" />
-            Bạn có {roadmap.projection.missed_units} buổi theo kế hoạch chưa hoàn
-            thành.
+            {t("learning.projection.missedSessions", {
+              count: roadmap.projection.missed_units,
+            })}
           </div>
         ) : null}
       </section>
@@ -127,32 +155,33 @@ export function LearningProjectionCard({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Xếp lại lịch học</DialogTitle>
+            <DialogTitle>{t("learning.projection.dialogTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-500">
-            Các buổi đã hoàn thành được giữ nguyên. SkillBridge chỉ phân bổ lại
-            những buổi còn lại.
+            {t("learning.projection.dialogBody")}
           </p>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="reschedule-start-date">Bắt đầu lại từ ngày</Label>
+              <Label htmlFor="reschedule-start-date">
+                {t("learning.projection.startDate")}
+              </Label>
               <input
                 id="reschedule-start-date"
                 type="date"
-                min={today()}
+                min={minimumStartDate}
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label>Số ngày học mỗi tuần</Label>
+              <Label>{t("learning.projection.daysPerWeek")}</Label>
               <div className="grid grid-cols-7 gap-2">
                 {[1, 2, 3, 4, 5, 6, 7].map((days) => (
                   <button
                     key={days}
                     type="button"
-                    onClick={() => setDaysPerWeek(days)}
+                    onClick={() => setDaysPerWeek(toStudyDaysPerWeek(days))}
                     className={`rounded-lg border py-2 text-sm font-semibold ${
                       daysPerWeek === days
                         ? "border-primary bg-primary text-white"
@@ -167,12 +196,12 @@ export function LearningProjectionCard({
           </div>
           <Button
             onClick={() => void save()}
-            disabled={saving || !startDate}
+            disabled={saving || !startDate || startDate < minimumStartDate}
             className="w-full"
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             <CalendarDays className="mr-2 h-4 w-4" />
-            Cập nhật lịch
+            {t("learning.projection.update")}
           </Button>
         </DialogContent>
       </Dialog>
@@ -184,21 +213,33 @@ function paceMessage(
   tone: "ahead" | "steady" | "behind",
   percentage: number,
   missedUnits: number,
+  translate: (key: string, options?: Record<string, unknown>) => string,
 ): string {
   if (tone === "ahead") {
-    return `Bạn đang theo đúng hoặc nhanh hơn kế hoạch (${Math.round(percentage)}%).`;
+    return translate("learning.projection.paceAhead", {
+      percentage: Math.round(percentage),
+    });
   }
   if (tone === "steady") {
-    return `Bạn đang bám khá sát kế hoạch (${Math.round(percentage)}%).`;
+    return translate("learning.projection.paceSteady", {
+      percentage: Math.round(percentage),
+    });
   }
-  return `Bạn đang chậm hơn kế hoạch (${Math.round(percentage)}%)${
-    missedUnits > 0 ? "; hãy xếp lại lịch nếu cần." : "."
-  }`;
+  return translate(
+    missedUnits > 0
+      ? "learning.projection.paceBehindMissed"
+      : "learning.projection.paceBehind",
+    { percentage: Math.round(percentage) },
+  );
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Đang tính";
-  return new Intl.DateTimeFormat("vi-VN", {
+function formatDate(
+  value: string | null,
+  locale: string,
+  translate: (key: string) => string,
+): string {
+  if (!value) return translate("learning.projection.calculating");
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

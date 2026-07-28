@@ -74,6 +74,11 @@ vi.mock("react-i18next", () => ({
         "learning.session.correctCount": `${options?.correct} / ${options?.total} correct`,
         "learning.session.checkAnswers": "Check answer",
         "learning.session.questionCount": `${options?.count} questions`,
+        "learning.session.translateToVietnamese": "Translate to Vietnamese",
+        "learning.session.viewOriginal": "View original",
+        "learning.session.progressSaveFailed":
+          "Không thể lưu tiến độ. Vui lòng thử lại.",
+        "learning.session.close": "Đóng",
       };
       // useLearningChatCompanion (Task M3) requests the static suggestion chips
       // with { returnObjects: true } — this fake `t` otherwise only ever returns
@@ -140,6 +145,10 @@ beforeEach(() => {
     module_completed: true,
     next_session_id: "session-next",
     unlocked_session_ids: ["session-next"],
+  });
+  learningV2Mocks.getCurrentActiveLearningRoadmap.mockResolvedValue({
+    id: "roadmap-refreshed",
+    status: "ACTIVE",
   });
 });
 
@@ -349,11 +358,21 @@ describe("SessionDetail", () => {
     await new Promise((resolve) => setTimeout(resolve, 650));
     expect(learningServiceMocks.saveLearningSessionProgress).not.toHaveBeenCalled();
   });
-  learningV2Mocks.getCurrentActiveLearningRoadmap.mockResolvedValue({
-    id: "roadmap-refreshed",
-    status: "ACTIVE",
-  });
 
+  it("announces translation failures instead of exposing them only as a tooltip", async () => {
+    learningV2Mocks.translateLearningDisplay.mockRejectedValueOnce(
+      new Error("Translation unavailable"),
+    );
+
+    render(<SessionDetail session={session} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Translate to Vietnamese" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Translation unavailable",
+    );
+  });
   it("rolls back an optimistic checklist update and exposes a retryable save error", async () => {
     authMocks.hasApiAuthSession.mockReturnValue(true);
     learningServiceMocks.patchLearningChecklistItem.mockRejectedValueOnce(

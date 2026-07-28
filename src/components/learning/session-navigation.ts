@@ -39,8 +39,18 @@ export function orderLearningSessions(weeks: WeekPlan[]): LearningSession[] {
       [...week.sessions].sort(
         (a, b) =>
           a.sessionNumber - b.sessionNumber ||
-          a.scheduledStartAt?.localeCompare(b.scheduledStartAt ?? "") ||
+          (a.scheduledStartAt ?? "").localeCompare(b.scheduledStartAt ?? "") ||
           a.id.localeCompare(b.id),
       ),
     );
+}
+
+export function getOfflineNextLearningSessionId(
+  sessions: LearningSession[],
+  currentSessionId: string,
+): string | null {
+  const currentIndex = sessions.findIndex(
+    (session) => session.id === currentSessionId,
+  );
+  return currentIndex >= 0 ? (sessions[currentIndex + 1]?.id ?? null) : null;
 }

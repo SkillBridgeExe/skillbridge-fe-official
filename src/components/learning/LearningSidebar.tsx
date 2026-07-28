@@ -1,13 +1,16 @@
 import { Calendar, Flame, Sparkles, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useActiveWeekPlans, useRoadmapStore } from "@/components/learning/roadmap-store";
+import {
+  useActiveRoadmapV2,
+  useActiveWeekPlans,
+} from "@/components/learning/roadmap-store";
 import type { WeekPlan } from "@/components/learning/types";
 import { LearningProjectionCard } from "./LearningProjectionCard";
 
 export function LearningSidebar() {
   const { t } = useTranslation("common");
   const weeks = useActiveWeekPlans();
-  const activeRoadmap = useRoadmapStore((state) => state.activeRoadmap);
+  const activeRoadmap = useActiveRoadmapV2();
   const {
     completedDays,
     earnedStars,

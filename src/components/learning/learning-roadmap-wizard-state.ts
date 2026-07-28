@@ -25,13 +25,15 @@ export function buildCadenceDraft(input: {
   startDate: string;
   studyDaysPerWeek: number;
 }): LearningCadenceDraft {
-  if (!input.startDate) throw new Error("Choose a learning start date.");
+  if (!input.startDate) {
+    throw new Error("learning.wizard.errors.startDateRequired");
+  }
   if (
     !Number.isInteger(input.studyDaysPerWeek) ||
     input.studyDaysPerWeek < 1 ||
     input.studyDaysPerWeek > 7
   ) {
-    throw new Error("Choose between 1 and 7 learning days.");
+    throw new Error("learning.wizard.errors.studyDaysRange");
   }
   return {
     timezone: input.timezone,

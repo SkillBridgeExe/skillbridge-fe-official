@@ -48,7 +48,7 @@ export function LearningRoadmapWizard({
   onClose,
   onGenerated,
 }: LearningRoadmapWizardProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(initialMatchId ? "context" : "goal");
   const [intent, setIntent] = useState<LearningRoadmapIntent | null>(
@@ -89,12 +89,12 @@ export function LearningRoadmapWizard({
         setCvId((current) => current || result.items[0]?.id || "");
       })
       .catch((cause) => {
-        if (!cancelled) setError(messageOf(cause));
+        if (!cancelled) setError(messageOf(cause, t));
       });
     return () => {
       cancelled = true;
     };
-  }, [intent]);
+  }, [intent, t]);
 
   const stepIndex = [
     "goal",
@@ -153,7 +153,7 @@ export function LearningRoadmapWizard({
       );
       setStep("priorities");
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -191,7 +191,7 @@ export function LearningRoadmapWizard({
       setResourceSelectionDirty(true);
       setStep("preview");
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -223,7 +223,7 @@ export function LearningRoadmapWizard({
       await generateLearningRoadmap(currentDraft.id, currentPreview.revision);
       onGenerated(await getActiveLearningRoadmap(currentDraft.id));
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(messageOf(cause, t));
     } finally {
       setIsBusy(false);
     }
@@ -432,15 +432,15 @@ export function LearningRoadmapWizard({
           {step === "schedule" ? (
             <div className="space-y-5">
               <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
-                <p className="font-semibold text-sky-950">Lịch học linh hoạt</p>
+                <p className="font-semibold text-sky-950">
+                  {t("learning.wizard.schedule.flexibleTitle")}
+                </p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-800">
-                  Bạn chỉ cần chọn ngày bắt đầu và số ngày muốn học mỗi tuần.
-                  SkillBridge sẽ dự kiến ngày hoàn thành; không đặt deadline và
-                  không ép giờ học cố định.
+                  {t("learning.wizard.schedule.flexibleBody")}
                 </p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Ngày bắt đầu">
+                <Field label={t("learning.wizard.schedule.startDate")}>
                   <input
                     type="date"
                     value={startDate}
@@ -449,7 +449,7 @@ export function LearningRoadmapWizard({
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Số ngày học mỗi tuần">
+                <Field label={t("learning.wizard.schedule.daysPerWeek")}>
                   <div className="grid grid-cols-7 gap-2">
                     {STUDY_DAY_OPTIONS.map((days) => (
                       <button
@@ -457,7 +457,10 @@ export function LearningRoadmapWizard({
                         type="button"
                         onClick={() => setStudyDaysPerWeek(days)}
                         className={choiceClass(studyDaysPerWeek === days)}
-                        aria-label={`${days} ngày mỗi tuần`}
+                        aria-label={t(
+                          "learning.wizard.schedule.daysPerWeekOption",
+                          { count: days },
+                        )}
                       >
                         {days}
                       </button>
@@ -466,8 +469,7 @@ export function LearningRoadmapWizard({
                 </Field>
               </div>
               <p className="text-sm text-slate-500">
-                Mỗi buổi được thiết kế trong khoảng 60 phút. Bạn vẫn có thể học
-                sớm hơn hoặc xem lại bất kỳ bài nào đã mở.
+                {t("learning.wizard.schedule.sessionHint")}
               </p>
               <WizardFooter
                 onBack={() => setStep("priorities")}
@@ -487,16 +489,22 @@ export function LearningRoadmapWizard({
                   value={preview.modules.length}
                 />
                 <Metric
-                  label="Tổng số buổi"
+                  label={t("learning.wizard.preview.totalSessions")}
                   value={preview.sessions.length}
                 />
                 <Metric
-                  label="Nhịp học"
-                  value={`${preview.cadence.study_days_per_week} ngày/tuần`}
+                  label={t("learning.wizard.preview.cadence")}
+                  value={t("learning.wizard.preview.daysPerWeek", {
+                    count: preview.cadence.study_days_per_week,
+                  })}
                 />
                 <Metric
-                  label="Dự kiến hoàn thành"
-                  value={formatDisplayDate(preview.estimated_completion_date)}
+                  label={t("learning.wizard.preview.estimatedCompletion")}
+                  value={formatDisplayDate(
+                    preview.estimated_completion_date,
+                    i18n.language,
+                    t,
+                  )}
                 />
               </div>
               <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
@@ -512,7 +520,9 @@ export function LearningRoadmapWizard({
                         </span>
                         <p className="mt-0.5 text-xs text-slate-500">
                           Quick-win {module.quick_win_score}/100 ·{" "}
-                          {scopeLabel(module.scope_status)}
+                          {t(
+                            `learning.wizard.scope.${module.scope_status.toLowerCase()}`,
+                          )}
                         </p>
                       </div>
                       <span
@@ -557,10 +567,12 @@ export function LearningRoadmapWizard({
                               </span>
                               <span className="text-xs text-slate-500">
                                 {resource.resource_role === "PRIMARY"
-                                  ? "Tài liệu chính"
-                                  : "Tài liệu bổ trợ"}
+                                  ? t("learning.wizard.preview.primaryResource")
+                                  : t(
+                                      "learning.wizard.preview.supplementaryResource",
+                                    )}
                                 {" · "}
-                                {formatResourceDuration(resource)}
+                                {formatResourceDuration(resource, t)}
                                 {resource.provider
                                   ? ` · ${resource.provider}`
                                   : ""}
@@ -681,6 +693,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 }
 
 function TrackSummary({ preview }: { preview: LearningRoadmapPreview }) {
+  const { t } = useTranslation("common");
   const fastTrack = preview.learning_track === "FAST_TRACK";
   return (
     <div
@@ -692,16 +705,21 @@ function TrackSummary({ preview }: { preview: LearningRoadmapPreview }) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-bold">
-          {fastTrack ? "Lộ trình cấp tốc" : "Lộ trình nền tảng"}
+          {fastTrack
+            ? t("learning.wizard.track.fastTitle")
+            : t("learning.wizard.track.foundationTitle")}
         </p>
         <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold">
-          {preview.sessions.length} buổi · 60 phút/buổi
+          {t("learning.wizard.track.sessionSummary", {
+            count: preview.sessions.length,
+            minutes: 60,
+          })}
         </span>
       </div>
       <p className="mt-1 text-sm opacity-80">
         {fastTrack
-          ? "Ưu tiên phần cốt lõi có tác động cao để upskill nhanh, không kéo dài lan man."
-          : "Giữ đầy đủ kiến thức nền tảng và prerequisite theo nhịp học bạn đã chọn."}
+          ? t("learning.wizard.track.fastBody")
+          : t("learning.wizard.track.foundationBody")}
       </p>
     </div>
   );
@@ -712,6 +730,7 @@ function LessonOutline({
 }: {
   lessons: LearningRoadmapPreview["modules"][number]["lessons"];
 }) {
+  const { t } = useTranslation("common");
   if (lessons.length === 0) return null;
   return (
     <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
@@ -740,12 +759,14 @@ function LessonOutline({
               </p>
               {!included ? (
                 <p className="mt-1 text-[11px] font-medium text-amber-700">
-                  Để học sau · Không đủ quỹ thời gian
+                  {t("learning.wizard.preview.deferredLesson")}
                 </p>
               ) : null}
             </div>
             <span className="shrink-0 text-xs text-slate-500">
-              {lesson.estimated_minutes} phút
+              {t("learning.wizard.preview.lessonMinutes", {
+                count: lesson.estimated_minutes,
+              })}
             </span>
           </div>
         );
@@ -754,24 +775,16 @@ function LessonOutline({
   );
 }
 
-function scopeLabel(
-  status: LearningRoadmapPreview["modules"][number]["scope_status"],
+function messageOf(
+  error: unknown,
+  translate: (key: string) => string,
 ): string {
-  switch (status) {
-    case "FULL":
-      return "Đầy đủ";
-    case "CORE_ONLY":
-      return "Phần cốt lõi";
-    case "INTRO_ONLY":
-      return "Nhập môn";
-    case "DEFERRED":
-      return "Để học sau";
+  if (error instanceof Error) {
+    return error.message.startsWith("learning.")
+      ? translate(error.message)
+      : error.message;
   }
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Could not continue. Please try again.";
+  return translate("learning.wizard.errors.generic");
 }
 
 function today(): string {
@@ -785,24 +798,45 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function formatDisplayDate(value: string | null): string {
-  if (!value) return "Đang tính";
-  return new Intl.DateTimeFormat("vi-VN", {
+function formatDisplayDate(
+  value: string | null,
+  locale: string,
+  translate: (key: string) => string,
+): string {
+  if (!value) return translate("learning.wizard.preview.calculating");
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
 }
 
-function formatResourceDuration(resource: LearningPresentedResource): string {
-  if (resource.duration_kind === "UNKNOWN") return "Chưa rõ thời lượng";
+function formatResourceDuration(
+  resource: LearningPresentedResource,
+  translate: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (resource.duration_kind === "UNKNOWN") {
+    return translate("learning.wizard.preview.durationUnknown");
+  }
   const minutes = resource.recommended_minutes ?? resource.duration_minutes;
-  if (!minutes || minutes <= 0) return "Chưa rõ thời lượng";
-  const prefix = resource.duration_kind === "EXACT" ? "" : "Khoảng ";
-  if (minutes < 60) return `${prefix}${minutes} phút`;
+  if (!minutes || minutes <= 0) {
+    return translate("learning.wizard.preview.durationUnknown");
+  }
+  const keyPrefix =
+    resource.duration_kind === "EXACT" ? "exact" : "estimated";
+  if (minutes < 60) {
+    return translate(`learning.wizard.preview.duration.${keyPrefix}Minutes`, {
+      minutes,
+    });
+  }
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder
-    ? `${prefix}${hours} giờ ${remainder} phút`
-    : `${prefix}${hours} giờ`;
+    ? translate(`learning.wizard.preview.duration.${keyPrefix}HoursMinutes`, {
+        hours,
+        minutes: remainder,
+      })
+    : translate(`learning.wizard.preview.duration.${keyPrefix}Hours`, {
+        hours,
+      });
 }

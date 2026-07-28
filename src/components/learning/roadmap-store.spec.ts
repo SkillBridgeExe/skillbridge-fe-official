@@ -108,13 +108,83 @@ describe("roadmap completion status patch", () => {
     );
 
     expect(updated.projection.completed_units).toBe(1);
-    expect(updated.projection.missed_units).toBe(0);
+    expect(updated.projection.missed_units).toBe(1);
     expect(updated.modules[0].sessions.map((item) => item.status)).toEqual([
       "COMPLETED",
       "AVAILABLE",
     ]);
   });
+
+  it("does not count an already completed session twice", () => {
+    const roadmap = createRoadmap("COMPLETED");
+
+    const updated = applySessionCompletionToActiveRoadmap(
+      roadmap,
+      "session-1",
+      [],
+    );
+
+    expect(updated.projection.completed_units).toBe(1);
+    expect(updated.projection.missed_units).toBe(1);
+  });
 });
+
+function createRoadmap(
+  status: ActiveLearningRoadmap["modules"][number]["sessions"][number]["status"],
+): ActiveLearningRoadmap {
+  return {
+    id: "roadmap-test",
+    status: "ACTIVE",
+    revision: 1,
+    intent: "CAREER_ROLE",
+    target_role: null,
+    target_level: null,
+    learning_track: "FOUNDATION",
+    content_source: "DETERMINISTIC",
+    coverage_percentage: 100,
+    projection: {
+      start_date: "2026-08-01",
+      estimated_completion_date: "2026-08-10",
+      study_days_per_week: 3,
+      session_minutes: 60,
+      total_units: 2,
+      completed_units: 1,
+      planned_units_by_today: 1,
+      missed_units: 1,
+      pace_percentage: 100,
+      days_remaining: 10,
+    },
+    version: {
+      id: "version-test",
+      version_no: 1,
+      resource_catalog_version: "v1",
+      content_version: "v1",
+      created_at: "2026-08-01T00:00:00.000Z",
+    },
+    modules: [
+      {
+        id: "module-test",
+        skill_canonical: "react",
+        display_name: "React",
+        rank: 1,
+        estimated_minutes: 60,
+        feasibility: "FEASIBLE",
+        prerequisite_warnings: [],
+        sessions: [
+          {
+            id: "session-1",
+            sequence: 1,
+            title: "One",
+            scheduled_start_at: "2020-01-01T12:00:00.000Z",
+            duration_minutes: 60,
+            status,
+            required_tasks: [],
+          },
+        ],
+      },
+    ],
+  };
+}
 
 function week(weekNumber: number, sessions: LearningSession[]): WeekPlan {
   return {

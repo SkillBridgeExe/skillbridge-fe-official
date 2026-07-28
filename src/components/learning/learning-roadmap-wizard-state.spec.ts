@@ -56,7 +56,14 @@ describe("learning roadmap wizard state", () => {
         startDate: "2026-09-01",
         studyDaysPerWeek: 0,
       }),
-    ).toThrow("Choose between 1 and 7 learning days");
+    ).toThrow("learning.wizard.errors.studyDaysRange");
+    expect(() =>
+      buildCadenceDraft({
+        timezone: "Asia/Ho_Chi_Minh",
+        startDate: "",
+        studyDaysPerWeek: 3,
+      }),
+    ).toThrow("learning.wizard.errors.startDateRequired");
   });
 
   it("selects only server-curated primary resources by default", () => {

@@ -32,7 +32,7 @@ export function useActiveLearningRoadmapBootstrap() {
         setError(
           cause instanceof Error
             ? cause
-            : new Error("Không thể tải lộ trình học."),
+            : new Error(),
         );
         setStatus("error");
       });

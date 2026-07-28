@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getLearningProjectionView } from "./learning-projection";
+import {
+  clampLearningStartDate,
+  getLearningProjectionView,
+  toStudyDaysPerWeek,
+} from "./learning-projection";
 
 describe("learning projection view", () => {
   it("uses DB projection values and clamps percentages for display", () => {
@@ -38,5 +42,34 @@ describe("learning projection view", () => {
         days_remaining: 0,
       }).paceTone,
     ).toBe("behind");
+  });
+
+  it("reports steady pace between 80 and 99 percent", () => {
+    expect(
+      getLearningProjectionView({
+        start_date: "2026-08-01",
+        estimated_completion_date: null,
+        study_days_per_week: 3,
+        session_minutes: 60,
+        total_units: 10,
+        completed_units: 5,
+        planned_units_by_today: 5,
+        missed_units: 0,
+        pace_percentage: 90,
+        days_remaining: 10,
+      }).paceTone,
+    ).toBe("steady");
+  });
+
+  it("normalizes untrusted reschedule inputs before sending them to the server", () => {
+    expect(toStudyDaysPerWeek(5)).toBe(5);
+    expect(toStudyDaysPerWeek(0)).toBe(3);
+    expect(toStudyDaysPerWeek(2.5)).toBe(3);
+    expect(clampLearningStartDate("2026-07-01", "2026-07-28")).toBe(
+      "2026-07-28",
+    );
+    expect(clampLearningStartDate("2026-08-01", "2026-07-28")).toBe(
+      "2026-08-01",
+    );
   });
 });

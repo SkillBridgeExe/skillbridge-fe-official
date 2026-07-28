@@ -14,7 +14,11 @@ import {
   SkillRoadmapMapView,
 } from "@/components/learning";
 import { AIChatbot } from "@/components/learning/AIChatbot";
-import { useRoadmapStore } from "@/components/learning/roadmap-store";
+import {
+  useActiveRoadmapV2,
+  useRoadmapStore,
+} from "@/components/learning/roadmap-store";
+import { getLearningPageState } from "@/components/learning/learning-page-state";
 import { LearningRoadmapWizard } from "@/components/learning/LearningRoadmapWizard";
 import { useActiveLearningRoadmapBootstrap } from "@/components/learning/use-active-learning-roadmap";
 import {
@@ -36,10 +40,12 @@ export default function Learning() {
   const [activeView, setActiveView] = useState<ViewMode>("map");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isArchivingRoadmap, setIsArchivingRoadmap] = useState(false);
-  const { activeRoadmap, clearRoadmap, setActiveRoadmap } = useRoadmapStore();
+  const activeRoadmap = useActiveRoadmapV2();
+  const clearRoadmap = useRoadmapStore((state) => state.clearRoadmap);
+  const setActiveRoadmap = useRoadmapStore((state) => state.setActiveRoadmap);
   const roadmapBootstrap = useActiveLearningRoadmapBootstrap();
-  const isLoadingRoadmap = roadmapBootstrap.status === "loading";
   const hasRoadmap = Boolean(activeRoadmap);
+  const pageState = getLearningPageState(roadmapBootstrap.status, hasRoadmap);
   const moduleCount = activeRoadmap?.modules.length ?? 0;
   const totalHours = activeRoadmap
     ? Math.round(
@@ -86,15 +92,15 @@ export default function Learning() {
                     <Badge className="flex items-center gap-1 border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
                       <Sparkles className="h-3 w-3" />{" "}
                       {activeRoadmap?.content_source === "AI_ENHANCED"
-                        ? "Nội dung AI tối ưu"
-                        : "Nội dung tiêu chuẩn"}
+                        ? t("learning.page.contentSourceAi")
+                        : t("learning.page.contentSourceStandard")}
                     </Badge>
                   )}
                   {activeRoadmap ? (
                     <Badge variant="outline" className="text-xs">
                       {activeRoadmap.learning_track === "FAST_TRACK"
-                        ? "Cấp tốc"
-                        : "Nền tảng"}{" "}
+                        ? t("learning.page.trackFast")
+                        : t("learning.page.trackFoundation")}{" "}
                       · {activeRoadmap.coverage_percentage}%
                     </Badge>
                   ) : null}
@@ -161,16 +167,30 @@ export default function Learning() {
               </div>
             )}
 
-            {isLoadingRoadmap && !hasRoadmap ? (
+            {pageState === "loading" ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
                 {t("learning.page.loading", { defaultValue: "Loading..." })}
               </div>
-            ) : hasRoadmap ? (
+            ) : pageState === "content" ? (
               <div className="animate-in fade-in duration-300">
                 {activeView === "map" && <SkillRoadmapMapView />}
                 {activeView === "overview" && <OverviewView />}
                 {activeView === "grid" && <GridRoadmapView />}
                 {activeView === "list" && <ListRoadmapView />}
+              </div>
+            ) : pageState === "error" ? (
+              <div className="rounded-2xl border border-red-200 bg-white p-8 text-center">
+                <p role="alert" className="text-sm text-red-600">
+                  {roadmapBootstrap.error?.message ||
+                    t("learning.page.loadError")}
+                </p>
+                <Button
+                  type="button"
+                  onClick={roadmapBootstrap.retry}
+                  className="mt-4 rounded-full font-semibold"
+                >
+                  {t("learning.page.retry")}
+                </Button>
               </div>
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">

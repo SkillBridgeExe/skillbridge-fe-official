@@ -58,7 +58,7 @@ export function SkillRoadmapMapView() {
   const selectedId = drawerTarget?.type === "session" ? drawerTarget.item.id : null;
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || subjects.length === 0) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -72,7 +72,7 @@ export function SkillRoadmapMapView() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [drawerTarget, expanded]);
+  }, [drawerTarget, expanded, subjects.length]);
 
   if (subjects.length === 0) return null;
 
