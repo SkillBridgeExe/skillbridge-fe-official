@@ -87,6 +87,21 @@ describe("pricing view model", () => {
     ]);
   });
 
+  it("hides benefits that an admin configures with a zero quota", () => {
+    const result = getPricingBenefits(
+      makePlan({
+        code: "PREMIUM",
+        features: [
+          { featureKey: "cv_upload", limit: -1 },
+          { featureKey: "interview_session", limit: 0 },
+          { featureKey: "roadmap_generate", limit: 0 },
+        ],
+      }),
+    );
+
+    expect(result.map((benefit) => benefit.key)).toEqual(["upload"]);
+  });
+
   it("keeps public pricing focused on active subscription plans", () => {
     const result = getVisiblePricingPlans([
       makePlan({ code: "FREE", category: "SUBSCRIPTION", isActive: true }),
