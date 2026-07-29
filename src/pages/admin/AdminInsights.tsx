@@ -78,7 +78,7 @@ export default function AdminInsights() {
     [summary?.statusDistribution],
   );
 
-  const signals = [
+  const insightCards = [
     {
       title: "Active account rate",
       value: `${activeRate}%`,
@@ -116,7 +116,7 @@ export default function AdminInsights() {
           <p className="text-sm font-semibold uppercase tracking-normal text-primary">Admin insights</p>
           <h1 className="text-3xl font-bold tracking-normal text-foreground">User Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            API-backed user distribution, activation, funnel, and revenue signals. Mock AI decisions were removed.
+            Track account health, product activity, and revenue across the selected period.
           </p>
         </div>
         <div className="w-44">
@@ -145,18 +145,18 @@ export default function AdminInsights() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {signals.map((signal) => {
-            const Icon = signal.icon;
+          {insightCards.map((insight) => {
+            const Icon = insight.icon;
             return (
-              <Card key={signal.title} className="border-border/80 shadow-sm">
+              <Card key={insight.title} className="border-border/80 shadow-sm">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-sm font-semibold text-muted-foreground">{signal.title}</div>
-                      <div className="mt-2 font-mono text-3xl font-bold tracking-normal text-foreground tabular-nums">{signal.value}</div>
-                      <div className="mt-2 text-xs font-semibold text-muted-foreground">{signal.detail}</div>
+                      <div className="text-sm font-semibold text-muted-foreground">{insight.title}</div>
+                      <div className="mt-2 font-mono text-3xl font-bold tracking-normal text-foreground tabular-nums">{insight.value}</div>
+                      <div className="mt-2 text-xs font-semibold text-muted-foreground">{insight.detail}</div>
                     </div>
-                    <SignalBadge tone={signal.tone} icon={Icon} />
+                    <InsightBadge tone={insight.tone} icon={Icon} />
                   </div>
                 </CardContent>
               </Card>
@@ -201,7 +201,7 @@ export default function AdminInsights() {
   );
 }
 
-function SignalBadge({ tone, icon: Icon }: { tone: string; icon: ElementType }) {
+function InsightBadge({ tone, icon: Icon }: { tone: string; icon: ElementType }) {
   const className =
     tone === "success"
       ? "border-[hsl(var(--status-success-border))] bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-fg))]"

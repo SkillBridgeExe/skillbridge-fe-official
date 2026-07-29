@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { AdminBrandMark } from "@/components/admin/AdminBrand";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -61,16 +60,11 @@ export default function AdminNavbar({
         </Link>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-foreground">{sectionTitle(location.pathname)}</div>
-        <div className="truncate text-xs font-medium text-muted-foreground">Live SkillBridge admin API</div>
+      <div className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+        {sectionTitle(location.pathname)}
       </div>
 
       <div className="ms-auto flex items-center gap-2">
-        <Badge variant="outline" className="hidden whitespace-nowrap border-primary/20 bg-primary/10 text-primary sm:inline-flex">
-          Live API
-        </Badge>
-
         <div className="flex items-center rounded-md border border-border bg-muted p-0.5">
           <Button
             variant={isDark ? "ghost" : "secondary"}

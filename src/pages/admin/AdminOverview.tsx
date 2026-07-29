@@ -82,7 +82,7 @@ export default function AdminOverview() {
           <p className="text-sm font-semibold uppercase tracking-normal text-primary">Admin overview</p>
           <h1 className="text-3xl font-bold tracking-normal text-foreground">User Growth & Activity</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Live admin statistics from the user-management API for the last {rangeLabel(rangeDays)}.
+            User, CV, interview, and paid-revenue activity for the last {rangeLabel(rangeDays)}.
           </p>
         </div>
         <div className="w-44">
@@ -116,6 +116,7 @@ export default function AdminOverview() {
             value={(totals?.totalUsers ?? 0).toLocaleString()}
             valueNumber={totals?.totalUsers ?? 0}
             progress={activeRate}
+            progressLabel="active users"
             icon={Users}
             accent={{ ringColorClass: "text-primary", cardClassName: "bg-card" }}
           />
@@ -123,24 +124,23 @@ export default function AdminOverview() {
             title="New users"
             value={(totals?.newUsers ?? 0).toLocaleString()}
             valueNumber={totals?.newUsers ?? 0}
-            progress={100}
             icon={Activity}
-            accent={{ ringColorClass: "text-[hsl(var(--chart-2))]", cardClassName: "bg-card" }}
+            accent={{ cardClassName: "bg-card" }}
           />
           <AdminKpiCard
             title="CV uploads"
             value={(totals?.cvCount ?? 0).toLocaleString()}
             valueNumber={totals?.cvCount ?? 0}
             progress={conversionRate}
+            progressLabel="reached an interview"
             icon={FileText}
             accent={{ ringColorClass: "text-[hsl(var(--chart-5))]", cardClassName: "bg-card" }}
           />
           <AdminKpiCard
             title="Paid revenue"
             value={formatVnd(totals?.paidRevenueVnd ?? 0)}
-            progress={0}
             icon={CreditCard}
-            accent={{ ringColorClass: "text-[hsl(var(--chart-3))]", cardClassName: "bg-card" }}
+            accent={{ cardClassName: "bg-card" }}
           />
         </div>
       )}
@@ -155,7 +155,7 @@ export default function AdminOverview() {
         />
         <AdminLineChartCard
           title="Paid revenue trend"
-          description="Paid amount captured through admin billing data."
+          description="Revenue from completed payments in the selected range."
           xKey="date"
           dataKey="amountVnd"
           axisValueFormatter={formatCompactVnd}
@@ -166,7 +166,7 @@ export default function AdminOverview() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <AdminDonutChartCard title="Role distribution" description="Accounts grouped by active roles." data={roleDonut} />
-        <AdminDonutChartCard title="Status distribution" description="Operational account states." data={statusDonut} />
+        <AdminDonutChartCard title="Status distribution" description="Accounts grouped by current status." data={statusDonut} />
         <AdminFunnelChartCard title="Activity funnel" description="CV, match, and interview progression." items={summary?.activityFunnel ?? []} />
       </div>
 

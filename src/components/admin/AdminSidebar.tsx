@@ -11,7 +11,6 @@ import {
   Flag,
   Building2,
 } from "lucide-react";
-import { AdminAssistantMark } from "@/components/admin/AdminBrand";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -58,12 +57,10 @@ export default function AdminSidebar({
   forceExpanded = true,
   mobileOpen = false,
   onNavigate,
-  onHoverChange,
 }: {
   forceExpanded?: boolean;
   mobileOpen?: boolean;
   onNavigate?: () => void;
-  onHoverChange?: (hovering: boolean) => void;
 }) {
   const { t } = useTranslation("common");
   const location = useLocation();
@@ -103,14 +100,8 @@ export default function AdminSidebar({
         mobileOpen &&
           "fixed bottom-0 left-0 top-16 z-40 block h-[calc(100dvh-4rem)] w-64 shadow-2xl lg:static lg:h-full lg:shadow-none",
       )}
-      onMouseEnter={() => {
-        setIsHovering(true);
-        onHoverChange?.(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovering(false);
-        onHoverChange?.(false);
-      }}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       <div
         className={cn(
@@ -209,10 +200,6 @@ export default function AdminSidebar({
             );
           })}
         </nav>
-
-        <div className="border-t border-border pt-3">
-          <AdminAssistantMark compact={!expanded} />
-        </div>
       </div>
     </aside>
   );
