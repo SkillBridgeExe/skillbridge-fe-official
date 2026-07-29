@@ -252,16 +252,18 @@ export default function Index() {
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="font-display text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.14] sm:leading-[1.22] text-slate-900 [text-wrap:balance] break-words"
+                className="font-display text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[3.25rem] xl:text-[4rem] font-extrabold tracking-tight leading-[1.2] sm:leading-[1.25] text-slate-900 break-words"
               >
-                {t("hero.titleLead")}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
-                  {t("hero.titleSkills")}
+                <span className="inline-block whitespace-nowrap">
+                  {t("hero.titleLead")}
+                  <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic tracking-normal px-1 pt-1 -mt-1 pb-2 -mb-2 animate-gradient">
+                    {t("hero.titleSkills")}
+                  </span>
                 </span>
-                <br className="hidden lg:inline" />
-                <span>
+                <br className="hidden sm:inline" />
+                <span className="inline-block whitespace-nowrap">
                   {t("hero.titleMid")}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic pr-1 animate-gradient">
+                  <span className="inline-block whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-600 italic tracking-normal px-1 pt-1 -mt-1 pb-2 -mb-2 animate-gradient">
                     {t("hero.titleDream")}
                   </span>
                 </span>
