@@ -272,52 +272,54 @@ function TailorRewriteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl w-[calc(100vw-24px)] max-h-[85vh] flex flex-col p-0 rounded-2xl overflow-hidden bg-white">
+        <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-[#F1F1EF] shrink-0 bg-white">
           <DialogTitle>{t("tailor.dialogTitle", { skill: action.display_name })}</DialogTitle>
           <DialogDescription>{t("tailor.dialogDesc")}</DialogDescription>
         </DialogHeader>
 
-        {candidates.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.detectedBullets")}</p>
-            <div className="space-y-2">
-              {candidates.slice(0, 4).map((candidate, index) => (
-                <button
-                  key={`${candidate}-${index}`}
-                  type="button"
-                  onClick={() => setText(candidate)}
-                  className="w-full rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] p-2 text-left text-xs leading-relaxed text-[#2F3437] hover:border-primary/40"
-                >
-                  {candidate}
-                </button>
-              ))}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {candidates.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.detectedBullets")}</p>
+              <div className="space-y-2">
+                {candidates.slice(0, 4).map((candidate, index) => (
+                  <button
+                    key={`${candidate}-${index}`}
+                    type="button"
+                    onClick={() => setText(candidate)}
+                    className="w-full rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] p-2 text-left text-xs leading-relaxed text-[#2F3437] hover:border-primary/40"
+                  >
+                    {candidate}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div>
-          <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.pasteBullet")}</p>
-          <Textarea value={text} onChange={(event) => setText(event.target.value)} className="min-h-28" />
+          <div>
+            <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.pasteBullet")}</p>
+            <Textarea value={text} onChange={(event) => setText(event.target.value)} className="min-h-28" />
+          </div>
+
+          {suggestion && (
+            <div className="rounded-xl border border-[#DCE9D7] bg-[#EDF3EC] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-[#346538]">{t("tailor.suggestion")}</p>
+                <Button type="button" size="sm" variant="outline" onClick={copySuggestion} className="h-8 gap-1.5 rounded-lg text-xs">
+                  <Copy className="h-3.5 w-3.5" />
+                  {t("tailor.copy")}
+                </Button>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#2F3437]">{suggestion}</p>
+              {rewriteMutation.data?.fallback && (
+                <p className="mt-2 text-xs font-medium text-[#787774]">{t("tailor.fallbackNote")}</p>
+              )}
+            </div>
+          )}
         </div>
 
-        {suggestion && (
-          <div className="rounded-xl border border-[#DCE9D7] bg-[#EDF3EC] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-bold text-[#346538]">{t("tailor.suggestion")}</p>
-              <Button type="button" size="sm" variant="outline" onClick={copySuggestion} className="h-8 gap-1.5 rounded-lg text-xs">
-                <Copy className="h-3.5 w-3.5" />
-                {t("tailor.copy")}
-              </Button>
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#2F3437]">{suggestion}</p>
-            {rewriteMutation.data?.fallback && (
-              <p className="mt-2 text-xs font-medium text-[#787774]">{t("tailor.fallbackNote")}</p>
-            )}
-          </div>
-        )}
-
-        <DialogFooter>
+        <DialogFooter className="p-4 border-t border-[#F1F1EF] shrink-0 flex justify-end gap-2 bg-slate-50/50">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("tailor.close")}</Button>
           <Button
             type="button"

@@ -17,6 +17,7 @@ vi.mock("react-i18next", () => ({
       if (key === "review.band.strong") return "Strong";
       if (key === "review.band.watch") return "Watch";
       if (key === "review.band.priority") return "Priority fix";
+      if (key === "review.matchScoreTitle") return "CV–JD match score";
       if (key === "report.rail.matchScoreTitle") return "JD match score";
       if (key === "report.rail.scoreTitle") return "Match Rate";
       if (key === "report.rail.askCompanion") return "Ask your AI coach";
@@ -140,9 +141,9 @@ describe("ScoreRail — match mode (with matchStats)", () => {
 
   it("renders match stats (matched/partial/missing counts)", () => {
     render(<ScoreRail overallScore={72} groups={reviewGroups} matchStats={matchStats} />);
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("5")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("2")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("3")[0]).toBeInTheDocument();
   });
 
   it("renders coverage percent", () => {
@@ -157,7 +158,7 @@ describe("ScoreRail — match mode (with matchStats)", () => {
 
   it("renders match score title instead of review title", () => {
     render(<ScoreRail overallScore={72} groups={reviewGroups} matchStats={matchStats} />);
-    expect(screen.getByText("JD match score")).toBeInTheDocument();
+    expect(screen.getByText("CV–JD match score")).toBeInTheDocument();
     expect(screen.queryByText("Match Rate")).toBeNull();
   });
 });

@@ -319,6 +319,9 @@ export function mapMatchDtoToJdMatch(match: CvMatchDto): CvJdMatch {
         cv_count: f.cv_count,
       })) ?? [],
     degraded_reasons: parsed?.degraded_reasons ?? [],
+    target_role: parsed?.target_role ?? null,
+    job_title: match.jobDescription?.title ?? parsed?.target_role ?? null,
+    source_url: null,
   };
 }
 

@@ -36,6 +36,7 @@ import { buildDiagnosisReport } from "@/lib/diagnosis-report";
 import { dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
 import { seedBuilderFromDocument } from "./edit-in-builder";
 import { DocumentPreview } from "./DocumentPreview";
+import { CvJdDualPanel } from "./report/CvJdDualPanel";
 import { JobRecommendations } from "./JobRecommendations";
 import { AiTrendsInsight } from "./AiTrendsInsight";
 import { SkillGapTrends } from "./SkillGapTrends";
@@ -89,48 +90,50 @@ function KeywordRow({
 
   return (
     <div
-      className="flex items-center gap-4 py-3 border-b border-[#F1F1EF] last:border-0 animate-in fade-in duration-500"
+      className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[#F1F1EF] last:border-0 gap-2 sm:gap-4 animate-in fade-in duration-500"
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
     >
-      <div className="w-6 flex justify-center shrink-0">{statusConfig.icon}</div>
-      <div className="flex-1 min-w-0 pr-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-[#2F3437] truncate">{skill.name}</span>
-          {evidenceStrength && (
-            <span
-              className={cn("hidden sm:inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
-              title={t(`evidence.strength.${evidenceStrength}`)}
-            >
-              {t(`evidence.strength.${evidenceStrength}`)}
-            </span>
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">{statusConfig.icon}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs sm:text-sm font-medium text-[#2F3437] break-words">{skill.name}</span>
+            {evidenceStrength && (
+              <span
+                className={cn("inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
+                title={t(`evidence.strength.${evidenceStrength}`)}
+              >
+                {t(`evidence.strength.${evidenceStrength}`)}
+              </span>
+            )}
+          </div>
+          {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
+            <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
+              {t("matchDepth.gapLevels", { count: skill.gap_levels })}
+            </p>
+          )}
+          {skill.satisfied_by && (
+            <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
+              {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
+            </p>
           )}
         </div>
-        {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
-          <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
-            {t("matchDepth.gapLevels", { count: skill.gap_levels })}
-          </p>
-        )}
-        {skill.satisfied_by && (
-          // BE #51: requirement được thỏa bởi skill CON trên CV (sql ← SQL Server) — nói thật nguồn điểm.
-          <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
-            {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
-          </p>
-        )}
       </div>
-      <div className="flex items-center gap-3 w-40 shrink-0">
-        <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-700",
-              skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
-            )}
-            style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
-          />
+
+      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 pl-8 sm:pl-0">
+        <div className="flex items-center gap-2 flex-1 sm:flex-none w-24 sm:w-32">
+          <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-700",
+                skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
+              )}
+              style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
+            />
+          </div>
+          <span className="font-mono tabular-nums text-xs text-[#787774] w-8 text-right shrink-0">{skill.cvScore}%</span>
         </div>
-        <span className="font-mono tabular-nums text-xs text-[#787774] w-9 text-right shrink-0">{skill.cvScore}%</span>
-      </div>
-      <div className="w-24 shrink-0 flex justify-end md:justify-center">
-        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border w-[72px] text-center", statusConfig.badge)}>{statusConfig.label}</span>
+        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border text-center shrink-0", statusConfig.badge)}>{statusConfig.label}</span>
       </div>
     </div>
   );
@@ -362,13 +365,15 @@ function SystemReadPanel({
  *  MAIN COMPONENT — Editorial layout (W24)
  * ════════════════════════════════════════════════════════════════════════ */
 
+import type { ReportTab } from "@/pages/user/Diagnosis";
+
 interface DiagnosisStep3ResultsProps {
-  activeTab: 'audit' | 'cv' | 'market';
+  activeTab: ReportTab;
 }
 
 export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole } = useDiagnosisStore();
+  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole, cvFile, builderCvName } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -542,10 +547,10 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
 
   return (
-    <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500 w-full">
+    <div className="min-h-full flex flex-col lg:flex-row select-none animate-in fade-in duration-500 w-full">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && !isDegradedNoBasis && (
-        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-hidden h-full">
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 lg:h-full">
           <ScoreRail
             overallScore={matchScore ?? 0}
             groups={reportGroups}
@@ -606,8 +611,8 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
         ) : (
           <>
         
-        {/* Tab 1: Audit Report */}
-        {activeTab === 'audit' && (
+        {/* Tab 1: Audit Report / Fit */}
+        {(activeTab === 'audit' || activeTab === 'fit') && (
           <div className="w-full px-2 lg:px-4 space-y-8">
             {reviewData?.extraction_quality && reviewData.extraction_quality.confidence !== "high" && (
               <div className="pb-6">
@@ -965,39 +970,55 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
           </div>
         )}
 
-        {/* Tab 2: Your CV */}
-        {activeTab === 'cv' && (
+        {/* Tab 2: Your CV / CV & JD */}
+        {(activeTab === 'cv' || activeTab === 'cv_jd') && (
           <div className="w-full px-2 lg:px-4 space-y-8 animate-in fade-in duration-300">
-            {/* Header bar: Issues Count & Edit button */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
-                <p className="text-sm font-semibold text-[#2F3437]">
-                  {(reviewData?.issues?.length ?? 0) > 0
-                    ? t("review.issuesMarked", { count: reviewData?.issues?.length ?? 0, defaultValue: `Tìm thấy ${reviewData?.issues?.length ?? 0} điểm cải thiện trong CV của bạn` })
-                    : t("review.noIssuesMarked", { defaultValue: "Tuyệt vời! Không phát hiện lỗi nghiêm trọng nào." })
-                  }
-                </p>
-              </div>
-              <Button
-                onClick={() => seedBuilderFromDocument(reviewData?.document)}
-                size="sm"
-                className="bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
-              >
-                {t("preview.editOriginal", { defaultValue: "Sửa CV gốc" })}
-              </Button>
-            </div>
+            {isJdMode ? (
+              <CvJdDualPanel
+                cvName={cvFile?.name || builderCvName || t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" })}
+                jdText={jobDescription}
+                jdTitle={jdMatch?.job_title || jdMatch?.target_role || undefined}
+                jdSourceUrl={jdMatch?.source_url || undefined}
+                onEditOriginal={() => seedBuilderFromDocument(reviewData?.document)}
+              />
+            ) : (
+              <>
+                {/* Header bar: Issues Count & Edit button */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
+                  <div className="flex items-center gap-2.5">
+                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
+                    <p className="text-sm font-semibold text-[#2F3437]">
+                      {(reviewData?.issues?.length ?? 0) > 0
+                        ? t("review.issuesMarked", { count: reviewData?.issues?.length ?? 0, defaultValue: `Tìm thấy ${reviewData?.issues?.length ?? 0} điểm cải thiện trong CV của bạn` })
+                        : t("review.noIssuesMarked", { defaultValue: "Tuyệt vời! Không phát hiện lỗi nghiêm trọng nào." })
+                      }
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => seedBuilderFromDocument(reviewData?.document)}
+                    size="sm"
+                    className="bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
+                  >
+                    {t("preview.editOriginal", { defaultValue: "Sửa CV gốc" })}
+                  </Button>
+                </div>
 
-            <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
-              <DocumentPreview hideEditOriginal />
-            </div>
+                <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
+                  <DocumentPreview hideEditOriginal />
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {/* Tab 3: Market Insights */}
-        {activeTab === 'market' && (
+        {/* Tab 3: Market Insights / Jobs */}
+        {(activeTab === 'market' || activeTab === 'jobs') && (
           <div className="w-full px-2 lg:px-4 space-y-10 animate-in fade-in duration-300">
-            <JobRecommendations cvId={lastCvId} />
+            <JobRecommendations
+              key={lastCvId ?? "no-cv"}
+              cvId={lastCvId}
+              targetRole={targetRole}
+            />
 
             {/* AI trends insight */}
             <AiTrendsInsight cvId={lastCvId} role={targetRole} />

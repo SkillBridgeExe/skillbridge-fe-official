@@ -131,96 +131,96 @@ export default function Navbar() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full px-3 pt-3 sm:px-4 sm:pt-4 lg:pt-6 pointer-events-none">
-      <nav className="w-full max-w-6xl h-14 sm:h-16 lg:h-[4.5rem] flex items-center justify-between gap-2 lg:gap-6 px-3 sm:px-4 lg:px-6 bg-white/75 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-900/5 rounded-2xl sm:rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
-        <div className="flex shrink-0 items-center gap-3 lg:gap-3 xl:gap-8">
-        <Link to="/" className="flex min-w-0 items-center group shrink-0">
-          <div className="flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-            <img
-              src={logoPng}
-              alt="SkillBridge"
-              className="h-12 w-auto max-w-none object-contain drop-shadow-sm -my-3 -ml-3 -mr-1 sm:h-14 lg:h-[72px] lg:-my-4 lg:-ml-4"
-            />
-          </div>
-          <span className="hidden min-w-0 truncate text-[18px] font-bold tracking-tight text-slate-800 sm:inline lg:hidden xl:inline lg:text-[20px] whitespace-nowrap">
-            SkillBridge
-          </span>
-        </Link>
+      <nav className="w-full max-w-6xl h-14 sm:h-16 lg:h-[4.5rem] flex items-center justify-between gap-1.5 lg:gap-3 xl:gap-6 px-3 sm:px-4 lg:px-5 xl:px-6 bg-white/75 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-900/5 rounded-2xl sm:rounded-full pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <div className="flex items-center gap-2 lg:gap-2.5 xl:gap-6 min-w-0">
+          <Link to="/" className="flex min-w-0 items-center group shrink-0">
+            <div className="flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+              <img
+                src={logoPng}
+                alt="SkillBridge"
+                className="h-12 w-auto max-w-none object-contain drop-shadow-sm -my-3 -ml-3 -mr-1 sm:h-14 lg:h-[72px] lg:-my-4 lg:-ml-4"
+              />
+            </div>
+            <span className="hidden min-w-0 truncate text-[18px] font-bold tracking-tight text-slate-800 sm:inline lg:hidden xl:inline lg:text-[20px] whitespace-nowrap">
+              SkillBridge
+            </span>
+          </Link>
 
-        <div className="hidden lg:flex items-center gap-3 xl:gap-6 shrink-0">
-          {NAV_ITEMS.filter((item) => isAuthenticated || item.href !== "/dashboard").map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              aria-current={location.pathname === item.href ? "page" : undefined}
-              className={cn(
-                "text-sm lg:text-[13px] xl:text-sm font-medium transition-colors hover:text-primary relative py-1 whitespace-nowrap",
-                location.pathname === item.href
-                  ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                  : "text-slate-600"
-              )}
-            >
-              {t(item.labelKey)}
-            </Link>
-          ))}
+          <div className="hidden lg:flex items-center gap-2 xl:gap-5 min-w-0">
+            {NAV_ITEMS.filter((item) => isAuthenticated || item.href !== "/dashboard").map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                aria-current={location.pathname === item.href ? "page" : undefined}
+                className={cn(
+                  "text-xs xl:text-sm font-medium transition-colors hover:text-primary relative py-1 whitespace-nowrap",
+                  location.pathname === item.href
+                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                    : "text-slate-600"
+                )}
+              >
+                {t(item.labelKey)}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-3">
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full px-2 sm:px-3 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 sm:gap-2 h-9 transition-all active:scale-95 border border-slate-100"
-            >
-              {i18n.language === "vi" ? <VNFlagCircle /> : <UKFlagCircle />}
-              <span className="hidden text-xs font-bold tracking-wider min-[380px]:inline">{i18n.language === "vi" ? "VI" : "EN"}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 shadow-lg p-1">
-            <DropdownMenuItem
-              onClick={() => i18n.changeLanguage("en")}
-              className={cn(
-                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
-                i18n.language === "en" ? "bg-primary/5 text-primary" : "text-slate-600"
-              )}
-            >
-              <UKFlagCircle />
-              <span>English</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => i18n.changeLanguage("vi")}
-              className={cn(
-                "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
-                i18n.language === "vi" ? "bg-primary/5 text-primary" : "text-slate-600"
-              )}
-            >
-              <VNFlagCircle />
-              <span>Tiếng Việt</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-1 lg:gap-1.5 xl:gap-2.5">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full px-2 sm:px-2.5 text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 sm:gap-2 h-9 transition-all active:scale-95 border border-slate-100"
+              >
+                {i18n.language === "vi" ? <VNFlagCircle /> : <UKFlagCircle />}
+                <span className="hidden text-xs font-bold tracking-wider min-[380px]:inline">{i18n.language === "vi" ? "VI" : "EN"}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl border-slate-200 shadow-lg p-1">
+              <DropdownMenuItem
+                onClick={() => i18n.changeLanguage("en")}
+                className={cn(
+                  "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                  i18n.language === "en" ? "bg-primary/5 text-primary" : "text-slate-600"
+                )}
+              >
+                <UKFlagCircle />
+                <span>English</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => i18n.changeLanguage("vi")}
+                className={cn(
+                  "flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold",
+                  i18n.language === "vi" ? "bg-primary/5 text-primary" : "text-slate-600"
+                )}
+              >
+                <VNFlagCircle />
+                <span>Tiếng Việt</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {!isAuthenticated ? (
-          <div className="hidden items-center gap-2 lg:flex">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => openAuth("login")}
-              className="rounded-full px-4 text-slate-700 font-semibold hover:bg-slate-100"
-            >
-              {t("actions.login")}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => openAuth("register")}
-              className="rounded-full px-4 lg:px-5 xl:px-6 bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold whitespace-nowrap"
-            >
-              {t("actions.startFree")}
-            </Button>
-          </div>
-        ) : (
+          {!isAuthenticated ? (
+            <div className="hidden items-center gap-1 lg:gap-1.5 xl:gap-2 lg:flex">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => openAuth("login")}
+                className="rounded-full px-2.5 lg:px-3 xl:px-4 text-xs xl:text-sm text-slate-700 font-semibold hover:bg-slate-100"
+              >
+                {t("actions.login")}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => openAuth("register")}
+                className="rounded-full px-3 lg:px-3.5 xl:px-5 text-xs xl:text-sm bg-[#00AEEF] hover:bg-[#049bd7] text-white shadow-[0_10px_22px_rgba(0,174,239,0.22)] font-semibold whitespace-nowrap shrink-0"
+              >
+                {t("actions.startFree")}
+              </Button>
+            </div>
+          ) : (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Avatar className={cn(

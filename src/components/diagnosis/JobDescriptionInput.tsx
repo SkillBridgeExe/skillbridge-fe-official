@@ -105,13 +105,13 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
       
       {/* Header Area */}
       {compact ? (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 w-full">
           <div className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-[#00AEEF]" />
+            <Briefcase className="w-5 h-5 text-[#00AEEF] shrink-0" />
             <h3 className="font-bold text-base text-slate-900">{t("jdInput.titleCompact")}</h3>
           </div>
           {/* Tab toggle */}
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg shrink-0">
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg shrink-0 self-start sm:self-auto">
             <button
               onClick={() => setJdInputMode("paste")}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all",
@@ -132,7 +132,7 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
         </div>
       ) : (
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 w-full">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/10 flex items-center justify-center shrink-0">
                 <Briefcase className="text-[#00AEEF] w-5 h-5" />
@@ -257,14 +257,14 @@ export function JobDescriptionInput({ showActions = false, onCancel, onAnalyze, 
 
       {/* Action Buttons (for Step 2) */}
       {showActions && (
-        <div className={cn("flex gap-3 justify-end items-center", compact ? "mt-2" : "p-4 pt-0")}>
-          <Button variant="ghost" onClick={onCancel} className="rounded-full text-sm font-semibold hover:bg-slate-200">
+        <div className={cn("flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 justify-end items-stretch sm:items-center w-full", compact ? "mt-2" : "p-4 pt-0")}>
+          <Button variant="ghost" onClick={onCancel} className="rounded-full text-sm font-semibold hover:bg-slate-200 w-full sm:w-auto">
             {t("jdInput.cancel")}
           </Button>
           <Button
             onClick={handleAnalyze}
             disabled={!jobDescription.trim()}
-            className="rounded-full px-8 bg-primary hover:bg-primary/90 text-white font-bold gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all"
+            className="rounded-full px-6 sm:px-8 bg-primary hover:bg-primary/90 text-white font-bold gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all w-full sm:w-auto justify-center"
           >
             <Sparkles className="w-4 h-4" /> {t("jdInput.analyze")} <ArrowRight className="w-4 h-4" />
           </Button>

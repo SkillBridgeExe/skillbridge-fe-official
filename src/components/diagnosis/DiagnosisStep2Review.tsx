@@ -32,6 +32,7 @@ import {
   useDiagnosisChatCompanion,
 } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import type { CheckRowData } from "@/lib/diagnosis-report";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -42,9 +43,11 @@ const bandOf = (score: number) =>
       ? { key: "review.band.watch", chip: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-sm shadow-amber-500/5" }
       : { key: "review.band.priority", chip: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-sm shadow-rose-500/5" };
 
+import type { ReportTab } from "@/pages/user/Diagnosis";
+
 interface DiagnosisStep2ReviewProps {
-  activeTab: 'audit' | 'cv' | 'market';
-  setActiveTab: (tab: 'audit' | 'cv' | 'market') => void;
+  activeTab: ReportTab;
+  setActiveTab: (tab: ReportTab) => void;
 }
 
 export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
@@ -72,6 +75,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   const posthog = usePostHog();
   const compareJdMutation = useCompareJdMutation();
   const diagnosisLang = i18n.language?.startsWith("vi") ? "vi" : "en";
+  const { isPremium } = usePremiumAccess();
 
   const compareFromCvReview = async () => {
     if (!lastCvId) {
@@ -265,10 +269,10 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   }, [completenessGap, summary.experiences, summary.skills, chatContextActive]);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row select-none overflow-hidden animate-in fade-in duration-500">
+    <div className="min-h-full flex flex-col lg:flex-row select-none animate-in fade-in duration-500">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && (
-        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 overflow-hidden h-full">
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 lg:h-full">
           <ScoreRail
             overallScore={overallCvScore}
             groups={reportGroups}
@@ -374,7 +378,12 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
 
                       {/* CheckGroups */}
                       {reportGroups.map((group) => (
-                        <CheckGroup key={group.id} group={group} onAskDimension={askDimension}>
+                        <CheckGroup
+                          key={group.id}
+                          group={group}
+                          onAskDimension={askDimension}
+                          lockIssueDetails={group.id === "ai_eval" && !isPremium}
+                        >
                           {/* Custom slot for Skills */}
                           {group.id === "skills" && (
                             <div className="space-y-4 mt-4">
@@ -448,7 +457,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
 
                 {activeTab === 'market' && (
                   <div className="space-y-8 animate-in fade-in duration-300">
-                    <JobRecommendations cvId={lastCvId} />
+                    <JobRecommendations cvId={lastCvId} targetRole={targetRole} />
 
                     {/* AI trends insight */}
                     <AiTrendsInsight cvId={lastCvId} role={targetRole} />

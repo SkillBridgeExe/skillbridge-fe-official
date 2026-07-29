@@ -117,14 +117,13 @@ export function useJobRecommendationsQuery(
     queryKey: [
       "job-recommendations",
       cvId,
-      query.role ?? "all",
-      query.limit ?? 5,
+      query,
     ],
     queryFn: () => getJobRecommendations(cvId!, query),
     enabled: Boolean(cvId) && canUseApi,
-    // Every fetch is BE-metered (JOB_RECOMMENDATION quota). Keep the result
-    // fresh for the whole sitting so passive dashboard/diagnosis remounts do
-    // not silently burn another slot on the same CV (bug hunt 07-21).
+    // Do not carry placeholder rows across query keys: switching CVs must never
+    // briefly mix one candidate's recommendations into another's list.
+    // BE snapshots make filter/sort/page browsing free after initial generation.
     staleTime: 30 * 60_000,
     gcTime: 60 * 60_000,
   });
