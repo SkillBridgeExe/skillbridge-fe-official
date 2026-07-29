@@ -27,8 +27,8 @@ export function CvJdDualPanel({
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300">
-      {/* Mobile segmented switcher (< 768px) */}
-      <div className="md:hidden flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+      {/* Mobile/tablet segmented switcher (< 1024px) */}
+      <div className="lg:hidden flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
         <button
           type="button"
           onClick={() => setMobileTab("cv")}
@@ -57,13 +57,13 @@ export function CvJdDualPanel({
         </button>
       </div>
 
-      {/* Grid: 2 columns on desktop (>= 768px), 1 column on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Grid: 2 columns on desktop (>= 1024px), one primary scroller below. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* PANEL 1: CV Panel */}
         <div
           className={cn(
             "flex flex-col bg-white rounded-xl border border-[#EAEAEA] p-5 shadow-sm space-y-4",
-            mobileTab !== "cv" && "hidden md:flex"
+            mobileTab !== "cv" && "hidden lg:flex"
           )}
         >
           <div className="flex items-center justify-between border-b border-[#F1F1EF] pb-3">
@@ -84,7 +84,7 @@ export function CvJdDualPanel({
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
+          <div className="flex-1 lg:overflow-y-auto lg:max-h-[650px] custom-scrollbar pr-1">
             <DocumentPreview hideEditOriginal />
           </div>
         </div>
@@ -93,7 +93,7 @@ export function CvJdDualPanel({
         <div
           className={cn(
             "flex flex-col bg-white rounded-xl border border-[#EAEAEA] p-5 shadow-sm space-y-4",
-            mobileTab !== "jd" && "hidden md:flex"
+            mobileTab !== "jd" && "hidden lg:flex"
           )}
         >
           <div className="flex items-center justify-between border-b border-[#F1F1EF] pb-3">
@@ -116,7 +116,7 @@ export function CvJdDualPanel({
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[650px] custom-scrollbar pr-1">
+          <div className="flex-1 lg:overflow-y-auto lg:max-h-[650px] custom-scrollbar pr-1">
             {hasJdText ? (
               <div className="text-xs text-[#2F3437] leading-relaxed whitespace-pre-wrap font-sans bg-slate-50/50 p-4 rounded-lg border border-slate-100">
                 {jdText}

@@ -84,6 +84,11 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
   const { lastCvId } = useDiagnosisStore();
   const { toast } = useToast();
 
+
+
+
+
+
   const isMatch = !!matchStats;
 
   // Pick band: match mode uses shared 80/60 thresholds, review mode uses 70/50.
@@ -139,7 +144,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
   return (
     <aside className="w-full lg:h-full lg:flex lg:flex-col">
       {/* Below lg: horizontal scrollable chip bar (at lg the sidebar gets its own grid column) */}
-      <div className="lg:hidden sticky top-14 bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
+      <div className="lg:hidden sticky top-[104px] bg-white/95 backdrop-blur z-20 py-2 border-b border-[#EAEAEA] overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
         {/* Score chip — the only score display below lg now that the hero is gone */}
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shrink-0", bandChip)}>
           <span className="font-mono text-sm font-black tabular-nums">{overallScore}</span>/100 · {bandLabel}

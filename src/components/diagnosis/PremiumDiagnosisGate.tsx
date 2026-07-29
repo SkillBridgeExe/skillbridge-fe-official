@@ -8,7 +8,7 @@ type PremiumDiagnosisGateProps = {
   className?: string;
 };
 
-const AUDIT_WIDTHS = ["w-[88%]", "w-[68%]"];
+const AUDIT_WIDTHS = ["w-[88%]", "w-[68%]", "w-[78%]", "w-[58%]"];
 const MARKET_WIDTHS = ["w-[82%]", "w-[63%]", "w-[72%]", "w-[54%]"];
 
 /**
@@ -26,16 +26,16 @@ export function PremiumDiagnosisGate({
     <section
       aria-label={t("premiumGate.ariaLabel")}
       className={cn(
-        "relative isolate overflow-hidden rounded-xl border border-sky-100 bg-white",
-        variant === "audit" ? "mt-3" : "p-4",
+        "relative isolate overflow-hidden rounded-xl border border-sky-100/80 bg-white",
+        variant === "audit" ? "mt-4" : "p-4",
         className,
       )}
     >
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none select-none opacity-70 blur-[3px]",
-          variant === "audit" ? "space-y-2 p-3" : "space-y-3",
+          "pointer-events-none select-none opacity-60 blur-[4px]",
+          variant === "audit" ? "space-y-3 p-4 min-h-[220px]" : "space-y-3",
         )}
       >
         {rows.map((width, index) => (
@@ -63,12 +63,12 @@ export function PremiumDiagnosisGate({
         ))}
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center bg-white/58 px-4 backdrop-blur-[1.5px]">
-        <div className="max-w-sm rounded-xl border border-sky-100 bg-white/95 p-4 text-center shadow-[0_8px_24px_rgba(15,23,42,0.10)]">
-          <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-sky-50 text-primary">
-            <LockKeyhole className="h-4 w-4" />
+      <div className="absolute inset-0 flex items-center justify-center bg-white/60 p-4 backdrop-blur-[2px]">
+        <div className="max-w-md w-full rounded-2xl border border-sky-100 bg-white/95 p-5 text-center shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+          <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-primary shadow-sm">
+            <LockKeyhole className="h-5 w-5" />
           </span>
-          <h3 className="mt-2 text-sm font-bold text-slate-900">
+          <h3 className="mt-2.5 text-base font-bold text-slate-900">
             {t(`premiumGate.${variant}.title`)}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
@@ -76,9 +76,9 @@ export function PremiumDiagnosisGate({
           </p>
           <Link
             to="/pricing"
-            className="mt-3 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="mt-3.5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#00AEEF] hover:bg-[#049bd7] px-5 text-xs font-bold text-white shadow-sm transition-all hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            <Crown className="h-3.5 w-3.5" />
+            <Crown className="h-4 w-4 text-amber-300 fill-amber-300" />
             {t("premiumGate.cta")}
           </Link>
         </div>

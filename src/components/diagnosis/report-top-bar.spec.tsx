@@ -99,4 +99,19 @@ describe("ReportTopBar — Mode Identity & Tabs", () => {
     fireEvent.click(screen.getByTestId("back-button"));
     expect(onBackToReview).toHaveBeenCalled();
   });
+
+  it("renders accessible tablist and primary match CTA action button", () => {
+    render(<ReportTopBar activeTab="audit" onTabChange={vi.fn()} mode="review" />);
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
+    const matchButton = screen.getByRole("button", { name: "So khớp CV với JD" });
+    expect(matchButton).toBeInTheDocument();
+    expect(matchButton).toHaveClass("min-h-[44px]");
+    const startOverBtn = screen.getByRole("button", { name: "Làm lại từ đầu" });
+    expect(startOverBtn).toBeInTheDocument();
+    expect(startOverBtn).toHaveClass("min-h-[44px]");
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toHaveClass(
+      "min-h-[44px]",
+      "min-w-[44px]",
+    );
+  });
 });

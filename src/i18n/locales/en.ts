@@ -2750,6 +2750,8 @@ export default {
         title: "Unlock detailed CV recommendations",
         description:
           "See the exact issues and practical fixes behind your AI evaluation.",
+        lockedFindings_one: "{{count}} detailed finding locked",
+        lockedFindings_other: "{{count}} detailed findings locked",
       },
       market: {
         title: "Unlock market skill insights",

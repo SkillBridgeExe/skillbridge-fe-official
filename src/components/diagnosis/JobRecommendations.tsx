@@ -499,8 +499,8 @@ export function JobRecommendations({
       {/* Explorer Controls Toolbar (Only active in Explorer Mode) */}
       {isExplorerOpen && (
         <div className="space-y-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-          {/* Desktop Toolbar */}
-          <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
+          {/* Desktop Toolbar (>= 1024px) */}
+          <div className="hidden lg:flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-600 flex items-center gap-1 mr-1">
                 <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -721,8 +721,8 @@ export function JobRecommendations({
             </div>
           </div>
 
-          {/* Mobile Filter Button & Drawer */}
-          <div className="md:hidden flex items-center justify-between gap-2">
+          {/* Mobile Filter Button & Drawer (< 1024px) */}
+          <div className="lg:hidden flex items-center justify-between gap-2">
             <Sheet
               open={mobileFilterOpen}
               onOpenChange={(open) => {
@@ -741,8 +741,8 @@ export function JobRecommendations({
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto p-6 space-y-6">
-                <SheetHeader>
+              <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white">
+                <SheetHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 shrink-0 bg-white z-10">
                   <SheetTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
                     <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc việc làm" })}</span>
                     {activeFilterCount > 0 && (
@@ -763,7 +763,7 @@ export function JobRecommendations({
                   </SheetDescription>
                 </SheetHeader>
 
-                <div className="space-y-5 text-left">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-left">
                   {/* Role Select */}
                   <div className="space-y-2">
                     <label htmlFor="job-role-filter-mobile" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -772,13 +772,13 @@ export function JobRecommendations({
                     <select
                       id="job-role-filter-mobile"
                       value={
-                        filterQuery.role ??
+                        mobileDraftQuery.role ??
                         data?.role_scope?.role_code ??
                         targetRole ??
                         (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                       }
                       onChange={(e) => handleSetRole(e.target.value)}
-                      className="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+                      className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700"
                     >
                       {data?.role_scope?.source === "cv_target_missing" && (
                         <option value="" disabled>
@@ -855,7 +855,7 @@ export function JobRecommendations({
                   {facets?.employment_types && (
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        {t("jobs.employmentTypeLabel", { defaultValue: "Loại hợp đồng" })}
+                        {t("jobs.employmentTypeLabel", { defaultValue: "Loại hình công việc" })}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {facets.employment_types.map((typeItem) => {
@@ -961,16 +961,16 @@ export function JobRecommendations({
                   </div>
                 </div>
 
-                <SheetFooter className="pt-4 border-t border-slate-100">
+                <SheetFooter className="p-4 border-t border-slate-100 shrink-0 bg-white pb-[calc(16px+env(safe-area-inset-bottom))] shadow-md">
                   <SheetClose asChild>
                     <Button
                       onClick={() => {
                         setQueryState({ ...mobileDraftQuery, offset: 0, limit: 10 });
                         setAccumulatedRecs([]);
                       }}
-                      className="w-full bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold rounded-xl h-11"
+                      className="w-full bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold text-sm h-11 rounded-xl"
                     >
-                      {t("actions.apply", { defaultValue: "Áp dụng bộ lọc" })}
+                      {t("jobs.applyFilters", { defaultValue: "Áp dụng bộ lọc" })}
                     </Button>
                   </SheetClose>
                 </SheetFooter>

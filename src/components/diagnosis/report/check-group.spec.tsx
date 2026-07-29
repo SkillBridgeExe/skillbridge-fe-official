@@ -93,6 +93,20 @@ describe("CheckGroup score status", () => {
                   },
                 ],
               },
+              {
+                id: "skills",
+                label: "Kỹ năng",
+                status: "warn",
+                evidence: "Tóm tắt kỹ năng vẫn được xem.",
+                subItems: [
+                  {
+                    title: "Second secret issue",
+                    detail: "SECOND_PREMIUM_ONLY_DETAIL",
+                    severity: "medium",
+                    suggestion: "SECOND_PREMIUM_ONLY_FIX",
+                  },
+                ],
+              },
             ],
           }}
         />
@@ -100,9 +114,15 @@ describe("CheckGroup score status", () => {
     );
 
     expect(screen.getByText("Tóm tắt đánh giá vẫn được xem.")).toBeInTheDocument();
+    expect(screen.getByText("Tóm tắt kỹ năng vẫn được xem.")).toBeInTheDocument();
     expect(screen.queryByText("PREMIUM_ONLY_EXACT_DETAIL")).not.toBeInTheDocument();
     expect(screen.queryByText("PREMIUM_ONLY_EXACT_FIX")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /premiumGate\.cta/i })).toHaveAttribute(
+    expect(screen.queryByText("SECOND_PREMIUM_ONLY_DETAIL")).not.toBeInTheDocument();
+    expect(screen.queryByText("SECOND_PREMIUM_ONLY_FIX")).not.toBeInTheDocument();
+    expect(screen.getAllByText("premiumGate.audit.lockedFindings").length).toBe(2);
+    const premiumLinks = screen.getAllByRole("link", { name: /premiumGate\.cta/i });
+    expect(premiumLinks).toHaveLength(1);
+    expect(premiumLinks[0]).toHaveAttribute(
       "href",
       "/pricing",
     );

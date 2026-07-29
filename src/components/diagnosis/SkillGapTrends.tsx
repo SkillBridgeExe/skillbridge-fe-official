@@ -107,24 +107,28 @@ export function SkillGapTrends({ cvId }: { cvId: string | null }) {
 
           <div className={cn(CARD, "p-4 divide-y divide-[#F1F1EF]")}>
             {gap.map((row) => (
-              <div key={row.canonical_name} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
-                <span className="text-[13px] text-[#2F3437] font-medium w-32 sm:w-40 shrink-0 truncate">
+              <div key={row.canonical_name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 py-2.5 first:pt-0 last:pb-0">
+                <span className="text-xs sm:text-[13px] text-[#2F3437] font-medium min-w-0 flex-1 break-words">
                   {row.display_name}
                 </span>
-                <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(100, Math.round(row.pct_of_postings))}%` }}
-                  />
-                </div>
-                <span className="font-mono tabular-nums text-[11px] text-[#787774] w-9 text-right shrink-0">
-                  {Math.round(row.pct_of_postings)}%
-                </span>
-                {typeof row.trend_delta === "number" && row.trend_delta > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#346538] shrink-0 w-12">
-                    <TrendingUp className="w-3 h-3" />{t("trends.hot")}
+                <div className="flex items-center gap-2.5 w-full sm:w-[220px] shrink-0 justify-between sm:justify-end">
+                  <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, Math.round(row.pct_of_postings))}%` }}
+                    />
+                  </div>
+                  <span className="font-mono tabular-nums text-[11px] text-[#787774] w-8 text-right shrink-0">
+                    {Math.round(row.pct_of_postings)}%
                   </span>
-                )}
+                  {typeof row.trend_delta === "number" && row.trend_delta > 0 ? (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#346538] shrink-0 w-12 justify-end">
+                      <TrendingUp className="w-3 h-3" />{t("trends.hot")}
+                    </span>
+                  ) : (
+                    <span className="w-12 shrink-0" />
+                  )}
+                </div>
               </div>
             ))}
           </div>

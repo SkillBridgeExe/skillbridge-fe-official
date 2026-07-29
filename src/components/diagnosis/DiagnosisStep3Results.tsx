@@ -90,48 +90,50 @@ function KeywordRow({
 
   return (
     <div
-      className="flex items-center gap-4 py-3 border-b border-[#F1F1EF] last:border-0 animate-in fade-in duration-500"
+      className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[#F1F1EF] last:border-0 gap-2 sm:gap-4 animate-in fade-in duration-500"
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
     >
-      <div className="w-6 flex justify-center shrink-0">{statusConfig.icon}</div>
-      <div className="flex-1 min-w-0 pr-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-[#2F3437] truncate">{skill.name}</span>
-          {evidenceStrength && (
-            <span
-              className={cn("hidden sm:inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
-              title={t(`evidence.strength.${evidenceStrength}`)}
-            >
-              {t(`evidence.strength.${evidenceStrength}`)}
-            </span>
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">{statusConfig.icon}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs sm:text-sm font-medium text-[#2F3437] break-words">{skill.name}</span>
+            {evidenceStrength && (
+              <span
+                className={cn("inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
+                title={t(`evidence.strength.${evidenceStrength}`)}
+              >
+                {t(`evidence.strength.${evidenceStrength}`)}
+              </span>
+            )}
+          </div>
+          {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
+            <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
+              {t("matchDepth.gapLevels", { count: skill.gap_levels })}
+            </p>
+          )}
+          {skill.satisfied_by && (
+            <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
+              {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
+            </p>
           )}
         </div>
-        {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
-          <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
-            {t("matchDepth.gapLevels", { count: skill.gap_levels })}
-          </p>
-        )}
-        {skill.satisfied_by && (
-          // BE #51: requirement được thỏa bởi skill CON trên CV (sql ← SQL Server) — nói thật nguồn điểm.
-          <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
-            {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
-          </p>
-        )}
       </div>
-      <div className="flex items-center gap-3 w-40 shrink-0">
-        <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-700",
-              skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
-            )}
-            style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
-          />
+
+      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 pl-8 sm:pl-0">
+        <div className="flex items-center gap-2 flex-1 sm:flex-none w-24 sm:w-32">
+          <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-700",
+                skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
+              )}
+              style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
+            />
+          </div>
+          <span className="font-mono tabular-nums text-xs text-[#787774] w-8 text-right shrink-0">{skill.cvScore}%</span>
         </div>
-        <span className="font-mono tabular-nums text-xs text-[#787774] w-9 text-right shrink-0">{skill.cvScore}%</span>
-      </div>
-      <div className="w-24 shrink-0 flex justify-end md:justify-center">
-        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border w-[72px] text-center", statusConfig.badge)}>{statusConfig.label}</span>
+        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border text-center shrink-0", statusConfig.badge)}>{statusConfig.label}</span>
       </div>
     </div>
   );

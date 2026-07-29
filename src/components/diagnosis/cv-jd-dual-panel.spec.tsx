@@ -53,4 +53,25 @@ describe("CvJdDualPanel — Dual Panel View", () => {
       expect(screen.getByText("Requirement: React, TypeScript")).toBeInTheDocument();
     }
   });
+
+  it("keeps a single page scroller through tablet widths", () => {
+    const { container } = render(
+      <CvJdDualPanel
+        cvName="my_resume.pdf"
+        jdText="Requirement: React, TypeScript"
+        jdTitle="Frontend Role"
+      />
+    );
+
+    const grid = container.querySelector(".grid");
+    expect(grid).toHaveClass("lg:grid-cols-2");
+    expect(grid).not.toHaveClass("md:grid-cols-2");
+
+    const scrollRegions = container.querySelectorAll(".custom-scrollbar");
+    expect(scrollRegions).toHaveLength(2);
+    scrollRegions.forEach((region) => {
+      expect(region).toHaveClass("lg:overflow-y-auto", "lg:max-h-[650px]");
+      expect(region).not.toHaveClass("md:overflow-y-auto", "md:max-h-[650px]");
+    });
+  });
 });

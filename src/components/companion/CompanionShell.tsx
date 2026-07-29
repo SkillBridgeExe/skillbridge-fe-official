@@ -117,6 +117,18 @@ export function CompanionShell() {
   const [showSuccess, setShowSuccess] = useState(false);
   const bubbleRef = useRef<HTMLDivElement>(null);
 
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const mascotSize = isMobile ? 76 : 200;
+
   // Drag is initiated ONLY from the dolphin (not the bubble), so typing/clicking
   // inside the bubble never drags the whole unit.
   const dragControls = useDragControls();
@@ -342,7 +354,7 @@ export function CompanionShell() {
               : // Pure fallback (no anchor, never dragged) → clean bottom-right.
                 { touchAction: "none" }
         }
-        className={anchored ? "z-[20]" : "fixed bottom-6 right-6 z-[20]"}
+        className={anchored ? "z-[20]" : "fixed bottom-4 right-4 sm:bottom-6 sm:right-6 pb-[env(safe-area-inset-bottom)] z-[20]"}
       >
         <button
           onPointerDown={(e) => dragControls.start(e)}
@@ -350,7 +362,7 @@ export function CompanionShell() {
           className="cursor-grab active:cursor-grabbing focus:outline-none"
           aria-label="Companion mascot"
         >
-          <MascotSticker state={pose} size={200} />
+          <MascotSticker state={pose} size={mascotSize} />
         </button>
       </motion.div>
 
@@ -379,7 +391,7 @@ export function CompanionShell() {
                 aria-live="polite"
                 aria-label="Companion assistant"
                 tabIndex={-1}
-                className="w-[min(360px,90vw)] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
+                className="w-[min(360px,calc(100vw-24px))] max-h-[70vh] overflow-auto rounded-2xl border border-primary/10 bg-white p-4 shadow-xl focus:outline-none"
               >
                 <button
                   onClick={() => dismissActive()}

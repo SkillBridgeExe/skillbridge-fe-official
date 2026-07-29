@@ -2739,6 +2739,8 @@ export default {
         title: "Mở khóa gợi ý sửa CV chi tiết",
         description:
           "Xem chính xác vấn đề và cách sửa thực tế đằng sau phần AI đánh giá.",
+        lockedFindings_one: "{{count}} gợi ý chi tiết đang khóa",
+        lockedFindings_other: "{{count}} gợi ý chi tiết đang khóa",
       },
       market: {
         title: "Mở khóa dữ liệu kỹ năng thị trường",
