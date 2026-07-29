@@ -54,6 +54,7 @@ export const AdminUserProfile = lazy(() => import("@/pages/admin/AdminUserProfil
 export const AdminBillingPlans = lazy(() => import("@/pages/admin/AdminBillingPlans"));
 export const AdminBillingOrders = lazy(() => import("@/pages/admin/AdminBillingOrders"));
 export const AdminBillingSubscriptions = lazy(() => import("@/pages/admin/AdminBillingSubscriptions"));
+export const AdminBillingVouchers = lazy(() => import("@/pages/admin/AdminBillingVouchers"));
 export const AdminMentors = lazy(() => import("@/pages/admin/AdminMentors"));
 export const AdminBillingMentorBookings = lazy(() => import("@/pages/admin/AdminBillingMentorBookings"));
 export const AdminJobReports = lazy(() => import("@/pages/admin/AdminJobReports"));

@@ -57,9 +57,6 @@ export default function AdminDashboard() {
             onNavigate={() => {
               if (!isDesktop) setSidebarExpanded(false);
             }}
-            onHoverChange={(_isHovering) => {
-              // Option to handle hover if needed
-            }}
           />
           <main className="w-full flex-1 overflow-x-hidden overflow-y-auto bg-muted/25">
             <div className="w-full px-4 py-5 sm:px-6 lg:px-8">

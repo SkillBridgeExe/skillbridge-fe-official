@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BillingPlanDto } from "@/services/billing.service";
 import {
-  getPricingFeatureSummary,
+  getPricingBenefits,
   getPricingPlanPresentation,
   getVisiblePricingPlans,
 } from "./pricing-view-model";
@@ -57,29 +57,59 @@ describe("pricing view model", () => {
     ).toBe("billing.pricing.popular");
   });
 
-  it("keeps pricing cards focused by showing four features and summarizing the rest", () => {
-    const result = getPricingFeatureSummary([
-      { featureKey: "cv_upload", limit: 10 },
-      { featureKey: "cv_review", limit: 10 },
-      { featureKey: "cv_builder_create", limit: 5 },
-      { featureKey: "cv_jd_match", limit: 10 },
-      { featureKey: "job_recommendation", limit: 20 },
-      { featureKey: "roadmap_generate", limit: 5 },
-    ]);
-
-    expect(result.visibleFeatures.map((feature) => feature.featureKey)).toEqual(
-      ["cv_upload", "cv_review", "cv_builder_create", "cv_jd_match"],
+  it("builds the complete Premium benefit list with one shared interview allowance", () => {
+    const result = getPricingBenefits(
+      makePlan({
+        code: "PREMIUM",
+        features: [
+          { featureKey: "cv_upload", limit: -1 },
+          { featureKey: "cv_review", limit: 80 },
+          { featureKey: "cv_builder_create", limit: 30 },
+          { featureKey: "cv_builder_rewrite", limit: 30 },
+          { featureKey: "cv_builder_render_pdf", limit: -1 },
+          { featureKey: "roadmap_generate", limit: 10 },
+          { featureKey: "job_recommendation", limit: -1 },
+          { featureKey: "interview_session", limit: 20 },
+        ],
+      }),
     );
-    expect(result.hiddenFeatureCount).toBe(2);
+
+    expect(result.map((benefit) => [benefit.key, benefit.limit])).toEqual([
+      ["upload", -1],
+      ["reviewMatch", 80],
+      ["create", 30],
+      ["rewrite", 30],
+      ["editExport", -1],
+      ["roadmap", 10],
+      ["jobRecommendations", -1],
+      ["interview", 20],
+    ]);
+  });
+
+  it("hides benefits that an admin configures with a zero quota", () => {
+    const result = getPricingBenefits(
+      makePlan({
+        code: "PREMIUM",
+        features: [
+          { featureKey: "cv_upload", limit: -1 },
+          { featureKey: "interview_session", limit: 0 },
+          { featureKey: "roadmap_generate", limit: 0 },
+        ],
+      }),
+    );
+
+    expect(result.map((benefit) => benefit.key)).toEqual(["upload"]);
   });
 
   it("keeps public pricing focused on active subscription plans", () => {
     const result = getVisiblePricingPlans([
       makePlan({ code: "FREE", category: "SUBSCRIPTION", isActive: true }),
+      makePlan({ code: "PREMIUM", category: "SUBSCRIPTION", isActive: true }),
+      makePlan({ code: "PRO", category: "SUBSCRIPTION", isActive: true }),
       makePlan({ code: "MENTOR_60", category: "MENTOR_PACKAGE", interval: "ONE_TIME", isActive: true }),
       makePlan({ code: "OLD_PRO", category: "SUBSCRIPTION", isActive: false }),
     ]);
 
-    expect(result.map((plan) => plan.code)).toEqual(["FREE"]);
+    expect(result.map((plan) => plan.code)).toEqual(["FREE", "PREMIUM"]);
   });
 });

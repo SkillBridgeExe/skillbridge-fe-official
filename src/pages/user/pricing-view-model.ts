@@ -1,7 +1,5 @@
 import type { BillingPlanDto } from "@/services/billing.service";
 
-type BillingPlanFeature = BillingPlanDto["features"][number];
-
 export type PricingPlanPresentation = {
   isFreePlan: boolean;
   isCurrentPlan: boolean;
@@ -42,20 +40,57 @@ export function getPricingPlanPresentation(
   };
 }
 
-export function getPricingFeatureSummary(
-  features: BillingPlanFeature[] | undefined,
-  visibleLimit = 4,
-) {
-  const list = features ?? [];
-  const visibleFeatures = list.slice(0, visibleLimit);
-  return {
-    visibleFeatures,
-    hiddenFeatureCount: Math.max(0, list.length - visibleFeatures.length),
+export type PricingBenefit = {
+  key:
+    | "upload"
+    | "reviewMatch"
+    | "create"
+    | "rewrite"
+    | "editExport"
+    | "roadmap"
+    | "jobRecommendations"
+    | "interview";
+  limit: number;
+};
+
+export function getPricingBenefits(plan: BillingPlanDto): PricingBenefit[] {
+  const limits = new Map(
+    plan.features.map((feature) => [feature.featureKey, feature.limit]),
+  );
+  const benefit = (
+    key: PricingBenefit["key"],
+    featureKey: string,
+  ): PricingBenefit | null => {
+    const limit = limits.get(featureKey) ?? 0;
+    return limit === 0 ? null : { key, limit };
   };
+  const normalizedCode = plan.code.toUpperCase();
+  if (normalizedCode === "FREE") {
+    return [
+      benefit("upload", "cv_upload"),
+      benefit("reviewMatch", "cv_review"),
+      benefit("interview", "interview_session"),
+    ].filter((item): item is PricingBenefit => item !== null);
+  }
+  if (normalizedCode !== "PREMIUM") return [];
+
+  return [
+    benefit("upload", "cv_upload"),
+    benefit("reviewMatch", "cv_review"),
+    benefit("create", "cv_builder_create"),
+    benefit("rewrite", "cv_builder_rewrite"),
+    benefit("editExport", "cv_builder_render_pdf"),
+    benefit("roadmap", "roadmap_generate"),
+    benefit("jobRecommendations", "job_recommendation"),
+    benefit("interview", "interview_session"),
+  ].filter((item): item is PricingBenefit => item !== null);
 }
 
 export function getVisiblePricingPlans(plans: BillingPlanDto[] | undefined) {
   return (plans ?? []).filter(
-    (plan) => plan.category === "SUBSCRIPTION" && plan.isActive !== false,
+    (plan) =>
+      plan.category === "SUBSCRIPTION" &&
+      plan.isActive !== false &&
+      ["FREE", "PREMIUM"].includes(plan.code.toUpperCase()),
   );
 }

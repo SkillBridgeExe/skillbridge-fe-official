@@ -329,7 +329,7 @@ export default function AdminUserManagement() {
           <p className="text-sm font-semibold uppercase tracking-normal text-primary">Admin users</p>
           <h1 className="text-3xl font-bold tracking-normal text-foreground">User Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Search, audit, suspend, reactivate, and update roles through the live admin API.
+            Search users, review account status, and manage roles.
           </p>
         </div>
       </div>

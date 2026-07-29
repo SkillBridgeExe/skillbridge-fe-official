@@ -44,6 +44,25 @@ export interface BillingPlanDto {
 export interface CreateCheckoutDto {
   purpose: "SUBSCRIPTION";
   planCode?: string;
+  voucherCode?: string;
+}
+
+export interface PricingBreakdownDto {
+  originalAmountVnd: number;
+  discountPercent: number;
+  discountAmountVnd: number;
+  finalAmountVnd: number;
+  voucherCode: string | null;
+  currency: string;
+}
+
+export interface ValidateVoucherDto {
+  planCode: string;
+  voucherCode: string;
+}
+
+export interface VoucherQuoteDto extends PricingBreakdownDto {
+  valid: true;
 }
 
 export interface CheckoutResponseDto {
@@ -54,6 +73,7 @@ export interface CheckoutResponseDto {
   qrCode: string | null;
   paymentLinkId: string | null;
   expiresAt: string | null;
+  pricing: PricingBreakdownDto;
 }
 
 export interface OrderStatusResponseDto {
@@ -70,6 +90,7 @@ export interface OrderStatusResponseDto {
   targetId: string | null;
   paidAt: string | null;
   createdAt: string;
+  pricing: PricingBreakdownDto;
 }
 
 export interface EntitlementFeatureDto {
@@ -101,6 +122,14 @@ export async function createCheckoutApi(payload: CreateCheckoutDto): Promise<Che
   const envelope = await unwrapEnvelope<ApiEnvelope<CheckoutResponseDto>>(
     httpClient.post(API_ROUTES.BILLING.CHECKOUT, payload),
     "Failed to create checkout.",
+  );
+  return envelope.data;
+}
+
+export async function validateVoucherApi(payload: ValidateVoucherDto): Promise<VoucherQuoteDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<VoucherQuoteDto>>(
+    httpClient.post(API_ROUTES.BILLING.VALIDATE_VOUCHER, payload),
+    "Failed to validate voucher.",
   );
   return envelope.data;
 }

@@ -35,6 +35,8 @@ const sectionIndexInOrder = (sectionOrder: string[], id: string): number => {
 const reviewIndexInOrder = (sectionOrder: string[]): number => sectionOrder.length + 2;
 
 const scrollToSectionCard = (id: string) => {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+
   const el = document.getElementById(`cv-section-${id}`);
   if (!el) return;
   const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
@@ -60,6 +62,8 @@ export function DiagnosisFindingsPanel() {
 
     // Chờ 1 nhịp re-render (panel/banner có thể unmount làm layout dịch) rồi mới scroll.
     setTimeout(() => {
+      if (typeof document === "undefined" || typeof window === "undefined") return;
+
       const sectionEl = document.getElementById(`cv-section-${anchor.section}`);
       if (!sectionEl) return;
       const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;

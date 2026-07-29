@@ -96,6 +96,46 @@ export interface AdminSubscriptionDto {
   createdAt?: string;
 }
 
+export type AdminVoucherStatus = "ACTIVE" | "UPCOMING" | "EXPIRED" | "INACTIVE";
+
+export interface AdminVouchersQuery extends PaginationQuery {
+  search?: string;
+  status?: AdminVoucherStatus;
+}
+
+export interface AdminVoucherDto {
+  id: string;
+  code: string;
+  discountPercent: number;
+  applicablePlanCode: "PREMIUM";
+  startsAt: string;
+  endsAt: string;
+  maxRedemptions: number;
+  perUserLimit: number;
+  isActive: boolean;
+  internalNote: string | null;
+  status: AdminVoucherStatus;
+  redeemedCount: number;
+  reservedCount: number;
+  remainingCount: number;
+  immutable: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CreateAdminVoucherDto {
+  code: string;
+  discountPercent: number;
+  startsAt: string;
+  endsAt: string;
+  maxRedemptions: number;
+  perUserLimit?: number;
+  isActive?: boolean;
+  internalNote?: string | null;
+}
+
+export type UpdateAdminVoucherDto = Partial<CreateAdminVoucherDto>;
+
 export async function getAdminBillingPlansApi(includeInactive: boolean): Promise<BillingPlanDto[]> {
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto[]>>(
     httpClient.get(API_ROUTES.ADMIN_BILLING.PLANS, { params: { includeInactive } }),
@@ -169,6 +209,37 @@ export async function getAdminSubscriptionsApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<PaginatedResponse<AdminSubscriptionDto>>>(
     httpClient.get(API_ROUTES.ADMIN_BILLING.SUBSCRIPTIONS, { params: query }),
     "Failed to load subscriptions.",
+  );
+  return envelope.data;
+}
+
+export async function getAdminVouchersApi(
+  query: AdminVouchersQuery,
+): Promise<PaginatedResponse<AdminVoucherDto>> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<PaginatedResponse<AdminVoucherDto>>>(
+    httpClient.get(API_ROUTES.ADMIN_BILLING.VOUCHERS, { params: query }),
+    "Failed to load vouchers.",
+  );
+  return envelope.data;
+}
+
+export async function createAdminVoucherApi(
+  payload: CreateAdminVoucherDto,
+): Promise<AdminVoucherDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AdminVoucherDto>>(
+    httpClient.post(API_ROUTES.ADMIN_BILLING.VOUCHERS, payload),
+    "Failed to create voucher.",
+  );
+  return envelope.data;
+}
+
+export async function updateAdminVoucherApi(
+  id: string,
+  payload: UpdateAdminVoucherDto,
+): Promise<AdminVoucherDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AdminVoucherDto>>(
+    httpClient.patch(API_ROUTES.ADMIN_BILLING.VOUCHER(id), payload),
+    "Failed to update voucher.",
   );
   return envelope.data;
 }

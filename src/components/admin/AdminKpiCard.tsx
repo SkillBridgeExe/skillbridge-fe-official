@@ -10,8 +10,9 @@ type AdminKpiCardProps = {
   valueNumber?: number;
   valueSuffix?: string;
   progress?: number;
+  progressLabel?: string;
   accent: {
-    ringColorClass: string;
+    ringColorClass?: string;
     cardClassName: string;
     valueClassName?: string;
     subtitleClassName?: string;
@@ -26,7 +27,8 @@ export default function AdminKpiCard({
   value,
   valueNumber,
   valueSuffix = "",
-  progress = 0,
+  progress,
+  progressLabel,
   accent,
   changeLabel,
   changeDirection,
@@ -68,9 +70,9 @@ export default function AdminKpiCard({
                 </Badge>
               ) : null}
             </div>
-            {progress !== undefined && progress !== null ? (
+            {progress !== undefined && progressLabel ? (
               <div className={cn("mt-3 text-xs font-medium text-muted-foreground", accent.subtitleClassName)}>
-                {Math.round(progress)}% operational signal
+                {Math.round(progress)}% {progressLabel}
               </div>
             ) : null}
           </div>
