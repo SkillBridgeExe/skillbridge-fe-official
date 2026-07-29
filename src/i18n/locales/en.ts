@@ -2743,6 +2743,20 @@ export default {
       error: "Could not load market skill data.",
       retry: "Retry",
     },
+    premiumGate: {
+      ariaLabel: "Premium content",
+      cta: "Unlock with Premium",
+      audit: {
+        title: "Unlock detailed CV recommendations",
+        description:
+          "See the exact issues and practical fixes behind your AI evaluation.",
+      },
+      market: {
+        title: "Unlock market skill insights",
+        description:
+          "See which in-demand skills your CV is missing and where to focus next.",
+      },
+    },
     aiGate: {
       jdThin:
         "JD is too short or doesn't look like a job description — paste the full JD (requirements, skills, description).",

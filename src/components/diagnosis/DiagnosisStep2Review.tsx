@@ -32,6 +32,7 @@ import {
   useDiagnosisChatCompanion,
 } from "@/components/companion/skills/useDiagnosisChatCompanion";
 import type { CheckRowData } from "@/lib/diagnosis-report";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
 /* ── Design tokens (§0b DESIGN SPEC) ── */
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -74,6 +75,7 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
   const posthog = usePostHog();
   const compareJdMutation = useCompareJdMutation();
   const diagnosisLang = i18n.language?.startsWith("vi") ? "vi" : "en";
+  const { isPremium } = usePremiumAccess();
 
   const compareFromCvReview = async () => {
     if (!lastCvId) {
@@ -376,7 +378,12 @@ export function DiagnosisStep2Review({ activeTab }: DiagnosisStep2ReviewProps) {
 
                       {/* CheckGroups */}
                       {reportGroups.map((group) => (
-                        <CheckGroup key={group.id} group={group} onAskDimension={askDimension}>
+                        <CheckGroup
+                          key={group.id}
+                          group={group}
+                          onAskDimension={askDimension}
+                          lockIssueDetails={group.id === "ai_eval" && !isPremium}
+                        >
                           {/* Custom slot for Skills */}
                           {group.id === "skills" && (
                             <div className="space-y-4 mt-4">

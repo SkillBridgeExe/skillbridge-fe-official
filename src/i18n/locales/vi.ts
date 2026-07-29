@@ -2732,6 +2732,20 @@ export default {
       error: "Không tải được dữ liệu kỹ năng thị trường.",
       retry: "Thử lại",
     },
+    premiumGate: {
+      ariaLabel: "Nội dung Premium",
+      cta: "Mở khóa với Premium",
+      audit: {
+        title: "Mở khóa gợi ý sửa CV chi tiết",
+        description:
+          "Xem chính xác vấn đề và cách sửa thực tế đằng sau phần AI đánh giá.",
+      },
+      market: {
+        title: "Mở khóa dữ liệu kỹ năng thị trường",
+        description:
+          "Xem kỹ năng đang được tuyển nhiều mà CV còn thiếu và nên ưu tiên học gì.",
+      },
+    },
     aiGate: {
       jdThin:
         "JD quá ngắn hoặc chưa phải mô tả công việc — dán JD đầy đủ (yêu cầu, kỹ năng, mô tả).",

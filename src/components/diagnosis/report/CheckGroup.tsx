@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { CheckGroupData, CheckRowData } from "@/lib/diagnosis-report";
 import { diagnosisScoreStatus } from "@/lib/diagnosis-score-status";
+import { PremiumDiagnosisGate } from "../PremiumDiagnosisGate";
 
 const PASTEL = {
   green: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-sm shadow-emerald-500/5",
@@ -14,7 +15,15 @@ const PASTEL = {
 
 const SEVERITY_PASTEL = { high: PASTEL.red, medium: PASTEL.yellow, low: PASTEL.gray } as const;
 
-export function CheckRow({ item, onAsk }: { item: CheckRowData; onAsk?: () => void }) {
+export function CheckRow({
+  item,
+  onAsk,
+  lockIssueDetails = false,
+}: {
+  item: CheckRowData;
+  onAsk?: () => void;
+  lockIssueDetails?: boolean;
+}) {
   const { t } = useTranslation("diagnosis");
   const isPass = item.status === "pass";
   const isWarn = item.status === "warn";
@@ -67,7 +76,9 @@ export function CheckRow({ item, onAsk }: { item: CheckRowData; onAsk?: () => vo
         )}
 
         {/* BE issues[] attached to this row (restores DimensionCard's issue list) */}
-        {item.subItems && item.subItems.length > 0 && (
+        {lockIssueDetails && item.subItems && item.subItems.length > 0 ? (
+          <PremiumDiagnosisGate variant="audit" />
+        ) : item.subItems && item.subItems.length > 0 ? (
           <ul className="space-y-2 mt-3">
             {item.subItems.map((issue, i) => (
               <li key={i} className="flex items-start gap-2.5 rounded-xl bg-slate-50/60 border border-slate-100/60 px-4 py-3.5 text-sm text-slate-800 hover:bg-slate-50 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
@@ -85,7 +96,7 @@ export function CheckRow({ item, onAsk }: { item: CheckRowData; onAsk?: () => vo
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -96,9 +107,16 @@ interface CheckGroupProps {
   children?: ReactNode;
   /** Wave 2: "ask the dolphin about this dimension" — wired only onto dim-* rows. */
   onAskDimension?: (item: CheckRowData) => void;
+  /** Hide AI issue details for non-Premium plans without leaving paid text in the DOM. */
+  lockIssueDetails?: boolean;
 }
 
-export function CheckGroup({ group, children, onAskDimension }: CheckGroupProps) {
+export function CheckGroup({
+  group,
+  children,
+  onAskDimension,
+  lockIssueDetails = false,
+}: CheckGroupProps) {
   const { t } = useTranslation("diagnosis");
   const scoreStatus = diagnosisScoreStatus(group.score);
   const clean = group.issueCount === 0 && (scoreStatus === "pass" || scoreStatus === "unknown");
@@ -174,6 +192,7 @@ export function CheckGroup({ group, children, onAskDimension }: CheckGroupProps)
                       ? () => onAskDimension(item)
                       : undefined
                   }
+                  lockIssueDetails={lockIssueDetails}
                 />
               ))}
             </div>

@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { CheckGroup } from "./CheckGroup";
 
 vi.mock("react-i18next", () => ({
@@ -65,5 +66,45 @@ describe("CheckGroup score status", () => {
     );
 
     expect(screen.getByText("Đạt chuẩn")).toBeInTheDocument();
+  });
+
+  it("does not leave locked AI issue details readable in the DOM", () => {
+    render(
+      <MemoryRouter>
+        <CheckGroup
+          lockIssueDetails
+          group={{
+            id: "ai_eval",
+            label: "AI đánh giá sâu",
+            score: 55,
+            issueCount: 1,
+            items: [
+              {
+                id: "experience",
+                label: "Kinh nghiệm",
+                status: "warn",
+                evidence: "Tóm tắt đánh giá vẫn được xem.",
+                subItems: [
+                  {
+                    title: "Secret issue",
+                    detail: "PREMIUM_ONLY_EXACT_DETAIL",
+                    severity: "high",
+                    suggestion: "PREMIUM_ONLY_EXACT_FIX",
+                  },
+                ],
+              },
+            ],
+          }}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Tóm tắt đánh giá vẫn được xem.")).toBeInTheDocument();
+    expect(screen.queryByText("PREMIUM_ONLY_EXACT_DETAIL")).not.toBeInTheDocument();
+    expect(screen.queryByText("PREMIUM_ONLY_EXACT_FIX")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /premiumGate\.cta/i })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
   });
 });

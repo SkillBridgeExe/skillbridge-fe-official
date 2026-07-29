@@ -3,6 +3,8 @@ import { AlertCircle, BarChart3, RefreshCw, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSkillGapQuery } from "@/hooks/use-diagnosis";
 import { Chapter, SectionRule } from "./editorial";
+import { PremiumDiagnosisGate } from "./PremiumDiagnosisGate";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
 
 /* Moat L2 — kỹ năng thị trường đang cần mà CV thiếu (GET /api/trends/skills/gap/:cvId).
    Dùng data.gap (BE đã sort theo demand). §0b: thanh demand primary, số mono, no gradient. */
@@ -10,12 +12,34 @@ const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba
 
 export function SkillGapTrends({ cvId }: { cvId: string | null }) {
   const { t } = useTranslation("diagnosis");
-  const { data, isLoading, isError, refetch, isRefetching } = useSkillGapQuery(cvId, { limit: 8 });
+  const { isPremium, isLoading: isPremiumLoading } = usePremiumAccess();
+  const { data, isLoading, isError, refetch, isRefetching } = useSkillGapQuery(
+    isPremium ? cvId : null,
+    { limit: 8 },
+  );
 
   if (!cvId) return null;
   const gap = data?.gap ?? [];
 
-  if (isLoading) {
+  if (!isPremium && !isPremiumLoading) {
+    return (
+      <>
+        <SectionRule className="my-6" />
+        <Chapter kicker="03" title="">
+          <section className="mt-6 animate-in fade-in duration-500">
+            <div className="mb-1 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold text-[#2F3437]">{t("trends.title")}</h3>
+            </div>
+            <p className="mb-3 text-xs text-[#787774]">{t("trends.subtitle")}</p>
+            <PremiumDiagnosisGate variant="market" />
+          </section>
+        </Chapter>
+      </>
+    );
+  }
+
+  if (isPremiumLoading || isLoading) {
     return (
       <>
         <SectionRule className="my-6" />

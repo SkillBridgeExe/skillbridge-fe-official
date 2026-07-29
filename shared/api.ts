@@ -436,6 +436,11 @@ export interface CvDto {
   atsReadabilityScore: number | null;
   skills: CvSkillDto[];
   review: CvReviewParsedResponse | null;
+  /** Additive BE access metadata; absent on older deployments/cached fixtures. */
+  premiumDetails?: {
+    unlocked: boolean;
+    lockedIssueCount: number;
+  } | null;
   createdAt: string;
   updatedAt: string | null;
 }
