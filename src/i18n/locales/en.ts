@@ -938,8 +938,6 @@ export default {
           roadmap: "Career roadmaps",
           jobRecommendations: "Job recommendations",
           interview: "AI interviews",
-          interviewEntry: "Entry interview",
-          interviewExit: "Exit interview",
         },
         voucher: {
           title: "Confirm Premium upgrade",

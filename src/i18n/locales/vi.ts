@@ -936,8 +936,6 @@ export default {
           roadmap: "Tạo lộ trình",
           jobRecommendations: "Gợi ý việc làm phù hợp",
           interview: "Phỏng vấn AI",
-          interviewEntry: "Phỏng vấn đầu vào",
-          interviewExit: "Phỏng vấn đầu ra",
         },
         voucher: {
           title: "Xác nhận nâng cấp Premium",

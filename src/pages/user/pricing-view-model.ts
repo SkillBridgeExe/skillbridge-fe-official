@@ -49,9 +49,7 @@ export type PricingBenefit = {
     | "editExport"
     | "roadmap"
     | "jobRecommendations"
-    | "interview"
-    | "interviewEntry"
-    | "interviewExit";
+    | "interview";
   limit: number;
 };
 
@@ -76,8 +74,6 @@ export function getPricingBenefits(plan: BillingPlanDto): PricingBenefit[] {
   }
   if (normalizedCode !== "PREMIUM") return [];
 
-  const interviewLimit = limits.get("interview_session") ?? 0;
-  const interviewEntry = Math.floor(interviewLimit / 2);
   return [
     benefit("upload", "cv_upload"),
     benefit("reviewMatch", "cv_review"),
@@ -86,15 +82,7 @@ export function getPricingBenefits(plan: BillingPlanDto): PricingBenefit[] {
     benefit("editExport", "cv_builder_render_pdf"),
     benefit("roadmap", "roadmap_generate"),
     benefit("jobRecommendations", "job_recommendation"),
-    interviewEntry > 0
-      ? { key: "interviewEntry" as const, limit: interviewEntry }
-      : null,
-    interviewLimit - interviewEntry > 0
-      ? {
-          key: "interviewExit" as const,
-          limit: interviewLimit - interviewEntry,
-        }
-      : null,
+    benefit("interview", "interview_session"),
   ].filter((item): item is PricingBenefit => item !== null);
 }
 

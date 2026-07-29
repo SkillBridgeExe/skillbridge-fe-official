@@ -57,7 +57,7 @@ describe("pricing view model", () => {
     ).toBe("billing.pricing.popular");
   });
 
-  it("builds the complete Premium benefit list and splits the marketing interview allowance", () => {
+  it("builds the complete Premium benefit list with one shared interview allowance", () => {
     const result = getPricingBenefits(
       makePlan({
         code: "PREMIUM",
@@ -82,8 +82,7 @@ describe("pricing view model", () => {
       ["editExport", -1],
       ["roadmap", 10],
       ["jobRecommendations", -1],
-      ["interviewEntry", 10],
-      ["interviewExit", 10],
+      ["interview", 20],
     ]);
   });
 
