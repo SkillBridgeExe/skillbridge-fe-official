@@ -939,7 +939,7 @@ export default {
         },
         voucher: {
           title: "Xác nhận nâng cấp Premium",
-          description: "Kiểm tra giá và áp dụng voucher trước khi sang payOS.",
+          description: "Kiểm tra giá và áp dụng mã giảm giá trước khi thanh toán.",
           label: "Mã voucher",
           placeholder: "Ví dụ: SKILLBRIDGE10",
           apply: "Áp dụng",
@@ -951,7 +951,7 @@ export default {
           secureHint:
             "Giá được tính lại trên máy chủ trước khi tạo liên kết thanh toán bảo mật.",
           cancel: "Để sau",
-          pay: "Thanh toán qua payOS",
+          pay: "Thanh toán ngay",
         },
         noFeatures: "Gói này chưa công bố hạn mức chi tiết.",
         emptyTitle: "Chưa có gói khả dụng",
@@ -967,18 +967,19 @@ export default {
         eyebrow: "Thanh toán",
         title: "Thanh toán chuyển khoản",
         subtitle:
-          "Quét QR payOS hoặc hoàn tất form nhúng. Hệ thống sẽ tự xác nhận thanh toán.",
-        embedTitle: "payOS checkout",
+          "Quét mã QR để thanh toán. Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản.",
+        embedTitle: "Thanh toán an toàn",
         embedReady:
           "Form thanh toán đang nằm bên dưới. Hoàn tất tại đây và hệ thống sẽ tự động xác minh đơn.",
-        embedLoading: "Đang tải payOS checkout...",
-        embedErrorTitle: "Không tải được checkout nhúng",
+        embedLoading: "Đang mở mã thanh toán...",
+        embedErrorTitle: "Không mở được mã thanh toán",
         embedErrorDesc:
-          "Khung thanh toán payOS không tải được trong phiên trình duyệt này.",
-        openFallback: "Không thấy QR? Mở trang payOS",
+          "Khung thanh toán không tải được trong phiên trình duyệt này.",
+        openFallback: "Mở trang thanh toán",
         embedInvalidParams:
-          "payOS từ chối thông tin nhúng. Bạn vẫn có thể thanh toán an toàn trên trang payOS.",
-        iframeHint: "Thanh toán trong khung payOS bảo mật.",
+          "Không thể hiển thị mã thanh toán tại đây. Bạn vẫn có thể tiếp tục trên trang thanh toán an toàn.",
+        iframeHint: "Giao dịch được xử lý an toàn bởi payOS.",
+        paymentRegion: "Mã QR và phương thức thanh toán",
         cancelCheckout: "Hủy và quay lại",
         amountDue: "Số tiền cần thanh toán",
         paymentContent: "Nội dung chuyển khoản",
@@ -988,7 +989,7 @@ export default {
         statusVerifying: "Đang kiểm tra thanh toán...",
         linkUnavailableTitle: "Link thanh toán chưa sẵn sàng",
         linkUnavailableDesc:
-          "Chưa tìm thấy link payOS đang hoạt động cho đơn này. Vui lòng kiểm tra lại sau ít phút.",
+          "Chưa tìm thấy trang thanh toán đang hoạt động cho đơn này. Vui lòng kiểm tra lại sau ít phút.",
         summaryTitle: "Tóm tắt đơn",
         summaryDesc:
           "Trạng thái này lấy từ SkillBridge billing, không lấy từ URL trình duyệt.",
@@ -1009,7 +1010,7 @@ export default {
         verifyError:
           "Chưa xác minh được trạng thái thanh toán mới nhất: {{error}}",
         providerReturned:
-          "payOS trả về trạng thái {{status}}. SkillBridge đang xác minh trạng thái cuối cùng của đơn.",
+          "Bạn đã quay lại từ trang thanh toán. SkillBridge đang xác minh kết quả cuối cùng.",
         viewMyPlan: "Xem gói của tôi",
         viewOrder: "Xem đơn",
         mentorBookingPaidTitle: "Buổi mentoring đã được xác nhận",
@@ -1018,7 +1019,7 @@ export default {
         viewMentorBooking: "Xem booking",
         timelineTitle: "Tiến trình thanh toán",
         timelineCreated: "Đơn đã tạo",
-        timelineProvider: "Thanh toán payOS",
+        timelineProvider: "Thực hiện chuyển khoản",
         timelineVerified: "SkillBridge xác minh",
         nextAction: "Bước tiếp theo",
         statusLabels: {
@@ -1047,26 +1048,31 @@ export default {
         },
         nextActions: {
           PENDING:
-            "Hoàn tất form payOS, sau đó giữ trang này mở trong lúc hệ thống xác minh đơn.",
+            "Quét mã QR để chuyển khoản, sau đó giữ trang này mở trong lúc hệ thống xác minh đơn.",
           PROCESSING:
-            "Cổng thanh toán đang xử lý đơn. Giữ trang này mở hoặc kiểm tra lại sau ít phút.",
+            "Giao dịch đang được xử lý. Giữ trang này mở hoặc kiểm tra lại sau ít phút.",
           PAID: "Thanh toán đã được xác nhận. Gói, quota và quyền sử dụng đang được làm mới.",
           CANCELLED:
-            "Thanh toán đã bị hủy. Bạn có thể tạo checkout mới khi sẵn sàng.",
+            "Thanh toán đã bị hủy. Bạn có thể tạo thanh toán mới khi sẵn sàng.",
           EXPIRED:
-            "Link thanh toán đã hết hạn. Quay lại bảng giá để tạo checkout mới.",
+            "Link thanh toán đã hết hạn. Quay lại bảng giá để tạo thanh toán mới.",
           FAILED:
-            "Thanh toán chưa hoàn tất. Kiểm tra lại đơn hoặc tạo checkout mới.",
+            "Thanh toán chưa hoàn tất. Kiểm tra lại đơn hoặc tạo thanh toán mới.",
           UNKNOWN:
-            "Kiểm tra lại đơn nếu cổng thanh toán đã chuyển bạn về trang này.",
+            "Kiểm tra lại đơn nếu bạn đã quay lại từ trang thanh toán.",
         },
         returnTitle: "Đang hoàn tất thanh toán",
-        returnRedirecting: "Đang chuyển tới trang checkout nhúng...",
-        returnReconciling: "Đang kiểm tra kết quả thanh toán với server...",
+        returnRedirecting: "Đang mở lại thông tin thanh toán...",
+        returnReconciling: "Đang kiểm tra kết quả thanh toán...",
         returnErrorTitle: "Không thể xác nhận thanh toán",
-        returnMissingTitle: "Thiếu mã đơn thanh toán",
+        returnMissingTitle: "Không tìm thấy thông tin thanh toán",
         returnMissingDesc:
-          "Cổng thanh toán không trả về mã đơn. Vui lòng quay lại bảng giá và thử lại.",
+          "Không tìm thấy thông tin đơn cần thiết để tiếp tục. Vui lòng quay lại bảng giá và thử lại.",
+        renderErrorTitle: "Cần mở lại trang thanh toán",
+        renderErrorDesc:
+          "Đơn của bạn vẫn an toàn. Hãy mở lại trang này hoặc tiếp tục trên trang thanh toán.",
+        retryPage: "Mở lại trang",
+        backToPricing: "Quay lại bảng giá",
         notFound: "Không tìm thấy đơn thanh toán.",
       },
       me: {

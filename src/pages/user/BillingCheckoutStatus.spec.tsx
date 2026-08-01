@@ -79,6 +79,7 @@ describe("BillingCheckoutStatus", () => {
   const usePayOS = vi.fn();
 
   beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     window.history.replaceState({}, "", "/billing/checkout/123");
     vi.mocked(loadPayOSCheckoutScript).mockResolvedValue(undefined);
     usePayOS.mockReturnValue({ open: vi.fn(), exit: vi.fn() });
@@ -88,6 +89,7 @@ describe("BillingCheckoutStatus", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     delete window.PayOSCheckout;
   });
 
@@ -110,6 +112,34 @@ describe("BillingCheckoutStatus", () => {
     expect(screen.getByRole("link", { name: "billing.checkout.openFallback" })).not.toHaveAttribute(
       "target",
     );
+  });
+
+  it("puts the order summary before the payment frame for narrow-screen reading order", async () => {
+    renderPage(order);
+    await waitFor(() => expect(usePayOS).toHaveBeenCalledTimes(1));
+
+    const summary = screen.getByLabelText("billing.checkout.summaryTitle");
+    const payment = screen.getByLabelText("billing.checkout.paymentRegion");
+
+    expect(summary.compareDocumentPosition(payment) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("does not zoom or translate the embedded frame on mobile", async () => {
+    renderPage(order);
+    await waitFor(() => expect(usePayOS).toHaveBeenCalledTimes(1));
+
+    const paymentFrame = screen.getByTestId("payment-frame");
+    expect(paymentFrame.className).not.toMatch(/scale|translate/);
+  });
+
+  it.each([
+    ["PAID", "billing.checkout.viewMyPlan"],
+    ["CANCELLED", "billing.checkout.backToPricing"],
+    ["FAILED", "billing.checkout.backToPricing"],
+  ] as const)("shows a clear action for the %s terminal state", async (status, actionLabel) => {
+    renderPage({ ...order, status, checkoutUrl: null });
+
+    expect(await screen.findByRole("button", { name: actionLabel })).toBeVisible();
   });
 
   it("does not initialize the iframe when the signed return URL targets a different page", async () => {
@@ -151,6 +181,28 @@ describe("BillingCheckoutStatus", () => {
     expect(await screen.findByText("billing.checkout.embedInvalidParams")).toBeVisible();
     expect(reconcileOrder).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "billing.checkout.openFallback" })).toBeVisible();
+  });
+
+  it("does not close the provider a second time when success replaces the iframe with paid state", async () => {
+    let config: PayOSConfig | undefined;
+    const exit = vi.fn();
+    usePayOS.mockImplementation((nextConfig: PayOSConfig) => {
+      config = nextConfig;
+      return { open: vi.fn(), exit };
+    });
+    renderPage(order);
+    vi.mocked(reconcileOrder).mockResolvedValue({
+      ...order,
+      status: "PAID",
+      paidAt: "2026-08-01T13:05:00.000Z",
+    });
+    await waitFor(() => expect(config).toBeDefined());
+
+    act(() => config?.onSuccess?.({ code: "00" }));
+
+    await waitFor(() => expect(reconcileOrder).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getAllByText("Paid").length).toBeGreaterThan(0));
+    expect(exit).not.toHaveBeenCalled();
   });
 
   it("single-flights provider callbacks and the check-again action without an extra status GET", async () => {

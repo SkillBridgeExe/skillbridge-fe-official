@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -28,19 +28,20 @@ import {
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
   isInvalidPayOSEvent,
-  parsePayOSReturnParams,
   shouldCaptureSubscriptionPaymentPaid,
 } from "@/lib/billing-checkout";
-import {
-  loadPayOSCheckoutScript,
-  type PayOSController,
-  type PayOSEvent,
-} from "@/lib/payos-checkout-script";
+import type { PayOSEvent } from "@/lib/payos-checkout-script";
 import { formatVnd, StatusBadge } from "@/lib/billing-ui";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { getOrderStatus, reconcileOrder, type OrderStatusResponseDto } from "@/services/billing.service";
 import { useHasApiSession } from "@/hooks/use-api-session";
+import {
+  PayOSEmbedHost,
+  type PayOSEmbedHandle,
+  type PayOSEmbedState,
+} from "@/components/billing/PayOSEmbedHost";
+import { CheckoutErrorBoundary } from "@/components/billing/CheckoutErrorBoundary";
 
 const PAYOS_QUERY_KEYS = ["code", "id", "cancel", "status", "orderCode"] as const;
 const FAILED_BILLING_ORDER_STATUSES = new Set(["CANCELLED", "EXPIRED", "FAILED"]);
@@ -56,7 +57,7 @@ export default function BillingCheckoutStatus() {
   const capturedPaidOrderRef = useRef<string | null>(null);
   const capturedFailedOrderRef = useRef<string | null>(null);
   const capturedEmbedFailureRef = useRef<string | null>(null);
-  const payOSControllerRef = useRef<PayOSController | null>(null);
+  const payOSEmbedRef = useRef<PayOSEmbedHandle>(null);
   const reconcileFlightRef = useRef<ReturnType<
     typeof createSingleFlight<string, OrderStatusResponseDto | null>
   > | null>(null);
@@ -72,10 +73,6 @@ export default function BillingCheckoutStatus() {
   const [copied, setCopied] = useState(false);
 
   const elementId = useMemo(() => `payos-checkout-${orderCode || "order"}`, [orderCode]);
-  const payOSReturn = useMemo(
-    () => parsePayOSReturnParams(new URLSearchParams(location.search)),
-    [location.search],
-  );
   const hasPayOSReturnQuery = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return PAYOS_QUERY_KEYS.some((key) => params.has(key));
@@ -157,8 +154,7 @@ export default function BillingCheckoutStatus() {
   }, [reconcileLatest]);
 
   const cancelCheckout = useCallback(() => {
-    payOSControllerRef.current?.exit?.();
-    payOSControllerRef.current = null;
+    payOSEmbedRef.current?.close();
     setEmbedState("idle");
     navigate(order?.targetType === "MENTOR_BOOKING" ? "/billing/mentor" : "/pricing");
   }, [navigate, order?.targetType]);
@@ -243,86 +239,58 @@ export default function BillingCheckoutStatus() {
   }, [canRenderPayOS, checkoutSurfaceState, checkoutUrl, orderCode, posthog, returnUrl]);
 
   useEffect(() => {
-    if (!canRenderPayOS || !checkoutUrl || !returnUrl) {
-      setEmbedState("idle");
-      return;
-    }
+    if (!canRenderPayOS) setEmbedState("idle");
+  }, [canRenderPayOS]);
 
-    let active = true;
-    const container = document.getElementById(elementId);
-    if (container) container.innerHTML = "";
-
-    setEmbedState("loading");
-    setEmbedError(null);
-
-    loadPayOSCheckoutScript()
-      .then(() => {
-        if (!active) return;
-        if (!window.PayOSCheckout?.usePayOS) {
-          throw new Error("payOS checkout script is not ready.");
-        }
-        const handleProviderEvent = (event: PayOSEvent | undefined, action: "reconcile" | "refresh") => {
-          if (!active) return;
-          if (isInvalidPayOSEvent(event)) {
-            setEmbedState("error");
-            setEmbedError(embedInvalidParamsMessage);
-            posthog?.capture("checkout_embed_failed", {
-              order_code: orderCode,
-              reason: "invalid_param",
-            });
-            return;
-          }
-          if (action === "reconcile") {
-            void reconcileLatest().catch(() => undefined);
-          } else {
-            void refetchOrderRef.current();
-          }
-        };
-        const controller = window.PayOSCheckout.usePayOS({
-          RETURN_URL: returnUrl,
-          ELEMENT_ID: elementId,
-          CHECKOUT_URL: checkoutUrl,
-          embedded: true,
-          onSuccess: (event) => handleProviderEvent(event, "reconcile"),
-          onCancel: (event) => handleProviderEvent(event, "reconcile"),
-          onExit: (event) => handleProviderEvent(event, "refresh"),
-        });
-        payOSControllerRef.current = controller;
-        controller.open();
-        setEmbedState("ready");
-      })
-      .catch((error) => {
-        if (!active) return;
+  const handleProviderEvent = useCallback(
+    (event: PayOSEvent | undefined, action: "reconcile" | "refresh") => {
+      if (isInvalidPayOSEvent(event)) {
         setEmbedState("error");
-        setEmbedError(error instanceof Error ? error.message : embedErrorDescription);
+        setEmbedError(embedInvalidParamsMessage);
         posthog?.capture("checkout_embed_failed", {
           order_code: orderCode,
-          reason: "script_error",
+          reason: "invalid_param",
         });
-      });
+        return;
+      }
+      if (action === "reconcile") {
+        void reconcileLatest().catch(() => undefined);
+      } else {
+        void refetchOrderRef.current();
+      }
+    },
+    [embedInvalidParamsMessage, orderCode, posthog, reconcileLatest],
+  );
 
-    return () => {
-      active = false;
-      payOSControllerRef.current?.exit?.();
-      payOSControllerRef.current = null;
-      const currentContainer = document.getElementById(elementId);
-      if (currentContainer) currentContainer.innerHTML = "";
-    };
-  }, [
-    canRenderPayOS,
-    checkoutUrl,
-    elementId,
-    embedErrorDescription,
-    embedInvalidParamsMessage,
-    orderCode,
-    posthog,
-    reconcileLatest,
-    returnUrl,
-  ]);
+  const handleEmbedStateChange = useCallback(
+    (state: PayOSEmbedState, error?: Error) => {
+      setEmbedState(state);
+      if (state === "loading") setEmbedError(null);
+      if (state !== "error") return;
+      setEmbedError(embedErrorDescription);
+      posthog?.capture("checkout_embed_failed", {
+        order_code: orderCode,
+        reason: "script_error",
+        error_name: error?.name ?? "UnknownError",
+      });
+    },
+    [embedErrorDescription, orderCode, posthog],
+  );
+
+  const handleEmbedRenderError = useCallback(
+    (error: Error) => {
+      posthog?.capture("checkout_render_failed", {
+        order_code: orderCode,
+        stage: "embedded_payment",
+        error_name: error.name,
+      });
+    },
+    [orderCode, posthog],
+  );
 
   return (
     <Layout>
-      <div className="bg-background px-4 py-8 lg:py-10">
+      <div className="bg-background px-3 py-6 sm:px-4 sm:py-8 lg:py-10">
         <main className="mx-auto max-w-6xl">
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
@@ -336,7 +304,7 @@ export default function BillingCheckoutStatus() {
               </div>
               <Button
                 variant="outline"
-                className="h-10 w-fit rounded-full border-primary/25 bg-card font-bold text-primary hover:bg-primary/5 hover:text-primary"
+                className="min-h-11 w-full rounded-xl border-primary/25 bg-card font-bold text-primary hover:bg-primary/5 hover:text-primary sm:w-fit sm:rounded-full"
                 disabled={orderQuery.isFetching || isReconciling}
                 onClick={checkAgain}
               >
@@ -362,30 +330,17 @@ export default function BillingCheckoutStatus() {
               </div>
             ) : order && publicSummary ? (
               <>
-                <div className="grid gap-6 px-5 py-6 sm:px-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.72fr)] lg:items-start">
-                  <div className="flex min-w-0 flex-col items-center">
-                    <PaymentSurface
-                      elementId={elementId}
-                      embedError={embedError}
-                      embedState={embedState}
-                      order={order}
-                      canRenderPayOS={canRenderPayOS}
-                      checkoutSurfaceState={checkoutSurfaceState}
-                      onCheckAgain={checkAgain}
-                      onCancelCheckout={cancelCheckout}
-                    />
-                    <p className="mt-4 text-center text-sm font-semibold text-muted-foreground">
-                      {t("billing.checkout.iframeHint")}
-                    </p>
-                  </div>
-
-                  <aside className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="grid gap-5 px-3 py-4 sm:gap-6 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.72fr)] lg:items-start">
+                  <aside
+                    aria-label={t("billing.checkout.summaryTitle")}
+                    className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:col-start-2 lg:row-start-1"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
                           {t("billing.checkout.amountDue")}
                         </p>
-                        <p className="mt-3 font-poppins text-4xl font-black leading-none text-primary">
+                        <p className="mt-3 font-poppins text-3xl font-black leading-none text-primary sm:text-4xl">
                           {formatVnd(Number(publicSummary.amount))}
                         </p>
                       </div>
@@ -404,7 +359,7 @@ export default function BillingCheckoutStatus() {
                         </span>
                         <Button
                           type="button"
-                          className="h-9 rounded-full bg-primary px-4 font-black text-primary-foreground hover:bg-primary/90"
+                          className="min-h-11 w-full rounded-xl bg-primary px-4 font-black text-primary-foreground hover:bg-primary/90 sm:w-auto sm:rounded-full"
                           onClick={copyOrderCode}
                         >
                           <Copy className="mr-2 h-4 w-4" />
@@ -426,9 +381,7 @@ export default function BillingCheckoutStatus() {
 
                     {hasPayOSReturnQuery ? (
                       <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary">
-                        {t("billing.checkout.providerReturned", {
-                          status: payOSReturn.status || (payOSReturn.cancel ? "CANCELLED" : "-"),
-                        })}
+                        {t("billing.checkout.providerReturned")}
                       </div>
                     ) : null}
 
@@ -438,15 +391,44 @@ export default function BillingCheckoutStatus() {
                       />
                     ) : null}
 
-                    {checkoutSurfaceState === "checkout" && checkoutUrl ? (
-                      <Button asChild variant="outline" className="mt-4 h-10 w-full rounded-full bg-card font-bold">
-                        <a href={checkoutUrl}>
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          {t("billing.checkout.openFallback")}
-                        </a>
-                      </Button>
-                    ) : null}
                   </aside>
+
+                  <div
+                    role="region"
+                    aria-label={t("billing.checkout.paymentRegion")}
+                    className="flex min-w-0 flex-col items-center lg:col-start-1 lg:row-start-1"
+                  >
+                    <PaymentSurface
+                      elementId={elementId}
+                      embedRef={payOSEmbedRef}
+                      embedError={embedError}
+                      embedState={embedState}
+                      order={order}
+                      canRenderPayOS={canRenderPayOS}
+                      checkoutSurfaceState={checkoutSurfaceState}
+                      checkoutUrl={checkoutUrl}
+                      returnUrl={returnUrl}
+                      onEmbedStateChange={handleEmbedStateChange}
+                      onProviderSuccess={(event) => handleProviderEvent(event, "reconcile")}
+                      onProviderCancel={(event) => handleProviderEvent(event, "reconcile")}
+                      onProviderExit={(event) => handleProviderEvent(event, "refresh")}
+                      onEmbedRenderError={handleEmbedRenderError}
+                      onCheckAgain={checkAgain}
+                      onCancelCheckout={cancelCheckout}
+                      onTerminalAction={() =>
+                        navigate(
+                          order.targetType === "MENTOR_BOOKING"
+                            ? "/billing/mentor"
+                            : order.status === "PAID"
+                              ? "/billing/me"
+                              : "/pricing",
+                        )
+                      }
+                    />
+                    <p className="mt-4 text-center text-xs font-semibold leading-5 text-muted-foreground sm:text-sm">
+                      {t("billing.checkout.iframeHint")}
+                    </p>
+                  </div>
                 </div>
 
                 <CheckoutStatusBar
@@ -491,7 +473,12 @@ function MentorCheckoutNextStep({
         )}
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <Button type="button" variant="outline" onClick={onViewBookings} className="h-10 rounded-full bg-card font-bold">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onViewBookings}
+          className="min-h-11 w-full rounded-xl bg-card font-bold sm:w-auto sm:rounded-full"
+        >
           {t("billing.checkout.viewMentorBooking", "View booking")}
         </Button>
       </div>
@@ -501,26 +488,50 @@ function MentorCheckoutNextStep({
 
 function PaymentSurface({
   elementId,
+  embedRef,
   embedError,
   embedState,
   order,
   canRenderPayOS,
   checkoutSurfaceState,
+  checkoutUrl,
+  returnUrl,
+  onEmbedStateChange,
+  onProviderSuccess,
+  onProviderCancel,
+  onProviderExit,
+  onEmbedRenderError,
   onCheckAgain,
   onCancelCheckout,
+  onTerminalAction,
 }: {
   elementId: string;
+  embedRef: RefObject<PayOSEmbedHandle>;
   embedError: string | null;
   embedState: "idle" | "loading" | "ready" | "error";
   order: OrderStatusResponseDto;
   canRenderPayOS: boolean;
   checkoutSurfaceState: ReturnType<typeof getBillingCheckoutSurfaceState>;
+  checkoutUrl: string | null;
+  returnUrl: string | null;
+  onEmbedStateChange: (state: PayOSEmbedState, error?: Error) => void;
+  onProviderSuccess: (event: PayOSEvent) => void;
+  onProviderCancel: (event: PayOSEvent) => void;
+  onProviderExit: (event: PayOSEvent) => void;
+  onEmbedRenderError: (error: Error) => void;
   onCheckAgain: () => void;
   onCancelCheckout: () => void;
+  onTerminalAction: () => void;
 }) {
   const { t } = useTranslation("common");
 
   if (isTerminalBillingOrderStatus(order.status)) {
+    const terminalActionLabel =
+      order.targetType === "MENTOR_BOOKING"
+        ? t("billing.checkout.viewMentorBooking")
+        : order.status === "PAID"
+          ? t("billing.checkout.viewMyPlan")
+          : t("billing.checkout.backToPricing");
     return (
       <div className="flex h-[480px] w-full max-w-[480px] flex-col items-center justify-center rounded-2xl border border-border bg-muted/40 p-6 text-center shadow-sm">
         <StatusIcon status={order.status} large />
@@ -534,6 +545,13 @@ function PaymentSurface({
             defaultValue: t("billing.checkout.statusBar.UNKNOWN"),
           })}
         </p>
+        <Button
+          type="button"
+          className="mt-5 min-h-11 w-full max-w-sm rounded-xl font-bold sm:w-auto"
+          onClick={onTerminalAction}
+        >
+          {terminalActionLabel}
+        </Button>
       </div>
     );
   }
@@ -552,10 +570,24 @@ function PaymentSurface({
             defaultValue: t("billing.checkout.statusBar.UNKNOWN"),
           })}
         </p>
-        <Button variant="outline" className="mt-5 rounded-full bg-card font-bold" onClick={onCheckAgain}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          {t("billing.checkout.checkAgain")}
-        </Button>
+        <div className="mt-5 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
+          {checkoutUrl ? (
+            <Button asChild className="min-h-11 rounded-xl font-bold">
+              <a href={checkoutUrl}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {t("billing.checkout.openFallback")}
+              </a>
+            </Button>
+          ) : null}
+          <Button
+            variant="outline"
+            className="min-h-11 rounded-xl bg-card font-bold"
+            onClick={onCheckAgain}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {t("billing.checkout.checkAgain")}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -570,42 +602,90 @@ function PaymentSurface({
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {t("billing.checkout.linkUnavailableDesc")}
         </p>
-        <Button variant="outline" className="mt-5 rounded-full bg-card font-bold" onClick={onCheckAgain}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          {t("billing.checkout.checkAgain")}
-        </Button>
+        <div className="mt-5 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
+          {checkoutUrl ? (
+            <Button asChild className="min-h-11 rounded-xl font-bold">
+              <a href={checkoutUrl}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {t("billing.checkout.openFallback")}
+              </a>
+            </Button>
+          ) : null}
+          <Button
+            variant="outline"
+            className="min-h-11 rounded-xl bg-card font-bold"
+            onClick={onCheckAgain}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {t("billing.checkout.checkAgain")}
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex w-full max-w-[480px] flex-col items-center gap-3">
-      <div className="relative h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm [&_iframe]:h-[520px] [&_iframe]:min-h-[520px] [&_iframe]:w-full [&_iframe]:origin-top [&_iframe]:-translate-y-4 [&_iframe]:scale-[1.24] [&_iframe]:border-0 sm:[&_iframe]:-translate-y-7 sm:[&_iframe]:scale-[1.38]">
-        <div id={elementId} className="flex h-[480px] w-full justify-center overflow-hidden" />
-        {embedState === "loading" ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-card/85">
-            <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("billing.checkout.embedLoading")}
-            </div>
-          </div>
-        ) : null}
-        {embedState === "error" ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-card p-6">
-            <div className="max-w-md rounded-xl border border-destructive/20 bg-destructive/10 p-5 text-sm text-destructive">
-              <div className="mb-2 flex items-center gap-2 font-bold">
-                <AlertCircle className="h-4 w-4" />
-                {t("billing.checkout.embedErrorTitle")}
+      <div
+        data-testid="payment-frame"
+        className="relative h-[520px] w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm [&_iframe]:h-full [&_iframe]:min-h-[520px] [&_iframe]:w-full [&_iframe]:border-0"
+      >
+        <CheckoutErrorBoundary
+          checkoutUrl={checkoutUrl}
+          title={t("billing.checkout.renderErrorTitle")}
+          description={t("billing.checkout.renderErrorDesc")}
+          openPaymentLabel={t("billing.checkout.openFallback")}
+          resetKey={`${order.orderCode}:${checkoutUrl}`}
+          onError={onEmbedRenderError}
+        >
+          <PayOSEmbedHost
+            ref={embedRef}
+            elementId={elementId}
+            checkoutUrl={checkoutUrl!}
+            returnUrl={returnUrl!}
+            className="h-full w-full"
+            onSuccess={onProviderSuccess}
+            onCancel={onProviderCancel}
+            onExit={onProviderExit}
+            onStateChange={onEmbedStateChange}
+          />
+          {embedState === "loading" ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-card/85">
+              <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("billing.checkout.embedLoading")}
               </div>
-              <p>{embedError || t("billing.checkout.embedErrorDesc")}</p>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+          {embedState === "error" ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-card p-6">
+              <div className="max-w-md rounded-xl border border-destructive/20 bg-destructive/10 p-5 text-sm text-destructive">
+                <div className="mb-2 flex items-center gap-2 font-bold">
+                  <AlertCircle className="h-4 w-4" />
+                  {t("billing.checkout.embedErrorTitle")}
+                </div>
+                <p>{embedError || t("billing.checkout.embedErrorDesc")}</p>
+              </div>
+            </div>
+          ) : null}
+        </CheckoutErrorBoundary>
       </div>
+      {checkoutSurfaceState === "checkout" && checkoutUrl ? (
+        <Button
+          asChild
+          variant="outline"
+          className="min-h-11 w-full rounded-xl bg-card font-bold sm:w-auto sm:rounded-full"
+        >
+          <a href={checkoutUrl}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {t("billing.checkout.openFallback")}
+          </a>
+        </Button>
+      ) : null}
       <Button
         type="button"
         variant="outline"
-        className="h-10 rounded-full border-destructive/25 bg-card px-5 font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+        className="min-h-11 w-full rounded-xl border-destructive/25 bg-card px-5 font-bold text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto sm:rounded-full"
         onClick={onCancelCheckout}
       >
         <XCircle className="mr-2 h-4 w-4" />
@@ -617,9 +697,9 @@ function PaymentSurface({
 
 function CheckoutLoading() {
   return (
-    <div className="grid gap-6 px-5 py-6 sm:px-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.72fr)]">
-      <div className="mx-auto h-[480px] w-full max-w-[480px] animate-pulse rounded-2xl border border-border bg-muted" />
-      <div className="h-[520px] animate-pulse rounded-2xl border border-border bg-muted" />
+    <div className="grid gap-5 px-3 py-4 sm:gap-6 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.72fr)]">
+      <div className="h-[360px] animate-pulse rounded-2xl border border-border bg-muted lg:col-start-2 lg:row-start-1 lg:h-[520px]" />
+      <div className="mx-auto h-[520px] w-full max-w-[480px] animate-pulse rounded-2xl border border-border bg-muted lg:col-start-1 lg:row-start-1" />
     </div>
   );
 }

@@ -941,7 +941,7 @@ export default {
         },
         voucher: {
           title: "Confirm Premium upgrade",
-          description: "Review the price and apply a voucher before continuing to payOS.",
+          description: "Review the price and apply a voucher before payment.",
           label: "Voucher code",
           placeholder: "Example: SKILLBRIDGE10",
           apply: "Apply",
@@ -953,7 +953,7 @@ export default {
           secureHint:
             "Pricing is recalculated on the server before a secure payment link is created.",
           cancel: "Not now",
-          pay: "Pay with payOS",
+          pay: "Pay now",
         },
         noFeatures: "This plan has not published detailed limits yet.",
         emptyTitle: "No plans available yet",
@@ -968,18 +968,19 @@ export default {
         eyebrow: "Payment",
         title: "Bank transfer payment",
         subtitle:
-          "Scan the payOS QR or complete the embedded payment form. SkillBridge will verify the payment automatically.",
-        embedTitle: "payOS checkout",
+          "Scan the QR code to pay. SkillBridge will confirm your bank transfer automatically.",
+        embedTitle: "Secure payment",
         embedReady:
           "The payment form is embedded below. Finish payment here and we will verify the order automatically.",
-        embedLoading: "Loading payOS checkout...",
-        embedErrorTitle: "Could not load embedded checkout",
+        embedLoading: "Opening payment code...",
+        embedErrorTitle: "Could not open the payment code",
         embedErrorDesc:
-          "The payOS checkout frame could not be loaded in this browser session.",
-        openFallback: "No QR code? Open payOS",
+          "The payment view could not be loaded in this browser session.",
+        openFallback: "Open payment page",
         embedInvalidParams:
-          "payOS rejected the embedded checkout details. You can still pay safely on payOS.",
-        iframeHint: "Pay inside this secure payOS frame.",
+          "The payment code cannot be displayed here. You can still continue on the secure payment page.",
+        iframeHint: "Payments are securely processed by payOS.",
+        paymentRegion: "QR code and payment options",
         cancelCheckout: "Cancel and return",
         amountDue: "Amount to pay",
         paymentContent: "Transfer content",
@@ -989,7 +990,7 @@ export default {
         statusVerifying: "Checking payment status...",
         linkUnavailableTitle: "Payment link is not ready",
         linkUnavailableDesc:
-          "We could not find an active payOS link for this order yet. Check again in a moment.",
+          "We could not find an active payment page for this order yet. Check again in a moment.",
         summaryTitle: "Order summary",
         summaryDesc:
           "This status comes from SkillBridge billing, not the browser URL.",
@@ -1010,7 +1011,7 @@ export default {
         verifyError:
           "We could not verify the latest payment state yet: {{error}}",
         providerReturned:
-          "payOS returned with status {{status}}. SkillBridge is verifying the final order state.",
+          "You have returned from the payment page. SkillBridge is verifying the final result.",
         viewMyPlan: "View my plan",
         viewOrder: "View order",
         notFound: "Order not found.",
@@ -1020,7 +1021,7 @@ export default {
         viewMentorBooking: "View booking",
         timelineTitle: "Payment timeline",
         timelineCreated: "Order created",
-        timelineProvider: "payOS payment",
+        timelineProvider: "Bank transfer",
         timelineVerified: "SkillBridge verification",
         nextAction: "Next action",
         statusLabels: {
@@ -1049,26 +1050,31 @@ export default {
         },
         nextActions: {
           PENDING:
-            "Complete the payOS form, then keep this page open while we verify the order.",
+            "Scan the QR code to transfer the payment, then keep this page open while we verify the order.",
           PROCESSING:
-            "The payment provider is processing the order. Keep this page open or check again shortly.",
+            "Your transfer is being processed. Keep this page open or check again shortly.",
           PAID: "Payment is confirmed. Your plan, quota, and entitlements are being refreshed.",
           CANCELLED:
-            "Payment was cancelled. You can create a new checkout whenever you are ready.",
+            "Payment was cancelled. You can start a new payment whenever you are ready.",
           EXPIRED:
-            "This payment link has expired. Return to pricing to create a new checkout.",
+            "This payment link has expired. Return to pricing to start a new payment.",
           FAILED:
-            "Payment was not completed. Check the order again or create a new checkout.",
+            "Payment was not completed. Check the order again or start a new payment.",
           UNKNOWN:
-            "Check the order again if the payment provider has already redirected you back.",
+            "Check the order again if you have already returned from the payment page.",
         },
         returnTitle: "Finalizing your payment",
-        returnRedirecting: "Redirecting to the embedded checkout page...",
-        returnReconciling: "Checking the payment result with the server...",
+        returnRedirecting: "Reopening your payment details...",
+        returnReconciling: "Checking the payment result...",
         returnErrorTitle: "Could not confirm payment",
-        returnMissingTitle: "Missing payment order",
+        returnMissingTitle: "Payment details not found",
         returnMissingDesc:
-          "The payment provider did not return an order code. Please return to pricing and try again.",
+          "We could not find the payment details needed to continue. Please return to pricing and try again.",
+        renderErrorTitle: "The payment page needs to be reopened",
+        renderErrorDesc:
+          "Your order is still safe. Reopen this page or continue on the secure payment page.",
+        retryPage: "Reopen page",
+        backToPricing: "Back to pricing",
       },
       me: {
         eyebrow: "Subscription",

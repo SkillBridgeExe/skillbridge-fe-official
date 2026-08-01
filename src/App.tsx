@@ -86,8 +86,8 @@ const router = createBrowserRouter(
               <Route path="/payment" element={<Navigate to="/pricing" replace />} />
               <Route path="/pricing" element={<Pages.Pricing />} />
               <Route path="/billing/me" element={<AuthGuard requiredRole="user"><Pages.BillingMe /></AuthGuard>} />
-              <Route path="/billing/checkout" element={<AuthGuard requireAuth><Pages.BillingCheckoutReturn /></AuthGuard>} />
-              <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} />
+              <Route path="/billing/checkout" element={<AuthGuard requireAuth><Pages.BillingCheckoutReturn /></AuthGuard>} errorElement={<Pages.BillingCheckoutRouteError />} />
+              <Route path="/billing/checkout/:orderCode" element={<AuthGuard requireAuth><Pages.BillingCheckoutStatus /></AuthGuard>} errorElement={<Pages.BillingCheckoutRouteError />} />
               <Route path="/community" element={<Pages.Community />} />
               <Route path="/jobs" element={<Pages.Jobs />} />
               <Route path="/jobs/:slug" element={<Pages.JobDetail />} />

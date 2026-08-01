@@ -23,6 +23,7 @@ export const Interview = lazy(() => import("@/pages/user/Interview"));
 export const Pricing = lazy(() => import("@/pages/user/Pricing"));
 export const BillingCheckoutReturn = lazy(() => import("@/pages/user/BillingCheckoutReturn"));
 export const BillingCheckoutStatus = lazy(() => import("@/pages/user/BillingCheckoutStatus"));
+export const BillingCheckoutRouteError = lazy(() => import("@/pages/user/BillingCheckoutRouteError"));
 export const BillingMe = lazy(() => import("@/pages/user/BillingMe"));
 export const Jobs = lazy(() => import("@/pages/user/Jobs"));
 export const JobDetail = lazy(() => import("@/pages/user/JobDetail"));
