@@ -124,12 +124,15 @@ describe("BillingCheckoutStatus", () => {
     expect(summary.compareDocumentPosition(payment) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("does not zoom or translate the embedded frame on mobile", async () => {
+  it("keeps the enlarged checkout inside the compact payment viewport", async () => {
     renderPage(order);
     await waitFor(() => expect(usePayOS).toHaveBeenCalledTimes(1));
 
     const paymentFrame = screen.getByTestId("payment-frame");
-    expect(paymentFrame.className).not.toMatch(/scale|translate/);
+    expect(paymentFrame).toHaveClass("h-[410px]", "overflow-hidden");
+    expect(paymentFrame.className).toContain("[&_iframe]:scale-[1.24]");
+    expect(paymentFrame.className).toContain("sm:[&_iframe]:scale-[1.38]");
+    expect(document.getElementById("payos-checkout-123")).toHaveClass("h-[410px]");
   });
 
   it.each([
