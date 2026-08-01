@@ -976,7 +976,9 @@ export default {
         embedErrorTitle: "Could not load embedded checkout",
         embedErrorDesc:
           "The payOS checkout frame could not be loaded in this browser session.",
-        openFallback: "Open payOS checkout",
+        openFallback: "No QR code? Open payOS",
+        embedInvalidParams:
+          "payOS rejected the embedded checkout details. You can still pay safely on payOS.",
         iframeHint: "Pay inside this secure payOS frame.",
         cancelCheckout: "Cancel and return",
         amountDue: "Amount to pay",

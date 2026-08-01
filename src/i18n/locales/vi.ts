@@ -975,7 +975,9 @@ export default {
         embedErrorTitle: "Không tải được checkout nhúng",
         embedErrorDesc:
           "Khung thanh toán payOS không tải được trong phiên trình duyệt này.",
-        openFallback: "Mở payOS checkout",
+        openFallback: "Không thấy QR? Mở trang payOS",
+        embedInvalidParams:
+          "payOS từ chối thông tin nhúng. Bạn vẫn có thể thanh toán an toàn trên trang payOS.",
         iframeHint: "Thanh toán trong khung payOS bảo mật.",
         cancelCheckout: "Hủy và quay lại",
         amountDue: "Số tiền cần thanh toán",
