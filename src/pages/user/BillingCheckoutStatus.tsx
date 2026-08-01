@@ -625,10 +625,10 @@ function PaymentSurface({
   }
 
   return (
-    <div className="flex w-full max-w-[480px] flex-col items-center gap-3">
+    <div className="flex w-full max-w-[440px] flex-col items-center gap-3">
       <div
         data-testid="payment-frame"
-        className="relative h-[520px] w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm [&_iframe]:h-full [&_iframe]:min-h-[520px] [&_iframe]:w-full [&_iframe]:border-0"
+        className="relative h-[440px] w-full bg-transparent sm:h-[460px] [&_iframe]:h-full [&_iframe]:min-h-[440px] [&_iframe]:w-full [&_iframe]:border-0 sm:[&_iframe]:min-h-[460px]"
       >
         <CheckoutErrorBoundary
           checkoutUrl={checkoutUrl}
@@ -643,7 +643,7 @@ function PaymentSurface({
             elementId={elementId}
             checkoutUrl={checkoutUrl!}
             returnUrl={returnUrl!}
-            className="h-full w-full"
+            className="mx-auto h-full w-full max-w-[420px]"
             onSuccess={onProviderSuccess}
             onCancel={onProviderCancel}
             onExit={onProviderExit}
@@ -699,7 +699,7 @@ function CheckoutLoading() {
   return (
     <div className="grid gap-5 px-3 py-4 sm:gap-6 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.72fr)]">
       <div className="h-[360px] animate-pulse rounded-2xl border border-border bg-muted lg:col-start-2 lg:row-start-1 lg:h-[520px]" />
-      <div className="mx-auto h-[520px] w-full max-w-[480px] animate-pulse rounded-2xl border border-border bg-muted lg:col-start-1 lg:row-start-1" />
+      <div className="mx-auto h-[440px] w-full max-w-[480px] animate-pulse rounded-2xl border border-border bg-muted sm:h-[460px] lg:col-start-1 lg:row-start-1" />
     </div>
   );
 }
