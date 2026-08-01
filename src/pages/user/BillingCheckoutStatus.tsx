@@ -19,25 +19,29 @@ import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { QUERY_KEYS } from "@/constants/app";
 import {
-  buildBillingCheckoutReturnUrl,
+  createSingleFlight,
+  doesPayOSReturnUrlMatchPage,
   getBillingCheckoutSurfaceState,
+  getBillingOrderPollInterval,
   getBillingOrderStatusMeta,
   getMentorCheckoutStage,
   getPublicCheckoutSummaryItems,
   isTerminalBillingOrderStatus,
+  isInvalidPayOSEvent,
   parsePayOSReturnParams,
   shouldCaptureSubscriptionPaymentPaid,
 } from "@/lib/billing-checkout";
-import { loadPayOSCheckoutScript, type PayOSController } from "@/lib/payos-checkout-script";
+import {
+  loadPayOSCheckoutScript,
+  type PayOSController,
+  type PayOSEvent,
+} from "@/lib/payos-checkout-script";
 import { formatVnd, StatusBadge } from "@/lib/billing-ui";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { PAYOS_RETURN_URL } from "@/lib/runtime-config";
 import { cn } from "@/lib/utils";
 import { getOrderStatus, reconcileOrder, type OrderStatusResponseDto } from "@/services/billing.service";
 import { useHasApiSession } from "@/hooks/use-api-session";
 
-const ORDER_POLL_INTERVAL_MS = 2500;
-const ORDER_POLL_TIMEOUT_MS = 120_000;
 const PAYOS_QUERY_KEYS = ["code", "id", "cancel", "status", "orderCode"] as const;
 const FAILED_BILLING_ORDER_STATUSES = new Set(["CANCELLED", "EXPIRED", "FAILED"]);
 
@@ -51,8 +55,16 @@ export default function BillingCheckoutStatus() {
   const pollingStartedAtRef = useRef<number | null>(null);
   const capturedPaidOrderRef = useRef<string | null>(null);
   const capturedFailedOrderRef = useRef<string | null>(null);
+  const capturedEmbedFailureRef = useRef<string | null>(null);
   const payOSControllerRef = useRef<PayOSController | null>(null);
+  const reconcileFlightRef = useRef<ReturnType<
+    typeof createSingleFlight<string, OrderStatusResponseDto | null>
+  > | null>(null);
+  reconcileFlightRef.current ??= createSingleFlight<string, OrderStatusResponseDto | null>();
   const hasApiSession = useHasApiSession();
+  const [isPageVisible, setIsPageVisible] = useState(() =>
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
   const [embedState, setEmbedState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [embedError, setEmbedError] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -60,12 +72,6 @@ export default function BillingCheckoutStatus() {
   const [copied, setCopied] = useState(false);
 
   const elementId = useMemo(() => `payos-checkout-${orderCode || "order"}`, [orderCode]);
-  const returnUrl = useMemo(() => {
-    if (PAYOS_RETURN_URL) return PAYOS_RETURN_URL;
-    if (typeof window === "undefined") return "";
-    return buildBillingCheckoutReturnUrl(window.location.origin);
-  }, []);
-
   const payOSReturn = useMemo(
     () => parsePayOSReturnParams(new URLSearchParams(location.search)),
     [location.search],
@@ -81,19 +87,26 @@ export default function BillingCheckoutStatus() {
     enabled: Boolean(orderCode) && hasApiSession,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (isTerminalBillingOrderStatus(status)) return false;
       pollingStartedAtRef.current ??= Date.now();
-      return Date.now() - pollingStartedAtRef.current < ORDER_POLL_TIMEOUT_MS
-        ? ORDER_POLL_INTERVAL_MS
-        : false;
+      return getBillingOrderPollInterval(
+        status,
+        Date.now() - pollingStartedAtRef.current,
+        isPageVisible,
+      );
     },
   });
   const refetchOrder = orderQuery.refetch;
+  const refetchOrderRef = useRef(refetchOrder);
+  refetchOrderRef.current = refetchOrder;
 
   const order = orderQuery.data;
   const checkoutUrl = order?.checkoutUrl ?? null;
+  const returnUrl = order?.returnUrl ?? null;
   const checkoutSurfaceState = getBillingCheckoutSurfaceState(order?.status, checkoutUrl);
-  const canRenderPayOS = checkoutSurfaceState === "checkout";
+  const canRenderPayOS =
+    checkoutSurfaceState === "checkout" &&
+    typeof window !== "undefined" &&
+    doesPayOSReturnUrlMatchPage(returnUrl, window.location.href);
   const publicSummary = useMemo(() => {
     if (!order) return null;
     return Object.fromEntries(
@@ -105,6 +118,8 @@ export default function BillingCheckoutStatus() {
         defaultValue: getBillingOrderStatusMeta(publicSummary.status).label,
       })
     : "";
+  const embedInvalidParamsMessage = t("billing.checkout.embedInvalidParams");
+  const embedErrorDescription = t("billing.checkout.embedErrorDesc");
   const mentorCheckoutStage = useMemo(() => getMentorCheckoutStage(order), [order]);
 
   const applyPaidInvalidation = useCallback(() => {
@@ -118,27 +133,28 @@ export default function BillingCheckoutStatus() {
 
   const reconcileLatest = useCallback(async () => {
     if (!orderCode || !hasApiSession) return null;
-    setIsReconciling(true);
-    setVerifyError(null);
-    try {
-      const nextOrder = await reconcileOrder(orderCode);
-      if (nextOrder) {
-        queryClient.setQueryData(QUERY_KEYS.BILLING_ORDER(orderCode), nextOrder);
-        if (nextOrder.status === "PAID") applyPaidInvalidation();
+    return reconcileFlightRef.current!.run(orderCode, async () => {
+      setIsReconciling(true);
+      setVerifyError(null);
+      try {
+        const nextOrder = await reconcileOrder(orderCode);
+        if (nextOrder) {
+          queryClient.setQueryData(QUERY_KEYS.BILLING_ORDER(orderCode), nextOrder);
+          if (nextOrder.status === "PAID") applyPaidInvalidation();
+        }
+        return nextOrder;
+      } catch (error) {
+        setVerifyError(getApiErrorMessage(error));
+        throw error;
+      } finally {
+        setIsReconciling(false);
       }
-      return nextOrder;
-    } catch (error) {
-      setVerifyError(getApiErrorMessage(error));
-      throw error;
-    } finally {
-      setIsReconciling(false);
-    }
+    });
   }, [applyPaidInvalidation, hasApiSession, orderCode, queryClient]);
 
   const checkAgain = useCallback(() => {
     void reconcileLatest().catch(() => undefined);
-    void refetchOrder();
-  }, [reconcileLatest, refetchOrder]);
+  }, [reconcileLatest]);
 
   const cancelCheckout = useCallback(() => {
     payOSControllerRef.current?.exit?.();
@@ -157,6 +173,12 @@ export default function BillingCheckoutStatus() {
   useEffect(() => {
     pollingStartedAtRef.current = null;
   }, [orderCode]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setIsPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   useEffect(() => {
     if (order?.status === "PAID") applyPaidInvalidation();
@@ -210,6 +232,17 @@ export default function BillingCheckoutStatus() {
   }, [hasPayOSReturnQuery, navigate, orderCode, reconcileLatest]);
 
   useEffect(() => {
+    if (checkoutSurfaceState !== "checkout" || !checkoutUrl || canRenderPayOS) return;
+    const capturedKey = `${orderCode}:return_url_mismatch`;
+    if (capturedEmbedFailureRef.current === capturedKey) return;
+    capturedEmbedFailureRef.current = capturedKey;
+    posthog?.capture("checkout_embed_failed", {
+      order_code: orderCode,
+      reason: returnUrl ? "return_url_mismatch" : "missing_return_url",
+    });
+  }, [canRenderPayOS, checkoutSurfaceState, checkoutUrl, orderCode, posthog, returnUrl]);
+
+  useEffect(() => {
     if (!canRenderPayOS || !checkoutUrl || !returnUrl) {
       setEmbedState("idle");
       return;
@@ -228,14 +261,31 @@ export default function BillingCheckoutStatus() {
         if (!window.PayOSCheckout?.usePayOS) {
           throw new Error("payOS checkout script is not ready.");
         }
+        const handleProviderEvent = (event: PayOSEvent | undefined, action: "reconcile" | "refresh") => {
+          if (!active) return;
+          if (isInvalidPayOSEvent(event)) {
+            setEmbedState("error");
+            setEmbedError(embedInvalidParamsMessage);
+            posthog?.capture("checkout_embed_failed", {
+              order_code: orderCode,
+              reason: "invalid_param",
+            });
+            return;
+          }
+          if (action === "reconcile") {
+            void reconcileLatest().catch(() => undefined);
+          } else {
+            void refetchOrderRef.current();
+          }
+        };
         const controller = window.PayOSCheckout.usePayOS({
           RETURN_URL: returnUrl,
           ELEMENT_ID: elementId,
           CHECKOUT_URL: checkoutUrl,
           embedded: true,
-          onSuccess: () => void reconcileLatest().catch(() => undefined),
-          onCancel: () => void reconcileLatest().catch(() => undefined),
-          onExit: () => void refetchOrder(),
+          onSuccess: (event) => handleProviderEvent(event, "reconcile"),
+          onCancel: (event) => handleProviderEvent(event, "reconcile"),
+          onExit: (event) => handleProviderEvent(event, "refresh"),
         });
         payOSControllerRef.current = controller;
         controller.open();
@@ -244,7 +294,11 @@ export default function BillingCheckoutStatus() {
       .catch((error) => {
         if (!active) return;
         setEmbedState("error");
-        setEmbedError(error instanceof Error ? error.message : t("billing.checkout.embedErrorDesc"));
+        setEmbedError(error instanceof Error ? error.message : embedErrorDescription);
+        posthog?.capture("checkout_embed_failed", {
+          order_code: orderCode,
+          reason: "script_error",
+        });
       });
 
     return () => {
@@ -254,7 +308,17 @@ export default function BillingCheckoutStatus() {
       const currentContainer = document.getElementById(elementId);
       if (currentContainer) currentContainer.innerHTML = "";
     };
-  }, [canRenderPayOS, checkoutUrl, elementId, reconcileLatest, refetchOrder, returnUrl, t]);
+  }, [
+    canRenderPayOS,
+    checkoutUrl,
+    elementId,
+    embedErrorDescription,
+    embedInvalidParamsMessage,
+    orderCode,
+    posthog,
+    reconcileLatest,
+    returnUrl,
+  ]);
 
   return (
     <Layout>
@@ -374,9 +438,9 @@ export default function BillingCheckoutStatus() {
                       />
                     ) : null}
 
-                    {embedState === "error" && checkoutUrl ? (
+                    {checkoutSurfaceState === "checkout" && checkoutUrl ? (
                       <Button asChild variant="outline" className="mt-4 h-10 w-full rounded-full bg-card font-bold">
-                        <a href={checkoutUrl} target="_blank" rel="noreferrer">
+                        <a href={checkoutUrl}>
                           <ExternalLink className="mr-2 h-4 w-4" />
                           {t("billing.checkout.openFallback")}
                         </a>

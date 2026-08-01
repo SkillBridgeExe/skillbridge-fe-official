@@ -12,7 +12,6 @@
 interface AppConfig {
   API_URL?: string;
   GOOGLE_CLIENT_ID?: string;
-  PAYOS_RETURN_URL?: string;
   POSTHOG_PROJECT_TOKEN?: string;
   POSTHOG_HOST?: string;
   ENABLE_DIAGNOSIS_ADDONS?: string | boolean;
@@ -37,10 +36,6 @@ export const GOOGLE_CLIENT_ID: string =
 /** API base URL. Empty string = same-origin `/api` (nginx prod / Vite dev proxy). */
 export const API_URL: string =
   runtime.API_URL || import.meta.env.VITE_API_URL || "";
-
-/** Exact payOS return URL used by the backend when creating embedded checkout links. */
-export const PAYOS_RETURN_URL: string =
-  runtime.PAYOS_RETURN_URL || import.meta.env.VITE_PAYOS_RETURN_URL || "";
 
 /** PostHog public project token and ingest host. Tokens here are public, not secrets. */
 export const POSTHOG_PROJECT_TOKEN: string =

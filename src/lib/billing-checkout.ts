@@ -80,6 +80,50 @@ export function isTerminalBillingOrderStatus(status: BillingOrderStatus | string
   return getBillingOrderStatusMeta(status).terminal;
 }
 
+export function doesPayOSReturnUrlMatchPage(
+  returnUrl: string | null | undefined,
+  currentHref: string,
+): boolean {
+  if (!returnUrl) return false;
+
+  try {
+    const expected = new URL(returnUrl);
+    const current = new URL(currentHref);
+    return expected.origin === current.origin && expected.pathname === current.pathname;
+  } catch {
+    return false;
+  }
+}
+
+export function getBillingOrderPollInterval(
+  status: BillingOrderStatus | string | null | undefined,
+  elapsedMs: number,
+  isVisible: boolean,
+): number | false {
+  if (!isVisible || isTerminalBillingOrderStatus(status) || elapsedMs >= 120_000) return false;
+  return elapsedMs < 30_000 ? 5_000 : 15_000;
+}
+
+export function createSingleFlight<TKey, TResult>() {
+  let active: { key: TKey; promise: Promise<TResult> } | null = null;
+
+  return {
+    run(key: TKey, operation: () => Promise<TResult>): Promise<TResult> {
+      if (active?.key === key) return active.promise;
+
+      const promise = operation().finally(() => {
+        if (active?.promise === promise) active = null;
+      });
+      active = { key, promise };
+      return promise;
+    },
+  };
+}
+
+export function isInvalidPayOSEvent(event: { code?: string } | undefined): boolean {
+  return event?.code === "02";
+}
+
 export function shouldCaptureSubscriptionPaymentPaid(
   order: OrderStatusResponseDto | null | undefined,
 ): order is OrderStatusResponseDto & { status: "PAID"; purpose: "SUBSCRIPTION" } {

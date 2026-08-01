@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as billingCheckoutHelpers from "./billing-checkout";
 import type { OrderStatusResponseDto } from "@/api/billing";
 import {
   buildBillingCheckoutReturnUrl,
@@ -12,6 +13,81 @@ import {
 } from "./billing-checkout";
 
 describe("billing checkout helpers", () => {
+  it("embeds payOS only when its signed return URL matches the current iframe page", () => {
+    const matchesPage = requiredHelper<
+      (returnUrl: string | null | undefined, currentHref: string) => boolean
+    >("doesPayOSReturnUrlMatchPage");
+
+    expect(
+      matchesPage(
+        "https://skillbridgebuilder.com/billing/checkout/1781624341196493",
+        "https://skillbridgebuilder.com/billing/checkout/1781624341196493?status=PENDING",
+      ),
+    ).toBe(true);
+    expect(
+      matchesPage(
+        "https://skillbridgebuilder.com/billing/checkout",
+        "https://skillbridgebuilder.com/billing/checkout/1781624341196493",
+      ),
+    ).toBe(false);
+    expect(
+      matchesPage(
+        "https://skillbridgebuilder.com/billing/checkout/1781624341196493",
+        "https://skillbridge-fe-973344038436.asia-southeast1.run.app/billing/checkout/1781624341196493",
+      ),
+    ).toBe(false);
+    expect(matchesPage(null, "https://skillbridgebuilder.com/billing/checkout/123")).toBe(false);
+  });
+
+  it("backs off local order polling and stops after two minutes", () => {
+    const getInterval = requiredHelper<
+      (status: string | null | undefined, elapsedMs: number, isVisible: boolean) => number | false
+    >("getBillingOrderPollInterval");
+
+    expect(getInterval("PENDING", 0, true)).toBe(5_000);
+    expect(getInterval("PENDING", 29_999, true)).toBe(5_000);
+    expect(getInterval("PENDING", 30_000, true)).toBe(15_000);
+    expect(getInterval("PROCESSING", 119_999, true)).toBe(15_000);
+    expect(getInterval("PENDING", 120_000, true)).toBe(false);
+    expect(getInterval("PAID", 1_000, true)).toBe(false);
+    expect(getInterval("PENDING", 1_000, false)).toBe(false);
+  });
+
+  it("coalesces simultaneous reconcile requests for the same order", async () => {
+    const createSingleFlight = requiredHelper<
+      <TKey, TResult>() => {
+        run: (key: TKey, operation: () => Promise<TResult>) => Promise<TResult>;
+      }
+    >("createSingleFlight");
+    const gate = createSingleFlight<string, string>();
+    let resolveOperation: ((value: string) => void) | undefined;
+    let calls = 0;
+    const operation = () => {
+      calls += 1;
+      return new Promise<string>((resolve) => {
+        resolveOperation = resolve;
+      });
+    };
+
+    const first = gate.run("order-123", operation);
+    const second = gate.run("order-123", operation);
+
+    expect(calls).toBe(1);
+    expect(second).toBe(first);
+    resolveOperation?.("paid");
+    await expect(Promise.all([first, second])).resolves.toEqual(["paid", "paid"]);
+  });
+
+  it("recognizes payOS invalid-parameter callback code", () => {
+    const isInvalidEvent = requiredHelper<(event: { code?: string } | undefined) => boolean>(
+      "isInvalidPayOSEvent",
+    );
+
+    expect(isInvalidEvent({ code: "02" })).toBe(true);
+    expect(isInvalidEvent({ code: "00" })).toBe(false);
+    expect(isInvalidEvent(undefined)).toBe(false);
+  });
+
   it.each([
     ["PENDING", "warning", "Pending"],
     ["PROCESSING", "info", "Processing"],
@@ -200,3 +276,9 @@ describe("billing checkout helpers", () => {
     expect(getMentorCheckoutStage({ ...baseOrder, targetId: null })).toBeNull();
   });
 });
+
+function requiredHelper<T>(name: string): T {
+  const value = (billingCheckoutHelpers as unknown as Record<string, unknown>)[name];
+  expect(value, `${name} must be exported`).toBeTypeOf("function");
+  return value as T;
+}
