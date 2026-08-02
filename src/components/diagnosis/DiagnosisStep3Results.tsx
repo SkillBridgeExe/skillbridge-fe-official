@@ -43,7 +43,7 @@ import { SkillGapTrends } from "./SkillGapTrends";
 import { InterviewPrepPack } from "./InterviewPrepPack";
 
 /* ── Design tokens (§0b — editorial W24) ── */
-const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
+const CARD = "bg-white border border-slate-200/60 rounded-xl shadow-sm";
 const MAX_INSIGHT_ITEMS = 3;
 
 /** "sql_server" → "SQL Server" (từ ≤3 ký tự viết hoa cả từ — đủ cho các canonical satisfies hiện có). */
@@ -55,9 +55,9 @@ function prettyCanonical(canonical: string): string {
 }
 
 function evidenceStrengthClass(strength: EvidenceStrength): string {
-  if (strength === "demonstrated") return "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]";
-  if (strength === "listed_only") return "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]";
-  return "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
+  if (strength === "demonstrated") return "bg-emerald-50 text-emerald-700 border-emerald-200/60";
+  if (strength === "listed_only") return "bg-amber-50 text-amber-700 border-amber-200/60";
+  return "bg-slate-100 text-slate-500 border-slate-200/60";
 }
 
 function findEvidenceStrength(skill: SkillMatchItem, ledger?: EvidenceLedger | null): EvidenceStrength | null {
@@ -83,57 +83,63 @@ function KeywordRow({
   evidenceStrength?: EvidenceStrength | null;
 }) {
   const statusConfig = {
-    present: { icon: <CheckCircle2 className="w-4 h-4 text-[#346538]" />, badge: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]", label: t("results.found") },
-    partial:  { icon: <AlertCircle  className="w-4 h-4 text-[#956400]" />, badge: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]", label: t("results.partial") },
-    missing:  { icon: <X            className="w-4 h-4 text-[#9F2F2D]" />, badge: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]", label: t("results.missing") },
+    present: { icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, badge: "bg-emerald-50 text-emerald-700 border-emerald-200/60", label: t("results.found") },
+    partial:  { icon: <AlertCircle  className="w-5 h-5 text-amber-600" />, badge: "bg-amber-50 text-amber-700 border-amber-200/60", label: t("results.partial") },
+    missing:  { icon: <X            className="w-5 h-5 text-rose-600" />, badge: "bg-rose-50 text-rose-700 border-rose-200/60", label: t("results.missing") },
   }[skill.status];
 
   return (
     <div
-      className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[#F1F1EF] last:border-0 gap-2 sm:gap-4 animate-in fade-in duration-500"
+      className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col gap-3 animate-in fade-in duration-500 hover:shadow-md transition-shadow"
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-        <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">{statusConfig.icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="text-xs sm:text-sm font-medium text-[#2F3437] break-words">{skill.name}</span>
-            {evidenceStrength && (
-              <span
-                className={cn("inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold shrink-0", evidenceStrengthClass(evidenceStrength))}
-                title={t(`evidence.strength.${evidenceStrength}`)}
-              >
-                {t(`evidence.strength.${evidenceStrength}`)}
-              </span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 mt-0.5">
+            {statusConfig.icon}
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-slate-900 break-words">{skill.name}</span>
+              {evidenceStrength && (
+                <span
+                  className={cn("inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0", evidenceStrengthClass(evidenceStrength))}
+                  title={t(`evidence.strength.${evidenceStrength}`)}
+                >
+                  {t(`evidence.strength.${evidenceStrength}`)}
+                </span>
+              )}
+            </div>
+            
+            {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
+              <p className="text-[11px] font-medium text-amber-700">
+                {t("matchDepth.gapLevels", { count: skill.gap_levels })}
+              </p>
+            )}
+            {skill.satisfied_by && (
+              <p className="text-[11px] font-medium text-slate-500">
+                {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
+              </p>
             )}
           </div>
-          {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
-            <p className="mt-0.5 text-[11px] font-medium text-[#956400]">
-              {t("matchDepth.gapLevels", { count: skill.gap_levels })}
-            </p>
-          )}
-          {skill.satisfied_by && (
-            <p className="mt-0.5 text-[11px] font-medium text-[#787774]">
-              {t("matchDepth.satisfiedBy", { from: prettyCanonical(skill.satisfied_by) })}
-            </p>
-          )}
         </div>
+        
+        <span className={cn("text-[10px] font-bold px-2 py-1 rounded border text-center shrink-0 uppercase tracking-wider", statusConfig.badge)}>
+          {statusConfig.label}
+        </span>
       </div>
 
-      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 pl-8 sm:pl-0">
-        <div className="flex items-center gap-2 flex-1 sm:flex-none w-24 sm:w-32">
-          <div className="flex-1 h-1.5 bg-[#F1F1EF] rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-700",
-                skill.status === "present" ? "bg-[#346538]" : skill.status === "partial" ? "bg-[#956400]" : "bg-[#9F2F2D]"
-              )}
-              style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
-            />
-          </div>
-          <span className="font-mono tabular-nums text-xs text-[#787774] w-8 text-right shrink-0">{skill.cvScore}%</span>
+      <div className="flex items-center justify-between gap-3 w-full bg-slate-50 p-2.5 rounded-lg border border-slate-100/50 mt-1">
+        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-700 ease-out",
+              skill.status === "present" ? "bg-emerald-500" : skill.status === "partial" ? "bg-amber-500" : "bg-rose-500"
+            )}
+            style={{ width: `${skill.cvScore}%`, transitionDelay: `${index * 60}ms` }}
+          />
         </div>
-        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded border text-center shrink-0", statusConfig.badge)}>{statusConfig.label}</span>
+        <span className="font-mono tabular-nums text-xs font-black text-slate-900 shrink-0">{skill.cvScore}%</span>
       </div>
     </div>
   );
@@ -166,54 +172,54 @@ function MatchNarrative({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.whyScore")}</h3>
-      <div className="space-y-2 text-[13px] text-[#2F3437] leading-relaxed">
+      <h3 className="text-sm font-bold text-slate-900">{t("matchDepth.whyScore")}</h3>
+      <div className="space-y-2 text-[13px] text-slate-900 leading-relaxed">
         <p>
-          <span className="font-mono tabular-nums font-bold text-[#346538]">{breakdown.matched_count}</span> {t("results.matched")}
+          <span className="font-mono tabular-nums font-bold text-emerald-700">{breakdown.matched_count}</span> {t("results.matched")}
           {" · "}
-          <span className="font-mono tabular-nums font-bold text-[#956400]">{breakdown.partial_count}</span> {t("results.partial")}
+          <span className="font-mono tabular-nums font-bold text-amber-700">{breakdown.partial_count}</span> {t("results.partial")}
           {" · "}
-          <span className="font-mono tabular-nums font-bold text-[#9F2F2D]">{breakdown.missing_count}</span> {t("results.missing")}
+          <span className="font-mono tabular-nums font-bold text-rose-700">{breakdown.missing_count}</span> {t("results.missing")}
           {" · "}
-          <span className="font-mono tabular-nums font-bold text-[#787774]">{coverage}%</span> {t("matchDepth.coverage")}
+          <span className="font-mono tabular-nums font-bold text-slate-500">{coverage}%</span> {t("matchDepth.coverage")}
         </p>
-        <p className="text-[12px] text-[#787774] leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
+        <p className="text-[12px] text-slate-500 leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
       </div>
 
       {hasPerSkill && (
-        <div className="border border-[#EAEAEA] rounded-lg bg-[#FBFBFA] p-3 space-y-2">
+        <div className="border border-slate-200/60 rounded-xl bg-slate-50/50 p-4 space-y-3 shadow-sm">
           <div className="flex flex-col space-y-0.5">
-            <h4 className="text-xs font-bold text-[#2F3437]">{t("matchDepth.perSkillTitle")}</h4>
-            <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.perSkillHint")}</p>
+            <h4 className="text-xs font-bold text-slate-900">{t("matchDepth.perSkillTitle")}</h4>
+            <p className="text-[11px] text-slate-500 leading-relaxed">{t("matchDepth.perSkillHint")}</p>
           </div>
-          <div className="divide-y divide-[#EAEAEA] text-xs">
+          <div className="divide-y divide-slate-200 text-xs">
             {displaySkills.map((row, idx) => {
-              let badgeColor = "border-[#787774] text-[#787774]";
+              let badgeColor = "border-slate-300 text-slate-500 bg-white";
               if (row.importance === "REQUIRED") {
-                badgeColor = "border-[#9F2F2D] text-[#9F2F2D]";
+                badgeColor = "border-rose-200 text-rose-700 bg-rose-50";
               } else if (row.importance === "PREFERRED") {
-                badgeColor = "border-[#956400] text-[#956400]";
+                badgeColor = "border-amber-200 text-amber-700 bg-amber-50";
               }
 
               const earnedColor =
                 row.status === "matched"
-                  ? "text-[#346538]"
+                  ? "text-emerald-700"
                   : row.status === "partial"
-                  ? "text-[#956400]"
-                  : "text-[#9F2F2D]";
+                  ? "text-amber-700"
+                  : "text-rose-700";
 
               return (
-                <div key={idx} className="py-2 flex items-center justify-between gap-4">
+                <div key={idx} className="py-2.5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate text-[#2F3437] font-medium" title={row.display_name}>
+                    <span className="truncate text-slate-900 font-medium" title={row.display_name}>
                       {row.display_name}
                     </span>
-                    <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0", badgeColor)}>
+                    <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 shadow-sm", badgeColor)}>
                       {t(`jdIntel.importance.${row.importance}`, { defaultValue: row.importance.replace(/_/g, " ") })}
                     </span>
                   </div>
-                  <div className="font-mono tabular-nums text-xs text-[#787774] shrink-0">
-                    <span className={cn("font-bold", earnedColor)}>{row.points_earned.toFixed(1)}</span>
+                  <div className="font-mono tabular-nums text-xs text-slate-500 shrink-0">
+                    <span className={cn("font-bold text-[13px]", earnedColor)}>{row.points_earned.toFixed(1)}</span>
                     {" / "}
                     <span>{row.points_possible.toFixed(1)}</span>
                   </div>
@@ -222,7 +228,7 @@ function MatchNarrative({
             })}
           </div>
           {remainingCount > 0 && (
-            <div className="pt-2 border-t border-[#EAEAEA] text-[11px] text-[#787774] italic">
+            <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500 italic">
               {t("matchDepth.perSkillMore", { count: remainingCount })}
             </div>
           )}
@@ -230,7 +236,7 @@ function MatchNarrative({
       )}
 
       {breakdown.cap_applied && (
-        <p className="text-xs font-medium text-[#956400]">{t("matchDepth.capped")}</p>
+        <p className="text-xs font-medium text-amber-700">{t("matchDepth.capped")}</p>
       )}
     </div>
   );
@@ -246,17 +252,17 @@ function InferredSkillsBlock({
   if (!skills?.length) return null;
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.inferredTitle")}</h3>
-      <p className="text-xs leading-relaxed text-[#787774]">{t("matchDepth.inferredHint")}</p>
+      <h3 className="text-sm font-bold text-slate-900">{t("matchDepth.inferredTitle")}</h3>
+      <p className="text-xs leading-relaxed text-slate-500">{t("matchDepth.inferredHint")}</p>
       <div className="flex flex-wrap gap-2">
         {skills.map((skill) => (
           <span
             key={skill.canonical_name}
-            className="inline-flex items-center gap-1 rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] px-2.5 py-1 text-xs font-semibold text-[#2F3437]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/60 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 shadow-sm transition-shadow hover:shadow-md"
             title={skill.reason ?? undefined}
           >
             {skill.display_name}
-            <span className="text-[10px] font-bold text-[#787774]">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {t(`matchDepth.inferred.${skill.tag}`)}
             </span>
           </span>
@@ -294,24 +300,24 @@ function SystemReadPanel({
   }
 
   return (
-    <div className="border border-[#EAEAEA] rounded-lg bg-[#FBFBFA] p-4 space-y-4">
-      <h3 className="text-sm font-bold text-[#2F3437]">{t("matchDepth.systemReadTitle")}</h3>
+    <div className="border border-slate-200/60 rounded-xl bg-white p-5 shadow-sm space-y-4">
+      <h3 className="text-sm font-bold text-slate-900">{t("matchDepth.systemReadTitle")}</h3>
 
       {allEmpty && !isLoading && !isError && (
-        <p className="text-xs text-[#346538] font-medium">{t("matchDepth.systemReadAllClear")}</p>
+        <p className="text-xs text-emerald-700 font-medium">{t("matchDepth.systemReadAllClear")}</p>
       )}
 
       {hasUnnormalized && (
         <div className="space-y-2">
-          <h4 className="text-xs font-bold text-[#9F2F2D]">{t("matchDepth.droppedTitle")}</h4>
-          <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.droppedHint")}</p>
-          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+          <h4 className="text-xs font-bold text-rose-700">{t("matchDepth.droppedTitle")}</h4>
+          <p className="text-[11px] text-slate-500 leading-relaxed">{t("matchDepth.droppedHint")}</p>
+          <ul className="space-y-2 text-xs text-slate-900 list-disc list-inside bg-rose-50/50 p-3 rounded-lg border border-rose-100">
             {unnormalized.map((item, idx) => (
-              <li key={idx} className="leading-relaxed">
+              <li key={idx} className="leading-relaxed marker:text-rose-400">
                 <span className="font-bold">{item.raw_input}</span>
                 {item.evidence_text && (
-                  <span className="text-[#787774] italic">
-                    {" "}&ldquo;{item.evidence_text}&rdquo;
+                  <span className="text-slate-500 italic block pl-4 mt-0.5 border-l-2 border-slate-200 ml-2">
+                    &ldquo;{item.evidence_text}&rdquo;
                   </span>
                 )}
               </li>
@@ -322,17 +328,17 @@ function SystemReadPanel({
 
       {hasEvidence && (
         <div className="space-y-2">
-          <h4 className="text-xs font-bold text-[#956400]">{t("matchDepth.evidenceGapsTitle")}</h4>
-          <p className="text-[11px] text-[#787774] leading-relaxed">{t("matchDepth.evidenceGapsHint")}</p>
-          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+          <h4 className="text-xs font-bold text-amber-700">{t("matchDepth.evidenceGapsTitle")}</h4>
+          <p className="text-[11px] text-slate-500 leading-relaxed">{t("matchDepth.evidenceGapsHint")}</p>
+          <ul className="space-y-2 text-xs text-slate-900 list-disc list-inside bg-amber-50/50 p-3 rounded-lg border border-amber-100">
             {evidenceGaps.map((item, idx) => {
               const hasLevels = item.cv_level !== null && item.required_level !== null;
               return (
-                <li key={idx} className="leading-relaxed">
+                <li key={idx} className="leading-relaxed marker:text-amber-400">
                   <span className="font-medium">{item.display_name}</span>
                   {hasLevels && (
-                    <span className="font-mono text-[11px] text-[#787774] bg-[#F1F1EF] px-1.5 py-0.5 rounded ml-1.5">
-                      L{item.cv_level}/L{item.required_level}
+                    <span className="font-mono text-[10px] text-amber-700 bg-amber-100/50 px-1.5 py-0.5 rounded ml-2 border border-amber-200">
+                      L{item.cv_level} / L{item.required_level}
                     </span>
                   )}
                 </li>
@@ -344,12 +350,12 @@ function SystemReadPanel({
 
       {hasEmphasis && (
         <div className="space-y-2">
-          <h4 className="text-xs font-bold text-[#2F3437]">{t("matchDepth.emphasisTitle")}</h4>
-          <ul className="space-y-1.5 text-xs text-[#2F3437] list-disc list-inside">
+          <h4 className="text-xs font-bold text-slate-900">{t("matchDepth.emphasisTitle")}</h4>
+          <ul className="space-y-2 text-xs text-slate-900 list-disc list-inside bg-slate-50 p-3 rounded-lg border border-slate-100">
             {emphasisGaps.map((item, idx) => (
-              <li key={idx} className="leading-relaxed">
+              <li key={idx} className="leading-relaxed marker:text-slate-400">
                 <span className="font-semibold">{item.display_name}</span>
-                <span className="text-[#787774] ml-1.5">
+                <span className="text-slate-500 ml-1.5">
                   ({t("matchDepth.emphasisCount", { jd: item.jd_count, cv: item.cv_count })})
                 </span>
               </li>
@@ -550,7 +556,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
     <div className="min-h-full flex flex-col lg:flex-row select-none animate-in fade-in duration-500 w-full">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && !isDegradedNoBasis && (
-        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-[#EAEAEA] bg-white p-6 flex flex-col shrink-0 lg:h-full">
+        <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-slate-200/60 bg-white p-6 flex flex-col shrink-0 lg:h-full">
           <ScoreRail
             overallScore={matchScore ?? 0}
             groups={reportGroups}
@@ -569,14 +575,14 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
       )}
 
       {/* RIGHT COLUMN: Detail Report (Scrolls on desktop) */}
-      <div className="flex-1 lg:overflow-y-auto lg:h-full custom-scrollbar bg-[#FCFCFD] p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto lg:h-full custom-scrollbar bg-slate-50 p-6 lg:p-8">
         {isDegradedNoBasis ? (
           <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto")}>
-            <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
-            <h3 className="text-sm font-bold text-[#2F3437]">
+            <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto" />
+            <h3 className="text-sm font-bold text-slate-900">
               {t("degraded.noBasisTitle")}
             </h3>
-            <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
+            <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
               {t("degraded.noBasisBody")}
             </p>
             <Button
@@ -591,11 +597,11 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
           </div>
         ) : isUnusable ? (
           <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto")}>
-            <AlertTriangle className="w-6 h-6 text-[#956400] mx-auto" />
-            <h3 className="text-sm font-bold text-[#2F3437]">
+            <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto" />
+            <h3 className="text-sm font-bold text-slate-900">
               {t("degraded.unusableTitle")}
             </h3>
-            <p className="text-xs text-[#787774] leading-relaxed max-w-md mx-auto">
+            <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
               {t("degraded.unusableBody")}
             </p>
             <Button
@@ -635,8 +641,8 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             )}
 
             {isJdMode && isDegradedUnrecognizedSkills && (
-              <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mb-6 bg-[#F8F9FA] border border-[#EAEAEA] rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-[#4F5B66]">
-                <AlertCircle className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2.5 p-3.5 mx-auto max-w-2xl mb-6 bg-slate-50 border border-slate-200/60 rounded-xl text-left animate-in fade-in slide-in-from-top-2 shadow-sm text-xs text-slate-600">
+                <AlertCircle className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="leading-relaxed">
                     {t("degraded.unrecognizedSkills")}
@@ -654,8 +660,8 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             {/* Ribbon Stats / Badges moved to the top of audit tab inside right column */}
             {isJdMode && !isDegradedNoBasis && !isUnusable && (
               <div className="relative z-10 pb-6">
-                <div className="bg-white border border-[#EAEAEA] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                  <span className="text-xs font-semibold text-[#787774]">
+                <div className="bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500">
                     {t("results.matchStats", { defaultValue: "Thống kê so khớp kỹ năng:" })}
                   </span>
                   <Ribbon
@@ -690,21 +696,21 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                                 <>
                                   <ResponsiveContainer width="100%" height={280}>
                                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                                      <PolarGrid stroke="#E3E3E0" />
-                                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#787774", fontWeight: 600 }} />
+                                      <PolarGrid stroke="#e2e8f0" />
+                                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
                                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #EAEAEA", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
-                                      <Radar name="required" dataKey="required" stroke="#E3E3E0" fill="#E3E3E0" fillOpacity={0.3} strokeDasharray="4 2" />
-                                      <Radar name="you" dataKey="you" stroke="#00AEEF" fill="#00AEEF" fillOpacity={0.12} strokeWidth={2} />
+                                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                                      <Radar name="required" dataKey="required" stroke="#e2e8f0" fill="#e2e8f0" fillOpacity={0.3} strokeDasharray="4 2" />
+                                      <Radar name="you" dataKey="you" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.12} strokeWidth={2} />
                                     </RadarChart>
                                   </ResponsiveContainer>
                                   <div className="flex justify-center gap-6 mt-2">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#787774]"><div className="w-3 h-0.5 bg-[#E3E3E0]" style={{ borderTop: "1px dashed #E3E3E0" }} /><span>{t("results.radarRequired")}</span></div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><div className="w-3 h-0.5 bg-slate-200" style={{ borderTop: "1px dashed #e2e8f0" }} /><span>{t("results.radarRequired")}</span></div>
                                   </div>
                                 </>
                             ) : (
-                              <p className="py-16 text-center text-sm text-[#787774]">{t("results.radarEmpty")}</p>
+                              <p className="py-16 text-center text-sm text-slate-500">{t("results.radarEmpty")}</p>
                             )}
                           </div>
 
@@ -758,55 +764,51 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                         <div>
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                             <div>
-                              <h3 className="text-sm font-bold text-[#2F3437]">
+                              <h3 className="text-sm font-bold text-slate-900">
                                 {isJdMode ? t("results.gapTitle") : t("results.gapTitleNoJd")}
                               </h3>
-                              <p className="text-xs text-[#787774] mt-0.5">
+                              <p className="text-xs text-slate-500 mt-0.5">
                                 {isJdMode ? t("results.gapDescJd") : t("results.gapDescNoJd")}
                               </p>
                             </div>
                             {isJdMode && (
-                              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-[#FBFBFA] px-3 py-1.5 rounded-lg border border-[#EAEAEA] w-fit">
-                                <span className="flex items-center gap-1.5 text-[#346538]"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
-                                <span className="flex items-center gap-1.5 text-[#956400]"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
-                                <span className="flex items-center gap-1.5 text-[#9F2F2D]"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
+                              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 w-fit">
+                                <span className="flex items-center gap-1.5 text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "present").length} {t("results.found")}</span>
+                                <span className="flex items-center gap-1.5 text-amber-700"><AlertCircle className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "partial").length} {t("results.partial")}</span>
+                                <span className="flex items-center gap-1.5 text-rose-700"><X className="w-3.5 h-3.5" />{activeSkills.filter(s => s.status === "missing").length} {t("results.missing")}</span>
                               </div>
                             )}
                           </div>
 
                           {isJdMode && (
-                            <div className="flex gap-1 mb-4 p-1 bg-[#F1F1EF] rounded-lg w-fit">
-                              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                            <div className="flex gap-1 mb-4 p-1 bg-slate-100 rounded-lg w-fit">
+                              <button onClick={() => setSkillTab("hard")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "hard" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-900")}>
                                 <Code className="w-4 h-4" /> {t("results.hardSkills")}
                                 {skillTab === "hard" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{hardSkills.length}</span>}
                               </button>
-                              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-[#787774] hover:text-[#2F3437]")}>
+                              <button onClick={() => setSkillTab("soft")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all", skillTab === "soft" ? "bg-white text-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-900")}>
                                 <Users className="w-4 h-4" /> {t("results.softSkills")}
                                 {skillTab === "soft" && <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] leading-none font-mono tabular-nums">{softSkills.length}</span>}
                               </button>
                             </div>
                           )}
 
-                          {isJdMode && (
-                            <div className="hidden md:flex items-center gap-4 pb-3 border-b border-[#F1F1EF] text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-                              <div className="w-6 shrink-0" />
-                              <span className="flex-1">{t("results.thSkill")}</span>
-                              <span className="w-40 shrink-0 text-left pl-2">{t("results.thScore")}</span>
-                              <span className="w-24 shrink-0 text-center">{t("results.thStatus")}</span>
-                            </div>
-                          )}
-                          <div>
-                            {isJdMode && activeSkills.length > 0 ? activeSkills.map((skill, i) => (
-                              <KeywordRow
-                                key={`${skill.name}-${i}`}
-                                skill={skill}
-                                index={i}
-                                t={t}
-                                evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
-                              />
-                            )) : (
-                              <p className="py-6 text-sm text-[#787774]">{t("results.gapEmpty")}</p>
-                            )}
+                          <div className="mt-2">
+                            {isJdMode && activeSkills.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {activeSkills.map((skill, i) => (
+                                  <KeywordRow
+                                    key={`${skill.name}-${i}`}
+                                    skill={skill}
+                                    index={i}
+                                    t={t}
+                                    evidenceStrength={findEvidenceStrength(skill, reviewData?.evidence_ledger)}
+                                  />
+                                ))}
+                              </div>
+                            ) : isJdMode ? (
+                              <p className="py-6 text-sm text-slate-500">{t("results.gapEmpty")}</p>
+                            ) : null}
                           </div>
                         </div>
 
@@ -868,30 +870,30 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
                         {/* Tabbed Assessment (Strengths / Gaps) */}
                         <div className="lg:col-span-3 space-y-4">
-                          <div className="flex items-center gap-2 border-b border-[#EAEAEA] pb-2 px-1">
+                          <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2 px-1">
                             <button
                               onClick={() => setInsightTab("strengths")}
                               className={cn(
                                 "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
-                                insightTab === "strengths" ? "text-[#346538]" : "text-[#787774]"
+                                insightTab === "strengths" ? "text-emerald-700" : "text-slate-500"
                               )}
                             >
                               <div className="flex items-center gap-2">
                                 <Shield className="w-4 h-4" /> {t("results.strengths")}
                               </div>
-                              {insightTab === "strengths" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#346538]" />}
+                              {insightTab === "strengths" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-700" />}
                             </button>
                             <button
                               onClick={() => setInsightTab("gaps")}
                               className={cn(
                                 "px-4 py-2 text-sm font-bold transition-all relative rounded-t-lg hover:bg-slate-50",
-                                insightTab === "gaps" ? "text-[#9F2F2D]" : "text-[#787774]"
+                                insightTab === "gaps" ? "text-rose-700" : "text-slate-500"
                               )}
                             >
                               <div className="flex items-center gap-2">
                                 <Target className="w-4 h-4" /> {t("results.gaps")}
                               </div>
-                              {insightTab === "gaps" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-[#9F2F2D]" />}
+                              {insightTab === "gaps" && <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-rose-700" />}
                             </button>
                           </div>
 
@@ -900,8 +902,8 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                               <div className="space-y-4 animate-in fade-in duration-500">
                                 <ul className="space-y-3">
                                   {(strengths.length > 0 ? strengths : [t("results.strengthsEmpty")]).map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                                      <TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-[#346538]" />{item}
+                                    <li key={i} className="flex items-start gap-3 text-sm text-slate-900 font-medium leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                      <TrendingUp className="w-4 h-4 mt-0.5 shrink-0 text-emerald-700" />{item}
                                     </li>
                                   ))}
                                 </ul>
@@ -910,8 +912,8 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                               <div className="space-y-4 animate-in fade-in duration-500">
                                 <ul className="space-y-3">
                                   {(criticalGaps.length > 0 ? criticalGaps : [t("results.gapsEmpty")]).map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-sm text-[#2F3437] font-medium leading-relaxed bg-[#FBFBFA] p-3.5 rounded-xl border border-[#EAEAEA]/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#9F2F2D]" />{item}
+                                    <li key={i} className="flex items-start gap-3 text-sm text-slate-900 font-medium leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-700" />{item}
                                     </li>
                                   ))}
                                 </ul>
@@ -922,18 +924,18 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
                         {/* The Magic Card (Action Plan) */}
                         <div className="lg:col-span-2">
-                          <div className="relative h-full overflow-hidden rounded-xl bg-white border border-[#EAEAEA]">
+                          <div className="relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/60">
                             <div className="relative h-full flex flex-col p-6">
                               <div className="flex items-center gap-2 mb-6">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/50 shadow-sm">
                                   <Sparkles className="w-5 h-5" />
                                 </div>
-                                <h4 className="text-lg font-bold text-[#2F3437] tracking-tight">{t("results.actionPlan")}</h4>
+                                <h4 className="text-lg font-bold text-slate-900 tracking-tight">{t("results.actionPlan")}</h4>
                               </div>
 
                               <ul className="space-y-4 flex-1">
                                 {(actionPlan.length > 0 ? actionPlan : [t("results.actionPlanEmpty")]).map((item, i) => (
-                                  <li key={i} className="flex items-start gap-3 text-[13px] text-[#2F3437] font-medium leading-relaxed">
+                                  <li key={i} className="flex items-start gap-3 text-[13px] text-slate-900 font-medium leading-relaxed">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />
                                     {item}
                                   </li>
@@ -984,10 +986,10 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             ) : (
               <>
                 {/* Header bar: Issues Count & Edit button */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-[#EAEAEA] shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white rounded-xl border border-slate-200/60 shadow-sm">
                   <div className="flex items-center gap-2.5">
-                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-[#9F2F2D]" : "bg-[#346538]")} />
-                    <p className="text-sm font-semibold text-[#2F3437]">
+                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", (reviewData?.issues?.length ?? 0) > 0 ? "bg-rose-700" : "bg-emerald-700")} />
+                    <p className="text-sm font-semibold text-slate-900">
                       {(reviewData?.issues?.length ?? 0) > 0
                         ? t("review.issuesMarked", { count: reviewData?.issues?.length ?? 0, defaultValue: `Tìm thấy ${reviewData?.issues?.length ?? 0} điểm cải thiện trong CV của bạn` })
                         : t("review.noIssuesMarked", { defaultValue: "Tuyệt vời! Không phát hiện lỗi nghiêm trọng nào." })
@@ -997,13 +999,13 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                   <Button
                     onClick={() => seedBuilderFromDocument(reviewData?.document)}
                     size="sm"
-                    className="bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
+                    className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-4 h-9 rounded-lg text-xs transition-colors shrink-0"
                   >
                     {t("preview.editOriginal", { defaultValue: "Sửa CV gốc" })}
                   </Button>
                 </div>
 
-                <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-[#EAEAEA] p-6 shadow-sm">
+                <div className="w-full max-w-6xl mx-auto bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
                   <DocumentPreview hideEditOriginal />
                 </div>
               </>
@@ -1100,9 +1102,9 @@ const getHighlightedJd = (text: string, skills: SkillMatchItem[]) => {
     
     const matchedText = text.substring(m.start, m.end);
     const classes = {
-      present: "bg-[#EDF3EC] text-[#346538] rounded px-0.5 font-medium border border-[#DCE9D7]/50",
-      partial: "bg-[#FBF3DB] text-[#956400] rounded px-0.5 font-medium border border-[#F1E5C0]/50",
-      missing: "bg-[#FDEBEC] text-[#9F2F2D] rounded px-0.5 font-medium border border-[#F6D4D5]/50 underline decoration-dotted decoration-1",
+      present: "bg-emerald-50 text-emerald-700 rounded px-0.5 font-medium border border-emerald-200/50",
+      partial: "bg-amber-50 text-amber-700 rounded px-0.5 font-medium border border-amber-200/50",
+      missing: "bg-rose-50 text-rose-700 rounded px-0.5 font-medium border border-rose-200/50 underline decoration-dotted decoration-1",
     }[m.status];
     
     nodes.push(
@@ -1142,31 +1144,31 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
   const toggleText = isOpen ? t("results.collapse") : t("results.expand");
 
   return (
-    <div className="border-t border-[#EAEAEA] mt-4">
+    <div className="border-t border-slate-200/60 mt-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-5 px-1 hover:bg-slate-50/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <div className="flex flex-col items-start gap-1">
-          <h3 className="text-sm font-bold text-[#2F3437] flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <Target className="w-4 h-4 text-ink-accent" />
             {t("results.jdHighlightTitle")}
           </h3>
           {isOpen && (
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDF3EC] text-[#346538] border border-[#DCE9D7]">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {t("results.matched")}
               </span>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F1E5C0]">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                 {t("results.partial")}
               </span>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FDEBEC] text-[#9F2F2D] border border-[#F6D4D5] underline decoration-dotted">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 underline decoration-dotted">
                 {t("results.missing")}
               </span>
             </div>
           )}
         </div>
-        <span className="text-xs font-semibold text-[#787774] flex items-center gap-1">
+        <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
           {toggleText}
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>
@@ -1174,7 +1176,7 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
 
       {isOpen && (
         <div className="pb-5 px-1">
-          <div className="bg-[#FBFBFA] border border-[#EAEAEA] rounded-lg p-4 max-h-80 overflow-y-auto text-[13px] leading-relaxed text-[#2F3437] whitespace-pre-wrap font-normal">
+          <div className="bg-slate-50 border border-slate-200/60 rounded-lg p-4 max-h-80 overflow-y-auto text-[13px] leading-relaxed text-slate-900 whitespace-pre-wrap font-normal">
             {highlightedNodes.length > 0 ? highlightedNodes : jobDescription}
           </div>
         </div>

@@ -24,7 +24,9 @@ import {
   SheetClose,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { IT_ROLES } from "@/constants/it-roles";
+
 
 type WorkModeType = "ONSITE" | "HYBRID" | "REMOTE";
 type ExperienceLevelType = "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR" | "LEAD";
@@ -54,7 +56,7 @@ function asSortOption(val: string): SortOptionType {
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
-const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
+const CARD = "bg-white border border-slate-200/60 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-blue-200/50 flex flex-col overflow-hidden";
 
 /** Band màu cho match % — CÙNG thang 80/60 với màn compare (một con số, một màu). */
 function matchBand(score: number): string {
@@ -102,157 +104,186 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     : null;
 
   return (
-    <div className={cn(CARD, "block p-5 border-[#EAEAEA] rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200")}>
-      <div className="flex items-start justify-between gap-3">
-        <h4 className="text-[13px] font-semibold text-[#2F3437] leading-snug line-clamp-2">{job.title}</h4>
-        {job.seniority_factor && job.seniority_factor < 1 ? (
-          <InfoPopover
-            align="right"
-            label={t("jobs.seniorityLabel", { defaultValue: "Vì sao điểm bị điều chỉnh" })}
-            trigger={
-              <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border underline decoration-dotted underline-offset-2", matchBand(recScore))}>
+    <div className={cn(CARD, "group relative")}>
+      {/* Top Section: Essential Info */}
+      <div className="p-5 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h4 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+              {job.title}
+            </h4>
+            <span className="flex items-center gap-1.5 mt-2 min-w-0 font-medium text-xs text-slate-500">
+              <Building2 className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              <span className="truncate">{job.company_name}</span>
+            </span>
+          </div>
+          {/* Match Score */}
+          <div className="shrink-0 flex flex-col items-end">
+            {job.seniority_factor && job.seniority_factor < 1 ? (
+              <InfoPopover
+                align="right"
+                label={t("jobs.seniorityLabel", { defaultValue: "Vì sao điểm bị điều chỉnh" })}
+                trigger={
+                  <span className={cn("shrink-0 text-xs font-bold font-mono tabular-nums px-2.5 py-1 rounded-lg border underline decoration-dotted underline-offset-2 transition-colors", matchBand(recScore))}>
+                    {recScore}%
+                  </span>
+                }
+              >
+                <p className="text-xs leading-relaxed text-slate-700">
+                  {t("jobs.seniorityTooltip", {
+                    defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
+                    match: matchScoreVal,
+                    factor: job.seniority_factor.toFixed(2),
+                    level: job.level_gap ?? 0,
+                  })}
+                </p>
+              </InfoPopover>
+            ) : (
+              <span className={cn("shrink-0 text-xs font-bold font-mono tabular-nums px-2.5 py-1 rounded-lg border transition-colors", matchBand(recScore))}>
                 {recScore}%
               </span>
-            }
-          >
-            <p className="text-xs leading-relaxed text-[#2F3437]">
-              {t("jobs.seniorityTooltip", {
-                defaultValue: "Điểm gốc {{match}} × {{factor}} (điều chỉnh cấp bậc: chênh {{level}} bậc)",
-                match: matchScoreVal,
-                factor: job.seniority_factor.toFixed(2),
-                level: job.level_gap ?? 0,
-              })}
-            </p>
-          </InfoPopover>
-        ) : (
-          <span className={cn("shrink-0 text-[11px] font-bold font-mono tabular-nums px-2 py-0.5 rounded border", matchBand(recScore))}>
-            {recScore}%
-          </span>
-        )}
-      </div>
-
-      {/* Fit Badge & Score Sublabels */}
-      {job.fit && <FitBadge fit={job.fit} className="mt-2" />}
-      {typeof matchScoreVal === "number" && (job.fit || demoted) && (
-        <span className="mt-1 block text-[10px] font-mono tabular-nums text-[#787774]">
-          {t("jobs.skillMatch", { score: matchScoreVal, defaultValue: `Kỹ năng ${matchScoreVal}%` })}
-        </span>
-      )}
-      {!job.fit && demoted && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className={cn(
-            "inline-flex rounded border px-2 py-0.5 text-[10px] font-bold",
-            severe ? "bg-[#FDEBEC] text-[#9F2F2D] border-[#F5C9C7]" : "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
-          )}>
-            {t(severe ? "jobs.severeStretch" : "jobs.stretch")}
-          </span>
+            )}
+            
+            {typeof matchScoreVal === "number" && (job.fit || demoted) && (
+              <span className="mt-1.5 block text-[10px] font-mono tabular-nums text-slate-500">
+                {t("jobs.skillMatch", { score: matchScoreVal, defaultValue: `Kỹ năng ${matchScoreVal}%` })}
+              </span>
+            )}
+          </div>
         </div>
-      )}
-      {!job.fit && experienceFit && !demoted && (
-        <span className={cn("inline-flex mt-2 rounded border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
-          {t(`matchDepth.fit.${experienceFit.verdict}`)}
-          {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
-        </span>
-      )}
-      {job.score_basis && (
-        <p className="mt-1 text-[10px] text-[#9B9A97]">{t(`jobs.scoreBasis.${job.score_basis}`)}</p>
-      )}
 
-      {/* Metadata Badges */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] text-[#787774]">
-        <span className="flex items-center gap-1 min-w-0 font-medium text-[#2F3437]">
-          <Building2 className="w-3.5 h-3.5 shrink-0 text-[#787774]" />
-          <span className="truncate">{job.company_name}</span>
-        </span>
-        {job.location && (
-          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 shrink-0" />{job.location}</span>
-        )}
-        {workModeLabel && (
-          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{workModeLabel}</span>
-        )}
-        {experienceLevelLabel && (
-          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{experienceLevelLabel}</span>
-        )}
-        {employmentTypeLabel && (
-          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-700">{employmentTypeLabel}</span>
-        )}
-        {salary && <span className="font-mono tabular-nums text-[#346538] font-semibold">{salary}</span>}
-      </div>
-
-      {/* Skills breakdown tags */}
-      {partial.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          <span className="text-[11px] text-[#787774]">{t("matchDepth.partial")}</span>
-          {partial.slice(0, 3).map((s) => (
-            <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400]">
-              {s.display_name}
-              {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
+        {/* Match Fit Indicators */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {job.fit && <FitBadge fit={job.fit} />}
+          {!job.fit && demoted && (
+            <span className={cn(
+              "inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold",
+              severe ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-700 border-amber-200",
+            )}>
+              {t(severe ? "jobs.severeStretch" : "jobs.stretch")}
             </span>
-          ))}
-          {partial.length > 3 && <span className="text-[10px] text-[#787774]">+{partial.length - 3}</span>}
-        </div>
-      )}
-      {missing.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          <span className="text-[11px] text-[#787774]">{t("jobs.missing")}</span>
-          {missing.slice(0, 3).map((s) => (
-            <span key={s.display_name} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#FDEBEC] text-[#9F2F2D]">
-              {s.display_name}
+          )}
+          {!job.fit && experienceFit && !demoted && (
+            <span className={cn("inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold", fitClass, experienceFit.confidence !== "high" && "opacity-80")}>
+              {t(`matchDepth.fit.${experienceFit.verdict}`)}
+              {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
             </span>
-          ))}
-          {missing.length > 3 && (
-            <span className="text-[10px] text-[#787774]">+{missing.length - 3}</span>
+          )}
+          {job.score_basis && (
+            <span className="text-[10px] text-slate-400">{t(`jobs.scoreBasis.${job.score_basis}`)}</span>
           )}
         </div>
-      )}
 
-      {/* Why Score collapsible */}
-      {breakdown && (
-        <div className="mt-3 border-t border-[#F1F1EF] pt-2">
-          <button
-            type="button"
-            aria-expanded={whyOpen}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setWhyOpen((value) => !value);
-            }}
-            className="flex items-center gap-1 text-[11px] font-bold text-primary"
-          >
-            {t("matchDepth.whyScore")}
-            {whyOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {whyOpen && (
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#787774]">
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#346538]" />{t("results.matched")}: {breakdown.matched_count}</span>
-              <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3 text-[#956400]" />{t("results.partial")}: {breakdown.partial_count}</span>
-              <span>{t("results.missing")}: {breakdown.missing_count}</span>
-              <span>{t("matchDepth.coverage")}: {breakdown.required_met}/{breakdown.required_total}</span>
-              {breakdown.cap_applied && <span className="col-span-2 text-[#956400]">{t("matchDepth.capped")}</span>}
-            </div>
+        {/* Metadata Badges */}
+        <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px] text-slate-500 font-medium">
+          {job.location && (
+            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+              <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              {job.location}
+            </span>
+          )}
+          {workModeLabel && (
+            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{workModeLabel}</span>
+          )}
+          {experienceLevelLabel && (
+            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{experienceLevelLabel}</span>
+          )}
+          {employmentTypeLabel && (
+            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{employmentTypeLabel}</span>
+          )}
+          {salary && (
+            <span className="font-mono tabular-nums text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100/50">
+              {salary}
+            </span>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Apply CTAs */}
-      {job.source_url ? (
-        <a
-          href={job.source_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3.5 px-3 py-1.5 bg-[#00AEEF]/5 hover:bg-[#00AEEF]/10 text-[#00AEEF] rounded-full text-[11px] font-bold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AEEF]/40"
-        >
-          {t("jobs.apply")}
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      ) : job.application_mode === "NATIVE" ? (
-        <span
-          className="inline-flex items-center gap-1 mt-3 px-3 py-1.5 cursor-not-allowed text-[11px] font-semibold text-[#9B9A97] bg-slate-100 rounded-full"
-          title={t("jobs.inAppSoon")}
-        >
-          {t("jobs.inAppSoon")}
-        </span>
-      ) : null}
+      {/* Bottom Section (Bento Split) for Skills & Actions */}
+      <div className="bg-slate-50/50 border-t border-slate-200/50 p-4 mt-auto">
+        {/* Skills breakdown tags */}
+        {(partial.length > 0 || missing.length > 0) && (
+          <div className="space-y-2 mb-3">
+            {partial.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600/70 mr-1">{t("matchDepth.partial")}</span>
+                {partial.slice(0, 3).map((s) => (
+                  <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-100/50 border border-amber-200/50 text-amber-700">
+                    {s.display_name}
+                    {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
+                  </span>
+                ))}
+                {partial.length > 3 && <span className="text-[10px] text-slate-400 font-mono">+{partial.length - 3}</span>}
+              </div>
+            )}
+            {missing.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600/70 mr-1">{t("jobs.missing")}</span>
+                {missing.slice(0, 3).map((s) => (
+                  <span key={s.display_name} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-700">
+                    {s.display_name}
+                  </span>
+                ))}
+                {missing.length > 3 && (
+                  <span className="text-[10px] text-slate-400 font-mono">+{missing.length - 3}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-end justify-between gap-3 mt-1">
+          {/* Why Score collapsible */}
+          <div className="flex-1 min-w-0">
+            {breakdown && (
+              <div>
+                <button
+                  type="button"
+                  aria-expanded={whyOpen}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setWhyOpen((value) => !value);
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  {t("matchDepth.whyScore")}
+                  {whyOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+                {whyOpen && (
+                  <div className="mt-2.5 grid grid-cols-2 gap-y-2 gap-x-3 text-[10px] font-medium text-slate-600 bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm">
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />{t("results.matched")}: {breakdown.matched_count}</span>
+                    <span className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-amber-600" />{t("results.partial")}: {breakdown.partial_count}</span>
+                    <span className="flex items-center gap-1.5 ml-5">{t("results.missing")}: {breakdown.missing_count}</span>
+                    <span className="flex items-center gap-1.5 ml-5 font-mono text-slate-400">{t("matchDepth.coverage")}: {breakdown.required_met}/{breakdown.required_total}</span>
+                    {breakdown.cap_applied && <span className="col-span-2 text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-1">{t("matchDepth.capped")}</span>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Apply CTAs */}
+          {job.source_url ? (
+            <a
+              href={job.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40 shadow-sm hover:shadow-md"
+            >
+              {t("jobs.apply")}
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          ) : job.application_mode === "NATIVE" ? (
+            <span
+              className="shrink-0 inline-flex items-center gap-1 px-4 py-2 cursor-not-allowed text-xs font-bold text-slate-400 bg-slate-100 rounded-full border border-slate-200"
+              title={t("jobs.inAppSoon")}
+            >
+              {t("jobs.inAppSoon")}
+            </span>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -449,9 +480,10 @@ export function JobRecommendations({
   };
 
   return (
-    <section className="mt-6 animate-in fade-in duration-500 space-y-4">
+    <section className="mt-6 animate-in fade-in duration-500 space-y-5">
+
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EAEAEA]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#00AEEF]/10 flex items-center justify-center text-[#00AEEF] shrink-0">
             <Briefcase className="w-4 h-4" />
@@ -1000,8 +1032,8 @@ export function JobRecommendations({
 
       {/* Main List & Data States */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-32 bg-[#F1F1EF] animate-pulse rounded-2xl" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[280px] bg-slate-100 rounded-2xl" />)}
         </div>
       ) : quotaBlocked ? (
         <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
@@ -1057,7 +1089,7 @@ export function JobRecommendations({
           )}
 
           {/* Job Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {displayRecs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
           </div>
 
