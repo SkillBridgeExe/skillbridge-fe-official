@@ -553,7 +553,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
 
   return (
-    <div className="min-h-full flex flex-col lg:flex-row select-none animate-in fade-in duration-500 w-full">
+    <div className="min-h-full flex flex-col lg:flex-row animate-in fade-in duration-500 w-full">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
       {!isUnusable && !isDegradedNoBasis && (
         <aside className="w-full lg:w-[300px] lg:min-w-[300px] lg:max-w-[300px] border-r border-slate-200/60 bg-white p-6 flex flex-col shrink-0 lg:h-full">

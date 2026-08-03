@@ -28,7 +28,8 @@ import {
 } from "@/hooks/use-diagnosis";
 import { getApiErrorCode, getApiErrorMessage, isThrottledError } from "@/lib/api-error";
 import { extractAiGateCode } from "@/lib/ai-input-gate";
-import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
+import { useDiagnosisRolesQuery } from "@/hooks/use-diagnosis-roles";
+import { getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
 import { getMyEntitlements } from "@/services/billing.service";
@@ -101,6 +102,7 @@ export function DiagnosisStep1Upload() {
   
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hasApiSession = useHasApiSession();
+  const { data: rubricRoles = [], isLoading: isRolesLoading, isError: isRolesError } = useDiagnosisRolesQuery();
   const { toast } = useToast();
   const posthog = usePostHog();
   const analyzeCvMutation = useAnalyzeCvMutation();
@@ -141,11 +143,20 @@ export function DiagnosisStep1Upload() {
   }, []);
 
   const formatHistoryDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(i18n.language?.startsWith("vi") ? "vi-VN" : "en-US", {
+    new Date(iso).toLocaleDateString((i18n.resolvedLanguage || i18n.language).startsWith("vi") ? "vi-VN" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
+
+  const isVietnamese = (i18n.resolvedLanguage || i18n.language).startsWith("vi");
+
+  const getDynamicRoleLabel = (code: string | null | undefined): string => {
+    if (!code) return "";
+    const role = rubricRoles.find((r) => r.code === code);
+    if (role) return isVietnamese ? role.label_vi : role.label_en;
+    return getRoleLabel(code);
+  };
 
   const openFromHistory = (id: string) => {
     loadFromHistoryMutation.mutate(id, {
@@ -510,11 +521,19 @@ export function DiagnosisStep1Upload() {
                 <SelectValue placeholder={t("upload.rolePlaceholder")} />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-                {IT_ROLES.map((role) => (
-                  <SelectItem key={role.code} value={role.code} className="cursor-pointer py-3 text-sm font-medium focus:bg-slate-50 focus:text-ink-accent">
-                    {role.label}
-                  </SelectItem>
-                ))}
+                {isRolesLoading ? (
+                  <div className="py-3 px-2 text-sm text-slate-400 text-center">{t("upload.loadingRoles")}</div>
+                ) : isRolesError ? (
+                  <div className="py-3 px-2 text-sm text-red-500 text-center">{t("upload.errorRoles")}</div>
+                ) : rubricRoles.length === 0 ? (
+                  <div className="py-3 px-2 text-sm text-slate-400 text-center">{t("upload.emptyRoles")}</div>
+                ) : (
+                  rubricRoles.map((role) => (
+                    <SelectItem key={role.code} value={role.code} className="cursor-pointer py-3 text-sm font-medium focus:bg-slate-50 focus:text-ink-accent">
+                      {isVietnamese ? role.label_vi : role.label_en}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -636,7 +655,10 @@ export function DiagnosisStep1Upload() {
                         {item.title || item.originalFileName || t("upload.history.untitled")}
                       </p>
                       <p className="text-[11px] text-[#787774] mt-0.5">
-                        {[getRoleLabel(item.targetRole), formatHistoryDate(item.createdAt)]
+                        {[
+                          getDynamicRoleLabel(item.targetRole),
+                          formatHistoryDate(item.createdAt)
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>

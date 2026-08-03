@@ -44,7 +44,7 @@ export function AtsBreakdownPopover({ atsCheck, children }: Props) {
           {/* Popover card */}
           <div
             role="dialog"
-            aria-label="ATS Rules Breakdown"
+            aria-label={t("atsBreakdown.title")}
             className={cn(
               "absolute z-[71] top-full left-1/2 -translate-x-1/2 mt-2",
               "w-[min(340px,85vw)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl",
@@ -59,7 +59,7 @@ export function AtsBreakdownPopover({ atsCheck, children }: Props) {
                 type="button"
                 onClick={() => setOpen(false)}
                 className="text-slate-500 hover:text-slate-900 p-1 rounded transition-colors"
-                aria-label="Close"
+                aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

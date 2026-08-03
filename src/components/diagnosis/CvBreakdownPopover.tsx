@@ -58,7 +58,7 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
           />
           <div
             role="dialog"
-            aria-label="CV Score Breakdown"
+            aria-label={t("cvBreakdown.title")}
             className={cn(
               "absolute z-[71] top-[80%] left-1/2 -translate-x-1/2 mt-2 md:top-1/2 md:left-full md:-translate-x-0 md:-translate-y-1/2 md:mt-0 md:ml-12",
               "w-[min(300px,85vw)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl",
@@ -73,7 +73,7 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
                 type="button"
                 onClick={() => setOpen(false)}
                 className="text-slate-500 hover:text-slate-900 p-1 rounded transition-colors"
-                aria-label="Close"
+                aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
