@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import { matchScoreBand } from "@/lib/match-score-band";
-import type { JobRecommendationDto } from "@shared/api";
+import type { JobRecommendationDto, JobRecommendationsResponse } from "@shared/api";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
 import { FitBadge } from "./FitBadge";
 import { InfoPopover } from "./InfoPopover";
@@ -25,7 +25,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IT_ROLES } from "@/constants/it-roles";
+import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 
 
 type WorkModeType = "ONSITE" | "HYBRID" | "REMOTE";
@@ -70,6 +70,78 @@ function formatSalary(min: number | null, max: number | null, currency: string):
   const unit = currency === "VND" ? "tr" : ` ${currency}`;
   if (min != null && max != null) return `${fmt(min)}–${fmt(max)}${unit}`;
   return `${fmt((min ?? max) as number)}${unit}`;
+}
+
+function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (key: string, options?: Record<string, unknown>) => string }) {
+  if (!data) return null;
+  const { total, facets, role_scope, pool_size, eligible_pool_size } = data;
+  const finalTotal = total ?? eligible_pool_size ?? pool_size ?? 0;
+
+  const roleCode = role_scope?.role_code;
+  const roleName = getRoleLabel(roleCode) || roleCode || t("jobs.allRoles");
+
+  type FacetBucket = { value: string; count: number };
+
+  // Find top location (most jobs)
+  const topLocation = facets?.city_codes && facets.city_codes.length > 0
+    ? facets.city_codes.reduce((prev: FacetBucket, current: FacetBucket) => (prev.count > current.count) ? prev : current, facets.city_codes[0])
+    : undefined;
+
+  const cityName = topLocation ? t(`jobs.cities.${topLocation.value}`, { defaultValue: topLocation.value }) : null;
+
+  // Find top work mode
+  const topWorkMode = facets?.work_modes && facets.work_modes.length > 0
+    ? facets.work_modes.reduce((prev: FacetBucket, current: FacetBucket) => (prev.count > current.count) ? prev : current, facets.work_modes[0])
+    : undefined;
+
+  const safeFit = facets?.fit?.find((f: FacetBucket) => f.value === "safe_apply");
+
+  return (
+    <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 sm:p-5 flex flex-wrap gap-x-8 gap-y-4 items-center">
+      <div className="flex flex-col">
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("jobs.marketSummary.totalJobs")}</span>
+        <span className="text-xl font-bold text-slate-900">{finalTotal}</span>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("jobs.marketSummary.roleAnalyzed")}</span>
+        <span className="text-sm font-bold text-sky-600 flex items-center gap-1.5 mt-1">
+          <Briefcase className="w-3.5 h-3.5" />
+          {roleName}
+        </span>
+      </div>
+
+      {topLocation && (
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("jobs.marketSummary.topLocation")}</span>
+          <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-1">
+            <MapPin className="w-3.5 h-3.5 text-rose-500" />
+            {cityName} <span className="text-slate-500 text-xs font-mono ml-0.5">({topLocation.count})</span>
+          </span>
+        </div>
+      )}
+
+      {topWorkMode && (
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("jobs.marketSummary.topWorkMode")}</span>
+          <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-1">
+            <Building2 className="w-3.5 h-3.5 text-emerald-500" />
+            {t(`jobs.workModes.${topWorkMode.value}`, { defaultValue: topWorkMode.value })} <span className="text-slate-500 text-xs font-mono ml-0.5">({topWorkMode.count})</span>
+          </span>
+        </div>
+      )}
+
+      {safeFit && (
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("jobs.marketSummary.safeFit")}</span>
+          <span className="text-[13px] font-bold text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mt-1">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {safeFit.count} {t("jobs.marketSummary.positions")}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, options?: Record<string, unknown>) => string }) {
@@ -327,6 +399,7 @@ export function JobRecommendations({
           offset: 0,
           sort: "RECOMMENDED" as const,
           ...(role ? { role } : {}),
+          ...(queryState.snapshotToken ? { snapshotToken: queryState.snapshotToken } : {})
         };
   }, [cvChanged, isExplorerOpen, queryState, targetRole]);
 
@@ -351,6 +424,15 @@ export function JobRecommendations({
     setMobileDraftQuery({ limit: 5, offset: 0, sort: "RECOMMENDED" });
     setAccumulatedRecs([]);
   }, [cvId]);
+
+  // Capture snapshot token exactly once per snapshot
+  useEffect(() => {
+    if (data?.generation?.snapshot_token && !queryState.snapshotToken) {
+      const token = data.generation.snapshot_token;
+      setQueryState(prev => ({ ...prev, snapshotToken: token }));
+      setMobileDraftQuery(prev => ({ ...prev, snapshotToken: token }));
+    }
+  }, [data?.generation?.snapshot_token, queryState.snapshotToken]);
 
   // Accumulated pagination ("Tải thêm"): append newly fetched recommendations to existing list
   useEffect(() => {
@@ -386,16 +468,21 @@ export function JobRecommendations({
     (queryState.salaryOnly ? 1 : 0);
 
   const handleResetFilters = () => {
-    const reset = {
+    if (mobileFilterOpen) {
+      setMobileDraftQuery((prev) => ({
+        limit: 10,
+        offset: 0,
+        sort: "RECOMMENDED",
+        snapshotToken: prev.snapshotToken,
+      }));
+      return;
+    }
+    setQueryState((prev) => ({
       limit: 10,
       offset: 0,
       sort: "RECOMMENDED",
-    } satisfies JobRecommendationsQuery;
-    if (mobileFilterOpen) {
-      setMobileDraftQuery(reset);
-      return;
-    }
-    setQueryState(reset);
+      snapshotToken: prev.snapshotToken,
+    }));
     setAccumulatedRecs([]);
   };
 
@@ -403,18 +490,22 @@ export function JobRecommendations({
     updater: (previous: JobRecommendationsQuery) => JobRecommendationsQuery,
   ) => {
     if (mobileFilterOpen) {
-      setMobileDraftQuery(updater);
+      setMobileDraftQuery((prev) => {
+        const next = updater(prev);
+        return { ...next };
+      });
       return;
     }
-    setQueryState(updater);
+    setQueryState((prev) => {
+      const next = updater(prev);
+      return { ...next };
+    });
     setAccumulatedRecs([]);
   };
 
   const handleSetRole = (roleCode: string) => {
     updateFilterQuery((prev) => ({
       ...prev,
-      // `undefined` means "use the CV target role" in the BE contract. Preserve
-      // the explicit "all" token so the user can genuinely browse every role.
       role: roleCode,
       offset: 0,
     }));
@@ -482,6 +573,11 @@ export function JobRecommendations({
   return (
     <section className="mt-6 animate-in fade-in duration-500 space-y-5">
 
+      {/* Market Summary Block */}
+      {!isLoading && !quotaBlocked && !isError && data && (
+        <JobMarketSummary data={data} t={t} />
+      )}
+
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60">
         <div className="flex items-center gap-2">
@@ -509,7 +605,7 @@ export function JobRecommendations({
             variant={isExplorerOpen ? "outline" : "default"}
             onClick={() => {
               setIsExplorerOpen((v) => !v);
-              setQueryState({ limit: isExplorerOpen ? 5 : 10, offset: 0, sort: "RECOMMENDED" });
+              setQueryState((prev) => ({ limit: isExplorerOpen ? 5 : 10, offset: 0, sort: "RECOMMENDED", snapshotToken: prev.snapshotToken }));
               setAccumulatedRecs([]);
             }}
             className={cn(
@@ -1036,7 +1132,7 @@ export function JobRecommendations({
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[280px] bg-slate-100 rounded-2xl" />)}
         </div>
       ) : quotaBlocked ? (
-        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
+        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-900">{t("jobs.quotaBlocked")}</p>
           <Link
@@ -1047,18 +1143,32 @@ export function JobRecommendations({
           </Link>
         </div>
       ) : isError ? (
-        <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
+        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-500">{t("jobs.error")}</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (queryState.snapshotToken) {
+                setQueryState(prev => {
+                  const { snapshotToken: _, ...rest } = prev;
+                  return rest;
+                });
+                setMobileDraftQuery(prev => {
+                  const { snapshotToken: _, ...rest } = prev;
+                  return rest;
+                });
+              } else {
+                refetch();
+              }
+            }}
             disabled={isRefetching}
-            className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-primary hover:underline disabled:opacity-50"
+            className="rounded-full shadow-sm"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
             {t("jobs.retry")}
-          </button>
+          </Button>
         </div>
       ) : displayRecs.length === 0 ? (
         <div className={cn(CARD, "p-8 text-center space-y-3")}>

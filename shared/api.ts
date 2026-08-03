@@ -655,7 +655,7 @@ export interface JobRecommendationsResponse {
     };
     salary_sort_supported: boolean;
   };
-  generation: { cache_hit: boolean; snapshot_size: number };
+  generation: { cache_hit: boolean; snapshot_size: number; snapshot_token?: string; };
   recommendations: JobRecommendationDto[];
 }
 

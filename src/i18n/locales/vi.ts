@@ -2245,6 +2245,15 @@ export default {
     },
     results: {
       backToReview: "Về màn chấm CV",
+      inspectMode: "Chế độ phân tích",
+      issueContext: "Bối cảnh vấn đề",
+      fixWithAi: "Sửa bằng AI",
+      needsEvidence: "Cần bằng chứng thực tế",
+      needsEvidenceDesc: "AI không thể bịa ra kỹ năng này. Bạn cần học hoặc bổ sung bằng chứng dự án thực tế.",
+      findResources: "Tìm nguồn học",
+      status: "Trạng thái",
+      fixability: "Khả năng sửa",
+      levelGap: "Chênh lệch bậc",
       share: "Chia sẻ kết quả",
       download: "Tải báo cáo",
       collapse: "Thu nhỏ",
@@ -2361,7 +2370,17 @@ export default {
       filterDescription:
         "Chọn vai trò, địa điểm, hình thức làm việc và mức độ phù hợp trước khi áp dụng.",
       clearFilters: "Xóa bộ lọc",
+      applyFilters: "Áp dụng",
       allRoles: "Tất cả vai trò",
+      roleMissing: "Chọn một vai trò",
+      marketSummary: {
+        totalJobs: "Tổng việc làm",
+        roleAnalyzed: "Vai trò",
+        topLocation: "Khu vực sôi động",
+        topWorkMode: "Hình thức phổ biến",
+        safeFit: "Vừa sức",
+        positions: "vị trí",
+      },
       sortLabel: "Sắp xếp theo",
       workModes: {
         ONSITE: "Onsite",
@@ -2373,6 +2392,7 @@ export default {
         PART_TIME: "Bán thời gian",
         CONTRACT: "Hợp đồng",
         INTERNSHIP: "Thực tập",
+        FREELANCE: "Freelance",
       },
       experienceLevels: {
         INTERN: "Intern",

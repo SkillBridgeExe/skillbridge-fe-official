@@ -24,5 +24,18 @@ describe("companion.chat.suggestionsByFocus parity", () => {
         expect(byFocus[f].length).toBe(count);
       }
     });
+
+    it(`${locale.name} has jobs keys: roleMissing, applyFilters, employmentTypes.FREELANCE`, () => {
+      const jobs = (
+        locale.t as unknown as {
+          diagnosis: { jobs: { roleMissing: string; applyFilters: string; employmentTypes: Record<string, string> } };
+        }
+      ).diagnosis.jobs;
+      expect(jobs).toBeDefined();
+      expect(jobs.roleMissing).toBeDefined();
+      expect(jobs.applyFilters).toBeDefined();
+      expect(jobs.employmentTypes).toBeDefined();
+      expect(jobs.employmentTypes.FREELANCE).toBeDefined();
+    });
   }
 });

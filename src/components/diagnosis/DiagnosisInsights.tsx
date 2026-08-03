@@ -27,7 +27,7 @@ import type {
 const PASTEL = {
   green: "bg-emerald-50 text-emerald-700 border-emerald-200",
   yellow: "bg-amber-50 text-amber-700 border-amber-200",
-  red: "bg-[#FDEBEC] text-rose-700 border-[#F6D4D5]",
+  red: "bg-rose-50 text-rose-700 border-rose-200",
   gray: "bg-slate-50 text-slate-500 border-slate-200",
 } as const;
 
@@ -80,7 +80,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
   return (
     <Card className="mb-6 border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] rounded-xl overflow-hidden transition-all duration-200">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-[#F1F1EF] pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-primary">
             <ListChecks className="w-4 h-4 text-sky-500" />
             {t("insights.fixFirst")}
@@ -100,7 +100,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                   key={idx}
                   onClick={() => toggleTick(idx)}
                   className={cn(
-                    "flex items-start gap-3.5 text-sm text-slate-900 p-3 rounded-xl border border-transparent hover:border-[#F1F1EF] hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
+                    "flex items-start gap-3.5 text-sm text-slate-900 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
                     isTicked && "bg-slate-50/30"
                   )}
                 >
@@ -269,9 +269,9 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
     chip: string;
     showLevels: boolean;
   }[] = [
-    { key: "matched", label: t("insights.matched"), dot: "bg-[#346538]", chip: PASTEL.green, showLevels: false },
-    { key: "partial", label: t("insights.partial"), dot: "bg-[#956400]", chip: PASTEL.yellow, showLevels: true },
-    { key: "missing", label: t("insights.missing"), hint: t("insights.addFirst"), dot: "bg-[#9F2F2D]", chip: PASTEL.red, showLevels: false },
+    { key: "matched", label: t("insights.matched"), dot: "bg-emerald-700", chip: PASTEL.green, showLevels: false },
+    { key: "partial", label: t("insights.partial"), dot: "bg-amber-700", chip: PASTEL.yellow, showLevels: true },
+    { key: "missing", label: t("insights.missing"), hint: t("insights.addFirst"), dot: "bg-rose-700", chip: PASTEL.red, showLevels: false },
   ];
 
   const groups = RELEVANCE_GROUPS.filter((group) => breakdown[group.key].length > 0);

@@ -91,6 +91,9 @@ const mockJobsData = {
     experience_levels: [{ value: "SENIOR", count: 6 }, { value: "MIDDLE", count: 9 }],
     fit: [{ value: "safe_apply", count: 10 }, { value: "stretch", count: 5 }],
   },
+  generation: {
+    snapshot_token: "mock-token-xyz"
+  }
 };
 
 describe("JobRecommendations — Comprehensive Feature Suite", () => {
@@ -264,7 +267,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.getByText("Chưa có việc làm phù hợp")).toBeInTheDocument();
   });
 
-  it("renders error state with retry action", () => {
+  it("initial network error with no token calls refetch exactly once", () => {
     const refetchMock = vi.fn();
     vi.mocked(useJobRecommendationsQuery).mockReturnValue({
       data: null,
@@ -279,7 +282,9 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     const retryBtn = screen.getByText("Thử lại");
     fireEvent.click(retryBtn);
-    expect(refetchMock).toHaveBeenCalled();
+
+    // Since there is no token to clear, refetch should be called directly
+    expect(refetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("renders quota blocked state when API returns 402", () => {
@@ -413,5 +418,77 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(vi.mocked(useJobRecommendationsQuery).mock.calls.at(-1)?.[1]?.cityCodes).toEqual([
       "HCMC",
     ]);
+  });
+
+  describe("Pagination & Snapshot Token Stability", () => {
+    it("successful response captures token, explorer toggle preserves it", () => {
+      const mockQuery = vi.mocked(useJobRecommendationsQuery);
+
+      mockQuery.mockReturnValue({
+        data: {
+          ...mockJobsData,
+          total: 15,
+          generation: { snapshot_token: "mock-token-xyz" }
+        },
+        isLoading: false,
+        isError: false,
+      } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+      const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+
+      // Initially, it gets data and sets snapshotToken. Component needs a rerender cycle
+      // for the effect to apply queryState changes and re-invoke the hook.
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      // Click to open explorer
+      fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+
+      // Token should be preserved
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        "cv-123",
+        expect.objectContaining({ limit: 10, offset: 0, sort: "RECOMMENDED", snapshotToken: "mock-token-xyz" })
+      );
+    });
+
+    it("expired-token retry clears token and causes a tokenless hook query", () => {
+      const mockQuery = vi.mocked(useJobRecommendationsQuery);
+
+      // Step 1: succeed and get a token
+      mockQuery.mockReturnValue({
+        data: { ...mockJobsData, generation: { snapshot_token: "valid-token-abc" } },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+      const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        "cv-123",
+        expect.objectContaining({ snapshotToken: "valid-token-abc" })
+      );
+
+      // Step 2: fail with 410
+      mockQuery.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: true,
+        error: Object.assign(new Error("Token expired"), { status: 410 }),
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      // Click retry
+      fireEvent.click(screen.getByText("Thử lại"));
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      // Step 3: verify the query was called without the token
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        "cv-123",
+        expect.not.objectContaining({ snapshotToken: expect.anything() })
+      );
+    });
   });
 });

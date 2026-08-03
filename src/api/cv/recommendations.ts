@@ -16,6 +16,7 @@ export interface JobRecommendationsQuery {
   fit?: ("safe_apply" | "stretch" | "not_recommended")[];
   sort?: "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
   salaryOnly?: boolean;
+  snapshotToken?: string;
 }
 
 /**
@@ -42,6 +43,9 @@ export async function getJobRecommendationsApi(
   }
   if (Array.isArray(query.fit) && query.fit.length > 0) {
     params.fit = query.fit.join(",");
+  }
+  if (query.snapshotToken) {
+    params.snapshotToken = query.snapshotToken;
   }
 
   let rawStatus: number | undefined;

@@ -2249,7 +2249,16 @@ export default {
       topbar: { title: "CV diagnosis report" },
     },
     results: {
-      backToReview: "Back to CV review",
+      backToReview: "Back to Review",
+      inspectMode: "Inspect Mode",
+      issueContext: "Issue Context",
+      fixWithAi: "Fix with AI",
+      needsEvidence: "Need real evidence",
+      needsEvidenceDesc: "AI cannot invent this skill. You need to learn it or add real project evidence.",
+      findResources: "Find Learning Resources",
+      status: "Status",
+      fixability: "Fixability",
+      levelGap: "Level Gap",
       share: "Share result",
       download: "Download report",
       collapse: "See less",
@@ -2369,7 +2378,17 @@ export default {
       filterDescription:
         "Choose a role, location, work arrangement, and fit level before applying.",
       clearFilters: "Clear filters",
+      applyFilters: "Apply",
       allRoles: "All roles",
+      roleMissing: "Select a role",
+      marketSummary: {
+        totalJobs: "Total Jobs",
+        roleAnalyzed: "Role",
+        topLocation: "Top Location",
+        topWorkMode: "Top Work Mode",
+        safeFit: "Safe Fit",
+        positions: "positions",
+      },
       sortLabel: "Sort by",
       workModes: {
         ONSITE: "Onsite",
@@ -2381,6 +2400,7 @@ export default {
         PART_TIME: "Part-time",
         CONTRACT: "Contract",
         INTERNSHIP: "Internship",
+        FREELANCE: "Freelance",
       },
       experienceLevels: {
         INTERN: "Intern",
