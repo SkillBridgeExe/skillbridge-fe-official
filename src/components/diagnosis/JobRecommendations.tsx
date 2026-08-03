@@ -56,7 +56,7 @@ function asSortOption(val: string): SortOptionType {
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
-const CARD = "bg-white border border-slate-200/60 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-blue-200/50 flex flex-col overflow-hidden";
+const CARD = "bg-white border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-blue-200/50 flex flex-col overflow-hidden";
 
 /** Band màu cho match % — CÙNG thang 80/60 với màn compare (một con số, một màu). */
 function matchBand(score: number): string {
@@ -86,10 +86,10 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
   const breakdown = job.scoring_breakdown;
   const experienceFit = job.experience_fit?.verdict && job.experience_fit.verdict !== "unknown" ? job.experience_fit : null;
   const fitClass = experienceFit?.verdict === "fits"
-    ? "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
     : experienceFit?.verdict === "stretch"
-      ? "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]"
-      : "bg-[#F1F1EF] text-[#787774] border-[#E3E3E0]";
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-slate-100 text-slate-500 border-slate-200";
 
   const workModeLabel = job.work_mode
     ? t(`jobs.workModes.${job.work_mode}`, { defaultValue: job.work_mode })
@@ -143,7 +143,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
                 {recScore}%
               </span>
             )}
-            
+
             {typeof matchScoreVal === "number" && (job.fit || demoted) && (
               <span className="mt-1.5 block text-[10px] font-mono tabular-nums text-slate-500">
                 {t("jobs.skillMatch", { score: matchScoreVal, defaultValue: `Kỹ năng ${matchScoreVal}%` })}
@@ -485,17 +485,17 @@ export function JobRecommendations({
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#00AEEF]/10 flex items-center justify-center text-[#00AEEF] shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-500 shrink-0">
             <Briefcase className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#2F3437]">
+            <h3 className="text-sm font-bold text-slate-900">
               {isExplorerOpen
                 ? t("jobs.explorerTitle", { defaultValue: "Khám phá việc làm phù hợp" })
                 : t("jobs.top5Title", { defaultValue: "Top 5 việc làm phù hợp nhất" })}
             </h3>
             {total > 0 && (
-              <p className="text-[11px] text-[#787774]">
+              <p className="text-[11px] text-slate-500">
                 {t("jobs.totalMatching", { count: total, defaultValue: `Tìm thấy ${total} vị trí trong kho dữ liệu` })}
               </p>
             )}
@@ -515,7 +515,7 @@ export function JobRecommendations({
             className={cn(
               "rounded-full text-xs font-bold shrink-0 gap-1.5 h-8 px-4 transition-all",
               !isExplorerOpen
-                ? "bg-[#00AEEF] hover:bg-[#049bd7] text-white border-0"
+                ? "bg-sky-500 hover:bg-sky-600 text-white border-0"
                 : "border-slate-200 text-slate-700 hover:bg-slate-50"
             )}
           >
@@ -552,7 +552,7 @@ export function JobRecommendations({
                     (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                   }
                   onChange={(e) => handleSetRole(e.target.value)}
-                  className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+                  className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
                   {data?.role_scope?.source === "cv_target_missing" && (
                     <option value="" disabled>
@@ -580,7 +580,7 @@ export function JobRecommendations({
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
                           isSelected
-                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            ? "bg-sky-500 text-white border-sky-500 shadow-sm"
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
@@ -608,7 +608,7 @@ export function JobRecommendations({
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
                           isSelected
-                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            ? "bg-sky-500 text-white border-sky-500 shadow-sm"
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
@@ -636,7 +636,7 @@ export function JobRecommendations({
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
                           isSelected
-                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            ? "bg-sky-500 text-white border-sky-500 shadow-sm"
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
@@ -664,7 +664,7 @@ export function JobRecommendations({
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
                           isSelected
-                            ? "bg-[#00AEEF] text-white border-[#00AEEF] shadow-sm"
+                            ? "bg-sky-500 text-white border-sky-500 shadow-sm"
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
@@ -741,7 +741,7 @@ export function JobRecommendations({
                 aria-label={t("jobs.sortLabel", { defaultValue: "Sắp xếp" })}
                 value={queryState.sort ?? "RECOMMENDED"}
                 onChange={(e) => handleSetSort(asSortOption(e.target.value))}
-                className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
+                className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="RECOMMENDED">{t("jobs.sort.RECOMMENDED", { defaultValue: "Đề xuất tốt nhất" })}</option>
                 <option value="SKILL_MATCH">{t("jobs.sort.SKILL_MATCH", { defaultValue: "Khớp kỹ năng" })}</option>
@@ -764,10 +764,10 @@ export function JobRecommendations({
             >
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs font-bold border-slate-200 bg-white">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#00AEEF]" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-sky-500" />
                   <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc" })}</span>
                   {activeFilterCount > 0 && (
-                    <span className="ml-1 w-4 h-4 rounded-full bg-[#00AEEF] text-white text-[10px] font-mono flex items-center justify-center">
+                    <span className="ml-1 w-4 h-4 rounded-full bg-sky-500 text-white text-[10px] font-mono flex items-center justify-center">
                       {activeFilterCount}
                     </span>
                   )}
@@ -841,7 +841,7 @@ export function JobRecommendations({
                               onClick={() => handleToggleCity(city.value)}
                               className={cn(
                                 "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
-                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                                isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
                               {city.value} ({city.count})
@@ -872,7 +872,7 @@ export function JobRecommendations({
                               onClick={() => handleToggleWorkMode(modeVal)}
                               className={cn(
                                 "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
-                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                                isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
                               {modeLabel} ({modeItem.count})
@@ -903,7 +903,7 @@ export function JobRecommendations({
                               onClick={() => handleToggleEmploymentType(typeVal)}
                               className={cn(
                                 "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
-                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                                isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
                               {typeLabel} ({typeItem.count})
@@ -934,7 +934,7 @@ export function JobRecommendations({
                               onClick={() => handleToggleExperienceLevel(expVal)}
                               className={cn(
                                 "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
-                                isSelected ? "bg-[#00AEEF] text-white border-[#00AEEF]" : "bg-slate-50 text-slate-700 border-slate-200"
+                                isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
                               {expLabel} ({expItem.count})
@@ -1000,7 +1000,7 @@ export function JobRecommendations({
                         setQueryState({ ...mobileDraftQuery, offset: 0, limit: 10 });
                         setAccumulatedRecs([]);
                       }}
-                      className="w-full bg-[#00AEEF] hover:bg-[#049bd7] text-white font-bold text-sm h-11 rounded-xl"
+                      className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm h-11 rounded-xl"
                     >
                       {t("jobs.applyFilters", { defaultValue: "Áp dụng bộ lọc" })}
                     </Button>
@@ -1037,8 +1037,8 @@ export function JobRecommendations({
         </div>
       ) : quotaBlocked ? (
         <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
-          <AlertCircle className="w-4 h-4 shrink-0 text-[#956400]" />
-          <p className="min-w-0 flex-1 text-[13px] text-[#2F3437]">{t("jobs.quotaBlocked")}</p>
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
+          <p className="min-w-0 flex-1 text-[13px] text-slate-900">{t("jobs.quotaBlocked")}</p>
           <Link
             to="/pricing"
             className="shrink-0 text-[13px] font-bold text-primary hover:underline"
@@ -1048,8 +1048,8 @@ export function JobRecommendations({
         </div>
       ) : isError ? (
         <div className={cn(CARD, "flex flex-wrap items-center gap-x-3 gap-y-2 p-5")}>
-          <AlertCircle className="w-4 h-4 shrink-0 text-[#9F2F2D]" />
-          <p className="min-w-0 flex-1 text-[13px] text-[#787774]">{t("jobs.error")}</p>
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
+          <p className="min-w-0 flex-1 text-[13px] text-slate-500">{t("jobs.error")}</p>
           <button
             type="button"
             onClick={() => refetch()}
@@ -1062,8 +1062,8 @@ export function JobRecommendations({
         </div>
       ) : displayRecs.length === 0 ? (
         <div className={cn(CARD, "p-8 text-center space-y-3")}>
-          <Briefcase className="w-8 h-8 text-[#B9B9B7] mx-auto" />
-          <p className="text-[13px] text-[#787774] font-medium">
+          <Briefcase className="w-8 h-8 text-slate-300 mx-auto" />
+          <p className="text-[13px] text-slate-500 font-medium">
             {activeFilterCount > 0
               ? t("jobs.emptyFilter", { defaultValue: "Không có kết quả với bộ lọc này." })
               : t("jobs.emptyPool", { defaultValue: "Chưa có việc làm phù hợp cho vị trí này — thử đổi vị trí hoặc quay lại sau." })}
@@ -1083,8 +1083,8 @@ export function JobRecommendations({
         <>
           {/* Background refetch indicator */}
           {isRefetching && (
-            <div className="h-1 w-full bg-[#00AEEF]/20 rounded-full overflow-hidden">
-              <div className="h-full bg-[#00AEEF] animate-pulse w-2/3" />
+            <div className="h-1 w-full bg-sky-500/20 rounded-full overflow-hidden">
+              <div className="h-full bg-sky-500 animate-pulse w-2/3" />
             </div>
           )}
 
@@ -1114,7 +1114,7 @@ export function JobRecommendations({
             </div>
           )}
 
-          <p className="text-[11px] text-[#787774] mt-2.5 leading-relaxed">{t("jobs.disclaimer")}</p>
+          <p className="text-[11px] text-slate-500 mt-2.5 leading-relaxed">{t("jobs.disclaimer")}</p>
         </>
       )}
     </section>

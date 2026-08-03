@@ -110,7 +110,7 @@ function KeywordRow({
                 </span>
               )}
             </div>
-            
+
             {typeof skill.gap_levels === "number" && skill.gap_levels > 0 && (
               <p className="text-[11px] font-medium text-amber-700">
                 {t("matchDepth.gapLevels", { count: skill.gap_levels })}
@@ -123,7 +123,7 @@ function KeywordRow({
             )}
           </div>
         </div>
-        
+
         <span className={cn("text-[10px] font-bold px-2 py-1 rounded border text-center shrink-0 uppercase tracking-wider", statusConfig.badge)}>
           {statusConfig.label}
         </span>
@@ -616,7 +616,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
           </div>
         ) : (
           <>
-        
+
         {/* Tab 1: Audit Report / Fit */}
         {(activeTab === 'audit' || activeTab === 'fit') && (
           <div className="w-full px-2 lg:px-4 space-y-8">
@@ -1060,25 +1060,25 @@ const getHighlightedJd = (text: string, skills: SkillMatchItem[]) => {
   if (!text) return [];
   const matches: MatchRange[] = [];
   const sortedSkills = [...skills].sort((a, b) => b.name.length - a.name.length);
-  
+
   for (const skill of sortedSkills) {
     const skillName = skill.name.trim();
     if (!skillName) continue;
-    
+
     const isSingleWord = !/\s/.test(skillName);
     const escaped = skillName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     const pattern = isSingleWord ? `\\b${escaped}\\b` : escaped;
     const regex = new RegExp(pattern, "gi");
-    
+
     let match;
     while ((match = regex.exec(text)) !== null) {
       const start = match.index;
       const end = regex.lastIndex;
-      
+
       const isOverlapping = matches.some(
         m => (start >= m.start && start < m.end) || (end > m.start && end <= m.end) || (start <= m.start && end >= m.end)
       );
-      
+
       if (!isOverlapping) {
         matches.push({
           start,
@@ -1089,37 +1089,37 @@ const getHighlightedJd = (text: string, skills: SkillMatchItem[]) => {
       }
     }
   }
-  
+
   matches.sort((a, b) => a.start - b.start);
-  
+
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
-  
+
   matches.forEach((m, idx) => {
     if (m.start > lastIndex) {
       nodes.push(text.substring(lastIndex, m.start));
     }
-    
+
     const matchedText = text.substring(m.start, m.end);
     const classes = {
       present: "bg-emerald-50 text-emerald-700 rounded px-0.5 font-medium border border-emerald-200/50",
       partial: "bg-amber-50 text-amber-700 rounded px-0.5 font-medium border border-amber-200/50",
       missing: "bg-rose-50 text-rose-700 rounded px-0.5 font-medium border border-rose-200/50 underline decoration-dotted decoration-1",
     }[m.status];
-    
+
     nodes.push(
       <mark key={idx} className={classes}>
         {matchedText}
       </mark>
     );
-    
+
     lastIndex = m.end;
   });
-  
+
   if (lastIndex < text.length) {
     nodes.push(text.substring(lastIndex));
   }
-  
+
   return nodes;
 };
 
@@ -1136,7 +1136,7 @@ const JdHighlightBlock = memo(function JdHighlightBlock({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const allSkills = React.useMemo(() => [...hardSkills, ...softSkills], [hardSkills, softSkills]);
-  
+
   const highlightedNodes = React.useMemo(() => {
     return getHighlightedJd(jobDescription, allSkills);
   }, [jobDescription, allSkills]);

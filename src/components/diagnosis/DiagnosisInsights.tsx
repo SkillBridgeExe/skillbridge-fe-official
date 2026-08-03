@@ -25,9 +25,9 @@ import type {
 
 /** Pastel state palette (minimalist-ui §4.A) */
 const PASTEL = {
-  green: "bg-[#EDF3EC] text-[#346538] border-[#DCE9D7]",
-  yellow: "bg-[#FBF3DB] text-[#956400] border-[#F1E5C0]",
-  red: "bg-[#FDEBEC] text-[#9F2F2D] border-[#F6D4D5]",
+  green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  yellow: "bg-amber-50 text-amber-700 border-amber-200",
+  red: "bg-[#FDEBEC] text-rose-700 border-[#F6D4D5]",
   gray: "bg-slate-50 text-slate-500 border-slate-200",
 } as const;
 
@@ -78,11 +78,11 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
   const done = tickedIndexes.filter((i) => i < total).length;
 
   return (
-    <Card className="mb-6 border-[#EAEAEA] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] rounded-xl overflow-hidden transition-all duration-200">
+    <Card className="mb-6 border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] rounded-xl overflow-hidden transition-all duration-200">
       <CardContent className="p-6">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-[#F1F1EF] pb-3">
           <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-primary">
-            <ListChecks className="w-4 h-4 text-[#00AEEF]" />
+            <ListChecks className="w-4 h-4 text-sky-500" />
             {t("insights.fixFirst")}
           </div>
           {total > 0 && (
@@ -100,7 +100,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                   key={idx}
                   onClick={() => toggleTick(idx)}
                   className={cn(
-                    "flex items-start gap-3.5 text-sm text-[#2F3437] p-3 rounded-xl border border-transparent hover:border-[#F1F1EF] hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
+                    "flex items-start gap-3.5 text-sm text-slate-900 p-3 rounded-xl border border-transparent hover:border-[#F1F1EF] hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
                     isTicked && "bg-slate-50/30"
                   )}
                 >
@@ -108,7 +108,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                     className={cn(
                       "w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all duration-200",
                       isTicked
-                        ? "bg-[#00AEEF] border-[#00AEEF] text-white"
+                        ? "bg-sky-500 border-sky-500 text-white"
                         : "border-slate-300 bg-white group-hover:border-slate-400"
                     )}
                   >
@@ -117,7 +117,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                   <span
                     className={cn(
                       "font-semibold leading-relaxed transition-all duration-200 flex-1",
-                      isTicked && "line-through text-[#B9B9B7] font-medium"
+                      isTicked && "line-through text-slate-300 font-medium"
                     )}
                   >
                     {action}
@@ -172,14 +172,14 @@ function SkillChip({ skill, t }: { skill: ExtractedSkill; t: (key: string) => st
         "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-all duration-200",
         isActive
           ? "border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20"
-          : "border-[#EAEAEA] bg-white hover:border-slate-300",
+          : "border-slate-200 bg-white hover:border-slate-300",
         skill.evidence_text && "cursor-pointer"
       )}
     >
       {skill.evidence_text && (
         <Eye className={cn("w-3 h-3 transition-opacity", isActive ? "text-indigo-600 opacity-90" : "text-slate-400 opacity-40")} />
       )}
-      <span className="text-[13px] font-semibold text-[#2F3437]">{skill.name}</span>
+      <span className="text-[13px] font-semibold text-slate-900">{skill.name}</span>
       {proficiency && (
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold border", proficiency.chip)}>
           {proficiency.label}
@@ -219,10 +219,10 @@ export function SkillsExtractedCard({ skills }: { skills: ExtractedSkill[] }) {
   );
 
   return (
-    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <Card className="border-slate-200 bg-white shadow-sm">
       <CardContent className="pt-5 pb-5">
-        <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.skillsTitle")}</h3>
-        <div className="text-xs text-[#787774] mt-0.5 mb-3 leading-relaxed">
+        <h3 className="text-sm font-bold text-slate-900">{t("insights.skillsTitle")}</h3>
+        <div className="text-xs text-slate-500 mt-0.5 mb-3 leading-relaxed">
           <span>{t("insights.skillsHint")}</span>
           {skills.some((s) => s.evidence_text) && (
             <span className="block text-[11px] text-indigo-600 font-medium mt-1">
@@ -280,11 +280,11 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
   }
 
   return (
-    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <Card className="border-slate-200 bg-white shadow-sm">
       <CardContent className="pt-5 pb-5 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-[#2F3437]">{t("insights.relevanceTitle")}</h3>
-          <p className="text-xs text-[#787774] mt-0.5">
+          <h3 className="text-sm font-bold text-slate-900">{t("insights.relevanceTitle")}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
             {t("insights.relevanceHint")}
           </p>
         </div>
@@ -292,11 +292,11 @@ export function SkillsRelevanceCard({ breakdown }: { breakdown: SkillsRelevanceB
           <div key={group.key}>
             <div className="flex items-center gap-1.5 mb-1.5">
               <span className={cn("w-1.5 h-1.5 rounded-full", group.dot)} />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 {group.label}
               </span>
               {group.hint && (
-                <span className="text-[11px] text-[#9F2F2D] font-medium">— {group.hint}</span>
+                <span className="text-[11px] text-rose-700 font-medium">— {group.hint}</span>
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -337,14 +337,14 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
   if (items.length === 0) return null;
 
   return (
-    <Card className="border-[#EAEAEA] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <Card className="border-slate-200 bg-white shadow-sm">
       <CardContent className="pt-5 pb-5 space-y-4">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-bold text-[#2F3437]">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
             <FileText className="w-4 h-4 text-primary" />
             {t("evidence.title")}
           </h3>
-          <p className="text-xs text-[#787774] mt-0.5">{t("evidence.gapHint")}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t("evidence.gapHint")}</p>
         </div>
 
         <div className="space-y-3">
@@ -353,31 +353,31 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
             const visibleSources = sources.slice(0, 3);
             const extra = Math.max(0, sources.length - visibleSources.length);
             return (
-              <div key={item.skill_canonical} id={`evidence-${item.skill_canonical}`} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-3">
+              <div key={item.skill_canonical} id={`evidence-${item.skill_canonical}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[13px] font-bold text-[#2F3437]">{item.display_name}</span>
+                  <span className="text-[13px] font-bold text-slate-900">{item.display_name}</span>
                   <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-bold", evidenceStrengthClass(item.strength))}>
                     {t(`evidence.strength.${item.strength}`)}
                   </span>
                   {item.most_recent_year != null && (
-                    <span className="font-mono text-[10px] text-[#787774]">{item.most_recent_year}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{item.most_recent_year}</span>
                   )}
                 </div>
 
                 {visibleSources.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-[#787774]">{t("evidence.foundIn")}</span>
+                    <span className="text-[11px] font-semibold text-slate-500">{t("evidence.foundIn")}</span>
                     {visibleSources.map((source, idx) => (
                       <span
                         key={`${source.kind}-${source.ref}-${idx}`}
-                        className="rounded-lg border border-[#EAEAEA] bg-white px-2 py-0.5 text-[11px] font-medium text-[#2F3437]"
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-900"
                         title={source.quote ?? undefined}
                       >
                         {t(`evidence.sourceKind.${source.kind}`)}
                         {source.ref?.trim() ? `: ${source.ref}` : ""}
                       </span>
                     ))}
-                    {extra > 0 && <span className="text-[11px] text-[#787774]">+{extra}</span>}
+                    {extra > 0 && <span className="text-[11px] text-slate-500">+{extra}</span>}
                   </div>
                 )}
               </div>
@@ -387,11 +387,11 @@ export function EvidenceLedgerCard({ ledger }: { ledger: EvidenceLedger }) {
 
         {/* Gap notes live at LEDGER level on the BE contract (never per-item). */}
         {(ledger.evidence_gap?.length ?? 0) > 0 && (
-          <div className="rounded-lg border border-[#F1E5C0] bg-[#FBF3DB] px-3 py-2">
-            <p className="text-[11px] font-bold text-[#956400]">{t("evidence.gapTitle")}</p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <p className="text-[11px] font-bold text-amber-700">{t("evidence.gapTitle")}</p>
             <ul className="mt-1 space-y-0.5">
               {ledger.evidence_gap!.slice(0, 4).map((gap, idx) => (
-                <li key={idx} className="text-xs leading-relaxed text-[#956400]">{gap}</li>
+                <li key={idx} className="text-xs leading-relaxed text-amber-700">{gap}</li>
               ))}
             </ul>
           </div>
