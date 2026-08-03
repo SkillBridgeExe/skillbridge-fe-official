@@ -79,7 +79,11 @@ describe("DiagnosisStep1Upload - Target Role Picker", () => {
       isLoading: true,
       isError: false,
     } as unknown as ReturnType<typeof useDiagnosisRolesQuery>);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 39f76ae (fix(diagnosis): consume authoritative roles and polish results)
     vi.mocked(useTranslation).mockReturnValue({
       t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
       i18n: { language: "vi", resolvedLanguage: "vi" },
@@ -101,7 +105,11 @@ describe("DiagnosisStep1Upload - Target Role Picker", () => {
       isLoading: false,
       isError: true,
     } as unknown as ReturnType<typeof useDiagnosisRolesQuery>);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 39f76ae (fix(diagnosis): consume authoritative roles and polish results)
     vi.mocked(useTranslation).mockReturnValue({
       t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
       i18n: { language: "vi", resolvedLanguage: "vi" },
@@ -125,7 +133,11 @@ describe("DiagnosisStep1Upload - Target Role Picker", () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useDiagnosisRolesQuery>);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 39f76ae (fix(diagnosis): consume authoritative roles and polish results)
     vi.mocked(useTranslation).mockReturnValue({
       t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
       i18n: { language: "vi", resolvedLanguage: "vi" },
@@ -150,7 +162,11 @@ describe("DiagnosisStep1Upload - Target Role Picker", () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useDiagnosisRolesQuery>);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 39f76ae (fix(diagnosis): consume authoritative roles and polish results)
     vi.mocked(useTranslation).mockReturnValue({
       t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
       i18n: { language: "en", resolvedLanguage: "en" },
@@ -175,7 +191,11 @@ describe("DiagnosisStep1Upload - Target Role Picker", () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useDiagnosisRolesQuery>);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 39f76ae (fix(diagnosis): consume authoritative roles and polish results)
     vi.mocked(useTranslation).mockReturnValue({
       t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
       i18n: { language: "vi-VN", resolvedLanguage: "vi-VN" },
