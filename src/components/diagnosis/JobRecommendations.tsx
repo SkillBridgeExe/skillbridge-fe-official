@@ -73,7 +73,6 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 }
 
 function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (key: string, options?: Record<string, unknown>) => string }) {
-  if (!data) return null;
   const { total, facets, role_scope, pool_size, eligible_pool_size } = data;
   const finalTotal = total ?? eligible_pool_size ?? pool_size ?? 0;
 
@@ -454,9 +453,12 @@ export function JobRecommendations({
 
   if (!cvId) return null;
 
-  const quotaBlocked =
-    (isAxiosError(error) && error.response?.status === 402) ||
-    (error && typeof error === "object" && (error as { status?: number }).status === 402);
+  const errorStatus = isAxiosError(error)
+    ? error.response?.status
+    : error && typeof error === "object"
+      ? (error as { status?: number }).status
+      : undefined;
+  const quotaBlocked = errorStatus === 402;
 
   const activeFilterCount =
     (queryState.cityCodes?.length ? 1 : 0) +
@@ -1150,7 +1152,7 @@ export function JobRecommendations({
             variant="outline"
             size="sm"
             onClick={() => {
-              if (queryState.snapshotToken) {
+              if (errorStatus === 410 && queryState.snapshotToken) {
                 setQueryState(prev => {
                   const { snapshotToken: _, ...rest } = prev;
                   return rest;

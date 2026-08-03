@@ -204,7 +204,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
           </h3>
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-              <circle cx={size / 2} cy={size / 2} r={radius} fill="transparent" stroke="#F8FAFC" strokeWidth={strokeWidth} />
+              <circle cx={size / 2} cy={size / 2} r={radius} fill="transparent" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
               <circle
                 cx={size / 2}
                 cy={size / 2}

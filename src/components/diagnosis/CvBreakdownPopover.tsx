@@ -26,9 +26,9 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
 
   const items = [
     { label: "ATS", score: breakdown.ats, icon: Shield, color: "text-emerald-700", bg: "bg-emerald-50" },
-    { label: t("results.structure", "Cấu trúc"), score: breakdown.structure, icon: Code, color: "text-sky-600", bg: "bg-sky-100" },
+    { label: t("results.structure", "Cấu trúc"), score: breakdown.structure, icon: Code, color: "text-sky-700", bg: "bg-sky-100" },
     { label: t("cvBreakdown.skills"), score: breakdown.skills, icon: Brain, color: "text-violet-600", bg: "bg-violet-100" },
-    { label: t("cvBreakdown.experience"), score: breakdown.experience, icon: Briefcase, color: "text-orange-600", bg: "bg-orange-100" },
+    { label: t("cvBreakdown.experience"), score: breakdown.experience, icon: Briefcase, color: "text-orange-700", bg: "bg-orange-100" },
   ];
 
   return (
@@ -98,7 +98,7 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
               })}
             </div>
 
-            <p className="text-[10px] text-slate-400 mt-4 text-center">
+            <p className="text-[10px] text-slate-600 mt-4 text-center">
               {t("cvBreakdown.note")}
             </p>
             {/* W44: band framing — honest context */}

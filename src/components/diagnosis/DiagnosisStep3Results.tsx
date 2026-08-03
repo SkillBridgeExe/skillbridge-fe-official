@@ -696,17 +696,17 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                                 <>
                                   <ResponsiveContainer width="100%" height={280}>
                                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                                      <PolarGrid stroke="#e2e8f0" />
-                                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+                                      <PolarGrid stroke="hsl(var(--border))" />
+                                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }} />
                                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
-                                      <Radar name="required" dataKey="required" stroke="#e2e8f0" fill="#e2e8f0" fillOpacity={0.3} strokeDasharray="4 2" />
-                                      <Radar name="you" dataKey="you" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.12} strokeWidth={2} />
+                                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12, fontWeight: 600, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }} formatter={(value: number, name: string) => [`${value}%`, name === "you" ? t("results.radarYou") : t("results.radarRequired")]} />
+                                      <Radar name="required" dataKey="required" stroke="hsl(var(--border))" fill="hsl(var(--border))" fillOpacity={0.3} strokeDasharray="4 2" />
+                                      <Radar name="you" dataKey="you" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.12} strokeWidth={2} />
                                     </RadarChart>
                                   </ResponsiveContainer>
                                   <div className="flex justify-center gap-6 mt-2">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><div className="w-3 h-0.5 bg-slate-200" style={{ borderTop: "1px dashed #e2e8f0" }} /><span>{t("results.radarRequired")}</span></div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><div className="w-3 h-0.5 bg-slate-200 border-t border-dashed border-slate-200" /><span>{t("results.radarRequired")}</span></div>
                                   </div>
                                 </>
                             ) : (

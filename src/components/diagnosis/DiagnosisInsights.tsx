@@ -100,7 +100,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                   key={idx}
                   onClick={() => toggleTick(idx)}
                   className={cn(
-                    "flex items-start gap-3.5 text-sm text-slate-900 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
+                    "group flex items-start gap-3.5 text-sm text-slate-900 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-200 cursor-pointer select-none",
                     isTicked && "bg-slate-50/30"
                   )}
                 >
@@ -117,7 +117,7 @@ export function TopSummaryCard({ summary }: { summary: TopSummary }) {
                   <span
                     className={cn(
                       "font-semibold leading-relaxed transition-all duration-200 flex-1",
-                      isTicked && "line-through text-slate-300 font-medium"
+                      isTicked && "line-through text-slate-600 font-medium"
                     )}
                   >
                     {action}

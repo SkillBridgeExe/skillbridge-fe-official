@@ -490,5 +490,37 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
         expect.not.objectContaining({ snapshotToken: expect.anything() })
       );
     });
+
+    it("non-410 retry keeps the snapshot token and refetches the same query", () => {
+      const mockQuery = vi.mocked(useJobRecommendationsQuery);
+      const refetchMock = vi.fn();
+
+      mockQuery.mockReturnValue({
+        data: { ...mockJobsData, generation: { snapshot_token: "stable-token" } },
+        isLoading: false,
+        isError: false,
+        refetch: refetchMock,
+      } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+      const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      mockQuery.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: true,
+        error: Object.assign(new Error("Server error"), { status: 500 }),
+        refetch: refetchMock,
+      } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+      rerender(<JobRecommendations cvId="cv-123" />);
+
+      fireEvent.click(screen.getByText("Thử lại"));
+
+      expect(refetchMock).toHaveBeenCalledTimes(1);
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        "cv-123",
+        expect.objectContaining({ snapshotToken: "stable-token" })
+      );
+    });
   });
 });
