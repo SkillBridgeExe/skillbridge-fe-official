@@ -211,11 +211,11 @@ function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t:
 
 function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: import("@shared/api").JobLocationDisplay[], fallbackLocation: string | null, t: any }) {
   if (!locations || locations.length === 0) {
-    if (!fallbackLocation) return null;
+    const text = fallbackLocation || t("jobs.unknownLocation");
     return (
       <span className="inline-flex items-center gap-1.5 min-w-0">
         <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-        <span className="truncate">{fallbackLocation}</span>
+        <span className="truncate">{text}</span>
       </span>
     );
   }
