@@ -6,13 +6,16 @@ vi.mock("@/services/auth-session.service", () => ({ hasApiAuthSession: () => tru
 vi.mock("@/api/cv/builder", () => ({
   rewriteFieldApi: vi.fn().mockResolvedValue({ suggestion: "rewritten" }),
 }));
+vi.mock("@/api/cv/analysis", () => ({ analyzeCvApi: vi.fn() }));
 
 import {
   mapCvDtoToReviewData,
   mapMatchDtoToJdMatch,
+  analyzeCvWithJd,
   rewriteTailorBullet,
 } from "./diagnosis.service";
 import { rewriteFieldApi } from "@/api/cv/builder";
+import { analyzeCvApi } from "@/api/cv/analysis";
 import type { CvDto, CvMatchDto, CvReviewParsedResponse, TailorAction } from "@shared/api";
 
 // ── Fixtures tối thiểu theo contract BE (docs/FE-diagnosis-rewire-plan.md §5) ──
@@ -172,6 +175,48 @@ const matchDto: CvMatchDto = {
   jobDescription: null,
   createdAt: "2026-06-07T00:00:00Z",
 };
+
+describe("analyzeCvWithJd", () => {
+  it("returns a saved CV outcome instead of throwing when analysis credits are exhausted", async () => {
+    vi.mocked(analyzeCvApi).mockResolvedValue({
+      status: "UPLOADED_ONLY",
+      cv: cvDto,
+      match: null,
+      requiredCreditType: "CV_ANALYSIS",
+    });
+
+    await expect(
+      analyzeCvWithJd({ file: new File(["cv"], "cv.pdf"), targetRole: "frontend", jdText: "JD" }),
+    ).resolves.toEqual({
+      status: "UPLOADED_ONLY",
+      cvId: "cv-1",
+      requiredCreditType: "CV_ANALYSIS",
+    });
+  });
+
+  it("keeps the CV review when only the JD match fails", async () => {
+    vi.mocked(analyzeCvApi).mockResolvedValue({
+      status: "REVIEWED_ONLY",
+      cv: cvDto,
+      match: null,
+      requiredCreditType: null,
+      matchErrorCode: "CV_MATCH_FAILED",
+    });
+
+    const outcome = await analyzeCvWithJd({
+      builderCvId: "cv-1",
+      targetRole: "frontend",
+      jdText: "JD",
+    });
+
+    expect(outcome.status).toBe("REVIEWED_ONLY");
+    if (outcome.status === "REVIEWED_ONLY") {
+      expect(outcome.cvId).toBe("cv-1");
+      expect(outcome.review.overallScore).toBe(67);
+      expect(outcome.matchErrorCode).toBe("CV_MATCH_FAILED");
+    }
+  });
+});
 
 describe("mapCvDtoToReviewData", () => {
   it("maps BE review sang UI model: điểm BE giữ nguyên (chỉ round), dim 0-20 → 0-100", () => {

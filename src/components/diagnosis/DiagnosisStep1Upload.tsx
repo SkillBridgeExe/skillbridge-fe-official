@@ -31,7 +31,7 @@ import { extractAiGateCode } from "@/lib/ai-input-gate";
 import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
 import { QUERY_KEYS } from "@/constants/app";
 import { useQuery } from "@tanstack/react-query";
-import { getMyEntitlements } from "@/services/billing.service";
+import { getMyCredits, getMyEntitlements } from "@/services/billing.service";
 import { ActionRail } from "./editorial";
 import { useCompanionStore } from "@/store/useCompanionStore";
 import {
@@ -53,17 +53,25 @@ function QuotaLine({
   enabled: boolean;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const { data } = useQuery({
+  const { data: entitlements } = useQuery({
     queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
     enabled,
     staleTime: 60 * 1000,
     retry: 1,
   });
-  const review = data?.find((f) => f.feature === "cv_review");
-  if (!review || review.unlimited) return null;
+  const { data: credits } = useQuery({
+    queryKey: QUERY_KEYS.BILLING_CREDITS,
+    queryFn: getMyCredits,
+    enabled,
+    staleTime: 60 * 1000,
+    retry: 1,
+  });
+  const review = entitlements?.find((feature) => feature.feature === "cv_review");
+  const purchasedCredits = credits?.find((credit) => credit.creditType === "CV_ANALYSIS")?.balance ?? 0;
+  if (!review && purchasedCredits === 0) return null;
 
-  const exhausted = !review.allowed;
+  const exhausted = Boolean(review && !review.allowed && purchasedCredits === 0);
   return (
     <div
       className={
@@ -73,16 +81,23 @@ function QuotaLine({
       }
     >
       <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-      <span>
-        {exhausted
-          ? t("quota.exhausted")
-          : t(review.period === "DAILY" ? "quota.remainingDaily" : "quota.remainingMonthly", {
-              remaining: review.remaining ?? 0,
-              limit: review.limit,
-            })}
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        {review ? (
+          <span>
+            {review.unlimited
+              ? t("quota.unlimited")
+              : exhausted
+                ? t("quota.exhausted")
+                : t(review.period === "DAILY" ? "quota.remainingDaily" : "quota.remainingMonthly", {
+                    remaining: review.remaining ?? 0,
+                    limit: review.limit,
+                  })}
+          </span>
+        ) : null}
+        <span>{t("quota.purchasedCredits", { count: purchasedCredits })}</span>
       </span>
       {exhausted && (
-        <Link to="/pricing" className="ml-1 font-bold text-primary hover:underline shrink-0">
+        <Link to="/pricing?credit=CV_ANALYSIS" className="ml-1 font-bold text-primary hover:underline shrink-0">
           {t("quota.upgradeCta")}
         </Link>
       )}
@@ -108,6 +123,7 @@ export function DiagnosisStep1Upload() {
 
   const [isDragging, setIsDragging] = React.useState(false);
   const [fileError, setFileError] = React.useState<string | null>(null);
+  const [uploadedOnlyCvId, setUploadedOnlyCvId] = React.useState<string | null>(null);
   const [showJd, setShowJd] = React.useState(false);
   const [cvUploadId, setCvUploadId] = React.useState<string | null>(null);
 
@@ -298,6 +314,7 @@ export function DiagnosisStep1Upload() {
 
     setAnalysisMode("cv-jd");
     setApiError(null);
+    setUploadedOnlyCvId(null);
     setReviewData(null);
     setTargetStep("results");
     setLoadingProgress(0);
@@ -308,7 +325,20 @@ export function DiagnosisStep1Upload() {
       const payload = isFromBuilder
         ? { builderCvId, targetRole, jdText: jobDescription.trim(), consentAccepted }
         : { file: cvFile!, targetRole, jdText: jobDescription.trim(), consentAccepted };
-      const { cvId, review } = await analyzeCvWithJdMutation.mutateAsync(payload);
+      const outcome = await analyzeCvWithJdMutation.mutateAsync(payload);
+      if (outcome.status === "UPLOADED_ONLY") {
+        setLastCvId(outcome.cvId);
+        setUploadedOnlyCvId(outcome.cvId);
+        setHasActivatedJdMode(false);
+        setApiError(null);
+        toast({
+          title: t("upload.uploadedOnlyTitle"),
+          description: t("upload.uploadedOnlyDesc"),
+        });
+        return;
+      }
+
+      const { cvId, review } = outcome;
       posthog?.capture("cv_scan_completed", {
         ...scanProperties,
         cv_id: cvId,
@@ -318,6 +348,16 @@ export function DiagnosisStep1Upload() {
       });
       setLastCvId(cvId);
       setReviewData(review);
+      if (outcome.status === "REVIEWED_ONLY") {
+        setHasActivatedJdMode(false);
+        setApiError(t("upload.matchFailedReviewSaved"));
+        setStep("cv-review");
+        toast({
+          title: t("upload.reviewSavedTitle"),
+          description: t("upload.matchFailedReviewSaved"),
+        });
+        return;
+      }
       setHasActivatedJdMode(true);
       setStep("results");
     } catch (error) {
@@ -590,6 +630,15 @@ export function DiagnosisStep1Upload() {
             helperText={(!hasUsableCv || !targetRole || !consentAccepted) ? t("upload.helper") : null}
           />
         </div>
+        {uploadedOnlyCvId ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" role="status">
+            <p className="text-sm font-bold text-amber-900">{t("upload.uploadedOnlyTitle")}</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">{t("upload.uploadedOnlyDesc")}</p>
+            <Button asChild size="sm" className="mt-3">
+              <Link to="/pricing?credit=CV_ANALYSIS">{t("upload.buyAnalysisCredit")}</Link>
+            </Button>
+          </div>
+        ) : null}
         </div>
       </div>
       

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -11,7 +11,7 @@ import {
   Sparkles,
   Tag,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import Layout from "@/components/layout/Layout";
@@ -40,22 +40,26 @@ import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import { cn } from "@/lib/utils";
 import {
   createCheckout,
+  getCreditPackages,
   getBillingPlans,
   getMySubscription,
   validateVoucher,
   type BillingPlanDto,
+  type CreditPackageDto,
 } from "@/services/billing.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { getPricingBenefits, getPricingPlanPresentation, getVisiblePricingPlans } from "./pricing-view-model";
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const hasApiSession = useHasApiSession();
   const posthog = usePostHog();
   const [selectedPlan, setSelectedPlan] = useState<BillingPlanDto | null>(null);
+  const [selectedCredit, setSelectedCredit] = useState<CreditPackageDto | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | null>(null);
 
@@ -68,6 +72,19 @@ export default function Pricing() {
     queryFn: getMySubscription,
     enabled: hasApiSession,
   });
+  const creditPackagesQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_CREDIT_PACKAGES,
+    queryFn: getCreditPackages,
+  });
+
+  useEffect(() => {
+    const creditType = searchParams.get("credit");
+    if (!creditType || !creditPackagesQuery.data || selectedCredit || !hasApiSession) return;
+    const matchingPackage = creditPackagesQuery.data.find(
+      (creditPackage) => creditPackage.creditType === creditType,
+    );
+    if (matchingPackage) setSelectedCredit(matchingPackage);
+  }, [creditPackagesQuery.data, hasApiSession, searchParams, selectedCredit]);
 
   const voucherMutation = useMutation({
     mutationFn: ({ planCode, code }: { planCode: string; code: string }) =>
@@ -115,8 +132,31 @@ export default function Pricing() {
     },
   });
 
+  const creditCheckoutMutation = useMutation({
+    mutationFn: (planCode: string) => createCheckout({ purpose: "CREDIT_PACKAGE", planCode }),
+    onSuccess: (checkout) => {
+      const checkoutPath = getBillingCheckoutPath(checkout);
+      if (checkoutPath) navigate(checkoutPath);
+      else toast({ title: t("billing.pricing.checkoutFailedTitle"), variant: "destructive" });
+    },
+    onError: (error) => toast({
+      title: t("billing.pricing.checkoutFailedTitle"),
+      description: getApiErrorMessage(error),
+      variant: "destructive",
+    }),
+  });
+
   const plans = getVisiblePricingPlans(plansQuery.data);
   const currentPlanCode = subscriptionQuery.data?.planCode?.toLowerCase();
+
+  const closeCreditCheckout = () => {
+    setSelectedCredit(null);
+    if (!searchParams.has("credit")) return;
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete("credit");
+    setSearchParams(nextSearchParams, { replace: true });
+  };
 
   const openCheckout = (plan: BillingPlanDto) => {
     const presentation = getPricingPlanPresentation(plan, currentPlanCode);
@@ -300,6 +340,70 @@ export default function Pricing() {
               })}
             </div>
           )}
+          {creditPackagesQuery.isLoading ? (
+            <section className="mx-auto mt-10 max-w-4xl" aria-label={t("billing.pricing.credit.loading")}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[0, 1].map((item) => (
+                  <Skeleton key={item} className="h-44 rounded-2xl" />
+                ))}
+              </div>
+            </section>
+          ) : creditPackagesQuery.isError ? (
+            <section className="mx-auto mt-10 max-w-4xl">
+              <Alert variant="destructive">
+                <AlertCircle aria-hidden="true" className="h-4 w-4" />
+                <AlertTitle>{t("billing.pricing.credit.loadFailedTitle")}</AlertTitle>
+                <AlertDescription className="mt-2 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>{getApiErrorMessage(creditPackagesQuery.error)}</span>
+                  <Button size="sm" variant="outline" onClick={() => creditPackagesQuery.refetch()}>
+                    <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" />
+                    {t("billing.pricing.credit.retry")}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </section>
+          ) : creditPackagesQuery.data?.length ? (
+            <section className="mx-auto mt-10 max-w-4xl" aria-labelledby="credit-packages-title">
+              <div className="mb-4 text-center">
+                <h2 id="credit-packages-title" className="font-poppins text-xl font-black text-slate-950">
+                  {t("billing.pricing.credit.title")}
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">{t("billing.pricing.credit.subtitle")}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {creditPackagesQuery.data.map((creditPackage) => (
+                  <Card key={creditPackage.code} className="border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="p-5 pb-3">
+                      <CardTitle className="text-base font-black text-slate-950">{creditPackage.name}</CardTitle>
+                      <CardDescription>{creditPackage.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-end justify-between gap-3 p-5 pt-0">
+                      <div>
+                        <p className="text-2xl font-black tabular-nums text-slate-950">{formatVnd(creditPackage.priceVnd)}đ</p>
+                        <p className="mt-1 text-xs font-bold text-primary">
+                          {t("billing.pricing.credit.units", { count: creditPackage.units })}
+                        </p>
+                      </div>
+                      <Button
+                        className="font-bold"
+                        disabled={creditCheckoutMutation.isPending}
+                        onClick={() => {
+                          if (!hasApiSession) return navigate("/?auth=login");
+                          setSelectedCredit(creditPackage);
+                        }}
+                      >
+                        {t("billing.pricing.credit.buy")}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="mx-auto mt-10 max-w-4xl rounded-2xl border border-dashed border-slate-300 bg-white/70 px-6 py-8 text-center text-sm text-slate-500">
+              {t("billing.pricing.credit.empty")}
+            </section>
+          )}
         </div>
       </section>
 
@@ -423,6 +527,51 @@ export default function Pricing() {
                 <CreditCard aria-hidden="true" className="mr-2 h-4 w-4" />
               )}
               {t("billing.pricing.voucher.pay")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={selectedCredit !== null}
+        onOpenChange={(open) => {
+          if (!open && !creditCheckoutMutation.isPending) {
+            closeCreditCheckout();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("billing.pricing.credit.confirmTitle")}</DialogTitle>
+            <DialogDescription>{selectedCredit?.description}</DialogDescription>
+          </DialogHeader>
+          {selectedCredit ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4 rounded-xl border bg-slate-50 px-4 py-3 text-sm">
+                <span className="text-slate-600">{t("billing.pricing.credit.quantity")}</span>
+                <span className="font-black tabular-nums text-slate-950">
+                  {t("billing.pricing.credit.units", { count: selectedCredit.units })}
+                </span>
+              </div>
+              <CheckoutPriceSummary
+                planName={selectedCredit.name}
+                originalAmountVnd={selectedCredit.priceVnd}
+                discountAmountVnd={0}
+                finalAmountVnd={selectedCredit.priceVnd}
+                labels={{
+                  plan: t("billing.pricing.voucher.plan"),
+                  originalPrice: t("billing.pricing.voucher.originalPrice"),
+                  discount: t("billing.pricing.credit.noDiscount"),
+                  total: t("billing.pricing.voucher.total"),
+                }}
+              />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" disabled={creditCheckoutMutation.isPending} onClick={closeCreditCheckout}>{t("billing.pricing.voucher.cancel")}</Button>
+            <Button disabled={!selectedCredit || creditCheckoutMutation.isPending} onClick={() => selectedCredit && creditCheckoutMutation.mutate(selectedCredit.code)}>
+              {creditCheckoutMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+              {t("billing.pricing.credit.pay")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,6 +8,7 @@
 // - Field insights vắng → withMockInsights đắp tạm (mock tự nhường khi BE trả thật).
 
 import { uploadCvApi } from "@/api/cv/upload";
+import { analyzeCvApi } from "@/api/cv/analysis";
 import { reRunCvReviewApi } from "@/api/cv/review";
 import { matchCvWithJdApi, getCvMatchDetailApi } from "@/api/cv/match";
 import { getCvDetailApi } from "@/api/cv/list";
@@ -74,17 +75,13 @@ import type {
 // ── Input/Output của service ────────────────────────────────────────
 
 export interface AnalyzeCvInput {
-  /** File CV (đường upload). Bỏ trống khi chấm lại CV builder qua builderCvId. */
+  /** CV file for upload. Omit when re-analyzing an existing builder CV. */
   file?: File | null;
-  /** CV đã tồn tại trên BE (từ builder) → chấm lại, không upload. */
+  /** Existing backend CV id; avoids uploading the same document again. */
   builderCvId?: string | null;
-  /** Role code BE, vd "frontend_developer" — bắt buộc để rubric chấm relevance. */
+  /** Backend role code used by the scoring rubric. */
   targetRole: string;
-  /**
-   * Consent xử lý dữ liệu cá nhân (PDPL) — BE từ chối nếu thiếu.
-   * TODO(W3): truyền từ checkbox consent thật trên màn upload; hiện mặc định true
-   * vì user chủ động bấm "Analyze" sau banner thông báo.
-   */
+  /** Explicit personal-data processing consent from the upload UI. */
   consentAccepted?: boolean;
 }
 
@@ -97,6 +94,15 @@ export interface AnalyzeOutcome {
   cvId: string;
   review: CvReviewData;
 }
+
+export type AnalyzeCvWithJdOutcome =
+  | ({ status: "ANALYZED" } & AnalyzeOutcome)
+  | {
+      status: "UPLOADED_ONLY";
+      cvId: string;
+      requiredCreditType: "CV_ANALYSIS";
+    }
+  | ({ status: "REVIEWED_ONLY"; matchErrorCode: string } & AnalyzeOutcome);
 
 // ── Auth guard ──────────────────────────────────────────────────────
 
@@ -343,19 +349,41 @@ export async function analyzeCv({
   return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
 }
 
-/** Chấm CV + so JD: 2 bước tuần tự trên BE (upload/chấm → match cvId × jdText). */
+/** Analyze a CV and optional JD through the backend's single-charge orchestration. */
 export async function analyzeCvWithJd(
   input: AnalyzeCvWithJdInput,
-): Promise<AnalyzeOutcome> {
-  const base = await analyzeCv(input);
-  const match = await matchCvWithJdApi(base.cvId, {
-    jdText: input.jdText,
+): Promise<AnalyzeCvWithJdOutcome> {
+  requireSession();
+  const result = await analyzeCvApi({
+    file: input.file,
+    cvId: input.builderCvId,
     targetRole: input.targetRole,
+    consentAccepted: input.consentAccepted ?? true,
+    jdText: input.jdText,
   });
+  if (result.status === "UPLOADED_ONLY") {
+    return {
+      status: "UPLOADED_ONLY",
+      cvId: result.cv.id,
+      requiredCreditType: "CV_ANALYSIS",
+    };
+  }
 
+  const review = mapCvDtoToReviewData(result.cv);
+  if (result.status === "REVIEWED_ONLY") {
+    return {
+      status: "REVIEWED_ONLY",
+      cvId: result.cv.id,
+      review,
+      matchErrorCode: result.matchErrorCode ?? "CV_MATCH_FAILED",
+    };
+  }
+
+  if (!result.match) throw new Error("CV_MATCH_RESULT_MISSING");
   return {
-    cvId: base.cvId,
-    review: { ...base.review, jdMatch: mapMatchDtoToJdMatch(match) },
+    status: "ANALYZED",
+    cvId: result.cv.id,
+    review: { ...review, jdMatch: mapMatchDtoToJdMatch(result.match) },
   };
 }
 

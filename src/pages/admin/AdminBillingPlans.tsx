@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Loader2, Pencil, Plus, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -65,6 +65,7 @@ type PlanForm = {
   currency: string;
   isActive: boolean;
   sortOrder: string;
+  creditUnits: string;
 };
 
 type QuotaDraft = {
@@ -85,6 +86,7 @@ const emptyForm = (): PlanForm => ({
   currency: "VND",
   isActive: true,
   sortOrder: "10",
+  creditUnits: "1",
 });
 
 export default function AdminBillingPlans() {
@@ -153,17 +155,29 @@ export default function AdminBillingPlans() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      updateAdminBillingPlan(selectedCode, {
+    mutationFn: () => {
+      const commonFields = {
         name: form.name,
         description: form.description || null,
-        category: form.category as "SUBSCRIPTION" | "MENTOR_PACKAGE",
-        interval: form.interval as "MONTHLY" | "ONE_TIME",
         priceVnd: Number(form.priceVnd) || 0,
-        currency: form.currency || "VND",
         isActive: form.isActive,
         sortOrder: Number(form.sortOrder) || 0,
-      }),
+      };
+      return updateAdminBillingPlan(
+        selectedCode,
+        selectedPlan?.category === "CREDIT_PACKAGE"
+          ? {
+              ...commonFields,
+              creditUnits: Math.max(1, Number(form.creditUnits) || 1),
+            }
+          : {
+              ...commonFields,
+              category: form.category as "SUBSCRIPTION" | "MENTOR_PACKAGE",
+              interval: form.interval as "MONTHLY" | "ONE_TIME",
+              currency: form.currency || "VND",
+            },
+      );
+    },
     onSuccess: async () => {
       await invalidate();
       closeForm();
@@ -231,6 +245,7 @@ export default function AdminBillingPlans() {
       currency: plan.currency ?? "VND",
       isActive: plan.isActive ?? true,
       sortOrder: String(plan.sortOrder ?? 0),
+      creditUnits: String(plan.creditPackage?.units ?? 1),
     });
     setQuotaDrafts(buildQuotaDrafts(featureCatalog, plan));
     setQuotaErrors({});
@@ -382,33 +397,40 @@ export default function AdminBillingPlans() {
 
             <div className="grid gap-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field
-                  label={t("billing.admin.table.code")}
-                  value={form.code}
-                  onChange={(code) => setForm((prev) => ({ ...prev, code }))}
-                  disabled={Boolean(selectedPlan)}
-                />
+                {selectedPlan?.category !== "CREDIT_PACKAGE" ? (
+                  <Field
+                    label={t("billing.admin.table.code")}
+                    value={form.code}
+                    onChange={(code) => setForm((prev) => ({ ...prev, code }))}
+                    disabled={Boolean(selectedPlan)}
+                  />
+                ) : null}
                 <Field
                   label={t("billing.admin.table.name")}
                   value={form.name}
                   onChange={(name) => setForm((prev) => ({ ...prev, name }))}
                 />
-                <SelectField
-                  label={t("billing.admin.table.category")}
-                  value={form.category}
-                  onChange={(category) =>
-                    setForm((prev) => ({ ...prev, category }))
-                  }
-                  options={["SUBSCRIPTION", "MENTOR_PACKAGE"]}
-                />
-                <SelectField
-                  label={t("billing.admin.table.interval")}
-                  value={form.interval}
-                  onChange={(interval) =>
-                    setForm((prev) => ({ ...prev, interval }))
-                  }
-                  options={["MONTHLY", "ONE_TIME"]}
-                />
+                {selectedPlan?.category !== "CREDIT_PACKAGE" ? (
+                  <>
+                    <SelectField
+                      label={t("billing.admin.table.category")}
+                      value={form.category}
+                      onChange={(category) =>
+                        setForm((prev) => ({ ...prev, category }))
+                      }
+                      disabled={Boolean(selectedPlan)}
+                      options={["SUBSCRIPTION", "MENTOR_PACKAGE"]}
+                    />
+                    <SelectField
+                      label={t("billing.admin.table.interval")}
+                      value={form.interval}
+                      onChange={(interval) =>
+                        setForm((prev) => ({ ...prev, interval }))
+                      }
+                      options={["MONTHLY", "ONE_TIME"]}
+                    />
+                  </>
+                ) : null}
                 <Field
                   label={t("billing.admin.plans.priceVnd")}
                   value={form.priceVnd}
@@ -423,13 +445,24 @@ export default function AdminBillingPlans() {
                     setForm((prev) => ({ ...prev, sortOrder }))
                   }
                 />
-                <Field
-                  label="Currency"
-                  value={form.currency}
-                  onChange={(currency) =>
-                    setForm((prev) => ({ ...prev, currency }))
-                  }
-                />
+                {form.category === "CREDIT_PACKAGE" ? (
+                  <Field
+                    label={t("billing.admin.plans.creditUnits")}
+                    value={form.creditUnits}
+                    onChange={(creditUnits) =>
+                      setForm((prev) => ({ ...prev, creditUnits }))
+                    }
+                  />
+                ) : null}
+                {selectedPlan?.category !== "CREDIT_PACKAGE" ? (
+                  <Field
+                    label={t("billing.admin.plans.currency")}
+                    value={form.currency}
+                    onChange={(currency) =>
+                      setForm((prev) => ({ ...prev, currency }))
+                    }
+                  />
+                ) : null}
               </div>
 
               <div>
@@ -456,29 +489,31 @@ export default function AdminBillingPlans() {
                 {t("billing.admin.status.active")}
               </label>
 
-              <QuotaEditorTable
-                canSaveRows={Boolean(selectedPlan)}
-                errors={quotaErrors}
-                features={featureCatalog}
-                isError={featureCatalogQuery.isError}
-                isLoading={featureCatalogQuery.isLoading}
-                onDraftChange={updateQuotaDraft}
-                onRetry={() => void featureCatalogQuery.refetch()}
-                onSave={saveQuota}
-                planCode={selectedPlan?.code ?? form.code}
-                quotaDrafts={quotaDrafts}
-                savingFeatureKey={
-                  quotaMutation.isPending
-                    ? (quotaMutation.variables?.feature.featureKey ?? null)
-                    : null
-                }
-                t={t}
-              />
+              {form.category !== "CREDIT_PACKAGE" ? (
+                <QuotaEditorTable
+                  canSaveRows={Boolean(selectedPlan)}
+                  errors={quotaErrors}
+                  features={featureCatalog}
+                  isError={featureCatalogQuery.isError}
+                  isLoading={featureCatalogQuery.isLoading}
+                  onDraftChange={updateQuotaDraft}
+                  onRetry={() => void featureCatalogQuery.refetch()}
+                  onSave={saveQuota}
+                  planCode={selectedPlan?.code ?? form.code}
+                  quotaDrafts={quotaDrafts}
+                  savingFeatureKey={
+                    quotaMutation.isPending
+                      ? (quotaMutation.variables?.feature.featureKey ?? null)
+                      : null
+                  }
+                  t={t}
+                />
+              ) : null}
             </div>
 
             <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="outline" onClick={closeForm}>
-                Cancel
+                {t("billing.admin.plans.cancel")}
               </Button>
               <Button
                 disabled={
@@ -768,10 +803,13 @@ function Field({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const inputId = useId();
+
   return (
     <div>
-      <Label>{label}</Label>
+      <Label htmlFor={inputId}>{label}</Label>
       <Input
+        id={inputId}
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
@@ -786,17 +824,21 @@ function SelectField({
   value,
   onChange,
   options,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
+  disabled?: boolean;
 }) {
+  const triggerId = useId();
+
   return (
     <div>
-      <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="mt-1.5 h-11">
+      <Label htmlFor={triggerId}>{label}</Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger id={triggerId} className="mt-1.5 h-11">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

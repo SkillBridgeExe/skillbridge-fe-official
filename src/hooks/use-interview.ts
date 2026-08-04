@@ -89,8 +89,14 @@ export function useCvMatchesForInterview(cvId: string | null, enabled: boolean) 
 }
 
 export function useStartInterview() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: startInterview,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_CREDITS });
+    },
   });
 }
 

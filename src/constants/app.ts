@@ -20,6 +20,8 @@ export const QUERY_KEYS = {
   USER_AVATAR: ['user', 'avatar'] as const,
   USER_SKILLS: ['user', 'skills'] as const,
   BILLING_PLANS: ['billing', 'plans'] as const,
+  BILLING_CREDIT_PACKAGES: ['billing', 'credit-packages'] as const,
+  BILLING_CREDITS: ['billing', 'credits'] as const,
   BILLING_ORDER: (orderCode: string | number) => ['billing', 'order', String(orderCode)] as const,
   BILLING_SUBSCRIPTION: ['billing', 'subscription'] as const,
   BILLING_USAGE: ['billing', 'usage'] as const,

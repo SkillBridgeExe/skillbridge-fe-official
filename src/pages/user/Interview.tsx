@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import {
@@ -30,6 +31,8 @@ import { useEndInterviewOnExit } from "@/hooks/use-end-interview-on-exit";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { INTERVIEW_SETUP_STEPS } from "@/constants/interview";
+import { QUERY_KEYS } from "@/constants/app";
+import { getMyCredits, getMyEntitlements } from "@/services/billing.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   getInterviewQuestionAudio,
@@ -214,6 +217,24 @@ export default function Interview() {
   const submitTurnMutation = useSubmitInterviewTurn();
   const endInterviewMutation = useEndInterview();
   const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
+  const interviewEntitlementsQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
+    queryFn: getMyEntitlements,
+    enabled: canUseApi,
+    staleTime: 60_000,
+  });
+  const interviewCreditsQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_CREDITS,
+    queryFn: getMyCredits,
+    enabled: canUseApi,
+    staleTime: 60_000,
+  });
+  const interviewQuota = interviewEntitlementsQuery.data?.find(
+    (feature) => feature.feature === "interview_session",
+  );
+  const purchasedInterviewCredits =
+    interviewCreditsQuery.data?.find((credit) => credit.creditType === "INTERVIEW_SESSION")
+      ?.balance ?? 0;
 
   useEffect(() => {
     activeSessionRef.current = activeSession;
@@ -1595,6 +1616,25 @@ export default function Interview() {
         {showPracticeSetup && (
           <main className="custom-scrollbar relative flex-1 overflow-y-auto md:overflow-hidden bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
+              {canUseApi && (interviewQuota || purchasedInterviewCredits > 0) ? (
+                <div className="mx-auto mb-4 flex max-w-5xl flex-wrap items-center justify-end gap-2 text-xs font-bold text-slate-600">
+                  {interviewQuota ? (
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 tabular-nums shadow-sm">
+                      {interviewQuota.unlimited
+                        ? t("interview.setup.quotaUnlimited")
+                        : t("interview.setup.monthlyQuota", {
+                            remaining: interviewQuota.remaining ?? 0,
+                            limit: interviewQuota.limit,
+                          })}
+                    </span>
+                  ) : null}
+                  <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 tabular-nums text-sky-700">
+                    {t("interview.setup.purchasedCredits", {
+                      count: purchasedInterviewCredits,
+                    })}
+                  </span>
+                </div>
+              ) : null}
               <InterviewSetup
                 onStart={startInterview}
                 isLoading={isLoading}
