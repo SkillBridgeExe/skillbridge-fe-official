@@ -561,6 +561,17 @@ export interface CvMatchDto {
 
 // ── Job recommendations (GET /api/cvs/:cvId/job-recommendations) ───────────
 
+export interface JobLocationDisplay {
+  country_code: string | null;
+  city_code: string;
+  district_code: string | null;
+  district_name: string | null;
+  address_line: string | null;
+  is_primary: boolean;
+  granularity: "exact" | "city" | "unknown" | string;
+}
+
+
 export interface JobRecommendationDto {
   job_id: string;
   slug: string;
@@ -570,6 +581,7 @@ export interface JobRecommendationDto {
   company_name: string;
   location: string | null;
   city_codes: string[];
+  locations?: JobLocationDisplay[];
   role_code: string | null;
   experience_level: string | null;
   work_mode: "ONSITE" | "HYBRID" | "REMOTE" | null;

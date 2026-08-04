@@ -25,6 +25,14 @@ vi.mock("react-i18next", () => ({
       if (key === "jobs.error") return "Lỗi tải đề xuất";
       if (key === "jobs.retry") return "Thử lại";
       if (key === "jobs.apply") return "Ứng tuyển";
+      if (key === "jobs.recommendationScore") return "Điểm đề xuất";
+      if (key === "jobs.skillMatchLabel") return "Khớp kỹ năng";
+      if (key === "jobs.actionableGaps") return "Cần bổ sung";
+      if (key === "jobs.moreGaps") return `+${opts?.count ?? 0} kỹ năng`;
+      if (key === "jobs.headingSafe") return "Việc làm phù hợp để ứng tuyển";
+      if (key === "jobs.headingStretch") return "Cơ hội đáng thử sức";
+      if (key === "jobs.headingClosest") return "Vai trò gần nhất hiện có";
+      if (key === "jobs.advancedFilters") return "Bộ lọc khác";
       if (key === "jobs.workModes.REMOTE") return "Remote";
       if (key === "jobs.workModes.ONSITE") return "Onsite";
       if (key === "jobs.workModes.HYBRID") return "Hybrid";
@@ -107,7 +115,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     render(<JobRecommendations cvId="cv-123" targetRole="frontend_developer" />);
 
-    expect(screen.getByText("Top 5 việc làm phù hợp nhất")).toBeInTheDocument();
+    expect(screen.getByText("Việc làm phù hợp để ứng tuyển")).toBeInTheDocument();
     expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
     expect(screen.getByText("Fullstack React Developer")).toBeInTheDocument();
     expect(screen.getByText("Xem tất cả 15 việc làm")).toBeInTheDocument();
@@ -125,7 +133,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
 
-    expect(screen.getByText("Khám phá việc làm phù hợp")).toBeInTheDocument();
+    expect(screen.getByText("Việc làm phù hợp để ứng tuyển")).toBeInTheDocument();
     expect(screen.getByText("Xem Top 5 gọn")).toBeInTheDocument();
   });
 
@@ -146,6 +154,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.getByText("HCMC (8)")).toBeInTheDocument();
     // Check Work mode facet button
     expect(screen.getByText("Remote (5)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc khác/i }));
     // Check Employment type facet button
     expect(screen.getByText("Toàn thời gian (12)")).toBeInTheDocument();
     // Check Seniority level facet button
@@ -225,6 +234,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     render(<JobRecommendations cvId="cv-123" />);
     fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc khác/i }));
 
     const empButton = screen.getByText("Toàn thời gian (12)");
     fireEvent.click(empButton);
@@ -406,7 +416,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
 
     render(<JobRecommendations cvId="cv-123" />);
     fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
-    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Bộ lọc$/i }));
     fireEvent.click(screen.getByRole("button", { name: "HCMC (8)" }));
 
     expect(
@@ -522,5 +532,89 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
         expect.objectContaining({ snapshotToken: "stable-token" })
       );
     });
+  });
+
+  it("labels recommendation and skill scores instead of showing anonymous percentages", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" targetRole="frontend_developer" />);
+
+    expect(screen.getAllByText("Điểm đề xuất")).not.toHaveLength(0);
+    expect(screen.getAllByText("Khớp kỹ năng")).not.toHaveLength(0);
+    expect(screen.getAllByText("88/100")).toHaveLength(2);
+  });
+
+  it("shows at most three priority gaps and summarizes the remainder", () => {
+    const gapHeavyJob = {
+      ...mockJobsData.recommendations[0],
+      partial_skills: [
+        { display_name: "React", canonical_name: "react", gap_levels: 1 },
+        { display_name: "TypeScript", canonical_name: "typescript", gap_levels: 1 },
+        { display_name: "Testing", canonical_name: "testing", gap_levels: 1 },
+      ],
+      missing_skills: [
+        { display_name: "Accessibility", importance: "REQUIRED" },
+        { display_name: "System Design", importance: "REQUIRED" },
+        { display_name: "Docker", importance: "PREFERRED" },
+      ],
+    };
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: { ...mockJobsData, total: 1, recommendations: [gapHeavyJob] },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Cần bổ sung")).toBeInTheDocument();
+    expect(screen.getByText("Accessibility")).toBeInTheDocument();
+    expect(screen.getByText("System Design")).toBeInTheDocument();
+    expect(screen.getByText("Docker")).toBeInTheDocument();
+    expect(screen.queryByText("React")).not.toBeInTheDocument();
+    expect(screen.queryByText("TypeScript")).not.toBeInTheDocument();
+    expect(screen.getByText("+3 kỹ năng")).toBeInTheDocument();
+  });
+
+  it("does not promise a strong match when the pool only contains not-recommended jobs", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        facets: {
+          ...mockJobsData.facets,
+          fit: [{ value: "not_recommended", count: 2 }],
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Vai trò gần nhất hiện có")).toBeInTheDocument();
+    expect(screen.queryByText("Việc làm phù hợp để ứng tuyển")).not.toBeInTheDocument();
+  });
+
+  it("does not expose salary when the source marks it hidden", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        total: 1,
+        recommendations: [{ ...mockJobsData.recommendations[0], salary_visible: false }],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.queryByText(/30–50tr/)).not.toBeInTheDocument();
   });
 });

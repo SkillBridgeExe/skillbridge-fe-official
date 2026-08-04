@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
   Briefcase, MapPin, ExternalLink, Building2, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, RefreshCw, SlidersHorizontal, ArrowUpDown, X
+  CheckCircle2, AlertCircle, RefreshCw, SlidersHorizontal, ArrowUpDown, X,
+  CircleDollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
@@ -34,6 +35,22 @@ type EmploymentTypeVal = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" |
 type FitVerdictType = "safe_apply" | "stretch" | "not_recommended";
 type SortOptionType = "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
 
+function countActiveFilters(query: JobRecommendationsQuery): number {
+  return (
+    (query.cityCodes?.length ? 1 : 0) +
+    (query.workModes?.length ? 1 : 0) +
+    (query.experienceLevels?.length ? 1 : 0) +
+    (query.employmentTypes?.length ? 1 : 0) +
+    (query.fit?.length ? 1 : 0) +
+    (query.role && query.role !== "all" ? 1 : 0) +
+    (query.salaryOnly ? 1 : 0)
+  );
+}
+
+function localizedCity(value: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  return t(`jobs.cities.${value}`, { defaultValue: value });
+}
+
 function asWorkMode(val: string): WorkModeType | undefined {
   return val === "ONSITE" || val === "HYBRID" || val === "REMOTE" ? val : undefined;
 }
@@ -56,7 +73,7 @@ function asSortOption(val: string): SortOptionType {
 
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
-const CARD = "bg-white border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-300 hover:-translate-y-[1px] hover:shadow-md hover:border-blue-200/50 flex flex-col overflow-hidden";
+const CARD = "bg-white border border-slate-200 rounded-lg shadow-sm transition-colors duration-200 hover:border-slate-300 flex flex-col overflow-hidden";
 
 /** Band màu cho match % — CÙNG thang 80/60 với màn compare (một con số, một màu). */
 function matchBand(score: number): string {
@@ -64,12 +81,45 @@ function matchBand(score: number): string {
 }
 
 /** VND → "tr" (triệu), ngoại tệ → số + mã. null cả hai → null (ẩn). */
-function formatSalary(min: number | null, max: number | null, currency: string): string | null {
+function formatSalary(
+  min: number | null,
+  max: number | null,
+  currency: string,
+  period: "MONTH" | "YEAR" | null,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | null {
   if (min == null && max == null) return null;
   const fmt = (n: number) => (currency === "VND" ? `${Math.round(n / 1_000_000)}` : n.toLocaleString());
   const unit = currency === "VND" ? "tr" : ` ${currency}`;
-  if (min != null && max != null) return `${fmt(min)}–${fmt(max)}${unit}`;
-  return `${fmt((min ?? max) as number)}${unit}`;
+  const periodLabel = period ? t(`jobs.salaryPeriods.${period}`, { defaultValue: period === "MONTH" ? "/month" : "/year" }) : "";
+  if (min != null && max != null) return `${fmt(min)}–${fmt(max)}${unit}${periodLabel}`;
+  return `${fmt((min ?? max) as number)}${unit}${periodLabel}`;
+}
+
+type PriorityGap = {
+  key: string;
+  label: string;
+  kind: "missing" | "partial";
+};
+
+/** One compact, deterministic queue: hard missing requirements before partial gaps. */
+function priorityGaps(job: JobRecommendationDto): PriorityGap[] {
+  const seen = new Set<string>();
+  const result: PriorityGap[] = [];
+  const add = (label: string, key: string, kind: PriorityGap["kind"]) => {
+    const normalized = (key || label).trim().toLocaleLowerCase();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    result.push({ key: normalized, label, kind });
+  };
+
+  for (const skill of job.missing_skills ?? []) {
+    add(skill.display_name, skill.display_name, "missing");
+  }
+  for (const skill of job.partial_skills ?? []) {
+    add(skill.display_name, skill.canonical_name ?? skill.display_name, "partial");
+  }
+  return result;
 }
 
 function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (key: string, options?: Record<string, unknown>) => string }) {
@@ -143,17 +193,75 @@ function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (k
   );
 }
 
+function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t: any): string {
+  if (loc.address_line) return loc.address_line;
+  const parts: string[] = [];
+  if (loc.district_name) parts.push(loc.district_name);
+  if (loc.city_code) parts.push(localizedCity(loc.city_code, t));
+  return parts.join(", ") || t("jobs.unknownLocation", { defaultValue: "Địa điểm chưa xác định" });
+}
+
+function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: import("@shared/api").JobLocationDisplay[], fallbackLocation: string | null, t: any }) {
+  if (!locations || locations.length === 0) {
+    if (!fallbackLocation) return null;
+    return (
+      <span className="inline-flex items-center gap-1.5 min-w-0">
+        <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+        <span className="truncate">{fallbackLocation}</span>
+      </span>
+    );
+  }
+
+  const primary = locations.find((l) => l.is_primary) || locations[0];
+  const primaryText = formatLocationDisplay(primary, t);
+
+  if (locations.length === 1) {
+    return (
+      <span className="inline-flex items-center gap-1.5 min-w-0" title={primaryText}>
+        <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+        <span className="truncate">{primaryText}</span>
+      </span>
+    );
+  }
+
+  return (
+    <InfoPopover
+      align="left"
+      label={t("jobs.multipleLocations", { defaultValue: "Nhiều địa điểm làm việc" })}
+      trigger={
+        <span className="inline-flex items-center gap-1.5 min-w-0 cursor-pointer hover:text-slate-900 transition-colors">
+          <MapPin className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+          <span className="truncate underline decoration-dotted underline-offset-2">{locations.length} {t("jobs.locationsCount", { defaultValue: "địa điểm" })}</span>
+        </span>
+      }
+    >
+      <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+        {locations.map((loc, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed">
+            <MapPin className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", loc.is_primary ? "text-sky-500" : "text-slate-400")} />
+            <span>{formatLocationDisplay(loc, t)}</span>
+          </li>
+        ))}
+      </ul>
+    </InfoPopover>
+  );
+}
+
 function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, options?: Record<string, unknown>) => string }) {
   const [whyOpen, setWhyOpen] = useState(false);
-  const salary = formatSalary(job.salary_min, job.salary_max, job.currency);
+  const salary = job.salary_visible === false
+    ? null
+    : formatSalary(job.salary_min, job.salary_max, job.currency, job.salary_period, t);
 
   const recScore = job.recommendation_score ?? job.match_score;
   const matchScoreVal = job.match_score;
   const demoted = typeof matchScoreVal === "number" && recScore < matchScoreVal;
   const severe = job.severe_stretch === true;
 
-  const missing = job.missing_skills ?? [];
-  const partial = job.partial_skills ?? [];
+  const gaps = priorityGaps(job);
+  const visibleGaps = gaps.slice(0, 3);
+  const remainingGapCount = Math.max(0, gaps.length - visibleGaps.length);
+  const strengths = (job.matched_skills ?? []).slice(0, 2);
   const breakdown = job.scoring_breakdown;
   const experienceFit = job.experience_fit?.verdict && job.experience_fit.verdict !== "unknown" ? job.experience_fit : null;
   const fitClass = experienceFit?.verdict === "fits"
@@ -175,28 +283,29 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
     : null;
 
   return (
-    <div className={cn(CARD, "group relative")}>
-      {/* Top Section: Essential Info */}
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h4 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+    <article className={cn(CARD, "relative")}>
+      <div className="p-4 sm:p-5 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h4 className="text-base font-bold text-slate-950 leading-snug line-clamp-2">
               {job.title}
             </h4>
-            <span className="flex items-center gap-1.5 mt-2 min-w-0 font-medium text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 mt-1.5 min-w-0 font-medium text-xs text-slate-600">
               <Building2 className="w-3.5 h-3.5 shrink-0 text-slate-400" />
               <span className="truncate">{job.company_name}</span>
             </span>
           </div>
-          {/* Match Score */}
-          <div className="shrink-0 flex flex-col items-end">
+          <div className="shrink-0 text-right">
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              {t("jobs.recommendationScore")}
+            </span>
             {job.seniority_factor && job.seniority_factor < 1 ? (
               <InfoPopover
                 align="right"
                 label={t("jobs.seniorityLabel", { defaultValue: "Vì sao điểm bị điều chỉnh" })}
                 trigger={
-                  <span className={cn("shrink-0 text-xs font-bold font-mono tabular-nums px-2.5 py-1 rounded-lg border underline decoration-dotted underline-offset-2 transition-colors", matchBand(recScore))}>
-                    {recScore}%
+                  <span className={cn("mt-1 inline-flex text-sm font-bold font-mono tabular-nums px-2.5 py-1 rounded-md border underline decoration-dotted underline-offset-2", matchBand(recScore))}>
+                    {recScore}/100
                   </span>
                 }
               >
@@ -210,21 +319,14 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
                 </p>
               </InfoPopover>
             ) : (
-              <span className={cn("shrink-0 text-xs font-bold font-mono tabular-nums px-2.5 py-1 rounded-lg border transition-colors", matchBand(recScore))}>
-                {recScore}%
-              </span>
-            )}
-
-            {typeof matchScoreVal === "number" && (job.fit || demoted) && (
-              <span className="mt-1.5 block text-[10px] font-mono tabular-nums text-slate-500">
-                {t("jobs.skillMatch", { score: matchScoreVal, defaultValue: `Kỹ năng ${matchScoreVal}%` })}
+              <span className={cn("mt-1 inline-flex text-sm font-bold font-mono tabular-nums px-2.5 py-1 rounded-md border", matchBand(recScore))}>
+                {recScore}/100
               </span>
             )}
           </div>
         </div>
 
-        {/* Match Fit Indicators */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
           {job.fit && <FitBadge fit={job.fit} />}
           {!job.fit && demoted && (
             <span className={cn(
@@ -240,71 +342,68 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
               {experienceFit.confidence !== "high" && ` · ${t("matchDepth.fit.estimate")}`}
             </span>
           )}
-          {job.score_basis && (
-            <span className="text-[10px] text-slate-400">{t(`jobs.scoreBasis.${job.score_basis}`)}</span>
-          )}
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-slate-600">
+            <span>{t("jobs.skillMatchLabel")}</span>
+            <strong className="font-mono tabular-nums text-slate-900">{matchScoreVal}/100</strong>
+          </span>
         </div>
 
-        {/* Metadata Badges */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px] text-slate-500 font-medium">
-          {job.location && (
-            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-              {job.location}
-            </span>
-          )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-[11px] text-slate-600 font-medium">
+          <JobLocationsBadge locations={job.locations} fallbackLocation={job.location} t={t} />
           {workModeLabel && (
-            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{workModeLabel}</span>
+            <span className="inline-flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-slate-400" />{workModeLabel}</span>
           )}
           {experienceLevelLabel && (
-            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{experienceLevelLabel}</span>
+            <span>{experienceLevelLabel}</span>
           )}
           {employmentTypeLabel && (
-            <span className="px-2 py-1 rounded-md bg-slate-50 border border-slate-100">{employmentTypeLabel}</span>
+            <span>{employmentTypeLabel}</span>
           )}
           {salary && (
-            <span className="font-mono tabular-nums text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100/50">
+            <span className="inline-flex items-center gap-1.5 font-mono tabular-nums text-slate-800 font-semibold">
+              <CircleDollarSign className="w-3.5 h-3.5 text-slate-400" />
               {salary}
             </span>
           )}
         </div>
-      </div>
 
-      {/* Bottom Section (Bento Split) for Skills & Actions */}
-      <div className="bg-slate-50/50 border-t border-slate-200/50 p-4 mt-auto">
-        {/* Skills breakdown tags */}
-        {(partial.length > 0 || missing.length > 0) && (
-          <div className="space-y-2 mb-3">
-            {partial.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600/70 mr-1">{t("matchDepth.partial")}</span>
-                {partial.slice(0, 3).map((s) => (
-                  <span key={s.canonical_name ?? s.display_name} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-100/50 border border-amber-200/50 text-amber-700">
-                    {s.display_name}
-                    {typeof s.gap_levels === "number" && ` · ${t("matchDepth.gapLevels", { count: s.gap_levels })}`}
-                  </span>
-                ))}
-                {partial.length > 3 && <span className="text-[10px] text-slate-400 font-mono">+{partial.length - 3}</span>}
+        {(strengths.length > 0 || visibleGaps.length > 0) && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {strengths.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{t("jobs.strengths")}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {strengths.map((skill) => (
+                    <span key={skill} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{skill}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
-            {missing.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600/70 mr-1">{t("jobs.missing")}</span>
-                {missing.slice(0, 3).map((s) => (
-                  <span key={s.display_name} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-700">
-                    {s.display_name}
-                  </span>
-                ))}
-                {missing.length > 3 && (
-                  <span className="text-[10px] text-slate-400 font-mono">+{missing.length - 3}</span>
-                )}
+            {visibleGaps.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{t("jobs.actionableGaps")}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {visibleGaps.map((gap) => (
+                    <span key={`${gap.kind}-${gap.key}`} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", gap.kind === "missing" ? "bg-rose-500" : "bg-amber-500")} />{gap.label}
+                    </span>
+                  ))}
+                  {remainingGapCount > 0 && (
+                    <span className="inline-flex items-center px-1.5 text-[10px] font-medium text-slate-500">
+                      {t("jobs.moreGaps", { count: remainingGapCount })}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
         )}
+      </div>
 
-        <div className="flex items-end justify-between gap-3 mt-1">
-          {/* Why Score collapsible */}
+      <div className="border-t border-slate-100 bg-slate-50/70 p-4 mt-auto">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex-1 min-w-0">
             {breakdown && (
               <div>
@@ -322,11 +421,12 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
                   {whyOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
                 {whyOpen && (
-                  <div className="mt-2.5 grid grid-cols-2 gap-y-2 gap-x-3 text-[10px] font-medium text-slate-600 bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm">
+                  <div className="mt-2.5 grid grid-cols-2 gap-y-2 gap-x-3 text-[10px] font-medium text-slate-600 bg-white p-3 rounded-md border border-slate-200">
                     <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />{t("results.matched")}: {breakdown.matched_count}</span>
                     <span className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-amber-600" />{t("results.partial")}: {breakdown.partial_count}</span>
                     <span className="flex items-center gap-1.5 ml-5">{t("results.missing")}: {breakdown.missing_count}</span>
                     <span className="flex items-center gap-1.5 ml-5 font-mono text-slate-400">{t("matchDepth.coverage")}: {breakdown.required_met}/{breakdown.required_total}</span>
+                    {job.score_basis && <span className="col-span-2 text-slate-500">{t(`jobs.scoreBasis.${job.score_basis}`)}</span>}
                     {breakdown.cap_applied && <span className="col-span-2 text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-1">{t("matchDepth.capped")}</span>}
                   </div>
                 )}
@@ -334,15 +434,19 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
             )}
           </div>
 
-          {/* Apply CTAs */}
           {job.source_url ? (
             <a
               href={job.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40 shadow-sm hover:shadow-md"
+              className={cn(
+                "shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40",
+                job.fit?.verdict === "not_recommended"
+                  ? "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                  : "bg-blue-600 text-white hover:bg-blue-700",
+              )}
             >
-              {t("jobs.apply")}
+              {t(job.fit?.verdict === "not_recommended" ? "jobs.viewDescription" : job.fit?.verdict === "stretch" ? "jobs.viewOpportunity" : "jobs.apply")}
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           ) : job.application_mode === "NATIVE" ? (
@@ -355,7 +459,7 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, optio
           ) : null}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -377,6 +481,7 @@ export function JobRecommendations({
     sort: "RECOMMENDED",
   });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [desktopAdvancedOpen, setDesktopAdvancedOpen] = useState(false);
   const [mobileDraftQuery, setMobileDraftQuery] = useState<JobRecommendationsQuery>(queryState);
   const [accumulatedRecs, setAccumulatedRecs] = useState<JobRecommendationDto[]>([]);
   const cvChanged = stateCvId !== cvId;
@@ -460,14 +565,21 @@ export function JobRecommendations({
       : undefined;
   const quotaBlocked = errorStatus === 402;
 
-  const activeFilterCount =
-    (queryState.cityCodes?.length ? 1 : 0) +
-    (queryState.workModes?.length ? 1 : 0) +
-    (queryState.experienceLevels?.length ? 1 : 0) +
-    (queryState.employmentTypes?.length ? 1 : 0) +
-    (queryState.fit?.length ? 1 : 0) +
-    (queryState.role && queryState.role !== "all" ? 1 : 0) +
-    (queryState.salaryOnly ? 1 : 0);
+  const activeFilterCount = countActiveFilters(queryState);
+  const draftFilterCount = countActiveFilters(mobileDraftQuery);
+
+  const fitCounts = facets?.fit ?? [];
+  const hasSafeJobs = fitCounts.some((item) => item.value === "safe_apply" && item.count > 0);
+  const hasStretchJobs = fitCounts.some((item) => item.value === "stretch" && item.count > 0);
+  const resultHeadingKey = hasSafeJobs
+    ? "jobs.headingSafe"
+    : hasStretchJobs
+      ? "jobs.headingStretch"
+      : fitCounts.length > 0
+        ? "jobs.headingClosest"
+        : isExplorerOpen
+          ? "jobs.explorerTitle"
+          : "jobs.top5Title";
 
   const handleResetFilters = () => {
     if (mobileFilterOpen) {
@@ -588,9 +700,7 @@ export function JobRecommendations({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              {isExplorerOpen
-                ? t("jobs.explorerTitle", { defaultValue: "Khám phá việc làm phù hợp" })
-                : t("jobs.top5Title", { defaultValue: "Top 5 việc làm phù hợp nhất" })}
+              {t(resultHeadingKey)}
             </h3>
             {total > 0 && (
               <p className="text-[11px] text-slate-500">
@@ -682,7 +792,7 @@ export function JobRecommendations({
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
-                        {city.value} ({city.count})
+                        {localizedCity(city.value, t)} ({city.count})
                       </button>
                     );
                   })}
@@ -717,6 +827,18 @@ export function JobRecommendations({
                 </div>
               )}
 
+              <button
+                type="button"
+                aria-expanded={desktopAdvancedOpen}
+                onClick={() => setDesktopAdvancedOpen((open) => !open)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                {t("jobs.advancedFilters")}
+                {activeFilterCount > 0 && <span className="font-mono text-sky-700">{activeFilterCount}</span>}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", desktopAdvancedOpen && "rotate-180")} />
+              </button>
+
+              {desktopAdvancedOpen && (<>
               {/* Employment type facet buttons */}
               {facets?.employment_types && facets.employment_types.length > 0 && (
                 <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
@@ -817,6 +939,8 @@ export function JobRecommendations({
                 {t("jobs.salaryOnly", { defaultValue: "Có hiển thị mức lương" })}
               </button>
 
+              </>)}
+
               {activeFilterCount > 0 && (
                 <button
                   type="button"
@@ -864,9 +988,9 @@ export function JobRecommendations({
                 <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs font-bold border-slate-200 bg-white">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-sky-500" />
                   <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc" })}</span>
-                  {activeFilterCount > 0 && (
+                  {draftFilterCount > 0 && (
                     <span className="ml-1 w-4 h-4 rounded-full bg-sky-500 text-white text-[10px] font-mono flex items-center justify-center">
-                      {activeFilterCount}
+                      {draftFilterCount}
                     </span>
                   )}
                 </Button>
@@ -875,7 +999,7 @@ export function JobRecommendations({
                 <SheetHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 shrink-0 bg-white z-10">
                   <SheetTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
                     <span>{t("jobs.filterTitle", { defaultValue: "Bộ lọc việc làm" })}</span>
-                    {activeFilterCount > 0 && (
+                    {draftFilterCount > 0 && (
                       <button
                         type="button"
                         onClick={handleResetFilters}
@@ -930,7 +1054,7 @@ export function JobRecommendations({
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {facets.city_codes.map((city) => {
-                          const isSelected = filterQuery.cityCodes?.includes(city.value);
+                          const isSelected = mobileDraftQuery.cityCodes?.includes(city.value);
                           return (
                             <button
                               key={city.value}
@@ -942,7 +1066,7 @@ export function JobRecommendations({
                                 isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
-                              {city.value} ({city.count})
+                              {localizedCity(city.value, t)} ({city.count})
                             </button>
                           );
                         })}
@@ -960,7 +1084,7 @@ export function JobRecommendations({
                         {facets.work_modes.map((modeItem) => {
                           const modeVal = asWorkMode(modeItem.value);
                           if (!modeVal) return null;
-                          const isSelected = filterQuery.workModes?.includes(modeVal);
+                          const isSelected = mobileDraftQuery.workModes?.includes(modeVal);
                           const modeLabel = t(`jobs.workModes.${modeItem.value}`, { defaultValue: modeItem.value });
                           return (
                             <button
@@ -991,7 +1115,7 @@ export function JobRecommendations({
                         {facets.employment_types.map((typeItem) => {
                           const typeVal = asEmploymentType(typeItem.value);
                           if (!typeVal) return null;
-                          const isSelected = filterQuery.employmentTypes?.includes(typeVal);
+                          const isSelected = mobileDraftQuery.employmentTypes?.includes(typeVal);
                           const typeLabel = t(`jobs.employmentTypes.${typeItem.value}`, { defaultValue: typeItem.value });
                           return (
                             <button
@@ -1022,7 +1146,7 @@ export function JobRecommendations({
                         {facets.experience_levels.map((expItem) => {
                           const expVal = asExperienceLevel(expItem.value);
                           if (!expVal) return null;
-                          const isSelected = filterQuery.experienceLevels?.includes(expVal);
+                          const isSelected = mobileDraftQuery.experienceLevels?.includes(expVal);
                           const expLabel = t(`jobs.experienceLevels.${expItem.value}`, { defaultValue: expItem.value });
                           return (
                             <button
@@ -1053,7 +1177,7 @@ export function JobRecommendations({
                         {facets.fit.map((fitItem) => {
                           const fitVal = asFitVerdict(fitItem.value);
                           if (!fitVal) return null;
-                          const isSelected = filterQuery.fit?.includes(fitVal);
+                          const isSelected = mobileDraftQuery.fit?.includes(fitVal);
                           const labelKey = fitItem.value === "safe_apply" ? "safe_apply" : fitItem.value === "stretch" ? "stretch" : "not_recommended";
                           const label = t(`jobs.fitFilter.${labelKey}`, { defaultValue: fitItem.value });
                           return (
@@ -1079,11 +1203,11 @@ export function JobRecommendations({
                   <div className="pt-2">
                     <button
                       type="button"
-                      aria-pressed={Boolean(filterQuery.salaryOnly)}
+                      aria-pressed={Boolean(mobileDraftQuery.salaryOnly)}
                       onClick={handleToggleSalaryOnly}
                       className={cn(
                         "w-full py-2.5 px-4 text-xs font-bold rounded-xl border text-center transition-all",
-                        filterQuery.salaryOnly ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 border-slate-200"
+                        mobileDraftQuery.salaryOnly ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 border-slate-200"
                       )}
                     >
                       {t("jobs.salaryOnly", { defaultValue: "Có hiển thị mức lương" })}
@@ -1130,7 +1254,7 @@ export function JobRecommendations({
 
       {/* Main List & Data States */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[280px] bg-slate-100 rounded-2xl" />)}
         </div>
       ) : quotaBlocked ? (
@@ -1201,7 +1325,7 @@ export function JobRecommendations({
           )}
 
           {/* Job Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             {displayRecs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
           </div>
 
