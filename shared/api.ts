@@ -563,12 +563,12 @@ export interface CvMatchDto {
 
 export interface JobLocationDisplay {
   country_code: string | null;
-  city_code: string;
+  city_code: string | null;
   district_code: string | null;
   district_name: string | null;
   address_line: string | null;
   is_primary: boolean;
-  granularity: "exact" | "city" | "unknown" | string;
+  granularity: "exact" | "district" | "city" | "unknown";
 }
 
 

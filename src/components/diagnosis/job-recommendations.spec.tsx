@@ -618,3 +618,120 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.queryByText(/30–50tr/)).not.toBeInTheDocument();
   });
 });
+
+describe("structured locations rendering", () => {
+  it("renders exact address, district, and city combined, deduplicated", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          location: "Legacy Fallback",
+          locations: [{
+            country_code: "VN",
+            city_code: "SGN",
+            district_code: "D1",
+            district_name: "Quận 1",
+            address_line: "123 Le Loi",
+            is_primary: true,
+            granularity: "exact"
+          }]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText(/123 Le Loi, Quận 1, SGN/)).toBeInTheDocument();
+  });
+
+  it("falls back to district and city when address_line is null, ignoring nulls and blank strings", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          locations: [{
+            country_code: "VN",
+            city_code: "HAN",
+            district_code: "CG",
+            district_name: "Cầu Giấy",
+            address_line: null,
+            is_primary: true,
+            granularity: "district"
+          }]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Cầu Giấy, HAN")).toBeInTheDocument();
+  });
+
+  it("does not render 'null' string when city_code is null", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          locations: [{
+            country_code: "VN",
+            city_code: null as any,
+            district_code: null,
+            district_name: "Khu CN Cao",
+            address_line: null,
+            is_primary: true,
+            granularity: "unknown"
+          }]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Khu CN Cao")).toBeInTheDocument();
+    expect(screen.queryByText(/null/i)).not.toBeInTheDocument();
+  });
+
+  it("renders popover trigger when there are multiple locations", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          locations: [
+            { city_code: "SGN", is_primary: true, granularity: "city", country_code: "VN", district_code: null, district_name: null, address_line: null },
+            { city_code: "HAN", is_primary: false, granularity: "city", country_code: "VN", district_code: null, district_name: null, address_line: null }
+          ]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText(/2 jobs.locationsCount/)).toBeInTheDocument();
+  });
+
+  it("falls back to legacy location when locations array is empty", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          location: "Legacy Fallback Location",
+          locations: []
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Legacy Fallback Location")).toBeInTheDocument();
+  });
+});

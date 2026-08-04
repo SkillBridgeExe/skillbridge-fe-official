@@ -2453,6 +2453,9 @@ export default {
       headingStretch: "Opportunities worth stretching for",
       headingClosest: "Closest available roles",
       advancedFilters: "More filters",
+      multipleLocations: "Multiple locations",
+      locationsCount: "locations",
+      unknownLocation: "Location not specified",
       salaryPeriods: {
         MONTH: "/month",
         YEAR: "/year",

@@ -2445,6 +2445,9 @@ export default {
       headingStretch: "Cơ hội đáng thử sức",
       headingClosest: "Vai trò gần nhất hiện có",
       advancedFilters: "Bộ lọc khác",
+      multipleLocations: "Nhiều địa điểm làm việc",
+      locationsCount: "địa điểm",
+      unknownLocation: "Địa điểm chưa xác định",
       salaryPeriods: {
         MONTH: "/tháng",
         YEAR: "/năm",

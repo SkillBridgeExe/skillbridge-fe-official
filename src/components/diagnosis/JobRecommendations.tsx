@@ -194,11 +194,19 @@ function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (k
 }
 
 function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t: any): string {
-  if (loc.address_line) return loc.address_line;
   const parts: string[] = [];
-  if (loc.district_name) parts.push(loc.district_name);
-  if (loc.city_code) parts.push(localizedCity(loc.city_code, t));
-  return parts.join(", ") || t("jobs.unknownLocation", { defaultValue: "Địa điểm chưa xác định" });
+  if (loc.address_line?.trim()) parts.push(loc.address_line.trim());
+  if (loc.district_name?.trim()) parts.push(loc.district_name.trim());
+  if (loc.city_code?.trim()) {
+    const city = localizedCity(loc.city_code.trim(), t);
+    if (city && city !== "null") parts.push(city);
+  }
+  
+  const uniqueParts = parts.filter((val, idx, arr) => 
+    arr.findIndex(v => v.toLowerCase() === val.toLowerCase()) === idx
+  );
+
+  return uniqueParts.join(", ") || t("jobs.unknownLocation");
 }
 
 function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: import("@shared/api").JobLocationDisplay[], fallbackLocation: string | null, t: any }) {
@@ -227,11 +235,11 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
   return (
     <InfoPopover
       align="left"
-      label={t("jobs.multipleLocations", { defaultValue: "Nhiều địa điểm làm việc" })}
+      label={t("jobs.multipleLocations")}
       trigger={
         <span className="inline-flex items-center gap-1.5 min-w-0 cursor-pointer hover:text-slate-900 transition-colors">
           <MapPin className="w-3.5 h-3.5 shrink-0 text-sky-500" />
-          <span className="truncate underline decoration-dotted underline-offset-2">{locations.length} {t("jobs.locationsCount", { defaultValue: "địa điểm" })}</span>
+          <span className="truncate underline decoration-dotted underline-offset-2">{locations.length} {t("jobs.locationsCount")}</span>
         </span>
       }
     >
