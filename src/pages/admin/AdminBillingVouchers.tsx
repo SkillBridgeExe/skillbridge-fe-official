@@ -102,7 +102,7 @@ export default function AdminBillingVouchers() {
     onError: (error) => {
       toast({
         title: t("billing.admin.vouchers.saveFailed"),
-        description: getApiErrorMessage(error),
+        description: getApiErrorMessage(error, t("billing.errors.adminSave")),
         variant: "destructive",
       });
     },
@@ -119,7 +119,7 @@ export default function AdminBillingVouchers() {
     onError: (error) => {
       toast({
         title: t("billing.admin.vouchers.saveFailed"),
-        description: getApiErrorMessage(error),
+        description: getApiErrorMessage(error, t("billing.errors.adminSave")),
         variant: "destructive",
       });
     },
@@ -202,7 +202,7 @@ export default function AdminBillingVouchers() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("billing.admin.vouchers.loadFailed")}</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>{getApiErrorMessage(vouchersQuery.error)}</span>
+            <span>{getApiErrorMessage(vouchersQuery.error, t("billing.errors.adminLoad"))}</span>
             <Button variant="outline" className="w-fit" onClick={() => void vouchersQuery.refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               {t("billing.admin.vouchers.retry")}

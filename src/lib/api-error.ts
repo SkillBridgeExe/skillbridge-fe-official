@@ -39,22 +39,40 @@ function readMessage(value: unknown): string | null {
   return null;
 }
 
+function isTechnicalMessage(message: string): boolean {
+  const normalized = message.trim();
+  return [
+    /^Cannot\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s+/i,
+    /^Request failed with status code \d{3}$/i,
+    /^(Network Error|Failed to fetch|fetch failed)$/i,
+    /^(Internal server error|Bad Gateway|Service Unavailable|Gateway Timeout)$/i,
+    /^timeout of \d+ms exceeded$/i,
+    /^(ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT)\b/i,
+    /^(TypeError|ReferenceError|SyntaxError):/i,
+  ].some((pattern) => pattern.test(normalized));
+}
+
+function readUserSafeMessage(value: unknown): string | null {
+  const message = readMessage(value);
+  return message && !isTechnicalMessage(message) ? message : null;
+}
+
 export function getApiErrorMessage(
   error: unknown,
   fallback = DEFAULT_API_ERROR_MESSAGE,
 ): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
   if (isRecord(error) && isRecord(error.response)) {
-    const responseMessage = readMessage(error.response.data);
+    const responseMessage = readUserSafeMessage(error.response.data);
     if (responseMessage) {
       return responseMessage;
     }
   }
 
-  return readMessage(error) ?? fallback;
+  if (error instanceof Error) {
+    return readUserSafeMessage(error.message) ?? fallback;
+  }
+
+  return readUserSafeMessage(error) ?? fallback;
 }
 
 export function getApiErrorCode(error: unknown): string | null {

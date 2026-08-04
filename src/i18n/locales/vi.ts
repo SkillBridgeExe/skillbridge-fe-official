@@ -883,6 +883,22 @@ export default {
         creating: "Đang tạo...",
         unlimited: "Không giới hạn",
       },
+      errors: {
+        checkout: "Chưa thể tạo thanh toán lúc này. Vui lòng thử lại sau ít phút.",
+        adminLoad: "Chưa thể tải dữ liệu quản trị thanh toán. Vui lòng thử lại.",
+        adminSave: "Chưa thể lưu thay đổi thanh toán. Vui lòng kiểm tra và thử lại.",
+        paymentStatus: "Chưa thể kiểm tra trạng thái thanh toán. Đơn của bạn vẫn được giữ an toàn.",
+        voucher: {
+          default: "Chưa thể kiểm tra voucher lúc này. Vui lòng thử lại.",
+          invalid: "Mã voucher không hợp lệ. Vui lòng kiểm tra và nhập lại.",
+          notStarted: "Voucher này chưa đến thời gian sử dụng.",
+          expired: "Voucher này đã hết hạn.",
+          exhausted: "Voucher đã hết lượt sử dụng.",
+          userLimit: "Bạn đã sử dụng hết số lượt cho voucher này.",
+          discountOnly: "Voucher này dùng để giảm giá Premium. Hãy nhập mã khi nâng cấp gói.",
+          creditOnly: "Voucher này tặng lượt CV hoặc phỏng vấn. Hãy nhận voucher tại trang Gói của tôi.",
+        },
+      },
       pricing: {
         step: "Bước 1/3",
         title: "Chọn gói phù hợp",
@@ -960,6 +976,7 @@ export default {
           quantity: "Số lượt nhận được",
           loading: "Đang tải gói lượt dùng",
           loadFailedTitle: "Không tải được gói lượt dùng",
+          loadFailedDesc: "Dịch vụ mua lượt đang tạm thời chưa sẵn sàng. Vui lòng thử lại sau ít phút.",
           retry: "Thử lại",
           empty: "Hiện chưa có gói lượt dùng một lần nào.",
           buy: "Mua lượt",
@@ -1110,7 +1127,6 @@ export default {
         voucherPlaceholder: "Ví dụ: FREECV3",
         claimVoucher: "Nhận lượt",
         voucherClaimed: "Đã nhận {{count}} lượt {{type}}. Số dư của bạn đã được cập nhật.",
-        discountVoucherHint: "Voucher này dùng để giảm giá Premium. Hãy nhập mã khi nâng cấp gói.",
         creditTypes: {
           CV_ANALYSIS: "Phân tích CV",
           INTERVIEW_SESSION: "Phỏng vấn AI",

@@ -36,6 +36,7 @@ import { QUERY_KEYS } from "@/constants/app";
 import { useToast } from "@/hooks/use-toast";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getVoucherErrorMessage } from "@/lib/billing-error";
 import { getBillingCheckoutPath } from "@/lib/billing-checkout";
 import { cn } from "@/lib/utils";
 import {
@@ -126,7 +127,7 @@ export default function Pricing() {
       });
       toast({
         title: t("billing.pricing.checkoutFailedTitle"),
-        description: getApiErrorMessage(error),
+        description: getApiErrorMessage(error, t("billing.errors.checkout")),
         variant: "destructive",
       });
     },
@@ -141,7 +142,7 @@ export default function Pricing() {
     },
     onError: (error) => toast({
       title: t("billing.pricing.checkoutFailedTitle"),
-      description: getApiErrorMessage(error),
+      description: getApiErrorMessage(error, t("billing.errors.checkout")),
       variant: "destructive",
     }),
   });
@@ -354,7 +355,7 @@ export default function Pricing() {
                 <AlertCircle aria-hidden="true" className="h-4 w-4" />
                 <AlertTitle>{t("billing.pricing.credit.loadFailedTitle")}</AlertTitle>
                 <AlertDescription className="mt-2 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span>{getApiErrorMessage(creditPackagesQuery.error)}</span>
+                  <span>{getApiErrorMessage(creditPackagesQuery.error, t("billing.pricing.credit.loadFailedDesc"))}</span>
                   <Button size="sm" variant="outline" onClick={() => creditPackagesQuery.refetch()}>
                     <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" />
                     {t("billing.pricing.credit.retry")}
@@ -483,7 +484,7 @@ export default function Pricing() {
                 {voucherMutation.isError ? (
                   <p role="alert" className="flex items-start gap-2 text-sm font-medium text-destructive">
                     <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-                    {getApiErrorMessage(voucherMutation.error)}
+                    {getVoucherErrorMessage(voucherMutation.error, t, "PREMIUM_CHECKOUT")}
                   </p>
                 ) : null}
                 {appliedVoucherCode ? (

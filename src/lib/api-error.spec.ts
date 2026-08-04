@@ -25,4 +25,23 @@ describe("getApiErrorMessage", () => {
   it("returns fallback for unknown error shapes", () => {
     expect(getApiErrorMessage({ unexpected: true }, "Fallback message")).toBe("Fallback message");
   });
+
+  it.each([
+    "Cannot GET /api/billing/credit-packages",
+    "Request failed with status code 404",
+    "Network Error",
+    "Internal server error",
+    "Service Unavailable",
+    "timeout of 15000ms exceeded",
+  ])("does not expose technical transport messages: %s", (message) => {
+    expect(getApiErrorMessage(new Error(message), "Friendly fallback")).toBe("Friendly fallback");
+  });
+
+  it("prefers a safe response message over Axios' technical message", () => {
+    const error = Object.assign(new Error("Request failed with status code 400"), {
+      response: { data: { message: "Voucher has expired" } },
+    });
+
+    expect(getApiErrorMessage(error, "Friendly fallback")).toBe("Voucher has expired");
+  });
 });

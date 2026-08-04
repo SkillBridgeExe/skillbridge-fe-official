@@ -885,6 +885,22 @@ export default {
         creating: "Creating...",
         unlimited: "Unlimited",
       },
+      errors: {
+        checkout: "Payment cannot be created right now. Please try again in a few minutes.",
+        adminLoad: "Billing administration data cannot be loaded right now. Please try again.",
+        adminSave: "Billing changes could not be saved. Check the details and try again.",
+        paymentStatus: "Payment status cannot be checked right now. Your order is still safe.",
+        voucher: {
+          default: "The voucher cannot be checked right now. Please try again.",
+          invalid: "This voucher code is not valid. Check the code and try again.",
+          notStarted: "This voucher is not active yet.",
+          expired: "This voucher has expired.",
+          exhausted: "This voucher has no uses remaining.",
+          userLimit: "You have reached the usage limit for this voucher.",
+          discountOnly: "This voucher discounts Premium. Apply it while upgrading your plan.",
+          creditOnly: "This voucher grants CV or interview credits. Claim it from My plan.",
+        },
+      },
       pricing: {
         step: "Step 1/3",
         title: "Choose the right plan",
@@ -962,6 +978,7 @@ export default {
           quantity: "Credits included",
           loading: "Loading credit packages",
           loadFailedTitle: "Could not load credit packages",
+          loadFailedDesc: "Credit packages are temporarily unavailable. Please try again in a few minutes.",
           retry: "Retry",
           empty: "No one-time credit packages are available right now.",
           buy: "Buy credits",
@@ -1111,7 +1128,6 @@ export default {
         voucherPlaceholder: "Example: FREECV3",
         claimVoucher: "Claim credits",
         voucherClaimed: "Claimed {{count}} {{type}} credits. Your balance has been updated.",
-        discountVoucherHint: "This voucher discounts Premium. Apply it while upgrading your plan.",
         creditTypes: {
           CV_ANALYSIS: "CV analysis",
           INTERVIEW_SESSION: "AI interviews",

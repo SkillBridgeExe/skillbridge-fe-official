@@ -142,13 +142,13 @@ export default function BillingCheckoutStatus() {
         }
         return nextOrder;
       } catch (error) {
-        setVerifyError(getApiErrorMessage(error));
+        setVerifyError(getApiErrorMessage(error, t("billing.errors.paymentStatus")));
         throw error;
       } finally {
         setIsReconciling(false);
       }
     });
-  }, [applyPaidInvalidation, hasApiSession, orderCode, queryClient]);
+  }, [applyPaidInvalidation, hasApiSession, orderCode, queryClient, t]);
 
   const checkAgain = useCallback(() => {
     void reconcileLatest().catch(() => undefined);
