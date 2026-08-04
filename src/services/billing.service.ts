@@ -1,9 +1,12 @@
 import {
   createCheckoutApi,
+  claimVoucherApi,
+  getCreditPackagesApi,
   getBillingPlansApi,
   getMyEntitlementsApi,
   getMySubscriptionApi,
   getMyUsageApi,
+  getMyCreditsApi,
   getOrderStatusApi,
   reconcileOrderApi,
   validateVoucherApi,
@@ -17,6 +20,10 @@ export type {
   BillingPlanDto,
   BillingPurpose,
   CheckoutResponseDto,
+  CreditVoucherClaimDto,
+  CreditBalanceDto,
+  CreditPackageDto,
+  CreditType,
   CreateCheckoutDto,
   MeEntitlementDto,
   OrderStatusResponseDto,
@@ -28,6 +35,10 @@ export type {
 
 export function getBillingPlans() {
   return getBillingPlansApi();
+}
+
+export function getCreditPackages() {
+  return getCreditPackagesApi();
 }
 
 export function createCheckout(payload: CreateCheckoutDto) {
@@ -62,6 +73,18 @@ export function getMySubscription() {
 export function getMyUsage() {
   if (!hasApiAuthSession()) return Promise.resolve(null);
   return getMyUsageApi();
+}
+
+export function claimVoucher(voucherCode: string) {
+  if (!hasApiAuthSession()) {
+    throw new Error("Please sign in with a real account to claim a voucher.");
+  }
+  return claimVoucherApi(voucherCode.trim().toUpperCase());
+}
+
+export function getMyCredits() {
+  if (!hasApiAuthSession()) return Promise.resolve([]);
+  return getMyCreditsApi();
 }
 
 /** Quota hợp nhất theo plan (BE #49) — nguồn cho "Còn x/y lượt" trên trang diagnosis. */

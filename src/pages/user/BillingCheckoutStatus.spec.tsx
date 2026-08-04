@@ -145,6 +145,22 @@ describe("BillingCheckoutStatus", () => {
     expect(await screen.findByRole("button", { name: actionLabel })).toBeVisible();
   });
 
+  it.each([
+    ["CV_ANALYSIS", "billing.checkout.analyzeCv"],
+    ["INTERVIEW_SESSION", "billing.checkout.startInterview"],
+  ] as const)("shows the correct paid credit CTA for %s", async (creditType, actionLabel) => {
+    renderPage({
+      ...order,
+      purpose: "CREDIT_PACKAGE",
+      targetType: "CREDIT_PACKAGE",
+      status: "PAID",
+      checkoutUrl: null,
+      creditPackage: { creditType, units: 2 },
+    });
+
+    expect(await screen.findByRole("button", { name: actionLabel })).toBeVisible();
+  });
+
   it("does not initialize the iframe when the signed return URL targets a different page", async () => {
     renderPage({ ...order, returnUrl: "http://localhost:3000/billing/checkout" });
 

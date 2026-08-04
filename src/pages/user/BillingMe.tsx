@@ -1,15 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, CalendarDays, Gauge, Loader2 } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Gauge, Loader2, TicketCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { QUERY_KEYS } from "@/constants/app";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { EmptyState, formatDate, StatusBadge } from "@/lib/billing-ui";
 import {
+  claimVoucher,
   getMyEntitlements,
+  getMyCredits,
   getMySubscription,
+  type CreditBalanceDto,
   type MeEntitlementDto,
 } from "@/services/billing.service";
 import { useHasApiSession } from "@/hooks/use-api-session";
@@ -27,6 +36,11 @@ export default function BillingMe() {
   const entitlementsQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
+    enabled: hasApiSession,
+  });
+  const creditsQuery = useQuery({
+    queryKey: QUERY_KEYS.BILLING_CREDITS,
+    queryFn: getMyCredits,
     enabled: hasApiSession,
   });
 
@@ -83,7 +97,15 @@ export default function BillingMe() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+            <CreditsCard
+              credits={creditsQuery.data}
+              isError={creditsQuery.isError}
+              isLoading={creditsQuery.isLoading}
+              onRetry={() => void creditsQuery.refetch()}
+              t={t}
+            />
+
+            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm lg:col-span-2">
               <CardHeader className="flex-row items-center justify-between space-y-0 p-5 pb-3">
                 <div>
                   <CardTitle className="font-poppins text-2xl font-extrabold leading-none">
@@ -120,10 +142,152 @@ export default function BillingMe() {
             </Card>
           </div>
         ) : (
-          <EmptyState title={t("billing.me.emptyTitle")} description={t("billing.me.emptyDesc")} />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <EmptyState title={t("billing.me.emptyTitle")} description={t("billing.me.emptyDesc")} />
+            <CreditsCard
+              credits={creditsQuery.data}
+              isError={creditsQuery.isError}
+              isLoading={creditsQuery.isLoading}
+              onRetry={() => void creditsQuery.refetch()}
+              t={t}
+            />
+          </div>
         )}
       </div>
     </Layout>
+  );
+}
+
+function CreditsCard({
+  credits,
+  isError,
+  isLoading,
+  onRetry,
+  t,
+}: {
+  credits: CreditBalanceDto[] | undefined;
+  isError: boolean;
+  isLoading: boolean;
+  onRetry: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+      <CardHeader className="p-5 pb-3">
+        <CardTitle className="font-poppins text-xl font-extrabold leading-none">
+          {t("billing.me.creditsTitle")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-5 pt-0">
+        <div className="flex flex-col gap-5">
+          {isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-[#00AEEF]" />
+          ) : isError ? (
+            <div className="flex flex-col items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-amber-800">{t("billing.me.creditsError")}</p>
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                {t("billing.me.retry")}
+              </Button>
+            </div>
+          ) : credits?.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {credits.map((credit) => (
+                <div
+                  key={credit.creditType}
+                  className="rounded-xl border border-slate-100 bg-slate-50 p-3"
+                >
+                  <p className="text-xs font-bold text-slate-700">
+                    {t(`billing.me.creditTypes.${credit.creditType}`)}
+                  </p>
+                  <p className="mt-1 text-2xl font-black tabular-nums text-slate-950">
+                    {credit.balance}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">{t("billing.me.noCredits")}</p>
+          )}
+          <Separator />
+          <CreditVoucherClaimForm />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CreditVoucherClaimForm() {
+  const { t } = useTranslation("common");
+  const queryClient = useQueryClient();
+  const [voucherCode, setVoucherCode] = useState("");
+  const claimMutation = useMutation({
+    mutationFn: (code: string) => claimVoucher(code),
+    onSuccess: async () => {
+      setVoucherCode("");
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_CREDITS });
+    },
+  });
+  const errorMessage =
+    getApiErrorCode(claimMutation.error) === "VOUCHER_TYPE_MISMATCH"
+      ? t("billing.me.discountVoucherHint")
+      : getApiErrorMessage(claimMutation.error);
+
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = voucherCode.trim().toUpperCase();
+    if (code && !claimMutation.isPending) claimMutation.mutate(code);
+  };
+
+  return (
+    <form className="flex flex-col gap-3" onSubmit={submit}>
+      <div className="flex items-center gap-2">
+        <TicketCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-bold text-slate-900">{t("billing.me.voucherTitle")}</p>
+          <p className="text-xs text-slate-500">{t("billing.me.voucherDescription")}</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <Label htmlFor="credit-voucher-code">{t("billing.me.voucherLabel")}</Label>
+          <Input
+            id="credit-voucher-code"
+            value={voucherCode}
+            autoComplete="off"
+            disabled={claimMutation.isPending}
+            placeholder={t("billing.me.voucherPlaceholder")}
+            onChange={(event) => {
+              setVoucherCode(event.target.value.toUpperCase());
+              claimMutation.reset();
+            }}
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={!voucherCode.trim() || claimMutation.isPending}
+        >
+          {claimMutation.isPending ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : null}
+          {t("billing.me.claimVoucher")}
+        </Button>
+      </div>
+      {claimMutation.isSuccess ? (
+        <Alert role="status" aria-live="polite">
+          <AlertDescription>
+            {t("billing.me.voucherClaimed", {
+              count: claimMutation.data.creditUnits,
+              type: t(`billing.me.creditTypes.${claimMutation.data.creditType}`),
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {claimMutation.isError ? (
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+    </form>
   );
 }
 

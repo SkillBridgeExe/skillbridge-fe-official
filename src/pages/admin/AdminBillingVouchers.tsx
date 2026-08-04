@@ -17,6 +17,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { QUERY_KEYS } from "@/constants/app";
@@ -31,11 +39,18 @@ import {
   type AdminVouchersQuery,
   type AdminVoucherStatus,
 } from "@/services/admin-billing.service";
-import { isVoucherFormValid, type VoucherFormValues } from "./admin-voucher-form";
+import {
+  buildVoucherPayload,
+  isVoucherFormValid,
+  type VoucherFormValues,
+} from "./admin-voucher-form";
 
 const EMPTY_FORM = {
   code: "",
+  benefitType: "PERCENT_DISCOUNT" as const,
   discountPercent: "10",
+  creditType: "CV_ANALYSIS" as const,
+  creditUnits: "1",
   startsAt: "",
   endsAt: "",
   maxRedemptions: "100",
@@ -74,16 +89,7 @@ export default function AdminBillingVouchers() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const payload = {
-        code: form.code.trim().toUpperCase(),
-        discountPercent: Number(form.discountPercent),
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: new Date(form.endsAt).toISOString(),
-        maxRedemptions: Number(form.maxRedemptions),
-        perUserLimit: Number(form.perUserLimit),
-        internalNote: form.internalNote.trim() || null,
-        isActive: form.isActive,
-      };
+      const payload = buildVoucherPayload(form);
       return editing ? updateAdminVoucher(editing.id, payload) : createAdminVoucher(payload);
     },
     onSuccess: async () => {
@@ -128,7 +134,10 @@ export default function AdminBillingVouchers() {
     setEditing(voucher);
     setForm({
       code: voucher.code,
-      discountPercent: String(voucher.discountPercent),
+      benefitType: voucher.benefitType,
+      discountPercent: voucher.discountPercent === null ? "" : String(voucher.discountPercent),
+      creditType: voucher.creditType ?? "CV_ANALYSIS",
+      creditUnits: voucher.creditUnits === null ? "1" : String(voucher.creditUnits),
       startsAt: toLocalDateTime(voucher.startsAt),
       endsAt: toLocalDateTime(voucher.endsAt),
       maxRedemptions: String(voucher.maxRedemptions),
@@ -209,7 +218,7 @@ export default function AdminBillingVouchers() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("billing.admin.vouchers.code")}</TableHead>
-                  <TableHead>{t("billing.admin.vouchers.discount")}</TableHead>
+                  <TableHead>{t("billing.admin.vouchers.reward")}</TableHead>
                   <TableHead>{t("billing.admin.vouchers.period")}</TableHead>
                   <TableHead>{t("billing.admin.vouchers.usage")}</TableHead>
                   <TableHead>{t("billing.admin.vouchers.remaining")}</TableHead>
@@ -222,7 +231,20 @@ export default function AdminBillingVouchers() {
                 {items.map((voucher) => (
                   <TableRow key={voucher.id}>
                     <TableCell className="font-mono font-semibold">{voucher.code}</TableCell>
-                    <TableCell>{voucher.discountPercent}%</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {voucher.benefitType === "PERCENT_DISCOUNT"
+                          ? t("billing.admin.vouchers.discountReward", {
+                              percent: voucher.discountPercent,
+                            })
+                          : t("billing.admin.vouchers.creditReward", {
+                              count: voucher.creditUnits,
+                              type: t(
+                                `billing.me.creditTypes.${voucher.creditType ?? "CV_ANALYSIS"}`,
+                              ),
+                            })}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <span className="block">{formatDate(voucher.startsAt)}</span>
                       <span className="block text-muted-foreground">{formatDate(voucher.endsAt)}</span>
@@ -330,7 +352,8 @@ function VoucherDialog({
   onSave: () => void;
 }) {
   const { t } = useTranslation("common");
-  const field = (key: keyof VoucherForm, value: string | boolean) => onFormChange({ ...form, [key]: value });
+  const field = <Key extends keyof VoucherForm,>(key: Key, value: VoucherForm[Key]) =>
+    onFormChange({ ...form, [key]: value });
   const valid = isVoucherFormValid(form);
   const periodInvalid = Boolean(form.startsAt && form.endsAt) && Date.parse(form.startsAt) >= Date.parse(form.endsAt);
 
@@ -355,17 +378,87 @@ function VoucherDialog({
               onChange={(e) => field("code", e.target.value.toUpperCase())}
             />
           </VoucherField>
-          <VoucherField id="voucher-form-discount" label={t("billing.admin.vouchers.discount")}>
-            <Input
-              id="voucher-form-discount"
-              type="number"
-              min={1}
-              max={99}
-              value={form.discountPercent}
+          <VoucherField id="voucher-form-benefit" label={t("billing.admin.vouchers.benefitType")}>
+            <Select
+              value={form.benefitType}
               disabled={editing?.immutable}
-              onChange={(e) => field("discountPercent", e.target.value)}
-            />
+              onValueChange={(value) =>
+                field("benefitType", value as VoucherForm["benefitType"])
+              }
+            >
+              <SelectTrigger id="voucher-form-benefit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="PERCENT_DISCOUNT">
+                    {t("billing.admin.vouchers.benefitTypes.PERCENT_DISCOUNT")}
+                  </SelectItem>
+                  <SelectItem value="CREDIT_GRANT">
+                    {t("billing.admin.vouchers.benefitTypes.CREDIT_GRANT")}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </VoucherField>
+          {form.benefitType === "PERCENT_DISCOUNT" ? (
+            <VoucherField
+              id="voucher-form-discount"
+              label={t("billing.admin.vouchers.discount")}
+            >
+              <Input
+                id="voucher-form-discount"
+                type="number"
+                min={1}
+                max={99}
+                value={form.discountPercent}
+                disabled={editing?.immutable}
+                onChange={(e) => field("discountPercent", e.target.value)}
+              />
+            </VoucherField>
+          ) : (
+            <>
+              <VoucherField
+                id="voucher-form-credit-type"
+                label={t("billing.admin.vouchers.creditType")}
+              >
+                <Select
+                  value={form.creditType}
+                  disabled={editing?.immutable}
+                  onValueChange={(value) =>
+                    field("creditType", value as VoucherForm["creditType"])
+                  }
+                >
+                  <SelectTrigger id="voucher-form-credit-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="CV_ANALYSIS">
+                        {t("billing.me.creditTypes.CV_ANALYSIS")}
+                      </SelectItem>
+                      <SelectItem value="INTERVIEW_SESSION">
+                        {t("billing.me.creditTypes.INTERVIEW_SESSION")}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </VoucherField>
+              <VoucherField
+                id="voucher-form-credit-units"
+                label={t("billing.admin.vouchers.creditUnits")}
+              >
+                <Input
+                  id="voucher-form-credit-units"
+                  type="number"
+                  min={1}
+                  value={form.creditUnits}
+                  disabled={editing?.immutable}
+                  onChange={(e) => field("creditUnits", e.target.value)}
+                />
+              </VoucherField>
+            </>
+          )}
           <VoucherField id="voucher-form-starts-at" label={t("billing.admin.vouchers.startsAt")}>
             <Input
               id="voucher-form-starts-at"

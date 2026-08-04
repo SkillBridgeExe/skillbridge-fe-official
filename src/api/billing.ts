@@ -7,11 +7,12 @@ export type { MeEntitlementDto } from "@shared/api";
 
 export type BillingPurpose =
   | "SUBSCRIPTION"
+  | "CREDIT_PACKAGE"
   | "MENTOR_BOOKING"
   | "MENTOR_DEPOSIT"
   | "MENTOR_REMAINING";
 export type BillingOrderStatus = "PENDING" | "PROCESSING" | "PAID" | "CANCELLED" | "EXPIRED" | "FAILED";
-export type BillingPlanCategory = "SUBSCRIPTION" | "MENTOR_PACKAGE";
+export type BillingPlanCategory = "SUBSCRIPTION" | "MENTOR_PACKAGE" | "CREDIT_PACKAGE";
 export type BillingPlanInterval = "MONTHLY" | "ONE_TIME";
 export type SubscriptionStatus = "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED";
 
@@ -33,16 +34,34 @@ export interface BillingPlanDto {
   isActive?: boolean;
   sortOrder?: number;
   metadata?: Record<string, unknown> | null;
+  creditPackage?: { creditType: CreditType; units: number } | null;
   features: BillingPlanFeatureDto[];
 }
 
+export type CreditType = "CV_ANALYSIS" | "INTERVIEW_SESSION";
+
+export interface CreditPackageDto {
+  code: string;
+  name: string;
+  description: string | null;
+  priceVnd: number;
+  currency: string;
+  creditType: CreditType;
+  units: number;
+}
+
+export interface CreditBalanceDto {
+  creditType: CreditType;
+  balance: number;
+}
+
 /**
- * POST /api/billing/checkout — subscription-only.
+ * POST /api/billing/checkout creates subscription or one-time credit package payments.
  * Mentor booking payments MUST go through the mentor booking API
  * (POST /api/mentor-bookings, POST /api/mentor-bookings/:id/pay).
  */
 export interface CreateCheckoutDto {
-  purpose: "SUBSCRIPTION";
+  purpose: "SUBSCRIPTION" | "CREDIT_PACKAGE";
   planCode?: string;
   voucherCode?: string;
 }
@@ -65,6 +84,13 @@ export interface VoucherQuoteDto extends PricingBreakdownDto {
   valid: true;
 }
 
+export interface CreditVoucherClaimDto {
+  voucherCode: string;
+  creditType: CreditType;
+  creditUnits: number;
+  redeemedAt: string;
+}
+
 export interface CheckoutResponseDto {
   orderId: string;
   orderCode: number;
@@ -75,6 +101,7 @@ export interface CheckoutResponseDto {
   paymentLinkId: string | null;
   expiresAt: string | null;
   pricing: PricingBreakdownDto;
+  creditPackage?: { creditType: CreditType; units: number } | null;
 }
 
 export interface OrderStatusResponseDto {
@@ -88,11 +115,12 @@ export interface OrderStatusResponseDto {
   returnUrl?: string | null;
   paymentLinkId: string | null;
   expiresAt?: string | null;
-  targetType: "SUBSCRIPTION" | "MENTOR_BOOKING";
+  targetType: "SUBSCRIPTION" | "CREDIT_PACKAGE" | "MENTOR_BOOKING";
   targetId: string | null;
   paidAt: string | null;
   createdAt: string;
   pricing: PricingBreakdownDto;
+  creditPackage?: { creditType: CreditType; units: number } | null;
 }
 
 export interface EntitlementFeatureDto {
@@ -116,6 +144,14 @@ export async function getBillingPlansApi(): Promise<BillingPlanDto[]> {
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto[]>>(
     httpClient.get(API_ROUTES.BILLING.PLANS),
     "Failed to load billing plans.",
+  );
+  return envelope.data ?? [];
+}
+
+export async function getCreditPackagesApi(): Promise<CreditPackageDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CreditPackageDto[]>>(
+    httpClient.get(API_ROUTES.BILLING.CREDIT_PACKAGES),
+    "Failed to load credit packages.",
   );
   return envelope.data ?? [];
 }
@@ -166,6 +202,22 @@ export async function getMyUsageApi(): Promise<SubscriptionResponseDto | null> {
     "Failed to load usage.",
   );
   return envelope.data;
+}
+
+export async function claimVoucherApi(voucherCode: string): Promise<CreditVoucherClaimDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CreditVoucherClaimDto>>(
+    httpClient.post(API_ROUTES.BILLING.CLAIM_VOUCHER, { voucherCode }),
+    "Failed to claim voucher.",
+  );
+  return envelope.data;
+}
+
+export async function getMyCreditsApi(): Promise<CreditBalanceDto[]> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CreditBalanceDto[]>>(
+    httpClient.get(API_ROUTES.BILLING.MY_CREDITS),
+    "Failed to load purchased credits.",
+  );
+  return envelope.data ?? [];
 }
 
 /**
