@@ -31,6 +31,7 @@ export type {
   AdminVoucherDto,
   AdminVouchersQuery,
   AdminVoucherStatus,
+  VoucherBenefitType,
   CreateAdminBillingPlanDto,
   CreateAdminVoucherDto,
   ReplaceAdminPlanFeaturesDto,

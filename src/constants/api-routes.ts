@@ -76,6 +76,8 @@ export const API_ROUTES = {
 
   // §1.4 Diagnosis (diagnosis.controller.ts)
   DIAGNOSIS: {
+    /** Upload or rescan a CV and optionally match a JD using one shared analysis usage. */
+    CV_ANALYSIS: `${API}/diagnosis/cv-analysis`,
     /** Chấm LẠI một CV đã upload — body { cvId }. */
     CV_REVIEW: `${API}/diagnosis/cv-review`,
     /** Alias của GET /api/cvs (paginated list). */
@@ -151,12 +153,15 @@ export const API_ROUTES = {
 
   BILLING: {
     PLANS: `${API}/billing/plans`,
+    CREDIT_PACKAGES: `${API}/billing/credit-packages`,
     CHECKOUT: `${API}/billing/checkout`,
     VALIDATE_VOUCHER: `${API}/billing/vouchers/validate`,
+    CLAIM_VOUCHER: `${API}/billing/vouchers/claim`,
     ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}`,
     RECONCILE_ORDER: (orderCode: string | number) => `${API}/billing/orders/${orderCode}/reconcile`,
     MY_SUBSCRIPTION: `${API}/billing/me/subscription`,
     MY_USAGE: `${API}/billing/me/usage`,
+    MY_CREDITS: `${API}/billing/me/credits`,
   },
 
   ADMIN_BILLING: {

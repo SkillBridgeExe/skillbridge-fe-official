@@ -123,6 +123,7 @@ export default function BillingCheckoutStatus() {
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_SUBSCRIPTION });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_USAGE });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS });
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_CREDITS });
     // Also invalidate mentor booking state.
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_MENTOR_BOOKINGS });
     void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MENTOR_OWNED_BOOKINGS });
@@ -419,6 +420,10 @@ export default function BillingCheckoutStatus() {
                         navigate(
                           order.targetType === "MENTOR_BOOKING"
                             ? "/billing/mentor"
+                            : order.status === "PAID" && order.targetType === "CREDIT_PACKAGE"
+                              ? order.creditPackage?.creditType === "INTERVIEW_SESSION"
+                                ? "/interview"
+                                : "/diagnosis"
                             : order.status === "PAID"
                               ? "/billing/me"
                               : "/pricing",
@@ -529,6 +534,10 @@ function PaymentSurface({
     const terminalActionLabel =
       order.targetType === "MENTOR_BOOKING"
         ? t("billing.checkout.viewMentorBooking")
+        : order.status === "PAID" && order.targetType === "CREDIT_PACKAGE"
+          ? order.creditPackage?.creditType === "INTERVIEW_SESSION"
+            ? t("billing.checkout.startInterview")
+            : t("billing.checkout.analyzeCv")
         : order.status === "PAID"
           ? t("billing.checkout.viewMyPlan")
           : t("billing.checkout.backToPricing");

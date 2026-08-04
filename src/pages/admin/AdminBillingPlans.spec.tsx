@@ -41,6 +41,10 @@ vi.mock("react-i18next", () => ({
         "billing.admin.plans.unlimited": "Unlimited",
         "billing.admin.plans.period": "Period",
         "billing.admin.plans.saveQuota": "Save quota",
+        "billing.admin.plans.priceVnd": "Price (VND)",
+        "billing.admin.plans.sortOrder": "Sort order",
+        "billing.admin.plans.creditUnits": "Credits",
+        "billing.admin.plans.description": "Description",
         "billing.admin.table.code": "Code",
         "billing.admin.table.name": "Name",
         "billing.admin.table.category": "Category",
@@ -174,5 +178,37 @@ describe("AdminBillingPlans quota editor", () => {
 
     expect(await screen.findByText("Invalid period")).toBeInTheDocument();
     expect(screen.getByLabelText("Limit for CV diagnosis")).toBeEnabled();
+  });
+
+  it("shows only editable commercial fields for a fixed credit package", async () => {
+    vi.mocked(getAdminBillingPlans).mockResolvedValueOnce([
+      {
+        code: "CV_ANALYSIS_PACK",
+        name: "CV credits",
+        description: "Analyze CVs",
+        category: "CREDIT_PACKAGE",
+        interval: "ONE_TIME",
+        priceVnd: 20000,
+        currency: "VND",
+        isActive: true,
+        sortOrder: 100,
+        creditPackage: { creditType: "CV_ANALYSIS", units: 2 },
+        features: [],
+      },
+    ]);
+
+    renderPage();
+    await screen.findByText("CV_ANALYSIS_PACK");
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(await screen.findByDisplayValue("CV credits")).toBeInTheDocument();
+    expect(screen.getByLabelText("Price (VND)")).toHaveValue("20000");
+    expect(screen.getByLabelText("Credits")).toHaveValue("2");
+    expect(screen.getByLabelText("Sort order")).toHaveValue("100");
+    expect(screen.queryByLabelText("Code")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Interval")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Feature quotas")).not.toBeInTheDocument();
   });
 });

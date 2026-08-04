@@ -17,7 +17,11 @@ export function QuotaUpgradeListener() {
 
   useEffect(() => {
     const onQuota = (event: Event) => {
-      const code = (event as CustomEvent<{ code?: string | null }>).detail?.code ?? null;
+      const detail = (event as CustomEvent<{
+        code?: string | null;
+        creditType?: "CV_ANALYSIS" | "INTERVIEW_SESSION" | null;
+      }>).detail;
+      const code = detail?.code ?? null;
       const now = Date.now();
       if (now - lastShownAt.current < 1500) return; // debounce a burst
       lastShownAt.current = now;
@@ -29,7 +33,10 @@ export function QuotaUpgradeListener() {
         action: (
           <ToastAction
             altText={t("quota402.upgrade")}
-            onClick={() => window.location.assign("/pricing")}
+            onClick={() => {
+              const credit = detail?.creditType;
+              window.location.assign(credit ? `/pricing?credit=${credit}` : "/pricing");
+            }}
           >
             {t("quota402.upgrade")}
           </ToastAction>

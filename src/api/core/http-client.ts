@@ -201,10 +201,14 @@ httpClient.interceptors.response.use(
     // error (the FREE cv_builder_rewrite=0 case looked like a bug). Per-component onError
     // handlers still run; this just guarantees a consistent, on-brand quota message.
     if (status === 402 && typeof window !== "undefined") {
-      const data = error.response?.data as { errorCode?: string; message?: string } | undefined;
+      const data = error.response?.data as {
+        errorCode?: string;
+        message?: string;
+        creditType?: "CV_ANALYSIS" | "INTERVIEW_SESSION";
+      } | undefined;
       window.dispatchEvent(
         new CustomEvent("skillbridge:quota-exceeded", {
-          detail: { code: data?.errorCode ?? null },
+          detail: { code: data?.errorCode ?? null, creditType: data?.creditType ?? null },
         }),
       );
     }

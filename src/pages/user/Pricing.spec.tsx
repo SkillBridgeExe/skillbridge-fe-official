@@ -4,20 +4,23 @@ import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Pricing from "./Pricing";
 import {
   createCheckout,
+  getCreditPackages,
   getBillingPlans,
   getMySubscription,
   validateVoucher,
   type BillingPlanDto,
+  type CreditPackageDto,
 } from "@/services/billing.service";
 
 vi.mock("@/services/billing.service", () => ({
   createCheckout: vi.fn(),
   getBillingPlans: vi.fn(),
+  getCreditPackages: vi.fn(),
   getMySubscription: vi.fn(),
   validateVoucher: vi.fn(),
 }));
@@ -58,8 +61,14 @@ vi.mock("react-i18next", () => ({
         "billing.pricing.voucher.originalPrice": "Original price",
         "billing.pricing.voucher.total": "Total",
         "billing.pricing.voucher.pay": "Pay",
+        "billing.pricing.voucher.cancel": "Cancel",
+        "billing.pricing.credit.confirmTitle": "Buy credits",
+        "billing.pricing.credit.pay": "Pay for credits",
+        "billing.pricing.credit.buy": "Buy",
+        "billing.pricing.credit.noDiscount": "No discount",
       };
       if (key === "billing.pricing.uses") return `${String(options?.count)} uses`;
+      if (key === "billing.pricing.credit.units") return `${String(options?.count)} uses`;
       if (key === "billing.pricing.voucher.discount") {
         return `${String(options?.percent)}% discount`;
       }
@@ -104,7 +113,12 @@ const plans: BillingPlanDto[] = [
   },
 ];
 
-function renderPage() {
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location-search">{location.search}</span>;
+}
+
+function renderPage(initialEntry = "/pricing") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -113,9 +127,10 @@ function renderPage() {
   });
 
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <QueryClientProvider client={queryClient}>
         <Pricing />
+        <LocationProbe />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -131,6 +146,7 @@ async function openCheckout() {
 describe("Pricing", () => {
   beforeEach(() => {
     vi.mocked(getBillingPlans).mockResolvedValue(plans);
+    vi.mocked(getCreditPackages).mockResolvedValue([]);
     vi.mocked(getMySubscription).mockResolvedValue(null);
   });
 
@@ -186,5 +202,31 @@ describe("Pricing", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Voucher expired"));
     expect(screen.getByTestId("checkout-total")).toHaveTextContent("199.000đ");
     expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("uses the server package units and price and clears only the credit query when cancelled", async () => {
+    const packages: CreditPackageDto[] = [
+      {
+        code: "CV_ANALYSIS_PACK",
+        name: "CV analysis credits",
+        description: "Analyze CVs",
+        priceVnd: 20000,
+        currency: "VND",
+        creditType: "CV_ANALYSIS",
+        units: 2,
+      },
+    ];
+    vi.mocked(getCreditPackages).mockResolvedValue(packages);
+
+    renderPage("/pricing?credit=CV_ANALYSIS&source=quota");
+
+    await screen.findByRole("dialog", { name: "Buy credits" });
+    expect(screen.getAllByText("2 uses").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("checkout-total")).toHaveTextContent("20.000đ");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Buy credits" })).not.toBeInTheDocument());
+    expect(screen.getByTestId("location-search")).toHaveTextContent("?source=quota");
   });
 });

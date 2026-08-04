@@ -8,6 +8,7 @@ import type {
   BillingPlanInterval,
   BillingPurpose,
   SubscriptionStatus,
+  CreditType,
 } from "@/api/billing";
 
 export interface AdminPlanFeatureInput {
@@ -38,7 +39,9 @@ export interface CreateAdminBillingPlanDto {
   features: AdminPlanFeatureInput[];
 }
 
-export type UpdateAdminBillingPlanDto = Partial<Omit<CreateAdminBillingPlanDto, "code" | "features">>;
+export type UpdateAdminBillingPlanDto = Partial<Omit<CreateAdminBillingPlanDto, "code" | "features">> & {
+  creditUnits?: number;
+};
 
 export interface ReplaceAdminPlanFeaturesDto {
   features: AdminPlanFeatureInput[];
@@ -97,6 +100,7 @@ export interface AdminSubscriptionDto {
 }
 
 export type AdminVoucherStatus = "ACTIVE" | "UPCOMING" | "EXPIRED" | "INACTIVE";
+export type VoucherBenefitType = "PERCENT_DISCOUNT" | "CREDIT_GRANT";
 
 export interface AdminVouchersQuery extends PaginationQuery {
   search?: string;
@@ -106,8 +110,11 @@ export interface AdminVouchersQuery extends PaginationQuery {
 export interface AdminVoucherDto {
   id: string;
   code: string;
-  discountPercent: number;
-  applicablePlanCode: "PREMIUM";
+  benefitType: VoucherBenefitType;
+  discountPercent: number | null;
+  applicablePlanCode: "PREMIUM" | null;
+  creditType: CreditType | null;
+  creditUnits: number | null;
   startsAt: string;
   endsAt: string;
   maxRedemptions: number;
@@ -123,9 +130,8 @@ export interface AdminVoucherDto {
   updatedAt: string | null;
 }
 
-export interface CreateAdminVoucherDto {
+interface AdminVoucherMutationBase {
   code: string;
-  discountPercent: number;
   startsAt: string;
   endsAt: string;
   maxRedemptions: number;
@@ -134,7 +140,23 @@ export interface CreateAdminVoucherDto {
   internalNote?: string | null;
 }
 
-export type UpdateAdminVoucherDto = Partial<CreateAdminVoucherDto>;
+export type CreateAdminVoucherDto =
+  | (AdminVoucherMutationBase & {
+      benefitType: "PERCENT_DISCOUNT";
+      discountPercent: number;
+    })
+  | (AdminVoucherMutationBase & {
+      benefitType: "CREDIT_GRANT";
+      creditType: CreditType;
+      creditUnits: number;
+    });
+
+export interface UpdateAdminVoucherDto extends Partial<AdminVoucherMutationBase> {
+  benefitType?: VoucherBenefitType;
+  discountPercent?: number;
+  creditType?: CreditType;
+  creditUnits?: number;
+}
 
 export async function getAdminBillingPlansApi(includeInactive: boolean): Promise<BillingPlanDto[]> {
   const envelope = await unwrapEnvelope<ApiEnvelope<BillingPlanDto[]>>(
