@@ -66,6 +66,8 @@ vi.mock("react-i18next", () => ({
         "billing.pricing.credit.pay": "Pay for credits",
         "billing.pricing.credit.buy": "Buy",
         "billing.pricing.credit.noDiscount": "No discount",
+        "billing.pricing.credit.loadFailedTitle": "Could not load credit packages",
+        "billing.pricing.credit.loadFailedDesc": "Credit packages are temporarily unavailable.",
       };
       if (key === "billing.pricing.uses") return `${String(options?.count)} uses`;
       if (key === "billing.pricing.credit.units") return `${String(options?.count)} uses`;
@@ -204,6 +206,16 @@ describe("Pricing", () => {
     expect(createCheckout).not.toHaveBeenCalled();
   });
 
+  it("hides technical API route errors behind friendly credit-package copy", async () => {
+    vi.mocked(getCreditPackages).mockRejectedValue(
+      new Error("Cannot GET /api/billing/credit-packages"),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Credit packages are temporarily unavailable.")).toBeVisible();
+    expect(screen.queryByText(/Cannot GET/)).not.toBeInTheDocument();
+  });
   it("uses the server package units and price and clears only the credit query when cancelled", async () => {
     const packages: CreditPackageDto[] = [
       {

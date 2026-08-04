@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { QUERY_KEYS } from "@/constants/app";
-import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getVoucherErrorMessage } from "@/lib/billing-error";
 import { EmptyState, formatDate, StatusBadge } from "@/lib/billing-ui";
 import {
   claimVoucher,
@@ -227,10 +227,7 @@ function CreditVoucherClaimForm() {
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BILLING_CREDITS });
     },
   });
-  const errorMessage =
-    getApiErrorCode(claimMutation.error) === "VOUCHER_TYPE_MISMATCH"
-      ? t("billing.me.discountVoucherHint")
-      : getApiErrorMessage(claimMutation.error);
+  const errorMessage = getVoucherErrorMessage(claimMutation.error, t, "CREDIT_CLAIM");
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

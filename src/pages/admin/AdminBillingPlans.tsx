@@ -149,7 +149,7 @@ export default function AdminBillingPlans() {
     onError: (error) =>
       toast({
         title: t("billing.admin.plans.toastCreateFailed"),
-        description: getApiErrorMessage(error),
+        description: getApiErrorMessage(error, t("billing.errors.adminSave")),
         variant: "destructive",
       }),
   });
@@ -186,7 +186,7 @@ export default function AdminBillingPlans() {
     onError: (error) =>
       toast({
         title: t("billing.admin.plans.toastUpdateFailed"),
-        description: getApiErrorMessage(error),
+        description: getApiErrorMessage(error, t("billing.errors.adminSave")),
         variant: "destructive",
       }),
   });
@@ -212,7 +212,7 @@ export default function AdminBillingPlans() {
       toast({ title: t("billing.admin.plans.toastQuotaSaved") });
     },
     onError: (error, variables) => {
-      const message = getApiErrorMessage(error);
+      const message = getApiErrorMessage(error, t("billing.errors.adminSave"));
       setQuotaErrors((prev) => ({
         ...prev,
         [variables.feature.featureKey]: message,
