@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { httpClient } from "@/api/core/http-client";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
@@ -11,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
+import { useDiagnosisRolesQuery } from "@/hooks/use-diagnosis-roles";
 import { matchScoreBand } from "@/lib/match-score-band";
 import type { JobRecommendationDto, JobRecommendationsResponse } from "@shared/api";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
@@ -28,7 +27,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IT_ROLES, getRoleLabel } from "@/constants/it-roles";
+import { getRoleLabel } from "@/constants/it-roles";
+import type { DiagnosisRole } from "@/api/cv/diagnosis-roles";
 
 
 type WorkModeType = "ONSITE" | "HYBRID" | "REMOTE";
@@ -39,12 +39,21 @@ type SortOptionType = "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
 
 function countActiveFilters(query: JobRecommendationsQuery): number {
   return (
+    (query.q?.trim() ? 1 : 0) +
     (query.cityCodes?.length ? 1 : 0) +
+    (query.cityNames?.length ? 1 : 0) +
+    (query.districtCodes?.length ? 1 : 0) +
+    (query.sourceNames?.length ? 1 : 0) +
     (query.workModes?.length ? 1 : 0) +
     (query.experienceLevels?.length ? 1 : 0) +
     (query.employmentTypes?.length ? 1 : 0) +
     (query.fit?.length ? 1 : 0) +
     (query.role && query.role !== "all" ? 1 : 0) +
+    (query.postedFrom ? 1 : 0) +
+    (query.postedTo ? 1 : 0) +
+    (query.salaryMin != null ? 1 : 0) +
+    (query.salaryMax != null ? 1 : 0) +
+    (query.salaryCurrency ? 1 : 0) +
     (query.salaryOnly ? 1 : 0)
   );
 }
@@ -127,21 +136,35 @@ function priorityGaps(job: JobRecommendationDto): PriorityGap[] {
   return result;
 }
 
-function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
+function JobMarketSummary({
+  data,
+  roles,
+  language,
+  t,
+}: {
+  data: JobRecommendationsResponse;
+  roles: DiagnosisRole[];
+  language: string;
+  t: ReturnType<typeof import("react-i18next").useTranslation>["t"];
+}) {
   const { total, facets, role_scope, pool_size, eligible_pool_size } = data;
   const finalTotal = total ?? eligible_pool_size ?? pool_size ?? 0;
 
   const roleCode = role_scope?.role_code;
-  const roleName = (data as any)?.rolesData?.find((r: any) => r.code === roleCode)?.label || getRoleLabel(roleCode) || roleCode || t("jobs.allRoles");
+  const role = roles.find((item) => item.code === roleCode);
+  const roleName = (language.startsWith("vi") ? role?.label_vi : role?.label_en)
+    || getRoleLabel(roleCode)
+    || roleCode
+    || t("jobs.allRoles");
 
   type FacetBucket = { value: string; count: number };
 
   // Find top location (most jobs)
-  const topLocation = facets?.city_names && facets.city_codes.length > 0
-    ? facets.city_codes.reduce((prev: FacetBucket, current: FacetBucket) => (prev.count > current.count) ? prev : current, facets.city_codes[0])
+  const topLocation = facets?.city_names && facets.city_names.length > 0
+    ? facets.city_names.reduce((prev: FacetBucket, current: FacetBucket) => (prev.count > current.count) ? prev : current, facets.city_names[0])
     : undefined;
 
-  const cityName = topLocation ? t(`jobs.cities.${topLocation.value}`, { defaultValue: topLocation.value }) : null;
+  const cityName = topLocation?.value ?? null;
 
   // Find top work mode
   const topWorkMode = facets?.work_modes && facets.work_modes.length > 0
@@ -487,16 +510,12 @@ export function JobRecommendations({
   cvId: string | null;
   targetRole?: string | null;
 }) {
-  const { t } = useTranslation("diagnosis");
-
-  const { data: rolesData } = useQuery({
-    queryKey: ["diagnosis-roles"],
-    queryFn: async () => {
-      const res = await httpClient.get<{ data: { code: string; label: string }[] }>("/api/diagnosis/roles");
-      return res.data.data;
-    },
-    staleTime: 60 * 60_000,
-  });
+  const { t, i18n } = useTranslation("diagnosis");
+  const { data: rolesData = [] } = useDiagnosisRolesQuery();
+  const roleOptions = rolesData.map((role) => ({
+    code: role.code,
+    label: i18n.language.startsWith("vi") ? role.label_vi : role.label_en,
+  }));
 
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [stateCvId, setStateCvId] = useState(cvId);
@@ -509,19 +528,20 @@ export function JobRecommendations({
   const [desktopAdvancedOpen, setDesktopAdvancedOpen] = useState(false);
   const [mobileDraftQuery, setMobileDraftQuery] = useState<JobRecommendationsQuery>(queryState);
   const [searchInput, setSearchInput] = useState(queryState.q || "");
+  const [accumulatedRecs, setAccumulatedRecs] = useState<JobRecommendationDto[]>([]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
       if (isExplorerOpen) {
         setQueryState(p => {
           if (p.q === searchInput) return p;
+          setAccumulatedRecs([]);
           return { ...p, q: searchInput || undefined, offset: 0 };
         });
       }
     }, 400);
     return () => clearTimeout(handler);
   }, [searchInput, isExplorerOpen]);
-  const [accumulatedRecs, setAccumulatedRecs] = useState<JobRecommendationDto[]>([]);
   const cvChanged = stateCvId !== cvId;
 
   const activeQuery = useMemo(() => {
@@ -565,6 +585,7 @@ export function JobRecommendations({
     setQueryState({ limit: 5, offset: 0, sort: "RECOMMENDED" });
     setMobileDraftQuery({ limit: 5, offset: 0, sort: "RECOMMENDED" });
     setAccumulatedRecs([]);
+    setSearchInput("");
   }, [cvId]);
 
   // Capture snapshot token exactly once per snapshot
@@ -627,6 +648,7 @@ export function JobRecommendations({
         sort: "RECOMMENDED",
         snapshotToken: prev.snapshotToken,
       }));
+      setSearchInput("");
       return;
     }
     setQueryState((prev) => ({
@@ -636,6 +658,7 @@ export function JobRecommendations({
       snapshotToken: prev.snapshotToken,
     }));
     setAccumulatedRecs([]);
+    setSearchInput("");
   };
 
   const updateFilterQuery = (
@@ -661,16 +684,6 @@ export function JobRecommendations({
       role: roleCode,
       offset: 0,
     }));
-  };
-
-  const handleToggleCity = (code: string) => {
-    updateFilterQuery((prev) => {
-      const current = prev.cityCodes ?? [];
-      const updated = current.includes(code)
-        ? current.filter((c) => c !== code)
-        : [...current, code];
-      return { ...prev, cityCodes: updated.length ? updated : undefined, offset: 0 };
-    });
   };
 
   const handleToggleWorkMode = (mode: "ONSITE" | "HYBRID" | "REMOTE") => {
@@ -727,7 +740,7 @@ export function JobRecommendations({
 
       {/* Market Summary Block */}
       {!isLoading && !quotaBlocked && !isError && data && (
-        <JobMarketSummary data={{...data, rolesData} as any} t={t} />
+        <JobMarketSummary data={data} roles={rolesData} language={i18n.language} t={t} />
       )}
 
       {/* Header Bar */}
@@ -818,7 +831,7 @@ export function JobRecommendations({
                     </option>
                   )}
                   <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
-                  {(rolesData || IT_ROLES).map((r) => (
+                  {roleOptions.map((r) => (
                     <option key={r.code} value={r.code}>{r.label}</option>
                   ))}
                 </select>
@@ -875,7 +888,7 @@ export function JobRecommendations({
                 </div>
               )}
               {/* City facet buttons */}
-              {facets?.city_names && facets.city_codes.length > 0 && (
+              {facets?.city_names && facets.city_names.length > 0 && (
                 <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
                   {facets.city_names.map((city) => {
                     const isSelected = filterQuery.cityNames?.includes(city.value);
@@ -1024,6 +1037,59 @@ export function JobRecommendations({
                 </div>
               )}
 
+              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t("jobs.dateFrom", { defaultValue: "Đăng từ ngày" })}
+                  <input
+                    type="date"
+                    value={filterQuery.postedFrom ?? ""}
+                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, postedFrom: event.target.value || undefined, offset: 0 }))}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                  />
+                </label>
+                <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t("jobs.dateTo", { defaultValue: "Đăng đến ngày" })}
+                  <input
+                    type="date"
+                    value={filterQuery.postedTo ?? ""}
+                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, postedTo: event.target.value || undefined, offset: 0 }))}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                  />
+                </label>
+                <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t("jobs.salaryMin", { defaultValue: "Lương tối thiểu" })}
+                  <input
+                    type="number"
+                    min={0}
+                    value={filterQuery.salaryMin ?? ""}
+                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryMin: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))}
+                    className="w-28 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                  />
+                </label>
+                <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t("jobs.salaryMax", { defaultValue: "Lương tối đa" })}
+                  <input
+                    type="number"
+                    min={0}
+                    value={filterQuery.salaryMax ?? ""}
+                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryMax: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))}
+                    className="w-28 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                  />
+                </label>
+                <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t("jobs.salaryCurrency", { defaultValue: "Đơn vị tiền tệ" })}
+                  <select
+                    value={filterQuery.salaryCurrency ?? ""}
+                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryCurrency: event.target.value || undefined, offset: 0 }))}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                  >
+                    <option value="">--</option>
+                    <option value="VND">VND</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </label>
+              </div>
+
               {/* Salary-only toggle */}
               <button
                 type="button"
@@ -1140,10 +1206,24 @@ export function JobRecommendations({
                         </option>
                       )}
                       <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
-                      {(rolesData || IT_ROLES).map((r) => (
+                      {roleOptions.map((r) => (
                         <option key={r.code} value={r.code}>{r.label}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="job-search-mobile" className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {t("jobs.searchPlaceholder", { defaultValue: "Tìm kiếm việc làm" })}
+                    </label>
+                    <input
+                      id="job-search-mobile"
+                      type="search"
+                      value={mobileDraftQuery.q ?? ""}
+                      onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, q: event.target.value || undefined, offset: 0 }))}
+                      placeholder={t("jobs.searchPlaceholder", { defaultValue: "Tìm kiếm việc làm" })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                    />
                   </div>
 
                   {/* City facet */}
@@ -1167,6 +1247,62 @@ export function JobRecommendations({
                               )}
                             >
                               {city.value} ({city.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {facets?.district_codes && facets.district_codes.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {t("jobs.districtFilter", { defaultValue: "Quận/Huyện" })}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.district_codes.map((district) => {
+                          const selected = mobileDraftQuery.districtCodes?.includes(district.value);
+                          return (
+                            <button
+                              key={district.value}
+                              type="button"
+                              aria-pressed={Boolean(selected)}
+                              onClick={() => updateFilterQuery((prev) => {
+                                const current = prev.districtCodes ?? [];
+                                const next = current.includes(district.value) ? current.filter((item) => item !== district.value) : [...current, district.value];
+                                return { ...prev, districtCodes: next.length ? next : undefined, offset: 0 };
+                              })}
+                              className={cn("rounded-lg border px-3 py-1.5 text-xs font-bold", selected ? "border-sky-500 bg-sky-500 text-white" : "border-slate-200 bg-slate-50 text-slate-700")}
+                            >
+                              {district.value} ({district.count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {facets?.source_names && facets.source_names.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {t("jobs.sourceFilter", { defaultValue: "Nguồn tuyển dụng" })}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {facets.source_names.map((source) => {
+                          const selected = mobileDraftQuery.sourceNames?.includes(source.value);
+                          return (
+                            <button
+                              key={source.value}
+                              type="button"
+                              aria-pressed={Boolean(selected)}
+                              onClick={() => updateFilterQuery((prev) => {
+                                const current = prev.sourceNames ?? [];
+                                const next = current.includes(source.value) ? current.filter((item) => item !== source.value) : [...current, source.value];
+                                return { ...prev, sourceNames: next.length ? next : undefined, offset: 0 };
+                              })}
+                              className={cn("rounded-lg border px-3 py-1.5 text-xs font-bold", selected ? "border-sky-500 bg-sky-500 text-white" : "border-slate-200 bg-slate-50 text-slate-700")}
+                            >
+                              {source.value} ({source.count})
                             </button>
                           );
                         })}
@@ -1299,6 +1435,43 @@ export function JobRecommendations({
                     </div>
                   )}
 
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {t("jobs.dateRange", { defaultValue: "Thời gian đăng" })}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                        {t("jobs.dateFrom", { defaultValue: "Đăng từ ngày" })}
+                        <input type="date" value={mobileDraftQuery.postedFrom ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, postedFrom: event.target.value || undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                      </label>
+                      <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                        {t("jobs.dateTo", { defaultValue: "Đăng đến ngày" })}
+                        <input type="date" value={mobileDraftQuery.postedTo ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, postedTo: event.target.value || undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                      </label>
+                    </div>
+                    <p className="pt-1 text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {t("jobs.salaryRange", { defaultValue: "Khoảng lương" })}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                        {t("jobs.salaryMin", { defaultValue: "Lương tối thiểu" })}
+                        <input type="number" min={0} value={mobileDraftQuery.salaryMin ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryMin: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                      </label>
+                      <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                        {t("jobs.salaryMax", { defaultValue: "Lương tối đa" })}
+                        <input type="number" min={0} value={mobileDraftQuery.salaryMax ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryMax: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                      </label>
+                    </div>
+                    <label className="grid gap-1 text-xs font-semibold text-slate-600">
+                      {t("jobs.salaryCurrency", { defaultValue: "Đơn vị tiền tệ" })}
+                      <select value={mobileDraftQuery.salaryCurrency ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryCurrency: event.target.value || undefined, offset: 0 }))} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs">
+                        <option value="">--</option>
+                        <option value="VND">VND</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </label>
+                  </div>
+
                   {/* Salary Only Toggle */}
                   <div className="pt-2">
                     <button
@@ -1320,6 +1493,7 @@ export function JobRecommendations({
                     <Button
                       onClick={() => {
                         setQueryState({ ...mobileDraftQuery, offset: 0, limit: 10 });
+                        setSearchInput(mobileDraftQuery.q ?? "");
                         setAccumulatedRecs([]);
                       }}
                       className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm h-11 rounded-xl"
@@ -1379,12 +1553,13 @@ export function JobRecommendations({
               if (errorStatus === 410 && queryState.snapshotToken) {
                 setQueryState(prev => {
                   const { snapshotToken: _, ...rest } = prev;
-                  return rest;
+                  return { ...rest, offset: 0 };
                 });
                 setMobileDraftQuery(prev => {
                   const { snapshotToken: _, ...rest } = prev;
-                  return rest;
+                  return { ...rest, offset: 0 };
                 });
+                setAccumulatedRecs([]);
               } else {
                 refetch();
               }

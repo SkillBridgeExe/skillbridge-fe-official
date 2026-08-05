@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { JobRecommendations } from "./JobRecommendations";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
@@ -13,6 +13,7 @@ afterEach(() => {
 // ── Mocks ──
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
+    i18n: { language: "vi" },
     t: (key: string, opts?: Record<string, unknown>) => {
       if (key === "jobs.top5Title") return "Top 5 việc làm phù hợp nhất";
       if (key === "jobs.explorerTitle") return "Khám phá việc làm phù hợp";
@@ -57,16 +58,14 @@ vi.mock("react-router-dom", () => ({
 }));
 
 
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return {
-    ...actual,
-    useQuery: vi.fn().mockReturnValue({ data: undefined }),
-  };
-});
-
 vi.mock("@/hooks/use-diagnosis", () => ({
   useJobRecommendationsQuery: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-diagnosis-roles", () => ({
+  useDiagnosisRolesQuery: vi.fn().mockReturnValue({
+    data: [{ code: "frontend_developer", label_vi: "Lập trình viên Frontend", label_en: "Frontend Developer" }],
+  }),
 }));
 
 const mockJobsData = {
@@ -109,6 +108,8 @@ const mockJobsData = {
   facets: {
     city_codes: [{ value: "HCM", count: 8 }, { value: "HAN", count: 7 }],
     city_names: [{ value: "Hồ Chí Minh", count: 8 }, { value: "Hà Nội", count: 7 }],
+    district_codes: [{ value: "Q1", count: 4 }],
+    source_names: [{ value: "itviec", count: 12 }],
     work_modes: [{ value: "REMOTE", count: 5 }, { value: "HYBRID", count: 10 }],
     employment_types: [{ value: "FULL_TIME", count: 12 }, { value: "PART_TIME", count: 3 }],
     experience_levels: [{ value: "SENIOR", count: 6 }, { value: "MIDDLE", count: 9 }],
@@ -445,6 +446,31 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     ]);
   });
 
+  it("counts city-name filters in the mobile draft and exposes clear filters", () => {
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByRole("button", { name: /^Bộ lọc$/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Hồ Chí Minh (8)" }));
+
+    expect(screen.getByRole("button", { name: "Xóa bộ lọc" })).toBeInTheDocument();
+  });
+
+  it("renders every production explorer filter in the mobile drawer", () => {
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByRole("button", { name: /^Bộ lọc$/i }));
+
+    const drawer = screen.getByRole("dialog");
+    expect(within(drawer).getByLabelText("Tìm kiếm việc làm")).toBeInTheDocument();
+    expect(within(drawer).getByText("Q1 (4)")).toBeInTheDocument();
+    expect(within(drawer).getByText("itviec (12)")).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Đăng từ ngày")).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Đăng đến ngày")).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Lương tối thiểu")).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Lương tối đa")).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Đơn vị tiền tệ")).toBeInTheDocument();
+  });
+
   describe("Pagination & Snapshot Token Stability", () => {
     it("successful response captures token, explorer toggle preserves it", () => {
       const mockQuery = vi.mocked(useJobRecommendationsQuery);
@@ -475,7 +501,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       );
     });
 
-    it("expired-token retry clears token and causes a tokenless hook query", () => {
+    it("expired-token retry clears the old snapshot and restarts from the first page", () => {
       const mockQuery = vi.mocked(useJobRecommendationsQuery);
 
       // Step 1: succeed and get a token
@@ -490,7 +516,11 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       fireEvent.click(screen.getByText(/Xem tất cả/));
       rerender(<JobRecommendations cvId="cv-123" />);
 
-      console.log("mock calls: ", JSON.stringify(mockQuery.mock.calls, null, 2));
+      fireEvent.click(screen.getByText("Tải thêm việc làm"));
+      expect(mockQuery).toHaveBeenLastCalledWith(
+        "cv-123",
+        expect.objectContaining({ offset: 10, snapshotToken: "valid-token-abc" }),
+      );
 
       expect(mockQuery).toHaveBeenLastCalledWith(
         "cv-123",
@@ -515,8 +545,9 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       // Step 3: verify the query was called without the token
       expect(mockQuery).toHaveBeenLastCalledWith(
         "cv-123",
-        expect.not.objectContaining({ snapshotToken: expect.anything() })
+        expect.objectContaining({ offset: 0 }),
       );
+      expect(mockQuery.mock.calls.at(-1)?.[1]?.snapshotToken).toBeUndefined();
     });
 
     it("non-410 retry keeps the snapshot token and refetches the same query", () => {
@@ -823,6 +854,22 @@ describe("structured locations rendering", () => {
     // Raw codes should not appear
     expect(screen.queryByText("HCM (8)")).not.toBeInTheDocument();
     expect(screen.queryByText("HAN (7)")).not.toBeInTheDocument();
+  });
+
+  it("renders city-name facets even when legacy city-code facets are empty", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        facets: { ...mockJobsData.facets, city_codes: [] },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    expect(screen.getByText("Hồ Chí Minh (8)")).toBeInTheDocument();
   });
 
   it("updates query when new PR #237 filters are used", async () => {
