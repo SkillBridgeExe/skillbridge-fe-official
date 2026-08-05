@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { httpClient } from "@/api/core/http-client";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
@@ -47,8 +49,11 @@ function countActiveFilters(query: JobRecommendationsQuery): number {
   );
 }
 
-function localizedCity(value: string, t: (key: string, options?: Record<string, unknown>) => string): string {
-  return t(`jobs.cities.${value}`, { defaultValue: value });
+function localizedCity(value: string, t: ReturnType<typeof import("react-i18next").useTranslation>["t"]): string {
+  const translated = t(`jobs.cities.${value}`, { defaultValue: "" });
+  // If i18n has a real label, use it; otherwise fall back to unknownLocation
+  // so the user never sees a raw technical code like "HAN" or "HCM".
+  return translated || t("jobs.unknownLocation");
 }
 
 function asWorkMode(val: string): WorkModeType | undefined {
@@ -86,7 +91,7 @@ function formatSalary(
   max: number | null,
   currency: string,
   period: "MONTH" | "YEAR" | null,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: ReturnType<typeof import("react-i18next").useTranslation>["t"],
 ): string | null {
   if (min == null && max == null) return null;
   const fmt = (n: number) => (currency === "VND" ? `${Math.round(n / 1_000_000)}` : n.toLocaleString());
@@ -122,17 +127,17 @@ function priorityGaps(job: JobRecommendationDto): PriorityGap[] {
   return result;
 }
 
-function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (key: string, options?: Record<string, unknown>) => string }) {
+function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
   const { total, facets, role_scope, pool_size, eligible_pool_size } = data;
   const finalTotal = total ?? eligible_pool_size ?? pool_size ?? 0;
 
   const roleCode = role_scope?.role_code;
-  const roleName = getRoleLabel(roleCode) || roleCode || t("jobs.allRoles");
+  const roleName = (data as any)?.rolesData?.find((r: any) => r.code === roleCode)?.label || getRoleLabel(roleCode) || roleCode || t("jobs.allRoles");
 
   type FacetBucket = { value: string; count: number };
 
   // Find top location (most jobs)
-  const topLocation = facets?.city_codes && facets.city_codes.length > 0
+  const topLocation = facets?.city_names && facets.city_codes.length > 0
     ? facets.city_codes.reduce((prev: FacetBucket, current: FacetBucket) => (prev.count > current.count) ? prev : current, facets.city_codes[0])
     : undefined;
 
@@ -193,12 +198,14 @@ function JobMarketSummary({ data, t }: { data: JobRecommendationsResponse; t: (k
   );
 }
 
-function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t: any): string {
+function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t: ReturnType<typeof import("react-i18next").useTranslation>["t"]): string | null {
   const parts: string[] = [];
   if (loc.address_line?.trim()) parts.push(loc.address_line.trim());
   if (loc.district_name?.trim()) parts.push(loc.district_name.trim());
-  if (loc.city_code?.trim()) {
-    const city = localizedCity(loc.city_code.trim(), t);
+  if (loc.city_name?.trim()) {
+    parts.push(loc.city_name.trim());
+  } else if (loc.city_code?.trim()) {
+    const city = loc.city_name?.trim() || localizedCity(loc.city_code.trim(), t);
     if (city && city !== "null") parts.push(city);
   }
   
@@ -206,10 +213,10 @@ function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t:
     arr.findIndex(v => v.toLowerCase() === val.toLowerCase()) === idx
   );
 
-  return uniqueParts.join(", ") || t("jobs.unknownLocation");
+  return uniqueParts.join(", ") || null;
 }
 
-function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: import("@shared/api").JobLocationDisplay[], fallbackLocation: string | null, t: any }) {
+function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: import("@shared/api").JobLocationDisplay[], fallbackLocation: string | null, t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
   if (!locations || locations.length === 0) {
     const text = fallbackLocation || t("jobs.unknownLocation");
     return (
@@ -221,7 +228,8 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
   }
 
   const primary = locations.find((l) => l.is_primary) || locations[0];
-  const primaryText = formatLocationDisplay(primary, t);
+  const formatted = formatLocationDisplay(primary, t);
+  const primaryText = formatted || fallbackLocation || t("jobs.unknownLocation");
 
   if (locations.length === 1) {
     return (
@@ -247,7 +255,7 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
         {locations.map((loc, i) => (
           <li key={i} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed">
             <MapPin className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", loc.is_primary ? "text-sky-500" : "text-slate-400")} />
-            <span>{formatLocationDisplay(loc, t)}</span>
+            <span>{formatLocationDisplay(loc, t) || t("jobs.unknownLocation")}</span>
           </li>
         ))}
       </ul>
@@ -255,7 +263,7 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
   );
 }
 
-function JobCard({ job, t }: { job: JobRecommendationDto; t: (key: string, options?: Record<string, unknown>) => string }) {
+function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = job.salary_visible === false
     ? null
@@ -481,6 +489,15 @@ export function JobRecommendations({
 }) {
   const { t } = useTranslation("diagnosis");
 
+  const { data: rolesData } = useQuery({
+    queryKey: ["diagnosis-roles"],
+    queryFn: async () => {
+      const res = await httpClient.get<{ data: { code: string; label: string }[] }>("/api/diagnosis/roles");
+      return res.data.data;
+    },
+    staleTime: 60 * 60_000,
+  });
+
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [stateCvId, setStateCvId] = useState(cvId);
   const [queryState, setQueryState] = useState<JobRecommendationsQuery>({
@@ -491,6 +508,19 @@ export function JobRecommendations({
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [desktopAdvancedOpen, setDesktopAdvancedOpen] = useState(false);
   const [mobileDraftQuery, setMobileDraftQuery] = useState<JobRecommendationsQuery>(queryState);
+  const [searchInput, setSearchInput] = useState(queryState.q || "");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (isExplorerOpen) {
+        setQueryState(p => {
+          if (p.q === searchInput) return p;
+          return { ...p, q: searchInput || undefined, offset: 0 };
+        });
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchInput, isExplorerOpen]);
   const [accumulatedRecs, setAccumulatedRecs] = useState<JobRecommendationDto[]>([]);
   const cvChanged = stateCvId !== cvId;
 
@@ -510,8 +540,7 @@ export function JobRecommendations({
           limit: 5,
           offset: 0,
           sort: "RECOMMENDED" as const,
-          ...(role ? { role } : {}),
-          ...(queryState.snapshotToken ? { snapshotToken: queryState.snapshotToken } : {})
+          ...(role ? { role } : {})
         };
   }, [cvChanged, isExplorerOpen, queryState, targetRole]);
 
@@ -526,6 +555,7 @@ export function JobRecommendations({
   const lastPageCount = rawRecs.length;
   const loadedThrough = (data?.offset ?? activeQuery.offset ?? 0) + lastPageCount;
   const hasMore = isExplorerOpen && lastPageCount > 0 && loadedThrough < total;
+  // W-LOCATION-FILTER-PRODUCTION-FE-AGY: ALWAYS show explorer button even if total <= 5
   const filterQuery = mobileFilterOpen ? mobileDraftQuery : queryState;
 
   useEffect(() => {
@@ -697,7 +727,7 @@ export function JobRecommendations({
 
       {/* Market Summary Block */}
       {!isLoading && !quotaBlocked && !isError && data && (
-        <JobMarketSummary data={data} t={t} />
+        <JobMarketSummary data={{...data, rolesData} as any} t={t} />
       )}
 
       {/* Header Bar */}
@@ -719,7 +749,7 @@ export function JobRecommendations({
         </div>
 
         {/* View All / Show Top 5 toggle button */}
-        {!isLoading && !quotaBlocked && !isError && total > 5 && (
+        {!isLoading && !quotaBlocked && !isError && (
           <Button
             size="sm"
             variant={isExplorerOpen ? "outline" : "default"}
@@ -755,6 +785,18 @@ export function JobRecommendations({
                 {t("jobs.filterTitle", { defaultValue: "Bộ lọc:" })}
               </span>
 
+
+              {/* Search Input */}
+              <div className="flex items-center gap-1.5 border-r border-slate-200 pr-2">
+                <input
+                  type="text"
+                  placeholder={t("jobs.searchPlaceholder", { defaultValue: "Tìm kiếm..." })}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 w-40"
+                />
+              </div>
+
               {/* Role Select Dropdown */}
               <div className="flex items-center gap-1.5 border-r border-slate-200 pr-2">
                 <span className="text-xs font-semibold text-slate-600">{t("jobs.roleLabel", { defaultValue: "Vai trò:" })}</span>
@@ -776,23 +818,73 @@ export function JobRecommendations({
                     </option>
                   )}
                   <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
-                  {IT_ROLES.map((r) => (
+                  {(rolesData || IT_ROLES).map((r) => (
                     <option key={r.code} value={r.code}>{r.label}</option>
                   ))}
                 </select>
               </div>
 
-              {/* City facet buttons */}
-              {facets?.city_codes && facets.city_codes.length > 0 && (
+
+              {/* District facet buttons */}
+              {facets?.district_codes && facets.district_codes.length > 0 && (
                 <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
-                  {facets.city_codes.map((city) => {
-                    const isSelected = filterQuery.cityCodes?.includes(city.value);
+                  <span className="text-xs font-semibold text-slate-600">{t("jobs.districtFilter", { defaultValue: "Quận/Huyện" })}:</span>
+                  {facets.district_codes.map((district) => {
+                    const isSelected = filterQuery.districtCodes?.includes(district.value);
+                    return (
+                      <button
+                        key={district.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => updateFilterQuery(prev => {
+                          const current = prev.districtCodes ?? [];
+                          const updated = current.includes(district.value) ? current.filter(c => c !== district.value) : [...current, district.value];
+                          return { ...prev, districtCodes: updated.length ? updated : undefined, offset: 0 };
+                        })}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums ${isSelected ? 'bg-sky-500 text-white border-sky-500 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                      >
+                        {district.value} ({district.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Source facet buttons */}
+              {facets?.source_names && facets.source_names.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  <span className="text-xs font-semibold text-slate-600">{t("jobs.sourceFilter", { defaultValue: "Nguồn" })}:</span>
+                  {facets.source_names.map((source) => {
+                    const isSelected = filterQuery.sourceNames?.includes(source.value);
+                    return (
+                      <button
+                        key={source.value}
+                        type="button"
+                        aria-pressed={Boolean(isSelected)}
+                        onClick={() => updateFilterQuery(prev => {
+                          const current = prev.sourceNames ?? [];
+                          const updated = current.includes(source.value) ? current.filter(c => c !== source.value) : [...current, source.value];
+                          return { ...prev, sourceNames: updated.length ? updated : undefined, offset: 0 };
+                        })}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums ${isSelected ? 'bg-sky-500 text-white border-sky-500 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                      >
+                        {source.value} ({source.count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* City facet buttons */}
+              {facets?.city_names && facets.city_codes.length > 0 && (
+                <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+                  {facets.city_names.map((city) => {
+                    const isSelected = filterQuery.cityNames?.includes(city.value);
                     return (
                       <button
                         key={city.value}
                         type="button"
                         aria-pressed={Boolean(isSelected)}
-                        onClick={() => handleToggleCity(city.value)}
+                        onClick={() => updateFilterQuery(prev => { const current = prev.cityNames ?? []; const updated = current.includes(city.value) ? current.filter(c => c !== city.value) : [...current, city.value]; return { ...prev, cityNames: updated.length ? updated : undefined, offset: 0 }; })}
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all tabular-nums",
                           isSelected
@@ -800,7 +892,7 @@ export function JobRecommendations({
                             : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                         )}
                       >
-                        {localizedCity(city.value, t)} ({city.count})
+                        {city.value} ({city.count})
                       </button>
                     );
                   })}
@@ -1048,33 +1140,33 @@ export function JobRecommendations({
                         </option>
                       )}
                       <option value="all">{t("jobs.allRoles", { defaultValue: "Tất cả vai trò" })}</option>
-                      {IT_ROLES.map((r) => (
+                      {(rolesData || IT_ROLES).map((r) => (
                         <option key={r.code} value={r.code}>{r.label}</option>
                       ))}
                     </select>
                   </div>
 
                   {/* City facet */}
-                  {facets?.city_codes && (
+                  {facets?.city_names && (
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                         {t("jobs.cityLabel", { defaultValue: "Địa điểm" })}
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {facets.city_codes.map((city) => {
-                          const isSelected = mobileDraftQuery.cityCodes?.includes(city.value);
+                        {facets.city_names.map((city) => {
+                          const isSelected = mobileDraftQuery.cityNames?.includes(city.value);
                           return (
                             <button
                               key={city.value}
                               type="button"
                               aria-pressed={Boolean(isSelected)}
-                              onClick={() => handleToggleCity(city.value)}
+                              onClick={() => updateFilterQuery(prev => { const current = prev.cityNames ?? []; const updated = current.includes(city.value) ? current.filter(c => c !== city.value) : [...current, city.value]; return { ...prev, cityNames: updated.length ? updated : undefined, offset: 0 }; })}
                               className={cn(
                                 "px-3 py-1.5 text-xs font-bold rounded-lg border tabular-nums",
                                 isSelected ? "bg-sky-500 text-white border-sky-500" : "bg-slate-50 text-slate-700 border-slate-200"
                               )}
                             >
-                              {localizedCity(city.value, t)} ({city.count})
+                              {city.value} ({city.count})
                             </button>
                           );
                         })}

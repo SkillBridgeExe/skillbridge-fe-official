@@ -42,7 +42,12 @@ vi.mock("react-i18next", () => ({
       if (key === "jobs.experienceLevels.MIDDLE") return "Middle";
       if (key === "jobs.fitFilter.safe_apply") return "Vừa sức";
       if (key === "jobs.fitFilter.stretch") return "Thử thách";
-      return (opts?.defaultValue as string) || key;
+      if (key === "jobs.unknownLocation") return "Địa điểm chưa xác định";
+      if (key === "jobs.cities.HCM") return "Hồ Chí Minh";
+      if (key === "jobs.cities.HAN") return "Hà Nội";
+      if (key === "jobs.cities.DAD") return "Đà Nẵng";
+      if (key === "jobs.cities.SGN") return "Hồ Chí Minh";
+      return (opts?.defaultValue as string) ?? key;
     },
   }),
 }));
@@ -50,6 +55,15 @@ vi.mock("react-i18next", () => ({
 vi.mock("react-router-dom", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
+
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: vi.fn().mockReturnValue({ data: undefined }),
+  };
+});
 
 vi.mock("@/hooks/use-diagnosis", () => ({
   useJobRecommendationsQuery: vi.fn(),
@@ -93,7 +107,8 @@ const mockJobsData = {
     },
   ],
   facets: {
-    city_codes: [{ value: "HCMC", count: 8 }, { value: "HANOI", count: 7 }],
+    city_codes: [{ value: "HCM", count: 8 }, { value: "HAN", count: 7 }],
+    city_names: [{ value: "Hồ Chí Minh", count: 8 }, { value: "Hà Nội", count: 7 }],
     work_modes: [{ value: "REMOTE", count: 5 }, { value: "HYBRID", count: 10 }],
     employment_types: [{ value: "FULL_TIME", count: 12 }, { value: "PART_TIME", count: 3 }],
     experience_levels: [{ value: "SENIOR", count: 6 }, { value: "MIDDLE", count: 9 }],
@@ -151,7 +166,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     // Check Role select
     expect(screen.getAllByRole("combobox")[0]).toBeInTheDocument();
     // Check City facet button
-    expect(screen.getByText("HCMC (8)")).toBeInTheDocument();
+    expect(screen.getByText("Hồ Chí Minh (8)")).toBeInTheDocument();
     // Check Work mode facet button
     expect(screen.getByText("Remote (5)")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Bộ lọc khác/i }));
@@ -417,16 +432,16 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     render(<JobRecommendations cvId="cv-123" />);
     fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
     fireEvent.click(screen.getByRole("button", { name: /^Bộ lọc$/i }));
-    fireEvent.click(screen.getByRole("button", { name: "HCMC (8)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hồ Chí Minh (8)" }));
 
     expect(
-      vi.mocked(useJobRecommendationsQuery).mock.calls.at(-1)?.[1]?.cityCodes,
+      vi.mocked(useJobRecommendationsQuery).mock.calls.at(-1)?.[1]?.cityNames,
     ).toBeUndefined();
 
     fireEvent.click(screen.getByRole("button", { name: "Áp dụng bộ lọc" }));
 
-    expect(vi.mocked(useJobRecommendationsQuery).mock.calls.at(-1)?.[1]?.cityCodes).toEqual([
-      "HCMC",
+    expect(vi.mocked(useJobRecommendationsQuery).mock.calls.at(-1)?.[1]?.cityNames).toEqual([
+      "Hồ Chí Minh",
     ]);
   });
 
@@ -472,7 +487,10 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
       const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+      fireEvent.click(screen.getByText(/Xem tất cả/));
       rerender(<JobRecommendations cvId="cv-123" />);
+
+      console.log("mock calls: ", JSON.stringify(mockQuery.mock.calls, null, 2));
 
       expect(mockQuery).toHaveBeenLastCalledWith(
         "cv-123",
@@ -513,6 +531,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
       } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
       const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+      fireEvent.click(screen.getByText(/Xem tất cả/));
       rerender(<JobRecommendations cvId="cv-123" />);
 
       mockQuery.mockReturnValue({
@@ -640,10 +659,10 @@ describe("structured locations rendering", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
     render(<JobRecommendations cvId="cv-123" />);
-    expect(screen.getByText(/123 Le Loi, Quận 1, SGN/)).toBeInTheDocument();
+    expect(screen.getByText(/123 Le Loi, Quận 1, Hồ Chí Minh/)).toBeInTheDocument();
   });
 
   it("falls back to district and city when address_line is null, ignoring nulls and blank strings", () => {
@@ -657,7 +676,7 @@ describe("structured locations rendering", () => {
             city_code: "HAN",
             district_code: "CG",
             district_name: "Cầu Giấy",
-            address_line: null,
+            address_line: "", // blank string
             is_primary: true,
             granularity: "district"
           }]
@@ -665,10 +684,10 @@ describe("structured locations rendering", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
     render(<JobRecommendations cvId="cv-123" />);
-    expect(screen.getByText("Cầu Giấy, HAN")).toBeInTheDocument();
+    expect(screen.getByText("Cầu Giấy, Hà Nội")).toBeInTheDocument();
   });
 
   it("does not render 'null' string when city_code is null", () => {
@@ -679,10 +698,10 @@ describe("structured locations rendering", () => {
           ...mockJobsData.recommendations[0],
           locations: [{
             country_code: "VN",
-            city_code: null as any,
+            city_code: null,
             district_code: null,
             district_name: "Khu CN Cao",
-            address_line: null,
+            address_line: "", // blank string
             is_primary: true,
             granularity: "unknown"
           }]
@@ -690,7 +709,7 @@ describe("structured locations rendering", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
     render(<JobRecommendations cvId="cv-123" />);
     expect(screen.getByText("Khu CN Cao")).toBeInTheDocument();
@@ -711,7 +730,7 @@ describe("structured locations rendering", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
     render(<JobRecommendations cvId="cv-123" />);
     expect(screen.getByText(/2 jobs.locationsCount/)).toBeInTheDocument();
@@ -729,9 +748,108 @@ describe("structured locations rendering", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
 
     render(<JobRecommendations cvId="cv-123" />);
     expect(screen.getByText("Legacy Fallback Location")).toBeInTheDocument();
+  });
+
+  it("renders localized city label (Hà Nội) instead of raw code HAN in structured locations", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          locations: [{
+            country_code: "VN",
+            city_code: "HAN",
+            district_code: null,
+            district_name: null,
+            address_line: "", // blank string
+            is_primary: true,
+            granularity: "city"
+          }]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Hà Nội")).toBeInTheDocument();
+    expect(screen.queryByText("HAN")).not.toBeInTheDocument();
+  });
+
+  it("renders unknownLocation label for unrecognized city codes", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [{
+          ...mockJobsData.recommendations[0],
+          locations: [{
+            country_code: "VN",
+            city_code: "XYZ_UNKNOWN",
+            district_code: null,
+            district_name: null,
+            address_line: "", // blank string
+            is_primary: true,
+            granularity: "city"
+          }]
+        }]
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    expect(screen.getByText("Địa điểm chưa xác định")).toBeInTheDocument();
+    expect(screen.queryByText("XYZ_UNKNOWN")).not.toBeInTheDocument();
+  });
+
+  it("renders localized city name in filter facet buttons instead of raw codes", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+
+    // Filter buttons should show localized names
+    expect(screen.getByText("Hồ Chí Minh (8)")).toBeInTheDocument();
+    expect(screen.getByText("Hà Nội (7)")).toBeInTheDocument();
+    // Raw codes should not appear
+    expect(screen.queryByText("HCM (8)")).not.toBeInTheDocument();
+    expect(screen.queryByText("HAN (7)")).not.toBeInTheDocument();
+  });
+
+  it("updates query when new PR #237 filters are used", async () => {
+    vi.useFakeTimers();
+    const mockQuery = vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    
+    // Rerender so state is applied and input is shown
+    rerender(<JobRecommendations cvId="cv-123" />);
+
+    const searchInput = screen.getByPlaceholderText("Tìm kiếm...");
+    fireEvent.change(searchInput, { target: { value: "developer" } });
+
+    await vi.runAllTimersAsync();
+    
+    expect(mockQuery).toHaveBeenLastCalledWith(
+      "cv-123",
+      expect.objectContaining({ q: "developer", offset: 0 })
+    );
+    
+    vi.useRealTimers();
   });
 });
