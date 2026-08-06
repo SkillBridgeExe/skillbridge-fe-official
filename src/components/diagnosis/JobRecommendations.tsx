@@ -301,7 +301,15 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
   );
 }
 
-function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
+function JobCard({
+  job,
+  t,
+  showRank,
+}: {
+  job: JobRecommendationDto;
+  t: ReturnType<typeof import("react-i18next").useTranslation>["t"];
+  showRank?: boolean;
+}) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = job.salary_visible === false
     ? null
@@ -341,6 +349,26 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof i
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
+            {showRank && Number.isInteger(job.rank) && job.rank >= 1 && job.rank <= 3 && (
+              <div className="mb-2">
+                <InfoPopover
+                  align="left"
+                  label={t("jobs.rankLabel")}
+                  trigger={
+                    <span className={cn(
+                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold",
+                      job.rank === 1 ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
+                    )}>
+                      Top {job.rank}{job.rank === 1 ? ` - ${t("jobs.top1Label")}` : ""}
+                    </span>
+                  }
+                >
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {t("jobs.rankDescription")}
+                  </p>
+                </InfoPopover>
+              </div>
+            )}
             <h4 className="text-base font-bold text-slate-950 leading-snug line-clamp-2">
               {job.title}
             </h4>
@@ -634,6 +662,13 @@ export function JobRecommendations({
 
   const displayRecs = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
 
+  const isPaginationRequest =
+    isExplorerOpen &&
+    (activeQuery.offset ?? 0) > 0 &&
+    accumulatedRecs.length > 0;
+  const isLoadingMore = isPaginationRequest && isLoading;
+  const isLoadMoreError = isPaginationRequest && isError;
+
   if (!cvId) return null;
 
   const errorStatus = isAxiosError(error)
@@ -642,6 +677,22 @@ export function JobRecommendations({
       ? (error as { status?: number }).status
       : undefined;
   const quotaBlocked = errorStatus === 402;
+
+  const handleRetryRecommendations = () => {
+    if (errorStatus === 410 && queryState.snapshotToken) {
+      setQueryState((prev) => {
+        const { snapshotToken: _, ...rest } = prev;
+        return { ...rest, offset: 0 };
+      });
+      setMobileDraftQuery((prev) => {
+        const { snapshotToken: _, ...rest } = prev;
+        return { ...rest, offset: 0 };
+      });
+      setAccumulatedRecs([]);
+      return;
+    }
+    refetch();
+  };
 
   const activeFilterCount = countActiveFilters(queryState);
   const draftFilterCount = countActiveFilters(mobileDraftQuery);
@@ -1633,11 +1684,11 @@ export function JobRecommendations({
       )}
 
       {/* Main List & Data States */}
-      {isLoading ? (
+      {isLoading && !isPaginationRequest ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[280px] bg-slate-100 rounded-2xl" />)}
         </div>
-      ) : quotaBlocked ? (
+      ) : quotaBlocked && !isPaginationRequest ? (
         <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-900">{t("jobs.quotaBlocked")}</p>
@@ -1648,28 +1699,14 @@ export function JobRecommendations({
             {t("quota.upgradeCta")}
           </Link>
         </div>
-      ) : isError ? (
+      ) : isError && !isPaginationRequest ? (
         <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-500">{t("jobs.error")}</p>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (errorStatus === 410 && queryState.snapshotToken) {
-                setQueryState(prev => {
-                  const { snapshotToken: _, ...rest } = prev;
-                  return { ...rest, offset: 0 };
-                });
-                setMobileDraftQuery(prev => {
-                  const { snapshotToken: _, ...rest } = prev;
-                  return { ...rest, offset: 0 };
-                });
-                setAccumulatedRecs([]);
-              } else {
-                refetch();
-              }
-            }}
+            onClick={handleRetryRecommendations}
             disabled={isRefetching}
             className="rounded-full shadow-sm"
           >
@@ -1707,11 +1744,45 @@ export function JobRecommendations({
 
           {/* Job Cards Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            {displayRecs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
+            {displayRecs.map((job) => (
+              <JobCard
+                key={job.job_id}
+                job={job}
+                t={t}
+                showRank={(queryState.sort ?? "RECOMMENDED") === "RECOMMENDED"}
+              />
+            ))}
           </div>
 
+          {isLoadingMore && (
+            <div
+              data-testid="jobs-load-more-loading"
+              role="status"
+              className="flex items-center justify-center gap-2 py-3 text-xs font-semibold text-slate-500"
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              {t("jobs.loadingMore")}
+            </div>
+          )}
+
+          {isLoadMoreError && (
+            <div className="flex flex-wrap items-center justify-center gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+              <p className="text-xs font-medium text-rose-800">{t("jobs.loadMoreError")}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryRecommendations}
+                disabled={isRefetching}
+                className="rounded-full border-rose-200 bg-white text-xs font-bold text-rose-800 hover:bg-rose-100"
+              >
+                <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", isRefetching && "animate-spin")} />
+                {t("jobs.retry")}
+              </Button>
+            </div>
+          )}
+
           {/* Accumulated Load More Pagination for Explorer */}
-          {hasMore && (
+          {hasMore && !isLoadingMore && !isLoadMoreError && (
             <div className="pt-2 text-center">
               <Button
                 variant="outline"

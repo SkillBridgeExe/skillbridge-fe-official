@@ -11,7 +11,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, Tooltip
 } from "recharts";
-import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { resolveDiagnosisCvDisplayName, useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { ENABLE_DIAGNOSIS_ADDONS } from "@/lib/runtime-config";
 import { useTranslation } from "react-i18next";
 import { TailorChecklist } from "./TailorChecklist";
@@ -379,7 +379,7 @@ interface DiagnosisStep3ResultsProps {
 
 export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps) {
   const { t, i18n } = useTranslation("diagnosis");
-  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole, cvFile, builderCvName } = useDiagnosisStore();
+  const { scanAgain, skillTab, setSkillTab, reviewData, jobDescription, lastCvId, targetRole, cvFile, cvDisplayName, isFromBuilder, builderCvName } = useDiagnosisStore();
 
   const jdMatch = reviewData?.jdMatch;
   const isJdMode = Boolean(jdMatch);
@@ -977,7 +977,13 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
           <div className="w-full px-2 lg:px-4 space-y-8 animate-in fade-in duration-300">
             {isJdMode ? (
               <CvJdDualPanel
-                cvName={cvFile?.name || builderCvName || t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" })}
+                cvName={resolveDiagnosisCvDisplayName({
+                  cvFileName: cvFile?.name ?? null,
+                  cvDisplayName,
+                  isFromBuilder,
+                  builderCvName,
+                  fallback: t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" }),
+                })}
                 jdText={jobDescription}
                 jdTitle={jdMatch?.job_title || jdMatch?.target_role || undefined}
                 jdSourceUrl={jdMatch?.source_url || undefined}

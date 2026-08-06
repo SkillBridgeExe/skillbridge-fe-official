@@ -99,6 +99,13 @@ afterEach(() => {
 // ── Tests ──
 
 describe("ScoreRail — review mode (no matchStats)", () => {
+  it("uses the diagnosis scroll container without a second mobile top offset and keeps desktop actions scrollable", () => {
+    render(<ScoreRail overallScore={75} groups={reviewGroups} />);
+
+    expect(screen.getByTestId("score-rail-mobile")).toHaveClass("top-0");
+    expect(screen.getByTestId("score-rail-desktop")).toHaveClass("overflow-y-auto", "min-h-0");
+  });
+
   it("renders review band labels (70/50 thresholds)", () => {
     render(<ScoreRail overallScore={75} groups={reviewGroups} />);
     // 75 >= 70 → "Strong" in review mode

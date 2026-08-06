@@ -7,15 +7,18 @@ vi.mock("@/api/cv/builder", () => ({
   rewriteFieldApi: vi.fn().mockResolvedValue({ suggestion: "rewritten" }),
 }));
 vi.mock("@/api/cv/analysis", () => ({ analyzeCvApi: vi.fn() }));
+vi.mock("@/api/cv/list", () => ({ getCvDetailApi: vi.fn() }));
 
 import {
   mapCvDtoToReviewData,
   mapMatchDtoToJdMatch,
   analyzeCvWithJd,
+  loadCvFromHistory,
   rewriteTailorBullet,
 } from "./diagnosis.service";
 import { rewriteFieldApi } from "@/api/cv/builder";
 import { analyzeCvApi } from "@/api/cv/analysis";
+import { getCvDetailApi } from "@/api/cv/list";
 import type { CvDto, CvMatchDto, CvReviewParsedResponse, TailorAction } from "@shared/api";
 
 // ── Fixtures tối thiểu theo contract BE (docs/FE-diagnosis-rewire-plan.md §5) ──
@@ -215,6 +218,17 @@ describe("analyzeCvWithJd", () => {
       expect(outcome.review.overallScore).toBe(67);
       expect(outcome.matchErrorCode).toBe("CV_MATCH_FAILED");
     }
+  });
+});
+
+describe("loadCvFromHistory", () => {
+  it("keeps the persisted CV name and target role for a clean UI context switch", async () => {
+    vi.mocked(getCvDetailApi).mockResolvedValue(cvDto);
+
+    const outcome = await loadCvFromHistory("cv-1");
+
+    expect(outcome.cvDisplayName).toBe("my-cv.pdf");
+    expect(outcome.targetRole).toBe("frontend_developer");
   });
 });
 

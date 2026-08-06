@@ -93,6 +93,8 @@ export interface AnalyzeOutcome {
   /** Id CV trên BE — dùng cho match/recommendations/builder CTA về sau. */
   cvId: string;
   review: CvReviewData;
+  cvDisplayName?: string | null;
+  targetRole?: string | null;
 }
 
 export type AnalyzeCvWithJdOutcome =
@@ -346,7 +348,12 @@ export async function analyzeCv({
     ? await reRunCvReviewApi(builderCvId, targetRole)
     : await uploadCvApi({ file: file!, targetRole, consentAccepted });
 
-  return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
+  return {
+    cvId: dto.id,
+    review: mapCvDtoToReviewData(dto),
+    cvDisplayName: dto.originalFileName || dto.title,
+    targetRole: dto.targetRole,
+  };
 }
 
 /** Analyze a CV and optional JD through the backend's single-charge orchestration. */
@@ -435,7 +442,12 @@ export async function getDiagnosisHistory(
 export async function loadCvFromHistory(id: string): Promise<AnalyzeOutcome> {
   requireSession();
   const dto = await getCvDetailApi(id);
-  return { cvId: dto.id, review: mapCvDtoToReviewData(dto) };
+  return {
+    cvId: dto.id,
+    review: mapCvDtoToReviewData(dto),
+    cvDisplayName: dto.originalFileName || dto.title,
+    targetRole: dto.targetRole,
+  };
 }
 
 /**
@@ -464,6 +476,8 @@ export async function loadMatchForChat({
   ]);
   return {
     cvId: dto.id,
+    cvDisplayName: dto.originalFileName || dto.title,
+    targetRole: dto.targetRole,
     review: {
       ...mapCvDtoToReviewData(dto),
       jdMatch: mapMatchDtoToJdMatch(match),

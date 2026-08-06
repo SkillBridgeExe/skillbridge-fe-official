@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, Upload, History, Sparkles, ShieldCheck, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { buildHistoryDiagnosisState, useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { JobDescriptionInput } from "./JobDescriptionInput";
@@ -176,14 +176,14 @@ export function DiagnosisStep1Upload() {
 
   const openFromHistory = (id: string) => {
     loadFromHistoryMutation.mutate(id, {
-      onSuccess: ({ cvId, review }) => {
-        setLastCvId(cvId);
-        setReviewData(review);
-        setApiError(null);
-        setAnalysisMode("cv-only");
-        setHasActivatedJdMode(false);
+      onSuccess: ({ cvId, review, cvDisplayName, targetRole: historyTargetRole }) => {
+        useDiagnosisStore.setState(buildHistoryDiagnosisState({
+          cvId,
+          review,
+          cvDisplayName: cvDisplayName ?? null,
+          targetRole: historyTargetRole ?? null,
+        }));
         setHistoryOpen(false);
-        setStep("cv-review");
       },
       onError: (error) => {
         toast({

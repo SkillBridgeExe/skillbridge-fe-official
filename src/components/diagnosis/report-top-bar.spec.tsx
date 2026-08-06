@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { ReportTopBar } from "./report/ReportTopBar";
 
+const setShowJdInput = vi.fn();
+const setStep = vi.fn();
+
 afterEach(() => {
   cleanup();
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 // ── Mocks ──
@@ -22,12 +29,26 @@ vi.mock("react-i18next", () => ({
       if (key === "review.tabJobs") return "Việc làm liên quan";
       if (key === "review.startOver") return "Làm lại từ đầu";
       if (key === "review.matchAction") return "So khớp CV với JD";
+      if (key === "review.matchAnotherAction") return "So khớp JD khác";
       return key;
     },
   }),
 }));
 
 vi.mock("@/store/useDiagnosisStore", () => ({
+  resolveDiagnosisCvDisplayName: ({
+    cvFileName,
+    cvDisplayName,
+    isFromBuilder,
+    builderCvName,
+    fallback,
+  }: {
+    cvFileName: string | null;
+    cvDisplayName: string | null;
+    isFromBuilder: boolean;
+    builderCvName: string | null;
+    fallback: string;
+  }) => cvFileName || (isFromBuilder ? builderCvName : cvDisplayName) || cvDisplayName || builderCvName || fallback,
   useDiagnosisStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       step: "cv-review",
@@ -35,8 +56,11 @@ vi.mock("@/store/useDiagnosisStore", () => ({
       goBack: vi.fn(),
       reset: vi.fn(),
       scanAgain: vi.fn(),
-      setShowJdInput: vi.fn(),
+      setShowJdInput,
+      setStep,
       cvFile: { name: "my_resume.pdf" },
+      cvDisplayName: "my_resume.pdf",
+      isFromBuilder: false,
       builderCvName: null,
     }),
 }));
@@ -113,5 +137,14 @@ describe("ReportTopBar — Mode Identity & Tabs", () => {
       "min-h-[44px]",
       "min-w-[44px]",
     );
+  });
+
+  it("returns from match results to the review JD form before opening it", () => {
+    render(<ReportTopBar activeTab="fit" onTabChange={vi.fn()} mode="match" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "So khớp JD khác" }));
+
+    expect(setStep).toHaveBeenCalledWith("cv-review");
+    expect(setShowJdInput).toHaveBeenCalledWith(true);
   });
 });
