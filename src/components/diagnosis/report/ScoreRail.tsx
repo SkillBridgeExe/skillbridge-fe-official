@@ -206,7 +206,7 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
             {isMatch
               ? t("review.matchScoreTitle", { defaultValue: "Điểm khớp CV–JD" })
-              : t("report.rail.scoreTitle", { defaultValue: "Điểm tương thích" })}
+              : t("review.overallScore", { defaultValue: "Điểm chất lượng CV" })}
           </h3>
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
