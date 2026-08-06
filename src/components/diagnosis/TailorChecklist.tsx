@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Clipboard, Copy, FilePenLine, Lightbulb, LocateFixed } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -422,14 +423,23 @@ function normalize(value: string) {
 
 function TailorSkeleton() {
   return (
-    <>
+    <div className="space-y-4">
       {[0, 1, 2].map((item) => (
-        <div key={item} className="rounded-xl border border-[#EAEAEA] bg-[#FBFBFA] p-4">
-          <div className="h-5 w-32 rounded-full bg-[#F1F1EF]" />
-          <div className="mt-3 h-4 w-44 rounded bg-[#F1F1EF]" />
-          <div className="mt-3 h-3 w-full rounded bg-[#F1F1EF]" />
+        <div key={item} className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col gap-3 animate-in fade-in duration-500">
+          <div className="flex gap-2">
+            <Skeleton className="h-5 w-24 rounded-full bg-slate-100" />
+            <Skeleton className="h-5 w-16 rounded-full bg-slate-100" />
+          </div>
+          <Skeleton className="h-5 w-3/4 bg-slate-100" />
+          <div className="space-y-2 mt-1">
+            <Skeleton className="h-3 w-full bg-slate-100" />
+            <Skeleton className="h-3 w-5/6 bg-slate-100" />
+          </div>
+          <div className="flex justify-end mt-2">
+            <Skeleton className="h-8 w-28 rounded-lg bg-slate-100" />
+          </div>
         </div>
       ))}
-    </>
+    </div>
   );
 }

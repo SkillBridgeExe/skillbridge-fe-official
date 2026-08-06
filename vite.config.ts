@@ -111,6 +111,24 @@ export default defineConfig(({ mode }) => {
           if (id.includes("node_modules/axios") || id.includes("node_modules/zustand")) {
             return "vendor-utils";
           }
+          if (id.includes("node_modules/@react-pdf")) {
+            return "vendor-pdf";
+          }
+          if (id.includes("node_modules/pdfjs-dist")) {
+            return "vendor-pdfjs";
+          }
+          if (id.includes("node_modules/lucide-react")) {
+            return "vendor-icons";
+          }
+          if (id.includes("node_modules/@dnd-kit")) {
+            return "vendor-dnd";
+          }
+          if (id.includes("node_modules/react-hook-form") || id.includes("node_modules/zod")) {
+            return "vendor-forms";
+          }
+          if (id.includes("node_modules/posthog-js")) {
+            return "vendor-posthog";
+          }
         },
       },
     },

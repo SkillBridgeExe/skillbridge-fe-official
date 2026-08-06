@@ -25,10 +25,10 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
   if (!breakdown) return <>{children}</>;
 
   const items = [
-    { label: "ATS", score: breakdown.ats, icon: Shield, color: "text-[#346538]", bg: "bg-[#EDF3EC]" },
-    { label: t("results.structure", "Cấu trúc"), score: breakdown.structure, icon: Code, color: "text-[#0284c7]", bg: "bg-[#e0f2fe]" },
-    { label: t("cvBreakdown.skills"), score: breakdown.skills, icon: Brain, color: "text-[#7c3aed]", bg: "bg-[#ede9fe]" },
-    { label: t("cvBreakdown.experience"), score: breakdown.experience, icon: Briefcase, color: "text-[#ea580c]", bg: "bg-[#ffedd5]" },
+    { label: "ATS", score: breakdown.ats, icon: Shield, color: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: t("results.structure", "Cấu trúc"), score: breakdown.structure, icon: Code, color: "text-sky-700", bg: "bg-sky-100" },
+    { label: t("cvBreakdown.skills"), score: breakdown.skills, icon: Brain, color: "text-violet-600", bg: "bg-violet-100" },
+    { label: t("cvBreakdown.experience"), score: breakdown.experience, icon: Briefcase, color: "text-orange-700", bg: "bg-orange-100" },
   ];
 
   return (
@@ -58,22 +58,22 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
           />
           <div
             role="dialog"
-            aria-label="CV Score Breakdown"
+            aria-label={t("cvBreakdown.title")}
             className={cn(
               "absolute z-[71] top-[80%] left-1/2 -translate-x-1/2 mt-2 md:top-1/2 md:left-full md:-translate-x-0 md:-translate-y-1/2 md:mt-0 md:ml-12",
-              "w-[min(300px,85vw)] rounded-xl border border-[#EAEAEA] bg-white p-4 shadow-xl",
+              "w-[min(300px,85vw)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl",
               "animate-in fade-in zoom-in-95 duration-200",
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#787774]">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 {t("cvBreakdown.title", { score: overallScore })}
               </h4>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-[#787774] hover:text-[#2F3437] p-1 rounded transition-colors"
-                aria-label="Close"
+                className="text-slate-500 hover:text-slate-900 p-1 rounded transition-colors"
+                aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -97,13 +97,13 @@ export function CvBreakdownPopover({ breakdown, overallScore, rubricBand, childr
                 );
               })}
             </div>
-            
-            <p className="text-[10px] text-slate-400 mt-4 text-center">
+
+            <p className="text-[10px] text-slate-600 mt-4 text-center">
               {t("cvBreakdown.note")}
             </p>
             {/* W44: band framing — honest context */}
             {rubricBand && (
-              <p className="text-[10px] text-[#6943C7] bg-[#F6F4FB] border border-[#E2D9F3] rounded-lg px-2.5 py-1.5 mt-2 text-center leading-relaxed">
+              <p className="text-[10px] text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-2.5 py-1.5 mt-2 text-center leading-relaxed">
                 {t("cvBreakdown.bandFraming", {
                   band: rubricBand,
                   defaultValue: `Skills scored against the ${rubricBand} standard — changing the bar will change the score.`,

@@ -127,7 +127,10 @@ export function CompanionShell() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const mascotSize = isMobile ? 76 : 200;
+  // Keep the idle launcher discoverable without covering result cards. The speech
+  // bubble carries the actual interaction, so a poster-sized desktop mascot only
+  // obscures evidence and CTAs.
+  const mascotSize = isMobile ? 72 : 112;
 
   // Drag is initiated ONLY from the dolphin (not the bubble), so typing/clicking
   // inside the bubble never drags the whole unit.

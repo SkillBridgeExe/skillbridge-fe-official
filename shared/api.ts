@@ -561,6 +561,18 @@ export interface CvMatchDto {
 
 // ── Job recommendations (GET /api/cvs/:cvId/job-recommendations) ───────────
 
+export interface JobLocationDisplay {
+  country_code: string | null;
+  city_code: string | null;
+  city_name: string | null;
+  district_code: string | null;
+  district_name: string | null;
+  address_line: string | null;
+  is_primary: boolean;
+  granularity: "exact" | "district" | "city" | "unknown";
+}
+
+
 export interface JobRecommendationDto {
   job_id: string;
   slug: string;
@@ -569,7 +581,9 @@ export interface JobRecommendationDto {
   title: string;
   company_name: string;
   location: string | null;
+  source_name?: string | null;
   city_codes: string[];
+  locations?: JobLocationDisplay[];
   role_code: string | null;
   experience_level: string | null;
   work_mode: "ONSITE" | "HYBRID" | "REMOTE" | null;
@@ -625,16 +639,28 @@ export interface JobRecommendationsResponse {
     source: "explicit" | "cv_target" | "all" | "cv_target_missing";
   };
   filters_applied: {
+    query: string | null;
     city_codes: string[];
+    city_names: string[];
+    district_codes: string[];
+    source_names: string[];
     work_modes: string[];
     employment_types: string[];
     experience_levels: string[];
     fit: string[];
+    posted_from: string | null;
+    posted_to: string | null;
+    salary_min: number | null;
+    salary_max: number | null;
+    salary_currency: string | null;
     salary_only: boolean;
     sort: string;
   };
   facets: {
     city_codes: Array<{ value: string; count: number }>;
+    city_names: Array<{ value: string; count: number }>;
+    district_codes: Array<{ value: string; count: number }>;
+    source_names: Array<{ value: string; count: number }>;
     work_modes: Array<{ value: string; count: number }>;
     employment_types: Array<{ value: string; count: number }>;
     experience_levels: Array<{ value: string; count: number }>;
@@ -645,17 +671,24 @@ export interface JobRecommendationsResponse {
     missing_experience_level: number;
     missing_location: number;
     missing_city_code: number;
+    missing_city_name: number;
+    missing_district_code: number;
+    missing_source_name: number;
+    missing_posted_at: number;
     missing_work_mode: number;
     missing_employment_type: number;
     facet_coverage: {
       city_codes: number;
+      city_names: number;
+      district_codes: number;
+      source_names: number;
       work_modes: number;
       employment_types: number;
       experience_levels: number;
     };
     salary_sort_supported: boolean;
   };
-  generation: { cache_hit: boolean; snapshot_size: number };
+  generation: { cache_hit: boolean; snapshot_size: number; snapshot_token?: string; };
   recommendations: JobRecommendationDto[];
 }
 

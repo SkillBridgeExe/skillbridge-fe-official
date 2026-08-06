@@ -5,6 +5,7 @@
 
 import { useState, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface InfoPopoverProps {
@@ -23,6 +24,7 @@ interface InfoPopoverProps {
 
 export function InfoPopover({ trigger, children, label, title, align = "left", className }: InfoPopoverProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   const alignClass =
     align === "center" ? "left-1/2 -translate-x-1/2" : align === "right" ? "right-0" : "left-0";
@@ -61,8 +63,8 @@ export function InfoPopover({ trigger, children, label, title, align = "left", c
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded p-0.5 text-[#787774] transition-colors hover:text-[#2F3437]"
-                  aria-label="Close"
+                  className="text-slate-400 hover:text-slate-800 p-1 rounded transition-colors"
+                  aria-label={t("common.close")}
                 >
                   <X className="h-3 w-3" />
                 </button>

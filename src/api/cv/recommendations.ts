@@ -16,6 +16,25 @@ export interface JobRecommendationsQuery {
   fit?: ("safe_apply" | "stretch" | "not_recommended")[];
   sort?: "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
   salaryOnly?: boolean;
+  /** Free-text search across job title and company name. */
+  q?: string;
+  /** Filter by free-form city labels from crawl sources. */
+  cityNames?: string[];
+  /** Filter by district codes. */
+  districtCodes?: string[];
+  /** Filter by recruitment source identifiers. */
+  sourceNames?: string[];
+  /** Filter jobs posted from this date (YYYY-MM-DD). */
+  postedFrom?: string;
+  /** Filter jobs posted until this date (YYYY-MM-DD). */
+  postedTo?: string;
+  /** Minimum salary filter (requires salaryCurrency). */
+  salaryMin?: number;
+  /** Maximum salary filter (requires salaryCurrency). */
+  salaryMax?: number;
+  /** Currency code for salary filters (ISO 4217, e.g. 'VND'). */
+  salaryCurrency?: string;
+  snapshotToken?: string;
 }
 
 /**
@@ -28,6 +47,19 @@ export async function getJobRecommendationsApi(
   query: JobRecommendationsQuery = {},
 ): Promise<JobRecommendationsResponse> {
   const params: Record<string, unknown> = { ...query };
+
+  if (
+    typeof params.salaryMin === "number" &&
+    typeof params.salaryMax === "number" &&
+    params.salaryMin > params.salaryMax
+  ) {
+    throw new RangeError("Minimum salary cannot exceed maximum salary");
+  }
+
+  if ((params.salaryMin != null || params.salaryMax != null) && !params.salaryCurrency) {
+    params.salaryCurrency = "VND";
+  }
+
   if (Array.isArray(query.cityCodes) && query.cityCodes.length > 0) {
     params.cityCodes = query.cityCodes.join(",");
   }
@@ -42,6 +74,18 @@ export async function getJobRecommendationsApi(
   }
   if (Array.isArray(query.fit) && query.fit.length > 0) {
     params.fit = query.fit.join(",");
+  }
+  if (Array.isArray(query.cityNames) && query.cityNames.length > 0) {
+    params.cityNames = query.cityNames.join(",");
+  }
+  if (Array.isArray(query.districtCodes) && query.districtCodes.length > 0) {
+    params.districtCodes = query.districtCodes.join(",");
+  }
+  if (Array.isArray(query.sourceNames) && query.sourceNames.length > 0) {
+    params.sourceNames = query.sourceNames.join(",");
+  }
+  if (query.snapshotToken) {
+    params.snapshotToken = query.snapshotToken;
   }
 
   let rawStatus: number | undefined;

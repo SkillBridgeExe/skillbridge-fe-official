@@ -61,8 +61,8 @@ export function ScoreBreakdownPopover({ jdMatch, children }: Props) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-[#787774] hover:text-[#2F3437] p-1 rounded transition-colors"
-                aria-label="Close"
+                className="text-slate-500 hover:text-slate-900 p-1 rounded transition-colors"
+                aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

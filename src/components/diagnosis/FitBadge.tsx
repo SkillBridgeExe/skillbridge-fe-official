@@ -37,7 +37,7 @@ export function FitBadge({ fit, className }: FitBadgeProps) {
             className="inline-flex items-center p-0.5 rounded transition-colors hover:bg-slate-100"
             aria-expanded={open}
             aria-haspopup="dialog"
-            aria-label={t("fit.reasonsLabel", { defaultValue: "Show fit reasons" })}
+            aria-label={t("fit.reasonsLabel")}
           >
             <HelpCircle className="w-3.5 h-3.5 text-[#787774]" />
           </button>
@@ -54,7 +54,7 @@ export function FitBadge({ fit, className }: FitBadgeProps) {
               {/* Popover card */}
               <div
                 role="dialog"
-                aria-label={t("fit.reasonsLabel", { defaultValue: "Fit reasons" })}
+                aria-label={t("fit.reasonsLabel")}
                 className={cn(
                   "absolute z-[71] top-full left-0 mt-1.5",
                   "w-[min(220px,80vw)] rounded-xl border border-[#EAEAEA] bg-white p-3 shadow-xl",
@@ -63,13 +63,13 @@ export function FitBadge({ fit, className }: FitBadgeProps) {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#787774]">
-                    {t("fit.reasonsTitle", { defaultValue: "Why this verdict" })}
+                    {t("fit.reasonsTitle")}
                   </span>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="text-[#787774] hover:text-[#2F3437] p-0.5 rounded transition-colors"
-                    aria-label="Close"
+                    className="p-1 rounded text-slate-400 hover:text-slate-800 transition-colors"
+                    aria-label={t("common.close")}
                   >
                     <X className="w-3 h-3" />
                   </button>
