@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
-import { useDiagnosisRolesQuery } from "@/hooks/use-diagnosis-roles";
 import { matchScoreBand } from "@/lib/match-score-band";
 import type { JobRecommendationDto, JobRecommendationsResponse } from "@shared/api";
 import type { JobRecommendationsQuery } from "@/api/cv/recommendations";
@@ -27,8 +26,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getRoleLabel } from "@/constants/it-roles";
-import type { DiagnosisRole } from "@/api/cv/diagnosis-roles";
+import { getRoleLabel, IT_ROLES } from "@/constants/it-roles";
 
 
 type WorkModeType = "ONSITE" | "HYBRID" | "REMOTE";
@@ -36,6 +34,29 @@ type ExperienceLevelType = "INTERN" | "FRESHER" | "JUNIOR" | "MIDDLE" | "SENIOR"
 type EmploymentTypeVal = "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "FREELANCE";
 type FitVerdictType = "safe_apply" | "stretch" | "not_recommended";
 type SortOptionType = "RECOMMENDED" | "SKILL_MATCH" | "NEWEST" | "SALARY_DESC";
+
+const MARKETPLACE_ROLE_CODES = new Set(IT_ROLES.map((role) => role.code));
+
+function normalizeMarketplaceRole(role: string | null | undefined): string | undefined {
+  if (!role) return undefined;
+  return role === "all" || MARKETPLACE_ROLE_CODES.has(role) ? role : "all";
+}
+
+function withSalaryCurrency(
+  query: JobRecommendationsQuery,
+): JobRecommendationsQuery {
+  const hasSalaryBound = query.salaryMin != null || query.salaryMax != null;
+  if (!hasSalaryBound || query.salaryCurrency) return query;
+  return { ...query, salaryCurrency: "VND" };
+}
+
+function hasInvalidSalaryRange(query: JobRecommendationsQuery): boolean {
+  return (
+    query.salaryMin != null &&
+    query.salaryMax != null &&
+    query.salaryMin > query.salaryMax
+  );
+}
 
 function countActiveFilters(query: JobRecommendationsQuery): number {
   return (
@@ -138,24 +159,18 @@ function priorityGaps(job: JobRecommendationDto): PriorityGap[] {
 
 function JobMarketSummary({
   data,
-  roles,
-  language,
   t,
 }: {
   data: JobRecommendationsResponse;
-  roles: DiagnosisRole[];
-  language: string;
   t: ReturnType<typeof import("react-i18next").useTranslation>["t"];
 }) {
   const { total, facets, role_scope, pool_size, eligible_pool_size } = data;
   const finalTotal = total ?? eligible_pool_size ?? pool_size ?? 0;
 
   const roleCode = role_scope?.role_code;
-  const role = roles.find((item) => item.code === roleCode);
-  const roleName = (language.startsWith("vi") ? role?.label_vi : role?.label_en)
-    || getRoleLabel(roleCode)
-    || roleCode
-    || t("jobs.allRoles");
+  const roleName = roleCode
+    ? t(`jobs.roles.${roleCode}`, { defaultValue: getRoleLabel(roleCode) })
+    : t("jobs.allRoles");
 
   type FacetBucket = { value: string; count: number };
 
@@ -231,8 +246,8 @@ function formatLocationDisplay(loc: import("@shared/api").JobLocationDisplay, t:
     const city = loc.city_name?.trim() || localizedCity(loc.city_code.trim(), t);
     if (city && city !== "null") parts.push(city);
   }
-  
-  const uniqueParts = parts.filter((val, idx, arr) => 
+
+  const uniqueParts = parts.filter((val, idx, arr) =>
     arr.findIndex(v => v.toLowerCase() === val.toLowerCase()) === idx
   );
 
@@ -510,12 +525,12 @@ export function JobRecommendations({
   cvId: string | null;
   targetRole?: string | null;
 }) {
-  const { t, i18n } = useTranslation("diagnosis");
-  const { data: rolesData = [] } = useDiagnosisRolesQuery();
-  const roleOptions = rolesData.map((role) => ({
+  const { t } = useTranslation("diagnosis");
+  const roleOptions = IT_ROLES.map((role) => ({
     code: role.code,
-    label: i18n.language.startsWith("vi") ? role.label_vi : role.label_en,
+    label: t(`jobs.roles.${role.code}`, { defaultValue: role.label }),
   }));
+  const normalizedTargetRole = normalizeMarketplaceRole(targetRole);
 
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [stateCvId, setStateCvId] = useState(cvId);
@@ -550,11 +565,11 @@ export function JobRecommendations({
         limit: 5,
         offset: 0,
         sort: "RECOMMENDED" as const,
-        ...(targetRole ? { role: targetRole } : {}),
+        ...(normalizedTargetRole ? { role: normalizedTargetRole } : {}),
       };
     }
-    const role = queryState.role ?? targetRole ?? undefined;
-    return isExplorerOpen
+    const role = normalizeMarketplaceRole(queryState.role ?? normalizedTargetRole);
+    const query = isExplorerOpen
       ? { ...queryState, ...(role ? { role } : {}), limit: 10 }
       : {
           limit: 5,
@@ -562,10 +577,13 @@ export function JobRecommendations({
           sort: "RECOMMENDED" as const,
           ...(role ? { role } : {})
         };
-  }, [cvChanged, isExplorerOpen, queryState, targetRole]);
+    return withSalaryCurrency(query);
+  }, [cvChanged, isExplorerOpen, normalizedTargetRole, queryState]);
+
+  const salaryRangeInvalid = hasInvalidSalaryRange(activeQuery);
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useJobRecommendationsQuery(
-    cvId,
+    salaryRangeInvalid ? null : cvId,
     activeQuery,
   );
 
@@ -577,6 +595,7 @@ export function JobRecommendations({
   const hasMore = isExplorerOpen && lastPageCount > 0 && loadedThrough < total;
   // W-LOCATION-FILTER-PRODUCTION-FE-AGY: ALWAYS show explorer button even if total <= 5
   const filterQuery = mobileFilterOpen ? mobileDraftQuery : queryState;
+  const mobileSalaryRangeInvalid = hasInvalidSalaryRange(mobileDraftQuery);
 
   useEffect(() => {
     setStateCvId(cvId);
@@ -740,7 +759,7 @@ export function JobRecommendations({
 
       {/* Market Summary Block */}
       {!isLoading && !quotaBlocked && !isError && data && (
-        <JobMarketSummary data={data} roles={rolesData} language={i18n.language} t={t} />
+        <JobMarketSummary data={data} t={t} />
       )}
 
       {/* Header Bar */}
@@ -819,7 +838,7 @@ export function JobRecommendations({
                   value={
                     filterQuery.role ??
                     data?.role_scope?.role_code ??
-                    targetRole ??
+                    normalizedTargetRole ??
                     (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                   }
                   onChange={(e) => handleSetRole(e.target.value)}
@@ -1062,7 +1081,17 @@ export function JobRecommendations({
                     type="number"
                     min={0}
                     value={filterQuery.salaryMin ?? ""}
-                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryMin: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))}
+                    onChange={(event) =>
+                      updateFilterQuery((prev) =>
+                        withSalaryCurrency({
+                          ...prev,
+                          salaryMin: event.target.value
+                            ? Number(event.target.value)
+                            : undefined,
+                          offset: 0,
+                        }),
+                      )
+                    }
                     className="w-28 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
                   />
                 </label>
@@ -1072,7 +1101,17 @@ export function JobRecommendations({
                     type="number"
                     min={0}
                     value={filterQuery.salaryMax ?? ""}
-                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryMax: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))}
+                    onChange={(event) =>
+                      updateFilterQuery((prev) =>
+                        withSalaryCurrency({
+                          ...prev,
+                          salaryMax: event.target.value
+                            ? Number(event.target.value)
+                            : undefined,
+                          offset: 0,
+                        }),
+                      )
+                    }
                     className="w-28 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
                   />
                 </label>
@@ -1080,7 +1119,15 @@ export function JobRecommendations({
                   {t("jobs.salaryCurrency", { defaultValue: "Đơn vị tiền tệ" })}
                   <select
                     value={filterQuery.salaryCurrency ?? ""}
-                    onChange={(event) => updateFilterQuery((prev) => ({ ...prev, salaryCurrency: event.target.value || undefined, offset: 0 }))}
+                    onChange={(event) =>
+                      updateFilterQuery((prev) =>
+                        withSalaryCurrency({
+                          ...prev,
+                          salaryCurrency: event.target.value || undefined,
+                          offset: 0,
+                        }),
+                      )
+                    }
                     className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
                   >
                     <option value="">--</option>
@@ -1088,6 +1135,13 @@ export function JobRecommendations({
                     <option value="USD">USD</option>
                   </select>
                 </label>
+                {salaryRangeInvalid && (
+                  <p className="w-full text-xs font-semibold text-rose-600" role="alert">
+                    {t("jobs.salaryRangeError", {
+                      defaultValue: "Lương tối thiểu không được lớn hơn lương tối đa",
+                    })}
+                  </p>
+                )}
               </div>
 
               {/* Salary-only toggle */}
@@ -1194,7 +1248,7 @@ export function JobRecommendations({
                       value={
                         mobileDraftQuery.role ??
                         data?.role_scope?.role_code ??
-                        targetRole ??
+                        normalizedTargetRole ??
                         (data?.role_scope?.source === "cv_target_missing" ? "" : "all")
                       }
                       onChange={(e) => handleSetRole(e.target.value)}
@@ -1455,21 +1509,72 @@ export function JobRecommendations({
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid gap-1 text-xs font-semibold text-slate-600">
                         {t("jobs.salaryMin", { defaultValue: "Lương tối thiểu" })}
-                        <input type="number" min={0} value={mobileDraftQuery.salaryMin ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryMin: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                        <input
+                          type="number"
+                          min={0}
+                          value={mobileDraftQuery.salaryMin ?? ""}
+                          onChange={(event) =>
+                            setMobileDraftQuery((prev) =>
+                              withSalaryCurrency({
+                                ...prev,
+                                salaryMin: event.target.value
+                                  ? Number(event.target.value)
+                                  : undefined,
+                                offset: 0,
+                              }),
+                            )
+                          }
+                          className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"
+                        />
                       </label>
                       <label className="grid gap-1 text-xs font-semibold text-slate-600">
                         {t("jobs.salaryMax", { defaultValue: "Lương tối đa" })}
-                        <input type="number" min={0} value={mobileDraftQuery.salaryMax ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryMax: event.target.value ? Number(event.target.value) : undefined, offset: 0 }))} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs" />
+                        <input
+                          type="number"
+                          min={0}
+                          value={mobileDraftQuery.salaryMax ?? ""}
+                          onChange={(event) =>
+                            setMobileDraftQuery((prev) =>
+                              withSalaryCurrency({
+                                ...prev,
+                                salaryMax: event.target.value
+                                  ? Number(event.target.value)
+                                  : undefined,
+                                offset: 0,
+                              }),
+                            )
+                          }
+                          className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"
+                        />
                       </label>
                     </div>
                     <label className="grid gap-1 text-xs font-semibold text-slate-600">
                       {t("jobs.salaryCurrency", { defaultValue: "Đơn vị tiền tệ" })}
-                      <select value={mobileDraftQuery.salaryCurrency ?? ""} onChange={(event) => setMobileDraftQuery((prev) => ({ ...prev, salaryCurrency: event.target.value || undefined, offset: 0 }))} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs">
+                      <select
+                        value={mobileDraftQuery.salaryCurrency ?? ""}
+                        onChange={(event) =>
+                          setMobileDraftQuery((prev) =>
+                            withSalaryCurrency({
+                              ...prev,
+                              salaryCurrency: event.target.value || undefined,
+                              offset: 0,
+                            }),
+                          )
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs"
+                      >
                         <option value="">--</option>
                         <option value="VND">VND</option>
                         <option value="USD">USD</option>
                       </select>
                     </label>
+                    {mobileSalaryRangeInvalid && (
+                      <p className="text-xs font-semibold text-rose-600" role="alert">
+                        {t("jobs.salaryRangeError", {
+                          defaultValue: "Lương tối thiểu không được lớn hơn lương tối đa",
+                        })}
+                      </p>
+                    )}
                   </div>
 
                   {/* Salary Only Toggle */}
@@ -1491,6 +1596,7 @@ export function JobRecommendations({
                 <SheetFooter className="p-4 border-t border-slate-100 shrink-0 bg-white pb-[calc(16px+env(safe-area-inset-bottom))] shadow-md">
                   <SheetClose asChild>
                     <Button
+                      disabled={mobileSalaryRangeInvalid}
                       onClick={() => {
                         setQueryState({ ...mobileDraftQuery, offset: 0, limit: 10 });
                         setSearchInput(mobileDraftQuery.q ?? "");

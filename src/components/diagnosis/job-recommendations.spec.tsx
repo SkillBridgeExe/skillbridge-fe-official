@@ -62,12 +62,6 @@ vi.mock("@/hooks/use-diagnosis", () => ({
   useJobRecommendationsQuery: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-diagnosis-roles", () => ({
-  useDiagnosisRolesQuery: vi.fn().mockReturnValue({
-    data: [{ code: "frontend_developer", label_vi: "Lập trình viên Frontend", label_en: "Frontend Developer" }],
-  }),
-}));
-
 const mockJobsData = {
   total: 15,
   pool_size: 15,
@@ -898,5 +892,84 @@ describe("structured locations rendering", () => {
     );
     
     vi.useRealTimers();
+  });
+
+  it("renders all 9 IT_ROLES in the role filter dropdown", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+
+    const roleSelect = screen.getAllByLabelText("Vai trò")[0];
+    // Ensure the 9 roles are present + 1 "all" option (Tất cả vai trò)
+    expect(roleSelect.querySelectorAll("option").length).toBe(10);
+  });
+
+  it("omits invalid role codes and sends role=all instead", () => {
+    const mockQuery = vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" targetRole="some_invalid_role_code" />);
+    fireEvent.click(screen.getByText(/Xem tất cả/));
+
+    expect(mockQuery).toHaveBeenLastCalledWith(
+      "cv-123",
+      expect.objectContaining({ role: "all" })
+    );
+  });
+
+  it("auto-selects VND when salary min or max is set and currency is empty", async () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText(/Xem tất cả/));
+    fireEvent.click(screen.getByText("Bộ lọc khác"));
+
+    const minInput = screen.getAllByLabelText("Lương tối thiểu")[0];
+    fireEvent.change(minInput, { target: { value: "10000000" } });
+    rerender(<JobRecommendations cvId="cv-123" />);
+
+    const currencySelect = screen.getAllByLabelText("Đơn vị tiền tệ")[0];
+    expect(currencySelect).toHaveValue("VND");
+  });
+
+  it("blocks fetching and shows error message when min salary > max salary", () => {
+    const mockQuery = vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText(/Xem tất cả/));
+    fireEvent.click(screen.getByText("Bộ lọc khác"));
+
+    const minInput = screen.getAllByLabelText("Lương tối thiểu")[0];
+    const maxInput = screen.getAllByLabelText("Lương tối đa")[0];
+
+    fireEvent.change(minInput, { target: { value: "20000000" } });
+    fireEvent.change(maxInput, { target: { value: "10000000" } });
+    rerender(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Lương tối thiểu không được lớn hơn lương tối đa")).toBeInTheDocument();
+    expect(mockQuery).toHaveBeenLastCalledWith(
+      null, // cvId should be null when blocked
+      expect.any(Object)
+    );
   });
 });

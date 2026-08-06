@@ -74,4 +74,35 @@ describe("job recommendation explorer query contract", () => {
       },
     );
   });
+
+  it("adds the default VND currency when a salary bound is supplied", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(
+      ok({ recommendations: [] }) as never,
+    );
+
+    await getJobRecommendationsApi("cv-1", {
+      salaryMin: 15_000_000,
+    });
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      API_ROUTES.CV.JOB_RECOMMENDATIONS("cv-1"),
+      {
+        params: {
+          salaryMin: 15_000_000,
+          salaryCurrency: "VND",
+        },
+      },
+    );
+  });
+
+  it("rejects an inverted salary range before sending a request", async () => {
+    await expect(
+      getJobRecommendationsApi("cv-1", {
+        salaryMin: 20_000_000,
+        salaryMax: 10_000_000,
+      }),
+    ).rejects.toThrow("Minimum salary cannot exceed maximum salary");
+
+    expect(httpClient.get).not.toHaveBeenCalled();
+  });
 });

@@ -47,6 +47,19 @@ export async function getJobRecommendationsApi(
   query: JobRecommendationsQuery = {},
 ): Promise<JobRecommendationsResponse> {
   const params: Record<string, unknown> = { ...query };
+
+  if (
+    typeof params.salaryMin === "number" &&
+    typeof params.salaryMax === "number" &&
+    params.salaryMin > params.salaryMax
+  ) {
+    throw new RangeError("Minimum salary cannot exceed maximum salary");
+  }
+
+  if ((params.salaryMin != null || params.salaryMax != null) && !params.salaryCurrency) {
+    params.salaryCurrency = "VND";
+  }
+
   if (Array.isArray(query.cityCodes) && query.cityCodes.length > 0) {
     params.cityCodes = query.cityCodes.join(",");
   }
