@@ -2683,6 +2683,11 @@ export default {
         "Paste one real bullet. SkillBridge suggests wording only; it will not edit your CV automatically.",
       detectedBullets: "Detected bullets",
       pasteBullet: "Paste the bullet you want to rewrite",
+      manualSelectionTitle: "We could not locate the original bullet",
+      manualSelectionDesc:
+        "Your CV may have changed since this analysis. Paste the exact bullet you want to improve so AI does not rewrite the wrong content.",
+      manualSelectionPlaceholder: "Paste one exact experience or project bullet from your CV",
+      manualSelectionRequired: "Paste a bullet to enable AI rewriting.",
       suggestion: "Suggestion",
       copy: "Copy",
       copied: "Suggestion copied",

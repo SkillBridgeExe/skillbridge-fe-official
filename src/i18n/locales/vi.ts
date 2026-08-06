@@ -2675,6 +2675,11 @@ export default {
         "Dán một bullet thật. SkillBridge chỉ gợi ý cách viết, không tự sửa CV.",
       detectedBullets: "Bullet tìm thấy",
       pasteBullet: "Dán bullet bạn muốn viết lại",
+      manualSelectionTitle: "Không tìm thấy chính xác bullet gốc",
+      manualSelectionDesc:
+        "CV có thể đã thay đổi sau lần phân tích này. Hãy dán đúng bullet cần cải thiện để AI không sửa nhầm nội dung.",
+      manualSelectionPlaceholder: "Dán một bullet kinh nghiệm hoặc dự án từ CV của bạn",
+      manualSelectionRequired: "Dán một bullet để bật chức năng viết lại bằng AI.",
       suggestion: "Gợi ý",
       copy: "Sao chép",
       copied: "Đã sao chép gợi ý",
