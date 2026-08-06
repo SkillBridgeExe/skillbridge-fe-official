@@ -502,6 +502,7 @@ export default function Diagnosis() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           mode={diagnosisReportMode}
+          jdTitle={reviewData?.jdMatch?.job_title || reviewData?.jdMatch?.target_role || undefined}
           onBackToReview={() => {
             setStep("cv-review");
             setActiveTab("audit");
