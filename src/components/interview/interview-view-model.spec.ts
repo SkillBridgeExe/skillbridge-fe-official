@@ -337,6 +337,7 @@ describe("interview view model", () => {
         overall_band: "outstanding",
         role_family: "ic_eng",
         scored_answers: 3,
+        score_basis: "criterion_rubric",
         dimensions: [
           {
             dimension: "technical_depth",
@@ -418,6 +419,7 @@ describe("interview view model", () => {
     const result = toInterviewResultViewModel(richDetail);
 
     expect(result.overallScore).toBe(82);
+    expect(result.scoreBasis).toBe("criterion_rubric");
     expect(result.rubricDimensions).toEqual([
       {
         dimension: "technical_depth",

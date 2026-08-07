@@ -33,11 +33,13 @@ export interface RealtimeClientSecretDto {
 }
 
 export interface FinalScoreDto {
-  overall: number;
-  overall_band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+  overall: number | null;
+  overall_band: 'poor' | 'borderline' | 'solid' | 'outstanding' | 'legacy';
   dimensions: Array<{ dimension: string; score: number; band: string; weight: number }>;
   role_family: string;
   scored_answers: number;
+  score_basis?: 'criterion_rubric' | 'legacy_fallback' | 'mixed' | 'unscored';
+  scoring_note?: string;
   score_explanations?: Array<{
     dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
     score: number;
