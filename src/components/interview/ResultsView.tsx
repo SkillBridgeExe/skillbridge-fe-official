@@ -201,12 +201,20 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
 
             <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
               <ScoreCard
-                label={t("interview.results.semantic")}
+                label={
+                  view.scoreBasis === "criterion_rubric" || view.scoreBasis === "mixed"
+                    ? t("interview.results.technicalDepth")
+                    : t("interview.results.semantic")
+                }
                 value={view.semanticScore}
                 icon={BarChart3}
               />
               <ScoreCard
-                label={t("interview.results.llmScore")}
+                label={
+                  view.scoreBasis === "criterion_rubric" || view.scoreBasis === "mixed"
+                    ? t("interview.results.evidenceCredibility")
+                    : t("interview.results.llmScore")
+                }
                 value={view.llmScore}
                 icon={Sparkles}
               />
@@ -233,6 +241,15 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                 count: view.questions.length,
               })}
             </span>
+            {view.scoreBasis && (
+              <span
+                className="flex items-center gap-1"
+                title={t("interview.results.scoreBasisDescription")}
+              >
+                <Shield className="h-3.5 w-3.5" />
+                {t(`interview.results.scoreBasis.${view.scoreBasis}`)}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

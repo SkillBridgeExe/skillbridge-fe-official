@@ -1,6 +1,7 @@
 import type {
   InterviewDetailResponseDto,
   InterviewFeedback,
+  FinalScoreDto,
   PlatformInterviewType,
   StartInterviewRequest,
   SubmitInterviewTurnRequest,
@@ -150,6 +151,7 @@ export interface InterviewResultViewModel {
   questions: InterviewResultQuestionViewModel[];
   scoreExplanations: InterviewScoreExplanationViewModel[];
   gapItems: InterviewGapItemViewModel[];
+  scoreBasis: FinalScoreDto['score_basis'] | null;
 }
 
 export type InterviewQuestionBankSourceKind = "curated" | "fallback";
@@ -931,6 +933,16 @@ function readFinalScoreOverall(value: unknown): number | null {
   return score(readNumber(value.overall));
 }
 
+function readScoreBasis(value: unknown): FinalScoreDto['score_basis'] | null {
+  if (!isRecord(value)) return null;
+  return value.score_basis === 'criterion_rubric' ||
+    value.score_basis === 'legacy_fallback' ||
+    value.score_basis === 'mixed' ||
+    value.score_basis === 'unscored'
+    ? value.score_basis
+    : null;
+}
+
 function readRubricDimensions(
   value: unknown,
 ): InterviewRubricDimensionViewModel[] {
@@ -1147,6 +1159,7 @@ export function toInterviewResultViewModel(
     questions,
     scoreExplanations: readScoreExplanations(detail.finalScore),
     gapItems: readGapItems(detail.gapItems),
+    scoreBasis: readScoreBasis(detail.finalScore),
   };
 }
 
