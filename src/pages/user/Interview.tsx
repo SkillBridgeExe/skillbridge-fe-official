@@ -88,6 +88,7 @@ import {
   getInterviewQuestionBankSourceKind,
   getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
+  hasPendingRealtimeAnswer,
   readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
@@ -189,6 +190,10 @@ export default function Interview() {
   const realtimeAnswerBufferRef = useRef<string[]>([]);
   const realtimeAnswerFlushTimerRef = useRef<number | null>(null);
   const submittedRealtimeQuestionRef = useRef<string | null>(null);
+  const realtimeTurnSubmitPromiseRef = useRef<Promise<void> | null>(null);
+  const flushRealtimeAnswerBufferRef = useRef<
+    (options?: { force?: boolean }) => Promise<void>
+  >(async () => undefined);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
   const liveClosingRequestedRef = useRef(false);
@@ -945,7 +950,7 @@ export default function Interview() {
   );
 
   const finishInterview = useCallback(
-    async (reason: EndReason = "manual") => {
+    async (reason: EndReason = "manual", options?: { skipRealtimeFlush?: boolean }) => {
       const sessionId = activeSession?.id;
       if (!sessionId || endingRef.current) return;
 
@@ -954,6 +959,17 @@ export default function Interview() {
       setIsEnding(true);
       setIsLoading(false);
       setApiError(null);
+      if (!options?.skipRealtimeFlush) {
+        // End must not clear a spoken answer that is waiting for the idle
+        // flush or for an in-flight /turn request. The force flag bypasses the
+        // ending guard, while the submit promise prevents a double /turn.
+        try {
+          await flushRealtimeAnswerBufferRef.current({ force: true });
+        } catch {
+          // The final /end call is still required if the client-side flush has
+          // an unexpected failure; the BE already persists completed turns.
+        }
+      }
       disconnectRealtime();
       stopMedia();
       stopQuestionAudio();
@@ -990,13 +1006,24 @@ export default function Interview() {
   );
 
   const flushRealtimeAnswerBuffer = useCallback(
-    async () => {
+    async ({ force = false }: { force?: boolean } = {}) => {
       clearRealtimeAnswerFlushTimer();
-      if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
+      if (isRealtimeTurnSubmittingRef.current) {
+        await realtimeTurnSubmitPromiseRef.current?.catch(() => undefined);
+        return;
+      }
+      if (endingRef.current && !force) return;
 
       const session = activeSessionRef.current;
       const currentQuestionKey = currentQuestionRef.current.trim().normalize("NFC");
-      if (!session || !currentQuestionKey || submittedRealtimeQuestionRef.current === currentQuestionKey) {
+      if (
+        !session ||
+        !hasPendingRealtimeAnswer({
+          currentQuestion: currentQuestionKey,
+          submittedQuestion: submittedRealtimeQuestionRef.current,
+          transcripts: realtimeAnswerBufferRef.current,
+        })
+      ) {
         resetRealtimeAnswerBuffer();
         return;
       }
@@ -1036,8 +1063,9 @@ export default function Interview() {
       setIsLoading(true);
       setApiError(null);
 
-      try {
-        const response = await submitTurnMutation.mutateAsync(payload);
+      const submitPromise = (async () => {
+        try {
+          const response = await submitTurnMutation.mutateAsync(payload);
         activeSessionRef.current = response.session;
         setActiveSession(response.session);
 
@@ -1073,7 +1101,7 @@ export default function Interview() {
 
         if (response.finished) {
           setInterviewFinished(true);
-          await finishInterview("finished");
+          await finishInterview("finished", { skipRealtimeFlush: true });
           return;
         }
 
@@ -1082,15 +1110,21 @@ export default function Interview() {
         liveSessionRef.current?.setMicEnabled(false);
         setIsMicActive(false);
         speakOfficialRealtimeQuestion(liveSessionRef.current, nextQuestion, selectedLanguage, nextAiMessage);
-      } catch (error) {
-        submittedRealtimeQuestionRef.current = null;
-        setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
-        acceptsUserSpeechRef.current = true;
-        liveSessionRef.current?.setMicEnabled(true);
-        setIsMicActive(true);
-      } finally {
-        setIsLoading(false);
-        isRealtimeTurnSubmittingRef.current = false;
+        } catch (error) {
+          submittedRealtimeQuestionRef.current = null;
+          setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
+          acceptsUserSpeechRef.current = true;
+          liveSessionRef.current?.setMicEnabled(true);
+          setIsMicActive(true);
+        } finally {
+          setIsLoading(false);
+          isRealtimeTurnSubmittingRef.current = false;
+        }
+      })();
+      realtimeTurnSubmitPromiseRef.current = submitPromise;
+      await submitPromise;
+      if (realtimeTurnSubmitPromiseRef.current === submitPromise) {
+        realtimeTurnSubmitPromiseRef.current = null;
       }
     },
     [
@@ -1104,6 +1138,7 @@ export default function Interview() {
       t,
     ],
   );
+  flushRealtimeAnswerBufferRef.current = flushRealtimeAnswerBuffer;
 
   const scheduleRealtimeAnswerFlush = useCallback(() => {
     clearRealtimeAnswerFlushTimer();

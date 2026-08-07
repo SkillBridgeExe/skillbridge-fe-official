@@ -7,6 +7,7 @@ import {
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
   buildBufferedRealtimeTurnRequest,
+  hasPendingRealtimeAnswer,
   buildServerOwnedRealtimeTurnRequest,
   buildValidatedRealtimeTurnRequest,
   classifyRealtimeTranscriptIntent,
@@ -1079,6 +1080,33 @@ describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
 });
 
 describe("buffered realtime turn request — P3 speech timing", () => {
+  it("recognizes a buffered answer that still belongs to the active question", () => {
+    expect(
+      hasPendingRealtimeAnswer({
+        currentQuestion: "  How do you debug this? ",
+        submittedQuestion: null,
+        transcripts: ["I start by reproducing the issue."],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not flush an empty buffer or a question already submitted", () => {
+    expect(
+      hasPendingRealtimeAnswer({
+        currentQuestion: "How do you debug this?",
+        submittedQuestion: null,
+        transcripts: ["   "],
+      }),
+    ).toBe(false);
+    expect(
+      hasPendingRealtimeAnswer({
+        currentQuestion: "How do you debug this?",
+        submittedQuestion: "How do you debug this?",
+        transcripts: ["I already sent this answer."],
+      }),
+    ).toBe(false);
+  });
+
   it("sends measured response delay and the segment count", () => {
     const request = buildBufferedRealtimeTurnRequest({
       sessionId: "session-1",
