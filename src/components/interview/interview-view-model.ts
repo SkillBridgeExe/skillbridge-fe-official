@@ -464,6 +464,24 @@ export function buildBufferedRealtimeTurnRequest({
   });
 }
 
+export function hasPendingRealtimeAnswer({
+  currentQuestion,
+  submittedQuestion,
+  transcripts,
+}: {
+  currentQuestion: string;
+  submittedQuestion: string | null;
+  transcripts: string[];
+}): boolean {
+  const normalizedQuestion = currentQuestion.trim().normalize("NFC");
+  const normalizedSubmittedQuestion = submittedQuestion?.trim().normalize("NFC") ?? null;
+  return Boolean(
+    normalizedQuestion &&
+      normalizedQuestion !== normalizedSubmittedQuestion &&
+      transcripts.some((transcript) => transcript.trim()),
+  );
+}
+
 /** A spoken command is a short standalone utterance. Keyword matches inside a
  *  flowing answer ("...dự án đó đã kết thúc vào tháng 3") must never hijack the
  *  turn — they used to wipe the buffered answer (bug hunt 2026-07-21). */
