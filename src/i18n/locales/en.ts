@@ -2448,6 +2448,7 @@ export default {
       loadMoreError: "The next page could not be loaded. Previously loaded jobs are still available.",
       rankLabel: "Recommendation rank",
       top1Label: "Best overall fit",
+      top1ScoreLabel: "Highest recommendation score in the list",
       rankDescription:
         "Rank combines skill match, role relevance, and experience-level fit.",
       totalMatching: "Found {{count}} positions in database",

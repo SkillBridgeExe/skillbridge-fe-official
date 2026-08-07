@@ -27,6 +27,7 @@ vi.mock("react-i18next", () => ({
       if (key === "jobs.retry") return "Thử lại";
       if (key === "jobs.rankLabel") return "Xếp hạng tổng thể";
       if (key === "jobs.top1Label") return "Phù hợp tổng thể nhất";
+      if (key === "jobs.top1ScoreLabel") return "Điểm đề xuất cao nhất trong danh sách";
       if (key === "jobs.rankDescription") return "Thứ hạng kết hợp kỹ năng, độ phù hợp vai trò và cấp độ kinh nghiệm.";
       if (key === "jobs.loadMoreError") return "Không tải được trang tiếp theo. Các việc làm đã tải vẫn được giữ lại.";
       if (key === "jobs.apply") return "Ứng tuyển";
@@ -135,7 +136,7 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
     expect(screen.getByText("Fullstack React Developer")).toBeInTheDocument();
     expect(screen.getByText("Xem tất cả 15 việc làm")).toBeInTheDocument();
-    expect(screen.getByText("Top 1 - Phù hợp tổng thể nhất")).toBeInTheDocument();
+    expect(screen.getByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).toBeInTheDocument();
     expect(screen.getByText("Top 2")).toBeInTheDocument();
   });
 
@@ -1069,7 +1070,7 @@ describe("structured locations rendering", () => {
     render(<JobRecommendations cvId="cv-123" />); // Default sort is RECOMMENDED
 
     // Top 1 label
-    expect(screen.getByText("Top 1 - Phù hợp tổng thể nhất")).toBeInTheDocument();
+    expect(screen.getByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).toBeInTheDocument();
     // Top 2 label
     expect(screen.getByText("Top 2")).toBeInTheDocument();
   });
@@ -1097,10 +1098,30 @@ describe("structured locations rendering", () => {
     render(<JobRecommendations cvId="cv-123" />);
 
     expect(screen.getByText("Senior Frontend Engineer").closest("article")).toHaveTextContent(
-      "Top 1 - Phù hợp tổng thể nhất",
+      "Top 1 - Điểm đề xuất cao nhất trong danh sách",
     );
     expect(screen.getByText("Fullstack React Developer").closest("article")).toHaveTextContent("Top 2");
     expect(screen.getByText("Mobile Frontend Engineer").closest("article")).toHaveTextContent("Top 3");
+  });
+
+  it("uses the fit label for Top 1 only when the job is safe to apply", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [
+          { ...mockJobsData.recommendations[0], fit: { verdict: "safe_apply", reasons: [] } },
+          mockJobsData.recommendations[1],
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Top 1 - Phù hợp tổng thể nhất")).toBeInTheDocument();
+    expect(screen.queryByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).not.toBeInTheDocument();
   });
 
   it("hides rank badges when not sorted by RECOMMENDED", () => {

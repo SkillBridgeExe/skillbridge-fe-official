@@ -322,6 +322,9 @@ function JobCard({
   const demoted = typeof matchScoreVal === "number" && recScore < matchScoreVal;
   const severe = job.severe_stretch === true;
   const visibleRank = typeof displayRank === "number" ? displayRank : null;
+  const top1LabelKey = job.fit?.verdict === "safe_apply"
+    ? "jobs.top1Label"
+    : "jobs.top1ScoreLabel";
 
   const gaps = priorityGaps(job);
   const visibleGaps = gaps.slice(0, 3);
@@ -362,7 +365,7 @@ function JobCard({
                       "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold",
                       visibleRank === 1 ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
                     )}>
-                      Top {visibleRank}{visibleRank === 1 ? ` - ${t("jobs.top1Label")}` : ""}
+                      Top {visibleRank}{visibleRank === 1 ? ` - ${t(top1LabelKey)}` : ""}
                     </span>
                   }
                 >

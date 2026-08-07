@@ -2440,6 +2440,7 @@ export default {
       loadMoreError: "Không tải được trang tiếp theo. Các việc làm đã tải vẫn được giữ lại.",
       rankLabel: "Xếp hạng đề xuất",
       top1Label: "Phù hợp tổng thể nhất",
+      top1ScoreLabel: "Điểm đề xuất cao nhất trong danh sách",
       rankDescription:
         "Thứ hạng kết hợp mức khớp kỹ năng, độ phù hợp vai trò và cấp độ kinh nghiệm.",
       totalMatching: "Tìm thấy {{count}} vị trí trong kho dữ liệu",
