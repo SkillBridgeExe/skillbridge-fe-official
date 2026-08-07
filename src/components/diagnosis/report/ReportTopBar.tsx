@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import { ArrowLeft, Briefcase, Menu, RotateCcw, RefreshCw, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { resolveDiagnosisCvDisplayName, useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { getRoleLabel } from "@/constants/it-roles";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useSidebarStore } from "@/store/useSidebarStore";
@@ -28,8 +28,11 @@ export function ReportTopBar({ activeTab, onTabChange, mode = 'review', jdTitle,
   const reset = useDiagnosisStore((s) => s.reset);
   const scanAgain = useDiagnosisStore((s) => s.scanAgain);
   const setShowJdInput = useDiagnosisStore((s) => s.setShowJdInput);
+  const setStep = useDiagnosisStore((s) => s.setStep);
   const cvFile = useDiagnosisStore((s) => s.cvFile);
+  const cvDisplayName = useDiagnosisStore((s) => s.cvDisplayName);
   const builderCvName = useDiagnosisStore((s) => s.builderCvName);
+  const isFromBuilder = useDiagnosisStore((s) => s.isFromBuilder);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
@@ -45,7 +48,13 @@ export function ReportTopBar({ activeTab, onTabChange, mode = 'review', jdTitle,
       ? `${t("review.title", { defaultValue: "Phân tích CV" })} · ${roleName}`
       : t("review.title", { defaultValue: "Phân tích CV" });
 
-  const cvName = cvFile?.name || builderCvName || t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" });
+  const cvName = resolveDiagnosisCvDisplayName({
+    cvFileName: cvFile?.name ?? null,
+    cvDisplayName,
+    isFromBuilder,
+    builderCvName,
+    fallback: t("review.fallbackCvName", { defaultValue: "CV chưa đặt tên" }),
+  });
   const displayJdTitle = jdTitle || t("review.defaultJdName", { defaultValue: "JD đã tải lên" });
 
   const reviewTabItems: Array<{ key: ReportTab; label: string }> = [
@@ -119,12 +128,15 @@ export function ReportTopBar({ activeTab, onTabChange, mode = 'review', jdTitle,
 
           {isMatch ? (
             <Button
-              onClick={() => setShowJdInput(true)}
+              onClick={() => {
+                setStep("cv-review");
+                setShowJdInput(true);
+              }}
               size="sm"
               className="rounded-full gap-1.5 px-2.5 sm:px-4 min-h-[44px] text-[12px] font-bold bg-[#00AEEF] hover:bg-[#049bd7] text-white focus-visible:ring-2 focus-visible:ring-[#00AEEF] border-0 whitespace-nowrap"
             >
               <Briefcase className="w-3.5 h-3.5 shrink-0" />
-              <span>{t("review.matchAction", { defaultValue: "So khớp CV với JD" })}</span>
+              <span>{t("review.matchAnotherAction", { defaultValue: "So khớp JD khác" })}</span>
             </Button>
           ) : step === "cv-review" ? (
             <Button

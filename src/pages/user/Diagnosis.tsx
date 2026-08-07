@@ -29,6 +29,10 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { captureStudioEvent, studioErrorCode } from "@/lib/studio-telemetry";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
+import {
+  getDiagnosisReportMode,
+  normalizeDiagnosisReportTab,
+} from "./diagnosis-report-mode";
 
 const StudioTopBar = lazy(() => import("@/components/cv-builder/studio/StudioTopBar").then(m => ({ default: m.StudioTopBar })));
 const CvFormPanel = lazy(() => import("@/components/cv-builder/CvFormPanel").then(m => ({ default: m.CvFormPanel })));
@@ -45,6 +49,7 @@ export default function Diagnosis() {
   const { t } = useTranslation("diagnosis");
   const {
     step, isAnalyzing,
+    reviewData,
     targetStep,
     setIsFromBuilder, setBuilderCvId, setBuilderCvName, clearBuilderState,
     setStep
@@ -57,18 +62,15 @@ export default function Diagnosis() {
   const posthog = usePostHog();
   useUnsavedGuard();
 
+  const diagnosisReportMode = getDiagnosisReportMode(step, Boolean(reviewData?.jdMatch));
+
   // Tab State Machine: ensure activeTab matches current step mode
   useEffect(() => {
-    if (step === "results") {
-      if (!["fit", "cv_jd", "jobs"].includes(activeTab)) {
-        setActiveTab("fit");
-      }
-    } else if (step === "cv-review") {
-      if (!["audit", "cv", "market"].includes(activeTab)) {
-        setActiveTab("audit");
-      }
+    const normalizedTab = normalizeDiagnosisReportTab(diagnosisReportMode, activeTab);
+    if (normalizedTab !== activeTab) {
+      setActiveTab(normalizedTab);
     }
-  }, [step, activeTab]);
+  }, [activeTab, diagnosisReportMode]);
 
   useEffect(() => {
     setCompanionSuspended(isAnalyzing);
@@ -491,15 +493,16 @@ export default function Diagnosis() {
 
   // Report mode (Jobscan-style app shell): slim utility top bar instead of the
   // floating marketing navbar, no stepper, wider container.
-  const reportMode = step === "cv-review" || step === "results";
+  const isReportShell = step === "cv-review" || step === "results";
 
   return (
-    <Layout hideNavbar={reportMode} hideFooter={reportMode}>
-      {reportMode && (
+    <Layout hideNavbar={isReportShell} hideFooter={isReportShell}>
+      {isReportShell && (
         <ReportTopBar
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          mode={step === "results" ? "match" : "review"}
+          mode={diagnosisReportMode}
+          jdTitle={reviewData?.jdMatch?.job_title || reviewData?.jdMatch?.target_role || undefined}
           onBackToReview={() => {
             setStep("cv-review");
             setActiveTab("audit");
@@ -510,7 +513,7 @@ export default function Diagnosis() {
         id="diagnosis-root"
         className={cn(
           "mx-auto relative flex flex-col w-full bg-[#FCFCFD]",
-          reportMode
+          isReportShell
             ? "max-w-none w-full px-0 pt-0 pb-0 h-[calc(100dvh-104px)] min-h-0 overflow-y-auto lg:overflow-hidden"
             : "max-w-5xl px-6 py-6 min-h-dvh md:h-dvh md:min-h-0 md:overflow-y-auto justify-center",
         )}

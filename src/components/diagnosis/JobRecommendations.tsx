@@ -106,6 +106,28 @@ function asSortOption(val: string): SortOptionType {
   return val === "SKILL_MATCH" || val === "NEWEST" || val === "SALARY_DESC" ? val : "RECOMMENDED";
 }
 
+/**
+ * Keep the visible default list aligned with the score shown on each card.
+ * The BE owns ranking, but this presentation guard also keeps accumulated
+ * pagination rows honest while an older API revision is still serving data.
+ */
+export function sortRecommendedJobsForDisplay(
+  recommendations: JobRecommendationDto[],
+): JobRecommendationDto[] {
+  const visibleScore = (job: JobRecommendationDto): number => {
+    const score = job.recommendation_score ?? job.match_score;
+    return Number.isFinite(score) ? score : Number.NEGATIVE_INFINITY;
+  };
+
+  return [...recommendations].sort(
+    (a, b) =>
+      visibleScore(b) - visibleScore(a) ||
+      b.match_score - a.match_score ||
+      a.rank - b.rank ||
+      a.job_id.localeCompare(b.job_id),
+  );
+}
+
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
 const CARD = "bg-white border border-slate-200 rounded-lg shadow-sm transition-colors duration-200 hover:border-slate-300 flex flex-col overflow-hidden";
@@ -301,7 +323,17 @@ function JobLocationsBadge({ locations, fallbackLocation, t }: { locations?: imp
   );
 }
 
-function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof import("react-i18next").useTranslation>["t"] }) {
+function JobCard({
+  job,
+  t,
+  showRank,
+  displayRank,
+}: {
+  job: JobRecommendationDto;
+  t: ReturnType<typeof import("react-i18next").useTranslation>["t"];
+  showRank?: boolean;
+  displayRank?: number;
+}) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = job.salary_visible === false
     ? null
@@ -311,6 +343,10 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof i
   const matchScoreVal = job.match_score;
   const demoted = typeof matchScoreVal === "number" && recScore < matchScoreVal;
   const severe = job.severe_stretch === true;
+  const visibleRank = typeof displayRank === "number" ? displayRank : null;
+  const top1LabelKey = job.fit?.verdict === "safe_apply"
+    ? "jobs.top1Label"
+    : "jobs.top1ScoreLabel";
 
   const gaps = priorityGaps(job);
   const visibleGaps = gaps.slice(0, 3);
@@ -341,6 +377,26 @@ function JobCard({ job, t }: { job: JobRecommendationDto; t: ReturnType<typeof i
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
+            {showRank && visibleRank !== null && Number.isInteger(visibleRank) && visibleRank >= 1 && visibleRank <= 3 && (
+              <div className="mb-2">
+                <InfoPopover
+                  align="left"
+                  label={t("jobs.rankLabel")}
+                  trigger={
+                    <span className={cn(
+                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold",
+                      visibleRank === 1 ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
+                    )}>
+                      Top {visibleRank}{visibleRank === 1 ? ` - ${t(top1LabelKey)}` : ""}
+                    </span>
+                  }
+                >
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {t("jobs.rankDescription")}
+                  </p>
+                </InfoPopover>
+              </div>
+            )}
             <h4 className="text-base font-bold text-slate-950 leading-snug line-clamp-2">
               {job.title}
             </h4>
@@ -587,7 +643,7 @@ export function JobRecommendations({
     activeQuery,
   );
 
-  const rawRecs = data?.recommendations ?? [];
+  const rawRecs = useMemo(() => data?.recommendations ?? [], [data?.recommendations]);
   const total = data?.total ?? data?.eligible_pool_size ?? data?.pool_size ?? rawRecs.length;
   const facets = data?.facets;
   const lastPageCount = rawRecs.length;
@@ -632,7 +688,19 @@ export function JobRecommendations({
     }
   }, [data?.recommendations, queryState.offset, isExplorerOpen]);
 
-  const displayRecs = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
+  const displayRecs = useMemo(() => {
+    const source = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
+    return (activeQuery.sort ?? "RECOMMENDED") === "RECOMMENDED"
+      ? sortRecommendedJobsForDisplay(source)
+      : source;
+  }, [activeQuery.sort, accumulatedRecs, isExplorerOpen, rawRecs]);
+
+  const isPaginationRequest =
+    isExplorerOpen &&
+    (activeQuery.offset ?? 0) > 0 &&
+    accumulatedRecs.length > 0;
+  const isLoadingMore = isPaginationRequest && isLoading;
+  const isLoadMoreError = isPaginationRequest && isError;
 
   if (!cvId) return null;
 
@@ -642,6 +710,22 @@ export function JobRecommendations({
       ? (error as { status?: number }).status
       : undefined;
   const quotaBlocked = errorStatus === 402;
+
+  const handleRetryRecommendations = () => {
+    if (errorStatus === 410 && queryState.snapshotToken) {
+      setQueryState((prev) => {
+        const { snapshotToken: _, ...rest } = prev;
+        return { ...rest, offset: 0 };
+      });
+      setMobileDraftQuery((prev) => {
+        const { snapshotToken: _, ...rest } = prev;
+        return { ...rest, offset: 0 };
+      });
+      setAccumulatedRecs([]);
+      return;
+    }
+    refetch();
+  };
 
   const activeFilterCount = countActiveFilters(queryState);
   const draftFilterCount = countActiveFilters(mobileDraftQuery);
@@ -1633,11 +1717,11 @@ export function JobRecommendations({
       )}
 
       {/* Main List & Data States */}
-      {isLoading ? (
+      {isLoading && !isPaginationRequest ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[280px] bg-slate-100 rounded-2xl" />)}
         </div>
-      ) : quotaBlocked ? (
+      ) : quotaBlocked && !isPaginationRequest ? (
         <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-900">{t("jobs.quotaBlocked")}</p>
@@ -1648,28 +1732,14 @@ export function JobRecommendations({
             {t("quota.upgradeCta")}
           </Link>
         </div>
-      ) : isError ? (
+      ) : isError && !isPaginationRequest ? (
         <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
           <p className="min-w-0 flex-1 text-[13px] text-slate-500">{t("jobs.error")}</p>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (errorStatus === 410 && queryState.snapshotToken) {
-                setQueryState(prev => {
-                  const { snapshotToken: _, ...rest } = prev;
-                  return { ...rest, offset: 0 };
-                });
-                setMobileDraftQuery(prev => {
-                  const { snapshotToken: _, ...rest } = prev;
-                  return { ...rest, offset: 0 };
-                });
-                setAccumulatedRecs([]);
-              } else {
-                refetch();
-              }
-            }}
+            onClick={handleRetryRecommendations}
             disabled={isRefetching}
             className="rounded-full shadow-sm"
           >
@@ -1707,11 +1777,46 @@ export function JobRecommendations({
 
           {/* Job Cards Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            {displayRecs.map((job) => <JobCard key={job.job_id} job={job} t={t} />)}
+            {displayRecs.map((job, index) => (
+              <JobCard
+                key={job.job_id}
+                job={job}
+                t={t}
+                showRank={(queryState.sort ?? "RECOMMENDED") === "RECOMMENDED"}
+                displayRank={index + 1}
+              />
+            ))}
           </div>
 
+          {isLoadingMore && (
+            <div
+              data-testid="jobs-load-more-loading"
+              role="status"
+              className="flex items-center justify-center gap-2 py-3 text-xs font-semibold text-slate-500"
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              {t("jobs.loadingMore")}
+            </div>
+          )}
+
+          {isLoadMoreError && (
+            <div className="flex flex-wrap items-center justify-center gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+              <p className="text-xs font-medium text-rose-800">{t("jobs.loadMoreError")}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryRecommendations}
+                disabled={isRefetching}
+                className="rounded-full border-rose-200 bg-white text-xs font-bold text-rose-800 hover:bg-rose-100"
+              >
+                <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", isRefetching && "animate-spin")} />
+                {t("jobs.retry")}
+              </Button>
+            </div>
+          )}
+
           {/* Accumulated Load More Pagination for Explorer */}
-          {hasMore && (
+          {hasMore && !isLoadingMore && !isLoadMoreError && (
             <div className="pt-2 text-center">
               <Button
                 variant="outline"

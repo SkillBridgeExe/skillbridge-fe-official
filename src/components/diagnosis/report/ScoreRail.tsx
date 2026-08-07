@@ -144,7 +144,10 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
   return (
     <aside className="w-full lg:h-full lg:flex lg:flex-col">
       {/* Below lg: horizontal scrollable chip bar (at lg the sidebar gets its own grid column) */}
-      <div className="lg:hidden sticky top-[104px] bg-white/95 backdrop-blur z-20 py-2 border-b border-slate-200 overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none">
+      <div
+        data-testid="score-rail-mobile"
+        className="lg:hidden sticky top-0 bg-white/95 backdrop-blur z-20 py-2 border-b border-slate-200 overflow-x-auto flex items-center gap-2 -mx-4 px-4 scrollbar-none"
+      >
         {/* Score chip — the only score display below lg now that the hero is gone */}
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shrink-0", bandChip)}>
           <span className="font-mono text-sm font-black tabular-nums">{overallScore}</span>/100 · {bandLabel}
@@ -194,13 +197,16 @@ export function ScoreRail({ overallScore, groups, breakdown, verdictMessage, act
       </div>
 
       {/* Desktop (>=lg): report sidebar contents mapped directly inside parent aside container */}
-      <div className="hidden lg:flex flex-col h-full w-full">
+      <div
+        data-testid="score-rail-desktop"
+        className="hidden lg:flex min-h-0 flex-col h-full w-full overflow-y-auto overscroll-contain"
+      >
         {/* Donut */}
         <div className="flex flex-col items-center mb-5 shrink-0">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
             {isMatch
               ? t("review.matchScoreTitle", { defaultValue: "Điểm khớp CV–JD" })
-              : t("report.rail.scoreTitle", { defaultValue: "Điểm tương thích" })}
+              : t("review.overallScore", { defaultValue: "Điểm chất lượng CV" })}
           </h3>
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>

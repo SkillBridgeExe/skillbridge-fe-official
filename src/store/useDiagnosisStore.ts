@@ -9,6 +9,8 @@ interface DiagnosisState {
   step: Step;
   isAnalyzing: boolean;
   cvFile: File | null;
+  /** Durable display name for uploaded/history CVs; File itself cannot be persisted. */
+  cvDisplayName: string | null;
   jdFile: File | null;
   jobDescription: string;
   loadingMsgIdx: number;
@@ -41,6 +43,7 @@ interface DiagnosisState {
   setStep: (step: Step) => void;
   setIsAnalyzing: (isAnalyzing: boolean) => void;
   setCvFile: (file: File | null) => void;
+  setCvDisplayName: (name: string | null) => void;
   setJdFile: (file: File | null) => void;
   setJobDescription: (desc: string) => void;
   setLoadingMsgIdx: (idx: number | ((prev: number) => number)) => void;
@@ -82,10 +85,107 @@ export const persistDiagnosisState = (s: DiagnosisState) => ({
   targetRole: s.targetRole,
   analysisMode: s.analysisMode,
   hasActivatedJdMode: s.hasActivatedJdMode,
+  jobDescription: s.jobDescription,
+  cvDisplayName: s.cvDisplayName,
+  isFromBuilder: s.isFromBuilder,
+  builderCvId: s.builderCvId,
+  builderCvName: s.builderCvName,
   consentAccepted: s.consentAccepted,
   githubUsername: s.githubUsername,
   githubConsent: s.githubConsent,
 });
+
+export function buildHistoryDiagnosisState({
+  cvId,
+  review,
+  cvDisplayName,
+  targetRole,
+}: {
+  cvId: string;
+  review: CvReviewData;
+  cvDisplayName: string | null;
+  targetRole: string | null;
+}): Partial<DiagnosisState> {
+  return {
+    step: "cv-review",
+    lastCvId: cvId,
+    reviewData: review,
+    cvFile: null,
+    cvDisplayName,
+    jdFile: null,
+    jobDescription: "",
+    isAnalyzing: false,
+    loadingProgress: 0,
+    loadingMsgIdx: 0,
+    apiError: null,
+    analysisMode: "cv-only",
+    hasActivatedJdMode: false,
+    showJdInput: false,
+    targetStep: "cv-review",
+    highlightEvidence: null,
+    targetRole,
+    isFromBuilder: false,
+    builderCvId: null,
+    builderCvName: null,
+  };
+}
+
+export function buildMatchDiagnosisState({
+  cvId,
+  review,
+  cvDisplayName,
+  targetRole,
+}: {
+  cvId: string;
+  review: CvReviewData;
+  cvDisplayName: string | null;
+  targetRole: string | null;
+}): Partial<DiagnosisState> {
+  return {
+    step: "results",
+    lastCvId: cvId,
+    reviewData: review,
+    cvFile: null,
+    cvDisplayName,
+    jdFile: null,
+    // The match-detail contract does not contain the original JD body. Never
+    // leave another match's text in the editor while showing this result.
+    jobDescription: "",
+    isAnalyzing: false,
+    loadingProgress: 0,
+    loadingMsgIdx: 0,
+    apiError: null,
+    analysisMode: "cv-jd",
+    hasActivatedJdMode: true,
+    showJdInput: false,
+    targetStep: "results",
+    highlightEvidence: null,
+    targetRole,
+    isFromBuilder: false,
+    builderCvId: null,
+    builderCvName: null,
+  };
+}
+
+export function resolveDiagnosisCvDisplayName({
+  cvFileName,
+  cvDisplayName,
+  isFromBuilder,
+  builderCvName,
+  fallback,
+}: {
+  cvFileName: string | null;
+  cvDisplayName: string | null;
+  isFromBuilder: boolean;
+  builderCvName: string | null;
+  fallback: string;
+}): string {
+  return cvFileName
+    || (isFromBuilder ? builderCvName : cvDisplayName)
+    || cvDisplayName
+    || builderCvName
+    || fallback;
+}
 
 export const useDiagnosisStore = create<DiagnosisState>()(
   persist(
@@ -93,6 +193,7 @@ export const useDiagnosisStore = create<DiagnosisState>()(
   step: "input",
   isAnalyzing: false,
   cvFile: null,
+  cvDisplayName: null,
   jdFile: null,
   jobDescription: "",
   loadingMsgIdx: 0,
@@ -118,7 +219,8 @@ export const useDiagnosisStore = create<DiagnosisState>()(
 
   setStep: (step) => set({ step }),
   setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
-  setCvFile: (cvFile) => set({ cvFile }),
+  setCvFile: (cvFile) => set({ cvFile, cvDisplayName: cvFile?.name ?? null }),
+  setCvDisplayName: (cvDisplayName) => set({ cvDisplayName }),
   setJdFile: (jdFile) => set({ jdFile }),
   setJobDescription: (jobDescription) => set({ jobDescription }),
   setLoadingMsgIdx: (val) => set((state) => ({ 
@@ -149,6 +251,7 @@ export const useDiagnosisStore = create<DiagnosisState>()(
   reset: () => set({
     step: "input",
     cvFile: null,
+    cvDisplayName: null,
     jdFile: null,
     jobDescription: "",
     loadingProgress: 0,

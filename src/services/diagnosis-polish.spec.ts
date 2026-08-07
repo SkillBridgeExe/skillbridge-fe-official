@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import enLocale from "@/i18n/locales/en";
 import viLocale from "@/i18n/locales/vi";
-import { persistDiagnosisState } from "@/store/useDiagnosisStore";
+import {
+  buildMatchDiagnosisState,
+  buildHistoryDiagnosisState,
+  persistDiagnosisState,
+  resolveDiagnosisCvDisplayName,
+} from "@/store/useDiagnosisStore";
 
 // ── Item 4: results.collapse/expand keys must exist in BOTH locales ──
 // (the JD-highlight toggle used a t("common.collapse") hack → EN users saw VN)
@@ -38,11 +43,16 @@ describe("persistDiagnosisState (store partialize)", () => {
       targetRole: "frontend_developer",
       analysisMode: "cv-jd",
       hasActivatedJdMode: true,
+      jobDescription: "Build a React dashboard",
+      cvDisplayName: "frontend-cv.pdf",
+      builderCvName: null,
     } as never);
     expect(kept.reviewData).toEqual({ overallScore: 70 });
     expect(kept.lastCvId).toBe("cv-1");
     expect(kept.step).toBe("results");
     expect(kept.targetRole).toBe("frontend_developer");
+    expect(kept.jobDescription).toBe("Build a React dashboard");
+    expect(kept.cvDisplayName).toBe("frontend-cv.pdf");
   });
 
   it("drops transient flags and non-serializable File objects", () => {
@@ -61,6 +71,84 @@ describe("persistDiagnosisState (store partialize)", () => {
     expect("highlightEvidence" in kept).toBe(false);
     expect("cvFile" in kept).toBe(false);
     expect("jdFile" in kept).toBe(false);
+  });
+});
+
+describe("buildHistoryDiagnosisState", () => {
+  it("opens history with metadata from that CV and clears stale upload/JD/builder context", () => {
+    const next = buildHistoryDiagnosisState({
+      cvId: "cv-history",
+      review: { overallScore: 82 } as never,
+      cvDisplayName: "backend-fresher.pdf",
+      targetRole: "backend_developer",
+    });
+
+    expect(next).toMatchObject({
+      step: "cv-review",
+      lastCvId: "cv-history",
+      reviewData: { overallScore: 82 },
+      cvFile: null,
+      jdFile: null,
+      jobDescription: "",
+      analysisMode: "cv-only",
+      hasActivatedJdMode: false,
+      showJdInput: false,
+      targetRole: "backend_developer",
+      cvDisplayName: "backend-fresher.pdf",
+      isFromBuilder: false,
+      builderCvId: null,
+      builderCvName: null,
+    });
+  });
+
+  it("never keeps the previous role when historical metadata has no target role", () => {
+    expect(
+      buildHistoryDiagnosisState({
+        cvId: "cv-history",
+        review: { overallScore: 82 } as never,
+        cvDisplayName: null,
+        targetRole: null,
+      }).targetRole,
+    ).toBeNull();
+  });
+});
+
+describe("buildMatchDiagnosisState", () => {
+  it("switches to the cited match atomically and clears stale JD/builder metadata", () => {
+    const next = buildMatchDiagnosisState({
+      cvId: "cv-2",
+      review: { overallScore: 70, jdMatch: { matchId: "match-2" } } as never,
+      cvDisplayName: "backend-cv.pdf",
+      targetRole: "backend_developer",
+    });
+
+    expect(next).toMatchObject({
+      step: "results",
+      lastCvId: "cv-2",
+      reviewData: { overallScore: 70, jdMatch: { matchId: "match-2" } },
+      cvFile: null,
+      cvDisplayName: "backend-cv.pdf",
+      jdFile: null,
+      jobDescription: "",
+      analysisMode: "cv-jd",
+      hasActivatedJdMode: true,
+      targetRole: "backend_developer",
+      isFromBuilder: false,
+      builderCvId: null,
+      builderCvName: null,
+    });
+  });
+});
+
+describe("resolveDiagnosisCvDisplayName", () => {
+  it("prefers the current Builder draft name over stale diagnosis metadata", () => {
+    expect(resolveDiagnosisCvDisplayName({
+      cvFileName: null,
+      cvDisplayName: "old-upload.pdf",
+      isFromBuilder: true,
+      builderCvName: "Backend Fresher CV",
+      fallback: "Untitled CV",
+    })).toBe("Backend Fresher CV");
   });
 });
 

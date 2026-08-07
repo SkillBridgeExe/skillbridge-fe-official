@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clipboard, Copy, FilePenLine, Lightbulb, LocateFixed } from "lucide-react";
+import { AlertTriangle, Clipboard, Copy, FilePenLine, Lightbulb, LocateFixed } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,7 @@ import { getApiErrorCode, isThrottledError } from "@/lib/api-error";
 import { useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { OPEN_TAILOR_REWRITE_EVENT, type OpenTailorRewriteEventDetail } from "@/components/companion/skills/chat-action-events";
 import { canOpenTailorRewrite } from "@/components/companion/skills/chat-action-chips";
+import { resolveTailorRewriteInput, syncTailorRewriteText } from "./tailor-rewrite-input";
 
 const CARD = "bg-white border border-[#EAEAEA] rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.04)]";
 
@@ -261,7 +262,18 @@ function TailorRewriteDialog({
   const rewriteMutation = useTailorRewriteMutation();
   const candidates = useMemo(() => findAnchorBullets(document, action.anchor?.ref), [document, action.anchor?.ref]);
   // PR4: BE-resolved exact bullet wins over the FE's anchor guess; fall back to the guess when absent.
-  const [text, setText] = useState(action.before ?? candidates[0] ?? "");
+  const rewriteInput = useMemo(
+    () => resolveTailorRewriteInput(action.before, candidates),
+    [action.before, candidates],
+  );
+  const [text, setText] = useState(rewriteInput.initialText);
+  const [userEditedText, setUserEditedText] = useState(false);
+
+  // The parsed CV can arrive after the dialog opens. Hydrate that late anchor only while the
+  // user has not typed, otherwise an async query could overwrite their draft mid-edit.
+  useEffect(() => {
+    setText((current) => syncTailorRewriteText(current, rewriteInput.initialText, userEditedText));
+  }, [rewriteInput.initialText, userEditedText]);
 
   const suggestion = rewriteMutation.data?.suggestion ?? "";
 
@@ -280,6 +292,22 @@ function TailorRewriteDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {rewriteInput.requiresManualSelection && (
+            <div
+              id="tailor-manual-selection-help"
+              role="status"
+              className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="text-xs font-bold">{t("tailor.manualSelectionTitle")}</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                  {t("tailor.manualSelectionDesc")}
+                </p>
+              </div>
+            </div>
+          )}
+
           {candidates.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.detectedBullets")}</p>
@@ -288,7 +316,10 @@ function TailorRewriteDialog({
                   <button
                     key={`${candidate}-${index}`}
                     type="button"
-                    onClick={() => setText(candidate)}
+                    onClick={() => {
+                      setUserEditedText(true);
+                      setText(candidate);
+                    }}
                     className="w-full rounded-lg border border-[#EAEAEA] bg-[#FBFBFA] p-2 text-left text-xs leading-relaxed text-[#2F3437] hover:border-primary/40"
                   >
                     {candidate}
@@ -300,7 +331,21 @@ function TailorRewriteDialog({
 
           <div>
             <p className="mb-2 text-xs font-bold text-[#2F3437]">{t("tailor.pasteBullet")}</p>
-            <Textarea value={text} onChange={(event) => setText(event.target.value)} className="min-h-28" />
+            <Textarea
+              value={text}
+              onChange={(event) => {
+                setUserEditedText(true);
+                setText(event.target.value);
+              }}
+              placeholder={rewriteInput.requiresManualSelection ? t("tailor.manualSelectionPlaceholder") : undefined}
+              aria-describedby={rewriteInput.requiresManualSelection ? "tailor-manual-selection-help" : undefined}
+              className="min-h-28"
+            />
+            {rewriteInput.requiresManualSelection && !text.trim() && (
+              <p className="mt-2 text-xs text-[#787774]">
+                {t("tailor.manualSelectionRequired")}
+              </p>
+            )}
           </div>
 
           {suggestion && (

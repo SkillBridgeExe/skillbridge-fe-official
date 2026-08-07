@@ -2,9 +2,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { JobRecommendations } from "./JobRecommendations";
+import { JobRecommendations, sortRecommendedJobsForDisplay } from "./JobRecommendations";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import { AxiosError } from "axios";
+import type { JobRecommendationDto } from "@shared/api";
 
 afterEach(() => {
   cleanup();
@@ -25,6 +26,11 @@ vi.mock("react-i18next", () => ({
       if (key === "jobs.quotaBlocked") return "Hết lượt đề xuất";
       if (key === "jobs.error") return "Lỗi tải đề xuất";
       if (key === "jobs.retry") return "Thử lại";
+      if (key === "jobs.rankLabel") return "Xếp hạng tổng thể";
+      if (key === "jobs.top1Label") return "Phù hợp tổng thể nhất";
+      if (key === "jobs.top1ScoreLabel") return "Điểm đề xuất cao nhất trong danh sách";
+      if (key === "jobs.rankDescription") return "Thứ hạng kết hợp kỹ năng, độ phù hợp vai trò và cấp độ kinh nghiệm.";
+      if (key === "jobs.loadMoreError") return "Không tải được trang tiếp theo. Các việc làm đã tải vẫn được giữ lại.";
       if (key === "jobs.apply") return "Ứng tuyển";
       if (key === "jobs.recommendationScore") return "Điểm đề xuất";
       if (key === "jobs.skillMatchLabel") return "Khớp kỹ năng";
@@ -77,6 +83,7 @@ const mockJobsData = {
       role_code: "frontend_developer",
       match_score: 88,
       recommendation_score: 88,
+      rank: 1,
       salary_min: 30000000,
       salary_max: 50000000,
       currency: "VND",
@@ -93,6 +100,7 @@ const mockJobsData = {
       role_code: "fullstack_developer",
       match_score: 75,
       recommendation_score: 75,
+      rank: 2,
       salary_min: 20000000,
       salary_max: 35000000,
       currency: "VND",
@@ -115,6 +123,22 @@ const mockJobsData = {
 };
 
 describe("JobRecommendations — Comprehensive Feature Suite", () => {
+  it("sorts the recommended display list by visible score, not backend rank", () => {
+    const rows = [
+      { ...mockJobsData.recommendations[0], job_id: "job-36", recommendation_score: 36, match_score: 36, rank: 1 },
+      { ...mockJobsData.recommendations[1], job_id: "job-25", recommendation_score: 25, match_score: 25, rank: 2 },
+      { ...mockJobsData.recommendations[0], job_id: "job-13", recommendation_score: 13, match_score: 13, rank: 3 },
+      { ...mockJobsData.recommendations[1], job_id: "job-22", recommendation_score: 22, match_score: 22, rank: 4 },
+    ] as JobRecommendationDto[];
+
+    expect(sortRecommendedJobsForDisplay(rows).map((row) => row.job_id)).toEqual([
+      "job-36",
+      "job-25",
+      "job-22",
+      "job-13",
+    ]);
+  });
+
   it("renders Top 5 view initially", () => {
     vi.mocked(useJobRecommendationsQuery).mockReturnValue({
       data: mockJobsData,
@@ -129,6 +153,26 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
     expect(screen.getByText("Fullstack React Developer")).toBeInTheDocument();
     expect(screen.getByText("Xem tất cả 15 việc làm")).toBeInTheDocument();
+    expect(screen.getByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).toBeInTheDocument();
+    expect(screen.getByText("Top 2")).toBeInTheDocument();
+  });
+
+  it("hides overall rank badges when the user selects another sort", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.change(screen.getAllByLabelText("Sắp xếp")[0], {
+      target: { value: "SKILL_MATCH" },
+    });
+
+    expect(screen.queryByText("Top 1 - Phù hợp tổng thể nhất")).not.toBeInTheDocument();
+    expect(screen.queryByText("Top 2")).not.toBeInTheDocument();
   });
 
   it("toggles to Explorer Mode when View All button is clicked", () => {
@@ -373,6 +417,65 @@ describe("JobRecommendations — Comprehensive Feature Suite", () => {
     expect(screen.getAllByText("Fullstack React Developer")).toHaveLength(1);
     expect(screen.getByText("Junior React Developer")).toBeInTheDocument();
     expect(screen.queryByText("Tải thêm việc làm")).not.toBeInTheDocument();
+  });
+
+  it("keeps loaded cards visible while the next page is loading", () => {
+    vi.mocked(useJobRecommendationsQuery).mockImplementation((_cvId, query) => ({
+      data: query?.offset === 10 ? undefined : mockJobsData,
+      isLoading: query?.offset === 10,
+      isError: false,
+      isRefetching: false,
+      refetch: vi.fn(),
+    }) as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByText("Tải thêm việc làm"));
+
+    expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
+    expect(screen.getByTestId("jobs-load-more-loading")).toBeInTheDocument();
+  });
+
+  it("keeps loaded cards visible and retries in place when the next page fails", () => {
+    const refetch = vi.fn();
+    vi.mocked(useJobRecommendationsQuery).mockImplementation((_cvId, query) => ({
+      data: query?.offset === 10 ? undefined : mockJobsData,
+      isLoading: false,
+      isError: query?.offset === 10,
+      error: query?.offset === 10 ? Object.assign(new Error("Server error"), { status: 500 }) : null,
+      isRefetching: false,
+      refetch,
+    }) as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByText("Tải thêm việc làm"));
+
+    expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Không tải được trang tiếp theo. Các việc làm đã tải vẫn được giữ lại.")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Thử lại"));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("does not replace loaded cards with the full quota state when a later page returns 402", () => {
+    vi.mocked(useJobRecommendationsQuery).mockImplementation((_cvId, query) => ({
+      data: query?.offset === 10 ? undefined : mockJobsData,
+      isLoading: false,
+      isError: query?.offset === 10,
+      error: query?.offset === 10
+        ? Object.assign(new Error("Quota blocked"), { status: 402 })
+        : null,
+      isRefetching: false,
+      refetch: vi.fn(),
+    }) as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+    fireEvent.click(screen.getByText("Tải thêm việc làm"));
+
+    expect(screen.getByText("Senior Frontend Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("Hết lượt đề xuất")).not.toBeInTheDocument();
+    expect(screen.getByText("Không tải được trang tiếp theo. Các việc làm đã tải vẫn được giữ lại.")).toBeInTheDocument();
   });
 
   it("resets accumulated pagination when the CV changes", () => {
@@ -971,5 +1074,90 @@ describe("structured locations rendering", () => {
       null, // cvId should be null when blocked
       expect.any(Object)
     );
+  });
+
+  it("renders rank badges for Top 3 jobs when sorted by RECOMMENDED", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />); // Default sort is RECOMMENDED
+
+    // Top 1 label
+    expect(screen.getByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).toBeInTheDocument();
+    // Top 2 label
+    expect(screen.getByText("Top 2")).toBeInTheDocument();
+  });
+
+  it("uses visible order for rank badges instead of the backend RRF rank", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [
+          { ...mockJobsData.recommendations[0], rank: 3 },
+          { ...mockJobsData.recommendations[1], rank: 1 },
+          {
+            ...mockJobsData.recommendations[1],
+            job_id: "job-3",
+            title: "Mobile Frontend Engineer",
+            rank: 2,
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Senior Frontend Engineer").closest("article")).toHaveTextContent(
+      "Top 1 - Điểm đề xuất cao nhất trong danh sách",
+    );
+    expect(screen.getByText("Fullstack React Developer").closest("article")).toHaveTextContent("Top 2");
+    expect(screen.getByText("Mobile Frontend Engineer").closest("article")).toHaveTextContent("Top 3");
+  });
+
+  it("uses the fit label for Top 1 only when the job is safe to apply", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [
+          { ...mockJobsData.recommendations[0], fit: { verdict: "safe_apply", reasons: [] } },
+          mockJobsData.recommendations[1],
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Top 1 - Phù hợp tổng thể nhất")).toBeInTheDocument();
+    expect(screen.queryByText("Top 1 - Điểm đề xuất cao nhất trong danh sách")).not.toBeInTheDocument();
+  });
+
+  it("hides rank badges when not sorted by RECOMMENDED", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: mockJobsData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    const { rerender } = render(<JobRecommendations cvId="cv-123" />);
+    fireEvent.click(screen.getByText("Xem tất cả 15 việc làm"));
+
+    const sortSelect = screen.getAllByLabelText("Sắp xếp")[0];
+    fireEvent.change(sortSelect, { target: { value: "NEWEST" } });
+
+    rerender(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.queryByText(/Top 1/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Top 2/)).not.toBeInTheDocument();
   });
 });

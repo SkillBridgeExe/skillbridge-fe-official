@@ -29,7 +29,7 @@ import { isAxiosError } from "axios";
 import { useToast } from "@/hooks/use-toast";
 import { isChatBusy, useCompanionStore } from "@/store/useCompanionStore";
 import { useCvBuilderStore } from "@/store/useCvBuilderStore";
-import { useDiagnosisStore } from "@/store/useDiagnosisStore";
+import { buildMatchDiagnosisState, useDiagnosisStore } from "@/store/useDiagnosisStore";
 import { askDiagnosisChat, loadMatchForChat } from "@/services/diagnosis.service";
 import { useChatThreadQuery, useDeleteChatThreadMutation, useGapReportQuery } from "@/hooks/use-diagnosis";
 import { buildChatActionChips } from "./chat-action-chips";
@@ -524,9 +524,12 @@ export function useDiagnosisChatCompanion(
       const { cvId, matchId } = pending.viewMatch;
       loadMatchForChat({ cvId, matchId })
         .then((outcome) => {
-          useDiagnosisStore.getState().setLastCvId(outcome.cvId);
-          useDiagnosisStore.getState().setReviewData(outcome.review);
-          useDiagnosisStore.getState().setStep("results");
+          useDiagnosisStore.setState(buildMatchDiagnosisState({
+            cvId: outcome.cvId,
+            review: outcome.review,
+            cvDisplayName: outcome.cvDisplayName ?? null,
+            targetRole: outcome.targetRole ?? null,
+          }));
         })
         // The only confirm-gated action with a real network call — never swallow
         // the failure (repo doctrine "không nuốt lỗi", PR#49). Current view stays

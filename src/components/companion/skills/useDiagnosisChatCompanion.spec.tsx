@@ -699,7 +699,17 @@ describe("useDiagnosisChatCompanion — cross-JD view_match chip", () => {
     const qc = new QueryClient();
     vi.mocked(loadMatchForChat).mockResolvedValueOnce({
       cvId: "cv-2",
+      cvDisplayName: "backend-cv.pdf",
+      targetRole: "backend_developer",
       review: { overallScore: 70, dimensions: [], jdMatch: { matchId: "match-2" } } as unknown as CvReviewData,
+    });
+    useDiagnosisStore.setState({
+      cvDisplayName: "stale-frontend.pdf",
+      targetRole: "frontend_developer",
+      jobDescription: "Stale frontend JD",
+      isFromBuilder: true,
+      builderCvId: "builder-1",
+      builderCvName: "Stale Builder CV",
     });
     function ActionHarness() {
       useDiagnosisChatCompanion(reviewWithMatch, "gap_results", undefined, "cv-1");
@@ -736,6 +746,14 @@ describe("useDiagnosisChatCompanion — cross-JD view_match chip", () => {
       expect(useDiagnosisStore.getState().step).toBe("results");
     });
     expect(useDiagnosisStore.getState().reviewData?.jdMatch?.matchId).toBe("match-2");
+    expect(useDiagnosisStore.getState()).toMatchObject({
+      cvDisplayName: "backend-cv.pdf",
+      targetRole: "backend_developer",
+      jobDescription: "",
+      isFromBuilder: false,
+      builderCvId: null,
+      builderCvName: null,
+    });
   });
 
   it("leaves the current view untouched and toasts a destructive error when loading the cited match fails (não nuốt lỗi)", async () => {

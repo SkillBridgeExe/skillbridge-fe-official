@@ -19,7 +19,7 @@ vi.mock("react-i18next", () => ({
       if (key === "review.band.priority") return "Priority fix";
       if (key === "review.matchScoreTitle") return "CV–JD match score";
       if (key === "report.rail.matchScoreTitle") return "JD match score";
-      if (key === "report.rail.scoreTitle") return "Match Rate";
+      if (key === "review.overallScore") return "Overall CV score";
       if (key === "report.rail.askCompanion") return "Ask your AI coach";
       if (key === "report.rail.downloadCv") return "Download original CV";
       if (key === "report.rail.matchCoverage") return "Required coverage";
@@ -99,6 +99,13 @@ afterEach(() => {
 // ── Tests ──
 
 describe("ScoreRail — review mode (no matchStats)", () => {
+  it("uses the diagnosis scroll container without a second mobile top offset and keeps desktop actions scrollable", () => {
+    render(<ScoreRail overallScore={75} groups={reviewGroups} />);
+
+    expect(screen.getByTestId("score-rail-mobile")).toHaveClass("top-0");
+    expect(screen.getByTestId("score-rail-desktop")).toHaveClass("overflow-y-auto", "min-h-0");
+  });
+
   it("renders review band labels (70/50 thresholds)", () => {
     render(<ScoreRail overallScore={75} groups={reviewGroups} />);
     // 75 >= 70 → "Strong" in review mode
@@ -114,7 +121,16 @@ describe("ScoreRail — review mode (no matchStats)", () => {
 
   it("renders review score title", () => {
     render(<ScoreRail overallScore={50} groups={reviewGroups} />);
-    expect(screen.getByText("Match Rate")).toBeInTheDocument();
+    expect(screen.getByText("Overall CV score")).toBeInTheDocument();
+  });
+
+  it("does not render CV-JD-only numbers without matchStats", () => {
+    render(<ScoreRail overallScore={50} groups={reviewGroups} />);
+    expect(screen.queryByText("Matched")).toBeNull();
+    expect(screen.queryByText("Partial")).toBeNull();
+    expect(screen.queryByText("Missing")).toBeNull();
+    expect(screen.queryByText("Required coverage")).toBeNull();
+    expect(screen.queryByTestId("fit-badge")).toBeNull();
   });
 });
 
@@ -159,7 +175,7 @@ describe("ScoreRail — match mode (with matchStats)", () => {
   it("renders match score title instead of review title", () => {
     render(<ScoreRail overallScore={72} groups={reviewGroups} matchStats={matchStats} />);
     expect(screen.getByText("CV–JD match score")).toBeInTheDocument();
-    expect(screen.queryByText("Match Rate")).toBeNull();
+    expect(screen.queryByText("Overall CV score")).toBeNull();
   });
 });
 
