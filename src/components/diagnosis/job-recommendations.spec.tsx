@@ -2,9 +2,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { JobRecommendations } from "./JobRecommendations";
+import { JobRecommendations, sortRecommendedJobsForDisplay } from "./JobRecommendations";
 import { useJobRecommendationsQuery } from "@/hooks/use-diagnosis";
 import { AxiosError } from "axios";
+import type { JobRecommendationDto } from "@shared/api";
 
 afterEach(() => {
   cleanup();
@@ -122,6 +123,22 @@ const mockJobsData = {
 };
 
 describe("JobRecommendations — Comprehensive Feature Suite", () => {
+  it("sorts the recommended display list by visible score, not backend rank", () => {
+    const rows = [
+      { ...mockJobsData.recommendations[0], job_id: "job-36", recommendation_score: 36, match_score: 36, rank: 1 },
+      { ...mockJobsData.recommendations[1], job_id: "job-25", recommendation_score: 25, match_score: 25, rank: 2 },
+      { ...mockJobsData.recommendations[0], job_id: "job-13", recommendation_score: 13, match_score: 13, rank: 3 },
+      { ...mockJobsData.recommendations[1], job_id: "job-22", recommendation_score: 22, match_score: 22, rank: 4 },
+    ] as JobRecommendationDto[];
+
+    expect(sortRecommendedJobsForDisplay(rows).map((row) => row.job_id)).toEqual([
+      "job-36",
+      "job-25",
+      "job-22",
+      "job-13",
+    ]);
+  });
+
   it("renders Top 5 view initially", () => {
     vi.mocked(useJobRecommendationsQuery).mockReturnValue({
       data: mockJobsData,

@@ -106,6 +106,28 @@ function asSortOption(val: string): SortOptionType {
   return val === "SKILL_MATCH" || val === "NEWEST" || val === "SALARY_DESC" ? val : "RECOMMENDED";
 }
 
+/**
+ * Keep the visible default list aligned with the score shown on each card.
+ * The BE owns ranking, but this presentation guard also keeps accumulated
+ * pagination rows honest while an older API revision is still serving data.
+ */
+export function sortRecommendedJobsForDisplay(
+  recommendations: JobRecommendationDto[],
+): JobRecommendationDto[] {
+  const visibleScore = (job: JobRecommendationDto): number => {
+    const score = job.recommendation_score ?? job.match_score;
+    return Number.isFinite(score) ? score : Number.NEGATIVE_INFINITY;
+  };
+
+  return [...recommendations].sort(
+    (a, b) =>
+      visibleScore(b) - visibleScore(a) ||
+      b.match_score - a.match_score ||
+      a.rank - b.rank ||
+      a.job_id.localeCompare(b.job_id),
+  );
+}
+
 /* Moat L2 — top job thật khớp CV (GET /api/cvs/:cvId/job-recommendations).
    §0b design spec: card trắng + border #EAEAEA, pastel theo band, số mono, không gradient. */
 const CARD = "bg-white border border-slate-200 rounded-lg shadow-sm transition-colors duration-200 hover:border-slate-300 flex flex-col overflow-hidden";
@@ -621,7 +643,7 @@ export function JobRecommendations({
     activeQuery,
   );
 
-  const rawRecs = data?.recommendations ?? [];
+  const rawRecs = useMemo(() => data?.recommendations ?? [], [data?.recommendations]);
   const total = data?.total ?? data?.eligible_pool_size ?? data?.pool_size ?? rawRecs.length;
   const facets = data?.facets;
   const lastPageCount = rawRecs.length;
@@ -666,7 +688,12 @@ export function JobRecommendations({
     }
   }, [data?.recommendations, queryState.offset, isExplorerOpen]);
 
-  const displayRecs = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
+  const displayRecs = useMemo(() => {
+    const source = isExplorerOpen && accumulatedRecs.length > 0 ? accumulatedRecs : rawRecs;
+    return (activeQuery.sort ?? "RECOMMENDED") === "RECOMMENDED"
+      ? sortRecommendedJobsForDisplay(source)
+      : source;
+  }, [activeQuery.sort, accumulatedRecs, isExplorerOpen, rawRecs]);
 
   const isPaginationRequest =
     isExplorerOpen &&
