@@ -1074,6 +1074,35 @@ describe("structured locations rendering", () => {
     expect(screen.getByText("Top 2")).toBeInTheDocument();
   });
 
+  it("uses visible order for rank badges instead of the backend RRF rank", () => {
+    vi.mocked(useJobRecommendationsQuery).mockReturnValue({
+      data: {
+        ...mockJobsData,
+        recommendations: [
+          { ...mockJobsData.recommendations[0], rank: 3 },
+          { ...mockJobsData.recommendations[1], rank: 1 },
+          {
+            ...mockJobsData.recommendations[1],
+            job_id: "job-3",
+            title: "Mobile Frontend Engineer",
+            rank: 2,
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useJobRecommendationsQuery>);
+
+    render(<JobRecommendations cvId="cv-123" />);
+
+    expect(screen.getByText("Senior Frontend Engineer").closest("article")).toHaveTextContent(
+      "Top 1 - Phù hợp tổng thể nhất",
+    );
+    expect(screen.getByText("Fullstack React Developer").closest("article")).toHaveTextContent("Top 2");
+    expect(screen.getByText("Mobile Frontend Engineer").closest("article")).toHaveTextContent("Top 3");
+  });
+
   it("hides rank badges when not sorted by RECOMMENDED", () => {
     vi.mocked(useJobRecommendationsQuery).mockReturnValue({
       data: mockJobsData,

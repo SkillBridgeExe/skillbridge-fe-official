@@ -305,10 +305,12 @@ function JobCard({
   job,
   t,
   showRank,
+  displayRank,
 }: {
   job: JobRecommendationDto;
   t: ReturnType<typeof import("react-i18next").useTranslation>["t"];
   showRank?: boolean;
+  displayRank?: number;
 }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const salary = job.salary_visible === false
@@ -319,6 +321,7 @@ function JobCard({
   const matchScoreVal = job.match_score;
   const demoted = typeof matchScoreVal === "number" && recScore < matchScoreVal;
   const severe = job.severe_stretch === true;
+  const visibleRank = typeof displayRank === "number" ? displayRank : null;
 
   const gaps = priorityGaps(job);
   const visibleGaps = gaps.slice(0, 3);
@@ -349,7 +352,7 @@ function JobCard({
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {showRank && Number.isInteger(job.rank) && job.rank >= 1 && job.rank <= 3 && (
+            {showRank && visibleRank !== null && Number.isInteger(visibleRank) && visibleRank >= 1 && visibleRank <= 3 && (
               <div className="mb-2">
                 <InfoPopover
                   align="left"
@@ -357,9 +360,9 @@ function JobCard({
                   trigger={
                     <span className={cn(
                       "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold",
-                      job.rank === 1 ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
+                      visibleRank === 1 ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
                     )}>
-                      Top {job.rank}{job.rank === 1 ? ` - ${t("jobs.top1Label")}` : ""}
+                      Top {visibleRank}{visibleRank === 1 ? ` - ${t("jobs.top1Label")}` : ""}
                     </span>
                   }
                 >
@@ -1744,12 +1747,13 @@ export function JobRecommendations({
 
           {/* Job Cards Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            {displayRecs.map((job) => (
+            {displayRecs.map((job, index) => (
               <JobCard
                 key={job.job_id}
                 job={job}
                 t={t}
                 showRank={(queryState.sort ?? "RECOMMENDED") === "RECOMMENDED"}
+                displayRank={index + 1}
               />
             ))}
           </div>
