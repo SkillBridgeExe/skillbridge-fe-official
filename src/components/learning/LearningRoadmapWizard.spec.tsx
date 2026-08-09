@@ -166,4 +166,50 @@ describe("LearningRoadmapWizard accessibility", () => {
     );
     expect(mocks.generateRoadmap).toHaveBeenCalledWith("roadmap-1", 3);
   });
+
+  it("allows removing and restoring a skill without sending duplicates", async () => {
+    const draft = {
+      id: "roadmap-2",
+      revision: 1,
+      candidate_skills: [
+        {
+          skill_canonical: "react",
+          display_name: "React",
+          system_priority: 0.9,
+          rationale: "UI foundation",
+          prerequisites: [],
+        },
+        {
+          skill_canonical: "typescript",
+          display_name: "TypeScript",
+          system_priority: 0.8,
+          rationale: "Language foundation",
+          prerequisites: [],
+        },
+      ],
+    };
+    mocks.getCvList.mockResolvedValue({ items: [{ id: "cv-2", title: "CV" }] });
+    mocks.createDraft.mockResolvedValue(draft);
+
+    render(
+      <MemoryRouter>
+        <LearningRoadmapWizard onClose={vi.fn()} onGenerated={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /careerTitle/ }));
+    await screen.findByRole("option", { name: "CV" });
+    fireEvent.click(screen.getByRole("button", { name: "learning.wizard.next" }));
+    await screen.findByText("React");
+
+    const removeButtons = screen.getAllByRole("button", {
+      name: "learning.wizard.priorities.remove",
+    });
+    fireEvent.click(removeButtons[0]);
+    expect(screen.getByText("learning.wizard.priorities.ignoredTitle")).toBeInTheDocument();
+    expect(screen.getByText("React")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "learning.wizard.priorities.remove" })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "learning.wizard.priorities.restore" }));
+    expect(screen.getAllByRole("button", { name: "learning.wizard.priorities.remove" })).toHaveLength(2);
+  });
 });

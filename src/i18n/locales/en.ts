@@ -348,6 +348,15 @@ export default {
           schedule: "Set your real study calendar",
           preview: "Review feasibility before generating",
         },
+        priorities: {
+          selectedTitle: "Skills to learn",
+          dragHint: "Drag the handle to change the order. You can ignore skills you do not need yet.",
+          ignoredTitle: "Ignored for now",
+          restore: "Add back",
+          empty: "Keep at least one skill to continue.",
+          drag: "Reorder {{skill}}",
+          remove: "Ignore {{skill}}",
+        },
         goal: {
           jdTitle: "Apply to a specific job",
           jdBody: "Build from the gaps between your CV and one job description.",
@@ -428,7 +437,7 @@ export default {
           studyDaysRange: "Choose between 1 and 7 learning days.",
           generic: "Could not continue. Please try again.",
         },
-        noGaps: "This CV already covers the supported skills for that role.",
+
         back: "Back",
         next: "Continue",
         goDiagnosis: "Go to Diagnosis",
