@@ -7,12 +7,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useActiveWeekPlans } from "@/components/learning/roadmap-store";
 import { isSessionCompleted } from "@/components/learning/session-progress";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import { getLearningSessionProgress } from "@/services/learning-roadmap.service";
 
 export default function LearningProgressTab() {
+  const { t } = useTranslation('common');
   const weeks = useActiveWeekPlans();
   const hasApiSession = useHasApiSession();
   const sessions = weeks.flatMap((week) => week.sessions);
@@ -90,7 +92,7 @@ export default function LearningProgressTab() {
               <p className="text-xs font-bold text-primary">
                 WEEK {week.weekNumber}
               </p>
-              <h3 className="font-bold text-slate-900">{week.moduleTitle}</h3>
+              <h3 className="font-bold text-slate-900">{t("learning.common.sessions", { count: week.sessions.length })}</h3>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {week.sessions.map((session) => {

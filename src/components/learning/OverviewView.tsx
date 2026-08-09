@@ -72,37 +72,69 @@ export function OverviewView() {
 
   const { activeRoadmap, weekPlans, setWeekPlans } = useRoadmapStore();
   const weeks        = useActiveWeekPlans();
-  // ✅ Build roadmap modules from weekPlans — drives status, progress, connector animations
+  // Overview is ordered by module rank; calendar views consume WeekPlan.weekNumber.
   const roadmapModules = useMemo(() => {
+    const modules = activeRoadmap?.modules ?? [];
+    if (modules.length === 0) {
+      let foundInProgress = false;
+      return weeks.map((week) => {
+        const totalSessions = week.sessions.length;
+        const completedSessions = week.sessions.filter((session) => session.status === 'completed').length;
+        const hasInProgress = week.sessions.some((session) => session.status === 'in-progress');
+        const allCompleted = totalSessions > 0 && completedSessions === totalSessions;
+        const status = allCompleted
+          ? 'completed'
+          : hasInProgress || !foundInProgress
+            ? 'in-progress'
+            : 'locked';
+        if (status === 'in-progress') foundInProgress = true;
+        return {
+          id: week.moduleId ?? "legacy-week-" + week.weekNumber,
+          title:
+            week.moduleTitle ??
+            [...new Set(week.sessions.map((session) => session.skill))].join(' · '),
+          weekNumber: week.weekNumber,
+          status,
+          totalSessions,
+          completedSessions,
+        };
+      });
+    }
+
     let foundInProgress = false;
-    return weeks.map(week => {
-      const totalSessions     = week.sessions.length;
-      const completedSessions = week.sessions.filter(s => s.status === "completed").length;
-      const hasInProgress     = week.sessions.some(s => s.status === "in-progress");
-      const allCompleted      = totalSessions > 0 && completedSessions === totalSessions;
+    return [...modules]
+      .sort((a, b) => a.rank - b.rank)
+      .map((module) => {
+        const totalSessions = module.sessions.length;
+        const completedSessions = module.sessions.filter(
+          (session) => session.status === 'COMPLETED',
+        ).length;
+        const hasInProgress = module.sessions.some(
+          (session) => session.status === 'AVAILABLE',
+        );
+        const allCompleted =
+          totalSessions > 0 && completedSessions === totalSessions;
 
-      let status: "completed" | "in-progress" | "locked";
-      if (allCompleted) {
-        status = "completed";
-      } else if (hasInProgress || !foundInProgress) {
-        status = "in-progress";
-        foundInProgress = true;
-      } else {
-        status = "locked";
-      }
+        let status: 'completed' | 'in-progress' | 'locked';
+        if (allCompleted) {
+          status = 'completed';
+        } else if (hasInProgress || !foundInProgress) {
+          status = 'in-progress';
+          foundInProgress = true;
+        } else {
+          status = 'locked';
+        }
 
-      return {
-        id: week.moduleId,
-        title: week.moduleTitle,
-        weekNumber: week.weekNumber,
-        status,
-        totalSessions,
-        completedSessions,
-      };
-    });
-  }, [weeks]);
-
-  // ✅ Fix: sync activeSessions khi weeks thay đổi (AI roadmap được apply)
+        return {
+          id: module.id,
+          title: module.display_name,
+          weekNumber: module.rank,
+          status,
+          totalSessions,
+          completedSessions,
+        };
+      });
+  }, [activeRoadmap, weeks]);
   const [activeSessions, setActiveSessions] = useState<LearningSession[]>([]);
   useEffect(() => {
     setActiveSessions(weeks.flatMap(w => w.sessions) as LearningSession[]);

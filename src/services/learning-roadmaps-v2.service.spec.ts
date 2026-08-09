@@ -261,6 +261,80 @@ describe("Learning Roadmaps V2 service", () => {
     ]);
   });
 
+
+  it("groups sessions by persisted calendar week instead of module rank", () => {
+    const roadmap = {
+      modules: [
+        {
+          id: "module-1",
+          skill_canonical: "react",
+          display_name: "React",
+          rank: 1,
+          estimated_minutes: 60,
+          feasibility: "FEASIBLE",
+          prerequisite_warnings: [],
+          sessions: [
+            {
+              id: "session-react",
+              sequence: 1,
+              title: "React session",
+              scheduled_start_at: "2026-08-03T01:00:00.000Z",
+              week_number: 1,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+          ],
+        },
+        {
+          id: "module-4",
+          skill_canonical: "typescript",
+          display_name: "TypeScript",
+          rank: 4,
+          estimated_minutes: 60,
+          feasibility: "FEASIBLE",
+          prerequisite_warnings: [],
+          sessions: [
+            {
+              id: "session-typescript-week-1",
+              sequence: 1,
+              title: "TypeScript week 1",
+              scheduled_start_at: "2026-08-04T01:00:00.000Z",
+              week_number: 1,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+            {
+              id: "session-typescript-week-2",
+              sequence: 2,
+              title: "TypeScript week 2",
+              scheduled_start_at: "2026-08-11T01:00:00.000Z",
+              week_number: 2,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+          ],
+        },
+      ],
+    } as ActiveLearningRoadmap;
+
+    const weeks = roadmapV2ToWeekPlans(roadmap);
+
+    expect(weeks.map((week) => week.weekNumber)).toEqual([1, 2]);
+    expect(weeks[0].sessions.map((session) => session.id)).toEqual([
+      "session-react",
+      "session-typescript-week-1",
+    ]);
+    expect(weeks[1].sessions[0]).toEqual(
+      expect.objectContaining({
+        id: "session-typescript-week-2",
+        moduleId: "module-4",
+        skillCanonical: "typescript",
+      }),
+    );
+  });
   it("does not mark a deferred module with no sessions as completed", () => {
     const roadmap = {
       id: "roadmap-empty-module",

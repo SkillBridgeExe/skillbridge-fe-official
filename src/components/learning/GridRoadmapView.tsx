@@ -60,10 +60,10 @@ export function GridRoadmapView() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-slate-800 line-clamp-1">
-                    {week.moduleTitle}
+                    {t("learning.common.week", { number: week.weekNumber })}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    {t("learning.common.week", { number: week.weekNumber })}
+                    {t("learning.common.sessions", { count: week.sessions.length })}
                   </p>
                 </div>
               </div>

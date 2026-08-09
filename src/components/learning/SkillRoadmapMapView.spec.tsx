@@ -99,6 +99,87 @@ describe("SkillRoadmapMapView integration", () => {
     expect(page).toContain("<SkillRoadmapMapView />");
   });
 
+  it("keeps every subject and groups its sessions by calendar week", () => {
+    roadmapMocks.weeks = [
+      {
+        weekNumber: 1,
+        moduleId: "module-react",
+        moduleTitle: "React",
+        sessions: [
+          {
+            id: "session-react-1",
+            moduleId: "module-react",
+            skillCanonical: "react",
+            sessionNumber: 1,
+            title: "React foundations",
+            skill: "React",
+            dayOfWeek: 2,
+            estimatedMinutes: 60,
+            status: "in-progress",
+            stars: 0,
+            maxStars: 3,
+            sections: [],
+            resources: [],
+          },
+        ],
+      },
+      {
+        weekNumber: 1,
+        moduleId: "module-typescript",
+        moduleTitle: "TypeScript",
+        sessions: [
+          {
+            id: "session-typescript-1",
+            moduleId: "module-typescript",
+            skillCanonical: "typescript",
+            sessionNumber: 1,
+            title: "TypeScript foundations",
+            skill: "TypeScript",
+            dayOfWeek: 3,
+            estimatedMinutes: 60,
+            status: "locked",
+            stars: 0,
+            maxStars: 3,
+            sections: [],
+            resources: [],
+          },
+        ],
+      },
+      {
+        weekNumber: 2,
+        moduleId: "module-typescript",
+        moduleTitle: "TypeScript",
+        sessions: [
+          {
+            id: "session-typescript-2",
+            moduleId: "module-typescript",
+            skillCanonical: "typescript",
+            sessionNumber: 2,
+            title: "TypeScript application",
+            skill: "TypeScript",
+            dayOfWeek: 4,
+            estimatedMinutes: 60,
+            status: "locked",
+            stars: 0,
+            maxStars: 3,
+            sections: [],
+            resources: [],
+          },
+        ],
+      },
+    ];
+
+    render(
+      <MemoryRouter>
+        <SkillRoadmapMapView />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("React")).toBeInTheDocument();
+    expect(screen.getAllByText("TypeScript").length).toBeGreaterThan(0);
+    expect(screen.getByText("Week 2")).toBeInTheDocument();
+    expect(screen.getByText("TypeScript application")).toBeInTheDocument();
+  });
   it("uses Escape to close the drawer before leaving full screen", () => {
     render(
       <MemoryRouter>
