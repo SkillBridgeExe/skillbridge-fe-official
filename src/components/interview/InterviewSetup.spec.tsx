@@ -38,6 +38,9 @@ function renderSetup(
       selectedLanguage="vi"
       setSelectedLanguage={vi.fn()}
       interviewMode="realtime"
+      realtimeV2Enabled={false}
+      experienceMode="MOCK"
+      setExperienceMode={vi.fn()}
       setInterviewMode={vi.fn()}
       interviewType="technical"
       setInterviewType={vi.fn()}

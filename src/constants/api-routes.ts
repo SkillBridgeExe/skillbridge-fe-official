@@ -116,6 +116,9 @@ export const API_ROUTES = {
     HISTORY: `${API}/interview/history`,
     DETAIL: (id: string) => `${API}/interview/sessions/${id}`,
     REALTIME_TOKEN: (id: string) => `${API}/interview/sessions/${id}/realtime-token`,
+    REALTIME_TURN: (id: string) => `${API}/interview/sessions/${id}/realtime-turn`,
+    REALTIME_DIRECTIVE_COMMIT: (id: string, directiveId: string) =>
+      `${API}/interview/sessions/${id}/realtime-directives/${directiveId}/commit`,
     QUESTION_AUDIO: (id: string) => `${API}/interview/sessions/${id}/question-audio`,
   },
 

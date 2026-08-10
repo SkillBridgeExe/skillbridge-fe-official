@@ -47,3 +47,13 @@ export async function acquireInterviewMedia(
     };
   }
 }
+
+export function stopInterviewMedia(
+  stream: MediaStream | null,
+  videoElement: Pick<HTMLVideoElement, "srcObject"> | null,
+): void {
+  if (stream) {
+    for (const track of stream.getTracks()) track.stop();
+  }
+  if (videoElement) videoElement.srcObject = null;
+}

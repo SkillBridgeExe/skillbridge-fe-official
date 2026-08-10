@@ -11,19 +11,34 @@ import {
 import { QUERY_KEYS } from "@/constants/app";
 import { useHasApiSession } from "@/hooks/use-api-session";
 import {
+  commitRealtimeAssistantMessage,
   endInterview,
   getInterviewDetail,
   getInterviewHistory,
   refreshRealtimeToken,
   startInterview,
   submitInterviewTurn,
+  submitRealtimeInterviewTurn,
+  type CommitRealtimeAssistantMessageRequest,
   type InterviewHistoryQuery,
   type LiveInterviewTurnInput,
+  type RealtimeInterviewTurnRequest,
 } from "@/api/interview-api";
 
 interface EndInterviewMutationInput {
   sessionId: string;
   liveTurns?: LiveInterviewTurnInput[];
+}
+
+interface RealtimeTurnMutationInput {
+  sessionId: string;
+  payload: RealtimeInterviewTurnRequest;
+}
+
+interface CommitRealtimeMutationInput {
+  sessionId: string;
+  directiveId: string;
+  payload: CommitRealtimeAssistantMessageRequest;
 }
 
 export type CreateCvMatchForInterviewInput =
@@ -135,6 +150,20 @@ export function useCreateCvMatchForInterview() {
 export function useSubmitInterviewTurn() {
   return useMutation({
     mutationFn: submitInterviewTurn,
+  });
+}
+
+export function useSubmitRealtimeInterviewTurn() {
+  return useMutation({
+    mutationFn: ({ sessionId, payload }: RealtimeTurnMutationInput) =>
+      submitRealtimeInterviewTurn(sessionId, payload),
+  });
+}
+
+export function useCommitRealtimeAssistantMessage() {
+  return useMutation({
+    mutationFn: ({ sessionId, directiveId, payload }: CommitRealtimeMutationInput) =>
+      commitRealtimeAssistantMessage(sessionId, directiveId, payload),
   });
 }
 

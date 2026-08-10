@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
@@ -41,6 +41,9 @@ import {
   type InterviewSessionDto,
   type InterviewTurnDto,
   type AnswerInterviewResponseDto,
+  type InterviewExperienceMode,
+  type RealtimeAnswerSignal,
+  type RealtimeCandidateIntent,
 } from "@/api/interview-api";
 import {
   useCvListForInterview,
@@ -51,6 +54,8 @@ import {
   useInterviewHistory,
   useRefreshRealtimeToken,
   useStartInterview,
+  useSubmitRealtimeInterviewTurn,
+  useCommitRealtimeAssistantMessage,
   useSubmitInterviewTurn,
   useUploadCvForInterview,
 } from "@/hooks/use-interview";
@@ -100,12 +105,19 @@ import {
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
 import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
-import { acquireInterviewMedia } from "@/lib/interview-media";
+import { acquireInterviewMedia, stopInterviewMedia } from "@/lib/interview-media";
 import { useAnswerPace } from "@/hooks/use-answer-pace";
+import { interviewSessionReducer, initialInterviewSessionState } from "@/components/interview/interview-session-machine";
+import {
+  parseRealtimeTurnClassification,
+  type RealtimeTurnClassification,
+} from "@/components/interview/interview-turn-classification";
 
 type EndReason = "manual" | "timer" | "finished";
 const REALTIME_MIC_REOPEN_DELAY_MS = 450;
 const REALTIME_ANSWER_BUFFER_IDLE_MS = 1300;
+const INTERVIEW_REALTIME_V2_ENABLED =
+  import.meta.env.VITE_INTERVIEW_REALTIME_V2_ENABLED === "true";
 
 interface CurrentQuestionMetadata {
   topicPhase: string | null;
@@ -128,6 +140,54 @@ function questionMetadataFromTurn(
   };
 }
 
+function normalizeIntentText(value: string): string {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function classifyV2Intent(value: string): RealtimeCandidateIntent {
+  const text = normalizeIntentText(value);
+  if (/\b(khong biet|chua biet|i do not know|dont know)\b/.test(text)) return "NO_ANSWER";
+  if (/\b(nhac lai|repeat)\b/.test(text)) return "REPEAT";
+  if (/\b(lam ro|giai thich cau hoi|clarify)\b/.test(text)) return "CLARIFY";
+  if (/\b(de hon|easier)\b/.test(text)) return "EASIER";
+  if (/\b(goi y|hint)\b/.test(text)) return "HINT";
+  if (/\b(nhan xet|feedback)\b/.test(text)) return "FEEDBACK";
+  if (/\b(bo qua|doi chu de|skip|next question)\b/.test(text)) return "SKIP";
+  if (/\b(ket thuc phong van|end interview|stop interview)\b/.test(text)) return "END";
+  return "ANSWER";
+}
+
+function classifyV2AnswerSignal(
+  transcript: string,
+  intent: RealtimeCandidateIntent,
+): RealtimeAnswerSignal {
+  if (intent === "NO_ANSWER") return "NO_ANSWER";
+  const words = transcript.trim().split(/\s+/).filter(Boolean);
+  if (intent === "ANSWER" && words.length < 8) return "PARTIAL";
+  return "COMPLETE";
+}
+
+function extractSpokenQuestion(transcript: string, fallback: string): string {
+  const normalized = transcript.trim().normalize("NFC");
+  if (!normalized) return fallback;
+  const sentences = normalized.match(/[^.!?]*\?/g);
+  return sentences?.at(-1)?.trim() || fallback || normalized;
+}
+
+function intentPrompt(intent: RealtimeCandidateIntent, language: "vi" | "en"): string {
+  const prompts: Record<RealtimeCandidateIntent, [string, string]> = {
+    ANSWER: ["Đây là câu trả lời của tôi.", "This is my answer."],
+    NO_ANSWER: ["Tôi không biết câu này.", "I do not know this one."],
+    REPEAT: ["Hãy nhắc lại câu hỏi.", "Please repeat the question."],
+    CLARIFY: ["Hãy làm rõ câu hỏi.", "Please clarify the question."],
+    EASIER: ["Cho tôi một câu dễ hơn.", "Please ask an easier question."],
+    HINT: ["Cho tôi một gợi ý.", "Please give me a hint."],
+    FEEDBACK: ["Cho tôi nhận xét nhanh.", "Please give me quick feedback."],
+    SKIP: ["Bỏ qua và đổi chủ đề.", "Skip this and change topic."],
+    END: ["Kết thúc phỏng vấn.", "End the interview."],
+  };
+  return prompts[intent][language === "vi" ? 0 : 1];
+}
 export default function Interview() {
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
@@ -140,6 +200,10 @@ export default function Interview() {
   const [targetRole, setTargetRole] = useState(AVAILABLE_TARGET_ROLES[0].value);
   const [selectedLanguage, setSelectedLanguage] = useState<"vi" | "en">("vi");
   const [interviewMode, setInterviewMode] = useState<InterviewMode>(DEFAULT_INTERVIEW_MODE);
+  const [experienceMode, setExperienceMode] = useState<InterviewExperienceMode>("MOCK");
+  const [realtimeState, dispatchRealtime] = useReducer(
+    interviewSessionReducer,
+    initialInterviewSessionState);
   const [interviewType, setInterviewType] = useState<InterviewType>("technical");
   const [voicePreference, setVoicePreference] = useState<InterviewVoicePreference>(() =>
     readInterviewVoicePreference(typeof window === "undefined" ? null : window.localStorage),
@@ -191,6 +255,10 @@ export default function Interview() {
   const realtimeAnswerFlushTimerRef = useRef<number | null>(null);
   const submittedRealtimeQuestionRef = useRef<string | null>(null);
   const realtimeTurnSubmitPromiseRef = useRef<Promise<void> | null>(null);
+  const v2TranscriptRef = useRef("");
+  const v2AssistantTranscriptRef = useRef("");
+  const v2FirstAudioAtRef = useRef<string | null>(null);
+  const v2PendingDirectiveRef = useRef<{ directiveId: string; questionGoal: string; finished: boolean } | null>(null);
   const flushRealtimeAnswerBufferRef = useRef<
     (options?: { force?: boolean }) => Promise<void>
   >(async () => undefined);
@@ -220,6 +288,8 @@ export default function Interview() {
   const uploadCvForInterviewMutation = useUploadCvForInterview();
   const createCvMatchForInterviewMutation = useCreateCvMatchForInterview();
   const submitTurnMutation = useSubmitInterviewTurn();
+  const submitRealtimeTurnMutation = useSubmitRealtimeInterviewTurn();
+  const commitRealtimeAssistantMutation = useCommitRealtimeAssistantMessage();
   const endInterviewMutation = useEndInterview();
   const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
   const interviewEntitlementsQuery = useQuery({
@@ -382,13 +452,8 @@ export default function Interview() {
   );
 
   const stopMedia = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    stopInterviewMedia(mediaStreamRef.current, videoRef.current);
+    mediaStreamRef.current = null;
   }, []);
 
   const setSelectedVoice = useCallback((voice: InterviewVoice) => {
@@ -434,7 +499,7 @@ export default function Interview() {
   const disconnectRealtime = useCallback(() => {
     clearMicReopenTimer();
     resetRealtimeAnswerBuffer();
-    liveSessionRef.current?.disconnect();
+    liveSessionRef.current?.destroy();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
     setIsMicActive(false);
@@ -453,7 +518,7 @@ export default function Interview() {
       setUserAnswer((current) => (current.trim() ? current : salvaged));
     }
     resetRealtimeAnswerBuffer();
-    liveSessionRef.current?.disconnect();
+    liveSessionRef.current?.destroy();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
     setIsMicActive(false);
@@ -508,6 +573,106 @@ export default function Interview() {
     [stopMedia, t],
   );
 
+  const commitV2AssistantTranscript = useCallback(
+    async (event: RealtimeEvent) => {
+      const session = activeSessionRef.current;
+      const directive = v2PendingDirectiveRef.current;
+      const transcript = (event.data || v2AssistantTranscriptRef.current).trim().normalize("NFC");
+      if (!session || !directive || !transcript) return;
+
+      const question = extractSpokenQuestion(transcript, directive.questionGoal);
+      currentQuestionRef.current = question;
+      currentInterviewerMessageRef.current = transcript === question ? "" : transcript;
+      setCurrentQuestion(question);
+      setChatHistory((current) => [
+        ...current,
+        { id: `v2-ai-${event.responseId ?? Date.now()}`, role: "ai", content: transcript, timestamp: new Date() },
+      ]);
+      try {
+        await commitRealtimeAssistantMutation.mutateAsync({
+          sessionId: session.id,
+          directiveId: directive.directiveId,
+          payload: {
+            responseId: event.responseId ?? crypto.randomUUID(),
+            interviewerMessage: transcript === question ? undefined : transcript,
+            interviewerQuestion: question,
+            firstAudioAt: v2FirstAudioAtRef.current ?? undefined,
+            interrupted: false,
+          },
+        });
+        if (directive.finished) setInterviewFinished(true);
+      } catch (error) {
+        setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
+      } finally {
+        v2PendingDirectiveRef.current = null;
+        v2AssistantTranscriptRef.current = "";
+        v2FirstAudioAtRef.current = null;
+        setIsLoading(false);
+      }
+    },
+    [commitRealtimeAssistantMutation, t],
+  );
+
+  const resolveV2Turn = useCallback(
+    async (
+      clientTurnId: string,
+      transcript: string,
+      modality: "TEXT" | "AUDIO",
+      classification?: RealtimeTurnClassification | null,
+    ) => {
+      const session = activeSessionRef.current;
+      const normalized = transcript.trim().normalize("NFC");
+      if (!session || session.engineVersion !== "V2" || !normalized) return;
+      const intent = classification?.intent ?? classifyV2Intent(normalized);
+      dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+      setIsLoading(true);
+      setApiError(null);
+      try {
+        const directive = await submitRealtimeTurnMutation.mutateAsync({
+          sessionId: session.id,
+          payload: {
+            clientTurnId,
+            transcript: normalized,
+            modality,
+            intent,
+            answerSignal: classification?.answerSignal ?? classifyV2AnswerSignal(normalized, intent),
+            speechEndedAt: new Date().toISOString(),
+            responseDelayMs: firstSpeechDelayMsRef.current ?? undefined,
+          },
+        });
+        v2PendingDirectiveRef.current = directive;
+        if (clientTurnId.startsWith("call_") && liveSessionRef.current?.isConnected) {
+          liveSessionRef.current.submitToolOutput(clientTurnId, directive);
+          return;
+        }
+
+        const fallbackQuestion = directive.questionGoal;
+        currentQuestionRef.current = fallbackQuestion;
+        setCurrentQuestion(fallbackQuestion);
+        setChatHistory((current) => [
+          ...current,
+          { id: `v2-ai-text-${Date.now()}`, role: "ai", content: fallbackQuestion, timestamp: new Date() },
+        ]);
+        await commitRealtimeAssistantMutation.mutateAsync({
+          sessionId: session.id,
+          directiveId: directive.directiveId,
+          payload: {
+            responseId: `text-${crypto.randomUUID()}`,
+            interviewerQuestion: fallbackQuestion,
+          },
+        });
+        v2PendingDirectiveRef.current = null;
+        if (directive.finished) setInterviewFinished(true);
+        dispatchRealtime({ type: "SWITCH_TO_TEXT" });
+      } catch (error) {
+        setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [commitRealtimeAssistantMutation, submitRealtimeTurnMutation, t],
+  );
+
   const connectRealtime = useCallback(
     async (clientSecret: string, stream: MediaStream, liveConversation = false) => {
       if (stream.getAudioTracks().length === 0) {
@@ -517,43 +682,91 @@ export default function Interview() {
       const realtimeSession = new OpenAIRealtimeSession();
       liveSessionRef.current = realtimeSession;
 
+      const v2Conversation = liveConversation && activeSessionRef.current?.engineVersion === "V2";
       realtimeSession.on((event: RealtimeEvent) => {
         switch (event.type) {
           case "connected":
             setIsLiveConnected(true);
-            setIsMicActive(false);
+            setIsMicActive(v2Conversation);
             setIsVoiceFallback(false);
             setVoiceFallbackReason(null);
-            acceptsUserSpeechRef.current = false;
+            acceptsUserSpeechRef.current = v2Conversation;
+            if (v2Conversation) dispatchRealtime({ type: "CONNECTED" });
             break;
           case "disconnected":
             clearMicReopenTimer();
             resetRealtimeAnswerBuffer();
             setIsLiveConnected(false);
             setIsMicActive(false);
+            if (v2Conversation && !endingRef.current) {
+              dispatchRealtime({ type: "CONNECTION_LOST", attempt: 1 });
+            }
+            break;
+          case "speech_started":
+            if (v2Conversation) {
+              if (v2FirstAudioAtRef.current) {
+                realtimeSession.cancelResponse();
+                dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
+              }
+              if (micOpenedAtRef.current !== null) {
+                firstSpeechDelayMsRef.current = Math.max(0, Date.now() - micOpenedAtRef.current);
+              }
+            }
+            break;
+          case "speech_stopped":
+            if (v2Conversation) {
+              dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+            }
             break;
           case "user_transcript": {
             const transcript = event.data?.trim();
             if (!transcript) break;
-            if (liveConversation) {
-              if (acceptsUserSpeechRef.current) {
-                submitRealtimeTranscriptRef.current(transcript);
-              }
+            if (v2Conversation) {
+              v2TranscriptRef.current = transcript;
+              setChatHistory((current) => [
+                ...current,
+                { id: `v2-user-${Date.now()}`, role: "user", content: transcript, timestamp: new Date() },
+              ]);
+            } else if (liveConversation && acceptsUserSpeechRef.current) {
+              submitRealtimeTranscriptRef.current(transcript);
             } else if (acceptsUserSpeechRef.current) {
               setUserAnswer((current) => (current.trim() ? `${current.trim()}\n${transcript}` : transcript));
             }
             break;
           }
+          case "tool_call":
+            if (v2Conversation && event.toolCall?.name === "decide_interview_turn") {
+              const classification = parseRealtimeTurnClassification(event.toolCall.arguments);
+              const transcript = v2TranscriptRef.current || classification?.transcript || "";
+              v2TranscriptRef.current = "";
+              if (transcript) {
+                void resolveV2Turn(event.toolCall.callId, transcript, "AUDIO", classification);
+              }
+            }
+            break;
           case "ai_speaking":
             clearMicReopenTimer();
-            clearRealtimeAnswerFlushTimer();
-            acceptsUserSpeechRef.current = false;
-            liveSessionRef.current?.setMicEnabled(false);
-            setIsMicActive(false);
             setIsAiSpeaking(true);
+            if (v2Conversation) {
+              v2FirstAudioAtRef.current ??= new Date().toISOString();
+              dispatchRealtime({
+                type: "ASSISTANT_AUDIO_STARTED",
+                subtitle: v2AssistantTranscriptRef.current,
+              });
+            } else {
+              clearRealtimeAnswerFlushTimer();
+              acceptsUserSpeechRef.current = false;
+              realtimeSession.setMicEnabled(false);
+              setIsMicActive(false);
+            }
             break;
           case "ai_stopped":
             setIsAiSpeaking(false);
+            if (v2Conversation) {
+              questionStartedAtRef.current = new Date();
+              dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+              break;
+            }
             if (liveConversation) {
               questionStartedAtRef.current = new Date();
               clearMicReopenTimer();
@@ -587,25 +800,42 @@ export default function Interview() {
             break;
           }
           case "error":
-            setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
+            if (v2Conversation) {
+              dispatchRealtime({ type: "CONNECTION_LOST", attempt: 1 });
+              setVoiceFallbackReason(event.data || t("interview.errors.realtimeVoiceFailed"));
+            } else {
+              setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
+            }
             break;
-          case "ai_transcript": {
-            if (!liveConversation && event.data) appendLiveAssistantTranscript(event.data);
+          case "ai_transcript":
+            if (v2Conversation && event.data) {
+              v2AssistantTranscriptRef.current += event.data;
+              dispatchRealtime({ type: "ASSISTANT_SUBTITLE", subtitle: event.data });
+            } else if (!liveConversation && event.data) {
+              appendLiveAssistantTranscript(event.data);
+            }
             break;
-          }
+          case "ai_transcript_done":
+            if (v2Conversation) {
+              void commitV2AssistantTranscript(event);
+            }
+            break;
         }
       });
 
-      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: false });
-      realtimeSession.setMicEnabled(false);
-      acceptsUserSpeechRef.current = false;
-      setIsMicActive(false);
+      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: v2Conversation });
+      realtimeSession.setMicEnabled(v2Conversation);
+      acceptsUserSpeechRef.current = v2Conversation;
+      setIsMicActive(v2Conversation);
+      if (v2Conversation) micOpenedAtRef.current = Date.now();
     },
     [
       appendLiveAssistantTranscript,
       clearMicReopenTimer,
       clearRealtimeAnswerFlushTimer,
       resetRealtimeAnswerBuffer,
+      commitV2AssistantTranscript,
+      resolveV2Turn,
       setVoiceFallback,
       t,
       toast,
@@ -695,6 +925,11 @@ export default function Interview() {
     liveQuestionBufferRef.current = "";
     liveLastQuestionRef.current = "";
     submittedRealtimeQuestionRef.current = null;
+    v2TranscriptRef.current = "";
+    v2AssistantTranscriptRef.current = "";
+    v2FirstAudioAtRef.current = null;
+    v2PendingDirectiveRef.current = null;
+    dispatchRealtime({ type: "CONNECTING" });
     currentTimeBudgetRef.current = null;
     setCurrentTimeBudget(null);
   }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
@@ -844,6 +1079,7 @@ export default function Interview() {
           voice: voicePreference.voice,
           speechSpeed: voicePreference.speechSpeed,
         }),
+        ...(INTERVIEW_REALTIME_V2_ENABLED ? { experienceMode } : {}),
       });
 
       const initialMessages = buildInterviewInitialMessages(started.firstMessage, started.firstQuestion).map(
@@ -1239,9 +1475,18 @@ export default function Interview() {
   submitRealtimeTranscriptRef.current = handleRealtimeTranscript;
 
   const handleSubmitAnswer = async () => {
-    if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
     const answer = userAnswer.trim();
     if (!answer || !activeSession?.id || isLoading || isEnding) return;
+    if (activeSession.engineVersion === "V2") {
+      setChatHistory((current) => [
+        ...current,
+        { id: `v2-user-text-${Date.now()}`, role: "user", content: answer, timestamp: new Date() },
+      ]);
+      setUserAnswer("");
+      await resolveV2Turn(`text-${crypto.randomUUID()}`, answer, "TEXT");
+      return;
+    }
+    if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
 
     const now = new Date();
     const durationSeconds = questionStartedAtRef.current
@@ -1358,8 +1603,34 @@ export default function Interview() {
     t,
   ]);
 
+  const handleV2Intent = (intent: RealtimeCandidateIntent) => {
+    if (intent === "END") {
+      setIsEndDialogOpen(true);
+      return;
+    }
+    const session = activeSessionRef.current;
+    if (!session || session.engineVersion !== "V2") return;
+    const prompt = intentPrompt(intent, selectedLanguage);
+    setChatHistory((current) => [
+      ...current,
+      { id: `v2-command-${Date.now()}`, role: "user", content: prompt, timestamp: new Date() },
+    ]);
+    if (liveSessionRef.current?.isConnected) {
+      v2TranscriptRef.current = prompt;
+      liveSessionRef.current.sendText(prompt);
+      return;
+    }
+    void resolveV2Turn(`command-${crypto.randomUUID()}`, prompt, "TEXT");
+  };
+
+  useEffect(() => {
+    if (realtimeState.status !== "RECONNECTING") return;
+    const timer = window.setTimeout(() => dispatchRealtime({ type: "RECONNECT_TIMEOUT" }), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [realtimeState.status]);
+
   const toggleLiveMic = async () => {
-    if (isAiSpeaking || isQuestionAudioPlaying || isLoading) {
+    if ((activeSession?.engineVersion !== "V2" && isAiSpeaking) || isQuestionAudioPlaying || isLoading) {
       return;
     }
 
@@ -1687,6 +1958,9 @@ export default function Interview() {
                 setSelectedLanguage={setSelectedLanguage}
                 interviewMode={interviewMode}
                 setInterviewMode={setInterviewMode}
+                realtimeV2Enabled={INTERVIEW_REALTIME_V2_ENABLED}
+                experienceMode={experienceMode}
+                setExperienceMode={setExperienceMode}
                 interviewType={interviewType}
                 setInterviewType={setInterviewType}
                 selectedVoice={voicePreference.voice}
@@ -1743,6 +2017,18 @@ export default function Interview() {
             apiError={apiError}
             currentTurnTrace={currentTurnTrace}
             answerPace={answerPace}
+            engineVersion={activeSession?.engineVersion}
+            experienceMode={activeSession?.experienceMode ?? experienceMode}
+            realtimeVoiceState={
+              realtimeState.status === "RECONNECTING"
+                ? "RECONNECTING"
+                : realtimeState.status === "SPEAKING"
+                  ? "SPEAKING"
+                  : realtimeState.status === "THINKING" ? "THINKING" : "LISTENING"
+            }
+            realtimeSubtitle={realtimeState.status === "SPEAKING" ? realtimeState.subtitle : undefined}
+            onRealtimeIntent={handleV2Intent}
+            onSwitchToText={() => dispatchRealtime({ type: "SWITCH_TO_TEXT" })}
           />
         )}
 

@@ -283,4 +283,99 @@ describe("OpenAIRealtimeSession", () => {
       new OpenAIRealtimeSession().connect({ clientSecret: "expired-secret", stream }),
     ).rejects.toThrow("Invalid or expired realtime client secret.");
   });
+
+  it("emits semantic VAD and function call events without double-submitting a call", () => {
+    const session = new OpenAIRealtimeSession();
+    const events = collectEvents(session);
+    const handleEvent = (raw: unknown) =>
+      (session as unknown as { handleEvent(value: unknown): void }).handleEvent(raw);
+
+    handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_started" }));
+    handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_stopped" }));
+    const toolEvent = JSON.stringify({
+      type: "response.function_call_arguments.done",
+      call_id: "call_1",
+      name: "decide_interview_turn",
+      arguments: "{}",
+    });
+    handleEvent(toolEvent);
+    handleEvent(toolEvent);
+
+    expect(events.map((event) => event.type)).toEqual([
+      "speech_started",
+      "speech_stopped",
+      "tool_call",
+    ]);
+    expect(events[2]?.toolCall).toEqual({
+      callId: "call_1",
+      name: "decide_interview_turn",
+      arguments: "{}",
+    });
+  });
+
+  it("submits tool output before resuming the realtime response", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: unknown[] = [];
+    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+
+    session.submitToolOutput("call_1", { action: "ADVANCE_TOPIC" });
+
+    expect(sent).toEqual([
+      {
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: JSON.stringify({ action: "ADVANCE_TOPIC" }),
+        },
+      },
+      { type: "response.create" },
+    ]);
+  });
+
+  it("cancels and truncates active output for barge-in, then clears handlers on disconnect", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: unknown[] = [];
+    const dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+      close: vi.fn(),
+      onopen: vi.fn(),
+      onmessage: vi.fn(),
+      onerror: vi.fn(),
+    };
+    const peerConnection = {
+      close: vi.fn(),
+      ontrack: vi.fn(),
+      onconnectionstatechange: vi.fn(),
+    };
+    (session as unknown as { dataChannel: typeof dataChannel }).dataChannel = dataChannel;
+    (session as unknown as { peerConnection: typeof peerConnection }).peerConnection = peerConnection;
+    (session as unknown as { activeAssistantItemId: string }).activeAssistantItemId = "item_1";
+    (session as unknown as { activeAudioStartedAt: number }).activeAudioStartedAt = performance.now() - 500;
+
+    session.cancelResponse();
+    session.disconnect();
+
+    expect(sent).toEqual([
+      { type: "response.cancel" },
+      { type: "output_audio_buffer.clear" },
+      {
+        type: "conversation.item.truncate",
+        item_id: "item_1",
+        content_index: 0,
+        audio_end_ms: expect.any(Number),
+      },
+    ]);
+    expect(dataChannel.onopen).toBeNull();
+    expect(dataChannel.onmessage).toBeNull();
+    expect(dataChannel.onerror).toBeNull();
+    expect(peerConnection.ontrack).toBeNull();
+    expect(peerConnection.onconnectionstatechange).toBeNull();
+    expect(dataChannel.close).toHaveBeenCalledOnce();
+    expect(peerConnection.close).toHaveBeenCalledOnce();
+  });
 });

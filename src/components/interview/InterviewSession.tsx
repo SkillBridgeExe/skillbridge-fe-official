@@ -29,6 +29,9 @@ import {
 } from "./interview-view-model";
 import { AnswerPaceRing } from "./AnswerPaceRing";
 import type { AnswerPaceState } from "@/hooks/use-answer-pace";
+import type { InterviewEngineVersion, InterviewExperienceMode, RealtimeCandidateIntent } from "@/api/interview-api";
+import { InterviewStageV2 } from "./InterviewStageV2";
+import type { InterviewerVoiceState } from "./InterviewVoiceOrb";
 
 const PHASES = [
   { key: "SCREENING", labelVi: "Khởi động", labelEn: "Screening" },
@@ -86,6 +89,12 @@ interface InterviewSessionProps {
   } | null;
   /** I-PACE: answer pacing state for the current turn. */
   answerPace?: AnswerPaceState;
+  engineVersion?: InterviewEngineVersion;
+  experienceMode?: InterviewExperienceMode;
+  realtimeVoiceState?: InterviewerVoiceState | "RECONNECTING";
+  realtimeSubtitle?: string;
+  onRealtimeIntent?: (intent: RealtimeCandidateIntent) => void;
+  onSwitchToText?: () => void;
 }
 
 export function InterviewSession({
@@ -119,6 +128,12 @@ export function InterviewSession({
   apiError,
   currentTurnTrace,
   answerPace,
+  engineVersion,
+  experienceMode = "MOCK",
+  realtimeVoiceState,
+  realtimeSubtitle,
+  onRealtimeIntent,
+  onSwitchToText,
 }: InterviewSessionProps) {
   const { t, i18n } = useTranslation("common");
   const isVi = i18n?.language?.startsWith("vi") ?? true;
@@ -150,6 +165,46 @@ export function InterviewSession({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, isLoading]);
+
+  if (engineVersion === "V2") {
+    const voiceState: InterviewerVoiceState =
+      realtimeVoiceState === "SPEAKING" || realtimeVoiceState === "THINKING"
+        ? realtimeVoiceState
+        : "LISTENING";
+    const voiceLabel =
+      voiceState === "SPEAKING"
+        ? isVi ? "Đang nói" : "Speaking"
+        : voiceState === "THINKING"
+          ? isVi ? "Đang suy nghĩ" : "Thinking"
+          : isVi ? "Đang nghe" : "Listening";
+
+    return (
+      <InterviewStageV2
+        videoRef={videoRef}
+        webcamError={webcamError}
+        timeRemainingLabel={timeRemainingLabel}
+        isConnected={isVoiceConnected}
+        isVietnamese={isVi}
+        voiceState={voiceState}
+        voiceLabel={voiceLabel}
+        subtitle={realtimeSubtitle}
+        currentQuestion={currentQuestion}
+        chatHistory={chatHistory}
+        experienceMode={experienceMode}
+        isMicActive={isMicActive}
+        isReconnecting={realtimeVoiceState === "RECONNECTING"}
+        isEnding={isEnding}
+        userAnswer={userAnswer}
+        setUserAnswer={setUserAnswer}
+        onSubmitText={handleSubmitAnswer}
+        onToggleMic={toggleLiveMic}
+        onSwitchToText={onSwitchToText ?? (() => undefined)}
+        onIntent={onRealtimeIntent ?? (() => undefined)}
+        onEnd={onStop}
+        apiError={apiError}
+      />
+    );
+  }
 
   return (
     <>

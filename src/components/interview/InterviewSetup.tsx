@@ -57,6 +57,7 @@ import {
   type InterviewVoice,
 } from "./types";
 import { getInterviewQuestionBankSourceKind } from "./interview-view-model";
+import type { InterviewExperienceMode } from "@/api/interview-api";
 
 interface InterviewCvUploadInput {
   file: File;
@@ -98,6 +99,9 @@ interface InterviewSetupProps {
   setSelectedLanguage: (v: "vi" | "en") => void;
   interviewMode: InterviewMode;
   setInterviewMode: (v: InterviewMode) => void;
+  realtimeV2Enabled: boolean;
+  experienceMode: InterviewExperienceMode;
+  setExperienceMode: (v: InterviewExperienceMode) => void;
   interviewType: InterviewType;
   setInterviewType: (v: InterviewType) => void;
   selectedVoice: InterviewVoice;
@@ -127,6 +131,9 @@ export function InterviewSetup({
   setSelectedLanguage,
   interviewMode,
   setInterviewMode,
+  realtimeV2Enabled,
+  experienceMode,
+  setExperienceMode,
   interviewType,
   setInterviewType,
   selectedVoice,
@@ -165,6 +172,12 @@ export function InterviewSetup({
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+
+  useEffect(() => {
+    if (realtimeV2Enabled && interviewMode !== "realtime") {
+      setInterviewMode("realtime");
+    }
+  }, [interviewMode, realtimeV2Enabled, setInterviewMode]);
   // Sync choice card if selectedCvId changes externally
   useEffect(() => {
     if (selectedMatchId) setContextChoice("match");
@@ -614,12 +627,36 @@ export function InterviewSetup({
                   </h4>
                 </div>
 
+                {realtimeV2Enabled && (
+                  <ToggleGroup
+                    type="single"
+                    value={experienceMode}
+                    onValueChange={(value) => value && setExperienceMode(value as InterviewExperienceMode)}
+                    className="grid grid-cols-2 gap-3"
+                    aria-label="Interview experience mode"
+                  >
+                    <ToggleGroupItem value="MOCK" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
+                      <span>
+                        <span className="block text-xs font-bold text-slate-900">Mock</span>
+                        <span className="mt-1 block text-[10px] text-slate-500">Phỏng vấn như thật, không coaching giữa buổi.</span>
+                      </span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="PRACTICE" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
+                      <span>
+                        <span className="block text-xs font-bold text-slate-900">Practice</span>
+                        <span className="mt-1 block text-[10px] text-slate-500">Có gợi ý, câu dễ hơn và nhận xét khi yêu cầu.</span>
+                      </span>
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+
                 <ToggleGroup
                   type="single"
                   value={interviewMode}
                   onValueChange={(value) => value && setInterviewMode(value as InterviewMode)}
                   className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                 >
+                  {!realtimeV2Enabled && (
                   <ToggleGroupItem
                     value="guided"
                     className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
@@ -636,6 +673,7 @@ export function InterviewSetup({
                       </span>
                     </div>
                   </ToggleGroupItem>
+                  )}
                   <ToggleGroupItem
                     value="realtime"
                     className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"

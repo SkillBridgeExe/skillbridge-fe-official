@@ -3,16 +3,27 @@ export type RealtimeEventType =
   | "disconnected"
   | "user_transcript"
   | "ai_transcript"
+  | "ai_transcript_done"
   | "ai_speaking"
   | "ai_stopped"
-  // One STT segment failed — per-utterance and recoverable; the session and any
-  // buffered answer segments are still valid. Distinct from fatal "error".
+  | "speech_started"
+  | "speech_stopped"
+  | "tool_call"
   | "transcript_failed"
   | "error";
+
+export interface RealtimeToolCall {
+  callId: string;
+  name: string;
+  arguments: string;
+}
 
 export interface RealtimeEvent {
   type: RealtimeEventType;
   data?: string;
+  responseId?: string;
+  itemId?: string;
+  toolCall?: RealtimeToolCall;
 }
 
 export type RealtimeEventCallback = (event: RealtimeEvent) => void;
@@ -31,6 +42,10 @@ export class OpenAIRealtimeSession {
   private listeners: RealtimeEventCallback[] = [];
   private pendingPayloads: unknown[] = [];
   private connected = false;
+  private connectAbortController: AbortController | null = null;
+  private handledToolCallIds = new Set<string>();
+  private activeAssistantItemId: string | null = null;
+  private activeAudioStartedAt: number | null = null;
 
   on(callback: RealtimeEventCallback): () => void {
     this.listeners.push(callback);
@@ -45,6 +60,7 @@ export class OpenAIRealtimeSession {
     const pc = new RTCPeerConnection();
     const dc = pc.createDataChannel("oai-events");
     this.peerConnection = pc;
+    this.connectAbortController = new AbortController();
     this.dataChannel = dc;
     this.localStream = stream;
 
@@ -96,6 +112,7 @@ export class OpenAIRealtimeSession {
         "Content-Type": "application/sdp",
       },
       body: offer.sdp,
+      signal: this.connectAbortController.signal,
     });
 
     if (!response.ok) {
@@ -113,6 +130,46 @@ export class OpenAIRealtimeSession {
     this.localStream?.getAudioTracks().forEach((track) => {
       track.enabled = enabled;
     });
+  }
+
+  submitToolOutput(callId: string, output: unknown): void {
+    this.send({
+      type: "conversation.item.create",
+      item: { type: "function_call_output", call_id: callId, output: JSON.stringify(output) },
+    });
+    this.send({ type: "response.create" });
+  }
+
+  cancelResponse(): void {
+    this.send({ type: "response.cancel" });
+    this.send({ type: "output_audio_buffer.clear" });
+    if (this.activeAssistantItemId) {
+      const elapsedMs = this.activeAudioStartedAt === null
+        ? 0
+        : Math.max(0, Math.round(performance.now() - this.activeAudioStartedAt));
+      this.send({
+        type: "conversation.item.truncate",
+        item_id: this.activeAssistantItemId,
+        content_index: 0,
+        audio_end_ms: elapsedMs,
+      });
+    }
+    this.activeAssistantItemId = null;
+    this.activeAudioStartedAt = null;
+  }
+
+  sendText(text: string): void {
+    const normalized = text.trim().normalize("NFC");
+    if (!normalized) return;
+    this.send({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: normalized }],
+      },
+    });
+    this.send({ type: "response.create" });
   }
 
   requestLiveInterviewClosing(language: "vi" | "en"): void {
@@ -196,13 +253,20 @@ export class OpenAIRealtimeSession {
 
   disconnect(): void {
     this.connected = false;
+    this.connectAbortController?.abort();
+    this.connectAbortController = null;
 
     if (this.dataChannel) {
+      this.dataChannel.onopen = null;
+      this.dataChannel.onmessage = null;
+      this.dataChannel.onerror = null;
       this.dataChannel.close();
       this.dataChannel = null;
     }
 
     if (this.peerConnection) {
+      this.peerConnection.ontrack = null;
+      this.peerConnection.onconnectionstatechange = null;
       this.peerConnection.close();
       this.peerConnection = null;
     }
@@ -215,7 +279,15 @@ export class OpenAIRealtimeSession {
 
     this.localStream = null;
     this.pendingPayloads = [];
+    this.handledToolCallIds.clear();
+    this.activeAssistantItemId = null;
+    this.activeAudioStartedAt = null;
     this.emit({ type: "disconnected" });
+  }
+
+  destroy(): void {
+    this.disconnect();
+    this.listeners = [];
   }
 
   get isConnected(): boolean {
@@ -225,7 +297,18 @@ export class OpenAIRealtimeSession {
   private handleEvent(raw: unknown): void {
     if (typeof raw !== "string") return;
 
-    let event: { type?: string; transcript?: string; delta?: string; error?: { message?: string } };
+    let event: {
+      type?: string;
+      transcript?: string;
+      delta?: string;
+      response_id?: string;
+      item_id?: string;
+      call_id?: string;
+      name?: string;
+      arguments?: string;
+      item?: { id?: string; role?: string };
+      error?: { message?: string };
+    };
     try {
       event = JSON.parse(raw);
     } catch {
@@ -233,26 +316,42 @@ export class OpenAIRealtimeSession {
     }
 
     if (event.type === "error") {
-      this.emit({
-        type: "error",
-        data: (event.error?.message ?? "Realtime API error.").normalize("NFC"),
-      });
+      this.emit({ type: "error", data: (event.error?.message ?? "Realtime API error.").normalize("NFC") });
       return;
     }
-
     if (event.type === "conversation.item.input_audio_transcription.failed") {
-      this.emit({
-        type: "transcript_failed",
-        data: (event.error?.message ?? "Realtime transcription failed.").normalize("NFC"),
-      });
+      this.emit({ type: "transcript_failed", data: (event.error?.message ?? "Realtime transcription failed.").normalize("NFC") });
       return;
     }
-
     if (event.type === "conversation.item.input_audio_transcription.completed") {
       this.emit({ type: "user_transcript", data: event.transcript?.normalize("NFC") });
       return;
     }
-
+    if (event.type === "input_audio_buffer.speech_started") {
+      this.emit({ type: "speech_started" });
+      return;
+    }
+    if (event.type === "input_audio_buffer.speech_stopped") {
+      this.emit({ type: "speech_stopped" });
+      return;
+    }
+    if (
+      event.type === "response.function_call_arguments.done" &&
+      event.call_id &&
+      event.name &&
+      !this.handledToolCallIds.has(event.call_id)
+    ) {
+      this.handledToolCallIds.add(event.call_id);
+      this.emit({
+        type: "tool_call",
+        toolCall: { callId: event.call_id, name: event.name, arguments: event.arguments ?? "{}" },
+      });
+      return;
+    }
+    if (event.type === "response.output_item.added" && event.item?.role === "assistant") {
+      this.activeAssistantItemId = event.item.id ?? null;
+      return;
+    }
     if (
       event.type === "response.output_audio_transcript.delta" ||
       event.type === "response.audio_transcript.delta"
@@ -260,13 +359,26 @@ export class OpenAIRealtimeSession {
       this.emit({ type: "ai_transcript", data: event.delta?.normalize("NFC") });
       return;
     }
-
+    if (
+      event.type === "response.output_audio_transcript.done" ||
+      event.type === "response.audio_transcript.done"
+    ) {
+      this.emit({
+        type: "ai_transcript_done",
+        data: event.transcript?.normalize("NFC"),
+        responseId: event.response_id,
+        itemId: event.item_id,
+      });
+      return;
+    }
     if (event.type === "response.output_audio.delta" || event.type === "response.audio.delta") {
+      if (this.activeAudioStartedAt === null) this.activeAudioStartedAt = performance.now();
       this.emit({ type: "ai_speaking" });
       return;
     }
-
     if (event.type === "response.output_audio.done" || event.type === "response.audio.done") {
+      this.activeAssistantItemId = null;
+      this.activeAudioStartedAt = null;
       this.emit({ type: "ai_stopped" });
     }
   }

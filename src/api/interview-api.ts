@@ -6,6 +6,12 @@ import { getAccessToken } from "@/services/auth-token.service";
 const QUESTION_AUDIO_TIMEOUT_MS = 60_000;
 
 export type PlatformInterviewMode = "TEXT" | "VOICE" | "HYBRID";
+export type InterviewExperienceMode = "MOCK" | "PRACTICE";
+export type InterviewEngineVersion = "V1" | "V2";
+export type RealtimeCandidateIntent =
+  | "ANSWER" | "NO_ANSWER" | "REPEAT" | "CLARIFY" | "EASIER"
+  | "HINT" | "FEEDBACK" | "SKIP" | "END";
+export type RealtimeAnswerSignal = "COMPLETE" | "PARTIAL" | "OFF_TOPIC" | "NO_ANSWER";
 export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
@@ -102,6 +108,8 @@ export interface InterviewSessionDto {
   targetRole: string;
   language: PlatformInterviewLanguage | string;
   mode: PlatformInterviewMode;
+  experienceMode?: InterviewExperienceMode;
+  engineVersion?: InterviewEngineVersion;
   interviewType: PlatformInterviewType;
   voice: PlatformInterviewVoice | string;
   speechSpeed: number;
@@ -166,6 +174,13 @@ export interface InterviewTurnDto {
   transcriptSegments?: number | null;
   /** I-PACE: seconds the interviewer allocated for this turn's answer. null on legacy/review turns. */
   timeBudgetSeconds?: number | null;
+  questionThreadId?: string | null;
+  candidateIntent?: RealtimeCandidateIntent | null;
+  assistanceLevel?: "NONE" | "EASIER" | "HINT" | "SKIPPED";
+  scoreCap?: number | null;
+  rawScore?: number | null;
+  finalQuestionScore?: number | null;
+  skipReason?: string | null;
 }
 
 export interface InterviewFeedback {
@@ -184,6 +199,7 @@ export interface StartInterviewRequest {
   targetRole: string;
   language?: PlatformInterviewLanguage;
   mode?: PlatformInterviewMode;
+  experienceMode?: InterviewExperienceMode;
   interviewType?: PlatformInterviewType;
   voice?: PlatformInterviewVoice;
   speechSpeed?: number;
@@ -207,6 +223,49 @@ export interface SubmitInterviewTurnRequest {
   /** P3 speech timing (voice mode) — only sent when client-measured. */
   responseDelayMs?: number;
   transcriptSegments?: number;
+}
+
+export interface RealtimeInterviewTurnRequest {
+  clientTurnId: string;
+  transcript: string;
+  modality: PlatformInterviewModality;
+  intent: RealtimeCandidateIntent;
+  answerSignal: RealtimeAnswerSignal;
+  speechEndedAt?: string;
+  durationSeconds?: number;
+  responseDelayMs?: number;
+  transcriptSegments?: number;
+}
+
+export type RealtimeDirectiveAction =
+  | "FOLLOW_UP" | "ADVANCE_TOPIC" | "LOWER_DIFFICULTY" | "GIVE_HINT"
+  | "GIVE_FEEDBACK" | "DECLINE_COACHING" | "REPEAT" | "CLARIFY" | "WRAP_UP";
+
+export interface RealtimeTurnDirectiveDto {
+  directiveId: string;
+  action: RealtimeDirectiveAction;
+  topicId: string | null;
+  questionThreadId: string;
+  difficultyStep: number;
+  assistanceLevel: "NONE" | "EASIER" | "HINT" | "SKIPPED";
+  scoreCap: number | null;
+  threadScore: number | null;
+  consumesAttempt: boolean;
+  questionGoal: string;
+  finished: boolean;
+}
+
+export interface CommitRealtimeAssistantMessageRequest {
+  responseId: string;
+  interviewerMessage?: string;
+  interviewerQuestion: string;
+  firstAudioAt?: string;
+  interrupted?: boolean;
+}
+
+export interface CommitRealtimeAssistantMessageResponse {
+  directive: RealtimeTurnDirectiveDto;
+  turnId: string | null;
 }
 
 export interface LiveInterviewTurnInput {
@@ -265,6 +324,32 @@ export async function submitInterviewTurn(
   >(
     httpClient.post(API_ROUTES.INTERVIEW.TURN, payload),
     "Failed to submit interview answer.",
+  );
+  return envelope.data;
+}
+
+export async function submitRealtimeInterviewTurn(
+  sessionId: string,
+  payload: RealtimeInterviewTurnRequest,
+): Promise<RealtimeTurnDirectiveDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeTurnDirectiveDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.REALTIME_TURN(sessionId), payload),
+    "Failed to resolve realtime interview turn.",
+  );
+  return envelope.data;
+}
+
+export async function commitRealtimeAssistantMessage(
+  sessionId: string,
+  directiveId: string,
+  payload: CommitRealtimeAssistantMessageRequest,
+): Promise<CommitRealtimeAssistantMessageResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<CommitRealtimeAssistantMessageResponse>>(
+    httpClient.post(
+      API_ROUTES.INTERVIEW.REALTIME_DIRECTIVE_COMMIT(sessionId, directiveId),
+      payload,
+    ),
+    "Failed to commit realtime interviewer transcript.",
   );
   return envelope.data;
 }

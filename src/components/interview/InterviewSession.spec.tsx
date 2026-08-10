@@ -102,4 +102,32 @@ describe("InterviewSession", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Bank key frontend_developer.skill.01")).not.toBeInTheDocument();
   });
+
+  it("keeps the self-camera primary and renders the compact V2 interviewer stage", () => {
+    const { container } = renderSession({
+      engineVersion: "V2",
+      experienceMode: "MOCK",
+      realtimeVoiceState: "LISTENING",
+      realtimeSubtitle: "I am listening.",
+    });
+
+    expect(container.querySelector("video")).toBeInTheDocument();
+    expect(screen.getAllByText("Alex · AI Interviewer").length).toBeGreaterThan(0);
+    expect(screen.getByText("05:00")).toBeInTheDocument();
+    expect(
+      screen.getByText("How do you decide between local state and server state?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gợi ý" })).not.toBeInTheDocument();
+  });
+
+  it("shows coaching controls only in Practice V2", () => {
+    renderSession({
+      engineVersion: "V2",
+      experienceMode: "PRACTICE",
+      realtimeVoiceState: "THINKING",
+    });
+
+    expect(screen.getByRole("button", { name: "Gợi ý" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nhận xét nhanh" })).toBeInTheDocument();
+  });
 });

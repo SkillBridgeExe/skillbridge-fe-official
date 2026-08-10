@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { acquireInterviewMedia } from "./interview-media";
+import { acquireInterviewMedia, stopInterviewMedia } from "./interview-media";
 
 interface FakeStream extends MediaStream {
   addTrack: ReturnType<typeof vi.fn>;
@@ -85,5 +85,20 @@ describe("acquireInterviewMedia", () => {
       microphoneError,
       cameraError: null,
     });
+  });
+
+  it("stops every media track and detaches the video element", () => {
+    const audioTrack = { stop: vi.fn() } as unknown as MediaStreamTrack;
+    const videoTrack = { stop: vi.fn() } as unknown as MediaStreamTrack;
+    const stream = {
+      getTracks: () => [audioTrack, videoTrack],
+    } as unknown as MediaStream;
+    const videoElement = { srcObject: stream } as Pick<HTMLVideoElement, "srcObject">;
+
+    stopInterviewMedia(stream, videoElement);
+
+    expect(audioTrack.stop).toHaveBeenCalledOnce();
+    expect(videoTrack.stop).toHaveBeenCalledOnce();
+    expect(videoElement.srcObject).toBeNull();
   });
 });
