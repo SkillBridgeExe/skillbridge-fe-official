@@ -258,6 +258,7 @@ export default function Interview() {
   const v2TranscriptRef = useRef("");
   const v2AssistantTranscriptRef = useRef("");
   const v2FirstAudioAtRef = useRef<string | null>(null);
+  const v2AssistantInterruptedRef = useRef(false);
   const v2PendingDirectiveRef = useRef<{ directiveId: string; questionGoal: string; finished: boolean } | null>(null);
   const flushRealtimeAnswerBufferRef = useRef<
     (options?: { force?: boolean }) => Promise<void>
@@ -597,7 +598,7 @@ export default function Interview() {
             interviewerMessage: transcript === question ? undefined : transcript,
             interviewerQuestion: question,
             firstAudioAt: v2FirstAudioAtRef.current ?? undefined,
-            interrupted: false,
+            interrupted: v2AssistantInterruptedRef.current,
           },
         });
         if (directive.finished) setInterviewFinished(true);
@@ -607,6 +608,7 @@ export default function Interview() {
         v2PendingDirectiveRef.current = null;
         v2AssistantTranscriptRef.current = "";
         v2FirstAudioAtRef.current = null;
+        v2AssistantInterruptedRef.current = false;
         setIsLoading(false);
       }
     },
@@ -705,6 +707,7 @@ export default function Interview() {
           case "speech_started":
             if (v2Conversation) {
               if (v2FirstAudioAtRef.current) {
+                v2AssistantInterruptedRef.current = true;
                 realtimeSession.cancelResponse();
                 dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
               }
@@ -928,6 +931,7 @@ export default function Interview() {
     v2TranscriptRef.current = "";
     v2AssistantTranscriptRef.current = "";
     v2FirstAudioAtRef.current = null;
+    v2AssistantInterruptedRef.current = false;
     v2PendingDirectiveRef.current = null;
     dispatchRealtime({ type: "CONNECTING" });
     currentTimeBudgetRef.current = null;
