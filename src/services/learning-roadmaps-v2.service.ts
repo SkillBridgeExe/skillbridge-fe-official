@@ -441,12 +441,11 @@ export function roadmapV2ToWeekPlans(
     .map((plan) => ({
       ...plan,
       sessions: [...plan.sessions].sort((a, b) => {
-        return (
-          a.sessionNumber - b.sessionNumber ||
-          (a.scheduledStartAt && b.scheduledStartAt
+        const scheduledTime =
+          a.scheduledStartAt && b.scheduledStartAt
             ? Date.parse(a.scheduledStartAt) - Date.parse(b.scheduledStartAt)
-            : 0)
-        );
+            : 0;
+        return scheduledTime || a.sessionNumber - b.sessionNumber;
       }),
     }));
 }
