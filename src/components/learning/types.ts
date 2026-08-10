@@ -76,6 +76,8 @@ export interface LearningSession {
   estimatedMinutes: number;
   /** Exact persisted calendar occurrence. Legacy roadmaps may omit this field. */
   scheduledStartAt?: string;
+  /** Calendar week relative to the roadmap cadence start. */
+  weekNumber?: number;
   status: "completed" | "in-progress" | "locked";
   stars: number;
   maxStars: number;
@@ -123,8 +125,9 @@ export interface LearningSession {
 }
 
 export interface WeekPlan {
+  /** Real calendar week; rank is intentionally not represented here. */
   weekNumber: number;
-  moduleId: string;
-  moduleTitle: string;
+  moduleId?: string;
+  moduleTitle?: string;
   sessions: LearningSession[];
 }

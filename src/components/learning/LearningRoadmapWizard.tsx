@@ -1,15 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowDown,
   ArrowLeft,
   ArrowRight,
-  ArrowUp,
+  GripVertical,
   Loader2,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import * as Dialog from "@radix-ui/react-dialog";
 import { getCvListApi } from "@/api/cv/list";
 import { Button } from "@/components/ui/button";
@@ -31,6 +49,9 @@ import {
   buildCadenceDraft,
   buildPrioritySelection,
   buildResourceSelection,
+  removeSkillId,
+  reorderSkillIds,
+  restoreSkillId,
 } from "./learning-roadmap-wizard-state";
 
 type Step = "goal" | "context" | "priorities" | "schedule" | "preview";
@@ -60,6 +81,8 @@ export function LearningRoadmapWizard({
   const [cvId, setCvId] = useState("");
   const [draft, setDraft] = useState<LearningRoadmapDraft | null>(null);
   const [orderedSkills, setOrderedSkills] = useState<string[]>([]);
+  const [ignoredSkills, setIgnoredSkills] = useState<string[]>([]);
+  const [activeSkill, setActiveSkill] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(today);
   const [studyDaysPerWeek, setStudyDaysPerWeek] =
     useState<(typeof STUDY_DAY_OPTIONS)[number]>(3);
@@ -103,6 +126,11 @@ export function LearningRoadmapWizard({
     "schedule",
     "preview",
   ].indexOf(step);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const selectedCandidates = useMemo(() => {
     if (!draft) return [];
     const byCanonical = new Map(
@@ -116,6 +144,12 @@ export function LearningRoadmapWizard({
       return candidate ? [candidate] : [];
     });
   }, [draft, orderedSkills]);
+
+  const ignoredCandidates = useMemo(() => {
+    if (!draft) return [];
+    const ignored = new Set(ignoredSkills);
+    return draft.candidate_skills.filter((candidate) => ignored.has(candidate.skill_canonical));
+  }, [draft, ignoredSkills]);
 
   const chooseIntent = (value: LearningRoadmapIntent) => {
     setIntent(value);
@@ -151,6 +185,7 @@ export function LearningRoadmapWizard({
       setOrderedSkills(
         created.candidate_skills.map((candidate) => candidate.skill_canonical),
       );
+      setIgnoredSkills([]);
       setStep("priorities");
     } catch (cause) {
       setError(messageOf(cause, t));
@@ -229,14 +264,32 @@ export function LearningRoadmapWizard({
     }
   };
 
-  const moveSkill = (index: number, offset: -1 | 1) => {
-    setOrderedSkills((current) => {
-      const target = index + offset;
-      if (target < 0 || target >= current.length) return current;
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveSkill(String(active.id));
+  };
+
+  const handleDragCancel = () => {
+    setActiveSkill(null);
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveSkill(null);
+    if (!over) return;
+    setOrderedSkills((current) =>
+      reorderSkillIds(current, String(active.id), String(over.id)),
+    );
+  };
+
+  const removeSkill = (canonical: string) => {
+    const next = removeSkillId(orderedSkills, ignoredSkills, canonical);
+    setOrderedSkills(next.ordered);
+    setIgnoredSkills(next.ignored);
+  };
+
+  const restoreSkill = (canonical: string) => {
+    const next = restoreSkillId(orderedSkills, ignoredSkills, canonical);
+    setOrderedSkills(next.ordered);
+    setIgnoredSkills(next.ignored);
   };
 
   const toggleResource = (skillCanonical: string, resourceId: string) => {
@@ -382,53 +435,94 @@ export function LearningRoadmapWizard({
           ) : null}
 
           {step === "priorities" && draft ? (
-            <div className="space-y-4">
-              {selectedCandidates.length === 0 ? (
-                <p className="rounded-2xl bg-emerald-50 p-5 text-sm text-emerald-800">
-                  {t("learning.wizard.noGaps")}
-                </p>
-              ) : (
-                selectedCandidates.map((candidate, index) => (
-                  <div
-                    key={candidate.skill_canonical}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragCancel={handleDragCancel}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {t("learning.wizard.priorities.selectedTitle")}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t("learning.wizard.priorities.dragHint")}
+                  </p>
+                </div>
+                {selectedCandidates.length === 0 ? (
+                  <p className="rounded-2xl bg-amber-50 p-5 text-sm text-amber-800">
+                    {t("learning.wizard.priorities.empty")}
+                  </p>
+                ) : (
+                  <SortableContext
+                    items={orderedSkills}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900">
-                        {candidate.display_name}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {candidate.rationale}
-                      </p>
+                    <div className="space-y-3">
+                      {selectedCandidates.map((candidate, index) => (
+                        <SortableSkillRow
+                          key={candidate.skill_canonical}
+                          candidate={candidate}
+                          index={index}
+                          onRemove={removeSkill}
+                        />
+                      ))}
                     </div>
-                    <button
-                      onClick={() => moveSkill(index, -1)}
-                      disabled={index === 0}
-                      className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => moveSkill(index, 1)}
-                      disabled={index === selectedCandidates.length - 1}
-                      className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </button>
+                  </SortableContext>
+                )}
+                <DragOverlay dropAnimation={null}>
+                  {activeSkill ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                      <SkillRowPreview
+                        candidate={draft.candidate_skills.find(
+                          (candidate) => candidate.skill_canonical === activeSkill,
+                        )}
+                        index={Math.max(0, orderedSkills.indexOf(activeSkill))}
+                      />
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </div>
+              {ignoredCandidates.length > 0 ? (
+                <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-700">
+                    {t("learning.wizard.priorities.ignoredTitle")}
+                  </h3>
+                  <div className="mt-3 space-y-2">
+                    {ignoredCandidates.map((candidate) => (
+                      <div
+                        key={candidate.skill_canonical}
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-slate-700">
+                            {candidate.display_name}
+                          </span>
+                          <span className="block truncate text-xs text-slate-500">
+                            {candidate.rationale}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => restoreSkill(candidate.skill_canonical)}
+                          className="rounded-lg px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10"
+                        >
+                          {t("learning.wizard.priorities.restore")}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
+                </section>
+              ) : null}
               <WizardFooter
                 onBack={() => setStep("context")}
                 onNext={() => setStep("schedule")}
                 disabled={selectedCandidates.length === 0}
               />
-            </div>
+            </DndContext>
           ) : null}
-
           {step === "schedule" ? (
             <div className="space-y-5">
               <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
@@ -616,6 +710,86 @@ const inputClass =
 const choiceClass = (active: boolean) =>
   `rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${active ? "border-primary bg-primary text-white" : "border-slate-200 text-slate-600 hover:border-primary/40"}`;
 
+type CandidateSkill = LearningRoadmapDraft["candidate_skills"][number];
+
+function SortableSkillRow({
+  candidate,
+  index,
+  onRemove,
+}: {
+  candidate: CandidateSkill;
+  index: number;
+  onRemove: (canonical: string) => void;
+}) {
+  const { t } = useTranslation("common");
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: candidate.skill_canonical });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={`flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 ${
+        isDragging ? "z-10 shadow-xl ring-2 ring-primary/20" : ""
+      }`}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={t("learning.wizard.priorities.drag", {
+          skill: candidate.display_name,
+        })}
+        className="cursor-grab rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-primary active:cursor-grabbing"
+      >
+        <GripVertical className="h-5 w-5" aria-hidden="true" />
+      </button>
+      <SkillRowPreview candidate={candidate} index={index} />
+      <button
+        type="button"
+        onClick={() => onRemove(candidate.skill_canonical)}
+        aria-label={t("learning.wizard.priorities.remove", {
+          skill: candidate.display_name,
+        })}
+        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+      >
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function SkillRowPreview({
+  candidate,
+  index,
+}: {
+  candidate?: CandidateSkill;
+  index: number;
+}) {
+  if (!candidate) return null;
+  return (
+    <>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+        {index + 1}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-slate-900">{candidate.display_name}</p>
+        <p className="truncate text-xs text-slate-500">{candidate.rationale}</p>
+      </div>
+    </>
+  );
+}
 function GoalCard({
   title,
   body,

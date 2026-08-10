@@ -206,6 +206,8 @@ export interface ActiveLearningRoadmap {
       sequence: number;
       title: string;
       scheduled_start_at: string;
+      /** Calendar week relative to cadence.start_date. */
+      week_number?: number;
       duration_minutes: number;
       status: "COMPLETED" | "AVAILABLE";
       required_tasks: PersistedTask[];
@@ -373,57 +375,80 @@ export function translateLearningDisplay(
 export function roadmapV2ToWeekPlans(
   roadmap: ActiveLearningRoadmap,
 ): WeekPlan[] {
-  return [...roadmap.modules]
-    .sort((a, b) => a.rank - b.rank)
-    .map((module) => ({
-      weekNumber: module.rank,
-      moduleId: module.id,
-      moduleTitle: module.display_name,
-      sessions: [...module.sessions]
-        .sort(
-          (a, b) =>
-            a.sequence - b.sequence ||
-            Date.parse(a.scheduled_start_at) -
-              Date.parse(b.scheduled_start_at),
-        )
-        .map((session) => {
-          const resourcesTask = session.required_tasks.find(
-            (task) => task.type === "resources",
-          );
-          const lessonTask = session.required_tasks.find(
-            (task) => task.type === "lesson",
-          );
-          const resources = (resourcesTask?.items ?? []).map(toSessionResource);
-          const lessonContent = lessonTask?.content
-            ? toLessonContent(lessonTask.content)
-            : undefined;
-          return {
-            id: session.id,
-            moduleId: module.id,
-            skillCanonical: module.skill_canonical,
-            sessionNumber: session.sequence,
-            title: session.title,
-            skill: module.display_name,
-            dayOfWeek: toIsoWeekday(
-              new Date(session.scheduled_start_at).getDay(),
-            ),
-            scheduledStartAt: session.scheduled_start_at,
-            estimatedMinutes: session.duration_minutes,
-            status:
-              session.status === "COMPLETED"
-                ? "completed"
-                : "in-progress",
-            stars: 0,
-            maxStars: 5,
-            sections: toSections(lessonContent, resources),
-            lessonContent,
-            resources,
-            recommendedCourses: [],
-          };
-        }),
+  const plans = new Map<number, WeekPlan>();
+  const modules = [...roadmap.modules].sort((a, b) => a.rank - b.rank);
+
+  for (const module of modules) {
+    const sessions = [...module.sessions].sort(
+      (a, b) =>
+        a.sequence - b.sequence ||
+        Date.parse(a.scheduled_start_at) -
+          Date.parse(b.scheduled_start_at),
+    );
+    for (const session of sessions) {
+      const weekNumber = session.week_number ?? module.rank;
+      const existing = plans.get(weekNumber);
+      const plan = existing ?? {
+        weekNumber,
+        moduleId: module.id,
+        moduleTitle: module.display_name,
+        sessions: [],
+      };
+      if (
+        existing &&
+        (existing.moduleId !== module.id ||
+          existing.moduleTitle !== module.display_name)
+      ) {
+        plan.moduleId = undefined;
+        plan.moduleTitle = undefined;
+      }
+
+      const resourcesTask = session.required_tasks.find(
+        (task) => task.type === "resources",
+      );
+      const lessonTask = session.required_tasks.find(
+        (task) => task.type === "lesson",
+      );
+      const resources = (resourcesTask?.items ?? []).map(toSessionResource);
+      const lessonContent = lessonTask?.content
+        ? toLessonContent(lessonTask.content)
+        : undefined;
+      plan.sessions.push({
+        id: session.id,
+        moduleId: module.id,
+        skillCanonical: module.skill_canonical,
+        weekNumber,
+        sessionNumber: session.sequence,
+        title: session.title,
+        skill: module.display_name,
+        dayOfWeek: toIsoWeekday(new Date(session.scheduled_start_at).getDay()),
+        scheduledStartAt: session.scheduled_start_at,
+        estimatedMinutes: session.duration_minutes,
+        status: session.status === "COMPLETED" ? "completed" : "in-progress",
+        stars: 0,
+        maxStars: 5,
+        sections: toSections(lessonContent, resources),
+        lessonContent,
+        resources,
+        recommendedCourses: [],
+      });
+      plans.set(weekNumber, plan);
+    }
+  }
+
+  return [...plans.values()]
+    .sort((a, b) => a.weekNumber - b.weekNumber)
+    .map((plan) => ({
+      ...plan,
+      sessions: [...plan.sessions].sort((a, b) => {
+        const scheduledTime =
+          a.scheduledStartAt && b.scheduledStartAt
+            ? Date.parse(a.scheduledStartAt) - Date.parse(b.scheduledStartAt)
+            : 0;
+        return scheduledTime || a.sessionNumber - b.sessionNumber;
+      }),
     }));
 }
-
 export function roadmapV2ToLearningRoadmap(
   roadmap: ActiveLearningRoadmap,
 ): LearningRoadmap {

@@ -349,6 +349,15 @@ export default {
           schedule: "Xếp lịch học thực tế",
           preview: "Kiểm tra tính khả thi trước khi tạo",
         },
+        priorities: {
+          selectedTitle: "Kỹ năng sẽ học",
+          dragHint: "Kéo biểu tượng để đổi thứ tự. Bạn có thể bỏ qua kỹ năng chưa cần học.",
+          ignoredTitle: "Đã bỏ qua",
+          restore: "Học lại",
+          empty: "Hãy giữ lại ít nhất một kỹ năng để tiếp tục.",
+          drag: "Đổi thứ tự {{skill}}",
+          remove: "Bỏ qua {{skill}}",
+        },
         goal: {
           jdTitle: "Ứng tuyển một công việc cụ thể",
           jdBody: "Tạo lộ trình từ khoảng trống giữa CV và một mô tả công việc.",
@@ -429,7 +438,7 @@ export default {
           studyDaysRange: "Hãy chọn từ 1 đến 7 ngày học mỗi tuần.",
           generic: "Không thể tiếp tục. Vui lòng thử lại.",
         },
-        noGaps: "CV này đã bao phủ các kỹ năng được hỗ trợ cho nghề đã chọn.",
+
         back: "Quay lại",
         next: "Tiếp tục",
         goDiagnosis: "Sang Phân tích",

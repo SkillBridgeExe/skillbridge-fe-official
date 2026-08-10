@@ -39,7 +39,7 @@ interface SubjectRoadmap {
 
 type DrawerTarget =
   | { type: "session"; item: ScheduleSession }
-  | { type: "week"; subjectTitle: string; week: SubjectRoadmap["weeks"][number] };
+  | { type: "week"; week: SubjectRoadmap["weeks"][number] };
 
 const DAY_LABELS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY_LABELS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -150,7 +150,7 @@ export function SkillRoadmapMapView() {
                     setExpanded(true);
                   }}
                   onSelectWeek={(week) => {
-                    setDrawerTarget({ type: "week", subjectTitle: subject.title, week });
+                    setDrawerTarget({ type: "week", week });
                     setExpanded(true);
                   }}
                 />
@@ -171,7 +171,6 @@ export function SkillRoadmapMapView() {
         )}
         {drawerTarget?.type === "week" && (
           <WeekDrawer
-            subjectTitle={drawerTarget.subjectTitle}
             week={drawerTarget.week}
             isVi={isVi}
             onClose={() => setDrawerTarget(null)}
@@ -523,14 +522,12 @@ function SessionDrawer({
 }
 
 function WeekDrawer({
-  subjectTitle,
   week,
   isVi,
   onClose,
   onSelectSession,
   onOpenSession,
 }: {
-  subjectTitle: string;
   week: SubjectRoadmap["weeks"][number];
   isVi: boolean;
   onClose: () => void;
@@ -538,6 +535,7 @@ function WeekDrawer({
   onOpenSession: (item: ScheduleSession) => void;
 }) {
   const completed = week.sessions.filter((item) => item.session.status === "completed").length;
+  const weekSkills = [...new Set(week.sessions.map((item) => item.session.skill).filter(Boolean))];
 
   return (
     <aside className="absolute right-4 top-4 z-30 w-[min(460px,calc(100%-32px))] max-h-[calc(100%-32px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[-16px_16px_40px_rgb(15_23_42_/_0.24)]">
@@ -563,7 +561,7 @@ function WeekDrawer({
       <div className="space-y-4 px-5 py-5">
         <div>
           <h3 className="text-2xl font-black leading-tight text-slate-950">
-            {subjectTitle} · {isVi ? `Tuần ${week.weekNumber}` : `Week ${week.weekNumber}`}
+            {weekSkills.join(" · ") || (isVi ? "Các session trong tuần" : "Sessions this week")}
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {isVi

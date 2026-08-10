@@ -246,21 +246,125 @@ describe("Learning Roadmaps V2 service", () => {
 
     expect(weeks[0].sessions[0]).toEqual(
       expect.objectContaining({
-        id: "session-uuid-1",
+        id: "session-uuid-2",
         moduleId: "module-1",
         skillCanonical: "typescript",
-        scheduledStartAt: "2026-07-27T12:00:00.000Z",
-        dayOfWeek: 1,
-        status: "in-progress",
+        scheduledStartAt: "2026-07-26T12:00:00.000Z",
+        dayOfWeek: 7,
+        status: "completed",
       }),
     );
-    expect(weeks[0].sessions.map((session) => session.status)).toEqual([
-      "in-progress",
-      "completed",
-      "in-progress",
+    expect(weeks[0].sessions.map((session) => session.id)).toEqual([
+      "session-uuid-2",
+      "session-uuid-1",
+      "session-uuid-3",
     ]);
   });
 
+
+  it("groups sessions by persisted calendar week instead of module rank", () => {
+    const roadmap = {
+      id: "roadmap-calendar-weeks",
+      intent: "CAREER_ROLE",
+      status: "ACTIVE",
+      revision: 1,
+      target_role: null,
+      target_level: null,
+      learning_track: "FOUNDATION",
+      content_source: "DETERMINISTIC",
+      coverage_percentage: 100,
+      projection: {
+        start_date: "2026-08-03",
+        estimated_completion_date: "2026-08-11",
+        study_days_per_week: 2,
+        session_minutes: 60,
+        total_units: 3,
+        completed_units: 0,
+        planned_units_by_today: 0,
+        missed_units: 0,
+        pace_percentage: 100,
+        days_remaining: 8,
+      },
+      version: {
+        id: "version-calendar-weeks",
+        version_no: 1,
+        resource_catalog_version: "catalog-v1",
+        content_version: "content-v1",
+        created_at: "2026-08-03T00:00:00.000Z",
+      },
+      modules: [
+        {
+          id: "module-1",
+          skill_canonical: "react",
+          display_name: "React",
+          rank: 1,
+          estimated_minutes: 60,
+          feasibility: "FEASIBLE",
+          prerequisite_warnings: [],
+          sessions: [
+            {
+              id: "session-react",
+              sequence: 1,
+              title: "React session",
+              scheduled_start_at: "2026-08-03T01:00:00.000Z",
+              week_number: 1,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+          ],
+        },
+        {
+          id: "module-4",
+          skill_canonical: "typescript",
+          display_name: "TypeScript",
+          rank: 4,
+          estimated_minutes: 60,
+          feasibility: "FEASIBLE",
+          prerequisite_warnings: [],
+          sessions: [
+            {
+              id: "session-typescript-week-1",
+              sequence: 1,
+              title: "TypeScript week 1",
+              scheduled_start_at: "2026-08-04T01:00:00.000Z",
+              week_number: 1,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+            {
+              id: "session-typescript-week-2",
+              sequence: 2,
+              title: "TypeScript week 2",
+              scheduled_start_at: "2026-08-11T01:00:00.000Z",
+              week_number: 2,
+              duration_minutes: 60,
+              status: "AVAILABLE",
+              required_tasks: [],
+            },
+          ],
+        },
+      ],
+    } satisfies ActiveLearningRoadmap;
+
+    const weeks = roadmapV2ToWeekPlans(roadmap);
+
+    expect(weeks.map((week) => week.weekNumber)).toEqual([1, 2]);
+    expect(weeks[0].sessions.map((session) => session.id)).toEqual([
+      "session-react",
+      "session-typescript-week-1",
+    ]);
+    expect(weeks[0].moduleId).toBeUndefined();
+    expect(weeks[0].moduleTitle).toBeUndefined();
+    expect(weeks[1].sessions[0]).toEqual(
+      expect.objectContaining({
+        id: "session-typescript-week-2",
+        moduleId: "module-4",
+        skillCanonical: "typescript",
+      }),
+    );
+  });
   it("does not mark a deferred module with no sessions as completed", () => {
     const roadmap = {
       id: "roadmap-empty-module",

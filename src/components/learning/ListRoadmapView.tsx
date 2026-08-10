@@ -52,9 +52,8 @@ export function ListRoadmapView() {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-slate-900">{week.moduleTitle}</h3>
+                <h3 className="text-sm font-bold text-slate-900">{t("learning.common.week", { number: week.weekNumber })}</h3>
                 <p className="text-xs text-slate-400">
-                  {t("learning.common.week", { number: week.weekNumber })} -{" "}
                   {t("learning.common.sectionsCompleted", { done: completedCount, total: week.sessions.length })}
                 </p>
               </div>

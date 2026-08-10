@@ -3,6 +3,51 @@ import type {
   LearningCandidateSkill,
 } from "@/services/learning-roadmaps-v2.service";
 
+export interface SkillSelectionState {
+  ordered: string[];
+  ignored: string[];
+}
+
+export function reorderSkillIds(
+  ordered: string[],
+  activeId: string,
+  overId: string | null | undefined,
+): string[] {
+  if (!overId || activeId === overId) return ordered;
+  const fromIndex = ordered.indexOf(activeId);
+  const toIndex = ordered.indexOf(overId);
+  if (fromIndex < 0 || toIndex < 0) return ordered;
+  const next = [...ordered];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
+
+export function removeSkillId(
+  ordered: string[],
+  ignored: string[],
+  canonical: string,
+): SkillSelectionState {
+  if (!ordered.includes(canonical)) return { ordered, ignored };
+  return {
+    ordered: ordered.filter((id) => id !== canonical),
+    ignored: ignored.includes(canonical) ? ignored : [...ignored, canonical],
+  };
+}
+
+export function restoreSkillId(
+  ordered: string[],
+  ignored: string[],
+  canonical: string,
+): SkillSelectionState {
+  if (!ignored.includes(canonical) || ordered.includes(canonical)) {
+    return { ordered, ignored };
+  }
+  return {
+    ordered: [...ordered, canonical],
+    ignored: ignored.filter((id) => id !== canonical),
+  };
+}
 export function buildPrioritySelection(
   candidates: LearningCandidateSkill[],
   orderedCanonicals: string[],

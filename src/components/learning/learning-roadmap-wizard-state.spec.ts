@@ -3,6 +3,9 @@ import {
   buildCadenceDraft,
   buildPrioritySelection,
   buildResourceSelection,
+  removeSkillId,
+  reorderSkillIds,
+  restoreSkillId,
 } from "./learning-roadmap-wizard-state";
 
 const candidates = [
@@ -23,6 +26,35 @@ const candidates = [
 ];
 
 describe("learning roadmap wizard state", () => {
+  it("reorders only valid drag-and-drop IDs and treats invalid drops as no-op", () => {
+    expect(
+      reorderSkillIds(["react", "typescript", "node_js"], "node_js", "react"),
+    ).toEqual(["node_js", "react", "typescript"]);
+    expect(reorderSkillIds(["react", "typescript"], "missing", "react")).toEqual([
+      "react",
+      "typescript",
+    ]);
+    expect(reorderSkillIds(["react", "typescript"], "react", "missing")).toEqual([
+      "react",
+      "typescript",
+    ]);
+  });
+
+  it("moves removed skills to ignored and restores them at the end without duplicates", () => {
+    const removed = removeSkillId(["react", "typescript"], ["node_js"], "typescript");
+    expect(removed).toEqual({
+      ordered: ["react"],
+      ignored: ["node_js", "typescript"],
+    });
+    expect(restoreSkillId(removed.ordered, removed.ignored, "typescript")).toEqual({
+      ordered: ["react", "typescript"],
+      ignored: ["node_js"],
+    });
+    expect(restoreSkillId(["react", "typescript"], ["node_js"], "react")).toEqual({
+      ordered: ["react", "typescript"],
+      ignored: ["node_js"],
+    });
+  });
   it("ranks only unique server candidates in the user's order", () => {
     expect(
       buildPrioritySelection(candidates, [
