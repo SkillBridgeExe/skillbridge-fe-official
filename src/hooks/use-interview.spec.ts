@@ -32,7 +32,6 @@ vi.mock("@/api/interview-api", () => ({
   getInterviewHistory: vi.fn(),
   refreshRealtimeToken: vi.fn(),
   startInterview: vi.fn(),
-  submitInterviewTurn: vi.fn(),
 }));
 
 vi.mock("@/api/cv/list", () => ({

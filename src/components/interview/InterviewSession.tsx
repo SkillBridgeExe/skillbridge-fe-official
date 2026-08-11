@@ -1,620 +1,240 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
-import { useTranslation } from "react-i18next";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { useState, type RefObject } from "react";
 import {
-  AlertCircle,
-  Bot,
-  Clock,
-  Maximize2,
+  CircleHelp,
+  Lightbulb,
+  MessageSquareText,
   Mic,
   MicOff,
-  Minimize2,
   RefreshCw,
+  RotateCcw,
   Send,
+  SkipForward,
+  Sparkles,
   StopCircle,
   Video,
-  Volume2,
+  Wifi,
 } from "lucide-react";
-import { type ChatMessage, type InterviewMode } from "./types";
-import {
-  getInterviewModeLabelKey,
-  getRealtimeMicStatusKey,
-  type InterviewQuestionBankSourceKind,
-} from "./interview-view-model";
-import { AnswerPaceRing } from "./AnswerPaceRing";
-import type { AnswerPaceState } from "@/hooks/use-answer-pace";
-import type { InterviewEngineVersion, InterviewExperienceMode, RealtimeCandidateIntent } from "@/api/interview-api";
-import { InterviewStageV2 } from "./InterviewStageV2";
-import type { InterviewerVoiceState } from "./InterviewVoiceOrb";
-
-const PHASES = [
-  { key: "SCREENING", labelVi: "Khởi động", labelEn: "Screening" },
-  { key: "SKILL_PROBE", labelVi: "Kỹ năng & JD", labelEn: "Skill probe" },
-  { key: "SCENARIO", labelVi: "Tình huống", labelEn: "Scenario" },
-  { key: "BEHAVIORAL", labelVi: "Hành vi", labelEn: "Behavioral" },
-  { key: "WRAP", labelVi: "Tổng kết", labelEn: "Wrap-up" }
-];
-
-interface CurrentQuestionMetadata {
-  topicPhase: string | null;
-  skillCanonical: string | null;
-  currentThread: string | null;
-  questionBankKey: string | null;
-  sourceKind: InterviewQuestionBankSourceKind;
-}
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import type { InterviewExperienceMode, RealtimeCandidateIntent } from "@/api/interview-api";
+import type { ChatMessage } from "./types";
+import { InterviewVoiceOrb, type InterviewerVoiceState } from "./InterviewVoiceOrb";
 
 interface InterviewSessionProps {
   videoRef: RefObject<HTMLVideoElement>;
   webcamError: string | null;
+  interviewerName?: string;
   timeRemainingLabel: string;
-  secondsRemaining: number;
-  maxDurationSeconds: number;
-  currentQuestionNumber: number;
-  totalQuestionsPlanned: number | null;
-  answeredCount: number;
-  isEnding: boolean;
-  interviewMode: InterviewMode;
-  isLiveConnected: boolean;
-  isVoiceFallback: boolean;
-  voiceFallbackReason: string | null;
-  isMicActive: boolean;
-  isAiSpeaking: boolean;
-  isQuestionAudioPlaying: boolean;
-  questionAudioError: string | null;
+  isConnected: boolean;
+  isVietnamese: boolean;
+  voiceState: InterviewerVoiceState;
+  voiceLabel: string;
+  subtitle?: string;
   currentQuestion: string;
-  currentQuestionMeta: CurrentQuestionMetadata | null;
   chatHistory: ChatMessage[];
-  isLoading: boolean;
+  experienceMode: InterviewExperienceMode;
+  isMicActive: boolean;
+  isReconnecting: boolean;
+  isEnding: boolean;
   userAnswer: string;
   setUserAnswer: (value: string) => void;
-  handleSubmitAnswer: () => void;
-  toggleLiveMic: () => void;
-  interviewFinished: boolean;
-  onStop: () => void;
+  onSubmitText: () => void;
+  onToggleMic: () => void;
+  onSwitchToText: () => void;
+  onIntent: (intent: RealtimeCandidateIntent) => void;
+  onEnd: () => void;
   apiError: string | null;
-  currentTurnTrace?: {
-    action: 'ask' | 'drill' | 'move_on' | 'wrap';
-    phase: string;
-    topic_id?: string;
-    reasons: string[];
-    depth: number;
-    remaining_turn_budget: number;
-    confidence: 'high' | 'medium' | 'low';
-  } | null;
-  /** I-PACE: answer pacing state for the current turn. */
-  answerPace?: AnswerPaceState;
-  engineVersion?: InterviewEngineVersion;
-  experienceMode?: InterviewExperienceMode;
-  realtimeVoiceState?: InterviewerVoiceState | "RECONNECTING";
-  realtimeSubtitle?: string;
-  onRealtimeIntent?: (intent: RealtimeCandidateIntent) => void;
-  onSwitchToText?: () => void;
 }
 
 export function InterviewSession({
   videoRef,
   webcamError,
+  interviewerName = "Alex",
   timeRemainingLabel,
-  secondsRemaining,
-  maxDurationSeconds,
-  currentQuestionNumber: _currentQuestionNumber,
-  totalQuestionsPlanned: _totalQuestionsPlanned,
-  answeredCount,
-  isEnding,
-  interviewMode,
-  isLiveConnected,
-  isVoiceFallback,
-  voiceFallbackReason,
-  isMicActive,
-  isAiSpeaking,
-  isQuestionAudioPlaying,
-  questionAudioError,
+  isConnected,
+  isVietnamese,
+  voiceState,
+  voiceLabel,
+  subtitle,
   currentQuestion,
-  currentQuestionMeta,
   chatHistory,
-  isLoading,
+  experienceMode,
+  isMicActive,
+  isReconnecting,
+  isEnding,
   userAnswer,
   setUserAnswer,
-  handleSubmitAnswer,
-  toggleLiveMic,
-  interviewFinished,
-  onStop,
-  apiError,
-  currentTurnTrace,
-  answerPace,
-  engineVersion,
-  experienceMode = "MOCK",
-  realtimeVoiceState,
-  realtimeSubtitle,
-  onRealtimeIntent,
+  onSubmitText,
+  onToggleMic,
   onSwitchToText,
+  onIntent,
+  onEnd,
+  apiError,
 }: InterviewSessionProps) {
-  const { t, i18n } = useTranslation("common");
-  const isVi = i18n?.language?.startsWith("vi") ?? true;
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const isVoiceConnected = isLiveConnected && !isVoiceFallback;
-  const isLiveRealtime = interviewMode === "realtime" && isVoiceConnected;
-  const isInterviewerSpeaking = isAiSpeaking || isQuestionAudioPlaying;
-  const realtimeMicStatusKey = getRealtimeMicStatusKey({
-    isLiveRealtime,
-    isLoading,
-    isInterviewerSpeaking,
-    isMicActive,
-  });
-  const modeLabelKey = getInterviewModeLabelKey({
-    interviewMode,
-    isLiveConnected: isVoiceConnected,
-    isVoiceFallback,
-    questionAudioError,
-  });
-  const modeLabel = t(`interview.session.mode.${modeLabelKey}`);
-  const progress =
-    maxDurationSeconds > 0
-      ? Math.max(
-          0,
-          Math.min(100, (secondsRemaining / maxDurationSeconds) * 100),
-        )
-      : 0;
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory, isLoading]);
+  const [showText, setShowText] = useState(false);
 
-  if (engineVersion === "V2") {
-    const voiceState: InterviewerVoiceState =
-      realtimeVoiceState === "SPEAKING" || realtimeVoiceState === "THINKING"
-        ? realtimeVoiceState
-        : "LISTENING";
-    const voiceLabel =
-      voiceState === "SPEAKING"
-        ? isVi ? "Đang nói" : "Speaking"
-        : voiceState === "THINKING"
-          ? isVi ? "Đang suy nghĩ" : "Thinking"
-          : isVi ? "Đang nghe" : "Listening";
-
-    return (
-      <InterviewStageV2
-        videoRef={videoRef}
-        webcamError={webcamError}
-        timeRemainingLabel={timeRemainingLabel}
-        isConnected={isVoiceConnected}
-        isVietnamese={isVi}
-        voiceState={voiceState}
-        voiceLabel={voiceLabel}
-        subtitle={realtimeSubtitle}
-        currentQuestion={currentQuestion}
-        chatHistory={chatHistory}
-        experienceMode={experienceMode}
-        isMicActive={isMicActive}
-        isReconnecting={realtimeVoiceState === "RECONNECTING"}
-        isEnding={isEnding}
-        userAnswer={userAnswer}
-        setUserAnswer={setUserAnswer}
-        onSubmitText={handleSubmitAnswer}
-        onToggleMic={toggleLiveMic}
-        onSwitchToText={onSwitchToText ?? (() => undefined)}
-        onIntent={onRealtimeIntent ?? (() => undefined)}
-        onEnd={onStop}
-        apiError={apiError}
-      />
-    );
-  }
+  const switchToText = () => {
+    setShowText(true);
+    onSwitchToText();
+  };
+  const copy = isVietnamese
+    ? {
+        interview: "Phỏng vấn",
+        connected: "Đã kết nối",
+        currentQuestion: "Câu hỏi hiện tại",
+        you: "Bạn",
+        textPlaceholder: "Nhập câu trả lời trong cùng phiên…",
+        reconnecting: "Đang kết nối lại…",
+        switchToText: "Chuyển sang text",
+        repeat: "Nhắc lại",
+        clarify: "Làm rõ",
+        noAnswer: "Không biết",
+        easier: "Câu dễ hơn",
+        hint: "Gợi ý",
+        feedback: "Nhận xét nhanh",
+        end: "Kết thúc",
+      }
+    : {
+        interview: "Interview",
+        connected: "Connected",
+        currentQuestion: "Current question",
+        you: "You",
+        textPlaceholder: "Type your answer in the same session…",
+        reconnecting: "Reconnecting…",
+        switchToText: "Switch to text",
+        repeat: "Repeat",
+        clarify: "Clarify",
+        noAnswer: "I don't know",
+        easier: "Easier question",
+        hint: "Hint",
+        feedback: "Quick feedback",
+        end: "End",
+      };
 
   return (
-    <>
-      <main className="flex-1 overflow-y-auto relative custom-scrollbar bg-slate-50/30">
-        <div className="px-6 md:px-10 py-6 md:py-8">
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {apiError && (
-              <Alert variant="destructive" className="bg-red-50">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{apiError}</AlertDescription>
-              </Alert>
-            )}
-
-            {isVoiceFallback && voiceFallbackReason && (
-              <Alert className="border-amber-200 bg-amber-50 text-amber-800">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{voiceFallbackReason}</AlertDescription>
-              </Alert>
-            )}
-
-            {questionAudioError && (
-              <Alert className="border-amber-200 bg-amber-50 text-amber-800">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{questionAudioError}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Clock className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-black tabular-nums text-slate-900">
-                    {timeRemainingLabel}
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {t("interview.session.timeRemaining")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="secondary" className="rounded-full">
-                  {t("interview.session.answered", { count: answeredCount })}
-                </Badge>
-                <Badge
-                  variant={isVoiceConnected ? "default" : "outline"}
-                  className="rounded-full"
-                >
-                  {modeLabel}
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="rounded-xl font-bold"
-                  onClick={onStop}
-                  disabled={isEnding}
-                >
-                  {isEnding ? (
-                    <>
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      {t("interview.session.ending")}
-                    </>
-                  ) : (
-                    <>
-                      <StopCircle className="mr-1.5 h-3.5 w-3.5" />
-                      {t("interview.session.end")}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {maxDurationSeconds > 0 && (
-              <Progress value={progress} className="h-1.5" />
-            )}
-
-            {/* Live Phase Timeline */}
-            <div className="flex items-center justify-between gap-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm text-xs select-none">
-              {PHASES.map((p, idx) => {
-                const currentPhase = currentQuestionMeta?.topicPhase || 'SCREENING';
-                const isCurrent = currentPhase.toUpperCase() === p.key || 
-                                  (p.key === "SKILL_PROBE" && (currentPhase.toUpperCase().includes("PROBE") || currentPhase.toUpperCase().includes("JD") || currentPhase.toUpperCase().includes("REQUIREMENT")));
-                
-                const activeIndex = PHASES.findIndex(x => x.key === (
-                  currentPhase.toUpperCase().includes("PROBE") || currentPhase.toUpperCase().includes("JD") || currentPhase.toUpperCase().includes("REQUIREMENT")
-                    ? "SKILL_PROBE"
-                    : currentPhase.toUpperCase()
-                ));
-                const isPast = idx < activeIndex;
-
-                return (
-                  <div key={p.key} className="flex-1 flex items-center gap-1.5 last:flex-initial">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div className={cn(
-                        "w-5 h-5 rounded-full flex items-center justify-center border text-[9px] font-bold shrink-0 transition-all duration-300",
-                        isCurrent ? "bg-[#00AEEF] border-[#00AEEF] text-white scale-110 shadow-sm animate-pulse" :
-                        isPast ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-slate-50 border-slate-200 text-slate-400"
-                      )}>
-                        {isPast ? "✓" : idx + 1}
-                      </div>
-                      <span className={cn(
-                        "font-bold truncate text-[10px] md:text-xs",
-                        isCurrent ? "text-[#00AEEF]" : isPast ? "text-emerald-700" : "text-slate-400"
-                      )}>
-                        {isVi ? p.labelVi : p.labelEn}
-                      </span>
-                    </div>
-                    {idx < PHASES.length - 1 && (
-                      <div className="hidden sm:block flex-1 h-[1.5px] bg-slate-100 mx-1" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div
-              className={cn(
-                "space-y-4",
-                isFullscreen &&
-                  "fixed inset-0 z-50 flex flex-col justify-center bg-black/95 p-4 md:p-8",
-              )}
-            >
-              <div
-                className={cn(
-                  "relative overflow-hidden rounded-2xl bg-slate-900 shadow-xl",
-                  isFullscreen
-                    ? "mx-auto aspect-video w-full max-w-6xl"
-                    : "aspect-video w-full",
-                )}
-              >
-                <button
-                  onClick={() => setIsFullscreen((value) => !value)}
-                  className="absolute right-5 top-5 z-30 rounded-xl bg-black/50 p-2.5 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-                  title={
-                    isFullscreen
-                      ? t("interview.session.exitFullscreen")
-                      : t("interview.session.fullscreen")
-                  }
-                  type="button"
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="h-5 w-5" />
-                  ) : (
-                    <Maximize2 className="h-5 w-5" />
-                  )}
-                </button>
-
-                <div
-                  className={cn(
-                    "absolute bottom-5 right-5 z-20 flex aspect-[3/4] w-32 flex-col overflow-hidden rounded-xl border-2 bg-slate-800 shadow-2xl transition-all md:w-44",
-                    isInterviewerSpeaking
-                      ? "border-amber-400/60"
-                      : isLoading
-                        ? "border-blue-400/60"
-                        : "border-emerald-400/40",
-                  )}
-                >
-                  <div className="relative flex flex-1 items-center justify-center bg-slate-900">
-                    <div
-                      className={cn(
-                        "flex h-16 w-16 items-center justify-center rounded-3xl border-2 bg-slate-800 text-slate-300 transition-all md:h-20 md:w-20",
-                        isInterviewerSpeaking
-                          ? "border-amber-400 text-amber-400"
-                          : isLoading
-                            ? "border-blue-400 text-blue-400"
-                            : "border-emerald-400/50 text-emerald-400",
-                      )}
-                    >
-                      <Bot
-                        className={cn(
-                          "h-8 w-8 md:h-10 md:w-10",
-                          isInterviewerSpeaking && "animate-bounce",
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <div
-                    className={cn(
-                      "flex h-8 items-center justify-center border-t px-2 text-[10px] font-bold uppercase tracking-widest",
-                      isInterviewerSpeaking
-                        ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
-                        : isLoading
-                          ? "border-blue-400/30 bg-blue-400/20 text-blue-400"
-                          : "border-emerald-400/30 bg-emerald-400/20 text-emerald-400",
-                    )}
-                  >
-                    {isInterviewerSpeaking ? (
-                      <>
-                        <Volume2 className="mr-1.5 h-3 w-3" />{" "}
-                        {t("interview.session.speaking")}
-                      </>
-                    ) : isLoading ? (
-                      <>
-                        <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />{" "}
-                        {t("interview.session.thinking")}
-                      </>
-                    ) : (
-                      t("interview.session.ready")
-                    )}
-                  </div>
-                </div>
-
-                {webcamError ? (
-                  <div className="flex h-full w-full flex-col items-center justify-center space-y-4 bg-slate-950 text-center text-slate-300">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-700 bg-slate-800/80">
-                      <Video className="h-8 w-8 text-slate-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{webcamError}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {t("interview.session.videoFallback")}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full scale-x-[-1] object-cover"
-                    autoPlay
-                    muted
-                  />
-                )}
-
-                <div className="absolute left-5 top-5 z-30 flex flex-col gap-2 items-start">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-full bg-red-500/80 px-3 py-1.5 text-[11px] font-bold tracking-widest text-white backdrop-blur-md animate-pulse">
-                      {t("interview.session.live")}
-                    </div>
-                    <div className="rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                      {modeLabel}
-                    </div>
-                  </div>
-                  {currentTurnTrace?.confidence === 'low' && currentTurnTrace?.reasons?.includes('fallback_seed_question') && (
-                    <div className="rounded-full bg-slate-700/85 px-3 py-1 text-[10px] font-semibold text-slate-100 backdrop-blur-md transition-all duration-300">
-                      {t("interview.session.fallbackQuestionBadge")}
-                    </div>
-                  )}
-                </div>
-
-                {currentQuestion && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-5">
-                    <div className="max-w-[76%] rounded-lg bg-black/70 px-5 py-3 text-center text-white backdrop-blur-sm">
-                      <p className="text-sm font-medium leading-relaxed md:text-base">
-                        {currentQuestion.slice(0, 260)}
-                        {currentQuestion.length > 260 ? "..." : ""}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+    <main className="flex min-h-0 flex-1 flex-col bg-slate-50/60">
+      <header className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 md:px-6">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-slate-900">
+            {copy.interview} · {experienceMode === "MOCK" ? "Mock" : "Practice"}
+          </p>
+          <p className="text-xs text-slate-500">{interviewerName} · AI Interviewer</p>
         </div>
-      </main>
+        <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-600">
+          <span
+            className={cn(
+              "hidden items-center gap-1.5 sm:flex",
+              isConnected ? "text-emerald-700" : "text-amber-700",
+            )}
+          >
+            <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
+            {isConnected ? copy.connected : copy.reconnecting}
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono tabular-nums">{timeRemainingLabel}</span>
+          <Button size="sm" variant="destructive" onClick={onEnd} disabled={isEnding}>
+            <StopCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            {copy.end}
+          </Button>
+        </div>
+      </header>
+      <div className="flex-1 overflow-y-auto p-3 pb-28 md:p-6 md:pb-6">
+        {apiError && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+        )}
+        {isReconnecting && (
+          <Alert className="mb-3 border-amber-200 bg-amber-50 text-amber-900">
+            <RefreshCw className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+            <AlertDescription className="flex items-center justify-between gap-3">
+              <span>{copy.reconnecting}</span>
+              <Button size="sm" variant="outline" onClick={switchToText}>{copy.switchToText}</Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
-      <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-slate-100 bg-white/90 backdrop-blur-sm">
-        <div className="border-b border-slate-100 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                {t("interview.session.transcriptTitle")}
-              </h3>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {isLiveRealtime
-                  ? t("interview.session.liveTranscriptSubtitle")
-                  : t("interview.session.transcriptSubtitle")}
+        <div className="grid min-h-[560px] gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+          <section className="relative min-h-[320px] overflow-hidden rounded-2xl bg-slate-950 shadow-xl lg:min-h-[560px]">
+            {webcamError ? (
+              <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 text-slate-300">
+                <Video className="h-9 w-9 text-slate-500" />
+                <p className="text-sm font-semibold">{webcamError}</p>
+              </div>
+            ) : (
+              <video ref={videoRef} className="h-full w-full scale-x-[-1] object-cover" autoPlay muted playsInline />
+            )}
+            <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur">
+              SELF CAMERA
+            </div>
+          </section>
+
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-1 flex-col items-center justify-center px-5 py-7">
+              <p className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                {interviewerName} · AI Interviewer
               </p>
-            </div>
-            {(interviewMode === "guided" || interviewMode === "realtime") && (
-              <Button
-                size="icon"
-                variant={isMicActive ? "default" : "outline"}
-                className="h-9 w-9 rounded-full"
-                onClick={toggleLiveMic}
-                disabled={
-                  isLoading || (!isLiveRealtime && isInterviewerSpeaking)
-                }
-                title={
-                  isLiveConnected
-                    ? t("interview.session.pauseResumeMicrophone")
-                    : t("interview.session.reconnectVoice")
-                }
-              >
-                {isMicActive ? (
-                  <Mic className="h-4 w-4" />
-                ) : (
-                  <MicOff className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {answerPace && (
-              <AnswerPaceRing pace={answerPace} />
-            )}
-          </div>
-        </div>
-
-        <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
-          {chatHistory.map((message, index) => (
-            <div
-              key={`${message.timestamp.getTime()}-${index}`}
-              className={cn(
-                "flex gap-2",
-                message.role === "user" ? "justify-end" : "justify-start",
-              )}
-            >
-              {message.role === "ai" && (
-                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[86%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  message.role === "ai"
-                    ? "rounded-tl-md border border-slate-100 bg-slate-50 text-slate-800"
-                    : "rounded-tr-md bg-primary text-white",
-                )}
-              >
-                {message.content}
-                <p
-                  className={cn(
-                    "mt-1.5 text-[9px] font-medium",
-                    message.role === "ai" ? "text-slate-400" : "text-white/70",
-                  )}
-                >
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+              <InterviewVoiceOrb state={voiceState} label={voiceLabel} subtitle={subtitle} />
+              <div className="mt-7 w-full rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{copy.currentQuestion}</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800">{currentQuestion}</p>
               </div>
             </div>
-          ))}
 
-          {isLoading && (
-            <div className="flex gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Bot className="h-3.5 w-3.5 animate-spin text-primary" />
+            <details className="group border-t border-slate-100 max-lg:[&[open]]:fixed max-lg:[&[open]]:inset-x-3 max-lg:[&[open]]:bottom-16 max-lg:[&[open]]:z-50 max-lg:[&[open]]:rounded-2xl max-lg:[&[open]]:border max-lg:[&[open]]:bg-white max-lg:[&[open]]:shadow-2xl">
+              <summary className="cursor-pointer list-none px-5 py-3 text-sm font-semibold text-slate-700">
+                Transcript <span className="text-xs font-normal text-slate-400">({chatHistory.length})</span>
+              </summary>
+              <div className="max-h-52 space-y-2 overflow-y-auto border-t border-slate-100 p-4">
+                {chatHistory.map((message, index) => (
+                  <div key={`${message.timestamp.getTime()}-${index}`} className={cn("text-sm", message.role === "user" ? "text-slate-800" : "text-slate-600")}>
+                    <span className="mr-2 text-[10px] font-bold uppercase text-slate-400">{message.role === "user" ? copy.you : interviewerName}</span>
+                    {message.content}
+                  </div>
+                ))}
               </div>
-              <Card className="border-slate-100 bg-slate-50 shadow-none">
-                <CardContent className="px-4 py-3 text-xs text-slate-500">
-                  {t("interview.session.generatingNextQuestion")}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <div ref={chatEndRef} />
+            </details>
+          </aside>
         </div>
 
-        <div className="border-t border-slate-100 p-3">
-          {interviewFinished ? (
-            <Button
-              className="w-full rounded-xl font-bold"
-              onClick={onStop}
-              disabled={isEnding}
-            >
-              {t("interview.session.viewResults")}
+        {showText && (
+          <div className="mx-auto mt-4 flex max-w-3xl gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <Textarea
+              value={userAnswer}
+              onChange={(event) => setUserAnswer(event.target.value)}
+              placeholder={copy.textPlaceholder}
+              className="min-h-20 resize-none border-0 bg-slate-50"
+            />
+            <Button size="icon" className="self-end" onClick={onSubmitText} disabled={!userAnswer.trim()} aria-label="Gửi câu trả lời">
+              <Send className="h-4 w-4" />
             </Button>
-          ) : isLiveRealtime ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-600">
-              <div className="flex items-center gap-2">
-                {realtimeMicStatusKey === "listening" ? (
-                  <Mic className="h-4 w-4 text-emerald-600" />
-                ) : realtimeMicStatusKey === "interviewerSpeaking" ? (
-                  <Volume2 className="h-4 w-4 text-amber-600" />
-                ) : realtimeMicStatusKey === "submitting" ? (
-                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                ) : (
-                  <MicOff className="h-4 w-4 text-slate-400" />
-                )}
-                <span>
-                  {t(`interview.session.realtimeMic.${realtimeMicStatusKey}`)}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Textarea
-                value={userAnswer}
-                onChange={(event) => setUserAnswer(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    handleSubmitAnswer();
-                  }
-                }}
-                placeholder={
-                  isVoiceConnected
-                    ? t("interview.session.spokenPlaceholder")
-                    : t("interview.session.textPlaceholder")
-                }
-                disabled={isLoading || isEnding}
-                className="min-h-[110px] resize-none rounded-xl bg-slate-50"
-              />
-              <Button
-                className="w-full rounded-xl font-bold"
-                onClick={handleSubmitAnswer}
-                disabled={!userAnswer.trim() || isLoading || isEnding}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {t("interview.session.submitAnswer")}
-              </Button>
-            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-2 shadow-[0_-8px_30px_-20px_rgba(15,23,42,.5)] backdrop-blur md:sticky">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto">
+          <Button size="sm" variant={isMicActive ? "default" : "outline"} onClick={onToggleMic} aria-label="Bật hoặc tắt microphone">
+            {isMicActive ? <Mic className="mr-1.5 h-4 w-4" /> : <MicOff className="mr-1.5 h-4 w-4" />} Mic
+          </Button>
+          <Button size="sm" variant="outline" onClick={switchToText}><MessageSquareText className="mr-1.5 h-4 w-4" />Text</Button>
+          <Button size="sm" variant="outline" onClick={() => onIntent("REPEAT")}><RotateCcw className="mr-1.5 h-4 w-4" />{copy.repeat}</Button>
+          <Button size="sm" variant="outline" onClick={() => onIntent("CLARIFY")}><CircleHelp className="mr-1.5 h-4 w-4" />{copy.clarify}</Button>
+          <Button size="sm" variant="outline" onClick={() => onIntent("NO_ANSWER")}>{copy.noAnswer}</Button>
+          <Button size="sm" variant="outline" onClick={() => onIntent("SKIP")}><SkipForward className="mr-1.5 h-4 w-4" />Skip</Button>
+          {experienceMode === "PRACTICE" && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => onIntent("EASIER")}>{copy.easier}</Button>
+              <Button size="sm" variant="outline" onClick={() => onIntent("HINT")}><Lightbulb className="mr-1.5 h-4 w-4" />{copy.hint}</Button>
+              <Button size="sm" variant="outline" onClick={() => onIntent("FEEDBACK")}><Sparkles className="mr-1.5 h-4 w-4" />{copy.feedback}</Button>
+            </>
           )}
+          <Button size="sm" variant="destructive" className="ml-auto" onClick={onEnd} disabled={isEnding}>
+            <StopCircle className="mr-1.5 h-4 w-4" />{copy.end}
+          </Button>
         </div>
-      </aside>
-    </>
+      </div>
+    </main>
   );
 }
-

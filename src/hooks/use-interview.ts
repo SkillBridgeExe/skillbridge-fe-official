@@ -17,17 +17,14 @@ import {
   getInterviewHistory,
   refreshRealtimeToken,
   startInterview,
-  submitInterviewTurn,
   submitRealtimeInterviewTurn,
   type CommitRealtimeAssistantMessageRequest,
   type InterviewHistoryQuery,
-  type LiveInterviewTurnInput,
   type RealtimeInterviewTurnRequest,
 } from "@/api/interview-api";
 
 interface EndInterviewMutationInput {
   sessionId: string;
-  liveTurns?: LiveInterviewTurnInput[];
 }
 
 interface RealtimeTurnMutationInput {
@@ -147,12 +144,6 @@ export function useCreateCvMatchForInterview() {
   });
 }
 
-export function useSubmitInterviewTurn() {
-  return useMutation({
-    mutationFn: submitInterviewTurn,
-  });
-}
-
 export function useSubmitRealtimeInterviewTurn() {
   return useMutation({
     mutationFn: ({ sessionId, payload }: RealtimeTurnMutationInput) =>
@@ -171,8 +162,7 @@ export function useEndInterview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ sessionId, liveTurns }: EndInterviewMutationInput) =>
-      endInterview(sessionId, liveTurns),
+    mutationFn: ({ sessionId }: EndInterviewMutationInput) => endInterview(sessionId),
     onSuccess: (session) => {
       queryClient.setQueryData(QUERY_KEYS.INTERVIEW_DETAIL(session.id), session);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.INTERVIEW_HISTORY });

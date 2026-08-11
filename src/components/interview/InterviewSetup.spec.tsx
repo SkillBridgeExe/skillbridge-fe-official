@@ -37,11 +37,8 @@ function renderSetup(
       setTargetRole={vi.fn()}
       selectedLanguage="vi"
       setSelectedLanguage={vi.fn()}
-      interviewMode="realtime"
-      realtimeV2Enabled={false}
       experienceMode="MOCK"
       setExperienceMode={vi.fn()}
-      setInterviewMode={vi.fn()}
       interviewType="technical"
       setInterviewType={vi.fn()}
       selectedVoice={DEFAULT_INTERVIEW_VOICE}
@@ -105,5 +102,13 @@ describe("InterviewSetup", () => {
     expect(
       screen.getByText("interview.setup.tips.dialogConfirm"),
     ).toBeInTheDocument();
+  });
+
+  it("does not offer the removed guided interview mode", () => {
+    renderSetup();
+
+    expect(
+      screen.queryByText("interview.setup.modes.guided.title"),
+    ).not.toBeInTheDocument();
   });
 });

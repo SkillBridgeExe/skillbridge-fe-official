@@ -111,7 +111,6 @@ export const API_ROUTES = {
   // §1.5 Interview
   INTERVIEW: {
     START: `${API}/interview/start`,
-    TURN: `${API}/interview/turn`,
     END: `${API}/interview/end`,
     HISTORY: `${API}/interview/history`,
     DETAIL: (id: string) => `${API}/interview/sessions/${id}`,
@@ -119,7 +118,6 @@ export const API_ROUTES = {
     REALTIME_TURN: (id: string) => `${API}/interview/sessions/${id}/realtime-turn`,
     REALTIME_DIRECTIVE_COMMIT: (id: string, directiveId: string) =>
       `${API}/interview/sessions/${id}/realtime-directives/${directiveId}/commit`,
-    QUESTION_AUDIO: (id: string) => `${API}/interview/sessions/${id}/question-audio`,
   },
 
   // §1.6 Roadmap

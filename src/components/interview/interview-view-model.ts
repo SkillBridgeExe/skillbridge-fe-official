@@ -1,10 +1,15 @@
+const INTERVIEW_INTERNAL_MARKER =
+  /Role-only practice|No CV or job description|question fingerprints|questionGoal|scoreCap|what_to_probe|seed_question|FOLLOW_UP|ADVANCE_TOPIC|LOWER_DIFFICULTY|DECLINE_COACHING|GIVE_HINT|GIVE_FEEDBACK/i;
+
+export function containsInterviewInternalMarker(value: string): boolean {
+  return INTERVIEW_INTERNAL_MARKER.test(value);
+}
 import type {
   InterviewDetailResponseDto,
   InterviewFeedback,
   FinalScoreDto,
   PlatformInterviewType,
   StartInterviewRequest,
-  SubmitInterviewTurnRequest,
   CommunicationSignalsDto,
 } from "@/api/interview-api";
 import {
@@ -13,7 +18,6 @@ import {
   INTERVIEW_SPEECH_SPEED_OPTIONS,
   INTERVIEW_VOICE_OPTIONS,
   INTERVIEW_VOICE_STORAGE_KEY,
-  type InterviewMode,
   type InterviewPhase,
   type InterviewSpeechSpeed,
   type InterviewType,
@@ -58,10 +62,13 @@ export const INTERVIEW_GUARD_ADJUSTMENTS = [
   "depth_downgraded_thin_answer",
 ] as const;
 
-export type InterviewGuardAdjustment = (typeof INTERVIEW_GUARD_ADJUSTMENTS)[number];
+export type InterviewGuardAdjustment =
+  (typeof INTERVIEW_GUARD_ADJUSTMENTS)[number];
 
 /** extract known guard slugs from a persisted turn trace; defensive on shape (legacy turns). */
-export function readGuardAdjustments(turnTrace: unknown): InterviewGuardAdjustment[] {
+export function readGuardAdjustments(
+  turnTrace: unknown,
+): InterviewGuardAdjustment[] {
   if (!turnTrace || typeof turnTrace !== "object") return [];
   const reasons = (turnTrace as { reasons?: unknown }).reasons;
   if (!Array.isArray(reasons)) return [];
@@ -94,14 +101,19 @@ export interface InterviewDevPlanItemViewModel {
 }
 
 export interface InterviewScoreExplanationViewModel {
-  dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
+  dimension:
+    | "technical_depth"
+    | "problem_solving"
+    | "communication"
+    | "evidence_credibility"
+    | "role_fit";
   score: number;
-  band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+  band: "poor" | "borderline" | "solid" | "outstanding";
   weight: number;
   rubric_anchor: string;
   evidence_quote: string | null;
   linked_question_id: string | null;
-  uncertainty: 'low' | 'medium' | 'high';
+  uncertainty: "low" | "medium" | "high";
   improvement_hint: string | null;
 }
 
@@ -151,7 +163,7 @@ export interface InterviewResultViewModel {
   questions: InterviewResultQuestionViewModel[];
   scoreExplanations: InterviewScoreExplanationViewModel[];
   gapItems: InterviewGapItemViewModel[];
-  scoreBasis: FinalScoreDto['score_basis'] | null;
+  scoreBasis: FinalScoreDto["score_basis"] | null;
 }
 
 export type InterviewQuestionBankSourceKind = "curated" | "fallback";
@@ -214,32 +226,6 @@ export type InterviewSessionStatusKey =
   | "inProgress"
   | "cancelled"
   | "unknown";
-export type InterviewModeLabelKey =
-  | "textFallback"
-  | "liveRealtime"
-  | "guidedVoice";
-
-export type RealtimeMicStatusKey =
-  | "manual"
-  | "interviewerSpeaking"
-  | "submitting"
-  | "listening"
-  | "paused";
-export type RealtimeTranscriptIntent =
-  | "answer"
-  | "repeat_question"
-  | "clarify_question"
-  | "skip_question"
-  | "pause"
-  | "end_interview"
-  | "off_topic";
-
-interface RealtimeMicStatusOptions {
-  isLiveRealtime: boolean;
-  isLoading: boolean;
-  isInterviewerSpeaking: boolean;
-  isMicActive: boolean;
-}
 export type InterviewEndIntent = "cancel" | "score";
 export type InterviewEndOutcome = "cancelled" | "scored";
 export type LiveTranscriptWarning = "cjk" | "promptLeak";
@@ -251,34 +237,6 @@ export interface InterviewVoicePreference {
 
 export interface RealtimeOfficialQuestionSpeaker {
   speakOfficialQuestion(question: string, language: "vi" | "en"): void;
-}
-
-export interface ServerOwnedRealtimeTurnInput {
-  sessionId: string;
-  transcript: string;
-  durationSeconds?: number;
-  /** P3: ms from mic-open to first speech, client-measured. */
-  responseDelayMs?: number;
-  /** P3: STT segment count in this answer (long-pause proxy). */
-  transcriptSegments?: number;
-}
-
-export interface ValidatedRealtimeTurnInput extends ServerOwnedRealtimeTurnInput {
-  currentQuestion?: string | null;
-}
-
-export interface BufferedRealtimeTurnInput {
-  sessionId: string;
-  currentQuestion?: string | null;
-  transcripts: string[];
-  durationSeconds?: number;
-  responseDelayMs?: number;
-}
-
-export interface QuestionAudioRequestGuard {
-  next(): number;
-  invalidate(): void;
-  isCurrent(requestId: number): boolean;
 }
 
 export function getInterviewEndIntent(
@@ -354,20 +312,11 @@ export function buildInterviewInitialMessages(
   return content ? [content] : [];
 }
 
-export function buildInterviewNextMessages(
-  aiMessage: string | null | undefined,
-  nextQuestion: string | null | undefined,
-): string[] {
-  const content = interviewerTurnText(aiMessage, nextQuestion);
-  return content ? [content] : [];
-}
-
 interface BuildInterviewStartRequestInput extends InterviewVoicePreference {
   selectedCvId: string | null;
   selectedMatchId: string | null;
   targetRole: string;
   selectedLanguage: "vi" | "en";
-  interviewMode: InterviewMode;
   interviewType: InterviewType;
 }
 
@@ -376,7 +325,6 @@ export function buildInterviewStartRequest({
   selectedMatchId,
   targetRole,
   selectedLanguage,
-  interviewMode,
   interviewType,
   voice,
   speechSpeed,
@@ -386,7 +334,7 @@ export function buildInterviewStartRequest({
     cvMatchId: selectedMatchId ?? undefined,
     targetRole,
     language: selectedLanguage,
-    mode: interviewMode === "realtime" ? "VOICE" : "HYBRID",
+    mode: "VOICE",
     interviewType: toBackendInterviewType(interviewType),
     voice,
     speechSpeed,
@@ -403,153 +351,6 @@ export function speakOfficialRealtimeQuestion(
   if (!session || !trimmed) return false;
   session.speakOfficialQuestion(trimmed, language);
   return true;
-}
-
-export function buildServerOwnedRealtimeTurnRequest({
-  sessionId,
-  transcript,
-  durationSeconds,
-  responseDelayMs,
-  transcriptSegments,
-}: ServerOwnedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
-  const normalized = transcript.trim().normalize("NFC");
-  if (!normalized) return null;
-  const request: SubmitInterviewTurnRequest = {
-    sessionId,
-    userAnswer: normalized,
-    userTranscript: normalized,
-    modality: "AUDIO",
-    durationSeconds,
-  };
-  // P3 speech timing — only sent when actually measured (BE drops the metric otherwise).
-  if (typeof responseDelayMs === "number" && responseDelayMs >= 0) {
-    request.responseDelayMs = Math.round(responseDelayMs);
-  }
-  if (typeof transcriptSegments === "number" && transcriptSegments >= 1) {
-    request.transcriptSegments = Math.floor(transcriptSegments);
-  }
-  return request;
-}
-
-export function buildValidatedRealtimeTurnRequest({
-  currentQuestion,
-  ...input
-}: ValidatedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
-  const normalized = input.transcript.trim().normalize("NFC");
-  if (!normalized) return null;
-  if (getLiveTranscriptWarnings(normalized).length > 0) return null;
-  if (!isMeaningfulRealtimeTranscript(normalized, currentQuestion)) return null;
-  return buildServerOwnedRealtimeTurnRequest({
-    ...input,
-    transcript: normalized,
-  });
-}
-
-export function buildBufferedRealtimeTurnRequest({
-  sessionId,
-  currentQuestion,
-  transcripts,
-  durationSeconds,
-  responseDelayMs,
-}: BufferedRealtimeTurnInput): SubmitInterviewTurnRequest | null {
-  const segments = transcripts.map((item) => item.trim().normalize("NFC")).filter(Boolean);
-  const transcript = segments.join(" ").replace(/\s+/g, " ").trim();
-  return buildValidatedRealtimeTurnRequest({
-    sessionId,
-    currentQuestion,
-    transcript,
-    durationSeconds,
-    responseDelayMs,
-    transcriptSegments: segments.length,
-  });
-}
-
-export function hasPendingRealtimeAnswer({
-  currentQuestion,
-  submittedQuestion,
-  transcripts,
-}: {
-  currentQuestion: string;
-  submittedQuestion: string | null;
-  transcripts: string[];
-}): boolean {
-  const normalizedQuestion = currentQuestion.trim().normalize("NFC");
-  const normalizedSubmittedQuestion = submittedQuestion?.trim().normalize("NFC") ?? null;
-  return Boolean(
-    normalizedQuestion &&
-      normalizedQuestion !== normalizedSubmittedQuestion &&
-      transcripts.some((transcript) => transcript.trim()),
-  );
-}
-
-/** A spoken command is a short standalone utterance. Keyword matches inside a
- *  flowing answer ("...dự án đó đã kết thúc vào tháng 3") must never hijack the
- *  turn — they used to wipe the buffered answer (bug hunt 2026-07-21). */
-const COMMAND_MAX_TOKENS = 6;
-
-export function classifyRealtimeTranscriptIntent(
-  transcript: string,
-): RealtimeTranscriptIntent {
-  const normalized = normalizeCommandText(transcript);
-  if (!normalized) return "off_topic";
-  if (getLiveTranscriptWarnings(transcript).length > 0) return "off_topic";
-  if (tokenizeTranscript(transcript).length <= COMMAND_MAX_TOKENS) {
-    if (
-      /\b(repeat|say again|read again|ask again|nhac lai|doc lai|noi lai)\b/.test(
-        normalized,
-      ) ||
-      /nhac lai cau hoi/.test(normalized)
-    ) {
-      return "repeat_question";
-    }
-    if (
-      // Bare "explain" / "giải thích" removed: they lead genuine answers far
-      // more often than clarification requests ("let me explain...", "em giải
-      // thích thêm...") and used to hijack+drop the answer (bug hunt R2 07-22).
-      /\b(clarify|what do you mean|i don't understand|i do not understand)\b/.test(
-        normalized,
-      ) ||
-      // Clarify must be QUESTION-DIRECTED. Bare "em/tôi chưa hiểu" and "không
-      // hiểu" are NOT here: both appear inside genuine answer openers ("ban đầu
-      // em chưa/không hiểu codebase") and a substring match would drop the real
-      // answer (bug hunt R4/R5). Require an explicit "…câu hỏi" / "ý câu này".
-      /(y cau nay la sao|chua hieu cau hoi|khong hieu cau hoi)/.test(normalized)
-    ) {
-      return "clarify_question";
-    }
-    if (/\b(skip|next question|bo qua|cau khac)\b/.test(normalized)) {
-      return "skip_question";
-    }
-    // "cho em"/"wait" dropped from the pause vocabulary: both appear inside
-    // genuine answers far more often than as standalone pause requests.
-    if (/\b(pause|tam dung|dung mot chut)\b/.test(normalized)) {
-      return "pause";
-    }
-    if (
-      /\b(end interview|finish interview|stop interview|ket thuc|dung phong van)\b/.test(
-        normalized,
-      )
-    ) {
-      return "end_interview";
-    }
-  }
-  // Short segments ("PostgreSQL", "ừm") are answer material — they append to the
-  // buffer instead of being classified off-topic, which used to erase it.
-  return "answer";
-}
-
-export function createQuestionAudioRequestGuard(): QuestionAudioRequestGuard {
-  let currentRequestId = 0;
-  return {
-    next: () => {
-      currentRequestId += 1;
-      return currentRequestId;
-    },
-    invalidate: () => {
-      currentRequestId += 1;
-    },
-    isCurrent: (requestId: number) => requestId === currentRequestId,
-  };
 }
 
 export function readInterviewVoicePreference(
@@ -701,62 +502,7 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-interface InterviewModeLabelOptions {
-  interviewMode: InterviewMode;
-  isLiveConnected: boolean;
-  isVoiceFallback: boolean;
-  questionAudioError: string | null;
-}
-
-export function getInterviewModeLabel({
-  interviewMode,
-  isLiveConnected,
-  isVoiceFallback,
-  questionAudioError,
-}: InterviewModeLabelOptions): string {
-  const key = getInterviewModeLabelKey({
-    interviewMode,
-    isLiveConnected,
-    isVoiceFallback,
-    questionAudioError,
-  });
-
-  if (key === "textFallback") return "Text fallback";
-  if (key === "liveRealtime") return "Live Realtime";
-  return "Guided Voice";
-}
-
-export function getInterviewModeLabelKey({
-  interviewMode,
-  isLiveConnected,
-  isVoiceFallback,
-  questionAudioError,
-}: InterviewModeLabelOptions): InterviewModeLabelKey {
-  if (isVoiceFallback || (interviewMode === "guided" && questionAudioError)) {
-    return "textFallback";
-  }
-
-  if (interviewMode === "realtime") {
-    return isLiveConnected ? "liveRealtime" : "textFallback";
-  }
-
-  return "guidedVoice";
-}
-
-export function getRealtimeMicStatusKey({
-  isLiveRealtime,
-  isLoading,
-  isInterviewerSpeaking,
-  isMicActive,
-}: RealtimeMicStatusOptions): RealtimeMicStatusKey {
-  if (!isLiveRealtime) return "manual";
-  if (isInterviewerSpeaking) return "interviewerSpeaking";
-  if (isLoading) return "submitting";
-  return isMicActive ? "listening" : "paused";
-}
-
 interface RealtimeTokenFallbackOptions {
-  interviewMode: InterviewMode;
   realtimeEnabled: boolean;
   clientSecret: string | null;
   reason?: string;
@@ -764,14 +510,12 @@ interface RealtimeTokenFallbackOptions {
 }
 
 export function getRealtimeTokenFallbackReason({
-  interviewMode,
   realtimeEnabled,
   clientSecret,
   reason,
   fallbackMessage,
 }: RealtimeTokenFallbackOptions): string | null {
   if (realtimeEnabled && clientSecret) return null;
-  if (interviewMode === "guided") return null;
   return (
     reason ||
     fallbackMessage ||
@@ -779,26 +523,7 @@ export function getRealtimeTokenFallbackReason({
   );
 }
 
-export function getQuestionAudioErrorMessage(
-  error: unknown,
-  fallback: string,
-  timeoutFallback = "The interviewer voice took too long to load. Continue with the visible question.",
-): string {
-  if (isTimeoutError(error)) {
-    return timeoutFallback;
-  }
-
-  return fallback;
-}
-
-export function shouldRequestQuestionAudio(
-  interviewMode: InterviewMode,
-): boolean {
-  return interviewMode === "guided";
-}
-
 interface LiveClosingSignalOptions {
-  interviewMode: InterviewMode;
   isVoiceFallback: boolean;
   isLiveConnected: boolean;
   secondsRemaining: number;
@@ -806,83 +531,17 @@ interface LiveClosingSignalOptions {
 }
 
 export function shouldRequestLiveClosingSignal({
-  interviewMode,
   isVoiceFallback,
   isLiveConnected,
   secondsRemaining,
   alreadyRequested,
 }: LiveClosingSignalOptions): boolean {
   return (
-    interviewMode === "realtime" &&
     !isVoiceFallback &&
     isLiveConnected &&
     !alreadyRequested &&
     secondsRemaining > 0 &&
     secondsRemaining <= 45
-  );
-}
-
-export function getLiveTranscriptWarnings(
-  text: string,
-): LiveTranscriptWarning[] {
-  const warnings: LiveTranscriptWarning[] = [];
-  if (/[\u3400-\u9FFF\uF900-\uFAFF]/u.test(text)) warnings.push("cjk");
-  if (
-    /Cuộc phỏng vấn bằng tiếng Việt/i.test(text) ||
-    /Giữ nguyên dấu tiếng Việt/i.test(text) ||
-    /English interview\. Preserve technical terms/i.test(text)
-  ) {
-    warnings.push("promptLeak");
-  }
-  return warnings;
-}
-
-function isMeaningfulRealtimeTranscript(
-  transcript: string,
-  currentQuestion: string | null | undefined,
-): boolean {
-  const compactLength = transcript.replace(/\s+/g, "").length;
-  if (compactLength < 4) return false;
-  if (
-    currentQuestion &&
-    normalizeForTranscriptComparison(transcript) ===
-      normalizeForTranscriptComparison(currentQuestion)
-  ) {
-    return false;
-  }
-  return tokenizeTranscript(transcript).length >= 2;
-}
-
-function tokenizeTranscript(value: string): string[] {
-  return value.match(/[\p{L}\p{N}+#.]+/gu) ?? [];
-}
-
-function normalizeForTranscriptComparison(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
-    .trim();
-}
-
-function normalizeCommandText(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/đ/g, "d")
-    .replace(/[^\p{L}\p{N}']+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isTimeoutError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const value = error as { code?: unknown; message?: unknown };
-  if (value.code === "ECONNABORTED" || value.code === "ETIMEDOUT") return true;
-  return (
-    typeof value.message === "string" && /\btimeout\b/i.test(value.message)
   );
 }
 
@@ -908,7 +567,9 @@ function interviewerTurnText(
   aiMessage: string | null | undefined,
   question: string | null | undefined,
 ): string {
-  return uniqueNonEmptyStrings([aiMessage, question]).join("\n\n").normalize("NFC");
+  return uniqueNonEmptyStrings([aiMessage, question])
+    .join("\n\n")
+    .normalize("NFC");
 }
 
 function score(value: number | null | undefined): number | null {
@@ -951,12 +612,12 @@ function readFinalScoreOverall(value: unknown): number | null {
   return score(readNumber(value.overall));
 }
 
-function readScoreBasis(value: unknown): FinalScoreDto['score_basis'] | null {
+function readScoreBasis(value: unknown): FinalScoreDto["score_basis"] | null {
   if (!isRecord(value)) return null;
-  return value.score_basis === 'criterion_rubric' ||
-    value.score_basis === 'legacy_fallback' ||
-    value.score_basis === 'mixed' ||
-    value.score_basis === 'unscored'
+  return value.score_basis === "criterion_rubric" ||
+    value.score_basis === "legacy_fallback" ||
+    value.score_basis === "mixed" ||
+    value.score_basis === "unscored"
     ? value.score_basis
     : null;
 }
@@ -1075,43 +736,57 @@ function metric(
   return value ? { label, value } : null;
 }
 
-function readScoreExplanations(value: unknown): InterviewScoreExplanationViewModel[] {
+function readScoreExplanations(
+  value: unknown,
+): InterviewScoreExplanationViewModel[] {
   if (!isRecord(value) || !Array.isArray(value.score_explanations)) return [];
-  return value.score_explanations.map((item): InterviewScoreExplanationViewModel | null => {
-    if (!isRecord(item)) return null;
-    const rub = readString(item.rubric_anchor);
-    if (!rub) return null;
-    return {
-      dimension: (item.dimension || '') as InterviewScoreExplanationViewModel['dimension'],
-      score: readNumber(item.score) ?? 0,
-      band: (item.band || 'poor') as InterviewScoreExplanationViewModel['band'],
-      weight: readNumber(item.weight) ?? 0,
-      rubric_anchor: rub,
-      evidence_quote: readString(item.evidence_quote),
-      linked_question_id: readString(item.linked_question_id),
-      uncertainty: (item.uncertainty || 'medium') as InterviewScoreExplanationViewModel['uncertainty'],
-      improvement_hint: readString(item.improvement_hint),
-    };
-  }).filter((item): item is InterviewScoreExplanationViewModel => item !== null);
+  return value.score_explanations
+    .map((item): InterviewScoreExplanationViewModel | null => {
+      if (!isRecord(item)) return null;
+      const rub = readString(item.rubric_anchor);
+      if (!rub) return null;
+      return {
+        dimension: (item.dimension ||
+          "") as InterviewScoreExplanationViewModel["dimension"],
+        score: readNumber(item.score) ?? 0,
+        band: (item.band ||
+          "poor") as InterviewScoreExplanationViewModel["band"],
+        weight: readNumber(item.weight) ?? 0,
+        rubric_anchor: rub,
+        evidence_quote: readString(item.evidence_quote),
+        linked_question_id: readString(item.linked_question_id),
+        uncertainty: (item.uncertainty ||
+          "medium") as InterviewScoreExplanationViewModel["uncertainty"],
+        improvement_hint: readString(item.improvement_hint),
+      };
+    })
+    .filter(
+      (item): item is InterviewScoreExplanationViewModel => item !== null,
+    );
 }
 
 function readGapItems(value: unknown): InterviewGapItemViewModel[] {
   if (!Array.isArray(value)) return [];
-  return value.map((item): InterviewGapItemViewModel | null => {
-    if (!isRecord(item)) return null;
-    const display = readString(item.display_name);
-    const severity = readNumber(item.severity) ?? 0;
-    const action = readString(item.recommended_action) || readString(item.recommended_next_action) || "";
-    // skill_canonical is null for communication/behavioral gaps — keep those items.
-    if (!display) return null;
-    return {
-      skillCanonical: readString(item.skill_canonical),
-      displayName: display,
-      weaknessType: readString(item.weakness_type) ?? "gap",
-      severity,
-      recommendedAction: action,
-    };
-  }).filter((item): item is InterviewGapItemViewModel => item !== null);
+  return value
+    .map((item): InterviewGapItemViewModel | null => {
+      if (!isRecord(item)) return null;
+      const display = readString(item.display_name);
+      const severity = readNumber(item.severity) ?? 0;
+      const action =
+        readString(item.recommended_action) ||
+        readString(item.recommended_next_action) ||
+        "";
+      // skill_canonical is null for communication/behavioral gaps — keep those items.
+      if (!display) return null;
+      return {
+        skillCanonical: readString(item.skill_canonical),
+        displayName: display,
+        weaknessType: readString(item.weakness_type) ?? "gap",
+        severity,
+        recommendedAction: action,
+      };
+    })
+    .filter((item): item is InterviewGapItemViewModel => item !== null);
 }
 
 export function toInterviewResultViewModel(
@@ -1216,8 +891,18 @@ export function computeAnswerOvertimeDisplay(
   timeBudgetSeconds: number | null | undefined,
   durationSeconds: number | null | undefined,
 ): { elapsedSeconds: number; budgetSeconds: number } | null {
-  if (!askedAt || !answeredAt || timeBudgetSeconds == null || timeBudgetSeconds <= 0) return null;
-  if (durationSeconds == null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+  if (
+    !askedAt ||
+    !answeredAt ||
+    timeBudgetSeconds == null ||
+    timeBudgetSeconds <= 0
+  )
+    return null;
+  if (
+    durationSeconds == null ||
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0
+  ) {
     return null;
   }
   const asked = new Date(askedAt).getTime();

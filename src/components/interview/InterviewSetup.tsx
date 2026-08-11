@@ -5,7 +5,6 @@ import {
   FileUp,
   ListChecks,
   Mic,
-  Play,
   Radio,
   RefreshCw,
   Type,
@@ -51,7 +50,6 @@ import {
   INTERVIEW_SPEECH_SPEED_OPTIONS,
   INTERVIEW_VOICE_OPTIONS,
   TIP_ICONS,
-  type InterviewMode,
   type InterviewSpeechSpeed,
   type InterviewType,
   type InterviewVoice,
@@ -97,9 +95,6 @@ interface InterviewSetupProps {
   setTargetRole: (v: string) => void;
   selectedLanguage: "vi" | "en";
   setSelectedLanguage: (v: "vi" | "en") => void;
-  interviewMode: InterviewMode;
-  setInterviewMode: (v: InterviewMode) => void;
-  realtimeV2Enabled: boolean;
   experienceMode: InterviewExperienceMode;
   setExperienceMode: (v: InterviewExperienceMode) => void;
   interviewType: InterviewType;
@@ -129,9 +124,6 @@ export function InterviewSetup({
   setTargetRole,
   selectedLanguage,
   setSelectedLanguage,
-  interviewMode,
-  setInterviewMode,
-  realtimeV2Enabled,
   experienceMode,
   setExperienceMode,
   interviewType,
@@ -161,23 +153,6 @@ export function InterviewSetup({
     selectedMatchId ? "match" : selectedCvId ? "cv" : "role"
   );
 
-  const [isLargeScreen, setIsLargeScreen] = useState(false);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1280);
-    };
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
-
-
-  useEffect(() => {
-    if (realtimeV2Enabled && interviewMode !== "realtime") {
-      setInterviewMode("realtime");
-    }
-  }, [interviewMode, realtimeV2Enabled, setInterviewMode]);
   // Sync choice card if selectedCvId changes externally
   useEffect(() => {
     if (selectedMatchId) setContextChoice("match");
@@ -275,20 +250,10 @@ export function InterviewSetup({
           <RefreshCw className="w-5 h-5 mr-2 animate-spin" />{" "}
           {t("interview.setup.starting")}
         </>
-      ) : interviewMode === "realtime" ? (
+      ) : (
         <>
           <Radio className="w-5 h-5 mr-2" />{" "}
           {t("interview.setup.startLiveRealtime")}
-        </>
-      ) : interviewMode === "guided" ? (
-        <>
-          <Mic className="w-5 h-5 mr-2" />{" "}
-          {t("interview.setup.startGuidedVoice")}
-        </>
-      ) : (
-        <>
-          <Play className="w-5 h-5 mr-2" />{" "}
-          {t("interview.setup.startInterview")}
         </>
       )}
     </Button>
@@ -627,71 +592,26 @@ export function InterviewSetup({
                   </h4>
                 </div>
 
-                {realtimeV2Enabled && (
-                  <ToggleGroup
-                    type="single"
-                    value={experienceMode}
-                    onValueChange={(value) => value && setExperienceMode(value as InterviewExperienceMode)}
-                    className="grid grid-cols-2 gap-3"
-                    aria-label="Interview experience mode"
-                  >
-                    <ToggleGroupItem value="MOCK" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
-                      <span>
-                        <span className="block text-xs font-bold text-slate-900">Mock</span>
-                        <span className="mt-1 block text-[10px] text-slate-500">Phỏng vấn như thật, không coaching giữa buổi.</span>
-                      </span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="PRACTICE" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
-                      <span>
-                        <span className="block text-xs font-bold text-slate-900">Practice</span>
-                        <span className="mt-1 block text-[10px] text-slate-500">Có gợi ý, câu dễ hơn và nhận xét khi yêu cầu.</span>
-                      </span>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                )}
-
                 <ToggleGroup
                   type="single"
-                  value={interviewMode}
-                  onValueChange={(value) => value && setInterviewMode(value as InterviewMode)}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  value={experienceMode}
+                  onValueChange={(value) => value && setExperienceMode(value as InterviewExperienceMode)}
+                  className="grid grid-cols-2 gap-3"
+                  aria-label="Interview experience mode"
                 >
-                  {!realtimeV2Enabled && (
-                  <ToggleGroupItem
-                    value="guided"
-                    className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
-                  >
-                    <div className="mt-0.5 bg-slate-100 p-1 rounded-md text-slate-600">
-                      <Mic className="h-3.5 w-3.5" />
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-slate-900">
-                        {t("interview.setup.modes.guided.title")}
-                      </span>
-                      <span className="block text-[10px] mt-0.5 font-medium text-slate-500 leading-relaxed">
-                        {t("interview.setup.modes.guided.description")}
-                      </span>
-                    </div>
+                  <ToggleGroupItem value="MOCK" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
+                    <span>
+                      <span className="block text-xs font-bold text-slate-900">Mock</span>
+                      <span className="mt-1 block text-[10px] text-slate-500">Phỏng vấn như thật, không coaching giữa buổi.</span>
+                    </span>
                   </ToggleGroupItem>
-                  )}
-                  <ToggleGroupItem
-                    value="realtime"
-                    className="h-auto justify-start items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary/20 transition-all hover:border-slate-300"
-                  >
-                    <div className="mt-0.5 bg-slate-100 p-1 rounded-md text-slate-600">
-                      <Radio className="h-3.5 w-3.5" />
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-slate-900">
-                        {t("interview.setup.modes.realtime.title")}
-                      </span>
-                      <span className="block text-[10px] mt-0.5 font-medium text-slate-500 leading-relaxed">
-                        {t("interview.setup.modes.realtime.description")}
-                      </span>
-                    </div>
+                  <ToggleGroupItem value="PRACTICE" className="h-auto rounded-xl border border-slate-200 px-4 py-3 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/5">
+                    <span>
+                      <span className="block text-xs font-bold text-slate-900">Practice</span>
+                      <span className="mt-1 block text-[10px] text-slate-500">Có gợi ý, câu dễ hơn và nhận xét khi yêu cầu.</span>
+                    </span>
                   </ToggleGroupItem>
                 </ToggleGroup>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -740,13 +660,6 @@ export function InterviewSetup({
             </CardContent>
           </Card>
 
-          {/* Primary CTA */}
-          {!isLargeScreen && (
-            <div className="xl:hidden">
-              {startButton}
-            </div>
-          )}
-
         </div>
 
         {/* RIGHT COLUMN: Previews & Info */}
@@ -768,11 +681,7 @@ export function InterviewSetup({
           </div>
 
           {/* Primary CTA for Desktop */}
-          {isLargeScreen && (
-            <div className="hidden xl:block">
-              {startButton}
-            </div>
-          )}
+          <div>{startButton}</div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 shadow-sm">
             <div className="flex items-center gap-2">

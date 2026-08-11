@@ -12,7 +12,6 @@ import {
 
 export type InterviewPhase = "setup" | "interviewing" | "results" | "history-detail";
 export type InterviewWorkspaceTab = "practice" | "history";
-export type InterviewMode = "guided" | "realtime";
 export type InterviewType = "technical" | "hr" | "mixed";
 export type InterviewVoice =
   | "alloy"
@@ -52,7 +51,6 @@ export const AVAILABLE_LANGUAGES = [
 
 export const DEFAULT_INTERVIEW_VOICE: InterviewVoice = "marin";
 export const DEFAULT_INTERVIEW_SPEECH_SPEED: InterviewSpeechSpeed = 1.15;
-export const DEFAULT_INTERVIEW_MODE: InterviewMode = "realtime";
 export const INTERVIEW_VOICE_STORAGE_KEY = "skillbridge.interview.voicePreference";
 
 export const INTERVIEW_VOICE_OPTIONS = [

@@ -1613,18 +1613,7 @@ export default {
           dialogDesc: "Hãy chắc chắn bạn đã hiểu rõ các quy tắc sau để có một buổi phỏng vấn tốt nhất.",
           dialogCancel: "Hủy",
           dialogConfirm: "Tôi đã hiểu, Bắt đầu ngay",
-        },
-        modes: {
-          guided: {
-            title: "Giọng nói có hướng dẫn",
-            description: "AI đọc từng câu hỏi; bạn trả lời và gửi từng câu.",
-          },
-          realtime: {
-            title: "Hội thoại trực tiếp",
-            description: "AI nghe và phản hồi như một interviewer trực tiếp.",
-          },
-        },
-        voice: {
+        },        voice: {
           title: "Giọng phỏng vấn",
           description:
             "Chọn giọng và tốc độ trước khi bắt đầu. Cấu hình này áp dụng cho phiên hiện tại.",
@@ -1650,76 +1639,8 @@ export default {
           },
         },
         starting: "Đang bắt đầu...",
-        startLiveRealtime: "Bắt đầu hội thoại trực tiếp",
-        startGuidedVoice: "Bắt đầu giọng nói",
-        startInterview: "Bắt đầu phỏng vấn",
-      },
-      session: {
-        timeRemaining: "Thời gian còn lại",
-        answered: "Đã trả lời {{count}}",
-        left: "Còn {{count}} câu",
-        end: "Kết thúc",
-        ending: "Đang kết thúc",
-        fullscreen: "Toàn màn hình",
-        exitFullscreen: "Thoát toàn màn hình",
-        speaking: "Đang nói",
-        thinking: "Đang suy nghĩ",
-        ready: "Sẵn sàng",
-        videoFallback: "Phỏng vấn vẫn có thể tiếp tục mà không cần video.",
-        live: "LIVE",
-        fallbackQuestionBadge: "Câu hỏi dự phòng",
-        transcriptTitle: "Transcript phỏng vấn",
-        transcriptSubtitle: "Gửi từng câu trả lời một",
-        liveTranscriptSubtitle: "Transcript tự động",
-        toggleMicrophone: "Bấm mic khi bạn trả lời",
-        pauseResumeMicrophone: "Tạm dừng hoặc tiếp tục nghe tự động",
-        reconnectVoice: "Kết nối lại giọng nói",
-        generatingNextQuestion: "Đang tạo câu hỏi tiếp theo...",
-        viewResults: "Xem kết quả",
-        liveMicOn: "Mic live đang bật",
-        liveMicMuted: "Mic live đang tắt",
-        paceNudge: "Hãy chốt lại ý chính nhé",
-        realtimeMic: {
-          manual: "Dùng text fallback để trả lời.",
-          interviewerSpeaking: "Interviewer đang nói. Mic tạm dừng nghe.",
-          submitting: "Đang gửi câu trả lời...",
-          listening: "Đang tự động nghe. Bạn có thể trả lời ngay.",
-          paused: "Đã tạm dừng nghe. Bấm mic để tiếp tục.",
-        },
-        spokenPlaceholder:
-          "Bấm mic khi bạn nói; transcript sẽ hiện ở đây. Chỉ sửa nếu transcript bị sai.",
-        textPlaceholder:
-          "Nhập bằng văn bản dự phòng: nhập câu trả lời của bạn ở đây.",
-        submitAnswer: "Gửi câu trả lời",
-        questionMeta: {
-          title: "Trọng tâm câu hỏi",
-          curated: "Bộ câu hỏi tuyển chọn",
-          fallback: "AI dự phòng",
-          phase: "Giai đoạn",
-          skill: "Kỹ năng",
-          thread: "Chủ đề",
-          bankKey: "Mã câu hỏi: {{key}}",
-        },
-        mode: {
-          textFallback: "Văn bản dự phòng",
-          liveRealtime: "Hội thoại trực tiếp",
-          guidedVoice: "Giọng nói có hướng dẫn",
-        },
-      },
-      liveReview: {
-        title: "Review transcript live",
-        description:
-          "Sửa lại câu hỏi của interviewer và câu trả lời của bạn trước khi chấm điểm.",
-        turn: "Lượt {{count}}",
-        needsReview: "Cần review",
-        questionLabel: "Câu hỏi interviewer",
-        answerLabel: "Câu trả lời của bạn",
-        warning:
-          "Transcript có đoạn giống sai ngôn ngữ hoặc dính prompt hệ thống. Hãy sửa trước khi chấm điểm.",
-        back: "Quay lại",
-        confirmScore: "Gửi transcript đã review",
-      },
-      endConfirmation: {
+        startLiveRealtime: "Bắt đầu hội thoại trực tiếp",        startInterview: "Bắt đầu phỏng vấn",
+      },    endConfirmation: {
         cancelTitle: "Hủy phiên phỏng vấn này?",
         cancelDescription:
           "Bạn chưa gửi câu trả lời nào. Kết thúc lúc này sẽ hủy phiên và không tạo điểm.",

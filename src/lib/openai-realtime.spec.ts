@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { OpenAIRealtimeSession, type RealtimeEvent } from "./openai-realtime";
+import {
+  OpenAIRealtimeSession,
+  RealtimeFirstAudioWatchdog,
+  type RealtimeEvent,
+} from "./openai-realtime";
 
 describe("OpenAIRealtimeSession", () => {
   afterEach(() => {
@@ -92,12 +96,19 @@ describe("OpenAIRealtimeSession", () => {
   it("asks realtime to produce audio with the current response.create schema", () => {
     const session = new OpenAIRealtimeSession();
     const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+      }
+    ).dataChannel = {
       readyState: "open",
       send: (payload: string) => sent.push(JSON.parse(payload)),
     };
 
-    session.speakOfficialQuestion("Ban hay gioi thieu ve du an gan nhat.", "vi");
+    session.speakOfficialQuestion(
+      "Ban hay gioi thieu ve du an gan nhat.",
+      "vi",
+    );
 
     expect(sent[0]).toEqual({
       type: "conversation.item.create",
@@ -143,7 +154,10 @@ describe("OpenAIRealtimeSession", () => {
       ontrack: null,
       onconnectionstatechange: null,
     };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
+    vi.stubGlobal(
+      "RTCPeerConnection",
+      vi.fn(() => peerConnection),
+    );
     vi.stubGlobal("document", {
       createElement: vi.fn(() => ({
         autoplay: false,
@@ -172,7 +186,11 @@ describe("OpenAIRealtimeSession", () => {
   it("can ask the live interviewer to close without injecting a user prompt", () => {
     const session = new OpenAIRealtimeSession();
     const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+      }
+    ).dataChannel = {
       readyState: "open",
       send: (payload: string) => sent.push(JSON.parse(payload)),
     };
@@ -210,7 +228,10 @@ describe("OpenAIRealtimeSession", () => {
       ontrack: null,
       onconnectionstatechange: null,
     };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
+    vi.stubGlobal(
+      "RTCPeerConnection",
+      vi.fn(() => peerConnection),
+    );
     vi.stubGlobal("document", {
       createElement: vi.fn(() => ({
         autoplay: false,
@@ -260,7 +281,10 @@ describe("OpenAIRealtimeSession", () => {
       ontrack: null,
       onconnectionstatechange: null,
     };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
+    vi.stubGlobal(
+      "RTCPeerConnection",
+      vi.fn(() => peerConnection),
+    );
     vi.stubGlobal("document", {
       createElement: vi.fn(() => ({
         autoplay: false,
@@ -280,7 +304,10 @@ describe("OpenAIRealtimeSession", () => {
     } as unknown as MediaStream;
 
     await expect(
-      new OpenAIRealtimeSession().connect({ clientSecret: "expired-secret", stream }),
+      new OpenAIRealtimeSession().connect({
+        clientSecret: "expired-secret",
+        stream,
+      }),
     ).rejects.toThrow("Invalid or expired realtime client secret.");
   });
 
@@ -288,7 +315,9 @@ describe("OpenAIRealtimeSession", () => {
     const session = new OpenAIRealtimeSession();
     const events = collectEvents(session);
     const handleEvent = (raw: unknown) =>
-      (session as unknown as { handleEvent(value: unknown): void }).handleEvent(raw);
+      (session as unknown as { handleEvent(value: unknown): void }).handleEvent(
+        raw,
+      );
 
     handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_started" }));
     handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_stopped" }));
@@ -313,29 +342,129 @@ describe("OpenAIRealtimeSession", () => {
     });
   });
 
-  it("submits tool output before resuming the realtime response", () => {
+  it("acknowledges tool output without exposing directive internals and resumes with response-scoped instructions", () => {
     const session = new OpenAIRealtimeSession();
     const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+      }
+    ).dataChannel = {
       readyState: "open",
       send: (payload: string) => sent.push(JSON.parse(payload)),
     };
 
-    session.submitToolOutput("call_1", { action: "ADVANCE_TOPIC" });
+    session.submitToolOutput("call_1", {
+      directiveId: "directive_1",
+      action: "ADVANCE_TOPIC",
+      fallbackQuestion: "Bạn đã trực tiếp xây dựng tính năng frontend nào?",
+      language: "vi",
+    });
 
-    expect(sent).toEqual([
-      {
-        type: "conversation.item.create",
-        item: {
-          type: "function_call_output",
-          call_id: "call_1",
-          output: JSON.stringify({ action: "ADVANCE_TOPIC" }),
-        },
+    expect(sent[0]).toEqual({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: "call_1",
+        output: JSON.stringify({
+          status: "accepted",
+          directiveId: "directive_1",
+        }),
       },
-      { type: "response.create" },
-    ]);
+    });
+    expect(JSON.stringify(sent[0])).not.toMatch(
+      /ADVANCE_TOPIC|fallbackQuestion|frontend nào/,
+    );
+    expect(sent[1]).toEqual({
+      type: "response.create",
+      response: {
+        output_modalities: ["audio"],
+        metadata: { directiveId: "directive_1" },
+        instructions: expect.stringContaining(
+          "Bạn đã trực tiếp xây dựng tính năng frontend nào?",
+        ),
+      },
+    });
   });
 
+  it("maps response creation, transcript response ids, and every response.done status", () => {
+    const session = new OpenAIRealtimeSession();
+    const events = collectEvents(session);
+    const handleEvent = (value: unknown) =>
+      (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+        JSON.stringify(value),
+      );
+
+    handleEvent({
+      type: "response.created",
+      response: {
+        id: "response_1",
+        status: "in_progress",
+        metadata: { directiveId: "directive_1" },
+      },
+    });
+    handleEvent({
+      type: "response.output_audio_transcript.delta",
+      response_id: "response_1",
+      delta: "Xin chào",
+    });
+    for (const status of [
+      "completed",
+      "cancelled",
+      "failed",
+      "incomplete",
+    ] as const) {
+      handleEvent({
+        type: "response.done",
+        response: {
+          id: `response_${status}`,
+          status,
+          metadata: { directiveId: `directive_${status}` },
+        },
+      });
+    }
+
+    expect(events[0]).toEqual({
+      type: "response_created",
+      responseId: "response_1",
+      directiveId: "directive_1",
+      responseStatus: "in_progress",
+    });
+    expect(events[1]).toEqual({
+      type: "ai_transcript",
+      data: "Xin chào",
+      responseId: "response_1",
+    });
+    expect(events.slice(2)).toEqual(
+      ["completed", "cancelled", "failed", "incomplete"].map((status) => ({
+        type: "response_done",
+        responseId: `response_${status}`,
+        directiveId: `directive_${status}`,
+        responseStatus: status,
+      })),
+    );
+  });
+  it("retries first-audio once, then falls back and clears timers", () => {
+    vi.useFakeTimers();
+    const retry = vi.fn();
+    const fallback = vi.fn();
+    const watchdog = new RealtimeFirstAudioWatchdog(4_000);
+
+    watchdog.start("directive_1", retry, fallback);
+    vi.advanceTimersByTime(4_000);
+    expect(retry).toHaveBeenCalledOnce();
+    expect(fallback).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(4_000);
+    expect(retry).toHaveBeenCalledOnce();
+    expect(fallback).toHaveBeenCalledOnce();
+
+    watchdog.start("directive_2", retry, fallback);
+    watchdog.clearAll();
+    vi.advanceTimersByTime(4_000);
+    expect(retry).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
   it("cancels and truncates active output for barge-in, then clears handlers on disconnect", () => {
     const session = new OpenAIRealtimeSession();
     const sent: unknown[] = [];
@@ -352,10 +481,17 @@ describe("OpenAIRealtimeSession", () => {
       ontrack: vi.fn(),
       onconnectionstatechange: vi.fn(),
     };
-    (session as unknown as { dataChannel: typeof dataChannel }).dataChannel = dataChannel;
-    (session as unknown as { peerConnection: typeof peerConnection }).peerConnection = peerConnection;
-    (session as unknown as { activeAssistantItemId: string }).activeAssistantItemId = "item_1";
-    (session as unknown as { activeAudioStartedAt: number }).activeAudioStartedAt = performance.now() - 500;
+    (session as unknown as { dataChannel: typeof dataChannel }).dataChannel =
+      dataChannel;
+    (
+      session as unknown as { peerConnection: typeof peerConnection }
+    ).peerConnection = peerConnection;
+    (
+      session as unknown as { activeAssistantItemId: string }
+    ).activeAssistantItemId = "item_1";
+    (
+      session as unknown as { activeAudioStartedAt: number }
+    ).activeAudioStartedAt = performance.now() - 500;
 
     session.cancelResponse();
     session.disconnect();
