@@ -67,6 +67,21 @@ function formatWindowLabel(window: { from: string; to: string } | undefined) {
 }
 
 function formatSyncMessage(result: AdminPaymentReconciliationResponse) {
+  const verificationResults = result.paidVerificationResults ?? [];
+  const notFound = verificationResults.filter((item) => item.status === "NOT_FOUND").length;
+  const verificationFailed = verificationResults.filter(
+    (item) => item.status === "FAILED_RECONCILIATION" || item.status === "ERROR",
+  ).length;
+  const verifiedPaid = result.verifiedPaid ?? 0;
+  const unverifiedPaid = result.unverifiedPaid ?? 0;
+  if (notFound > 0 || verificationFailed > 0 || unverifiedPaid > 0) {
+    const notFoundMessage = notFound > 0 ? ` ${notFound} local paid orders were not found in PayOS.` : "";
+    const failedMessage = verificationFailed > 0
+      ? ` ${verificationFailed} paid orders could not be verified and need review.`
+      : "";
+    return `PayOS sync completed: ${verifiedPaid} paid orders verified.${notFoundMessage}${failedMessage}`;
+  }
+
   if (result.failed === 0 && result.pending === 0) {
     const orderLabel = result.settled === 1 ? "order" : "orders";
     return `PayOS sync complete: ${result.settled} paid ${orderLabel} settled.`;
