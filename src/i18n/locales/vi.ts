@@ -1308,6 +1308,11 @@ export default {
           notIncludedValue: "Kh\u00f4ng bao g\u1ed3m",
           quotaValue: "{{limit}} / {{period}}",
           recommendedLimit: "G\u1ee3i \u00fd: {{value}}",
+          usagePeriodFilter: "Thời gian sử dụng",
+          periodThisMonth: "Tháng này",
+          periodAllTime: "Toàn thời gian",
+          usersUsed: "Số người dùng",
+          usersCount: "{{count}} người dùng",
         },
         orders: {
           title: "Đơn thanh toán",

@@ -28,6 +28,7 @@ export const QUERY_KEYS = {
   BILLING_ENTITLEMENTS: ['billing', 'entitlements'] as const,
   ADMIN_BILLING_PLANS: (includeInactive: boolean) => ['admin', 'billing', 'plans', includeInactive] as const,
   ADMIN_BILLING_FEATURES: ['admin', 'billing', 'features'] as const,
+  ADMIN_BILLING_FEATURE_USAGE: (period: string) => ['admin', 'billing', 'feature-usage', period] as const,
   ADMIN_BILLING_VOUCHERS: (query: object) => ['admin', 'billing', 'vouchers', query] as const,
   ADMIN_BILLING_ORDERS: (query: object) => ['admin', 'billing', 'orders', query] as const,
   ADMIN_BILLING_SUBSCRIPTIONS: (query: object) => ['admin', 'billing', 'subscriptions', query] as const,

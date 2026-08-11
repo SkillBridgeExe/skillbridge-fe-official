@@ -25,6 +25,16 @@ export interface AdminBillingFeatureCatalogDto {
   recommendedLimits?: Record<string, number> | null;
 }
 
+export interface AdminBillingFeatureUsageItem {
+  featureKey: string;
+  uniqueUserCount: number;
+}
+
+export interface AdminBillingFeatureUsageResponse {
+  period: "THIS_MONTH" | "ALL_TIME";
+  items: AdminBillingFeatureUsageItem[];
+}
+
 export interface CreateAdminBillingPlanDto {
   code: string;
   name: string;
@@ -172,6 +182,16 @@ export async function getAdminBillingFeaturesApi(): Promise<AdminBillingFeatureC
     "Failed to load billing feature catalog.",
   );
   return envelope.data ?? [];
+}
+
+export async function getAdminBillingFeatureUsageApi(
+  period: "THIS_MONTH" | "ALL_TIME",
+): Promise<AdminBillingFeatureUsageResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AdminBillingFeatureUsageResponse>>(
+    httpClient.get(API_ROUTES.ADMIN_BILLING.FEATURE_USAGE, { params: { period } }),
+    "Failed to load feature usage.",
+  );
+  return envelope.data;
 }
 
 export async function createAdminBillingPlanApi(payload: CreateAdminBillingPlanDto): Promise<BillingPlanDto> {

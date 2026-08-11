@@ -46,6 +46,7 @@ import { formatVnd, StatusBadge } from "@/lib/billing-ui";
 import { useToast } from "@/hooks/use-toast";
 import {
   createAdminBillingPlan,
+  getAdminBillingFeatureUsage,
   getAdminBillingFeatures,
   getAdminBillingPlans,
   updateAdminBillingPlan,
@@ -99,6 +100,7 @@ export default function AdminBillingPlans() {
   const [form, setForm] = useState<PlanForm>(emptyForm);
   const [quotaDrafts, setQuotaDrafts] = useState<QuotaDrafts>({});
   const [quotaErrors, setQuotaErrors] = useState<Record<string, string>>({});
+  const [usagePeriod, setUsagePeriod] = useState<"THIS_MONTH" | "ALL_TIME">("THIS_MONTH");
 
   const plansQuery = useQuery({
     queryKey: QUERY_KEYS.ADMIN_BILLING_PLANS(includeInactive),
@@ -109,6 +111,19 @@ export default function AdminBillingPlans() {
     queryKey: QUERY_KEYS.ADMIN_BILLING_FEATURES,
     queryFn: getAdminBillingFeatures,
   });
+
+  const featureUsageQuery = useQuery({
+    queryKey: QUERY_KEYS.ADMIN_BILLING_FEATURE_USAGE(usagePeriod),
+    queryFn: () => getAdminBillingFeatureUsage(usagePeriod),
+  });
+
+  const usageByFeature = useMemo(() => {
+    if (!featureUsageQuery.data) return {};
+    return featureUsageQuery.data.items.reduce<Record<string, number>>((acc, item) => {
+      acc[item.featureKey] = item.uniqueUserCount;
+      return acc;
+    }, {});
+  }, [featureUsageQuery.data]);
 
   const selectedPlan = useMemo(
     () => plansQuery.data?.find((plan) => plan.code === selectedCode),
@@ -507,6 +522,12 @@ export default function AdminBillingPlans() {
                       : null
                   }
                   t={t}
+                  usageByFeature={usageByFeature}
+                  isLoadingUsage={featureUsageQuery.isLoading}
+                  isErrorUsage={featureUsageQuery.isError}
+                  onRetryUsage={() => void featureUsageQuery.refetch()}
+                  usagePeriod={usagePeriod}
+                  onUsagePeriodChange={setUsagePeriod}
                 />
               ) : null}
             </div>
@@ -553,6 +574,12 @@ function QuotaEditorTable({
   quotaDrafts,
   savingFeatureKey,
   t,
+  usageByFeature,
+  isLoadingUsage,
+  isErrorUsage,
+  onRetryUsage,
+  usagePeriod,
+  onUsagePeriodChange,
 }: {
   canSaveRows: boolean;
   errors: Record<string, string>;
@@ -569,16 +596,52 @@ function QuotaEditorTable({
   quotaDrafts: QuotaDrafts;
   savingFeatureKey: string | null;
   t: (key: string, options?: Record<string, unknown>) => string;
+  usageByFeature?: Record<string, number>;
+  isLoadingUsage?: boolean;
+  isErrorUsage?: boolean;
+  onRetryUsage?: () => void;
+  usagePeriod?: "THIS_MONTH" | "ALL_TIME";
+  onUsagePeriodChange?: (period: "THIS_MONTH" | "ALL_TIME") => void;
 }) {
   return (
     <div className="rounded-lg border border-border">
-      <div className="border-b border-border px-4 py-3">
-        <div className="font-semibold">
-          {t("billing.admin.plans.quotaTitle")}
+      <div className="flex flex-col border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="font-semibold">
+            {t("billing.admin.plans.quotaTitle")}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("billing.admin.plans.quotaDescription")}
+          </p>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("billing.admin.plans.quotaDescription")}
-        </p>
+        {usagePeriod && onUsagePeriodChange ? (
+          <div className="mt-3 flex items-center gap-2 sm:mt-0">
+            <Label className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
+              {t("billing.admin.plans.usagePeriodFilter")}
+            </Label>
+            <Select
+              value={usagePeriod}
+              onValueChange={onUsagePeriodChange as (value: string) => void}
+            >
+              <SelectTrigger
+                className="h-8 w-[140px] text-xs"
+                aria-label={t("billing.admin.plans.usagePeriodFilter")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="THIS_MONTH">
+                    {t("billing.admin.plans.periodThisMonth")}
+                  </SelectItem>
+                  <SelectItem value="ALL_TIME">
+                    {t("billing.admin.plans.periodAllTime")}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -603,6 +666,9 @@ function QuotaEditorTable({
               <TableRow>
                 <TableHead className="px-4 py-3 font-semibold">
                   {t("billing.admin.plans.feature")}
+                </TableHead>
+                <TableHead className="w-32 px-4 py-3 font-semibold">
+                  {t("billing.admin.plans.usersUsed")}
                 </TableHead>
                 <TableHead className="w-36 px-4 py-3 font-semibold">
                   {t("billing.admin.plans.limit")}
@@ -690,6 +756,35 @@ function QuotaEditorTable({
                           {errors[feature.featureKey]}
                         </p>
                       ) : null}
+                    </TableCell>
+                    <TableCell className="px-4 py-4 align-top">
+                      {isLoadingUsage ? (
+                        <div className="flex items-center text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : isErrorUsage ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-xs text-destructive">Error</span>
+                          {onRetryUsage ? (
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-[11px]"
+                              onClick={onRetryUsage}
+                            >
+                              Retry
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : usageByFeature ? (
+                        <div className="inline-flex items-center rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-xs font-semibold">
+                          {t("billing.admin.plans.usersCount", {
+                            count: usageByFeature[feature.featureKey] ?? 0,
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="px-4 py-4 align-top">
                       <Label
