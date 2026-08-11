@@ -175,6 +175,7 @@ export const API_ROUTES = {
     PLAN_FEATURE: (code: string, featureKey: string) =>
       `${API}/admin/billing/plans/${code}/features/${featureKey}`,
     ORDERS: `${API}/admin/billing/orders`,
+    RECONCILE_ORDERS: `${API}/admin/billing/orders/reconcile`,
     SUBSCRIPTIONS: `${API}/admin/billing/subscriptions`,
     MENTOR_BOOKINGS: `${API}/admin/billing/mentor-bookings`,
     MENTOR_BOOKING_REFUND: (bookingId: string) =>

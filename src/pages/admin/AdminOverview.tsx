@@ -1,16 +1,24 @@
 import { useMemo, useState, type ElementType } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, CreditCard, FileText, SearchCheck, Users } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, CreditCard, FileText, Loader2, RefreshCw, SearchCheck, Users } from "lucide-react";
+import type { AdminRevenuePeriod, AdminUserSummaryQuery } from "@/api/admin-users";
 import {
   AdminDonutChartCard,
   AdminFunnelChartCard,
   AdminLineChartCard,
 } from "@/components/admin/AdminCharts";
 import AdminKpiCard from "@/components/admin/AdminKpiCard";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QUERY_KEYS } from "@/constants/app";
+import {
+  reconcileAdminPaymentOrders,
+  type AdminPaymentReconciliationResponse,
+} from "@/services/admin-billing.service";
 import { getAdminUserSummary } from "@/services/admin-users.service";
 
 const ROLE_COLORS = [
@@ -39,15 +47,70 @@ function formatCompactVnd(value: number) {
   return `${value} ₫`;
 }
 
-function rangeLabel(rangeDays: number) {
-  return `${rangeDays} days`;
+const REVENUE_PERIOD_OPTIONS: Array<{ value: AdminRevenuePeriod; label: string }> = [
+  { value: "TODAY", label: "Today" },
+  { value: "YESTERDAY", label: "Yesterday" },
+  { value: "THIS_WEEK", label: "This week" },
+  { value: "THIS_MONTH", label: "This month" },
+  { value: "LAST_MONTH", label: "Last month" },
+  { value: "THIS_YEAR", label: "This year" },
+  { value: "LAST_YEAR", label: "Last year" },
+  { value: "CUSTOM", label: "Custom" },
+];
+
+function periodLabel(period: AdminRevenuePeriod) {
+  return REVENUE_PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? period;
+}
+
+function formatWindowLabel(window: { from: string; to: string } | undefined) {
+  return window ? `${window.from} to ${window.to}` : "the selected calendar window";
+}
+
+function formatSyncMessage(result: AdminPaymentReconciliationResponse) {
+  if (result.failed === 0 && result.pending === 0) {
+    const orderLabel = result.settled === 1 ? "order" : "orders";
+    return `PayOS sync complete: ${result.settled} paid ${orderLabel} settled.`;
+  }
+
+  return `PayOS sync completed with ${result.pending} pending and ${result.failed} failed orders.`;
 }
 
 export default function AdminOverview() {
-  const [rangeDays, setRangeDays] = useState(30);
+  const [period, setPeriod] = useState<AdminRevenuePeriod>("THIS_YEAR");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [syncResult, setSyncResult] = useState<AdminPaymentReconciliationResponse | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const summaryParams = useMemo<AdminUserSummaryQuery>(() => {
+    if (period !== "CUSTOM") {
+      return { period };
+    }
+
+    return {
+      period,
+      ...(customFrom && customTo ? { from: customFrom, to: customTo } : {}),
+    };
+  }, [customFrom, customTo, period]);
+  const hasValidPeriod = period !== "CUSTOM" || Boolean(customFrom && customTo);
   const summaryQuery = useQuery({
-    queryKey: QUERY_KEYS.ADMIN_USER_SUMMARY({ rangeDays }),
-    queryFn: () => getAdminUserSummary({ rangeDays }),
+    queryKey: QUERY_KEYS.ADMIN_USER_SUMMARY(summaryParams),
+    queryFn: () => getAdminUserSummary(summaryParams),
+    enabled: hasValidPeriod,
+  });
+  const reconcileMutation = useMutation({
+    mutationFn: () => reconcileAdminPaymentOrders(summaryParams),
+    onMutate: () => {
+      setSyncResult(null);
+      setSyncError(null);
+    },
+    onSuccess: (result) => {
+      setSyncResult(result);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "users", "summary"] });
+    },
+    onError: (error) => {
+      setSyncError(error instanceof Error ? error.message : "PayOS sync failed.");
+    },
   });
 
   const summary = summaryQuery.data;
@@ -82,26 +145,95 @@ export default function AdminOverview() {
           <p className="text-sm font-semibold uppercase tracking-normal text-primary">Admin overview</p>
           <h1 className="text-3xl font-bold tracking-normal text-foreground">User Growth & Activity</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            User, CV, interview, and paid-revenue activity for the last {rangeLabel(rangeDays)}.
+            User, CV, interview, and verified paid-revenue activity for {periodLabel(period).toLowerCase()}.
           </p>
+          {summary?.window ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Calendar window: {formatWindowLabel(summary.window)} ({summary.window.timezone}).
+            </p>
+          ) : null}
         </div>
-        <div className="w-44">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">Range</div>
-          <Select value={String(rangeDays)} onValueChange={(value) => setRangeDays(Number(value))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="7">7 days</SelectItem>
-                <SelectItem value="30">30 days</SelectItem>
-                <SelectItem value="90">90 days</SelectItem>
-                <SelectItem value="365">365 days</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-end justify-end gap-2">
+          <div className="w-44">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-normal text-muted-foreground">Revenue period</div>
+            <Select
+              value={period}
+              onValueChange={(value: AdminRevenuePeriod) => {
+                setPeriod(value);
+                setSyncResult(null);
+                setSyncError(null);
+              }}
+            >
+              <SelectTrigger aria-label="Revenue period">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {REVENUE_PERIOD_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => reconcileMutation.mutate()}
+            disabled={!hasValidPeriod || reconcileMutation.isPending || summaryQuery.isFetching}
+          >
+            {reconcileMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+            {reconcileMutation.isPending ? "Syncing..." : "Sync PayOS"}
+          </Button>
         </div>
       </div>
+
+      {period === "CUSTOM" ? (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border/80 bg-card p-4 shadow-sm">
+          <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+            From
+            <Input
+              aria-label="Custom period start"
+              type="date"
+              value={customFrom}
+              onChange={(event) => {
+                setCustomFrom(event.target.value);
+                setSyncResult(null);
+                setSyncError(null);
+              }}
+            />
+          </label>
+          <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+            To
+            <Input
+              aria-label="Custom period end"
+              type="date"
+              value={customTo}
+              onChange={(event) => {
+                setCustomTo(event.target.value);
+                setSyncResult(null);
+                setSyncError(null);
+              }}
+            />
+          </label>
+          {!hasValidPeriod ? (
+            <p className="pb-2 text-xs text-muted-foreground">Select both dates to load the calendar window.</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {syncError ? (
+        <Alert variant="destructive">
+          <AlertDescription>PayOS sync failed: {syncError}</AlertDescription>
+        </Alert>
+      ) : null}
+      {syncResult ? (
+        <Alert>
+          <AlertDescription>{formatSyncMessage(syncResult)}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {summaryQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -139,6 +271,7 @@ export default function AdminOverview() {
           <AdminKpiCard
             title="Paid revenue"
             value={formatVnd(totals?.paidRevenueVnd ?? 0)}
+            changeLabel={`${(totals?.paidOrderCount ?? 0).toLocaleString()} completed orders`}
             icon={CreditCard}
             accent={{ cardClassName: "bg-card" }}
           />

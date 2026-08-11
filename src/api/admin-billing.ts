@@ -10,6 +10,10 @@ import type {
   SubscriptionStatus,
   CreditType,
 } from "@/api/billing";
+import type {
+  AdminRevenueWindow,
+  AdminUserSummaryQuery,
+} from "@/api/admin-users";
 
 export interface AdminPlanFeatureInput {
   featureKey: string;
@@ -90,6 +94,23 @@ export interface AdminPaymentOrderDto {
   targetId?: string | null;
   paidAt?: string | null;
   createdAt: string;
+}
+
+export interface AdminPaymentReconciliationResult {
+  orderCode: number;
+  status: BillingOrderStatus | "FAILED_RECONCILIATION";
+  message?: string;
+}
+
+export interface AdminPaymentReconciliationResponse {
+  provider: string;
+  window: AdminRevenueWindow;
+  attempted: number;
+  settled: number;
+  terminal: number;
+  pending: number;
+  failed: number;
+  results: AdminPaymentReconciliationResult[];
 }
 
 export interface AdminSubscriptionsQuery extends PaginationQuery {
@@ -241,6 +262,16 @@ export async function getAdminPaymentOrdersApi(
   const envelope = await unwrapEnvelope<ApiEnvelope<PaginatedResponse<AdminPaymentOrderDto>>>(
     httpClient.get(API_ROUTES.ADMIN_BILLING.ORDERS, { params: query }),
     "Failed to load payment orders.",
+  );
+  return envelope.data;
+}
+
+export async function reconcileAdminPaymentOrdersApi(
+  query: AdminUserSummaryQuery = {},
+): Promise<AdminPaymentReconciliationResponse> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<AdminPaymentReconciliationResponse>>(
+    httpClient.post(API_ROUTES.ADMIN_BILLING.RECONCILE_ORDERS, query),
+    "Failed to sync PayOS payments.",
   );
   return envelope.data;
 }
