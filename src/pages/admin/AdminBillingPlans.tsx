@@ -707,8 +707,8 @@ function QuotaEditorTable({
                     className="border-b border-border last:border-0"
                   >
                     <TableCell className="px-4 py-4 align-top">
-                      <div className="flex items-start gap-2">
-                        <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
                           <div className="font-semibold text-foreground">
                             {feature.label}
                           </div>
