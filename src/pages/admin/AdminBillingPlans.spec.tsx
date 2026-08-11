@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminBillingPlans from "./AdminBillingPlans";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
+  getAdminBillingFeatureUsage,
   getAdminBillingFeatures,
   getAdminBillingPlans,
   replaceAdminPlanFeatures,
@@ -15,6 +16,7 @@ import {
 
 vi.mock("@/services/admin-billing.service", () => ({
   createAdminBillingPlan: vi.fn(),
+  getAdminBillingFeatureUsage: vi.fn(),
   getAdminBillingFeatures: vi.fn(),
   getAdminBillingPlans: vi.fn(),
   replaceAdminPlanFeatures: vi.fn(),
@@ -37,6 +39,11 @@ vi.mock("react-i18next", () => ({
         "billing.admin.plans.editTitle": `Edit ${String(options?.code ?? "")}`,
         "billing.admin.plans.quotaTitle": "Feature quotas",
         "billing.admin.plans.quotaDescription": "Edit one feature quota at a time.",
+        "billing.admin.plans.usagePeriodFilter": "Usage period",
+        "billing.admin.plans.periodThisMonth": "This month",
+        "billing.admin.plans.periodAllTime": "All time",
+        "billing.admin.plans.usersUsed": "Users used",
+        "billing.admin.plans.usersCount": "{{count}} users",
         "billing.admin.plans.limit": "Limit",
         "billing.admin.plans.unlimited": "Unlimited",
         "billing.admin.plans.period": "Period",
@@ -53,7 +60,8 @@ vi.mock("react-i18next", () => ({
         "billing.admin.table.status": "Status",
         "billing.admin.status.active": "Active",
       };
-      return translations[key] ?? String(options?.defaultValue ?? key);
+      const translation = translations[key] ?? String(options?.defaultValue ?? key);
+      return translation.replace(/{{(\w+)}}/g, (_, name: string) => String(options?.[name] ?? ""));
     },
   }),
 }));
@@ -121,6 +129,10 @@ describe("AdminBillingPlans quota editor", () => {
   beforeEach(() => {
     vi.mocked(getAdminBillingPlans).mockResolvedValue(plans);
     vi.mocked(getAdminBillingFeatures).mockResolvedValue(features);
+    vi.mocked(getAdminBillingFeatureUsage).mockResolvedValue({
+      period: "THIS_MONTH",
+      items: [{ featureKey: "cv_review", uniqueUserCount: 15 }],
+    });
     vi.mocked(updateAdminPlanFeature).mockResolvedValue(plans[0]);
   });
 
@@ -210,5 +222,40 @@ describe("AdminBillingPlans quota editor", () => {
     expect(screen.queryByLabelText("Interval")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
     expect(screen.queryByText("Feature quotas")).not.toBeInTheDocument();
+  });
+
+  describe("Feature usage badges", () => {
+    it("fetches THIS_MONTH usage by default and renders user count badges including 0", async () => {
+      await openPlanEditor();
+
+      expect(getAdminBillingFeatureUsage).toHaveBeenCalledWith("THIS_MONTH");
+      expect(await screen.findByText("15 users")).toBeInTheDocument();
+      expect(screen.getByText("0 users")).toBeInTheDocument();
+    });
+
+    it("can switch usage period to ALL_TIME and refetch", async () => {
+      await openPlanEditor();
+      await screen.findByText("15 users");
+
+      vi.mocked(getAdminBillingFeatureUsage).mockResolvedValueOnce({
+        period: "ALL_TIME",
+        items: [{ featureKey: "cv_review", uniqueUserCount: 150 }],
+      });
+
+      fireEvent.click(screen.getByRole("combobox", { name: "Usage period" }));
+      fireEvent.click(screen.getByRole("option", { name: "All time" }));
+
+      await waitFor(() => expect(getAdminBillingFeatureUsage).toHaveBeenCalledWith("ALL_TIME"));
+      expect(await screen.findByText("150 users")).toBeInTheDocument();
+    });
+
+    it("handles usage error by showing retry button without blocking quota editing", async () => {
+      vi.mocked(getAdminBillingFeatureUsage).mockRejectedValueOnce(new Error("Usage failed"));
+      await openPlanEditor();
+
+      expect((await screen.findAllByText("Error")).length).toBeGreaterThan(0);
+      expect((await screen.findAllByRole("button", { name: "Retry" })).length).toBeGreaterThan(0);
+      expect(screen.getByLabelText("Limit for CV diagnosis")).toBeEnabled();
+    });
   });
 });

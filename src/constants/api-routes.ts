@@ -169,6 +169,7 @@ export const API_ROUTES = {
     VOUCHERS: `${API}/admin/billing/vouchers`,
     VOUCHER: (id: string) => `${API}/admin/billing/vouchers/${id}`,
     FEATURES: `${API}/admin/billing/features`,
+    FEATURE_USAGE: `${API}/admin/billing/feature-usage`,
     PLAN: (code: string) => `${API}/admin/billing/plans/${code}`,
     PLAN_FEATURES: (code: string) => `${API}/admin/billing/plans/${code}/features`,
     PLAN_FEATURE: (code: string, featureKey: string) =>

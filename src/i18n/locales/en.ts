@@ -1318,6 +1318,11 @@ export default {
           notIncludedValue: "Not included",
           quotaValue: "{{limit}} / {{period}}",
           recommendedLimit: "Recommended: {{value}}",
+          usagePeriodFilter: "Usage period",
+          periodThisMonth: "This month",
+          periodAllTime: "All time",
+          usersUsed: "Users used",
+          usersCount: "{{count}} users",
         },
         orders: {
           title: "Payment Orders",

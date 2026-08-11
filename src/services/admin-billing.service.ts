@@ -1,6 +1,7 @@
 import {
   createAdminBillingPlanApi,
   createAdminVoucherApi,
+  getAdminBillingFeatureUsageApi,
   getAdminBillingFeaturesApi,
   getAdminBillingPlansApi,
   getAdminPaymentOrdersApi,
@@ -23,6 +24,8 @@ import {
 
 export type {
   AdminBillingFeatureCatalogDto,
+  AdminBillingFeatureUsageResponse,
+  AdminBillingFeatureUsageItem,
   AdminOrdersQuery,
   AdminPaymentOrderDto,
   AdminPlanFeatureInput,
@@ -47,6 +50,10 @@ export function getAdminBillingPlans(includeInactive: boolean) {
 
 export function getAdminBillingFeatures() {
   return getAdminBillingFeaturesApi();
+}
+
+export function getAdminBillingFeatureUsage(period: "THIS_MONTH" | "ALL_TIME") {
+  return getAdminBillingFeatureUsageApi(period);
 }
 
 export function createAdminBillingPlan(payload: CreateAdminBillingPlanDto) {
