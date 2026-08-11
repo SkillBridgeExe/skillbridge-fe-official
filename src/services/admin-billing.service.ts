@@ -5,6 +5,7 @@ import {
   getAdminBillingFeaturesApi,
   getAdminBillingPlansApi,
   getAdminPaymentOrdersApi,
+  reconcileAdminPaymentOrdersApi,
   getAdminSubscriptionsApi,
   getAdminVouchersApi,
   replaceAdminPlanFeaturesApi,
@@ -21,6 +22,7 @@ import {
   type UpdateAdminVoucherDto,
   type AdminVouchersQuery,
 } from "@/api/admin-billing";
+import type { AdminUserSummaryQuery } from "@/api/admin-users";
 
 export type {
   AdminBillingFeatureCatalogDto,
@@ -28,6 +30,7 @@ export type {
   AdminBillingFeatureUsageItem,
   AdminOrdersQuery,
   AdminPaymentOrderDto,
+  AdminPaymentReconciliationResponse,
   AdminPlanFeatureInput,
   AdminSubscriptionDto,
   AdminSubscriptionsQuery,
@@ -78,6 +81,10 @@ export function updateAdminPlanFeature(
 
 export function getAdminPaymentOrders(query: AdminOrdersQuery) {
   return getAdminPaymentOrdersApi(query);
+}
+
+export function reconcileAdminPaymentOrders(query: AdminUserSummaryQuery) {
+  return reconcileAdminPaymentOrdersApi(query);
 }
 
 export function getAdminSubscriptions(query: AdminSubscriptionsQuery) {

@@ -106,6 +106,26 @@ describe("admin-users api", () => {
       roles: ["USER", "MENTOR"],
     });
   });
+
+  it("loads an Admin summary using the PayOS-style calendar period", async () => {
+    vi.mocked(httpClient.get).mockReturnValueOnce(
+      ok({
+        totals: { paidRevenueVnd: 4417800, paidOrderCount: 25 },
+        window: {
+          period: "THIS_YEAR",
+          from: "2026-01-01",
+          to: "2026-12-31",
+          timezone: "Asia/Ho_Chi_Minh",
+        },
+      }) as never,
+    );
+
+    await getAdminUserSummaryApi({ period: "THIS_YEAR" });
+
+    expect(httpClient.get).toHaveBeenCalledWith(API_ROUTES.ADMIN_USERS.SUMMARY, {
+      params: { period: "THIS_YEAR" },
+    });
+  });
 });
 
 describe("admin-users service", () => {

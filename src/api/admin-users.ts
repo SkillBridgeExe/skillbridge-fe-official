@@ -40,6 +40,30 @@ export interface PaginatedAdminUsers {
   limit: number;
 }
 
+export type AdminRevenuePeriod =
+  | "TODAY"
+  | "YESTERDAY"
+  | "THIS_WEEK"
+  | "THIS_MONTH"
+  | "LAST_MONTH"
+  | "THIS_YEAR"
+  | "LAST_YEAR"
+  | "CUSTOM";
+
+export interface AdminRevenueWindow {
+  period: AdminRevenuePeriod | "ROLLING_DAYS";
+  from: string;
+  to: string;
+  timezone: "Asia/Ho_Chi_Minh";
+}
+
+export interface AdminUserSummaryQuery {
+  period?: AdminRevenuePeriod;
+  from?: string;
+  to?: string;
+  rangeDays?: number;
+}
+
 export interface AdminUserSummary {
   rangeDays: number;
   totals: {
@@ -49,10 +73,12 @@ export interface AdminUserSummary {
     suspendedUsers: number;
     newUsers: number;
     paidRevenueVnd: number;
+    paidOrderCount: number;
     cvCount: number;
     matchCount: number;
     interviewCount: number;
   };
+  window: AdminRevenueWindow;
   roleDistribution: Array<{ role: AdminUserRole | string; count: number }>;
   statusDistribution: Array<{ status: AdminUserStatus | string; count: number }>;
   registrationTrend: Array<{ date: string; count: number }>;
@@ -156,7 +182,7 @@ export async function getAdminUsersApi(query: AdminUsersQuery): Promise<Paginate
   return envelope.data;
 }
 
-export async function getAdminUserSummaryApi(query: { rangeDays?: number }): Promise<AdminUserSummary> {
+export async function getAdminUserSummaryApi(query: AdminUserSummaryQuery): Promise<AdminUserSummary> {
   const envelope = await unwrapEnvelope<ApiEnvelope<AdminUserSummary>>(
     httpClient.get(API_ROUTES.ADMIN_USERS.SUMMARY, { params: query }),
     "Failed to load admin user summary.",

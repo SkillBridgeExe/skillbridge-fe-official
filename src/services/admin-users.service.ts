@@ -5,6 +5,7 @@ import {
   replaceAdminUserRolesApi,
   updateAdminUserStatusApi,
   type AdminUsersQuery,
+  type AdminUserSummaryQuery,
   type ReplaceAdminUserRolesDto,
   type UpdateAdminUserStatusDto,
 } from "@/api/admin-users";
@@ -14,9 +15,12 @@ export type {
   AdminUserDetail,
   AdminUserListItem,
   AdminUserRole,
+  AdminRevenuePeriod,
+  AdminRevenueWindow,
   AdminUserSkill,
   AdminUserStatus,
   AdminUserSummary,
+  AdminUserSummaryQuery,
   AdminUsersQuery,
   PaginatedAdminUsers,
   ReplaceAdminUserRolesDto,
@@ -27,7 +31,7 @@ export function getAdminUsers(query: AdminUsersQuery) {
   return getAdminUsersApi(query);
 }
 
-export function getAdminUserSummary(query: { rangeDays?: number }) {
+export function getAdminUserSummary(query: AdminUserSummaryQuery) {
   return getAdminUserSummaryApi(query);
 }
 

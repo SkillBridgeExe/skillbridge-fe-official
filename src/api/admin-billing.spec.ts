@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import {
+  reconcileAdminPaymentOrdersApi,
   getAdminBillingFeaturesApi,
   updateAdminPlanFeatureApi,
 } from "./admin-billing";
@@ -70,5 +71,26 @@ describe("admin-billing api", () => {
       { limitValue: -1, period: "MONTHLY" },
     );
     expect(httpClient.put).not.toHaveBeenCalled();
+  });
+
+  it("reconciles pending payment orders through the Admin PayOS route", async () => {
+    vi.mocked(httpClient.post).mockReturnValueOnce(
+      ok({
+        provider: "PAYOS",
+        attempted: 2,
+        settled: 1,
+        terminal: 0,
+        pending: 1,
+        failed: 0,
+        results: [],
+      }) as never,
+    );
+
+    await reconcileAdminPaymentOrdersApi({ period: "THIS_YEAR" });
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.ADMIN_BILLING.RECONCILE_ORDERS,
+      { period: "THIS_YEAR" },
+    );
   });
 });
