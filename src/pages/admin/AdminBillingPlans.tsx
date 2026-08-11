@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, Loader2, Pencil, Plus, Save } from "lucide-react";
+import { Info, Loader2, Pencil, Plus, Save, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AdminIconActionButton from "@/components/admin/AdminIconActionButton";
 import { Button } from "@/components/ui/button";
@@ -777,10 +777,9 @@ function QuotaEditorTable({
                           ) : null}
                         </div>
                       ) : usageByFeature ? (
-                        <div className="inline-flex items-center rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-xs font-semibold">
-                          {t("billing.admin.plans.usersCount", {
-                            count: usageByFeature[feature.featureKey] ?? 0,
-                          })}
+                        <div className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap bg-muted/40 text-muted-foreground">
+                          <Users className="h-3 w-3" />
+                          {t("billing.admin.plans.usersCount", { count: usageByFeature[feature.featureKey] ?? 0 })}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
