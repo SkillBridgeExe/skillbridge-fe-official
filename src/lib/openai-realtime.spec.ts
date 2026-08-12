@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   OpenAIRealtimeSession,
-  RealtimeFirstAudioWatchdog,
+  RealtimeResponseWatchdog,
   type RealtimeEvent,
 } from "./openai-realtime";
 
@@ -71,26 +71,77 @@ describe("OpenAIRealtimeSession", () => {
       type: "transcript_failed",
       data: "Unable to transcribe Vietnamese audio.",
     });
-    expect(events.some((event) => event.type === "error")).toBe(false);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "transport_error" || event.type === "disconnected",
+      ),
+    ).toBe(false);
   });
 
-  it("maps current OpenAI Realtime output audio speaking lifecycle events", () => {
+  it("uses the WebRTC output buffer lifecycle instead of generation deltas", () => {
+    const session = new OpenAIRealtimeSession();
+    const events = collectEvents(session);
+    const handleEvent = (value: unknown) =>
+      (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+        JSON.stringify(value),
+      );
+
+    handleEvent({
+      type: "response.output_audio.delta",
+      response_id: "response_1",
+      delta: "base64-audio",
+    });
+    handleEvent({
+      type: "response.done",
+      response: { id: "response_1", status: "completed" },
+    });
+
+    expect(events.map((event) => event.type)).toEqual(["response_done"]);
+
+    handleEvent({
+      type: "output_audio_buffer.started",
+      response_id: "response_1",
+    });
+    handleEvent({
+      type: "output_audio_buffer.stopped",
+      response_id: "response_1",
+    });
+    handleEvent({
+      type: "output_audio_buffer.cleared",
+      response_id: "response_2",
+    });
+
+    expect(events.slice(1)).toEqual([
+      { type: "ai_speaking", responseId: "response_1" },
+      { type: "ai_stopped", responseId: "response_1" },
+      { type: "ai_interrupted", responseId: "response_2" },
+    ]);
+  });
+
+  it("keeps recoverable server errors separate from transport failures", () => {
     const session = new OpenAIRealtimeSession();
     const events = collectEvents(session);
 
     (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
       JSON.stringify({
-        type: "response.output_audio.delta",
-        delta: "base64-audio",
-      }),
-    );
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
-      JSON.stringify({
-        type: "response.output_audio.done",
+        type: "error",
+        error: {
+          message: "Response already completed.",
+          code: "response_cancel_not_active",
+          event_id: "client_event_12",
+        },
       }),
     );
 
-    expect(events).toEqual([{ type: "ai_speaking" }, { type: "ai_stopped" }]);
+    expect(events).toEqual([
+      {
+        type: "server_error",
+        data: "Response already completed.",
+        errorCode: "response_cancel_not_active",
+        clientEventId: "client_event_12",
+      },
+    ]);
   });
 
   it("asks realtime to produce audio with the current response.create schema", () => {
@@ -111,6 +162,7 @@ describe("OpenAIRealtimeSession", () => {
     );
 
     expect(sent[0]).toEqual({
+      event_id: expect.any(String),
       type: "conversation.item.create",
       item: {
         type: "message",
@@ -126,6 +178,7 @@ describe("OpenAIRealtimeSession", () => {
       },
     });
     expect(sent[1]).toEqual({
+      event_id: expect.any(String),
       type: "response.create",
       response: {
         output_modalities: ["audio"],
@@ -199,6 +252,7 @@ describe("OpenAIRealtimeSession", () => {
 
     expect(sent).toEqual([
       {
+        event_id: expect.any(String),
         type: "response.create",
         response: {
           output_modalities: ["audio"],
@@ -362,6 +416,7 @@ describe("OpenAIRealtimeSession", () => {
     });
 
     expect(sent[0]).toEqual({
+      event_id: expect.any(String),
       type: "conversation.item.create",
       item: {
         type: "function_call_output",
@@ -376,6 +431,7 @@ describe("OpenAIRealtimeSession", () => {
       /ADVANCE_TOPIC|fallbackQuestion|frontend nào/,
     );
     expect(sent[1]).toEqual({
+      event_id: expect.any(String),
       type: "response.create",
       response: {
         output_modalities: ["audio"],
@@ -385,6 +441,32 @@ describe("OpenAIRealtimeSession", () => {
         ),
       },
     });
+  });
+
+  it("sends at most one active response.create for a directive", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: Array<{ type?: string }> = [];
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+      }
+    ).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+    const directive = {
+      directiveId: "directive_once",
+      action: "FOLLOW_UP" as const,
+      fallbackQuestion: "B?n ?? tr?c ti?p quy?t ??nh ph?n k? thu?t n?o?",
+      language: "vi" as const,
+    };
+
+    session.submitToolOutput("call_1", directive);
+    session.submitToolOutput("call_1", directive);
+
+    expect(
+      sent.filter((event) => event.type === "response.create"),
+    ).toHaveLength(1);
   });
 
   it("maps response creation, transcript response ids, and every response.done status", () => {
@@ -444,26 +526,43 @@ describe("OpenAIRealtimeSession", () => {
       })),
     );
   });
-  it("retries first-audio once, then falls back and clears timers", () => {
+  it("never retries an active response and retries once only after terminal failure", () => {
     vi.useFakeTimers();
+    const slow = vi.fn();
     const retry = vi.fn();
     const fallback = vi.fn();
-    const watchdog = new RealtimeFirstAudioWatchdog(4_000);
+    const watchdog = new RealtimeResponseWatchdog(4_000);
 
-    watchdog.start("directive_1", retry, fallback);
+    watchdog.start("directive_1", { slow, retry, fallback });
+    watchdog.markResponseCreated("directive_1");
     vi.advanceTimersByTime(4_000);
+    expect(slow).toHaveBeenCalledOnce();
+    expect(retry).not.toHaveBeenCalled();
+    expect(fallback).not.toHaveBeenCalled();
+
+    watchdog.markResponseTerminal("directive_1", "failed");
     expect(retry).toHaveBeenCalledOnce();
     expect(fallback).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(4_000);
+    watchdog.markResponseCreated("directive_1");
+    watchdog.markResponseTerminal("directive_1", "incomplete");
     expect(retry).toHaveBeenCalledOnce();
     expect(fallback).toHaveBeenCalledOnce();
 
-    watchdog.start("directive_2", retry, fallback);
+    watchdog.start("directive_2", { slow, retry, fallback });
     watchdog.clearAll();
     vi.advanceTimersByTime(4_000);
     expect(retry).toHaveBeenCalledOnce();
     vi.useRealTimers();
+  });
+
+  it("does not emit a lost-connection event for intentional cleanup", () => {
+    const session = new OpenAIRealtimeSession();
+    const events = collectEvents(session);
+
+    session.disconnect();
+
+    expect(events).toEqual([]);
   });
   it("cancels and truncates active output for barge-in, then clears handlers on disconnect", () => {
     const session = new OpenAIRealtimeSession();
@@ -497,9 +596,10 @@ describe("OpenAIRealtimeSession", () => {
     session.disconnect();
 
     expect(sent).toEqual([
-      { type: "response.cancel" },
-      { type: "output_audio_buffer.clear" },
+      { event_id: expect.any(String), type: "response.cancel" },
+      { event_id: expect.any(String), type: "output_audio_buffer.clear" },
       {
+        event_id: expect.any(String),
         type: "conversation.item.truncate",
         item_id: "item_1",
         content_index: 0,
