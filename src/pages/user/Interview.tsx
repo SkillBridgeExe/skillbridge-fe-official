@@ -87,6 +87,7 @@ import {
   getInterviewHistoryDetailState,
   getInterviewHistoryState,
   getRealtimeTokenFallbackReason,
+  isInterviewAnalysisSettled,
   readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
@@ -267,8 +268,8 @@ export default function Interview() {
   const uploadCvForInterviewMutation = useUploadCvForInterview();
   const createCvMatchForInterviewMutation = useCreateCvMatchForInterview();
   const submitRealtimeTurnMutation = useSubmitRealtimeInterviewTurn();
-  const endInterviewMutation = useEndInterview();
-  const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
+  const { mutateAsync: endInterviewAsync } = useEndInterview();
+  const { mutateAsync: refreshRealtimeTokenAsync } = useRefreshRealtimeToken();
   const interviewEntitlementsQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
@@ -1109,12 +1110,7 @@ export default function Interview() {
         let detail = initial;
         for (let attempt = 0; attempt < 45; attempt += 1) {
           if (detail) {
-            const settled =
-              detail.analysisStatus === "READY" ||
-              detail.analysisStatus === "NOT_REQUIRED" ||
-              detail.status === "COMPLETED" ||
-              detail.status === "CANCELLED";
-            if (settled) return detail;
+            if (isInterviewAnalysisSettled(detail)) return detail;
             if (detail.analysisStatus === "FAILED") {
               throw new Error("Interview analysis failed.");
             }
@@ -1133,7 +1129,7 @@ export default function Interview() {
 
 
       try {
-        const received = await endInterviewMutation.mutateAsync({ sessionId });
+        const received = await endInterviewAsync({ sessionId });
         markExitEndHandled();
         const detail = await waitForAnalysis(received);
         if (!detail) throw new Error("Interview analysis timed out.");
@@ -1160,14 +1156,16 @@ export default function Interview() {
       activeSession?.id,
       applyEndedInterview,
       disconnectRealtime,
-      endInterviewMutation,
+      endInterviewAsync,
       markExitEndHandled,
       stopMedia,
       t,
     ],
   );
 
-  finishInterviewRef.current = finishInterview;
+  useEffect(() => {
+    finishInterviewRef.current = finishInterview;
+  }, [finishInterview]);
 
   const handleSubmitAnswer = async () => {
     const answer = userAnswer.trim();
@@ -1223,9 +1221,7 @@ export default function Interview() {
       }
       if (!stream || stream.getAudioTracks().length === 0) return false;
 
-      const realtime = await refreshRealtimeTokenMutation.mutateAsync(
-        activeSession.id,
-      );
+      const realtime = await refreshRealtimeTokenAsync(activeSession.id);
       if (!realtime.enabled || !realtime.clientSecret) return false;
       if (realtime.protocolVersion !== INTERVIEW_REALTIME_PROTOCOL_VERSION) {
         throw new Error(
@@ -1247,7 +1243,7 @@ export default function Interview() {
     activeSession?.id,
     canUseApi,
     connectRealtime,
-    refreshRealtimeTokenMutation,
+    refreshRealtimeTokenAsync,
     requestSessionMedia,
     t,
   ]);
@@ -1735,6 +1731,7 @@ export default function Interview() {
             isMicActive={isMicActive}
             isReconnecting={realtimeState.transport.status === "RECONNECTING"}
             isEnding={isEnding}
+            forceTextMode={realtimeState.transport.status === "TEXT_FALLBACK"}
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
             onSubmitText={handleSubmitAnswer}

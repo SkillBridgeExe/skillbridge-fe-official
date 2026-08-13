@@ -35,6 +35,7 @@ function renderSession(
       isMicActive
       isReconnecting={false}
       isEnding={false}
+      forceTextMode={false}
       userAnswer=""
       setUserAnswer={vi.fn()}
       onSubmitText={vi.fn()}
@@ -79,5 +80,11 @@ describe("InterviewSession", () => {
 
     expect(screen.getAllByText(/Reconnecting/).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Switch to text" })).toBeInTheDocument();
+  });
+
+  it("opens the text input automatically after transport falls back", () => {
+    renderSession({ isConnected: false, forceTextMode: true });
+
+    expect(screen.getByPlaceholderText(/Type your answer/)).toBeInTheDocument();
   });
 });

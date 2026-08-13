@@ -1803,6 +1803,7 @@ export default {
           "Please sign in with a real SkillBridge account before starting an interview.",
         startFailed: "Failed to start interview.",
         endFailed: "Failed to end interview.",
+        turnFailed: "Could not save this interview turn. Please try again.",
         submitFailed: "Failed to submit answer.",
         microphoneUnavailableSameSession:
           "Microphone is unavailable. Continue in text mode in this same session.",

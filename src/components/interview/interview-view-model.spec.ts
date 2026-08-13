@@ -26,6 +26,7 @@ import {
   writeInterviewVoicePreference,
   computeAnswerCeilingMs,
   computeAnswerOvertimeDisplay,
+  isInterviewAnalysisSettled,
 } from "./interview-view-model";
 
 const detail: InterviewDetailResponseDto = {
@@ -91,6 +92,32 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
+  it("does not settle a completed session while analysis is pending or failed", () => {
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "PENDING" })).toBe(false);
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "FAILED" })).toBe(false);
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "READY" })).toBe(true);
+    expect(isInterviewAnalysisSettled({ status: "CANCELLED", analysisStatus: "NOT_REQUIRED" })).toBe(true);
+  });
+
+  it("drops malformed score explanation enums instead of exposing unsafe result values", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      finalScore: {
+        score_explanations: [
+          {
+            dimension: { unexpected: true },
+            score: 80,
+            band: "solid",
+            uncertainty: "low",
+            weight: 1,
+            rubric_anchor: "Evidence",
+          },
+        ],
+      },
+    } as unknown as InterviewDetailResponseDto);
+
+    expect(result.scoreExplanations).toEqual([]);
+  });
   it.each([
     "Role-only practice for React. No CV or job description was provided.",
     "do not repeat these recent question fingerprints: react state",
@@ -105,7 +132,7 @@ describe("interview view model", () => {
   it("allows normal Vietnamese interviewer text", () => {
     expect(
       containsInterviewInternalMarker(
-        "Cáº£m Æ¡n báº¡n. Báº¡n cÃ³ thá»ƒ ká»ƒ rÃµ tÃ­nh nÄƒng frontend mÃ  báº¡n trá»±c tiáº¿p xÃ¢y dá»±ng khÃ´ng?",
+        "Cảm ơn bạn. Bạn có thể kể rõ tính năng frontend mà bạn trực tiếp xây dựng không?",
       ),
     ).toBe(false);
   });

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assessCandidateCapture,
@@ -15,6 +16,7 @@ function runtime(session: OpenAIRealtimeSession) {
     responseQueue: unknown[];
     pendingPlaybackSpeech: Map<string, unknown>;
     ignoredPlaybackSpeechItemIds: Map<string, unknown>;
+    bargeInArmed: boolean;
   };
 }
 
@@ -113,7 +115,51 @@ describe("candidate capture guard", () => {
 
 describe("OpenAIRealtimeSession single-loop scheduler", () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("ignores a stale handshake after disconnect closes its peer", async () => {
+    let resolveFetch: ((value: { ok: boolean; text: () => Promise<string> }) => void) | undefined;
+    const fetchPromise = new Promise<{ ok: boolean; text: () => Promise<string> }>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const setRemoteDescription = vi.fn().mockResolvedValue(undefined);
+    class FakePeerConnection {
+      connectionState = "new";
+      ontrack = null;
+      onconnectionstatechange = null;
+      createDataChannel = () => ({
+        readyState: "connecting",
+        onopen: null,
+        onmessage: null,
+        onerror: null,
+        onclose: null,
+        close: vi.fn(),
+        send: vi.fn(),
+      });
+      addTrack = vi.fn();
+      createOffer = vi.fn().mockResolvedValue({ type: "offer", sdp: "offer" });
+      setLocalDescription = vi.fn().mockResolvedValue(undefined);
+      setRemoteDescription = setRemoteDescription;
+      close = vi.fn();
+    }
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection);
+    vi.stubGlobal("fetch", vi.fn(() => fetchPromise));
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const session = new OpenAIRealtimeSession();
+    const stream = { getAudioTracks: () => [{ enabled: true }] } as unknown as MediaStream;
+    const connecting = session.connect({ clientSecret: "secret", stream });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    session.disconnect();
+    resolveFetch?.({ ok: true, text: async () => "answer" });
+
+    await expect(connecting).resolves.toBeUndefined();
+    expect(setRemoteDescription).not.toHaveBeenCalled();
+  });
 
   it("sends exactly one tool-free response.create per candidate turn", () => {
     const session = new OpenAIRealtimeSession();
@@ -184,6 +230,43 @@ describe("OpenAIRealtimeSession single-loop scheduler", () => {
       }),
     );
     expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+  });
+
+  it("releases a response that never receives response.created and retries only once", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+
+    vi.advanceTimersByTime(12_000);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+
+    vi.advanceTimersByTime(12_000);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+    expect(runtime(session).activeResponse).toBeNull();
+  });
+
+  it("restarts the barge-in arm window when duplicate audio-start events arrive", () => {
+    const session = new OpenAIRealtimeSession();
+    openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-duplicate-start", status: "in_progress" },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-duplicate-start" }),
+    );
+    vi.advanceTimersByTime(400);
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-duplicate-start" }),
+    );
+
+    vi.advanceTimersByTime(300);
+    expect(runtime(session).bargeInArmed).toBe(false);
+    vi.advanceTimersByTime(400);
+    expect(runtime(session).bargeInArmed).toBe(true);
   });
 
   it("commits completed-without-audio through one synthetic stopped event without a duplicate response", () => {

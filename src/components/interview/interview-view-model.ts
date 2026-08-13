@@ -230,6 +230,12 @@ export type InterviewEndIntent = "cancel" | "score";
 export type InterviewEndOutcome = "cancelled" | "scored";
 export type LiveTranscriptWarning = "cjk" | "promptLeak";
 
+export function isInterviewAnalysisSettled(
+  session: Pick<InterviewDetailResponseDto, "status" | "analysisStatus">,
+): boolean {
+  return session.analysisStatus === "READY" || session.analysisStatus === "NOT_REQUIRED";
+}
+
 export interface InterviewVoicePreference {
   voice: InterviewVoice;
   speechSpeed: InterviewSpeechSpeed;
@@ -719,19 +725,27 @@ function readScoreExplanations(
     .map((item): InterviewScoreExplanationViewModel | null => {
       if (!isRecord(item)) return null;
       const rub = readString(item.rubric_anchor);
-      if (!rub) return null;
+      const dimension = readString(item.dimension);
+      const band = readString(item.band);
+      const uncertainty = readString(item.uncertainty);
+      if (
+        !rub ||
+        !dimension ||
+        !["technical_depth", "problem_solving", "communication", "evidence_credibility", "role_fit"].includes(dimension) ||
+        !band ||
+        !["poor", "borderline", "solid", "outstanding"].includes(band) ||
+        !uncertainty ||
+        !["low", "medium", "high"].includes(uncertainty)
+      ) return null;
       return {
-        dimension: (item.dimension ||
-          "") as InterviewScoreExplanationViewModel["dimension"],
+        dimension: dimension as InterviewScoreExplanationViewModel["dimension"],
         score: readNumber(item.score) ?? 0,
-        band: (item.band ||
-          "poor") as InterviewScoreExplanationViewModel["band"],
+        band: band as InterviewScoreExplanationViewModel["band"],
         weight: readNumber(item.weight) ?? 0,
         rubric_anchor: rub,
         evidence_quote: readString(item.evidence_quote),
         linked_question_id: readString(item.linked_question_id),
-        uncertainty: (item.uncertainty ||
-          "medium") as InterviewScoreExplanationViewModel["uncertainty"],
+        uncertainty: uncertainty as InterviewScoreExplanationViewModel["uncertainty"],
         improvement_hint: readString(item.improvement_hint),
       };
     })

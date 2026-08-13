@@ -1799,6 +1799,7 @@ export default {
           "Hãy đăng nhập bằng tài khoản SkillBridge thật trước khi bắt đầu phỏng vấn.",
         startFailed: "Không thể bắt đầu phỏng vấn.",
         endFailed: "Không thể kết thúc phỏng vấn.",
+        turnFailed: "Không thể lưu lượt phỏng vấn này. Vui lòng thử lại.",
         submitFailed: "Không thể gửi câu trả lời.",
         microphoneUnavailableSameSession:
           "Microphone không khả dụng. Tiếp tục bằng text trong cùng session này.",

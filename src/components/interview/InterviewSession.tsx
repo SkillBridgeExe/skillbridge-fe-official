@@ -38,6 +38,7 @@ interface InterviewSessionProps {
   isMicActive: boolean;
   isReconnecting: boolean;
   isEnding: boolean;
+  forceTextMode: boolean;
   userAnswer: string;
   setUserAnswer: (value: string) => void;
   onSubmitText: () => void;
@@ -64,6 +65,7 @@ export function InterviewSession({
   isMicActive,
   isReconnecting,
   isEnding,
+  forceTextMode,
   userAnswer,
   setUserAnswer,
   onSubmitText,
@@ -73,10 +75,11 @@ export function InterviewSession({
   onEnd,
   apiError,
 }: InterviewSessionProps) {
-  const [showText, setShowText] = useState(false);
+  const [textRequested, setTextRequested] = useState(false);
+  const showText = forceTextMode || textRequested;
 
   const switchToText = () => {
-    setShowText(true);
+    setTextRequested(true);
     onSwitchToText();
   };
   const copy = isVietnamese

@@ -248,6 +248,7 @@ export class OpenAIRealtimeSession {
   private bargeInArmed = false;
   private disconnectGraceTimer: ReturnType<typeof setTimeout> | null = null;
   private disconnectEventEmitted = false;
+  private connectionAttempt = 0;
   private interruptedResponseIds = new Set<string>();
   private requestedClientTurnIds = new Set<string>();
   private pendingPlaybackSpeech = new Map<string, PendingPlaybackSpeech>();
@@ -266,6 +267,7 @@ export class OpenAIRealtimeSession {
 
   async connect({ clientSecret, stream, initialMicEnabled = true }: ConnectRealtimeOptions): Promise<void> {
     this.disconnect();
+    const connectionAttempt = ++this.connectionAttempt;
     this.intentionalDisconnect = false;
     this.disconnectEventEmitted = false;
     const pc = new RTCPeerConnection();
@@ -273,7 +275,8 @@ export class OpenAIRealtimeSession {
     this.peerConnection = pc;
     this.dataChannel = dc;
     this.localStream = stream;
-    this.connectAbortController = new AbortController();
+    const abortController = new AbortController();
+    this.connectAbortController = abortController;
     this.remoteAudio = document.createElement("audio");
     this.remoteAudio.autoplay = true;
 
@@ -306,16 +309,26 @@ export class OpenAIRealtimeSession {
       track.enabled = initialMicEnabled;
       pc.addTrack(track, stream);
     }
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    const response = await fetch("https://api.openai.com/v1/realtime/calls", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${clientSecret}`, "Content-Type": "application/sdp" },
-      body: offer.sdp,
-      signal: this.connectAbortController.signal,
-    });
-    if (!response.ok) throw new Error((await response.text().catch(() => "")) || "Failed to connect OpenAI Realtime.");
-    await pc.setRemoteDescription({ type: "answer", sdp: await response.text() });
+    try {
+      const offer = await pc.createOffer();
+      if (connectionAttempt !== this.connectionAttempt || pc !== this.peerConnection) return;
+      await pc.setLocalDescription(offer);
+      if (connectionAttempt !== this.connectionAttempt || pc !== this.peerConnection) return;
+      const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${clientSecret}`, "Content-Type": "application/sdp" },
+        body: offer.sdp,
+        signal: abortController.signal,
+      });
+      if (connectionAttempt !== this.connectionAttempt || pc !== this.peerConnection) return;
+      if (!response.ok) throw new Error((await response.text().catch(() => "")) || "Failed to connect OpenAI Realtime.");
+      const answer = await response.text();
+      if (connectionAttempt !== this.connectionAttempt || pc !== this.peerConnection) return;
+      await pc.setRemoteDescription({ type: "answer", sdp: answer });
+    } catch (error) {
+      if (connectionAttempt !== this.connectionAttempt || pc !== this.peerConnection) return;
+      throw error;
+    }
   }
 
   setMicEnabled(enabled: boolean): void {
@@ -418,6 +431,7 @@ export class OpenAIRealtimeSession {
   }
 
   disconnect(): void {
+    this.connectionAttempt += 1;
     this.intentionalDisconnect = true;
     this.connected = false;
     this.clearDisconnectGrace();
@@ -493,7 +507,9 @@ export class OpenAIRealtimeSession {
     }, 4_000);
     active.hangTimer = setTimeout(() => {
       if (this.activeResponse !== active) return;
-      this.cancelResponse();
+      if (active.responseId) this.cancelResponse();
+      else this.send({ type: "response.cancel" });
+      this.retryOrRelease(active, "failed");
     }, 12_000);
     this.send({
       type: "response.create",
@@ -634,11 +650,8 @@ export class OpenAIRealtimeSession {
     const retry: ScheduledResponse | null = canRetry
       ? { purpose: active.purpose, clientTurnId: active.clientTurnId, instructions: active.instructions, retried: true }
       : null;
+    if (retry) this.responseQueue.unshift(retry);
     this.releaseActive(active.responseId ?? undefined);
-    if (retry) {
-      this.responseQueue.unshift(retry);
-      this.flushQueue();
-    }
   }
 
   private handleEvent(raw: unknown): void {
@@ -768,6 +781,7 @@ export class OpenAIRealtimeSession {
       }
       this.activeAudioStartedAt = performance.now();
       this.bargeInArmed = false;
+      if (this.bargeInTimer !== null) clearTimeout(this.bargeInTimer);
       this.bargeInTimer = setTimeout(() => {
         this.bargeInArmed = true;
         for (const itemId of this.pendingPlaybackSpeech.keys()) this.resolvePlaybackSpeech(itemId);
