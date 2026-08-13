@@ -1463,6 +1463,13 @@ export default {
         cancelled: "Cancelled",
         unknown: "Unknown",
       },
+      session: {
+        voiceState: {
+          listening: "Listening",
+          thinking: "Thinking",
+          speaking: "Speaking",
+        },
+      },
       detail: {
         title: "Previous Interview Result",
         subtitle:
@@ -1620,19 +1627,7 @@ export default {
           dialogDesc: "Please ensure you understand these guidelines for the best interview experience.",
           dialogCancel: "Cancel",
           dialogConfirm: "Got it, start now",
-        },
-        modes: {
-          guided: {
-            title: "Guided Voice",
-            description:
-              "AI reads each question aloud; you answer one question at a time.",
-          },
-          realtime: {
-            title: "Live Conversation",
-            description: "AI listens and responds like a live interviewer.",
-          },
-        },
-        voice: {
+        },        voice: {
           title: "Interviewer voice",
           description:
             "Choose the voice and pace before starting. These settings apply to this session.",
@@ -1658,75 +1653,8 @@ export default {
           },
         },
         starting: "Starting...",
-        startLiveRealtime: "Start Live Conversation",
-        startGuidedVoice: "Start Guided Voice",
-        startInterview: "Start Interview",
-      },
-      session: {
-        timeRemaining: "Time remaining",
-        answered: "{{count}} answered",
-        left: "{{count}} left",
-        end: "End",
-        ending: "Ending",
-        fullscreen: "Fullscreen",
-        exitFullscreen: "Exit fullscreen",
-        speaking: "Speaking",
-        thinking: "Thinking",
-        ready: "Ready",
-        videoFallback: "The interview can continue without video.",
-        live: "LIVE",
-        fallbackQuestionBadge: "Fallback question",
-        transcriptTitle: "Interview Transcript",
-        transcriptSubtitle: "Submit one answer at a time",
-        liveTranscriptSubtitle: "Captured automatically",
-        toggleMicrophone: "Press mic when you answer",
-        pauseResumeMicrophone: "Pause or resume automatic listening",
-        reconnectVoice: "Reconnect voice",
-        generatingNextQuestion: "Generating next question...",
-        viewResults: "View Results",
-        liveMicOn: "Live mic is on",
-        liveMicMuted: "Live mic is muted",
-        paceNudge: "Try to wrap up your key point",
-        realtimeMic: {
-          manual: "Use text fallback to answer.",
-          interviewerSpeaking: "Interviewer is speaking. Listening is paused.",
-          submitting: "Submitting your answer...",
-          listening: "Listening automatically. Start answering when ready.",
-          paused: "Listening paused. Press the mic to resume.",
-        },
-        spokenPlaceholder:
-          "Press the mic when you speak; your transcript appears here. Edit only if it is wrong.",
-        textPlaceholder: "Text fallback: type your answer here.",
-        submitAnswer: "Submit Answer",
-        questionMeta: {
-          title: "Question focus",
-          curated: "Curated bank",
-          fallback: "AI fallback",
-          phase: "Phase",
-          skill: "Skill",
-          thread: "Thread",
-          bankKey: "Bank key: {{key}}",
-        },
-        mode: {
-          textFallback: "Text fallback",
-          liveRealtime: "Live Conversation",
-          guidedVoice: "Guided Voice",
-        },
-      },
-      liveReview: {
-        title: "Review live transcript",
-        description:
-          "Edit the interviewer questions and your answers before generating the final score.",
-        turn: "Turn {{count}}",
-        needsReview: "Needs review",
-        questionLabel: "Interviewer question",
-        answerLabel: "Your answer",
-        warning:
-          "Some transcript text looks like the wrong language or leaked system prompt. Fix it before scoring.",
-        back: "Back",
-        confirmScore: "Submit reviewed transcript",
-      },
-      endConfirmation: {
+        startLiveRealtime: "Start Live Conversation",        startInterview: "Start Interview",
+      },    endConfirmation: {
         cancelTitle: "Cancel this interview?",
         cancelDescription:
           "You have not submitted any answers. Ending now will cancel the session and no score will be generated.",
@@ -1880,6 +1808,7 @@ export default {
           "Please sign in with a real SkillBridge account before starting an interview.",
         startFailed: "Failed to start interview.",
         endFailed: "Failed to end interview.",
+        turnFailed: "Could not save this interview turn. Please try again.",
         submitFailed: "Failed to submit answer.",
         microphoneUnavailableSameSession:
           "Microphone is unavailable. Continue in text mode in this same session.",

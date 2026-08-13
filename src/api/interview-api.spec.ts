@@ -2,16 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { getAccessToken } from "@/services/auth-token.service";
-import {
-  endInterview,
-  getInterviewQuestionAudio,
-  getInterviewDetail,
-  getInterviewHistory,
-  refreshRealtimeToken,
-  sendBestEffortInterviewEnd,
-  startInterview,
-  submitInterviewTurn,
-} from "./interview-api";
+import { endInterview, getInterviewDetail, getInterviewHistory, refreshRealtimeToken, sendBestEffortInterviewEnd, startInterview } from "./interview-api";
 
 vi.mock("@/api/core/http-client", () => ({
   httpClient: {
@@ -52,7 +43,7 @@ describe("interview-api", () => {
       jobDescriptionId: "jd-1",
       targetRole: "frontend_developer",
       language: "vi",
-      mode: "HYBRID",
+      mode: "VOICE",
       interviewType: "TECHNICAL",
       status: "IN_PROGRESS",
       totalQuestionsPlanned: 7,
@@ -87,7 +78,7 @@ describe("interview-api", () => {
       jobDescriptionId: "jd-1",
       targetRole: "frontend_developer",
       language: "vi",
-      mode: "HYBRID",
+      mode: "VOICE",
       interviewType: "TECHNICAL",
     });
 
@@ -97,41 +88,11 @@ describe("interview-api", () => {
       jobDescriptionId: "jd-1",
       targetRole: "frontend_developer",
       language: "vi",
-      mode: "HYBRID",
+      mode: "VOICE",
       interviewType: "TECHNICAL",
     });
     expect(result.id).toBe("session-1");
     expect(result.firstQuestion).toContain("gioi thieu");
-  });
-
-  it("submits answers to /turn using camelCase payload", async () => {
-    vi.mocked(httpClient.post).mockReturnValueOnce(
-      ok({
-        session: { id: "session-1", status: "IN_PROGRESS" },
-        answeredTurn: { id: "turn-1", turnOrder: 1 },
-        nextTurn: null,
-        aiMessage: "Cam on ban",
-        nextQuestion: null,
-        finished: true,
-      }) as never,
-    );
-
-    const result = await submitInterviewTurn({
-      sessionId: "session-1",
-      userAnswer: "Em dung React Query.",
-      userTranscript: "Em dung React Query.",
-      modality: "AUDIO",
-      durationSeconds: 42,
-    });
-
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.TURN, {
-      sessionId: "session-1",
-      userAnswer: "Em dung React Query.",
-      userTranscript: "Em dung React Query.",
-      modality: "AUDIO",
-      durationSeconds: 42,
-    });
-    expect(result.finished).toBe(true);
   });
 
   it("ends and reads interviews through canonical platform endpoints", async () => {
@@ -144,9 +105,11 @@ describe("interview-api", () => {
     await getInterviewHistory();
     await getInterviewDetail("session-1");
 
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.END, {
-      sessionId: "session-1",
-    });
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.INTERVIEW.END,
+      { sessionId: "session-1" },
+      { timeout: 90_000 },
+    );
     expect(httpClient.get).toHaveBeenNthCalledWith(1, API_ROUTES.INTERVIEW.HISTORY, {
       params: { page: 1, limit: 10 },
     });
@@ -162,33 +125,6 @@ describe("interview-api", () => {
 
     expect(httpClient.get).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.HISTORY, {
       params: { page: 1, limit: 10, scoredOnly: true },
-    });
-  });
-
-  it("sends reviewed live realtime turns when ending a voice interview", async () => {
-    vi.mocked(httpClient.post).mockReturnValueOnce(ok({ id: "session-1", turns: [] }) as never);
-
-    await endInterview("session-1", [
-      {
-        turnOrder: 1,
-        interviewerQuestion: "Bạn đã thiết kế API đó như thế nào?",
-        userAnswerText: "Em tách controller, service và repository.",
-        userAnswerTranscript: "Em tách controller, service và repository.",
-        durationSeconds: 55,
-      },
-    ]);
-
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.END, {
-      sessionId: "session-1",
-      liveTurns: [
-        {
-          turnOrder: 1,
-          interviewerQuestion: "Bạn đã thiết kế API đó như thế nào?",
-          userAnswerText: "Em tách controller, service và repository.",
-          userAnswerTranscript: "Em tách controller, service và repository.",
-          durationSeconds: 55,
-        },
-      ],
     });
   });
 
@@ -210,65 +146,6 @@ describe("interview-api", () => {
       API_ROUTES.INTERVIEW.REALTIME_TOKEN("session-1"),
     );
     expect(result.enabled).toBe(false);
-  });
-
-  it("loads current question audio through the safe session-owned route", async () => {
-    const blob = new Blob(["audio"], { type: "audio/mpeg" });
-    vi.mocked(httpClient.post).mockReturnValueOnce(Promise.resolve({ data: blob }) as never);
-
-    const result = await getInterviewQuestionAudio("session-1");
-
-    expect(httpClient.post).toHaveBeenCalledWith(
-      API_ROUTES.INTERVIEW.QUESTION_AUDIO("session-1"),
-      undefined,
-      { responseType: "blob", timeout: 60_000 },
-    );
-    expect(result).toBe(blob);
-  });
-
-  it("unwraps serialized StreamableFile audio envelopes from the backend", async () => {
-    const blob = new Blob(
-      [
-        JSON.stringify({
-          success: true,
-          message: null,
-          data: {
-            options: {
-              type: "audio/mpeg",
-              length: 5,
-            },
-            stream: {
-              _readableState: {
-                buffer: [
-                  { type: "Buffer", data: [255, 243] },
-                  { type: "Buffer", data: [196, 196, 0] },
-                ],
-              },
-            },
-          },
-          errors: null,
-        }),
-      ],
-      { type: "application/json" },
-    );
-    vi.mocked(httpClient.post).mockReturnValueOnce(Promise.resolve({ data: blob }) as never);
-
-    const result = await getInterviewQuestionAudio("session-1");
-
-    expect(result.type).toBe("audio/mpeg");
-    expect([...new Uint8Array(await result.arrayBuffer())]).toEqual([255, 243, 196, 196, 0]);
-  });
-
-  it("surfaces backend error details when question audio is not playable audio", async () => {
-    const blob = new Blob(
-      [JSON.stringify({ success: false, message: "OPENAI_API_KEY is not set" })],
-      { type: "application/json" },
-    );
-    vi.mocked(httpClient.post).mockReturnValueOnce(Promise.resolve({ data: blob }) as never);
-
-    await expect(getInterviewQuestionAudio("session-1")).rejects.toThrow(
-      "OPENAI_API_KEY is not set",
-    );
   });
 
   it("fires a keepalive authorized request for exit-time best-effort ends", () => {

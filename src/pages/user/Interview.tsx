@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
@@ -35,12 +42,11 @@ import { QUERY_KEYS } from "@/constants/app";
 import { getMyCredits, getMyEntitlements } from "@/services/billing.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
-  getInterviewQuestionAudio,
   getInterviewDetail,
   type InterviewDetailResponseDto,
   type InterviewSessionDto,
-  type InterviewTurnDto,
-  type AnswerInterviewResponseDto,
+  type InterviewExperienceMode,
+  type RealtimeCandidateIntent,
 } from "@/api/interview-api";
 import {
   useCvListForInterview,
@@ -51,7 +57,7 @@ import {
   useInterviewHistory,
   useRefreshRealtimeToken,
   useStartInterview,
-  useSubmitInterviewTurn,
+  useSubmitRealtimeInterviewTurn,
   useUploadCvForInterview,
 } from "@/hooks/use-interview";
 import { ResultsView } from "@/components/interview/ResultsView";
@@ -61,10 +67,8 @@ import { InterviewSetup } from "@/components/interview/InterviewSetup";
 import { InterviewSession } from "@/components/interview/InterviewSession";
 import {
   AVAILABLE_TARGET_ROLES,
-  DEFAULT_INTERVIEW_MODE,
   STEP_ICONS,
   type ChatMessage,
-  type InterviewMode,
   type InterviewPhase,
   type InterviewSpeechSpeed,
   type InterviewType,
@@ -73,99 +77,138 @@ import {
 } from "@/components/interview/types";
 import {
   buildInterviewInitialMessages,
-  buildInterviewNextMessages,
+  containsInterviewInternalMarker,
   buildInterviewStartRequest,
-  buildBufferedRealtimeTurnRequest,
-  classifyRealtimeTranscriptIntent,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
-  createQuestionAudioRequestGuard,
   formatDuration,
   getInterviewEndIntent,
   getInterviewEndOutcome,
   getInterviewHistoryDetailState,
   getInterviewHistoryState,
-  getInterviewQuestionBankSourceKind,
-  getQuestionAudioErrorMessage,
   getRealtimeTokenFallbackReason,
-  hasPendingRealtimeAnswer,
+  isInterviewAnalysisSettled,
   readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
-  shouldRequestQuestionAudio,
-  speakOfficialRealtimeQuestion,
   takeRecentInterviewSessions,
   writeInterviewVoicePreference,
-  type InterviewQuestionBankSourceKind,
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
-import { OpenAIRealtimeSession, type RealtimeEvent } from "@/lib/openai-realtime";
-import { acquireInterviewMedia } from "@/lib/interview-media";
-import { useAnswerPace } from "@/hooks/use-answer-pace";
+import {
+  assessCandidateCapture,
+  CandidateTurnBuffer,
+  OpenAIRealtimeSession,
+  type RealtimeEvent,
+  type CandidateTurn,
+} from "@/lib/openai-realtime";
+import {
+  acquireInterviewMedia,
+  stopInterviewMedia,
+} from "@/lib/interview-media";
+import {
+  interviewSessionReducer,
+  initialInterviewSessionState,
+} from "@/components/interview/interview-session-machine";
+
 
 type EndReason = "manual" | "timer" | "finished";
-const REALTIME_MIC_REOPEN_DELAY_MS = 450;
-const REALTIME_ANSWER_BUFFER_IDLE_MS = 1300;
 
-interface CurrentQuestionMetadata {
-  topicPhase: string | null;
-  skillCanonical: string | null;
-  currentThread: string | null;
-  questionBankKey: string | null;
-  sourceKind: InterviewQuestionBankSourceKind;
+function normalizeIntentText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
-function questionMetadataFromTurn(
-  turn: Pick<InterviewTurnDto, "topicPhase" | "skillCanonical" | "currentThread" | "questionBankKey"> | null,
-  targetRole: string,
-): CurrentQuestionMetadata {
-  return {
-    topicPhase: turn?.topicPhase ?? null,
-    skillCanonical: turn?.skillCanonical ?? null,
-    currentThread: turn?.currentThread ?? null,
-    questionBankKey: turn?.questionBankKey ?? null,
-    sourceKind: turn?.questionBankKey ? "curated" : getInterviewQuestionBankSourceKind(targetRole),
+function classifyIntent(value: string): RealtimeCandidateIntent {
+  const text = normalizeIntentText(value);
+  if (/\b(khong biet|chua biet|i do not know|dont know)\b/.test(text))
+    return "NO_ANSWER";
+  if (/\b(nhac lai|repeat)\b/.test(text)) return "REPEAT";
+  if (/\b(lam ro|giai thich cau hoi|clarify)\b/.test(text)) return "CLARIFY";
+  if (/\b(de hon|easier)\b/.test(text)) return "EASIER";
+  if (/\b(goi y|hint)\b/.test(text)) return "HINT";
+  if (/\b(nhan xet|feedback)\b/.test(text)) return "FEEDBACK";
+  if (/\b(bo qua|doi chu de|skip|next question)\b/.test(text)) return "SKIP";
+  if (/\b(ket thuc phong van|end interview|stop interview)\b/.test(text))
+    return "END";
+  return "ANSWER";
+}
+
+function extractSpokenQuestion(transcript: string, fallback = ""): string {
+  const normalized = transcript.trim().normalize("NFC");
+  const questions = normalized.match(/[^.!?？]+[?？]/g);
+  return questions?.at(-1)?.trim() || fallback;
+}
+
+function interviewerTurnText(message: string, question: string): string {
+  return [message.trim(), question.trim()].filter(Boolean).join(" ");
+}
+
+const INTERVIEW_REALTIME_PROTOCOL_VERSION = "interview-realtime-v3";
+
+function controlText(intent: RealtimeCandidateIntent, language: "vi" | "en"): string {
+  const values: Record<RealtimeCandidateIntent, { vi: string; en: string }> = {
+    ANSWER: { vi: "Câu trả lời", en: "Answer" },
+    NO_ANSWER: { vi: "Tôi chưa biết câu này.", en: "I do not know this one." },
+    REPEAT: { vi: "Hãy nhắc lại câu hỏi.", en: "Please repeat the question." },
+    CLARIFY: { vi: "Hãy làm rõ câu hỏi.", en: "Please clarify the question." },
+    EASIER: { vi: "Cho tôi một câu dễ hơn.", en: "Please ask an easier question." },
+    HINT: { vi: "Cho tôi một gợi ý.", en: "Please give me a hint." },
+    FEEDBACK: { vi: "Cho tôi nhận xét nhanh.", en: "Please give me quick feedback." },
+    SKIP: { vi: "Bỏ qua và đổi chủ đề.", en: "Skip this and change topic." },
+    END: { vi: "Kết thúc phỏng vấn.", en: "End the interview." },
   };
+  return values[intent][language];
 }
-
 export default function Interview() {
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const posthog = usePostHog();
   const [phase, setPhase] = useState<InterviewPhase>("setup");
-  const [workspaceTab, setWorkspaceTab] = useState<InterviewWorkspaceTab>("practice");
+  const [workspaceTab, setWorkspaceTab] =
+    useState<InterviewWorkspaceTab>("practice");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState(AVAILABLE_TARGET_ROLES[0].value);
   const [selectedLanguage, setSelectedLanguage] = useState<"vi" | "en">("vi");
-  const [interviewMode, setInterviewMode] = useState<InterviewMode>(DEFAULT_INTERVIEW_MODE);
-  const [interviewType, setInterviewType] = useState<InterviewType>("technical");
-  const [voicePreference, setVoicePreference] = useState<InterviewVoicePreference>(() =>
-    readInterviewVoicePreference(typeof window === "undefined" ? null : window.localStorage),
+  const [experienceMode, setExperienceMode] =
+    useState<InterviewExperienceMode>("MOCK");
+  const [realtimeState, dispatchRealtime] = useReducer(
+    interviewSessionReducer,
+    initialInterviewSessionState,
   );
-  const [activeSession, setActiveSession] = useState<InterviewSessionDto | null>(null);
-  const [resultDetail, setResultDetail] = useState<InterviewDetailResponseDto | null>(null);
-  const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<string | null>(null);
+  const isMicActive =
+    realtimeState.mic.trackAvailable && !realtimeState.mic.userMuted;
+  const [interviewType, setInterviewType] =
+    useState<InterviewType>("technical");
+  const [voicePreference, setVoicePreference] =
+    useState<InterviewVoicePreference>(() =>
+      readInterviewVoicePreference(
+        typeof window === "undefined" ? null : window.localStorage,
+      ),
+    );
+  const [activeSession, setActiveSession] =
+    useState<InterviewSessionDto | null>(null);
+  const [resultDetail, setResultDetail] =
+    useState<InterviewDetailResponseDto | null>(null);
+  const [selectedHistorySessionId, setSelectedHistorySessionId] = useState<
+    string | null
+  >(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
-  const [currentQuestionMeta, setCurrentQuestionMeta] = useState<CurrentQuestionMetadata | null>(null);
-  const [currentTurnTrace, setCurrentTurnTrace] = useState<AnswerInterviewResponseDto["turnTrace"] | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
-  const [interviewFinished, setInterviewFinished] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [isVoiceFallback, setIsVoiceFallback] = useState(false);
-  const [voiceFallbackReason, setVoiceFallbackReason] = useState<string | null>(null);
-  const [isMicActive, setIsMicActive] = useState(false);
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [isQuestionAudioPlaying, setIsQuestionAudioPlaying] = useState(false);
-  const [questionAudioError, setQuestionAudioError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -173,36 +216,38 @@ export default function Interview() {
   const activeSessionRef = useRef<InterviewSessionDto | null>(null);
   const currentQuestionRef = useRef("");
   const currentInterviewerMessageRef = useRef("");
-  const questionAudioRef = useRef<HTMLAudioElement | null>(null);
-  const questionAudioUrlRef = useRef<string | null>(null);
-  const questionAudioGuardRef = useRef(createQuestionAudioRequestGuard());
-  const acceptsUserSpeechRef = useRef(false);
   const questionStartedAtRef = useRef<Date | null>(null);
-  const liveAiMessageIdRef = useRef<string | null>(null);
-  const liveQuestionBufferRef = useRef("");
-  const liveLastQuestionRef = useRef("");
-  const isRealtimeTurnSubmittingRef = useRef(false);
   /** P3 speech timing: when the mic actually opened for this turn / delay to first speech. */
   const micOpenedAtRef = useRef<number | null>(null);
   const firstSpeechDelayMsRef = useRef<number | null>(null);
-  const submitRealtimeTranscriptRef = useRef<(transcript: string) => void>(() => undefined);
-  const micReopenTimerRef = useRef<number | null>(null);
-  const realtimeAnswerBufferRef = useRef<string[]>([]);
-  const realtimeAnswerFlushTimerRef = useRef<number | null>(null);
-  const submittedRealtimeQuestionRef = useRef<string | null>(null);
-  const realtimeTurnSubmitPromiseRef = useRef<Promise<void> | null>(null);
-  const flushRealtimeAnswerBufferRef = useRef<
-    (options?: { force?: boolean }) => Promise<void>
-  >(async () => undefined);
+  const candidateTurnBufferRef = useRef<CandidateTurnBuffer | null>(null);
+  const candidateTurnsByIdRef = useRef(new Map<string, CandidateTurn>());
+  const candidateIntentByTurnRef = useRef(
+    new Map<string, RealtimeCandidateIntent>(),
+  );
+  const captureRetryTurnIdsRef = useRef(new Set<string>());
+  const assistantTranscriptByResponseRef = useRef(new Map<string, string>());
+  const firstAudioAtByResponseRef = useRef(new Map<string, string>());
+  const interruptedResponseIdsRef = useRef(new Set<string>());
+  const committedResponseIdsRef = useRef(new Set<string>());
+  const responseClientTurnIdRef = useRef(new Map<string, string>());
+  const currentTurnIdRef = useRef<string | null>(null);
+  const lastAssistantTranscriptRef = useRef("");
+  const captureFailureCountRef = useRef(0);
+  const commitQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const userMutedRef = useRef(false);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
+  const finishInterviewRef = useRef<(reason: EndReason) => Promise<void>>(
+    async () => undefined,
+  );
   const liveClosingRequestedRef = useRef(false);
-  /** I-PACE: answer budget (seconds) for the CURRENT turn. null → degrade (no pace UI). */
-  const currentTimeBudgetRef = useRef<number | null>(null);
-  const [currentTimeBudget, setCurrentTimeBudget] = useState<number | null>(null);
 
   const canUseApi = useAuthStore(
-    (state) => state.authStatus === "authenticated" && state.isAuthenticated && state.authSource === "api",
+    (state) =>
+      state.authStatus === "authenticated" &&
+      state.isAuthenticated &&
+      state.authSource === "api",
   );
 
   const sidebarMode = useAuthStore(
@@ -215,13 +260,16 @@ export default function Interview() {
     canUseApi && phase === "history-detail",
   );
   const cvListQuery = useCvListForInterview(canUseApi);
-  const cvMatchesQuery = useCvMatchesForInterview(selectedCvId, canUseApi && Boolean(selectedCvId));
+  const cvMatchesQuery = useCvMatchesForInterview(
+    selectedCvId,
+    canUseApi && Boolean(selectedCvId),
+  );
   const startInterviewMutation = useStartInterview();
   const uploadCvForInterviewMutation = useUploadCvForInterview();
   const createCvMatchForInterviewMutation = useCreateCvMatchForInterview();
-  const submitTurnMutation = useSubmitInterviewTurn();
-  const endInterviewMutation = useEndInterview();
-  const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
+  const submitRealtimeTurnMutation = useSubmitRealtimeInterviewTurn();
+  const { mutateAsync: endInterviewAsync } = useEndInterview();
+  const { mutateAsync: refreshRealtimeTokenAsync } = useRefreshRealtimeToken();
   const interviewEntitlementsQuery = useQuery({
     queryKey: QUERY_KEYS.BILLING_ENTITLEMENTS,
     queryFn: getMyEntitlements,
@@ -238,8 +286,9 @@ export default function Interview() {
     (feature) => feature.feature === "interview_session",
   );
   const purchasedInterviewCredits =
-    interviewCreditsQuery.data?.find((credit) => credit.creditType === "INTERVIEW_SESSION")
-      ?.balance ?? 0;
+    interviewCreditsQuery.data?.find(
+      (credit) => credit.creditType === "INTERVIEW_SESSION",
+    )?.balance ?? 0;
 
   useEffect(() => {
     activeSessionRef.current = activeSession;
@@ -281,13 +330,11 @@ export default function Interview() {
   });
   const showPracticeSetup = phase === "setup" && workspaceTab === "practice";
   const showHistoryList = phase === "setup" && workspaceTab === "history";
-  const answeredCount = chatHistory.filter((message) => message.role === "user").length;
+  const answeredCount = chatHistory.filter(
+    (message) => message.role === "user",
+  ).length;
   const endIntent = getInterviewEndIntent(answeredCount);
   const recentInterviewSessions = takeRecentInterviewSessions(interviewHistory);
-  const totalQuestionsPlanned = activeSession?.totalQuestionsPlanned ?? null;
-  const currentQuestionNumber = totalQuestionsPlanned
-    ? Math.min(answeredCount + 1, totalQuestionsPlanned)
-    : answeredCount + 1;
   const maxDurationSeconds = activeSession?.maxDurationSeconds ?? 0;
   const timeRemainingLabel = activeSession?.expiresAt
     ? formatDuration(secondsRemaining)
@@ -297,7 +344,14 @@ export default function Interview() {
     () =>
       INTERVIEW_SETUP_STEPS.map((step) => {
         if (step.id === "choose-cv") {
-          return { ...step, status: selectedCvId ? "completed" : phase === "setup" ? "active" : "completed" };
+          return {
+            ...step,
+            status: selectedCvId
+              ? "completed"
+              : phase === "setup"
+                ? "active"
+                : "completed",
+          };
         }
         if (step.id === "choose-context") {
           return { ...step, status: targetRole ? "completed" : "pending" };
@@ -305,73 +359,68 @@ export default function Interview() {
         if (step.id === "interview") {
           return {
             ...step,
-            status: phase === "results" ? "completed" : phase === "interviewing" ? "active" : "pending",
+            status:
+              phase === "results"
+                ? "completed"
+                : phase === "interviewing"
+                  ? "active"
+                  : "pending",
           };
         }
         if (step.id === "result") {
-          return { ...step, status: phase === "results" || phase === "history-detail" ? "active" : "pending" };
+          return {
+            ...step,
+            status:
+              phase === "results" || phase === "history-detail"
+                ? "active"
+                : "pending",
+          };
         }
         return step;
       }),
     [phase, selectedCvId, targetRole],
   );
 
-  const completedSteps = steps.filter((step) => step.status === "completed").length;
+  const completedSteps = steps.filter(
+    (step) => step.status === "completed",
+  ).length;
   const progressPercent = (completedSteps / steps.length) * 100;
-  const scoredHistory = interviewHistory.filter((session) => session.overallScore != null);
+  const scoredHistory = interviewHistory.filter(
+    (session) => session.overallScore != null,
+  );
   const averageScore =
     scoredHistory.length > 0
-      ? Math.round(scoredHistory.reduce((sum, session) => sum + Number(session.overallScore), 0) / scoredHistory.length)
+      ? Math.round(
+          scoredHistory.reduce(
+            (sum, session) => sum + Number(session.overallScore),
+            0,
+          ) / scoredHistory.length,
+        )
       : 0;
   const bestScore =
     scoredHistory.length > 0
-      ? Math.max(...scoredHistory.map((session) => Math.round(Number(session.overallScore))))
+      ? Math.max(
+          ...scoredHistory.map((session) =>
+            Math.round(Number(session.overallScore)),
+          ),
+        )
       : 0;
-
-  const appendLiveAssistantTranscript = useCallback((delta: string) => {
-    const normalized = delta.normalize("NFC");
-    if (!normalized.trim()) return;
-
-    let messageId = liveAiMessageIdRef.current;
-    liveQuestionBufferRef.current = `${liveQuestionBufferRef.current}${normalized}`.normalize("NFC");
-    liveLastQuestionRef.current = liveQuestionBufferRef.current.trim() || liveLastQuestionRef.current;
-    setCurrentQuestion(liveLastQuestionRef.current);
-
-    setChatHistory((current) => {
-      if (!messageId) {
-        messageId = `live-ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        liveAiMessageIdRef.current = messageId;
-        return [
-          ...current,
-          {
-            id: messageId,
-            role: "ai",
-            content: normalized.trimStart(),
-            timestamp: new Date(),
-          },
-        ];
-      }
-
-      return current.map((message) =>
-        message.id === messageId
-          ? { ...message, content: `${message.content}${normalized}`.normalize("NFC") }
-          : message,
-      );
-    });
-  }, []);
 
   const dateLocale = i18n.language?.startsWith("vi") ? "vi-VN" : "en-US";
   const roleLabel = useCallback(
     (value: string): string =>
       t(`interview.roles.${value}`, {
-        defaultValue: AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ?? value.replace(/_/g, " "),
+        defaultValue:
+          AVAILABLE_TARGET_ROLES.find((role) => role.value === value)?.label ??
+          value.replace(/_/g, " "),
       }),
     [t],
   );
   const formatSessionDate = useCallback(
     (value: string): string => {
       const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return t("interview.history.unknownDate");
+      if (Number.isNaN(date.getTime()))
+        return t("interview.history.unknownDate");
       return new Intl.DateTimeFormat(dateLocale, {
         month: "short",
         day: "numeric",
@@ -382,13 +431,8 @@ export default function Interview() {
   );
 
   const stopMedia = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    stopInterviewMedia(mediaStreamRef.current, videoRef.current);
+    mediaStreamRef.current = null;
   }, []);
 
   const setSelectedVoice = useCallback((voice: InterviewVoice) => {
@@ -399,85 +443,46 @@ export default function Interview() {
     setVoicePreference((current) => ({ ...current, speechSpeed }));
   }, []);
 
-  const stopQuestionAudio = useCallback(() => {
-    questionAudioGuardRef.current.invalidate();
-    if (questionAudioRef.current) {
-      questionAudioRef.current.pause();
-      questionAudioRef.current.src = "";
-      questionAudioRef.current = null;
-    }
-    if (questionAudioUrlRef.current) {
-      URL.revokeObjectURL(questionAudioUrlRef.current);
-      questionAudioUrlRef.current = null;
-    }
-    setIsQuestionAudioPlaying(false);
-  }, []);
-
-  const clearMicReopenTimer = useCallback(() => {
-    if (micReopenTimerRef.current === null) return;
-    window.clearTimeout(micReopenTimerRef.current);
-    micReopenTimerRef.current = null;
-  }, []);
-
-  const clearRealtimeAnswerFlushTimer = useCallback(() => {
-    if (realtimeAnswerFlushTimerRef.current === null) return;
-    window.clearTimeout(realtimeAnswerFlushTimerRef.current);
-    realtimeAnswerFlushTimerRef.current = null;
-  }, []);
-
-  const resetRealtimeAnswerBuffer = useCallback(() => {
-    clearRealtimeAnswerFlushTimer();
-    realtimeAnswerBufferRef.current = [];
-    firstSpeechDelayMsRef.current = null;
-  }, [clearRealtimeAnswerFlushTimer]);
-
   const disconnectRealtime = useCallback(() => {
-    clearMicReopenTimer();
-    resetRealtimeAnswerBuffer();
-    liveSessionRef.current?.disconnect();
+    candidateTurnBufferRef.current?.clear();
+    candidateTurnBufferRef.current = null;
+    assistantTranscriptByResponseRef.current.clear();
+    firstAudioAtByResponseRef.current.clear();
+    interruptedResponseIdsRef.current.clear();
+    committedResponseIdsRef.current.clear();
+    responseClientTurnIdRef.current.clear();
+    candidateTurnsByIdRef.current.clear();
+    candidateIntentByTurnRef.current.clear();
+    captureRetryTurnIdsRef.current.clear();
+    commitQueueRef.current = Promise.resolve();
+    liveSessionRef.current?.destroy();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
-    setIsMicActive(false);
-    setIsAiSpeaking(false);
-    acceptsUserSpeechRef.current = false;
-    liveAiMessageIdRef.current = null;
-    liveQuestionBufferRef.current = "";
-  }, [clearMicReopenTimer, resetRealtimeAnswerBuffer]);
+    dispatchRealtime({ type: "SET_TRACK_AVAILABLE", available: false });
+  }, []);
 
-  const setVoiceFallback = useCallback((reason: string) => {
-    clearMicReopenTimer();
-    // Salvage anything already transcribed into the text box before the buffer
-    // is cleared — a voice failure must not silently discard the spoken answer.
-    const salvaged = realtimeAnswerBufferRef.current.join(" ").replace(/\s+/g, " ").trim();
-    if (salvaged) {
-      setUserAnswer((current) => (current.trim() ? current : salvaged));
-    }
-    resetRealtimeAnswerBuffer();
-    liveSessionRef.current?.disconnect();
-    liveSessionRef.current = null;
-    setIsLiveConnected(false);
-    setIsMicActive(false);
-    setIsAiSpeaking(false);
-    acceptsUserSpeechRef.current = false;
-    liveAiMessageIdRef.current = null;
-    liveQuestionBufferRef.current = "";
-    setIsVoiceFallback(true);
-    setVoiceFallbackReason(reason);
-  }, [clearMicReopenTimer, resetRealtimeAnswerBuffer]);
-
-  const requestSessionMedia = useCallback(
-    async (): Promise<MediaStream | null> => {
+  const setVoiceFallback = useCallback(
+    (reason: string) => {
+      disconnectRealtime();
+      setIsVoiceFallback(true);
+      setApiError(reason);
+      dispatchRealtime({ type: "SWITCH_TO_TEXT" });
+    },
+    [disconnectRealtime],
+  );
+  const requestSessionMedia =
+    useCallback(async (): Promise<MediaStream | null> => {
       if (!navigator.mediaDevices?.getUserMedia) {
         setWebcamError(t("interview.errors.mediaUnsupported"));
         return null;
       }
 
-      const { stream, microphoneError, cameraError } = await acquireInterviewMedia(
-        navigator.mediaDevices,
-      );
+      const { stream, microphoneError, cameraError } =
+        await acquireInterviewMedia(navigator.mediaDevices);
 
       if (!stream || microphoneError) {
-        const name = microphoneError instanceof DOMException ? microphoneError.name : "";
+        const name =
+          microphoneError instanceof DOMException ? microphoneError.name : "";
         setWebcamError(
           name === "NotFoundError"
             ? t("interview.errors.mediaNotFound")
@@ -494,7 +499,8 @@ export default function Interview() {
       }
 
       if (cameraError) {
-        const name = cameraError instanceof DOMException ? cameraError.name : "";
+        const name =
+          cameraError instanceof DOMException ? cameraError.name : "";
         setWebcamError(
           name === "NotFoundError"
             ? t("interview.errors.mediaNotFound")
@@ -504,200 +510,340 @@ export default function Interview() {
         setWebcamError(null);
       }
       return stream;
+    }, [stopMedia, t]);
+
+  const commitRealtimeExchange = useCallback(
+    (responseId: string, interrupted: boolean) => {
+      if (committedResponseIdsRef.current.has(responseId)) return;
+      const session = activeSessionRef.current;
+      const clientTurnId = responseClientTurnIdRef.current.get(responseId);
+      const candidateTurn = clientTurnId
+        ? candidateTurnsByIdRef.current.get(clientTurnId)
+        : undefined;
+      const transcript = assistantTranscriptByResponseRef.current
+        .get(responseId)
+        ?.trim()
+        .normalize("NFC");
+      if (!session || !clientTurnId || !candidateTurn || !transcript) return;
+      if (containsInterviewInternalMarker(transcript)) {
+        setApiError(
+          t("interview.errors.internalResponseBlocked", {
+            defaultValue: "Phản hồi không an toàn đã bị chặn. Bạn có thể tiếp tục bằng văn bản.",
+          }),
+        );
+        return;
+      }
+
+      committedResponseIdsRef.current.add(responseId);
+      const intent = candidateIntentByTurnRef.current.get(clientTurnId) ?? "ANSWER";
+      const captureRetry = captureRetryTurnIdsRef.current.has(clientTurnId);
+      const firstAudioAt = firstAudioAtByResponseRef.current.get(responseId);
+      const payload = {
+        kind: "REALTIME_EXCHANGE" as const,
+        clientTurnId,
+        questionTurnId: currentTurnIdRef.current,
+        input: {
+          type: captureRetry
+            ? ("CAPTURE_RETRY" as const)
+            : intent === "ANSWER"
+              ? ("ANSWER" as const)
+              : ("CONTROL" as const),
+          modality: candidateTurn.itemIds.length ? ("AUDIO" as const) : ("TEXT" as const),
+          ...(captureRetry || !candidateTurn.transcript
+            ? {}
+            : { transcript: candidateTurn.transcript }),
+          intent,
+          intentSource: candidateTurn.itemIds.length
+            ? ("VOICE_LEXICAL" as const)
+            : ("BUTTON" as const),
+          itemIds: candidateTurn.itemIds,
+          speechStartedAt: new Date(candidateTurn.startedAtMs).toISOString(),
+          speechEndedAt: new Date(candidateTurn.endedAtMs).toISOString(),
+          segmentCount: Math.max(1, candidateTurn.transcriptSegments),
+          ...(candidateTurn.meanLogprob === undefined
+            ? {}
+            : { meanLogprob: candidateTurn.meanLogprob }),
+        },
+        assistant: {
+          responseId,
+          transcript,
+          ...(firstAudioAt ? { firstAudioAt } : {}),
+          interrupted,
+        },
+      };
+
+      commitQueueRef.current = commitQueueRef.current
+        .then(async () => {
+          const result = await submitRealtimeTurnMutation.mutateAsync({
+            sessionId: session.id,
+            payload,
+          });
+          currentTurnIdRef.current = result.currentTurnId;
+          if (result.disposition !== "DUPLICATE" && result.assistant?.transcript) {
+            lastAssistantTranscriptRef.current = result.assistant.transcript;
+            setChatHistory((current) => [
+              ...current,
+              {
+                id: `ai-${responseId}`,
+                role: "ai",
+                content: result.assistant!.transcript,
+                timestamp: new Date(),
+              },
+            ]);
+          }
+          const question =
+            result.assistant?.question ??
+            extractSpokenQuestion(result.assistant?.transcript ?? "", currentQuestionRef.current);
+          if (question) {
+            currentQuestionRef.current = question;
+            setCurrentQuestion(question);
+          }
+          if (result.finished) await finishInterviewRef.current("finished");
+        })
+        .catch((error: unknown) => {
+          committedResponseIdsRef.current.delete(responseId);
+          setApiError(getApiErrorMessage(error, t("interview.errors.turnFailed")));
+        })
+        .finally(() => {
+          candidateTurnsByIdRef.current.delete(clientTurnId);
+          candidateIntentByTurnRef.current.delete(clientTurnId);
+          captureRetryTurnIdsRef.current.delete(clientTurnId);
+          responseClientTurnIdRef.current.delete(responseId);
+          assistantTranscriptByResponseRef.current.delete(responseId);
+          firstAudioAtByResponseRef.current.delete(responseId);
+          interruptedResponseIdsRef.current.delete(responseId);
+        });
     },
-    [stopMedia, t],
+    [submitRealtimeTurnMutation, t],
+  );
+
+  const handleCompletedCandidateTurn = useCallback(
+    (turn: CandidateTurn) => {
+      const session = activeSessionRef.current;
+      const realtime = liveSessionRef.current;
+      if (!session || !realtime || endingRef.current) return;
+      const language = session.language === "en" ? "en" : "vi";
+      const capture = assessCandidateCapture({
+        transcript: turn.transcript,
+        language,
+        currentQuestion: currentQuestionRef.current,
+        lastAssistantTranscript: lastAssistantTranscriptRef.current,
+        meanLogprob: turn.meanLogprob,
+      });
+      candidateTurnsByIdRef.current.set(turn.clientTurnId, turn);
+      dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+
+      if (!capture.accepted) {
+        captureFailureCountRef.current += 1;
+        captureRetryTurnIdsRef.current.add(turn.clientTurnId);
+        candidateIntentByTurnRef.current.set(turn.clientTurnId, "ANSWER");
+        realtime.requestCaptureRetry(turn.clientTurnId, language, currentQuestionRef.current);
+        if (captureFailureCountRef.current >= 2) {
+          setApiError(
+            t("interview.errors.captureRetryText", {
+              defaultValue: "Mic chưa nhận rõ hai lần. Bạn có thể chuyển sang nhập văn bản trong cùng buổi phỏng vấn.",
+            }),
+          );
+        }
+        return;
+      }
+
+      captureFailureCountRef.current = 0;
+      const intent = classifyIntent(turn.transcript);
+      candidateIntentByTurnRef.current.set(turn.clientTurnId, intent);
+      if (intent === "END") {
+        candidateTurnsByIdRef.current.delete(turn.clientTurnId);
+        candidateIntentByTurnRef.current.delete(turn.clientTurnId);
+        setIsEndDialogOpen(true);
+        dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+        return;
+      }
+      if (intent === "ANSWER" || intent === "NO_ANSWER") {
+        setChatHistory((current) => [
+          ...current,
+          {
+            id: `candidate-${turn.clientTurnId}`,
+            role: "user",
+            content: turn.transcript,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      if (intent === "ANSWER") realtime.requestCandidateResponse(turn);
+      else {
+        realtime.requestControl({
+          clientTurnId: turn.clientTurnId,
+          intent,
+          language,
+          currentQuestion: currentQuestionRef.current,
+        });
+      }
+    },
+    [t],
   );
 
   const connectRealtime = useCallback(
-    async (clientSecret: string, stream: MediaStream, liveConversation = false) => {
-      if (stream.getAudioTracks().length === 0) {
-        throw new Error(t("interview.errors.noMicrophoneTrack"));
-      }
-
+    async (clientSecret: string, stream: MediaStream) => {
+      disconnectRealtime();
       const realtimeSession = new OpenAIRealtimeSession();
       liveSessionRef.current = realtimeSession;
+      const language = activeSessionRef.current?.language === "en" ? "en" : "vi";
+      candidateTurnBufferRef.current = new CandidateTurnBuffer(
+        language === "vi" ? 1_100 : 700,
+        handleCompletedCandidateTurn,
+        400,
+      );
 
       realtimeSession.on((event: RealtimeEvent) => {
         switch (event.type) {
           case "connected":
             setIsLiveConnected(true);
-            setIsMicActive(false);
-            setIsVoiceFallback(false);
-            setVoiceFallbackReason(null);
-            acceptsUserSpeechRef.current = false;
+            setApiError(null);
+            dispatchRealtime({ type: "CONNECTED" });
+            dispatchRealtime({ type: "SET_TRACK_AVAILABLE", available: true });
             break;
           case "disconnected":
-            clearMicReopenTimer();
-            resetRealtimeAnswerBuffer();
             setIsLiveConnected(false);
-            setIsMicActive(false);
+            if (!endingRef.current) dispatchRealtime({ type: "CONNECTION_LOST", attempt: 1 });
             break;
-          case "user_transcript": {
-            const transcript = event.data?.trim();
-            if (!transcript) break;
-            if (liveConversation) {
-              if (acceptsUserSpeechRef.current) {
-                submitRealtimeTranscriptRef.current(transcript);
-              }
-            } else if (acceptsUserSpeechRef.current) {
-              setUserAnswer((current) => (current.trim() ? `${current.trim()}\n${transcript}` : transcript));
+          case "transport_error":
+            setApiError(event.data ?? t("interview.errors.realtimeVoiceFailed"));
+            break;
+          case "server_error":
+            setApiError(event.data ?? t("interview.errors.realtimeVoiceFailed"));
+            break;
+          case "response_slow":
+            setApiError(
+              t("interview.errors.slowResponse", {
+                defaultValue: "Alex đang phản hồi chậm hơn bình thường…",
+              }),
+            );
+            break;
+          case "speech_started": {
+            const itemId = event.itemId ?? `speech-${crypto.randomUUID()}`;
+            candidateTurnBufferRef.current?.speechStarted(itemId, Date.now());
+            if (firstSpeechDelayMsRef.current === null && micOpenedAtRef.current !== null) {
+              firstSpeechDelayMsRef.current = Math.max(0, Date.now() - micOpenedAtRef.current);
             }
             break;
           }
+          case "user_transcript":
+            if (event.data) {
+              candidateTurnBufferRef.current?.addTranscript(
+                event.data,
+                event.itemId ?? `transcript-${crypto.randomUUID()}`,
+                event.transcriptLogprobs,
+              );
+            }
+            break;
+          case "speech_stopped":
+            candidateTurnBufferRef.current?.speechStopped(
+              event.itemId ?? `speech-${crypto.randomUUID()}`,
+              Date.now(),
+            );
+            break;
+          case "response_created":
+            if (event.responseId && event.clientTurnId) {
+              responseClientTurnIdRef.current.set(event.responseId, event.clientTurnId);
+            }
+            break;
           case "ai_speaking":
-            clearMicReopenTimer();
-            clearRealtimeAnswerFlushTimer();
-            acceptsUserSpeechRef.current = false;
-            liveSessionRef.current?.setMicEnabled(false);
-            setIsMicActive(false);
-            setIsAiSpeaking(true);
+            if (event.responseId) {
+              firstAudioAtByResponseRef.current.set(event.responseId, new Date().toISOString());
+            }
+            setApiError(null);
+            dispatchRealtime({ type: "ASSISTANT_AUDIO_STARTED" });
+            break;
+          case "ai_transcript":
+            if (event.responseId && event.data) {
+              const current = assistantTranscriptByResponseRef.current.get(event.responseId) ?? "";
+              assistantTranscriptByResponseRef.current.set(event.responseId, current + event.data);
+              dispatchRealtime({ type: "ASSISTANT_SUBTITLE", subtitle: event.data });
+            }
+            break;
+          case "ai_transcript_done":
+            if (event.responseId && event.data) {
+              assistantTranscriptByResponseRef.current.set(
+                event.responseId,
+                event.data.trim().normalize("NFC"),
+              );
+            }
+            break;
+          case "ai_interrupted":
+            if (event.responseId) {
+              interruptedResponseIdsRef.current.add(event.responseId);
+              commitRealtimeExchange(event.responseId, true);
+            }
+            dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
             break;
           case "ai_stopped":
-            setIsAiSpeaking(false);
-            if (liveConversation) {
-              questionStartedAtRef.current = new Date();
-              clearMicReopenTimer();
-              micReopenTimerRef.current = window.setTimeout(() => {
-                micReopenTimerRef.current = null;
-                if (
-                  !liveSessionRef.current?.isConnected ||
-                  isRealtimeTurnSubmittingRef.current ||
-                  endingRef.current
-                ) {
-                  return;
-                }
-                acceptsUserSpeechRef.current = true;
-                liveSessionRef.current.setMicEnabled(true);
-                setIsMicActive(true);
-                micOpenedAtRef.current = Date.now();
-              }, REALTIME_MIC_REOPEN_DELAY_MS);
+            if (event.responseId && event.purpose !== "opening" && event.purpose !== "closing") {
+              commitRealtimeExchange(event.responseId, false);
+            }
+            dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+            realtimeSession.setMicEnabled(!userMutedRef.current);
+            micOpenedAtRef.current = Date.now();
+            break;
+          case "transcript_failed":
+            setApiError(
+              t("interview.errors.transcriptionFailed", {
+                defaultValue: "Chưa nhận rõ giọng nói. Bạn hãy thử lại hoặc chuyển sang nhập văn bản.",
+              }),
+            );
+            break;
+          case "response_done":
+            if (
+              event.responseStatus === "failed" ||
+              event.responseStatus === "incomplete"
+            ) {
+              setApiError(t("interview.errors.realtimeVoiceFailed"));
             }
             break;
-          case "transcript_failed": {
-            // One segment was lost to STT noise — the session and the buffered
-            // answer are intact. Tell the user; never tear down voice for this.
-            toast({
-              title: t("interview.errors.transcriptionFailedTitle", {
-                defaultValue: "Một đoạn nói không nghe rõ",
-              }),
-              description: t("interview.errors.transcriptionFailedDesc", {
-                defaultValue: "Có thể do ồn nền — phần đã ghi nhận vẫn còn, bạn cứ nói tiếp.",
-              }),
-            });
-            break;
-          }
-          case "error":
-            setVoiceFallback(event.data || t("interview.errors.realtimeVoiceFailed"));
-            break;
-          case "ai_transcript": {
-            if (!liveConversation && event.data) appendLiveAssistantTranscript(event.data);
-            break;
-          }
         }
       });
 
-      await realtimeSession.connect({ clientSecret, stream, initialMicEnabled: false });
-      realtimeSession.setMicEnabled(false);
-      acceptsUserSpeechRef.current = false;
-      setIsMicActive(false);
+      await realtimeSession.connect({
+        clientSecret,
+        stream,
+        initialMicEnabled: !userMutedRef.current,
+      });
+      realtimeSession.setMicEnabled(!userMutedRef.current);
+      micOpenedAtRef.current = Date.now();
     },
-    [
-      appendLiveAssistantTranscript,
-      clearMicReopenTimer,
-      clearRealtimeAnswerFlushTimer,
-      resetRealtimeAnswerBuffer,
-      setVoiceFallback,
-      t,
-      toast,
-    ],
+    [commitRealtimeExchange, disconnectRealtime, handleCompletedCandidateTurn, t],
   );
-
-  const playQuestionAudio = useCallback(
-    async (sessionId: string) => {
-      stopQuestionAudio();
-      const requestId = questionAudioGuardRef.current.next();
-      setQuestionAudioError(null);
-      setIsQuestionAudioPlaying(true);
-
-      try {
-        const blob = await getInterviewQuestionAudio(sessionId);
-        if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
-        const url = URL.createObjectURL(blob);
-        if (!questionAudioGuardRef.current.isCurrent(requestId)) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        const audio = new Audio(url);
-        questionAudioUrlRef.current = url;
-        questionAudioRef.current = audio;
-        audio.onended = () => {
-          if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
-          setIsQuestionAudioPlaying(false);
-          // The answer clock starts when the interviewer finishes reading the
-          // question — matching realtime's ai_stopped semantics. Without this,
-          // guided answers were billed the TTS playback and flagged overtime.
-          questionStartedAtRef.current = new Date();
-        };
-        audio.onerror = () => {
-          if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
-          setIsQuestionAudioPlaying(false);
-          setQuestionAudioError(t("interview.errors.questionAudioPlayFailed"));
-        };
-        await audio.play();
-      } catch (error) {
-        if (!questionAudioGuardRef.current.isCurrent(requestId)) return;
-        setIsQuestionAudioPlaying(false);
-        const fallback = t("interview.errors.questionAudioPlayFailed");
-        setQuestionAudioError(
-          getQuestionAudioErrorMessage(
-            error,
-            getApiErrorMessage(error, fallback),
-            t("interview.errors.questionAudioTimeout"),
-          ),
-        );
-      }
-    },
-    [stopQuestionAudio, t],
-  );
-
   const resetInterviewState = useCallback(() => {
     disconnectRealtime();
     stopMedia();
-    stopQuestionAudio();
     activeSessionRef.current = null;
     currentQuestionRef.current = "";
     currentInterviewerMessageRef.current = "";
-    isRealtimeTurnSubmittingRef.current = false;
     setActiveSession(null);
     setResultDetail(null);
     setSelectedHistorySessionId(null);
     setChatHistory([]);
     setCurrentQuestion("");
-    setCurrentQuestionMeta(null);
-    setCurrentTurnTrace(null);
     setUserAnswer("");
-    setInterviewFinished(false);
     setApiError(null);
     setWebcamError(null);
     setSecondsRemaining(0);
     setIsVoiceFallback(false);
-    setVoiceFallbackReason(null);
-    setQuestionAudioError(null);
     setIsLoading(false);
     setIsEnding(false);
     setIsEndDialogOpen(false);
     endingRef.current = false;
     autoEndRef.current = false;
     liveClosingRequestedRef.current = false;
-    acceptsUserSpeechRef.current = false;
+    committedResponseIdsRef.current.clear();
+    currentTurnIdRef.current = null;
+    lastAssistantTranscriptRef.current = "";
+    captureFailureCountRef.current = 0;
+    userMutedRef.current = false;
+    dispatchRealtime({ type: "SET_USER_MUTED", muted: false });
     questionStartedAtRef.current = null;
-    liveAiMessageIdRef.current = null;
-    liveQuestionBufferRef.current = "";
-    liveLastQuestionRef.current = "";
-    submittedRealtimeQuestionRef.current = null;
-    currentTimeBudgetRef.current = null;
-    setCurrentTimeBudget(null);
-  }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
+    firstSpeechDelayMsRef.current = null;
+    dispatchRealtime({ type: "CONNECTING" });
+  }, [disconnectRealtime, stopMedia]);
 
   const openHistoryDetail = useCallback(
     (sessionId: string) => {
@@ -792,7 +938,8 @@ export default function Interview() {
 
       try {
         setApiError(null);
-        const match = await createCvMatchForInterviewMutation.mutateAsync(input);
+        const match =
+          await createCvMatchForInterviewMutation.mutateAsync(input);
         setSelectedMatchId(match.id);
         await cvMatchesQuery.refetch();
         toast({
@@ -839,81 +986,77 @@ export default function Interview() {
           selectedMatchId,
           targetRole,
           selectedLanguage,
-          interviewMode,
           interviewType,
           voice: voicePreference.voice,
           speechSpeed: voicePreference.speechSpeed,
         }),
+        experienceMode,
       });
 
-      const initialMessages = buildInterviewInitialMessages(started.firstMessage, started.firstQuestion).map(
-        (content) => ({ role: "ai" as const, content, timestamp: new Date() }),
-      );
+      const initialMessages = buildInterviewInitialMessages(
+        started.firstMessage,
+        started.firstQuestion,
+      ).map((content) => ({
+        role: "ai" as const,
+        content,
+        timestamp: new Date(),
+      }));
 
       activeSessionRef.current = started;
       currentQuestionRef.current = started.firstQuestion;
       currentInterviewerMessageRef.current = started.firstMessage ?? "";
       setActiveSession(started);
       setCurrentQuestion(started.firstQuestion);
-      setCurrentQuestionMeta(
-        questionMetadataFromTurn(
-          { topicPhase: started.phase, skillCanonical: null, currentThread: null, questionBankKey: null },
-          started.targetRole,
-        ),
+      setSecondsRemaining(
+        secondsRemainingFromExpiry(started.expiresAt) ||
+          started.maxDurationSeconds,
       );
-      setSecondsRemaining(secondsRemainingFromExpiry(started.expiresAt) || started.maxDurationSeconds);
       setChatHistory(initialMessages);
       setPhase("interviewing");
       setSidebarOpen(false);
-      posthog?.capture("interview_started", { mode: interviewMode, type: interviewType, target_role: targetRole });
-      questionStartedAtRef.current = interviewMode === "realtime" ? null : new Date();
-      // I-PACE: set initial answer budget from start response.
-      const initialBudget = (started as { answerBudgetSeconds?: number }).answerBudgetSeconds ?? null;
-      currentTimeBudgetRef.current = initialBudget;
-      setCurrentTimeBudget(initialBudget);
+      posthog?.capture("interview_started", {
+        mode: "realtime",
+        experience_mode: experienceMode,
+        type: interviewType,
+        target_role: targetRole,
+      });
+      questionStartedAtRef.current = null;
 
       const stream = await requestSessionMedia();
-      let realtimeConnected = false;
-
       if (!stream || stream.getAudioTracks().length === 0) {
-        if (interviewMode === "realtime") {
-          setVoiceFallback(t("interview.errors.microphoneUnavailableSameSession"));
-        }
-      } else {
-        const tokenFallbackReason = getRealtimeTokenFallbackReason({
-          interviewMode,
-          realtimeEnabled: started.realtime.enabled,
-          clientSecret: started.realtime.clientSecret,
-          reason: started.realtime.reason,
-          fallbackMessage: t("interview.errors.realtimeTokenUnavailable"),
-        });
-
-        if (tokenFallbackReason) {
-          setVoiceFallback(tokenFallbackReason);
-        } else if (started.realtime.enabled && started.realtime.clientSecret) {
-          try {
-            await connectRealtime(started.realtime.clientSecret, stream, interviewMode === "realtime");
-            realtimeConnected = true;
-          } catch (error) {
-            if (interviewMode === "realtime") {
-              setVoiceFallback(getApiErrorMessage(error, t("interview.errors.realtimeVoiceFailed")));
-            }
-          }
-        }
+        setVoiceFallback(
+          t("interview.errors.microphoneUnavailableSameSession"),
+        );
+        return;
       }
 
-      if (interviewMode === "realtime" && realtimeConnected) {
-        acceptsUserSpeechRef.current = false;
-        liveSessionRef.current?.setMicEnabled(false);
-        setIsMicActive(false);
-        speakOfficialRealtimeQuestion(
-          liveSessionRef.current,
-          started.firstQuestion,
+      const tokenFallbackReason = getRealtimeTokenFallbackReason({
+        realtimeEnabled: started.realtime.enabled,
+        clientSecret: started.realtime.clientSecret,
+        reason: started.realtime.reason,
+        fallbackMessage: t("interview.errors.realtimeTokenUnavailable"),
+      });
+      if (tokenFallbackReason) {
+        setVoiceFallback(tokenFallbackReason);
+        return;
+      }
+
+      try {
+        if (started.realtime.protocolVersion !== INTERVIEW_REALTIME_PROTOCOL_VERSION) {
+          throw new Error(
+            `Realtime protocol mismatch: expected ${INTERVIEW_REALTIME_PROTOCOL_VERSION}, received ${started.realtime.protocolVersion}. Restart both dev servers.`,
+          );
+        }
+        currentTurnIdRef.current = started.currentTurnId;
+        await connectRealtime(started.realtime.clientSecret!, stream);
+        liveSessionRef.current?.requestOpening(
+          interviewerTurnText(started.firstMessage, started.firstQuestion),
           selectedLanguage,
-          started.firstMessage,
         );
-      } else if (shouldRequestQuestionAudio(interviewMode)) {
-        void playQuestionAudio(started.id);
+      } catch (error) {
+        setVoiceFallback(
+          getApiErrorMessage(error, t("interview.errors.realtimeVoiceFailed")),
+        );
       }
     } catch (error) {
       setApiError(getApiErrorMessage(error, t("interview.errors.startFailed")));
@@ -924,7 +1067,6 @@ export default function Interview() {
       setIsLoading(false);
     }
   };
-
   const applyEndedInterview = useCallback(
     (detail: InterviewDetailResponseDto) => {
       if (getInterviewEndOutcome(detail.status) === "cancelled") {
@@ -941,51 +1083,68 @@ export default function Interview() {
 
       setResultDetail(detail);
       setActiveSession(detail);
-      setInterviewFinished(true);
       setPhase("results");
       setSidebarOpen(true);
-      posthog?.capture("interview_completed", { session_id: detail.id, score: detail.overallScore });
+      posthog?.capture("interview_completed", {
+        session_id: detail.id,
+        score: detail.overallScore,
+      });
     },
     [posthog, resetInterviewState, t, toast],
   );
 
   const finishInterview = useCallback(
-    async (reason: EndReason = "manual", options?: { skipRealtimeFlush?: boolean }) => {
+    async (_reason: EndReason = "manual") => {
       const sessionId = activeSession?.id;
       if (!sessionId || endingRef.current) return;
 
       endingRef.current = true;
-      markExitEndHandled();
       setIsEnding(true);
       setIsLoading(false);
       setApiError(null);
-      if (!options?.skipRealtimeFlush) {
-        // End must not clear a spoken answer that is waiting for the idle
-        // flush or for an in-flight /turn request. The force flag bypasses the
-        // ending guard, while the submit promise prevents a double /turn.
-        try {
-          await flushRealtimeAnswerBufferRef.current({ force: true });
-        } catch {
-          // The final /end call is still required if the client-side flush has
-          // an unexpected failure; the BE already persists completed turns.
-        }
-      }
       disconnectRealtime();
       stopMedia();
-      stopQuestionAudio();
+      const waitForAnalysis = async (
+        initial?: InterviewDetailResponseDto,
+      ): Promise<InterviewDetailResponseDto | null> => {
+        let detail = initial;
+        for (let attempt = 0; attempt < 45; attempt += 1) {
+          if (detail) {
+            if (isInterviewAnalysisSettled(detail)) return detail;
+            if (detail.analysisStatus === "FAILED") {
+              throw new Error("Interview analysis failed.");
+            }
+          }
+          if (attempt === 44) break;
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 2_000));
+          try {
+            detail = await getInterviewDetail(sessionId);
+          } catch {
+            detail = undefined;
+          }
+        }
+        return null;
+      };
+
+
 
       try {
-        const detail = await endInterviewMutation.mutateAsync({ sessionId });
+        const received = await endInterviewAsync({ sessionId });
+        markExitEndHandled();
+        const detail = await waitForAnalysis(received);
+        if (!detail) throw new Error("Interview analysis timed out.");
         applyEndedInterview(detail);
       } catch (error) {
-        if (reason === "timer" || reason === "finished") {
-          try {
-            const detail = await getInterviewDetail(sessionId);
+        try {
+          const detail = await waitForAnalysis();
+          if (detail) {
+            markExitEndHandled();
             applyEndedInterview(detail);
             return;
-          } catch {
-            // Keep the original end error below.
           }
+        } catch (pollError) {
+          setApiError(getApiErrorMessage(pollError, t("interview.errors.endFailed")));
+          return;
         }
         setApiError(getApiErrorMessage(error, t("interview.errors.endFailed")));
       } finally {
@@ -997,320 +1156,55 @@ export default function Interview() {
       activeSession?.id,
       applyEndedInterview,
       disconnectRealtime,
-      endInterviewMutation,
+      endInterviewAsync,
       markExitEndHandled,
       stopMedia,
-      stopQuestionAudio,
       t,
     ],
   );
 
-  const flushRealtimeAnswerBuffer = useCallback(
-    async ({ force = false }: { force?: boolean } = {}) => {
-      clearRealtimeAnswerFlushTimer();
-      if (isRealtimeTurnSubmittingRef.current) {
-        await realtimeTurnSubmitPromiseRef.current?.catch(() => undefined);
-        return;
-      }
-      if (endingRef.current && !force) return;
-
-      const session = activeSessionRef.current;
-      const currentQuestionKey = currentQuestionRef.current.trim().normalize("NFC");
-      if (
-        !session ||
-        !hasPendingRealtimeAnswer({
-          currentQuestion: currentQuestionKey,
-          submittedQuestion: submittedRealtimeQuestionRef.current,
-          transcripts: realtimeAnswerBufferRef.current,
-        })
-      ) {
-        resetRealtimeAnswerBuffer();
-        return;
-      }
-      const now = new Date();
-      const durationSeconds = questionStartedAtRef.current
-        ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
-        : undefined;
-      const payload = buildBufferedRealtimeTurnRequest({
-        sessionId: session.id,
-        currentQuestion: currentQuestionKey,
-        transcripts: realtimeAnswerBufferRef.current,
-        durationSeconds,
-        responseDelayMs: firstSpeechDelayMsRef.current ?? undefined,
-      });
-      if (!payload) {
-        resetRealtimeAnswerBuffer();
-        if (liveSessionRef.current?.isConnected && !endingRef.current) {
-          acceptsUserSpeechRef.current = true;
-          liveSessionRef.current.setMicEnabled(true);
-          setIsMicActive(true);
-        }
-        return;
-      }
-
-      isRealtimeTurnSubmittingRef.current = true;
-      submittedRealtimeQuestionRef.current = currentQuestionKey;
-      resetRealtimeAnswerBuffer();
-      clearMicReopenTimer();
-      stopQuestionAudio();
-      acceptsUserSpeechRef.current = false;
-      liveSessionRef.current?.setMicEnabled(false);
-      setIsMicActive(false);
-      setChatHistory((current) => [
-        ...current,
-        { id: `live-user-${Date.now()}`, role: "user", content: payload.userAnswer, timestamp: now },
-      ]);
-      setIsLoading(true);
-      setApiError(null);
-
-      const submitPromise = (async () => {
-        try {
-          const response = await submitTurnMutation.mutateAsync(payload);
-        activeSessionRef.current = response.session;
-        setActiveSession(response.session);
-
-        const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
-        const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
-        currentQuestionRef.current = nextQuestion;
-        currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
-        submittedRealtimeQuestionRef.current = null;
-        setCurrentTurnTrace(response.turnTrace ?? null);
-        // I-PACE: update budget for next turn.
-        const nextBudget = response.nextTurn?.timeBudgetSeconds ?? null;
-        currentTimeBudgetRef.current = nextBudget;
-        setCurrentTimeBudget(nextBudget);
-        if (nextQuestion) {
-          setCurrentQuestion(nextQuestion);
-          setCurrentQuestionMeta(
-            response.nextTurn
-              ? questionMetadataFromTurn(response.nextTurn, response.session.targetRole)
-              : questionMetadataFromTurn(null, response.session.targetRole),
-          );
-        } else {
-          setCurrentQuestionMeta(null);
-        }
-
-        const nextMessages = buildInterviewNextMessages(nextAiMessage, nextQuestion).map((content) => ({
-          role: "ai" as const,
-          content,
-          timestamp: new Date(),
-        }));
-        if (nextMessages.length > 0) {
-          setChatHistory((current) => [...current, ...nextMessages]);
-        }
-
-        if (response.finished) {
-          setInterviewFinished(true);
-          await finishInterview("finished", { skipRealtimeFlush: true });
-          return;
-        }
-
-        questionStartedAtRef.current = null;
-        acceptsUserSpeechRef.current = false;
-        liveSessionRef.current?.setMicEnabled(false);
-        setIsMicActive(false);
-        speakOfficialRealtimeQuestion(liveSessionRef.current, nextQuestion, selectedLanguage, nextAiMessage);
-        } catch (error) {
-          submittedRealtimeQuestionRef.current = null;
-          setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
-          acceptsUserSpeechRef.current = true;
-          liveSessionRef.current?.setMicEnabled(true);
-          setIsMicActive(true);
-        } finally {
-          setIsLoading(false);
-          isRealtimeTurnSubmittingRef.current = false;
-        }
-      })();
-      realtimeTurnSubmitPromiseRef.current = submitPromise;
-      await submitPromise;
-      if (realtimeTurnSubmitPromiseRef.current === submitPromise) {
-        realtimeTurnSubmitPromiseRef.current = null;
-      }
-    },
-    [
-      clearMicReopenTimer,
-      clearRealtimeAnswerFlushTimer,
-      finishInterview,
-      resetRealtimeAnswerBuffer,
-      selectedLanguage,
-      stopQuestionAudio,
-      submitTurnMutation,
-      t,
-    ],
-  );
-  flushRealtimeAnswerBufferRef.current = flushRealtimeAnswerBuffer;
-
-  const scheduleRealtimeAnswerFlush = useCallback(() => {
-    clearRealtimeAnswerFlushTimer();
-    realtimeAnswerFlushTimerRef.current = window.setTimeout(() => {
-      realtimeAnswerFlushTimerRef.current = null;
-      void flushRealtimeAnswerBuffer();
-    }, REALTIME_ANSWER_BUFFER_IDLE_MS);
-  }, [clearRealtimeAnswerFlushTimer, flushRealtimeAnswerBuffer]);
-
-  const handleRealtimeTranscript = useCallback(
-    (transcript: string) => {
-      if (isRealtimeTurnSubmittingRef.current || endingRef.current) return;
-      const intent = classifyRealtimeTranscriptIntent(transcript);
-      // A command word only acts as a command at the START of a turn (empty
-      // buffer). Once the candidate is mid-answer, EVERY segment is answer
-      // content and must never be intercepted — a segment like "we use skip
-      // connections" or "...và dự án đã kết thúc" must not hijack or drop the
-      // answer (bug hunt R2 07-22). Never wipe the buffer on any branch.
-      const midAnswer = realtimeAnswerBufferRef.current.length > 0;
-
-      if (!midAnswer && intent === "repeat_question") {
-        acceptsUserSpeechRef.current = false;
-        liveSessionRef.current?.setMicEnabled(false);
-        setIsMicActive(false);
-        speakOfficialRealtimeQuestion(
-          liveSessionRef.current,
-          currentQuestionRef.current,
-          selectedLanguage,
-          currentInterviewerMessageRef.current,
-        );
-        return;
-      }
-
-      if (!midAnswer && intent === "clarify_question") {
-        acceptsUserSpeechRef.current = false;
-        liveSessionRef.current?.setMicEnabled(false);
-        setIsMicActive(false);
-        liveSessionRef.current?.explainOfficialQuestion(currentQuestionRef.current, selectedLanguage);
-        return;
-      }
-
-      if (!midAnswer && intent === "pause") {
-        // Hold the pending flush so thinking time doesn't submit a partial
-        // answer. Mic stays ON — muting here had no un-pause path, so a
-        // misheard "pause" used to dead-end the whole turn.
-        clearRealtimeAnswerFlushTimer();
-        return;
-      }
-
-      if (!midAnswer && intent === "end_interview") {
-        // Only a standalone end command with nothing buffered may end the
-        // session; "kết thúc" mid-answer is answer content and appends below.
-        void finishInterview("manual");
-        return;
-      }
-
-      if (!midAnswer && intent === "skip_question") {
-        // No skip API exists — say so instead of silently doing nothing. Do
-        // NOT return: fall through to append, so a real short answer that
-        // merely contains "skip"/"next" ("we use skip connections") is kept.
-        toast({
-          title: t("interview.skipUnsupportedTitle", { defaultValue: "Chưa hỗ trợ bỏ qua câu hỏi" }),
-          description: t("interview.skipUnsupportedDesc", {
-            defaultValue: "Hãy trả lời ngắn gọn, hoặc nói \"nhắc lại câu hỏi\" nếu cần nghe lại.",
-          }),
-        });
-      }
-
-      if (intent === "off_topic") {
-        // Genuine noise only (empty / CJK / prompt-leak) — the <2-token case is
-        // now classified "answer", so nothing droppable reaches here. Keep mic.
-        if (liveSessionRef.current?.isConnected && !endingRef.current) {
-          acceptsUserSpeechRef.current = true;
-          liveSessionRef.current.setMicEnabled(true);
-          setIsMicActive(true);
-        }
-        return;
-      }
-
-      const questionKey = currentQuestionRef.current.trim().normalize("NFC");
-      if (!questionKey || submittedRealtimeQuestionRef.current === questionKey) return;
-      if (realtimeAnswerBufferRef.current.length === 0 && micOpenedAtRef.current !== null) {
-        // first speech of this turn — measure thinking time from actual mic-open.
-        firstSpeechDelayMsRef.current = Math.max(0, Date.now() - micOpenedAtRef.current);
-      }
-      realtimeAnswerBufferRef.current = [...realtimeAnswerBufferRef.current, transcript];
-      scheduleRealtimeAnswerFlush();
-    },
-    [
-      clearRealtimeAnswerFlushTimer,
-      finishInterview,
-      scheduleRealtimeAnswerFlush,
-      selectedLanguage,
-      t,
-      toast,
-    ],
-  );
-  submitRealtimeTranscriptRef.current = handleRealtimeTranscript;
+  useEffect(() => {
+    finishInterviewRef.current = finishInterview;
+  }, [finishInterview]);
 
   const handleSubmitAnswer = async () => {
-    if (interviewMode === "realtime" && isLiveConnected && !isVoiceFallback) return;
     const answer = userAnswer.trim();
-    if (!answer || !activeSession?.id || isLoading || isEnding) return;
-
-    const now = new Date();
-    const durationSeconds = questionStartedAtRef.current
-      ? Math.max(0, Math.round((now.getTime() - questionStartedAtRef.current.getTime()) / 1000))
-      : undefined;
-
+    const session = activeSessionRef.current;
+    if (!answer || !session?.id || isLoading || isEnding) return;
+    const clientTurnId = `text-${crypto.randomUUID()}`;
     setChatHistory((current) => [
       ...current,
-      { role: "user", content: answer, timestamp: now },
+      { id: `candidate-${clientTurnId}`, role: "user", content: answer, timestamp: new Date() },
     ]);
-    stopQuestionAudio();
-    acceptsUserSpeechRef.current = false;
-    liveSessionRef.current?.setMicEnabled(false);
-    setIsMicActive(false);
     setUserAnswer("");
     setIsLoading(true);
-    setApiError(null);
-
     try {
-      // Typed answers are TEXT regardless of whether a dictation channel happens
-      // to be connected: labeling them AUDIO ran the BE voice-transcript gate on
-      // typed text (rejecting short valid answers) and mislabeled history.
-      const response = await submitTurnMutation.mutateAsync({
-        sessionId: activeSession.id,
-        userAnswer: answer,
-        userTranscript: undefined,
-        modality: "TEXT",
-        durationSeconds,
+      const result = await submitRealtimeTurnMutation.mutateAsync({
+        sessionId: session.id,
+        payload: {
+          kind: "TEXT_FALLBACK",
+          clientTurnId,
+          questionTurnId: currentTurnIdRef.current,
+          text: answer,
+          intent: classifyIntent(answer),
+        },
       });
-
-      activeSessionRef.current = response.session;
-      setActiveSession(response.session);
-      const nextQuestion = response.nextQuestion ?? response.nextTurn?.interviewerQuestion ?? "";
-      const nextAiMessage = response.aiMessage || response.nextTurn?.interviewerMessage || "";
-      currentQuestionRef.current = nextQuestion;
-      currentInterviewerMessageRef.current = nextQuestion ? nextAiMessage : "";
-      setCurrentTurnTrace(response.turnTrace ?? null);
-      if (nextQuestion) {
-        setCurrentQuestion(nextQuestion);
-        setCurrentQuestionMeta(
-          response.nextTurn
-            ? questionMetadataFromTurn(response.nextTurn, response.session.targetRole)
-            : questionMetadataFromTurn(null, response.session.targetRole),
-        );
-      } else {
-        setCurrentQuestionMeta(null);
+      currentTurnIdRef.current = result.currentTurnId;
+      if (result.assistant?.transcript && result.disposition !== "DUPLICATE") {
+        lastAssistantTranscriptRef.current = result.assistant.transcript;
+        setChatHistory((current) => [
+          ...current,
+          { id: `ai-${clientTurnId}`, role: "ai", content: result.assistant!.transcript, timestamp: new Date() },
+        ]);
       }
-
-      const nextMessages = buildInterviewNextMessages(nextAiMessage, nextQuestion).map((content) => ({
-        role: "ai" as const,
-        content,
-        timestamp: new Date(),
-      }));
-
-      if (nextMessages.length > 0) {
-        setChatHistory((current) => [...current, ...nextMessages]);
+      const question = result.assistant?.question;
+      if (question) {
+        currentQuestionRef.current = question;
+        setCurrentQuestion(question);
       }
-
-      if (response.finished) {
-        setInterviewFinished(true);
-        await finishInterview("finished");
-      } else {
-        questionStartedAtRef.current = new Date();
-        if (nextQuestion && shouldRequestQuestionAudio(interviewMode)) {
-          void playQuestionAudio(response.session.id);
-        }
-      }
+      if (result.finished) await finishInterviewRef.current("finished");
     } catch (error) {
-      setApiError(getApiErrorMessage(error, t("interview.errors.submitFailed")));
+      setApiError(getApiErrorMessage(error, t("interview.errors.turnFailed")));
     } finally {
       setIsLoading(false);
     }
@@ -1320,29 +1214,27 @@ export default function Interview() {
     if (!activeSession?.id || !canUseApi) return false;
 
     setIsLoading(true);
-    setApiError(null);
-
     try {
       let stream = mediaStreamRef.current;
       if (!stream || stream.getAudioTracks().length === 0) {
         stream = await requestSessionMedia();
       }
+      if (!stream || stream.getAudioTracks().length === 0) return false;
 
-      if (!stream || stream.getAudioTracks().length === 0) {
-        setVoiceFallback(t("interview.errors.microphoneUnavailable"));
-        return false;
+      const realtime = await refreshRealtimeTokenAsync(activeSession.id);
+      if (!realtime.enabled || !realtime.clientSecret) return false;
+      if (realtime.protocolVersion !== INTERVIEW_REALTIME_PROTOCOL_VERSION) {
+        throw new Error(
+          `Realtime protocol mismatch: expected ${INTERVIEW_REALTIME_PROTOCOL_VERSION}, received ${realtime.protocolVersion}. Restart both dev servers.`,
+        );
       }
 
-      const realtime = await refreshRealtimeTokenMutation.mutateAsync(activeSession.id);
-      if (!realtime.enabled || !realtime.clientSecret) {
-        setVoiceFallback(realtime.reason || t("interview.errors.realtimeTokenUnavailable"));
-        return false;
-      }
-
-      await connectRealtime(realtime.clientSecret, stream, interviewMode === "realtime");
+      await connectRealtime(realtime.clientSecret, stream);
       return true;
     } catch (error) {
-      setVoiceFallback(getApiErrorMessage(error, t("interview.errors.reconnectFailed")));
+      setApiError(
+        getApiErrorMessage(error, t('interview.errors.realtimeVoiceFailed')),
+      );
       return false;
     } finally {
       setIsLoading(false);
@@ -1351,33 +1243,105 @@ export default function Interview() {
     activeSession?.id,
     canUseApi,
     connectRealtime,
-    interviewMode,
-    refreshRealtimeTokenMutation,
+    refreshRealtimeTokenAsync,
     requestSessionMedia,
+    t,
+  ]);
+
+  const handleRealtimeIntent = (intent: RealtimeCandidateIntent) => {
+    if (intent === "END") {
+      setIsEndDialogOpen(true);
+      return;
+    }
+    if (intent === "ANSWER") return;
+    const session = activeSessionRef.current;
+    if (!session || isLoading || isEnding) return;
+    if (isVoiceFallback || !liveSessionRef.current?.isConnected) {
+      const text = controlText(intent, selectedLanguage);
+      setUserAnswer(text);
+      return;
+    }
+    const clientTurnId = `control-${crypto.randomUUID()}`;
+    const now = Date.now();
+    candidateTurnsByIdRef.current.set(clientTurnId, {
+      clientTurnId,
+      transcript: "",
+      itemIds: [],
+      startedAtMs: now,
+      endedAtMs: now,
+      durationSeconds: 0,
+      transcriptSegments: 0,
+    });
+    candidateIntentByTurnRef.current.set(clientTurnId, intent);
+    dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+    liveSessionRef.current.requestControl({
+      clientTurnId,
+      intent,
+      language: selectedLanguage,
+      currentQuestion: currentQuestionRef.current,
+    });
+  };
+  useEffect(() => {
+    if (realtimeState.transport.status !== "RECONNECTING") return;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      if (cancelled) return;
+      setVoiceFallback(
+        t("interview.errors.reconnectFailed", {
+          defaultValue:
+            "Could not restore voice within 8 seconds. Continuing in text mode.",
+        }),
+      );
+    }, 8_000);
+
+    void (async () => {
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        dispatchRealtime({ type: "CONNECTION_LOST", attempt });
+        const connected = await reconnectRealtime();
+        if (cancelled) {
+          if (connected) disconnectRealtime();
+          return;
+        }
+        if (connected) {
+          window.clearTimeout(timeout);
+          return;
+        }
+      }
+      if (!cancelled) {
+        window.clearTimeout(timeout);
+        setVoiceFallback(
+          t("interview.errors.reconnectFailed", {
+            defaultValue: "Could not restore voice. Continuing in text mode.",
+          }),
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [
+    disconnectRealtime,
+    realtimeState.transport.status,
+    reconnectRealtime,
     setVoiceFallback,
     t,
   ]);
 
   const toggleLiveMic = async () => {
-    if (isAiSpeaking || isQuestionAudioPlaying || isLoading) {
-      return;
-    }
+    if (isLoading) return;
 
     if (!liveSessionRef.current?.isConnected) {
       const reconnected = await reconnectRealtime();
       if (!reconnected || !liveSessionRef.current?.isConnected) return;
-      acceptsUserSpeechRef.current = true;
-      liveSessionRef.current.setMicEnabled(true);
-      setIsMicActive(true);
-      return;
     }
 
-    const next = !isMicActive;
-    liveSessionRef.current.setMicEnabled(next);
-    acceptsUserSpeechRef.current = next;
-    setIsMicActive(next);
+    const muted = !userMutedRef.current;
+    userMutedRef.current = muted;
+    dispatchRealtime({ type: "SET_USER_MUTED", muted });
+    liveSessionRef.current?.setMicEnabled(!muted);
   };
-
   useEffect(() => {
     if (phase !== "interviewing" || !activeSession?.expiresAt) return;
 
@@ -1386,7 +1350,6 @@ export default function Interview() {
       setSecondsRemaining(remaining);
       if (
         shouldRequestLiveClosingSignal({
-          interviewMode,
           isVoiceFallback,
           isLiveConnected,
           secondsRemaining: remaining,
@@ -1408,28 +1371,11 @@ export default function Interview() {
   }, [
     activeSession?.expiresAt,
     finishInterview,
-    interviewMode,
     isLiveConnected,
     isVoiceFallback,
     phase,
     selectedLanguage,
   ]);
-
-  // I-PACE: per-turn answer pacing (hard ceiling + soft nudge).
-  const answerPace = useAnswerPace({
-    timeBudgetSeconds: currentTimeBudget,
-    isMicOpen: isMicActive && isLiveConnected && !isVoiceFallback,
-    isEnding: endingRef.current || isEnding,
-    isAiSpeaking,
-    onCeilingReached: flushRealtimeAnswerBuffer,
-    onNudge: () => {
-      // NOT requestLiveInterviewClosing — that announces the whole session is ending, which at a
-      // per-question budget would land 90s into question one.
-      if (liveSessionRef.current?.isConnected && !endingRef.current) {
-        liveSessionRef.current.requestAnswerPaceNudge(selectedLanguage);
-      }
-    },
-  });
 
   useEffect(() => {
     writeInterviewVoicePreference(
@@ -1439,7 +1385,12 @@ export default function Interview() {
   }, [voicePreference]);
 
   useEffect(() => {
-    if (phase !== "interviewing" || !videoRef.current || !mediaStreamRef.current) return;
+    if (
+      phase !== "interviewing" ||
+      !videoRef.current ||
+      !mediaStreamRef.current
+    )
+      return;
     if (videoRef.current.srcObject !== mediaStreamRef.current) {
       videoRef.current.srcObject = mediaStreamRef.current;
       void videoRef.current.play();
@@ -1450,13 +1401,17 @@ export default function Interview() {
     return () => {
       disconnectRealtime();
       stopMedia();
-      stopQuestionAudio();
     };
-  }, [disconnectRealtime, stopMedia, stopQuestionAudio]);
+  }, [disconnectRealtime, stopMedia]);
 
   return (
     <Layout>
-      <div className={cn("flex overflow-hidden", sidebarMode ? "h-dvh" : "h-[calc(100dvh-80px)]")}>
+      <div
+        className={cn(
+          "flex overflow-hidden",
+          sidebarMode ? "h-dvh" : "h-[calc(100dvh-80px)]",
+        )}
+      >
         <aside
           className={cn(
             "h-full shrink-0 overflow-hidden border-r border-slate-100 bg-white/80 backdrop-blur-sm flex flex-col transition-all duration-300",
@@ -1467,7 +1422,9 @@ export default function Interview() {
             <h2 className="font-poppins text-sm font-bold leading-tight text-slate-900">
               {roleLabel(targetRole)}
             </h2>
-            <p className="mt-0.5 text-[11px] text-slate-400">{t("interview.title")}</p>
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              {t("interview.title")}
+            </p>
             <div className="mt-3 flex items-center gap-2">
               <Progress value={progressPercent} className="h-1.5 flex-1" />
               <span className="text-[10px] font-bold text-slate-500">
@@ -1499,146 +1456,176 @@ export default function Interview() {
           </div>
 
           <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <nav className="space-y-1 p-3">
-            {steps.map((step) => {
-              const Icon = STEP_ICONS[step.icon] || Circle;
-              const isActive = step.status === "active";
-              const isCompleted = step.status === "completed";
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
-                    isActive && "border border-primary/20 bg-primary/10 font-bold text-primary",
-                    isCompleted && "text-slate-600 hover:bg-slate-50",
-                    !isActive && !isCompleted && "cursor-default text-slate-400",
-                  )}
-                >
-                  <div
+            <nav className="space-y-1 p-3">
+              {steps.map((step) => {
+                const Icon = STEP_ICONS[step.icon] || Circle;
+                const isActive = step.status === "active";
+                const isCompleted = step.status === "completed";
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
                     className={cn(
-                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                      isActive && "bg-primary text-white",
-                      isCompleted && "bg-emerald-50 text-emerald-500",
-                      !isActive && !isCompleted && "bg-slate-100 text-slate-300",
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
+                      isActive &&
+                        "border border-primary/20 bg-primary/10 font-bold text-primary",
+                      isCompleted && "text-slate-600 hover:bg-slate-50",
+                      !isActive &&
+                        !isCompleted &&
+                        "cursor-default text-slate-400",
                     )}
                   >
-                    {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-                  </div>
-                  <span className="truncate text-xs font-semibold">
-                    {t(`interview.steps.${step.id}`, { defaultValue: step.label })}
-                  </span>
-                  {isCompleted && <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-400" />}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-slate-100 p-4">
-            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              {t("interview.stats.yourStats")}
-            </h4>
-            <div className="mb-4 grid grid-cols-2 gap-2">
-              <StatCard label={t("interview.stats.total")} value={String(interviewHistory.length)} icon={Video} />
-              <StatCard
-                label={t("interview.stats.avgScore")}
-                value={scoredHistory.length ? `${averageScore}%` : "N/A"}
-                icon={BarChart3}
-              />
-              <StatCard
-                label={t("interview.stats.best")}
-                value={scoredHistory.length ? `${bestScore}%` : "N/A"}
-                icon={Award}
-              />
-              <StatCard label={t("interview.stats.completed")} value={String(scoredHistory.length)} icon={TrendingUp} />
-            </div>
-
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {t("interview.sidebar.recentSessions")}
-              </h4>
-              <button
-                type="button"
-                className="text-[10px] font-bold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={switchToHistory}
-                disabled={!canSwitchWorkspace}
-              >
-                {t("interview.sidebar.viewAll")}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {interviewHistoryState === "signed-out" ? (
-                <p className="py-3 text-center text-[11px] text-slate-400">
-                  {t("interview.sidebar.signedOut")}
-                </p>
-              ) : interviewHistoryState === "loading" ? (
-                <p className="py-3 text-center text-[11px] text-slate-400">
-                  {t("interview.sidebar.loadingHistory")}
-                </p>
-              ) : interviewHistoryState === "error" ? (
-                <div className="space-y-2 py-3 text-center">
-                  <p className="text-[11px] text-rose-500">{t("interview.sidebar.historyError")}</p>
-                  <button
-                    type="button"
-                    className="text-[11px] font-bold text-primary hover:underline"
-                    onClick={() => void interviewHistoryQuery.refetch()}
-                    disabled={interviewHistoryQuery.isFetching}
-                  >
-                    {interviewHistoryQuery.isFetching
-                      ? t("interview.sidebar.retrying")
-                      : t("interview.sidebar.tryAgain")}
-                  </button>
-                </div>
-              ) : interviewHistoryState === "empty" ? (
-                <p className="py-3 text-center text-[11px] text-slate-400">
-                  {t("interview.sidebar.emptyHistory")}
-                </p>
-              ) : (
-                recentInterviewSessions.map((session) => {
-                  const selected = session.id === selectedHistorySessionId;
-                  return (
-                    <button
-                      key={session.id}
-                      type="button"
-                      onClick={() => openHistoryDetail(session.id)}
-                      disabled={!canSelectHistory}
+                    <div
                       className={cn(
-                        "w-full rounded-lg p-2 text-left transition-colors",
-                        selected
-                          ? "border border-primary/20 bg-primary/10"
-                          : "bg-slate-50 hover:bg-slate-100",
-                        !canSelectHistory && "cursor-not-allowed opacity-60 hover:bg-slate-50",
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                        isActive && "bg-primary text-white",
+                        isCompleted && "bg-emerald-50 text-emerald-500",
+                        !isActive &&
+                          !isCompleted &&
+                          "bg-slate-100 text-slate-300",
                       )}
-                      title={
-                        canSelectHistory
-                          ? t("interview.sidebar.viewResult")
-                          : t("interview.sidebar.historyDisabled")
-                      }
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[11px] font-bold text-slate-700">
-                          {roleLabel(session.targetRole)}
-                        </p>
-                        <span className="text-xs font-black text-primary">
-                          {session.overallScore == null ? "N/A" : `${Math.round(session.overallScore)}%`}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[10px] text-slate-400">
-                        {formatSessionDate(session.createdAt)}
-                      </p>
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Icon className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                    <span className="truncate text-xs font-semibold">
+                      {t(`interview.steps.${step.id}`, {
+                        defaultValue: step.label,
+                      })}
+                    </span>
+                    {isCompleted && (
+                      <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="border-t border-slate-100 p-4">
+              <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {t("interview.stats.yourStats")}
+              </h4>
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <StatCard
+                  label={t("interview.stats.total")}
+                  value={String(interviewHistory.length)}
+                  icon={Video}
+                />
+                <StatCard
+                  label={t("interview.stats.avgScore")}
+                  value={scoredHistory.length ? `${averageScore}%` : "N/A"}
+                  icon={BarChart3}
+                />
+                <StatCard
+                  label={t("interview.stats.best")}
+                  value={scoredHistory.length ? `${bestScore}%` : "N/A"}
+                  icon={Award}
+                />
+                <StatCard
+                  label={t("interview.stats.completed")}
+                  value={String(scoredHistory.length)}
+                  icon={TrendingUp}
+                />
+              </div>
+
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  {t("interview.sidebar.recentSessions")}
+                </h4>
+                <button
+                  type="button"
+                  className="text-[10px] font-bold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={switchToHistory}
+                  disabled={!canSwitchWorkspace}
+                >
+                  {t("interview.sidebar.viewAll")}
+                </button>
+              </div>
+              <div className="space-y-2">
+                {interviewHistoryState === "signed-out" ? (
+                  <p className="py-3 text-center text-[11px] text-slate-400">
+                    {t("interview.sidebar.signedOut")}
+                  </p>
+                ) : interviewHistoryState === "loading" ? (
+                  <p className="py-3 text-center text-[11px] text-slate-400">
+                    {t("interview.sidebar.loadingHistory")}
+                  </p>
+                ) : interviewHistoryState === "error" ? (
+                  <div className="space-y-2 py-3 text-center">
+                    <p className="text-[11px] text-rose-500">
+                      {t("interview.sidebar.historyError")}
+                    </p>
+                    <button
+                      type="button"
+                      className="text-[11px] font-bold text-primary hover:underline"
+                      onClick={() => void interviewHistoryQuery.refetch()}
+                      disabled={interviewHistoryQuery.isFetching}
+                    >
+                      {interviewHistoryQuery.isFetching
+                        ? t("interview.sidebar.retrying")
+                        : t("interview.sidebar.tryAgain")}
                     </button>
-                  );
-                })
-              )}
+                  </div>
+                ) : interviewHistoryState === "empty" ? (
+                  <p className="py-3 text-center text-[11px] text-slate-400">
+                    {t("interview.sidebar.emptyHistory")}
+                  </p>
+                ) : (
+                  recentInterviewSessions.map((session) => {
+                    const selected = session.id === selectedHistorySessionId;
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => openHistoryDetail(session.id)}
+                        disabled={!canSelectHistory}
+                        className={cn(
+                          "w-full rounded-lg p-2 text-left transition-colors",
+                          selected
+                            ? "border border-primary/20 bg-primary/10"
+                            : "bg-slate-50 hover:bg-slate-100",
+                          !canSelectHistory &&
+                            "cursor-not-allowed opacity-60 hover:bg-slate-50",
+                        )}
+                        title={
+                          canSelectHistory
+                            ? t("interview.sidebar.viewResult")
+                            : t("interview.sidebar.historyDisabled")
+                        }
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-[11px] font-bold text-slate-700">
+                            {roleLabel(session.targetRole)}
+                          </p>
+                          <span className="text-xs font-black text-primary">
+                            {session.overallScore == null
+                              ? "N/A"
+                              : `${Math.round(session.overallScore)}%`}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-slate-400">
+                          {formatSessionDate(session.createdAt)}
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
           </div>
         </aside>
 
         <button
           onClick={() => setSidebarOpen((value) => !value)}
           className="z-10 flex h-full w-5 shrink-0 items-center justify-center transition-colors hover:bg-slate-100/80"
-          title={sidebarOpen ? t("interview.sidebar.hide") : t("interview.sidebar.show")}
+          title={
+            sidebarOpen
+              ? t("interview.sidebar.hide")
+              : t("interview.sidebar.show")
+          }
           type="button"
         >
           {sidebarOpen ? (
@@ -1651,7 +1638,8 @@ export default function Interview() {
         {showPracticeSetup && (
           <main className="custom-scrollbar relative flex-1 overflow-y-auto md:overflow-hidden bg-slate-50/30">
             <div className="px-6 py-6 md:px-10 md:py-8">
-              {canUseApi && (interviewQuota || purchasedInterviewCredits > 0) ? (
+              {canUseApi &&
+              (interviewQuota || purchasedInterviewCredits > 0) ? (
                 <div className="mx-auto mb-4 flex max-w-5xl flex-wrap items-center justify-end gap-2 text-xs font-bold text-slate-600">
                   {interviewQuota ? (
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 tabular-nums shadow-sm">
@@ -1685,8 +1673,8 @@ export default function Interview() {
                 setTargetRole={setTargetRole}
                 selectedLanguage={selectedLanguage}
                 setSelectedLanguage={setSelectedLanguage}
-                interviewMode={interviewMode}
-                setInterviewMode={setInterviewMode}
+                experienceMode={experienceMode}
+                setExperienceMode={setExperienceMode}
                 interviewType={interviewType}
                 setInterviewType={setInterviewType}
                 selectedVoice={voicePreference.voice}
@@ -1716,33 +1704,42 @@ export default function Interview() {
             videoRef={videoRef}
             webcamError={webcamError}
             timeRemainingLabel={timeRemainingLabel}
-            secondsRemaining={secondsRemaining}
-            maxDurationSeconds={maxDurationSeconds}
-            currentQuestionNumber={currentQuestionNumber}
-            totalQuestionsPlanned={totalQuestionsPlanned}
-            answeredCount={answeredCount}
-            isEnding={isEnding}
-            interviewMode={interviewMode}
-            isLiveConnected={isLiveConnected}
-            isVoiceFallback={isVoiceFallback}
-            voiceFallbackReason={voiceFallbackReason}
-            isMicActive={isMicActive}
-            isAiSpeaking={isAiSpeaking}
-            isQuestionAudioPlaying={isQuestionAudioPlaying}
-            questionAudioError={questionAudioError}
+            isConnected={isLiveConnected && !isVoiceFallback}
+            isVietnamese={selectedLanguage === "vi"}
+            voiceState={
+              realtimeState.turn.status === "SPEAKING"
+                ? "SPEAKING"
+                : realtimeState.turn.status === "THINKING"
+                  ? "THINKING"
+                  : "LISTENING"
+            }
+            voiceLabel={
+              realtimeState.turn.status === "SPEAKING"
+                ? t("interview.session.voiceState.speaking")
+                : realtimeState.turn.status === "THINKING"
+                  ? t("interview.session.voiceState.thinking")
+                  : t("interview.session.voiceState.listening")
+            }
+            subtitle={
+              realtimeState.turn.status === "SPEAKING"
+                ? realtimeState.turn.subtitle
+                : undefined
+            }
             currentQuestion={currentQuestion}
-            currentQuestionMeta={currentQuestionMeta}
             chatHistory={chatHistory}
-            isLoading={isLoading}
+            experienceMode={activeSession?.experienceMode ?? experienceMode}
+            isMicActive={isMicActive}
+            isReconnecting={realtimeState.transport.status === "RECONNECTING"}
+            isEnding={isEnding}
+            forceTextMode={realtimeState.transport.status === "TEXT_FALLBACK"}
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
-            handleSubmitAnswer={handleSubmitAnswer}
-            toggleLiveMic={toggleLiveMic}
-            interviewFinished={interviewFinished}
-            onStop={() => setIsEndDialogOpen(true)}
+            onSubmitText={handleSubmitAnswer}
+            onToggleMic={toggleLiveMic}
+            onSwitchToText={() => dispatchRealtime({ type: "SWITCH_TO_TEXT" })}
+            onIntent={handleRealtimeIntent}
+            onEnd={() => setIsEndDialogOpen(true)}
             apiError={apiError}
-            currentTurnTrace={currentTurnTrace}
-            answerPace={answerPace}
           />
         )}
 
@@ -1825,12 +1822,19 @@ export default function Interview() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </Layout>
   );
 }
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+}) {
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
       <Icon className="mx-auto mb-1 h-4 w-4 text-slate-400" />

@@ -3,9 +3,18 @@ import { httpClient } from "@/api/core/http-client";
 import { API_ROUTES } from "@/constants/api-routes";
 import { getAccessToken } from "@/services/auth-token.service";
 
-const QUESTION_AUDIO_TIMEOUT_MS = 60_000;
-
-export type PlatformInterviewMode = "TEXT" | "VOICE" | "HYBRID";
+export type PlatformInterviewMode = "TEXT" | "VOICE";
+export type InterviewExperienceMode = "MOCK" | "PRACTICE";
+export type RealtimeCandidateIntent =
+  | "ANSWER"
+  | "NO_ANSWER"
+  | "REPEAT"
+  | "CLARIFY"
+  | "EASIER"
+  | "HINT"
+  | "FEEDBACK"
+  | "SKIP"
+  | "END";
 export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
@@ -27,6 +36,8 @@ export interface RealtimeClientSecretDto {
   enabled: boolean;
   provider: "openai";
   model: string | null;
+  protocolVersion: 'interview-realtime-v3';
+  transcriptionModel: string;
   clientSecret: string | null;
   expiresAt: string | null;
   reason?: string;
@@ -34,21 +45,31 @@ export interface RealtimeClientSecretDto {
 
 export interface FinalScoreDto {
   overall: number | null;
-  overall_band: 'poor' | 'borderline' | 'solid' | 'outstanding' | 'legacy';
-  dimensions: Array<{ dimension: string; score: number; band: string; weight: number }>;
+  overall_band: "poor" | "borderline" | "solid" | "outstanding" | "legacy";
+  dimensions: Array<{
+    dimension: string;
+    score: number;
+    band: string;
+    weight: number;
+  }>;
   role_family: string;
   scored_answers: number;
-  score_basis?: 'criterion_rubric' | 'legacy_fallback' | 'mixed' | 'unscored';
+  score_basis?: "criterion_rubric" | "legacy_fallback" | "mixed" | "unscored";
   scoring_note?: string;
   score_explanations?: Array<{
-    dimension: 'technical_depth' | 'problem_solving' | 'communication' | 'evidence_credibility' | 'role_fit';
+    dimension:
+      | "technical_depth"
+      | "problem_solving"
+      | "communication"
+      | "evidence_credibility"
+      | "role_fit";
     score: number;
-    band: 'poor' | 'borderline' | 'solid' | 'outstanding';
+    band: "poor" | "borderline" | "solid" | "outstanding";
     weight: number;
     rubric_anchor: string;
     evidence_quote: string | null;
     linked_question_id: string | null;
-    uncertainty: 'low' | 'medium' | 'high';
+    uncertainty: "low" | "medium" | "high";
     improvement_hint: string | null;
   }>;
 }
@@ -65,7 +86,7 @@ export interface InterviewGapItemDto {
 export interface CommunicationSignalsDto {
   word_count?: number;
   sentence_count?: number;
-  conciseness?: 'too_short' | 'ideal' | 'verbose';
+  conciseness?: "too_short" | "ideal" | "verbose";
   is_quantified?: boolean | null;
   flags?: {
     rambling_risk?: boolean | null;
@@ -102,10 +123,17 @@ export interface InterviewSessionDto {
   targetRole: string;
   language: PlatformInterviewLanguage | string;
   mode: PlatformInterviewMode;
+  experienceMode?: InterviewExperienceMode;
   interviewType: PlatformInterviewType;
   voice: PlatformInterviewVoice | string;
   speechSpeed: number;
   status: PlatformInterviewStatus | string;
+  analysisStatus?:
+    | "NOT_STARTED"
+    | "PENDING"
+    | "READY"
+    | "FAILED"
+    | "NOT_REQUIRED";
   totalQuestionsPlanned: number | null;
   maxDurationSeconds: number;
   expiresAt: string | null;
@@ -126,13 +154,13 @@ export interface InterviewSessionDto {
 }
 
 export interface InterviewTurnTraceDto {
-  action: 'ask' | 'drill' | 'move_on' | 'wrap';
+  action: "ask" | "drill" | "move_on" | "wrap";
   phase: string;
   topic_id?: string;
   reasons: string[];
   depth: number;
   remaining_turn_budget: number;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
 }
 
 export interface InterviewTurnDto {
@@ -166,6 +194,13 @@ export interface InterviewTurnDto {
   transcriptSegments?: number | null;
   /** I-PACE: seconds the interviewer allocated for this turn's answer. null on legacy/review turns. */
   timeBudgetSeconds?: number | null;
+  questionThreadId?: string | null;
+  candidateIntent?: RealtimeCandidateIntent | null;
+  assistanceLevel?: "NONE" | "EASIER" | "HINT" | "SKIPPED";
+  scoreCap?: number | null;
+  rawScore?: number | null;
+  finalQuestionScore?: number | null;
+  skipReason?: string | null;
 }
 
 export interface InterviewFeedback {
@@ -184,12 +219,14 @@ export interface StartInterviewRequest {
   targetRole: string;
   language?: PlatformInterviewLanguage;
   mode?: PlatformInterviewMode;
+  experienceMode?: InterviewExperienceMode;
   interviewType?: PlatformInterviewType;
   voice?: PlatformInterviewVoice;
   speechSpeed?: number;
 }
 
 export interface StartInterviewResponseDto extends InterviewSessionDto {
+  currentTurnId: string;
   firstMessage: string;
   firstQuestion: string;
   phase: string | null;
@@ -198,38 +235,60 @@ export interface StartInterviewResponseDto extends InterviewSessionDto {
   answerBudgetSeconds?: number;
 }
 
-export interface SubmitInterviewTurnRequest {
-  sessionId: string;
-  userAnswer: string;
-  userTranscript?: string;
-  modality?: PlatformInterviewModality;
-  durationSeconds?: number;
-  /** P3 speech timing (voice mode) — only sent when client-measured. */
-  responseDelayMs?: number;
-  transcriptSegments?: number;
-}
+export type RealtimeExchangeInputType = "ANSWER" | "CONTROL" | "CAPTURE_RETRY";
+export type RealtimeIntentSource = "VOICE_LEXICAL" | "BUTTON" | "TEXT";
 
-export interface LiveInterviewTurnInput {
-  turnOrder: number;
-  interviewerQuestion: string;
-  userAnswerText: string;
-  userAnswerTranscript?: string;
-  durationSeconds?: number;
-}
+export type RealtimeInterviewTurnRequest =
+  | {
+      kind: "REALTIME_EXCHANGE";
+      clientTurnId: string;
+      questionTurnId: string | null;
+      input: {
+        type: RealtimeExchangeInputType;
+        modality: PlatformInterviewModality;
+        transcript?: string;
+        intent?: RealtimeCandidateIntent;
+        intentSource: RealtimeIntentSource;
+        itemIds?: string[];
+        speechStartedAt?: string;
+        speechEndedAt?: string;
+        segmentCount?: number;
+        meanLogprob?: number;
+      };
+      assistant: {
+        responseId: string;
+        transcript: string;
+        firstAudioAt?: string;
+        interrupted: boolean;
+      };
+    }
+  | {
+      kind: "TEXT_FALLBACK";
+      clientTurnId: string;
+      questionTurnId: string | null;
+      text: string;
+      intent?: RealtimeCandidateIntent;
+    };
 
-export interface AnswerInterviewResponseDto {
-  session: InterviewSessionDto;
-  answeredTurn: InterviewTurnDto;
-  nextTurn: InterviewTurnDto | null;
-  aiMessage: string;
-  nextQuestion: string | null;
+export type RealtimeExchangeDisposition =
+  | "COMMITTED"
+  | "DUPLICATE"
+  | "CAPTURE_RETRY"
+  | "CONTROL_APPLIED"
+  | "PENDING";
+
+export interface RealtimeExchangeResponseDto {
+  clientTurnId: string;
+  disposition: RealtimeExchangeDisposition;
+  answeredTurnId: string | null;
+  currentTurnId: string | null;
+  assistant: {
+    responseId: string | null;
+    transcript: string;
+    question: string | null;
+  } | null;
   finished: boolean;
-  turnDecision?: "continue_topic" | "advance_topic" | "adaptive_follow_up" | "closing_prompt" | "finish";
-  finishReason?: "TIME_LIMIT" | "USER_REQUEST" | "SAFETY_CAP" | null;
-  nextQuestionKind?: "opening" | "follow_up" | "transition" | "closing" | null;
-  turnTrace?: InterviewTurnTraceDto | null;
 }
-
 export interface InterviewDetailResponseDto extends InterviewSessionDto {
   turns: InterviewTurnDto[];
 }
@@ -257,32 +316,28 @@ export async function startInterview(
   return envelope.data;
 }
 
-export async function submitInterviewTurn(
-  payload: SubmitInterviewTurnRequest,
-): Promise<AnswerInterviewResponseDto> {
-  const envelope = await unwrapEnvelope<
-    ApiEnvelope<AnswerInterviewResponseDto>
-  >(
-    httpClient.post(API_ROUTES.INTERVIEW.TURN, payload),
-    "Failed to submit interview answer.",
+export async function submitRealtimeInterviewTurn(
+  sessionId: string,
+  payload: RealtimeInterviewTurnRequest,
+): Promise<RealtimeExchangeResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeExchangeResponseDto>>(
+    httpClient.post(API_ROUTES.INTERVIEW.REALTIME_TURN(sessionId), payload),
+    "Failed to resolve realtime interview turn.",
   );
   return envelope.data;
 }
 
 export async function endInterview(
   sessionId: string,
-  liveTurns?: LiveInterviewTurnInput[],
 ): Promise<InterviewDetailResponseDto> {
-  const payload = liveTurns ? { sessionId, liveTurns } : { sessionId };
   const envelope = await unwrapEnvelope<
     ApiEnvelope<InterviewDetailResponseDto>
   >(
-    httpClient.post(API_ROUTES.INTERVIEW.END, payload),
+    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }, { timeout: 90_000 }),
     "Failed to end interview.",
   );
   return envelope.data;
 }
-
 /**
  * Best-effort end for a session being abandoned (tab close, page navigation).
  * Uses a keepalive fetch instead of navigator.sendBeacon because /interview/end
@@ -293,17 +348,20 @@ export async function endInterview(
 export function sendBestEffortInterviewEnd(sessionId: string): void {
   const token = getAccessToken();
   if (!token || typeof fetch !== "function") return;
-  void fetch(`${httpClient.defaults?.baseURL ?? ""}${API_ROUTES.INTERVIEW.END}`, {
-    method: "POST",
-    keepalive: true,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+  void fetch(
+    `${httpClient.defaults?.baseURL ?? ""}${API_ROUTES.INTERVIEW.END}`,
+    {
+      method: "POST",
+      keepalive: true,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ sessionId }),
     },
-    body: JSON.stringify({ sessionId }),
-  }).catch(() => {
-    // Swallowed on purpose — the BE stale-session sweep is the backstop.
+  ).catch(() => {
+      // Swallowed on purpose — the BE stale-session sweep is the backstop.
   });
 }
 
@@ -342,119 +400,4 @@ export async function refreshRealtimeToken(
     "Failed to refresh realtime token.",
   );
   return envelope.data;
-}
-
-export async function getInterviewQuestionAudio(id: string): Promise<Blob> {
-  const response = await httpClient.post<Blob>(
-    API_ROUTES.INTERVIEW.QUESTION_AUDIO(id),
-    undefined,
-    { responseType: "blob", timeout: QUESTION_AUDIO_TIMEOUT_MS },
-  );
-  return normalizeQuestionAudioBlob(response.data);
-}
-
-async function normalizeQuestionAudioBlob(blob: Blob): Promise<Blob> {
-  if (blob.size === 0) {
-    throw new Error("Question audio endpoint returned an empty audio file.");
-  }
-
-  const type = blob.type.toLowerCase();
-  if (!isTextLikeBlobType(type)) return blob;
-
-  const text = await blob.text().catch(() => "");
-  if (!text.trim()) {
-    throw new Error(
-      `Question audio endpoint returned ${type} instead of playable audio.`,
-    );
-  }
-
-  const parsed = parseJson(text);
-  const serializedAudio = parsed ? readSerializedAudioBlob(parsed) : null;
-  if (serializedAudio) return serializedAudio;
-
-  const backendMessage = parsed
-    ? readMessage(parsed)
-    : text.trim().slice(0, 300);
-  throw new Error(
-    backendMessage
-      ? `Question audio endpoint returned ${type}: ${backendMessage}`
-      : `Question audio endpoint returned ${type} instead of playable audio.`,
-  );
-}
-
-function isTextLikeBlobType(type: string): boolean {
-  return (
-    type.startsWith("text/") ||
-    type.includes("json") ||
-    type.includes("xml") ||
-    type.includes("html")
-  );
-}
-
-function parseJson(text: string): unknown | null {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-function readSerializedAudioBlob(value: unknown): Blob | null {
-  if (!isRecord(value)) return null;
-  const data = value.data;
-  if (!isRecord(data)) return null;
-
-  const options = data.options;
-  const audioType =
-    isRecord(options) &&
-    typeof options.type === "string" &&
-    options.type.startsWith("audio/")
-      ? options.type
-      : null;
-  if (!audioType) return null;
-
-  const stream = data.stream;
-  const readableState = isRecord(stream) ? stream._readableState : null;
-  const buffer = isRecord(readableState) ? readableState.buffer : null;
-  if (!Array.isArray(buffer) || buffer.length === 0) return null;
-
-  const chunks = buffer
-    .map(readSerializedBufferChunk)
-    .filter((chunk): chunk is ArrayBuffer => chunk !== null);
-  if (chunks.length === 0) return null;
-
-  return new Blob(chunks, { type: audioType });
-}
-
-function readSerializedBufferChunk(value: unknown): ArrayBuffer | null {
-  if (!isRecord(value) || !Array.isArray(value.data)) return null;
-  const bytes = value.data;
-  if (
-    !bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)
-  ) {
-    return null;
-  }
-  const buffer = new ArrayBuffer(bytes.length);
-  new Uint8Array(buffer).set(bytes);
-  return buffer;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function readMessage(value: unknown): string | null {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (!isRecord(value)) return null;
-
-  if (typeof value.message === "string" && value.message.trim()) {
-    return value.message.trim();
-  }
-  if (typeof value.error === "string" && value.error.trim()) {
-    return value.error.trim();
-  }
-  if (isRecord(value.error)) {
-    return readMessage(value.error);
-  }
-  return null;
 }

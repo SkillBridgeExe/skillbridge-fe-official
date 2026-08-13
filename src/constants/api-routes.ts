@@ -9,7 +9,7 @@ const API = "/api";
  * API keys.
  */
 export const API_ROUTES = {
-  // §1.1 Auth (auth.controller.ts)
+// §1.1 Auth (auth.controller.ts)
   AUTH: {
     REGISTER: `${API}/auth/register`,
     VERIFY_EMAIL: `${API}/auth/verify-email`,
@@ -23,37 +23,37 @@ export const API_ROUTES = {
     ME: `${API}/auth/me`,
   },
 
-  // §1.2 CV (cvs.controller.ts) — POST /api/cvs = upload + chấm ĐỒNG BỘ (multipart:
-  // file, title?, targetRole?, consentAccepted bắt buộc). Quota 10 upload/24h.
+// §1.2 CV (cvs.controller.ts) — POST /api/cvs = upload + chấm ĐỒNG BỘ (multipart:
+// file, title?, targetRole?, consentAccepted bắt buộc). Quota 10 upload/24h.
   CV: {
     LIST: `${API}/cvs`,
     CREATE: `${API}/cvs`,
     DETAIL: (id: string) => `${API}/cvs/${id}`,
     DELETE: (id: string) => `${API}/cvs/${id}`,
     FILE: (id: string) => `${API}/cvs/${id}/file`,
-    // Version history / snapshots (P2 — cvs.controller.ts)
+// Version history / snapshots (P2 — cvs.controller.ts)
     VERSIONS: (id: string) => `${API}/cvs/${id}/versions`,
     VERSION_DETAIL: (id: string, versionId: string) => `${API}/cvs/${id}/versions/${versionId}`,
     VERSION_RESTORE: (id: string, versionId: string) =>
       `${API}/cvs/${id}/versions/${versionId}/restore`,
-    // CV × JD match (cv-matches.controller.ts)
+// CV × JD match (cv-matches.controller.ts)
     MATCH: (cvId: string) => `${API}/cvs/${cvId}/match`,
     MATCH_FILE: (cvId: string) => `${API}/cvs/${cvId}/match/file`,
     MATCHES: (cvId: string) => `${API}/cvs/${cvId}/matches`,
     MATCH_DETAIL: (cvId: string, matchId: string) => `${API}/cvs/${cvId}/matches/${matchId}`,
     INTERVIEW_PLAN: (cvId: string) => `${API}/cvs/${cvId}/interview-plan`,
     GITHUB_EVIDENCE: (cvId: string) => `${API}/cvs/${cvId}/github-evidence`,
-    // CV-only corner-advisor chat (no JD match) — mirror of CV_MATCHES.CHAT but
+// CV-only corner-advisor chat (no JD match) — mirror of CV_MATCHES.CHAT but
     // grounded in the CV review alone. Used when there is no JD match id.
     DIAGNOSIS_CHAT: (cvId: string) => `${API}/cvs/${cvId}/diagnosis-chat`,
-    // Top-N job thật cho CV (jobs.controller.ts) — ?limit&role
+// Top-N job thật cho CV (jobs.controller.ts) — ?limit&role
     JOB_RECOMMENDATIONS: (cvId: string) => `${API}/cvs/${cvId}/job-recommendations`,
-    // CV Builder (W5 sẽ dùng — endpoints đã LIVE trên BE)
+// CV Builder (W5 sẽ dùng — endpoints đã LIVE trên BE)
     BUILDER_CREATE: `${API}/cvs/builder`,
     BUILDER_UPDATE: (id: string) => `${API}/cvs/${id}/builder`,
     BUILDER_EVALUATE: (id: string) => `${API}/cvs/${id}/builder/evaluate`,
     BUILDER_REWRITE: (id: string) => `${API}/cvs/${id}/builder/rewrite`,
-    // Story → Career Target (deterministic role inference, NO LLM, no quota). 1b endpoint = Khoa.
+// Story → Career Target (deterministic role inference, NO LLM, no quota). 1b endpoint = Khoa.
     BUILDER_STORY: (id: string) => `${API}/cvs/${id}/builder/story`,
     BUILDER_STORY_EXTRACT: (id: string) => `${API}/cvs/${id}/builder/story/extract`,
     BUILDER_STORY_APPLY: (id: string) => `${API}/cvs/${id}/builder/story/apply-preview`,
@@ -65,22 +65,22 @@ export const API_ROUTES = {
     ASSISTANT_REWRITE: (id: string) => `${API}/cvs/${id}/builder/assistant/rewrite`,
     ASSISTANT_SKILLS_NUDGE: (id: string) => `${API}/cvs/${id}/builder/assistant/skills-nudge`,
     ASSISTANT_EXTRACT: (id: string) => `${API}/cvs/${id}/builder/assistant/extract`,
-    // Task 6a: LLM role-aware sibling of ASSISTANT_ANALYZE — BE reads the real role
+// Task 6a: LLM role-aware sibling of ASSISTANT_ANALYZE — BE reads the real role
     // server-side from the owned CV record (never a client-sent role).
     ASSISTANT_SMART_QUESTIONS: (id: string) =>
       `${API}/cvs/${id}/builder/assistant/smart-questions`,
     ASSISTANT_EXPLAIN: (id: string) => `${API}/cvs/${id}/builder/assistant/explain`,
-    // CV Builder Chat Companion (Slice 5 — PR #217)
+// CV Builder Chat Companion (Slice 5 — PR #217)
     BUILDER_CHAT: (id: string) => `${API}/cvs/${id}/builder/chat`,
   },
 
-  // §1.4 Diagnosis (diagnosis.controller.ts)
+// §1.4 Diagnosis (diagnosis.controller.ts)
   DIAGNOSIS: {
     /** Upload or rescan a CV and optionally match a JD using one shared analysis usage. */
     CV_ANALYSIS: `${API}/diagnosis/cv-analysis`,
-    /** Chấm LẠI một CV đã upload — body { cvId }. */
+/** Chấm LẠI một CV đã upload — body { cvId }. */
     CV_REVIEW: `${API}/diagnosis/cv-review`,
-    /** Alias của GET /api/cvs (paginated list). */
+/** Alias của GET /api/cvs (paginated list). */
     HISTORY: `${API}/diagnosis/history`,
   },
 
@@ -101,25 +101,24 @@ export const API_ROUTES = {
     ENTITLEMENTS: `${API}/me/entitlements`,
   },
 
-  // Skill trends (trends.controller.ts) — endpoints require JWT.
+// Skill trends (trends.controller.ts) — endpoints require JWT.
   TRENDS: {
     SKILLS: `${API}/trends/skills`,
     SKILL_GAP: (cvId: string) => `${API}/trends/skills/gap/${cvId}`,
     INSIGHT: `${API}/trends/insight`,
   },
 
-  // §1.5 Interview
+// §1.5 Interview
   INTERVIEW: {
     START: `${API}/interview/start`,
-    TURN: `${API}/interview/turn`,
     END: `${API}/interview/end`,
     HISTORY: `${API}/interview/history`,
     DETAIL: (id: string) => `${API}/interview/sessions/${id}`,
     REALTIME_TOKEN: (id: string) => `${API}/interview/sessions/${id}/realtime-token`,
-    QUESTION_AUDIO: (id: string) => `${API}/interview/sessions/${id}/question-audio`,
+    REALTIME_TURN: (id: string) => `${API}/interview/sessions/${id}/realtime-turn`,
   },
 
-  // §1.6 Roadmap
+// §1.6 Roadmap
   ROADMAP: {
     GENERATE: `${API}/roadmaps/generate`,
     LIST: `${API}/roadmaps`,

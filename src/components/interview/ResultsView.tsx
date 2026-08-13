@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useNavigate } from "react-router-dom";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -35,6 +36,8 @@ import {
   HelpCircle,
   FileText,
   Timer,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   devPlanTrackKind,
@@ -47,7 +50,7 @@ import {
 
 const PHASES = [
   { key: "SCREENING", labelVi: "Khởi động", labelEn: "Screening" },
-  { key: "SKILL_PROBE", labelVi: "Kỹ năng & JD", labelEn: "Skill probe" },
+  { key: "SKILL_PROBE", labelVi: "Kỹ năng", labelEn: "Skill probe" },
   { key: "SCENARIO", labelVi: "Tình huống", labelEn: "Scenario" },
   { key: "BEHAVIORAL", labelVi: "Hành vi", labelEn: "Behavioral" },
   { key: "WRAP", labelVi: "Tổng kết", labelEn: "Wrap-up" }
@@ -66,6 +69,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
     "strengths",
   );
   const [highlightedTurnId, setHighlightedTurnId] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
   const [expandedSignals, setExpandedSignals] = useState<Record<number, boolean>>({});
 
   const handleScrollToTurn = (turnId: string) => {
@@ -157,6 +161,13 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" onClick={() => setShowDetails((value) => !value)}>
+          {showDetails ? (isVi ? "Ẩn chi tiết" : "Hide details") : (isVi ? "Chi tiết" : "Details")}
+        </Button>
+      </div>
+      {showDetails && (
+        <div className="space-y-6">
       {/* Interview Phase Timeline */}
       <Card className="border-slate-200 bg-white shadow-sm p-6">
         <h3 className="text-sm font-bold text-slate-800 mb-4">{t("interview.results.phaseTimelineTitle")}</h3>
@@ -190,7 +201,8 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
           })}
         </div>
       </Card>
-
+        </div>
+      )}
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardContent className="p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
@@ -199,6 +211,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
               label={t("interview.stats.overall")}
             />
 
+            {showDetails && (
             <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
               <ScoreCard
                 label={
@@ -224,6 +237,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                 icon={Mic}
               />
             </div>
+            )}
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -336,6 +350,8 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </Card>
       </div>
 
+      {showDetails && (
+        <>
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <MetricPanel
           title={t("interview.results.technicalDelivery")}
@@ -372,6 +388,8 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         />
       </div>
 
+        </>
+      )}
       {view.gapItems && view.gapItems.length > 0 && (
         <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader>
@@ -493,6 +511,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </Card>
       </div>
 
+      {showDetails && (
       <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
         <CardHeader className="border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2">
@@ -531,16 +550,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                         {index + 1}. {question.question}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge
-                          variant={
-                            question.isCuratedQuestion ? "default" : "secondary"
-                          }
-                          className="rounded-full"
-                        >
-                          {question.isCuratedQuestion
-                            ? t("interview.results.curatedQuestion")
-                            : t("interview.results.fallbackQuestion")}
-                        </Badge>
                         {question.topicPhase && (
                           <Badge variant="outline" className="rounded-full">
                             {t("interview.results.phase")}:{" "}
@@ -557,13 +566,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                           <Badge variant="outline" className="rounded-full">
                             {t("interview.results.depthSignal")}:{" "}
                             {getDepthSignalLabel(question.depthSignal)}
-                          </Badge>
-                        )}
-                        {question.questionBankKey && (
-                          <Badge variant="secondary" className="rounded-full">
-                            {t("interview.results.questionBankKey", {
-                              key: question.questionBankKey,
-                            })}
                           </Badge>
                         )}
                       </div>
@@ -598,10 +600,15 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                               <Mic className="w-3.5 h-3.5 text-slate-500" />
                               <span>{t("interview.results.commPanel")}</span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-semibold">
+                            <span className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
                               {expandedSignals[index]
-                                ? `${t("interview.results.commCollapse")} ▴`
-                                : `${t("interview.results.commExpand")} ▾`}
+                                ? t("interview.results.commCollapse")
+                                : t("interview.results.commExpand")}
+                              {expandedSignals[index] ? (
+                                <ChevronUp className="h-3 w-3" aria-hidden="true" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                              )}
                             </span>
                           </button>
                           {expandedSignals[index] && (
@@ -791,6 +798,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </CardContent>
       </Card>
 
+      )}
       <Button
         size="lg"
         className="w-full rounded-xl font-bold md:w-auto"
@@ -825,8 +833,7 @@ function RubricPanel({
   handleScrollToTurn: (turnId: string) => void;
   empty: string;
   weightLabel: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: any;
+  t: TFunction;
 }) {
   return (
     <Card className="border-slate-200 bg-white shadow-sm">
@@ -1231,8 +1238,7 @@ function PlanItemList({
   empty: string;
   onRetry: () => void;
   navigate: ReturnType<typeof useNavigate>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: any;
+  t: TFunction;
 }) {
   return (
     <div>

@@ -1,286 +1,460 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { OpenAIRealtimeSession, type RealtimeEvent } from "./openai-realtime";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  assessCandidateCapture,
+  CandidateTurnBuffer,
+  OpenAIRealtimeSession,
+  type CandidateTurn,
+  type RealtimeEvent,
+} from "./openai-realtime";
 
-describe("OpenAIRealtimeSession", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+function runtime(session: OpenAIRealtimeSession) {
+  return session as unknown as {
+    dataChannel: { readyState: string; send: ReturnType<typeof vi.fn> } | null;
+    handleEvent: (raw: string) => void;
+    activeResponse: unknown;
+    responseQueue: unknown[];
+    pendingPlaybackSpeech: Map<string, unknown>;
+    ignoredPlaybackSpeechItemIds: Map<string, unknown>;
+    bargeInArmed: boolean;
+  };
+}
+
+function openChannel(session: OpenAIRealtimeSession) {
+  const send = vi.fn();
+  runtime(session).dataChannel = { readyState: "open", send };
+  return send;
+}
+
+function sentEvents(send: ReturnType<typeof vi.fn>) {
+  return send.mock.calls.map(([value]) => JSON.parse(String(value)) as Record<string, unknown>);
+}
+
+function candidateTurn(overrides: Partial<CandidateTurn> = {}): CandidateTurn {
+  return {
+    clientTurnId: "candidate-1",
+    transcript: "Tôi phụ trách API auth và quản lý JWT session.",
+    itemIds: ["item-1"],
+    startedAtMs: 1_000,
+    endedAtMs: 4_000,
+    durationSeconds: 3,
+    transcriptSegments: 1,
+    meanLogprob: -0.2,
+    ...overrides,
+  };
+}
+
+describe("CandidateTurnBuffer v3", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("joins Vietnamese speech segments that continue inside the 1100 ms quiet window", () => {
+    const completed = vi.fn();
+    const buffer = new CandidateTurnBuffer(1_100, completed, 400);
+    buffer.speechStarted("item-1", 1_000);
+    buffer.addTranscript("Tôi phụ trách API", "item-1", [-0.2]);
+    buffer.speechStopped("item-1", 2_000);
+    vi.advanceTimersByTime(900);
+    buffer.speechStarted("item-2", 2_900);
+    buffer.addTranscript("và quản lý session", "item-2", [-0.4]);
+    buffer.speechStopped("item-2", 3_600);
+    vi.advanceTimersByTime(1_100);
+
+    expect(completed).toHaveBeenCalledTimes(1);
+    expect(completed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcript: "Tôi phụ trách API và quản lý session",
+        itemIds: ["item-1", "item-2"],
+        transcriptSegments: 2,
+        meanLogprob: expect.closeTo(-0.3, 5),
+      }),
+    );
   });
 
-  function collectEvents(session: OpenAIRealtimeSession) {
+  it("waits up to 400 ms for a late transcript after the quiet window", () => {
+    const completed = vi.fn();
+    const buffer = new CandidateTurnBuffer(1_100, completed, 400);
+    buffer.speechStarted("item-late", 1_000);
+    buffer.speechStopped("item-late", 2_000);
+    vi.advanceTimersByTime(1_100);
+    expect(completed).not.toHaveBeenCalled();
+    buffer.addTranscript("Tôi làm JWT.", "item-late", [-0.5]);
+    expect(completed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("candidate capture guard", () => {
+  const base = {
+    language: "vi" as const,
+    currentQuestion: "Trong dự án gần nhất, phần nào bạn trực tiếp phụ trách?",
+    lastAssistantTranscript: "Bạn phụ trách phần nào trong dự án gần nhất?",
+  };
+
+  it("rejects noisy CJK, prompt leaks, echo, and irrelevant short speech", () => {
+    expect(assessCandidateCapture({ ...base, transcript: "我們要覺得" }).accepted).toBe(false);
+    expect(assessCandidateCapture({ ...base, transcript: "You are English." }).accepted).toBe(false);
+    expect(
+      assessCandidateCapture({
+        ...base,
+        transcript: "Bạn phụ trách phần nào trong dự án gần nhất?",
+      }).reason,
+    ).toBe("echo");
+    expect(assessCandidateCapture({ ...base, transcript: "nguyên lý ánh sáng" }).accepted).toBe(false);
+  });
+
+  it("accepts a short ownership answer with an API technical term despite low confidence", () => {
+    expect(
+      assessCandidateCapture({
+        ...base,
+        transcript: "tôi phụ trách phần nối API authen",
+        meanLogprob: -1.4,
+      }),
+    ).toEqual({ accepted: true, reason: "accepted" });
+  });
+});
+
+describe("OpenAIRealtimeSession single-loop scheduler", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("ignores a stale handshake after disconnect closes its peer", async () => {
+    let resolveFetch: ((value: { ok: boolean; text: () => Promise<string> }) => void) | undefined;
+    const fetchPromise = new Promise<{ ok: boolean; text: () => Promise<string> }>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const setRemoteDescription = vi.fn().mockResolvedValue(undefined);
+    class FakePeerConnection {
+      connectionState = "new";
+      ontrack = null;
+      onconnectionstatechange = null;
+      createDataChannel = () => ({
+        readyState: "connecting",
+        onopen: null,
+        onmessage: null,
+        onerror: null,
+        onclose: null,
+        close: vi.fn(),
+        send: vi.fn(),
+      });
+      addTrack = vi.fn();
+      createOffer = vi.fn().mockResolvedValue({ type: "offer", sdp: "offer" });
+      setLocalDescription = vi.fn().mockResolvedValue(undefined);
+      setRemoteDescription = setRemoteDescription;
+      close = vi.fn();
+    }
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection);
+    vi.stubGlobal("fetch", vi.fn(() => fetchPromise));
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const session = new OpenAIRealtimeSession();
+    const stream = { getAudioTracks: () => [{ enabled: true }] } as unknown as MediaStream;
+    const connecting = session.connect({ clientSecret: "secret", stream });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    session.disconnect();
+    resolveFetch?.({ ok: true, text: async () => "answer" });
+
+    await expect(connecting).resolves.toBeUndefined();
+    expect(setRemoteDescription).not.toHaveBeenCalled();
+  });
+
+  it("sends exactly one tool-free response.create per candidate turn", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    const turn = candidateTurn();
+    session.requestCandidateResponse(turn);
+    session.requestCandidateResponse(turn);
+
+    const creates = sentEvents(send).filter((event) => event.type === "response.create");
+    expect(creates).toHaveLength(1);
+    expect(creates[0]).toMatchObject({
+      response: {
+        tool_choice: "none",
+        metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" },
+      },
+    });
+    expect(JSON.stringify(creates[0])).not.toContain("decide_interview_turn");
+  });
+
+  it("does not release playback on response.done and starts the next response only after stopped", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    session.requestControl({
+      clientTurnId: "control-1",
+      intent: "REPEAT",
+      language: "vi",
+      currentQuestion: "Câu hỏi hiện tại?",
+    });
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-1", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-1" }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.done",
+        response: { id: "resp-1", status: "completed", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(1);
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.stopped", response_id: "resp-1" }),
+    );
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+  });
+
+  it("retries once only after failed terminal status without audio", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-failed", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    vi.advanceTimersByTime(4_000);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(1);
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.done",
+        response: { id: "resp-failed", status: "failed", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+  });
+
+  it("releases a response that never receives response.created and retries only once", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+
+    vi.advanceTimersByTime(12_000);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+
+    vi.advanceTimersByTime(12_000);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
+    expect(runtime(session).activeResponse).toBeNull();
+  });
+
+  it("restarts the barge-in arm window when duplicate audio-start events arrive", () => {
+    const session = new OpenAIRealtimeSession();
+    openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-duplicate-start", status: "in_progress" },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-duplicate-start" }),
+    );
+    vi.advanceTimersByTime(400);
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-duplicate-start" }),
+    );
+
+    vi.advanceTimersByTime(300);
+    expect(runtime(session).bargeInArmed).toBe(false);
+    vi.advanceTimersByTime(400);
+    expect(runtime(session).bargeInArmed).toBe(true);
+  });
+
+  it("commits completed-without-audio through one synthetic stopped event without a duplicate response", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
     const events: RealtimeEvent[] = [];
     session.on((event) => events.push(event));
-    return events;
-  }
-
-  it("maps current OpenAI Realtime output audio transcript events", () => {
-    const session = new OpenAIRealtimeSession();
-    const events = collectEvents(session);
-
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
       JSON.stringify({
-        type: "response.output_audio_transcript.delta",
-        delta: "Xin chao",
+        type: "response.created",
+        response: { id: "resp-text", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
       }),
     );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.output_audio_transcript.done",
+        response_id: "resp-text",
+        transcript: "Bạn quản lý refresh token như thế nào?",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.done",
+        response: { id: "resp-text", status: "completed", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    vi.advanceTimersByTime(250);
 
-    expect(events).toContainEqual({ type: "ai_transcript", data: "Xin chao" });
+    expect(events.filter((event) => event.type === "ai_stopped")).toHaveLength(1);
+    expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(1);
   });
 
-  it("normalizes Vietnamese user and AI transcripts to NFC", () => {
+  it("ignores a short playback echo without cancelling or surfacing a candidate turn", () => {
     const session = new OpenAIRealtimeSession();
-    const events = collectEvents(session);
-    const vietnameseNfd = "Tiếng Việt có dấu".normalize("NFD");
-
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+    const send = openChannel(session);
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-voice", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-voice" }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.output_audio_transcript.done",
+        response_id: "resp-voice",
+        transcript:
+          "Khi thiết kế session, bạn chọn HttpOnly, Secure và SameSite như thế nào?",
+      }),
+    );
+    vi.advanceTimersByTime(700);
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_started",
+        item_id: "echo",
+        audio_start_ms: 800,
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_stopped",
+        item_id: "echo",
+        audio_end_ms: 1_100,
+      }),
+    );
+    runtime(session).handleEvent(
       JSON.stringify({
         type: "conversation.item.input_audio_transcription.completed",
-        transcript: vietnameseNfd,
+        item_id: "echo",
+        transcript: "HttpOnly",
+        logprobs: [{ logprob: -0.2 }],
       }),
     );
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+
+    expect(sentEvents(send).filter((event) => event.type === "response.cancel")).toHaveLength(0);
+    expect(sentEvents(send).filter((event) => event.type === "output_audio_buffer.clear")).toHaveLength(0);
+    expect(sentEvents(send).filter((event) => event.type === "conversation.item.truncate")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "speech_started")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "user_transcript")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "speech_stopped")).toHaveLength(0);
+
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.stopped", response_id: "resp-voice" }),
+    );
+    expect(events.filter((event) => event.type === "ai_stopped")).toHaveLength(1);
+    expect(runtime(session).ignoredPlaybackSpeechItemIds.size).toBe(1);
+    vi.advanceTimersByTime(1_200);
+    expect(runtime(session).ignoredPlaybackSpeechItemIds.size).toBe(0);
+  });
+
+  it("confirms a meaningful barge-in from its transcript before cancelling playback once", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
       JSON.stringify({
-        type: "response.output_audio_transcript.delta",
-        delta: vietnameseNfd,
+        type: "response.created",
+        response: { id: "resp-barge", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
       }),
     );
-
-    expect(events).toEqual([
-      { type: "user_transcript", data: "Tiếng Việt có dấu" },
-      { type: "ai_transcript", data: "Tiếng Việt có dấu" },
-    ]);
-  });
-
-  it("surfaces input audio transcription failures as non-fatal transcript_failed", () => {
-    const session = new OpenAIRealtimeSession();
-    const events = collectEvents(session);
-
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-barge" }),
+    );
+    runtime(session).handleEvent(
       JSON.stringify({
-        type: "conversation.item.input_audio_transcription.failed",
-        error: { message: "Unable to transcribe Vietnamese audio." },
+        type: "response.output_item.added",
+        response_id: "resp-barge",
+        item: { id: "assistant-barge", role: "assistant" },
       }),
     );
-
-    // Per-utterance STT failure must NOT look like a session-fatal "error":
-    // that mapping used to tear down voice mode and wipe the buffered answer.
-    expect(events).toContainEqual({
-      type: "transcript_failed",
-      data: "Unable to transcribe Vietnamese audio.",
-    });
-    expect(events.some((event) => event.type === "error")).toBe(false);
-  });
-
-  it("maps current OpenAI Realtime output audio speaking lifecycle events", () => {
-    const session = new OpenAIRealtimeSession();
-    const events = collectEvents(session);
-
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+    runtime(session).handleEvent(
       JSON.stringify({
-        type: "response.output_audio.delta",
-        delta: "base64-audio",
+        type: "response.output_audio_transcript.done",
+        response_id: "resp-barge",
+        transcript: "Bạn quản lý session và cookie như thế nào?",
       }),
     );
-    (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+    vi.advanceTimersByTime(700);
+    runtime(session).handleEvent(
       JSON.stringify({
-        type: "response.output_audio.done",
+        type: "input_audio_buffer.speech_started",
+        item_id: "candidate-barge",
+        audio_start_ms: 900,
       }),
     );
 
-    expect(events).toEqual([{ type: "ai_speaking" }, { type: "ai_stopped" }]);
-  });
+    expect(sentEvents(send).filter((event) => event.type === "response.cancel")).toHaveLength(0);
 
-  it("asks realtime to produce audio with the current response.create schema", () => {
-    const session = new OpenAIRealtimeSession();
-    const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
-      readyState: "open",
-      send: (payload: string) => sent.push(JSON.parse(payload)),
-    };
-
-    session.speakOfficialQuestion("Ban hay gioi thieu ve du an gan nhat.", "vi");
-
-    expect(sent[0]).toEqual({
-      type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: expect.stringContaining(
-              "Hãy đọc lượt phỏng vấn chính thức sau bằng tiếng Việt tự nhiên",
-            ),
-          },
-        ],
-      },
-    });
-    expect(sent[1]).toEqual({
-      type: "response.create",
-      response: {
-        output_modalities: ["audio"],
-      },
-    });
-  });
-
-  it("does not override the server-owned realtime session configuration on connect", async () => {
-    const sent: unknown[] = [];
-    const dataChannel = {
-      readyState: "open",
-      send: (payload: string) => sent.push(JSON.parse(payload)),
-      close: vi.fn(),
-      onopen: null as ((event: Event) => void) | null,
-      onmessage: null,
-      onerror: null,
-    };
-    const peerConnection = {
-      connectionState: "new",
-      createDataChannel: vi.fn(() => dataChannel),
-      addTrack: vi.fn(),
-      createOffer: vi.fn(async () => ({ type: "offer", sdp: "offer-sdp" })),
-      setLocalDescription: vi.fn(async () => undefined),
-      setRemoteDescription: vi.fn(async () => undefined),
-      close: vi.fn(),
-      ontrack: null,
-      onconnectionstatechange: null,
-    };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
-    vi.stubGlobal("document", {
-      createElement: vi.fn(() => ({
-        autoplay: false,
-        pause: vi.fn(),
-        srcObject: null,
-      })),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        text: async () => "answer-sdp",
-      })),
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_stopped",
+        item_id: "candidate-barge",
+        audio_end_ms: 1_600,
+      }),
     );
-    const stream = {
-      getAudioTracks: () => [{ enabled: true }],
-    } as unknown as MediaStream;
+    const transcriptEvent = JSON.stringify({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "candidate-barge",
+      transcript: "Khoan, cho tôi hỏi lại chỗ session.",
+      logprobs: [{ logprob: -0.1 }],
+    });
+    runtime(session).handleEvent(transcriptEvent);
+    runtime(session).handleEvent(transcriptEvent);
+
+    expect(sentEvents(send).filter((event) => event.type === "response.cancel")).toHaveLength(1);
+    expect(sentEvents(send).filter((event) => event.type === "output_audio_buffer.clear")).toHaveLength(1);
+    expect(sentEvents(send).filter((event) => event.type === "conversation.item.truncate")).toHaveLength(1);
+    expect(
+      events
+        .filter((event) =>
+          event.type === "speech_started" ||
+          event.type === "user_transcript" ||
+          event.type === "speech_stopped",
+        )
+        .map((event) => event.type),
+    ).toEqual(["speech_started", "user_transcript", "speech_stopped"]);
+  });
+
+  it("clears buffered playback speech when the session disconnects", () => {
     const session = new OpenAIRealtimeSession();
-
-    await session.connect({ clientSecret: "client-secret", stream });
-    dataChannel.onopen?.({} as Event);
-
-    expect(sent).toEqual([]);
-  });
-
-  it("can ask the live interviewer to close without injecting a user prompt", () => {
-    const session = new OpenAIRealtimeSession();
-    const sent: unknown[] = [];
-    (session as unknown as { dataChannel: { readyState: string; send: (payload: string) => void } }).dataChannel = {
-      readyState: "open",
-      send: (payload: string) => sent.push(JSON.parse(payload)),
-    };
-
-    session.requestLiveInterviewClosing("vi");
-
-    expect(sent).toEqual([
-      {
-        type: "response.create",
-        response: {
-          output_modalities: ["audio"],
-          instructions: expect.stringContaining("Cảm ơn ứng viên"),
-        },
-      },
-    ]);
-  });
-
-  it("can connect with the microphone disabled for push-to-talk sessions", async () => {
-    const dataChannel = {
-      readyState: "open",
-      send: vi.fn(),
-      close: vi.fn(),
-      onopen: null,
-      onmessage: null,
-      onerror: null,
-    };
-    const peerConnection = {
-      connectionState: "new",
-      createDataChannel: vi.fn(() => dataChannel),
-      addTrack: vi.fn(),
-      createOffer: vi.fn(async () => ({ type: "offer", sdp: "offer-sdp" })),
-      setLocalDescription: vi.fn(async () => undefined),
-      setRemoteDescription: vi.fn(async () => undefined),
-      close: vi.fn(),
-      ontrack: null,
-      onconnectionstatechange: null,
-    };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
-    vi.stubGlobal("document", {
-      createElement: vi.fn(() => ({
-        autoplay: false,
-        pause: vi.fn(),
-        srcObject: null,
-      })),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        text: async () => "answer-sdp",
-      })),
+    openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: { id: "resp-cleanup", status: "in_progress", metadata: { purpose: "candidate_turn", clientTurnId: "candidate-1" } },
+      }),
     );
-    const audioTrack = { enabled: true } as MediaStreamTrack;
-    const stream = {
-      getAudioTracks: () => [audioTrack],
-    } as unknown as MediaStream;
-
-    await new OpenAIRealtimeSession().connect({
-      clientSecret: "client-secret",
-      stream,
-      initialMicEnabled: false,
-    });
-
-    expect(audioTrack.enabled).toBe(false);
-    expect(peerConnection.addTrack).toHaveBeenCalledWith(audioTrack, stream);
-  });
-
-  it("surfaces the WebRTC handshake error returned by OpenAI", async () => {
-    const dataChannel = {
-      readyState: "connecting",
-      send: vi.fn(),
-      close: vi.fn(),
-      onopen: null,
-      onmessage: null,
-      onerror: null,
-    };
-    const peerConnection = {
-      connectionState: "new",
-      createDataChannel: vi.fn(() => dataChannel),
-      addTrack: vi.fn(),
-      createOffer: vi.fn(async () => ({ type: "offer", sdp: "offer-sdp" })),
-      setLocalDescription: vi.fn(async () => undefined),
-      setRemoteDescription: vi.fn(async () => undefined),
-      close: vi.fn(),
-      ontrack: null,
-      onconnectionstatechange: null,
-    };
-    vi.stubGlobal("RTCPeerConnection", vi.fn(() => peerConnection));
-    vi.stubGlobal("document", {
-      createElement: vi.fn(() => ({
-        autoplay: false,
-        pause: vi.fn(),
-        srcObject: null,
-      })),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        text: async () => "Invalid or expired realtime client secret.",
-      })),
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "output_audio_buffer.started", response_id: "resp-cleanup" }),
     );
-    const stream = {
-      getAudioTracks: () => [{ enabled: true }],
-    } as unknown as MediaStream;
+    runtime(session).handleEvent(
+      JSON.stringify({ type: "input_audio_buffer.speech_started", item_id: "pending-echo" }),
+    );
 
-    await expect(
-      new OpenAIRealtimeSession().connect({ clientSecret: "expired-secret", stream }),
-    ).rejects.toThrow("Invalid or expired realtime client secret.");
+    expect(runtime(session).pendingPlaybackSpeech.size).toBe(1);
+
+    runtime(session).dataChannel = null;
+    session.disconnect();
+
+    expect(runtime(session).pendingPlaybackSpeech.size).toBe(0);
   });
 });

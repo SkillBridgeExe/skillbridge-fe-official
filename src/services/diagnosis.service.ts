@@ -499,7 +499,7 @@ export async function getSkillGap(cvId: string, query: SkillGapQuery = {}) {
   return getSkillGapApi(cvId, query);
 }
 
-/** AI insight tá»« market trends cho CV hiá»‡n táº¡i (GET /api/trends/insight). */
+/** AI insight từ market trends cho CV hiện tại (GET /api/trends/insight). */
 export async function getTrendsInsight(query: TrendsInsightQuery) {
   requireSession();
   return getTrendsInsightApi(query);

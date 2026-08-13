@@ -1,32 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
   buildInterviewInitialMessages,
-  buildInterviewNextMessages,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
-  buildBufferedRealtimeTurnRequest,
-  hasPendingRealtimeAnswer,
-  buildServerOwnedRealtimeTurnRequest,
-  buildValidatedRealtimeTurnRequest,
-  classifyRealtimeTranscriptIntent,
-  createQuestionAudioRequestGuard,
-  getLiveTranscriptWarnings,
   getInterviewEndIntent,
   getInterviewEndOutcome,
   getInterviewHistoryDetailState,
   getInterviewHistoryState,
-  getInterviewModeLabel,
-  getInterviewModeLabelKey,
   getInterviewQuestionBankSourceKind,
-  getQuestionAudioErrorMessage,
-  getRealtimeMicStatusKey,
   hasVisibleInterviewQuestionMetadata,
+  containsInterviewInternalMarker,
   getRealtimeTokenFallbackReason,
   shouldRequestLiveClosingSignal,
-  shouldRequestQuestionAudio,
-  speakOfficialRealtimeQuestion,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
   readGuardAdjustments,
@@ -39,8 +26,8 @@ import {
   writeInterviewVoicePreference,
   computeAnswerCeilingMs,
   computeAnswerOvertimeDisplay,
+  isInterviewAnalysisSettled,
 } from "./interview-view-model";
-import { DEFAULT_INTERVIEW_MODE } from "./types";
 
 const detail: InterviewDetailResponseDto = {
   id: "session-1",
@@ -105,8 +92,49 @@ const detail: InterviewDetailResponseDto = {
 };
 
 describe("interview view model", () => {
-  it("defaults new interviews to realtime hands-free mode", () => {
-    expect(DEFAULT_INTERVIEW_MODE).toBe("realtime");
+  it("does not settle a completed session while analysis is pending or failed", () => {
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "PENDING" })).toBe(false);
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "FAILED" })).toBe(false);
+    expect(isInterviewAnalysisSettled({ status: "COMPLETED", analysisStatus: "READY" })).toBe(true);
+    expect(isInterviewAnalysisSettled({ status: "CANCELLED", analysisStatus: "NOT_REQUIRED" })).toBe(true);
+  });
+
+  it("drops malformed score explanation enums instead of exposing unsafe result values", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      finalScore: {
+        score_explanations: [
+          {
+            dimension: { unexpected: true },
+            score: 80,
+            band: "solid",
+            uncertainty: "low",
+            weight: 1,
+            rubric_anchor: "Evidence",
+          },
+        ],
+      },
+    } as unknown as InterviewDetailResponseDto);
+
+    expect(result.scoreExplanations).toEqual([]);
+  });
+  it.each([
+    "Role-only practice for React. No CV or job description was provided.",
+    "do not repeat these recent question fingerprints: react state",
+    '{"questionGoal":"internal","scoreCap":75}',
+  ])(
+    "detects internal interview metadata before it reaches transcript: %s",
+    (value) => {
+      expect(containsInterviewInternalMarker(value)).toBe(true);
+    },
+  );
+
+  it("allows normal Vietnamese interviewer text", () => {
+    expect(
+      containsInterviewInternalMarker(
+        "Cảm ơn bạn. Bạn có thể kể rõ tính năng frontend mà bạn trực tiếp xây dựng không?",
+      ),
+    ).toBe(false);
   });
 
   it.each([
@@ -543,25 +571,6 @@ describe("interview view model", () => {
     ).toBe(false);
   });
 
-  it("keeps guided mode labeled as voice when realtime transcription is not connected", () => {
-    expect(
-      getInterviewModeLabelKey({
-        interviewMode: "guided",
-        isLiveConnected: false,
-        isVoiceFallback: false,
-        questionAudioError: null,
-      }),
-    ).toBe("guidedVoice");
-    expect(
-      getInterviewModeLabel({
-        interviewMode: "guided",
-        isLiveConnected: false,
-        isVoiceFallback: false,
-        questionAudioError: null,
-      }),
-    ).toBe("Guided Voice");
-  });
-
   it.each([
     [0, "cancel"],
     [1, "score"],
@@ -577,21 +586,6 @@ describe("interview view model", () => {
     expect(
       buildInterviewInitialMessages("Welcome.", "Tell me about your project."),
     ).toEqual(["Welcome.\n\nTell me about your project."]);
-  });
-
-  it("combines the interviewer bridge and official next question after an answered turn", () => {
-    expect(
-      buildInterviewNextMessages(
-        "Thanks, I want to go one level deeper.",
-        "What trade-off did you make?",
-      ),
-    ).toEqual([
-      "Thanks, I want to go one level deeper.\n\nWhat trade-off did you make?",
-    ]);
-    expect(buildInterviewNextMessages("", "What trade-off did you make?")).toEqual([
-      "What trade-off did you make?",
-    ]);
-    expect(buildInterviewNextMessages(null, null)).toEqual([]);
   });
 
   it.each([
@@ -626,40 +620,9 @@ describe("interview view model", () => {
     },
   );
 
-  it("shows text fallback when guided question audio fails", () => {
-    expect(
-      getInterviewModeLabelKey({
-        interviewMode: "guided",
-        isLiveConnected: false,
-        isVoiceFallback: false,
-        questionAudioError: "Could not play audio.",
-      }),
-    ).toBe("textFallback");
-    expect(
-      getInterviewModeLabel({
-        interviewMode: "guided",
-        isLiveConnected: false,
-        isVoiceFallback: false,
-        questionAudioError: "Could not play audio.",
-      }),
-    ).toBe("Text fallback");
-  });
-
-  it("does not treat missing realtime token as guided voice fallback", () => {
-    expect(
-      getRealtimeTokenFallbackReason({
-        interviewMode: "guided",
-        realtimeEnabled: false,
-        clientSecret: null,
-        reason: "OPENAI_API_KEY is not set",
-      }),
-    ).toBeNull();
-  });
-
   it("treats missing realtime token as live realtime fallback", () => {
     expect(
       getRealtimeTokenFallbackReason({
-        interviewMode: "realtime",
         realtimeEnabled: false,
         clientSecret: null,
         reason: "OPENAI_API_KEY is not set",
@@ -667,278 +630,10 @@ describe("interview view model", () => {
     ).toBe("OPENAI_API_KEY is not set");
   });
 
-  it("replaces raw audio request timeout errors with a user-facing fallback message", () => {
-    expect(
-      getQuestionAudioErrorMessage(
-        { code: "ECONNABORTED", message: "timeout of 15000ms exceeded" },
-        "Could not play the interviewer voice.",
-      ),
-    ).toBe(
-      "The interviewer voice took too long to load. Continue with the visible question.",
-    );
-  });
-
-  it("does not request guided question audio for live realtime mode", () => {
-    expect(shouldRequestQuestionAudio("realtime")).toBe(false);
-    expect(shouldRequestQuestionAudio("guided")).toBe(true);
-  });
-
-  it("speaks the backend interviewer bridge and official question when realtime starts", () => {
-    const session = { speakOfficialQuestion: vi.fn() };
-
-    expect(
-      speakOfficialRealtimeQuestion(
-        session,
-        "  Describe a backend API you built.  ",
-        "en",
-        "Thanks, let's go deeper.",
-      ),
-    ).toBe(true);
-
-    expect(session.speakOfficialQuestion).toHaveBeenCalledWith(
-      "Thanks, let's go deeper.\n\nDescribe a backend API you built.",
-      "en",
-    );
-  });
-
-  it("ignores empty realtime official questions", () => {
-    const session = { speakOfficialQuestion: vi.fn() };
-
-    expect(speakOfficialRealtimeQuestion(session, "   ", "vi")).toBe(false);
-
-    expect(session.speakOfficialQuestion).not.toHaveBeenCalled();
-  });
-
-  it("builds a server-owned realtime /turn payload from transcript audio", () => {
-    expect(
-      buildServerOwnedRealtimeTurnRequest({
-        sessionId: "session-1",
-        transcript: "  I used Postgres transactions.  ",
-        durationSeconds: 42,
-      }),
-    ).toEqual({
-      sessionId: "session-1",
-      userAnswer: "I used Postgres transactions.",
-      userTranscript: "I used Postgres transactions.",
-      modality: "AUDIO",
-      durationSeconds: 42,
-    });
-  });
-
-  it("does not auto-submit noisy realtime transcripts", () => {
-    const base = {
-      sessionId: "session-1",
-      currentQuestion: "Describe a REST API you built.",
-    };
-
-    expect(
-      buildValidatedRealtimeTurnRequest({
-        ...base,
-        transcript: "test",
-      }),
-    ).toBeNull();
-    expect(
-      buildValidatedRealtimeTurnRequest({
-        ...base,
-        transcript: "Describe a REST API you built.",
-      }),
-    ).toBeNull();
-    expect(
-      buildValidatedRealtimeTurnRequest({
-        ...base,
-        transcript:
-          "Cuá»™c phá»ng váº¥n báº±ng tiáº¿ng Viá»‡t. English interview. Preserve technical terms.",
-      }),
-    ).toBeNull();
-  });
-
-  it("auto-submits meaningful realtime transcripts", () => {
-    expect(
-      buildValidatedRealtimeTurnRequest({
-        sessionId: "session-1",
-        currentQuestion: "Describe a REST API you built.",
-        transcript:
-          "I built a REST API with validation, authentication, and Postgres transactions.",
-        durationSeconds: 37,
-      }),
-    ).toEqual({
-      sessionId: "session-1",
-      userAnswer:
-        "I built a REST API with validation, authentication, and Postgres transactions.",
-      userTranscript:
-        "I built a REST API with validation, authentication, and Postgres transactions.",
-      modality: "AUDIO",
-      durationSeconds: 37,
-    });
-  });
-
-  it("builds one realtime /turn payload from multiple buffered STT final transcripts", () => {
-    expect(
-      buildBufferedRealtimeTurnRequest({
-        sessionId: "session-1",
-        currentQuestion: "Describe a REST API you built.",
-        transcripts: [
-          "I built a REST API with authentication",
-          "and added Postgres transactions plus validation.",
-        ],
-        durationSeconds: 52,
-      }),
-    ).toEqual({
-      sessionId: "session-1",
-      userAnswer:
-        "I built a REST API with authentication and added Postgres transactions plus validation.",
-      userTranscript:
-        "I built a REST API with authentication and added Postgres transactions plus validation.",
-      modality: "AUDIO",
-      durationSeconds: 52,
-      transcriptSegments: 2,
-    });
-  });
-
-  it("classifies realtime command transcripts before deciding whether to submit /turn", () => {
-    expect(classifyRealtimeTranscriptIntent("nhắc lại câu hỏi giúp em")).toBe(
-      "repeat_question",
-    );
-    expect(classifyRealtimeTranscriptIntent("ý câu này là sao vậy")).toBe(
-      "clarify_question",
-    );
-    expect(classifyRealtimeTranscriptIntent("skip câu này")).toBe(
-      "skip_question",
-    );
-    expect(classifyRealtimeTranscriptIntent("tạm dừng chút")).toBe("pause");
-    expect(classifyRealtimeTranscriptIntent("kết thúc phỏng vấn")).toBe(
-      "end_interview",
-    );
-    expect(
-      classifyRealtimeTranscriptIntent(
-        "I built a REST API with authentication and validation.",
-      ),
-    ).toBe("answer");
-  });
-
-  it("never lets a command keyword inside a flowing answer hijack the turn", () => {
-    // >6 tokens → command regexes are not consulted at all.
-    expect(
-      classifyRealtimeTranscriptIntent("dự án đó đã kết thúc vào tháng ba năm ngoái"),
-    ).toBe("answer");
-    expect(
-      classifyRealtimeTranscriptIntent("sau đó bọn em bỏ qua bước cache và refactor lại"),
-    ).toBe("answer");
-    // "cho em"/"wait" are no longer pause vocabulary (common inside answers).
-    expect(classifyRealtimeTranscriptIntent("anh cho em bổ sung thêm")).toBe("answer");
-    expect(classifyRealtimeTranscriptIntent("we had to wait for replication")).toBe(
-      "answer",
-    );
-    // Short filler / one-word answers append to the buffer instead of being
-    // classified off-topic (off_topic used to erase the buffered answer).
-    expect(classifyRealtimeTranscriptIntent("PostgreSQL")).toBe("answer");
-    expect(classifyRealtimeTranscriptIntent("ừm")).toBe("answer");
-  });
-
-  it("does not classify answer-opening phrases with bare explain/skip as commands", () => {
-    // "explain" / "giải thích" lead genuine answers far more than requests.
-    expect(classifyRealtimeTranscriptIntent("let me explain our approach")).toBe(
-      "answer",
-    );
-    expect(classifyRealtimeTranscriptIntent("em giải thích thêm về dự án")).toBe(
-      "answer",
-    );
-    // Short answer segments that merely contain "skip" are still answers; the
-    // Interview handler only treats skip as a command at the start of a turn.
-    expect(classifyRealtimeTranscriptIntent("we use skip connections")).toBe(
-      "skip_question",
-    );
-    // ...but an explicit QUESTION-DIRECTED clarification request is recognized.
-    expect(classifyRealtimeTranscriptIntent("em chưa hiểu câu hỏi")).toBe(
-      "clarify_question",
-    );
-    // Both "chưa hiểu" and "không hiểu" answer openers stay answers (they used
-    // to be hijacked into clarify and drop the answer — bug hunt R4/R5).
-    expect(
-      classifyRealtimeTranscriptIntent("ban đầu em chưa hiểu codebase"),
-    ).toBe("answer");
-    // A genuine answer opener containing "không hiểu" must NOT be hijacked into
-    // clarify (that would drop the answer) — bare "không hiểu" is not a command.
-    expect(
-      classifyRealtimeTranscriptIntent("ban đầu em không hiểu codebase"),
-    ).toBe("answer");
-  });
-
-  it.each([
-    [
-      {
-        isLiveRealtime: true,
-        isLoading: false,
-        isInterviewerSpeaking: false,
-        isMicActive: true,
-      },
-      "listening",
-    ],
-    [
-      {
-        isLiveRealtime: true,
-        isLoading: false,
-        isInterviewerSpeaking: false,
-        isMicActive: false,
-      },
-      "paused",
-    ],
-    [
-      {
-        isLiveRealtime: true,
-        isLoading: true,
-        isInterviewerSpeaking: false,
-        isMicActive: false,
-      },
-      "submitting",
-    ],
-    [
-      {
-        isLiveRealtime: true,
-        isLoading: false,
-        isInterviewerSpeaking: true,
-        isMicActive: false,
-      },
-      "interviewerSpeaking",
-    ],
-    [
-      {
-        isLiveRealtime: false,
-        isLoading: false,
-        isInterviewerSpeaking: false,
-        isMicActive: false,
-      },
-      "manual",
-    ],
-  ] as const)("derives realtime mic status %s", (input, expected) => {
-    expect(getRealtimeMicStatusKey(input)).toBe(expected);
-  });
-
-  it("does not submit blank realtime transcripts", () => {
-    expect(
-      buildServerOwnedRealtimeTurnRequest({
-        sessionId: "session-1",
-        transcript: "   ",
-      }),
-    ).toBeNull();
-  });
-
-  it("invalidates stale question audio requests", () => {
-    const guard = createQuestionAudioRequestGuard();
-    const first = guard.next();
-    const second = guard.next();
-
-    expect(guard.isCurrent(first)).toBe(false);
-    expect(guard.isCurrent(second)).toBe(true);
-
-    guard.invalidate();
-    expect(guard.isCurrent(second)).toBe(false);
-  });
 
   it("requests live closing once when realtime is near the time limit", () => {
     expect(
       shouldRequestLiveClosingSignal({
-        interviewMode: "realtime",
         isVoiceFallback: false,
         isLiveConnected: true,
         secondsRemaining: 45,
@@ -947,38 +642,12 @@ describe("interview view model", () => {
     ).toBe(true);
     expect(
       shouldRequestLiveClosingSignal({
-        interviewMode: "realtime",
         isVoiceFallback: false,
         isLiveConnected: true,
         secondsRemaining: 44,
         alreadyRequested: true,
       }),
     ).toBe(false);
-    expect(
-      shouldRequestLiveClosingSignal({
-        interviewMode: "guided",
-        isVoiceFallback: false,
-        isLiveConnected: true,
-        secondsRemaining: 45,
-        alreadyRequested: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("flags CJK and leaked transcription prompt fragments in live transcripts", () => {
-    expect(
-      getLiveTranscriptWarnings(
-        "第一张原有很不流动来的求接下午. Em có làm API backend.",
-      ),
-    ).toContain("cjk");
-    expect(
-      getLiveTranscriptWarnings(
-        "Cuộc phỏng vấn bằng tiếng Việt. Giữ nguyên dấu tiếng Việt và các thuật ngữ kỹ thuật tiếng Anh như React, TypeScript và API.",
-      ),
-    ).toContain("promptLeak");
-    expect(
-      getLiveTranscriptWarnings("Em dùng React, TypeScript và API Gateway."),
-    ).toEqual([]);
   });
 
   it("builds the start interview request with voice and speed settings", () => {
@@ -988,7 +657,6 @@ describe("interview view model", () => {
         selectedMatchId: "match-1",
         targetRole: "frontend_developer",
         selectedLanguage: "vi",
-        interviewMode: "realtime",
         interviewType: "mixed",
         voice: "coral",
         speechSpeed: 1.3,
@@ -1039,7 +707,11 @@ describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
     expect(
       readGuardAdjustments({
         action: "drill",
-        reasons: ["answer_evasive", "score_capped_evasive", "generic_follow_up_risk"],
+        reasons: [
+          "answer_evasive",
+          "score_capped_evasive",
+          "generic_follow_up_risk",
+        ],
       }),
     ).toEqual(["score_capped_evasive"]);
   });
@@ -1061,7 +733,11 @@ describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
           turnTrace: {
             action: "drill",
             phase: "SKILL_PROBE",
-            reasons: ["answer_shallow", "score_capped_shallow", "depth_downgraded_thin_answer"],
+            reasons: [
+              "answer_shallow",
+              "score_capped_shallow",
+              "depth_downgraded_thin_answer",
+            ],
             depth: 1,
             remaining_turn_budget: 5,
             confidence: "high",
@@ -1079,67 +755,6 @@ describe("readGuardAdjustments (I-CONSIST score provenance)", () => {
   });
 });
 
-describe("buffered realtime turn request — P3 speech timing", () => {
-  it("recognizes a buffered answer that still belongs to the active question", () => {
-    expect(
-      hasPendingRealtimeAnswer({
-        currentQuestion: "  How do you debug this? ",
-        submittedQuestion: null,
-        transcripts: ["I start by reproducing the issue."],
-      }),
-    ).toBe(true);
-  });
-
-  it("does not flush an empty buffer or a question already submitted", () => {
-    expect(
-      hasPendingRealtimeAnswer({
-        currentQuestion: "How do you debug this?",
-        submittedQuestion: null,
-        transcripts: ["   "],
-      }),
-    ).toBe(false);
-    expect(
-      hasPendingRealtimeAnswer({
-        currentQuestion: "How do you debug this?",
-        submittedQuestion: "How do you debug this?",
-        transcripts: ["I already sent this answer."],
-      }),
-    ).toBe(false);
-  });
-
-  it("sends measured response delay and the segment count", () => {
-    const request = buildBufferedRealtimeTurnRequest({
-      sessionId: "session-1",
-      currentQuestion: "How do you cache the report queries in your service?",
-      transcripts: [
-        "We cache the report queries in Redis with a five minute TTL so the dashboards stay fast.",
-        "And a Kafka consumer invalidates the entries whenever a write happens.",
-      ],
-      durationSeconds: 42,
-      responseDelayMs: 2380,
-    });
-    expect(request).toMatchObject({
-      modality: "AUDIO",
-      durationSeconds: 42,
-      responseDelayMs: 2380,
-      transcriptSegments: 2,
-    });
-  });
-
-  it("omits timing fields it did not measure instead of sending fakes", () => {
-    const request = buildBufferedRealtimeTurnRequest({
-      sessionId: "session-1",
-      currentQuestion: "How do you cache the report queries in your service?",
-      transcripts: [
-        "We cache the report queries in Redis with a five minute TTL so the dashboards stay fast.",
-      ],
-      durationSeconds: 30,
-    });
-    expect(request?.responseDelayMs).toBeUndefined();
-    expect(request?.transcriptSegments).toBe(1);
-  });
-});
-
 describe("computeAnswerCeilingMs", () => {
   it("returns null for null/undefined budget (degrade)", () => {
     expect(computeAnswerCeilingMs(null)).toBeNull();
@@ -1151,7 +766,7 @@ describe("computeAnswerCeilingMs", () => {
     expect(computeAnswerCeilingMs(-10)).toBeNull();
   });
 
-  it("returns 2× budget in milliseconds", () => {
+  it("returns 2Ã— budget in milliseconds", () => {
     expect(computeAnswerCeilingMs(90)).toBe(180_000);
     expect(computeAnswerCeilingMs(60)).toBe(120_000);
   });
@@ -1171,7 +786,9 @@ describe("computeAnswerOvertimeDisplay", () => {
   });
 
   it("stays silent on invalid timestamps", () => {
-    expect(computeAnswerOvertimeDisplay("nope", "also-nope", 90, 120)).toBeNull();
+    expect(
+      computeAnswerOvertimeDisplay("nope", "also-nope", 90, 120),
+    ).toBeNull();
   });
 
   it("reports the answer that ran past its budget", () => {
