@@ -105,9 +105,11 @@ describe("interview-api", () => {
     await getInterviewHistory();
     await getInterviewDetail("session-1");
 
-    expect(httpClient.post).toHaveBeenCalledWith(API_ROUTES.INTERVIEW.END, {
-      sessionId: "session-1",
-    });
+    expect(httpClient.post).toHaveBeenCalledWith(
+      API_ROUTES.INTERVIEW.END,
+      { sessionId: "session-1" },
+      { timeout: 90_000 },
+    );
     expect(httpClient.get).toHaveBeenNthCalledWith(1, API_ROUTES.INTERVIEW.HISTORY, {
       params: { page: 1, limit: 10 },
     });

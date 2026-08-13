@@ -131,6 +131,12 @@ export interface InterviewSessionDto {
   voice: PlatformInterviewVoice | string;
   speechSpeed: number;
   status: PlatformInterviewStatus | string;
+  analysisStatus?:
+    | "NOT_STARTED"
+    | "PENDING"
+    | "READY"
+    | "FAILED"
+    | "NOT_REQUIRED";
   totalQuestionsPlanned: number | null;
   maxDurationSeconds: number;
   expiresAt: string | null;
@@ -252,7 +258,8 @@ export type RealtimeDirectiveAction =
   | "DECLINE_COACHING"
   | "REPEAT"
   | "CLARIFY"
-  | "WRAP_UP";
+  | "WRAP_UP"
+  | "RETRY_CAPTURE";
 
 export interface RealtimeTurnDirectiveDto {
   directiveId: string;
@@ -342,7 +349,7 @@ export async function endInterview(
   const envelope = await unwrapEnvelope<
     ApiEnvelope<InterviewDetailResponseDto>
   >(
-    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }),
+    httpClient.post(API_ROUTES.INTERVIEW.END, { sessionId }, { timeout: 90_000 }),
     "Failed to end interview.",
   );
   return envelope.data;

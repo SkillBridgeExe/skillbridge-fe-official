@@ -531,16 +531,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                         {index + 1}. {question.question}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge
-                          variant={
-                            question.isCuratedQuestion ? "default" : "secondary"
-                          }
-                          className="rounded-full"
-                        >
-                          {question.isCuratedQuestion
-                            ? t("interview.results.curatedQuestion")
-                            : t("interview.results.fallbackQuestion")}
-                        </Badge>
                         {question.topicPhase && (
                           <Badge variant="outline" className="rounded-full">
                             {t("interview.results.phase")}:{" "}
@@ -557,13 +547,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                           <Badge variant="outline" className="rounded-full">
                             {t("interview.results.depthSignal")}:{" "}
                             {getDepthSignalLabel(question.depthSignal)}
-                          </Badge>
-                        )}
-                        {question.questionBankKey && (
-                          <Badge variant="secondary" className="rounded-full">
-                            {t("interview.results.questionBankKey", {
-                              key: question.questionBankKey,
-                            })}
                           </Badge>
                         )}
                       </div>

@@ -61,6 +61,12 @@ describe("InterviewSession", () => {
     expect(screen.queryByRole("button", { name: "Hint" })).not.toBeInTheDocument();
   });
 
+
+  it("renders one End action in the header", () => {
+    renderSession();
+
+    expect(screen.getAllByRole("button", { name: "End" })).toHaveLength(1);
+  });
   it("shows coaching controls only in Practice", () => {
     renderSession({ experienceMode: "PRACTICE", voiceState: "THINKING" });
 

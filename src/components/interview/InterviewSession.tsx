@@ -230,9 +230,6 @@ export function InterviewSession({
               <Button size="sm" variant="outline" onClick={() => onIntent("FEEDBACK")}><Sparkles className="mr-1.5 h-4 w-4" />{copy.feedback}</Button>
             </>
           )}
-          <Button size="sm" variant="destructive" className="ml-auto" onClick={onEnd} disabled={isEnding}>
-            <StopCircle className="mr-1.5 h-4 w-4" />{copy.end}
-          </Button>
         </div>
       </div>
     </main>

@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useEndInterviewOnExit } from "@/hooks/use-end-interview-on-exit";
 import { cn } from "@/lib/utils";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
 import { INTERVIEW_SETUP_STEPS } from "@/constants/interview";
 import { QUERY_KEYS } from "@/constants/app";
 import { getMyCredits, getMyEntitlements } from "@/services/billing.service";
@@ -99,10 +99,12 @@ import {
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
 import {
+  CandidateTurnBuffer,
   OpenAIRealtimeSession,
   RealtimeResponseWatchdog,
   type RealtimeContinuationDirective,
   type RealtimeEvent,
+  type CandidateTurn,
 } from "@/lib/openai-realtime";
 import {
   acquireInterviewMedia,
@@ -263,7 +265,8 @@ export default function Interview() {
   /** P3 speech timing: when the mic actually opened for this turn / delay to first speech. */
   const micOpenedAtRef = useRef<number | null>(null);
   const firstSpeechDelayMsRef = useRef<number | null>(null);
-  const candidateTranscriptRef = useRef("");
+  const candidateTurnBufferRef = useRef<CandidateTurnBuffer | null>(null);
+  const candidateTurnsByIdRef = useRef(new Map<string, CandidateTurn>());
   const directivesByIdRef = useRef(new Map<string, RealtimeTurnDirectiveDto>());
   const directiveIdByResponseRef = useRef(new Map<string, string>());
   const assistantTranscriptByResponseRef = useRef(new Map<string, string>());
@@ -488,6 +491,8 @@ export default function Interview() {
 
   const disconnectRealtime = useCallback(() => {
     responseWatchdogRef.current.clearAll();
+    candidateTurnBufferRef.current?.clear();
+    candidateTurnBufferRef.current = null;
     directivesByIdRef.current.clear();
     directiveIdByResponseRef.current.clear();
     activeResponseByDirectiveRef.current.clear();
@@ -495,6 +500,7 @@ export default function Interview() {
     firstAudioAtByResponseRef.current.clear();
     interruptedResponseIdsRef.current.clear();
     committingResponseIdsRef.current.clear();
+    candidateTurnsByIdRef.current.clear();
     activeResponseIdRef.current = null;
     resolvingToolCallRef.current = false;
     bargeInArmedRef.current = false;
@@ -733,10 +739,12 @@ export default function Interview() {
       transcript: string,
       modality: "TEXT" | "AUDIO",
       classification?: RealtimeTurnClassification | null,
+      toolCallId?: string,
+      candidateTurn?: CandidateTurn,
     ) => {
       const session = activeSessionRef.current;
       const normalized = transcript.trim().normalize("NFC");
-      const isToolCall = clientTurnId.startsWith("call_");
+      const isToolCall = Boolean(toolCallId);
       if (
         !session ||
         !normalized ||
@@ -763,17 +771,36 @@ export default function Interview() {
             answerSignal:
               classification?.answerSignal ??
               classifyAnswerSignal(normalized, intent),
-            speechEndedAt: new Date().toISOString(),
+            speechEndedAt: candidateTurn
+              ? new Date(candidateTurn.endedAtMs).toISOString()
+              : new Date().toISOString(),
+            durationSeconds: candidateTurn?.durationSeconds,
+            transcriptSegments: candidateTurn?.transcriptSegments,
             responseDelayMs: firstSpeechDelayMsRef.current ?? undefined,
           },
         });
         directivesByIdRef.current.set(directive.directiveId, directive);
-        if (isToolCall && liveSessionRef.current?.isConnected) {
+        if (modality === "AUDIO" && directive.action !== "RETRY_CAPTURE") {
+          setChatHistory((current) => [
+            ...current,
+            {
+              id: `candidate-${clientTurnId}`,
+              role: "user",
+              content: normalized,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+        if (liveSessionRef.current?.isConnected) {
           const continuation = toRealtimeContinuation(
             directive,
             session.language === "en" ? "en" : "vi",
           );
-          liveSessionRef.current.submitToolOutput(clientTurnId, continuation);
+          if (isToolCall) {
+            liveSessionRef.current.submitToolOutput(toolCallId!, continuation);
+          } else {
+            liveSessionRef.current.continueDirectiveResponse(continuation);
+          }
           responseWatchdogRef.current.start(directive.directiveId, {
             slow: () => {
               setApiError(
@@ -802,6 +829,12 @@ export default function Interview() {
 
         await commitDirectiveAsText(directive);
       } catch (error) {
+        if (getApiErrorCode(error) === "INTERVIEW_TURN_BUSY") {
+          liveSessionRef.current?.setMicEnabled(!userMutedRef.current);
+          resolvingToolCallRef.current = false;
+          setIsLoading(false);
+          return;
+        }
         setApiError(
           getApiErrorMessage(error, t("interview.errors.submitFailed")),
         );
@@ -826,6 +859,18 @@ export default function Interview() {
       disconnectRealtime();
       const realtimeSession = new OpenAIRealtimeSession();
       liveSessionRef.current = realtimeSession;
+      const candidateTurnBuffer = new CandidateTurnBuffer(900, (turn) => {
+        candidateTurnsByIdRef.current.set(turn.clientTurnId, turn);
+        dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+        setIsLoading(true);
+        realtimeSession.setMicEnabled(false);
+        realtimeSession.requestTurnClassification(
+          turn.clientTurnId,
+          turn.transcript,
+        );
+      });
+      candidateTurnBufferRef.current = candidateTurnBuffer;
+
 
       realtimeSession.on((event: RealtimeEvent) => {
         switch (event.type) {
@@ -852,6 +897,10 @@ export default function Interview() {
             }
             break;
           case "speech_started": {
+            candidateTurnBuffer.speechStarted(
+              event.itemId ?? `segment-${Date.now()}`,
+              Date.now(),
+            );
             if (micOpenedAtRef.current !== null) {
               firstSpeechDelayMsRef.current = Math.max(
                 0,
@@ -872,46 +921,46 @@ export default function Interview() {
             break;
           }
           case "speech_stopped":
-            dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+            candidateTurnBuffer.speechStopped(
+              event.itemId ?? `segment-${Date.now()}`,
+              Date.now(),
+            );
             break;
           case "user_transcript": {
             const transcript = event.data?.trim();
             if (!transcript || resolvingToolCallRef.current) break;
-            candidateTranscriptRef.current = transcript;
-            setChatHistory((current) => [
-              ...current,
-              {
-                id: "candidate-" + Date.now(),
-                role: "user",
-                content: transcript,
-                timestamp: new Date(),
-              },
-            ]);
+            candidateTurnBuffer.addTranscript(
+              transcript,
+              event.itemId ?? `segment-${Date.now()}`,
+            );
             break;
           }
-          case "tool_call":
+          case "tool_call": {
+            const clientTurnId = event.clientTurnId;
+            const candidateTurn = clientTurnId
+              ? candidateTurnsByIdRef.current.get(clientTurnId)
+              : undefined;
             if (
               event.toolCall?.name === "decide_interview_turn" &&
+              clientTurnId &&
+              candidateTurn &&
               !resolvingToolCallRef.current
             ) {
               const classification = parseRealtimeTurnClassification(
                 event.toolCall.arguments,
               );
-              const transcript =
-                candidateTranscriptRef.current ||
-                classification?.transcript ||
-                "";
-              candidateTranscriptRef.current = "";
-              if (transcript) {
-                void resolveRealtimeTurn(
-                  event.toolCall.callId,
-                  transcript,
-                  "AUDIO",
-                  classification,
-                );
-              }
+              candidateTurnsByIdRef.current.delete(clientTurnId);
+              void resolveRealtimeTurn(
+                clientTurnId,
+                candidateTurn.transcript,
+                "AUDIO",
+                classification,
+                event.toolCall.callId,
+                candidateTurn,
+              );
             }
             break;
+          }
           case "response_created":
             if (event.responseId && event.directiveId) {
               const previousResponse = activeResponseByDirectiveRef.current.get(
@@ -964,7 +1013,7 @@ export default function Interview() {
             bargeInArmTimerRef.current = setTimeout(() => {
               bargeInArmedRef.current = true;
               bargeInArmTimerRef.current = null;
-            }, 350);
+            }, 700);
             dispatchRealtime({
               type: "ASSISTANT_AUDIO_STARTED",
               subtitle: responseId
@@ -1238,7 +1287,6 @@ export default function Interview() {
     userMutedRef.current = false;
     dispatchRealtime({ type: "SET_USER_MUTED", muted: false });
     questionStartedAtRef.current = null;
-    candidateTranscriptRef.current = "";
     firstSpeechDelayMsRef.current = null;
     dispatchRealtime({ type: "CONNECTING" });
   }, [disconnectRealtime, stopMedia]);
@@ -1489,30 +1537,62 @@ export default function Interview() {
   );
 
   const finishInterview = useCallback(
-    async (reason: EndReason = "manual") => {
+    async (_reason: EndReason = "manual") => {
       const sessionId = activeSession?.id;
       if (!sessionId || endingRef.current) return;
 
       endingRef.current = true;
-      markExitEndHandled();
       setIsEnding(true);
       setIsLoading(false);
       setApiError(null);
       disconnectRealtime();
       stopMedia();
+      const waitForAnalysis = async (
+        initial?: InterviewDetailResponseDto,
+      ): Promise<InterviewDetailResponseDto | null> => {
+        let detail = initial;
+        for (let attempt = 0; attempt < 45; attempt += 1) {
+          if (detail) {
+            const settled =
+              detail.analysisStatus === "READY" ||
+              detail.analysisStatus === "NOT_REQUIRED" ||
+              detail.status === "COMPLETED" ||
+              detail.status === "CANCELLED";
+            if (settled) return detail;
+            if (detail.analysisStatus === "FAILED") {
+              throw new Error("Interview analysis failed.");
+            }
+          }
+          if (attempt === 44) break;
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 2_000));
+          try {
+            detail = await getInterviewDetail(sessionId);
+          } catch {
+            detail = undefined;
+          }
+        }
+        return null;
+      };
+
+
 
       try {
-        const detail = await endInterviewMutation.mutateAsync({ sessionId });
+        const received = await endInterviewMutation.mutateAsync({ sessionId });
+        markExitEndHandled();
+        const detail = await waitForAnalysis(received);
+        if (!detail) throw new Error("Interview analysis timed out.");
         applyEndedInterview(detail);
       } catch (error) {
-        if (reason === "timer" || reason === "finished") {
-          try {
-            const detail = await getInterviewDetail(sessionId);
+        try {
+          const detail = await waitForAnalysis();
+          if (detail) {
+            markExitEndHandled();
             applyEndedInterview(detail);
             return;
-          } catch {
-            // Keep the original end error below.
           }
+        } catch (pollError) {
+          setApiError(getApiErrorMessage(pollError, t("interview.errors.endFailed")));
+          return;
         }
         setApiError(getApiErrorMessage(error, t("interview.errors.endFailed")));
       } finally {
@@ -1596,13 +1676,6 @@ export default function Interview() {
         timestamp: new Date(),
       },
     ]);
-    if (liveSessionRef.current?.isConnected) {
-      setIsLoading(true);
-      liveSessionRef.current.setMicEnabled(false);
-      candidateTranscriptRef.current = prompt;
-      liveSessionRef.current.sendText(prompt);
-      return;
-    }
     void resolveRealtimeTurn(`command-${crypto.randomUUID()}`, prompt, "TEXT");
   };
 

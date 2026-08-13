@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  CandidateTurnBuffer,
   OpenAIRealtimeSession,
   RealtimeResponseWatchdog,
   type RealtimeEvent,
@@ -15,6 +16,76 @@ describe("OpenAIRealtimeSession", () => {
     session.on((event) => events.push(event));
     return events;
   }
+
+  it("merges speech segments separated by less than 900 ms into one candidate turn", () => {
+    vi.useFakeTimers();
+    const completed = vi.fn();
+    const buffer = new CandidateTurnBuffer(900, completed);
+
+    buffer.speechStarted("item-1", 1_000);
+    buffer.addTranscript("Tôi đã làm phần API", "item-1");
+    buffer.speechStopped("item-1", 1_500);
+    vi.advanceTimersByTime(800);
+    buffer.speechStarted("item-2", 2_300);
+    buffer.addTranscript("và quản lý session.", "item-2");
+    buffer.speechStopped("item-2", 2_700);
+    vi.advanceTimersByTime(900);
+
+    expect(completed).toHaveBeenCalledOnce();
+    expect(completed).toHaveBeenCalledWith({
+      clientTurnId: expect.stringMatching(/^audio-/),
+      transcript: "Tôi đã làm phần API và quản lý session.",
+      itemIds: ["item-1", "item-2"],
+      startedAtMs: 1_000,
+      endedAtMs: 2_700,
+      durationSeconds: 2,
+      transcriptSegments: 2,
+    });
+    vi.useRealTimers();
+  });
+
+  it("buffers function arguments until the classification response is completed", () => {
+    const session = new OpenAIRealtimeSession();
+    const events = collectEvents(session);
+    const handleEvent = (value: unknown) =>
+      (session as unknown as { handleEvent(raw: unknown): void }).handleEvent(
+        JSON.stringify(value),
+      );
+
+    handleEvent({
+      type: "response.function_call_arguments.done",
+      response_id: "response-classify-1",
+      call_id: "call-1",
+      name: "decide_interview_turn",
+      arguments:
+        '{"transcript":"Tôi làm API","intent":"ANSWER","answer_signal":"PARTIAL"}',
+    });
+    expect(events).toEqual([]);
+
+    handleEvent({
+      type: "response.done",
+      response: {
+        id: "response-classify-1",
+        status: "completed",
+        metadata: {
+          purpose: "classification",
+          clientTurnId: "audio-turn-1",
+        },
+      },
+    });
+
+    expect(events).toContainEqual({
+      type: "tool_call",
+      responseId: "response-classify-1",
+      clientTurnId: "audio-turn-1",
+      toolCall: {
+        callId: "call-1",
+        name: "decide_interview_turn",
+        arguments:
+          '{"transcript":"Tôi làm API","intent":"ANSWER","answer_signal":"PARTIAL"}',
+      },
+    });
+  });
 
   it("maps current OpenAI Realtime output audio transcript events", () => {
     const session = new OpenAIRealtimeSession();
@@ -182,8 +253,101 @@ describe("OpenAIRealtimeSession", () => {
       type: "response.create",
       response: {
         output_modalities: ["audio"],
+        tool_choice: "none",
+        metadata: { purpose: "official_question" },
       },
     });
+  });
+
+  it("forces exactly one classification tool call for a stable client turn id", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: Array<Record<string, unknown>> = [];
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+      }
+    ).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+
+    session.requestTurnClassification(
+      "audio-turn-1",
+      "Tôi làm API và quản lý session.",
+    );
+
+    expect(sent).toEqual([
+      {
+        event_id: expect.any(String),
+        type: "response.create",
+        response: {
+          output_modalities: ["audio"],
+          metadata: {
+            purpose: "classification",
+            clientTurnId: "audio-turn-1",
+          },
+          tool_choice: {
+            type: "function",
+            name: "decide_interview_turn",
+          },
+          instructions: expect.stringContaining(
+            "Tôi làm API và quản lý session.",
+          ),
+        },
+      },
+    ]);
+  });
+
+  it("queues a second audio response until playback of the first response stops", () => {
+    const session = new OpenAIRealtimeSession();
+    const sent: Array<{ type?: string }> = [];
+    (
+      session as unknown as {
+        dataChannel: { readyState: string; send: (payload: string) => void };
+        handleEvent(raw: unknown): void;
+      }
+    ).dataChannel = {
+      readyState: "open",
+      send: (payload: string) => sent.push(JSON.parse(payload)),
+    };
+    const handleEvent = (value: unknown) =>
+      (
+        session as unknown as { handleEvent(raw: unknown): void }
+      ).handleEvent(JSON.stringify(value));
+
+    session.speakOfficialQuestion("Câu hỏi thứ nhất?", "vi");
+    session.speakOfficialQuestion("Câu hỏi thứ hai?", "vi");
+    expect(sent.filter((event) => event.type === "response.create")).toHaveLength(
+      1,
+    );
+
+    handleEvent({
+      type: "response.created",
+      response: {
+        id: "response-1",
+        status: "in_progress",
+        metadata: { purpose: "official_question" },
+      },
+    });
+    handleEvent({
+      type: "response.done",
+      response: {
+        id: "response-1",
+        status: "completed",
+        metadata: { purpose: "official_question" },
+      },
+    });
+    expect(sent.filter((event) => event.type === "response.create")).toHaveLength(
+      1,
+    );
+
+    handleEvent({
+      type: "output_audio_buffer.stopped",
+      response_id: "response-1",
+    });
+    expect(sent.filter((event) => event.type === "response.create")).toHaveLength(
+      2,
+    );
   });
 
   it("does not override the server-owned realtime session configuration on connect", async () => {
@@ -256,6 +420,8 @@ describe("OpenAIRealtimeSession", () => {
         type: "response.create",
         response: {
           output_modalities: ["audio"],
+          tool_choice: "none",
+          metadata: { purpose: "closing" },
           instructions: expect.stringContaining("Cảm ơn ứng viên"),
         },
       },
@@ -373,8 +539,16 @@ describe("OpenAIRealtimeSession", () => {
         raw,
       );
 
-    handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_started" }));
-    handleEvent(JSON.stringify({ type: "input_audio_buffer.speech_stopped" }));
+    handleEvent(JSON.stringify({
+      type: "input_audio_buffer.speech_started",
+      item_id: "item-1",
+      audio_start_ms: 120,
+    }));
+    handleEvent(JSON.stringify({
+      type: "input_audio_buffer.speech_stopped",
+      item_id: "item-1",
+      audio_end_ms: 860,
+    }));
     const toolEvent = JSON.stringify({
       type: "response.function_call_arguments.done",
       call_id: "call_1",
@@ -389,6 +563,8 @@ describe("OpenAIRealtimeSession", () => {
       "speech_stopped",
       "tool_call",
     ]);
+    expect(events[0]).toEqual({ type: "speech_started", itemId: "item-1", audioStartMs: 120 });
+    expect(events[1]).toEqual({ type: "speech_stopped", itemId: "item-1", audioEndMs: 860 });
     expect(events[2]?.toolCall).toEqual({
       callId: "call_1",
       name: "decide_interview_turn",
@@ -435,7 +611,11 @@ describe("OpenAIRealtimeSession", () => {
       type: "response.create",
       response: {
         output_modalities: ["audio"],
-        metadata: { directiveId: "directive_1" },
+        tool_choice: "none",
+        metadata: {
+          purpose: "interviewer_turn",
+          directiveId: "directive_1",
+        },
         instructions: expect.stringContaining(
           "Bạn đã trực tiếp xây dựng tính năng frontend nào?",
         ),
@@ -592,6 +772,14 @@ describe("OpenAIRealtimeSession", () => {
       session as unknown as { activeAudioStartedAt: number }
     ).activeAudioStartedAt = performance.now() - 500;
 
+    (
+      session as unknown as {
+        activeResponse: { responseId: string; waitForPlayback: boolean; generationDone: boolean };
+      }
+    ).activeResponse = {
+      responseId: "response_1", waitForPlayback: true, generationDone: false,
+    };
+    session.cancelResponse();
     session.cancelResponse();
     session.disconnect();
 
