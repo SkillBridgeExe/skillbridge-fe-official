@@ -48,6 +48,9 @@ const requiredInterviewKeys = [
   "common.interview.status.inProgress",
   "common.interview.status.cancelled",
   "common.interview.status.unknown",
+  "common.interview.session.voiceState.listening",
+  "common.interview.session.voiceState.thinking",
+  "common.interview.session.voiceState.speaking",
   "common.interview.detail.title",
   "common.interview.detail.subtitle",
   "common.interview.detail.backToHistory",
@@ -268,6 +271,17 @@ describe("interview i18n keys", () => {
     for (const [key, expected] of Object.entries(expectedViLabels)) {
       expect(readPath(vi, key), key).toBe(expected);
     }
+  });
+
+  it.each([
+    ["en", en],
+    ["vi", vi],
+  ] as const)("contains no mojibake in interview UI copy for %s", (_locale, resource) => {
+    const interview = JSON.stringify(readPath(resource, "common.interview"));
+
+    expect(interview).not.toMatch(
+      /[\u0080-\u009f]|\uFFFD|Ã|Â|Ä|Å|Æ|á(?:º|»)|â[\u0080-\u20ff]/u,
+    );
   });
 });
 

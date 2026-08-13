@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
   buildInterviewInitialMessages,
@@ -14,7 +14,6 @@ import {
   containsInterviewInternalMarker,
   getRealtimeTokenFallbackReason,
   shouldRequestLiveClosingSignal,
-  speakOfficialRealtimeQuestion,
   getInterviewSessionStatusKey,
   getInterviewSessionStatusLabel,
   readGuardAdjustments,
@@ -106,7 +105,7 @@ describe("interview view model", () => {
   it("allows normal Vietnamese interviewer text", () => {
     expect(
       containsInterviewInternalMarker(
-        "Cảm ơn bạn. Bạn có thể kể rõ tính năng frontend mà bạn trực tiếp xây dựng không?",
+        "Cáº£m Æ¡n báº¡n. Báº¡n cÃ³ thá»ƒ ká»ƒ rÃµ tÃ­nh nÄƒng frontend mÃ  báº¡n trá»±c tiáº¿p xÃ¢y dá»±ng khÃ´ng?",
       ),
     ).toBe(false);
   });
@@ -604,31 +603,6 @@ describe("interview view model", () => {
     ).toBe("OPENAI_API_KEY is not set");
   });
 
-  it("speaks the backend interviewer bridge and official question when realtime starts", () => {
-    const session = { speakOfficialQuestion: vi.fn() };
-
-    expect(
-      speakOfficialRealtimeQuestion(
-        session,
-        "  Describe a backend API you built.  ",
-        "en",
-        "Thanks, let's go deeper.",
-      ),
-    ).toBe(true);
-
-    expect(session.speakOfficialQuestion).toHaveBeenCalledWith(
-      "Thanks, let's go deeper.\n\nDescribe a backend API you built.",
-      "en",
-    );
-  });
-
-  it("ignores empty realtime official questions", () => {
-    const session = { speakOfficialQuestion: vi.fn() };
-
-    expect(speakOfficialRealtimeQuestion(session, "   ", "vi")).toBe(false);
-
-    expect(session.speakOfficialQuestion).not.toHaveBeenCalled();
-  });
 
   it("requests live closing once when realtime is near the time limit", () => {
     expect(
@@ -765,7 +739,7 @@ describe("computeAnswerCeilingMs", () => {
     expect(computeAnswerCeilingMs(-10)).toBeNull();
   });
 
-  it("returns 2× budget in milliseconds", () => {
+  it("returns 2Ã— budget in milliseconds", () => {
     expect(computeAnswerCeilingMs(90)).toBe(180_000);
     expect(computeAnswerCeilingMs(60)).toBe(120_000);
   });

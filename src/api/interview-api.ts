@@ -15,11 +15,6 @@ export type RealtimeCandidateIntent =
   | "FEEDBACK"
   | "SKIP"
   | "END";
-export type RealtimeAnswerSignal =
-  | "COMPLETE"
-  | "PARTIAL"
-  | "OFF_TOPIC"
-  | "NO_ANSWER";
 export type PlatformInterviewType = "HR" | "TECHNICAL" | "MIXED";
 export type PlatformInterviewStatus = "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PlatformInterviewLanguage = "vi" | "en";
@@ -41,6 +36,8 @@ export interface RealtimeClientSecretDto {
   enabled: boolean;
   provider: "openai";
   model: string | null;
+  protocolVersion: 'interview-realtime-v3';
+  transcriptionModel: string;
   clientSecret: string | null;
   expiresAt: string | null;
   reason?: string;
@@ -229,6 +226,7 @@ export interface StartInterviewRequest {
 }
 
 export interface StartInterviewResponseDto extends InterviewSessionDto {
+  currentTurnId: string;
   firstMessage: string;
   firstQuestion: string;
   phase: string | null;
@@ -237,57 +235,60 @@ export interface StartInterviewResponseDto extends InterviewSessionDto {
   answerBudgetSeconds?: number;
 }
 
-export interface RealtimeInterviewTurnRequest {
+export type RealtimeExchangeInputType = "ANSWER" | "CONTROL" | "CAPTURE_RETRY";
+export type RealtimeIntentSource = "VOICE_LEXICAL" | "BUTTON" | "TEXT";
+
+export type RealtimeInterviewTurnRequest =
+  | {
+      kind: "REALTIME_EXCHANGE";
+      clientTurnId: string;
+      questionTurnId: string | null;
+      input: {
+        type: RealtimeExchangeInputType;
+        modality: PlatformInterviewModality;
+        transcript?: string;
+        intent?: RealtimeCandidateIntent;
+        intentSource: RealtimeIntentSource;
+        itemIds?: string[];
+        speechStartedAt?: string;
+        speechEndedAt?: string;
+        segmentCount?: number;
+        meanLogprob?: number;
+      };
+      assistant: {
+        responseId: string;
+        transcript: string;
+        firstAudioAt?: string;
+        interrupted: boolean;
+      };
+    }
+  | {
+      kind: "TEXT_FALLBACK";
+      clientTurnId: string;
+      questionTurnId: string | null;
+      text: string;
+      intent?: RealtimeCandidateIntent;
+    };
+
+export type RealtimeExchangeDisposition =
+  | "COMMITTED"
+  | "DUPLICATE"
+  | "CAPTURE_RETRY"
+  | "CONTROL_APPLIED"
+  | "PENDING";
+
+export interface RealtimeExchangeResponseDto {
   clientTurnId: string;
-  transcript: string;
-  modality: PlatformInterviewModality;
-  intent: RealtimeCandidateIntent;
-  answerSignal: RealtimeAnswerSignal;
-  speechEndedAt?: string;
-  durationSeconds?: number;
-  responseDelayMs?: number;
-  transcriptSegments?: number;
-}
-
-export type RealtimeDirectiveAction =
-  | "FOLLOW_UP"
-  | "ADVANCE_TOPIC"
-  | "LOWER_DIFFICULTY"
-  | "GIVE_HINT"
-  | "GIVE_FEEDBACK"
-  | "DECLINE_COACHING"
-  | "REPEAT"
-  | "CLARIFY"
-  | "WRAP_UP"
-  | "RETRY_CAPTURE";
-
-export interface RealtimeTurnDirectiveDto {
-  directiveId: string;
-  action: RealtimeDirectiveAction;
-  topicId: string | null;
-  questionThreadId: string;
-  difficultyStep: number;
-  assistanceLevel: "NONE" | "EASIER" | "HINT" | "SKIPPED";
-  scoreCap: number | null;
-  threadScore: number | null;
-  consumesAttempt: boolean;
-  fallbackQuestion: string;
+  disposition: RealtimeExchangeDisposition;
+  answeredTurnId: string | null;
+  currentTurnId: string | null;
+  assistant: {
+    responseId: string | null;
+    transcript: string;
+    question: string | null;
+  } | null;
   finished: boolean;
 }
-
-export interface CommitRealtimeAssistantMessageRequest {
-  responseId: string;
-  interviewerMessage?: string;
-  interviewerQuestion: string;
-  firstAudioAt?: string;
-  interrupted?: boolean;
-}
-
-export interface CommitRealtimeAssistantMessageResponse {
-  directive: RealtimeTurnDirectiveDto;
-  turnId: string | null;
-}
-
 export interface InterviewDetailResponseDto extends InterviewSessionDto {
   turns: InterviewTurnDto[];
 }
@@ -318,27 +319,10 @@ export async function startInterview(
 export async function submitRealtimeInterviewTurn(
   sessionId: string,
   payload: RealtimeInterviewTurnRequest,
-): Promise<RealtimeTurnDirectiveDto> {
-  const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeTurnDirectiveDto>>(
+): Promise<RealtimeExchangeResponseDto> {
+  const envelope = await unwrapEnvelope<ApiEnvelope<RealtimeExchangeResponseDto>>(
     httpClient.post(API_ROUTES.INTERVIEW.REALTIME_TURN(sessionId), payload),
     "Failed to resolve realtime interview turn.",
-  );
-  return envelope.data;
-}
-
-export async function commitRealtimeAssistantMessage(
-  sessionId: string,
-  directiveId: string,
-  payload: CommitRealtimeAssistantMessageRequest,
-): Promise<CommitRealtimeAssistantMessageResponse> {
-  const envelope = await unwrapEnvelope<
-    ApiEnvelope<CommitRealtimeAssistantMessageResponse>
-  >(
-    httpClient.post(
-      API_ROUTES.INTERVIEW.REALTIME_DIRECTIVE_COMMIT(sessionId, directiveId),
-      payload,
-    ),
-    "Failed to commit realtime interviewer transcript.",
   );
   return envelope.data;
 }
@@ -377,7 +361,7 @@ export function sendBestEffortInterviewEnd(sessionId: string): void {
       body: JSON.stringify({ sessionId }),
     },
   ).catch(() => {
-    // Swallowed on purpose — the BE stale-session sweep is the backstop.
+      // Swallowed on purpose — the BE stale-session sweep is the backstop.
   });
 }
 

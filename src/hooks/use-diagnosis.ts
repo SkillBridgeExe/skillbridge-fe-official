@@ -144,7 +144,7 @@ export function useSkillGapQuery(
   });
 }
 
-/** AI insight tá»« trends endpoint cho CV hiá»‡n táº¡i. */
+/** AI insight từ trends endpoint cho CV hiện tại. */
 export function useTrendsInsightQuery(
   cvId: string | null,
   role?: string | null,

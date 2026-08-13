@@ -1458,6 +1458,13 @@ export default {
         cancelled: "Cancelled",
         unknown: "Unknown",
       },
+      session: {
+        voiceState: {
+          listening: "Listening",
+          thinking: "Thinking",
+          speaking: "Speaking",
+        },
+      },
       detail: {
         title: "Previous Interview Result",
         subtitle:

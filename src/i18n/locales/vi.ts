@@ -1456,6 +1456,13 @@ export default {
         cancelled: "Đã hủy",
         unknown: "Không rõ",
       },
+      session: {
+        voiceState: {
+          listening: "Đang nghe",
+          thinking: "Đang suy nghĩ",
+          speaking: "Đang nói",
+        },
+      },
       detail: {
         title: "Kết quả phỏng vấn cũ",
         subtitle:

@@ -54,7 +54,7 @@ export interface InterviewResultQuestionViewModel {
   answeredAt: string | null;
 }
 
-/** the guard slugs the report explains — anything unknown is ignored (forward-compatible). */
+  /** the guard slugs the report explains — anything unknown is ignored (forward-compatible). */
 export const INTERVIEW_GUARD_ADJUSTMENTS = [
   "score_capped_off_topic",
   "score_capped_evasive",
@@ -126,7 +126,7 @@ export interface InterviewGapItemViewModel {
   recommendedAction: string;
 }
 
-/** BE gap severity is 0..1 (clamp01) — NOT a 0..5 scale. */
+  /** BE gap severity is 0..1 (clamp01) — NOT a 0..5 scale. */
 export function gapSeverityLevel(severity: number): "critical" | "moderate" {
   return severity >= 0.7 ? "critical" : "moderate";
 }
@@ -235,10 +235,6 @@ export interface InterviewVoicePreference {
   speechSpeed: InterviewSpeechSpeed;
 }
 
-export interface RealtimeOfficialQuestionSpeaker {
-  speakOfficialQuestion(question: string, language: "vi" | "en"): void;
-}
-
 export function getInterviewEndIntent(
   answeredCount: number,
 ): InterviewEndIntent {
@@ -339,18 +335,6 @@ export function buildInterviewStartRequest({
     voice,
     speechSpeed,
   };
-}
-
-export function speakOfficialRealtimeQuestion(
-  session: RealtimeOfficialQuestionSpeaker | null | undefined,
-  question: string | null | undefined,
-  language: "vi" | "en",
-  aiMessage?: string | null,
-): boolean {
-  const trimmed = interviewerTurnText(aiMessage, question);
-  if (!session || !trimmed) return false;
-  session.speakOfficialQuestion(trimmed, language);
-  return true;
 }
 
 export function readInterviewVoicePreference(
@@ -563,15 +547,6 @@ function uniqueNonEmptyStrings(
   ) as string[];
 }
 
-function interviewerTurnText(
-  aiMessage: string | null | undefined,
-  question: string | null | undefined,
-): string {
-  return uniqueNonEmptyStrings([aiMessage, question])
-    .join("\n\n")
-    .normalize("NFC");
-}
-
 function score(value: number | null | undefined): number | null {
   return value == null || Number.isNaN(value) ? null : Math.round(value);
 }
@@ -776,7 +751,7 @@ function readGapItems(value: unknown): InterviewGapItemViewModel[] {
         readString(item.recommended_action) ||
         readString(item.recommended_next_action) ||
         "";
-      // skill_canonical is null for communication/behavioral gaps — keep those items.
+    // skill_canonical is null for communication/behavioral gaps — keep those items.
       if (!display) return null;
       return {
         skillCanonical: readString(item.skill_canonical),

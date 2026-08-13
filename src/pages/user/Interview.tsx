@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useEndInterviewOnExit } from "@/hooks/use-end-interview-on-exit";
 import { cn } from "@/lib/utils";
-import { getApiErrorCode, getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { INTERVIEW_SETUP_STEPS } from "@/constants/interview";
 import { QUERY_KEYS } from "@/constants/app";
 import { getMyCredits, getMyEntitlements } from "@/services/billing.service";
@@ -46,8 +46,6 @@ import {
   type InterviewDetailResponseDto,
   type InterviewSessionDto,
   type InterviewExperienceMode,
-  type RealtimeTurnDirectiveDto,
-  type RealtimeAnswerSignal,
   type RealtimeCandidateIntent,
 } from "@/api/interview-api";
 import {
@@ -60,7 +58,6 @@ import {
   useRefreshRealtimeToken,
   useStartInterview,
   useSubmitRealtimeInterviewTurn,
-  useCommitRealtimeAssistantMessage,
   useUploadCvForInterview,
 } from "@/hooks/use-interview";
 import { ResultsView } from "@/components/interview/ResultsView";
@@ -93,16 +90,14 @@ import {
   readInterviewVoicePreference,
   secondsRemainingFromExpiry,
   shouldRequestLiveClosingSignal,
-  speakOfficialRealtimeQuestion,
   takeRecentInterviewSessions,
   writeInterviewVoicePreference,
   type InterviewVoicePreference,
 } from "@/components/interview/interview-view-model";
 import {
+  assessCandidateCapture,
   CandidateTurnBuffer,
   OpenAIRealtimeSession,
-  RealtimeResponseWatchdog,
-  type RealtimeContinuationDirective,
   type RealtimeEvent,
   type CandidateTurn,
 } from "@/lib/openai-realtime";
@@ -114,10 +109,7 @@ import {
   interviewSessionReducer,
   initialInterviewSessionState,
 } from "@/components/interview/interview-session-machine";
-import {
-  parseRealtimeTurnClassification,
-  type RealtimeTurnClassification,
-} from "@/components/interview/interview-turn-classification";
+
 
 type EndReason = "manual" | "timer" | "finished";
 
@@ -144,69 +136,31 @@ function classifyIntent(value: string): RealtimeCandidateIntent {
   return "ANSWER";
 }
 
-function classifyAnswerSignal(
-  transcript: string,
-  intent: RealtimeCandidateIntent,
-): RealtimeAnswerSignal {
-  if (intent === "NO_ANSWER") return "NO_ANSWER";
-  const words = transcript.trim().split(/\s+/).filter(Boolean);
-  if (intent === "ANSWER" && words.length < 8) return "PARTIAL";
-  return "COMPLETE";
-}
-
-function extractSpokenQuestion(transcript: string, fallback: string): string {
+function extractSpokenQuestion(transcript: string, fallback = ""): string {
   const normalized = transcript.trim().normalize("NFC");
-  if (!normalized) return fallback;
-  const sentences = normalized.match(/[^.!?]*\?/g);
-  return sentences?.at(-1)?.trim() || fallback || normalized;
+  const questions = normalized.match(/[^.!?？]+[?？]/g);
+  return questions?.at(-1)?.trim() || fallback;
 }
 
-function safeInterviewFallback(
-  value: string,
-  language: "vi" | "en",
-  currentQuestion: string,
-): string {
-  const normalized = value.trim().normalize("NFC");
-  if (normalized && !containsInterviewInternalMarker(normalized))
-    return normalized;
-  const current = currentQuestion.trim().normalize("NFC");
-  if (current && !containsInterviewInternalMarker(current)) return current;
-  return language === "vi"
-    ? "Bạn có thể chia sẻ một ví dụ cụ thể về phần việc bạn trực tiếp thực hiện không?"
-    : "Could you share a specific example of the work you personally completed?";
+function interviewerTurnText(message: string, question: string): string {
+  return [message.trim(), question.trim()].filter(Boolean).join(" ");
 }
 
-function toRealtimeContinuation(
-  directive: RealtimeTurnDirectiveDto,
-  language: "vi" | "en",
-): RealtimeContinuationDirective {
-  return {
-    directiveId: directive.directiveId,
-    action: directive.action,
-    fallbackQuestion: safeInterviewFallback(
-      directive.fallbackQuestion,
-      language,
-      "",
-    ),
-    language,
+const INTERVIEW_REALTIME_PROTOCOL_VERSION = "interview-realtime-v3";
+
+function controlText(intent: RealtimeCandidateIntent, language: "vi" | "en"): string {
+  const values: Record<RealtimeCandidateIntent, { vi: string; en: string }> = {
+    ANSWER: { vi: "Câu trả lời", en: "Answer" },
+    NO_ANSWER: { vi: "Tôi chưa biết câu này.", en: "I do not know this one." },
+    REPEAT: { vi: "Hãy nhắc lại câu hỏi.", en: "Please repeat the question." },
+    CLARIFY: { vi: "Hãy làm rõ câu hỏi.", en: "Please clarify the question." },
+    EASIER: { vi: "Cho tôi một câu dễ hơn.", en: "Please ask an easier question." },
+    HINT: { vi: "Cho tôi một gợi ý.", en: "Please give me a hint." },
+    FEEDBACK: { vi: "Cho tôi nhận xét nhanh.", en: "Please give me quick feedback." },
+    SKIP: { vi: "Bỏ qua và đổi chủ đề.", en: "Skip this and change topic." },
+    END: { vi: "Kết thúc phỏng vấn.", en: "End the interview." },
   };
-}
-function intentPrompt(
-  intent: RealtimeCandidateIntent,
-  language: "vi" | "en",
-): string {
-  const prompts: Record<RealtimeCandidateIntent, [string, string]> = {
-    ANSWER: ["Đây là câu trả lời của tôi.", "This is my answer."],
-    NO_ANSWER: ["Tôi không biết câu này.", "I do not know this one."],
-    REPEAT: ["Hãy nhắc lại câu hỏi.", "Please repeat the question."],
-    CLARIFY: ["Hãy làm rõ câu hỏi.", "Please clarify the question."],
-    EASIER: ["Cho tôi một câu dễ hơn.", "Please ask an easier question."],
-    HINT: ["Cho tôi một gợi ý.", "Please give me a hint."],
-    FEEDBACK: ["Cho tôi nhận xét nhanh.", "Please give me quick feedback."],
-    SKIP: ["Bỏ qua và đổi chủ đề.", "Skip this and change topic."],
-    END: ["Kết thúc phỏng vấn.", "End the interview."],
-  };
-  return prompts[intent][language === "vi" ? 0 : 1];
+  return values[intent][language];
 }
 export default function Interview() {
   const { t, i18n } = useTranslation("common");
@@ -267,20 +221,20 @@ export default function Interview() {
   const firstSpeechDelayMsRef = useRef<number | null>(null);
   const candidateTurnBufferRef = useRef<CandidateTurnBuffer | null>(null);
   const candidateTurnsByIdRef = useRef(new Map<string, CandidateTurn>());
-  const directivesByIdRef = useRef(new Map<string, RealtimeTurnDirectiveDto>());
-  const directiveIdByResponseRef = useRef(new Map<string, string>());
+  const candidateIntentByTurnRef = useRef(
+    new Map<string, RealtimeCandidateIntent>(),
+  );
+  const captureRetryTurnIdsRef = useRef(new Set<string>());
   const assistantTranscriptByResponseRef = useRef(new Map<string, string>());
   const firstAudioAtByResponseRef = useRef(new Map<string, string>());
   const interruptedResponseIdsRef = useRef(new Set<string>());
-  const committingResponseIdsRef = useRef(new Set<string>());
-  const activeResponseIdRef = useRef<string | null>(null);
-  const resolvingToolCallRef = useRef(false);
-  const responseWatchdogRef = useRef(new RealtimeResponseWatchdog(4_000));
-  const committedDirectiveIdsRef = useRef(new Set<string>());
-  const activeResponseByDirectiveRef = useRef(new Map<string, string>());
+  const committedResponseIdsRef = useRef(new Set<string>());
+  const responseClientTurnIdRef = useRef(new Map<string, string>());
+  const currentTurnIdRef = useRef<string | null>(null);
+  const lastAssistantTranscriptRef = useRef("");
+  const captureFailureCountRef = useRef(0);
+  const commitQueueRef = useRef<Promise<void>>(Promise.resolve());
   const userMutedRef = useRef(false);
-  const bargeInArmedRef = useRef(false);
-  const bargeInArmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endingRef = useRef(false);
   const autoEndRef = useRef(false);
   const finishInterviewRef = useRef<(reason: EndReason) => Promise<void>>(
@@ -313,7 +267,6 @@ export default function Interview() {
   const uploadCvForInterviewMutation = useUploadCvForInterview();
   const createCvMatchForInterviewMutation = useCreateCvMatchForInterview();
   const submitRealtimeTurnMutation = useSubmitRealtimeInterviewTurn();
-  const commitRealtimeAssistantMutation = useCommitRealtimeAssistantMessage();
   const endInterviewMutation = useEndInterview();
   const refreshRealtimeTokenMutation = useRefreshRealtimeToken();
   const interviewEntitlementsQuery = useQuery({
@@ -490,24 +443,17 @@ export default function Interview() {
   }, []);
 
   const disconnectRealtime = useCallback(() => {
-    responseWatchdogRef.current.clearAll();
     candidateTurnBufferRef.current?.clear();
     candidateTurnBufferRef.current = null;
-    directivesByIdRef.current.clear();
-    directiveIdByResponseRef.current.clear();
-    activeResponseByDirectiveRef.current.clear();
     assistantTranscriptByResponseRef.current.clear();
     firstAudioAtByResponseRef.current.clear();
     interruptedResponseIdsRef.current.clear();
-    committingResponseIdsRef.current.clear();
+    committedResponseIdsRef.current.clear();
+    responseClientTurnIdRef.current.clear();
     candidateTurnsByIdRef.current.clear();
-    activeResponseIdRef.current = null;
-    resolvingToolCallRef.current = false;
-    bargeInArmedRef.current = false;
-    if (bargeInArmTimerRef.current !== null) {
-      clearTimeout(bargeInArmTimerRef.current);
-      bargeInArmTimerRef.current = null;
-    }
+    candidateIntentByTurnRef.current.clear();
+    captureRetryTurnIdsRef.current.clear();
+    commitQueueRef.current = Promise.resolve();
     liveSessionRef.current?.destroy();
     liveSessionRef.current = null;
     setIsLiveConnected(false);
@@ -565,622 +511,255 @@ export default function Interview() {
       return stream;
     }, [stopMedia, t]);
 
-  const commitDirectiveAsText = useCallback(
-    async (
-      directive: RealtimeTurnDirectiveDto,
-      switchToText = true,
-      responseId = `text-${crypto.randomUUID()}`,
-      interrupted = false,
-    ) => {
+  const commitRealtimeExchange = useCallback(
+    (responseId: string, interrupted: boolean) => {
+      if (committedResponseIdsRef.current.has(responseId)) return;
       const session = activeSessionRef.current;
-      if (
-        !session ||
-        committedDirectiveIdsRef.current.has(directive.directiveId)
-      ) {
-        return;
-      }
-      committedDirectiveIdsRef.current.add(directive.directiveId);
-      const fallbackQuestion = safeInterviewFallback(
-        directive.fallbackQuestion,
-        session.language === "en" ? "en" : "vi",
-        currentQuestionRef.current,
-      );
-      responseWatchdogRef.current.clear(directive.directiveId);
-      directivesByIdRef.current.delete(directive.directiveId);
-      currentQuestionRef.current = fallbackQuestion;
-      currentInterviewerMessageRef.current = "";
-      setCurrentQuestion(fallbackQuestion);
-      setChatHistory((current) => [
-        ...current,
-        {
-          id: `ai-text-${crypto.randomUUID()}`,
-          role: "ai",
-          content: fallbackQuestion,
-          timestamp: new Date(),
-        },
-      ]);
-      try {
-        await commitRealtimeAssistantMutation.mutateAsync({
-          sessionId: session.id,
-          directiveId: directive.directiveId,
-          payload: {
-            responseId,
-            interviewerQuestion: fallbackQuestion,
-            interrupted,
-          },
-        });
-        if (directive.finished) await finishInterviewRef.current("finished");
-      } catch (error) {
-        setApiError(
-          getApiErrorMessage(error, t("interview.errors.submitFailed")),
-        );
-      } finally {
-        resolvingToolCallRef.current = false;
-        setIsLoading(false);
-        if (switchToText) dispatchRealtime({ type: "SWITCH_TO_TEXT" });
-      }
-    },
-    [commitRealtimeAssistantMutation, t],
-  );
-  const commitAssistantTranscript = useCallback(
-    async (event: RealtimeEvent) => {
-      const session = activeSessionRef.current;
-      const responseId = event.responseId;
-      if (
-        !session ||
-        !responseId ||
-        committingResponseIdsRef.current.has(responseId)
-      )
-        return;
-      const directiveId = directiveIdByResponseRef.current.get(responseId);
-      const directive = directiveId
-        ? directivesByIdRef.current.get(directiveId)
+      const clientTurnId = responseClientTurnIdRef.current.get(responseId);
+      const candidateTurn = clientTurnId
+        ? candidateTurnsByIdRef.current.get(clientTurnId)
         : undefined;
-      const transcript = (
-        event.data ||
-        assistantTranscriptByResponseRef.current.get(responseId) ||
-        ""
-      )
-        .trim()
+      const transcript = assistantTranscriptByResponseRef.current
+        .get(responseId)
+        ?.trim()
         .normalize("NFC");
-      if (
-        !directive ||
-        !transcript ||
-        committedDirectiveIdsRef.current.has(directive.directiveId)
-      ) {
-        return;
-      }
+      if (!session || !clientTurnId || !candidateTurn || !transcript) return;
       if (containsInterviewInternalMarker(transcript)) {
-        committingResponseIdsRef.current.add(responseId);
-        liveSessionRef.current?.cancelResponse();
-        responseWatchdogRef.current.clear(directive.directiveId);
-        directiveIdByResponseRef.current.delete(responseId);
-        assistantTranscriptByResponseRef.current.delete(responseId);
-        setVoiceFallback(
+        setApiError(
           t("interview.errors.internalResponseBlocked", {
-            defaultValue:
-              "The voice response was blocked and moved to text safely.",
+            defaultValue: "Phản hồi không an toàn đã bị chặn. Bạn có thể tiếp tục bằng văn bản.",
           }),
         );
-        await commitDirectiveAsText(directive);
-        committingResponseIdsRef.current.delete(responseId);
         return;
       }
 
-      committedDirectiveIdsRef.current.add(directive.directiveId);
-      committingResponseIdsRef.current.add(responseId);
-      const question = extractSpokenQuestion(
-        transcript,
-        safeInterviewFallback(
-          directive.fallbackQuestion,
-          session.language === "en" ? "en" : "vi",
-          currentQuestionRef.current,
-        ),
-      );
+      committedResponseIdsRef.current.add(responseId);
+      const intent = candidateIntentByTurnRef.current.get(clientTurnId) ?? "ANSWER";
+      const captureRetry = captureRetryTurnIdsRef.current.has(clientTurnId);
       const firstAudioAt = firstAudioAtByResponseRef.current.get(responseId);
-      const interrupted = interruptedResponseIdsRef.current.has(responseId);
-      currentQuestionRef.current = question;
-      currentInterviewerMessageRef.current =
-        transcript === question ? "" : transcript;
-      setCurrentQuestion(question);
-      setChatHistory((current) => [
-        ...current,
-        {
-          id: `ai-${responseId}`,
-          role: "ai",
-          content: transcript,
-          timestamp: new Date(),
+      const payload = {
+        kind: "REALTIME_EXCHANGE" as const,
+        clientTurnId,
+        questionTurnId: currentTurnIdRef.current,
+        input: {
+          type: captureRetry
+            ? ("CAPTURE_RETRY" as const)
+            : intent === "ANSWER"
+              ? ("ANSWER" as const)
+              : ("CONTROL" as const),
+          modality: candidateTurn.itemIds.length ? ("AUDIO" as const) : ("TEXT" as const),
+          ...(captureRetry || !candidateTurn.transcript
+            ? {}
+            : { transcript: candidateTurn.transcript }),
+          intent,
+          intentSource: candidateTurn.itemIds.length
+            ? ("VOICE_LEXICAL" as const)
+            : ("BUTTON" as const),
+          itemIds: candidateTurn.itemIds,
+          speechStartedAt: new Date(candidateTurn.startedAtMs).toISOString(),
+          speechEndedAt: new Date(candidateTurn.endedAtMs).toISOString(),
+          segmentCount: Math.max(1, candidateTurn.transcriptSegments),
+          ...(candidateTurn.meanLogprob === undefined
+            ? {}
+            : { meanLogprob: candidateTurn.meanLogprob }),
         },
-      ]);
-      try {
-        await commitRealtimeAssistantMutation.mutateAsync({
-          sessionId: session.id,
-          directiveId: directive.directiveId,
-          payload: {
-            responseId,
-            interviewerMessage:
-              transcript === question ? undefined : transcript,
-            interviewerQuestion: question,
-            firstAudioAt,
-            interrupted,
-          },
-        });
-        if (directive.finished) await finishInterviewRef.current("finished");
-      } catch (error) {
-        setApiError(
-          getApiErrorMessage(error, t("interview.errors.submitFailed")),
-        );
-      } finally {
-        responseWatchdogRef.current.clear(directive.directiveId);
-        directivesByIdRef.current.delete(directive.directiveId);
-        activeResponseByDirectiveRef.current.delete(directive.directiveId);
-        directiveIdByResponseRef.current.delete(responseId);
-        assistantTranscriptByResponseRef.current.delete(responseId);
-        firstAudioAtByResponseRef.current.delete(responseId);
-        interruptedResponseIdsRef.current.delete(responseId);
-        committingResponseIdsRef.current.delete(responseId);
-        if (activeResponseIdRef.current === responseId)
-          activeResponseIdRef.current = null;
-        resolvingToolCallRef.current = false;
-        setIsLoading(false);
-      }
-    },
-    [
-      commitDirectiveAsText,
-      commitRealtimeAssistantMutation,
-      setVoiceFallback,
-      t,
-    ],
-  );
+        assistant: {
+          responseId,
+          transcript,
+          ...(firstAudioAt ? { firstAudioAt } : {}),
+          interrupted,
+        },
+      };
 
-  const resolveRealtimeTurn = useCallback(
-    async (
-      clientTurnId: string,
-      transcript: string,
-      modality: "TEXT" | "AUDIO",
-      classification?: RealtimeTurnClassification | null,
-      toolCallId?: string,
-      candidateTurn?: CandidateTurn,
-    ) => {
-      const session = activeSessionRef.current;
-      const normalized = transcript.trim().normalize("NFC");
-      const isToolCall = Boolean(toolCallId);
-      if (
-        !session ||
-        !normalized ||
-        (isToolCall && resolvingToolCallRef.current)
-      )
-        return;
-      if (isToolCall) {
-        resolvingToolCallRef.current = true;
-        liveSessionRef.current?.setMicEnabled(false);
-      }
-      const intent = classification?.intent ?? classifyIntent(normalized);
-      dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
-      setIsLoading(true);
-      setApiError(null);
-      let awaitingAudio = false;
-      try {
-        const directive = await submitRealtimeTurnMutation.mutateAsync({
-          sessionId: session.id,
-          payload: {
-            clientTurnId,
-            transcript: normalized,
-            modality,
-            intent,
-            answerSignal:
-              classification?.answerSignal ??
-              classifyAnswerSignal(normalized, intent),
-            speechEndedAt: candidateTurn
-              ? new Date(candidateTurn.endedAtMs).toISOString()
-              : new Date().toISOString(),
-            durationSeconds: candidateTurn?.durationSeconds,
-            transcriptSegments: candidateTurn?.transcriptSegments,
-            responseDelayMs: firstSpeechDelayMsRef.current ?? undefined,
-          },
-        });
-        directivesByIdRef.current.set(directive.directiveId, directive);
-        if (modality === "AUDIO" && directive.action !== "RETRY_CAPTURE") {
-          setChatHistory((current) => [
-            ...current,
-            {
-              id: `candidate-${clientTurnId}`,
-              role: "user",
-              content: normalized,
-              timestamp: new Date(),
-            },
-          ]);
-        }
-        if (liveSessionRef.current?.isConnected) {
-          const continuation = toRealtimeContinuation(
-            directive,
-            session.language === "en" ? "en" : "vi",
-          );
-          if (isToolCall) {
-            liveSessionRef.current.submitToolOutput(toolCallId!, continuation);
-          } else {
-            liveSessionRef.current.continueDirectiveResponse(continuation);
-          }
-          responseWatchdogRef.current.start(directive.directiveId, {
-            slow: () => {
-              setApiError(
-                t("interview.errors.realtimeResponseSlow", {
-                  defaultValue: "Alex is taking a little longer to respond?",
-                }),
-              );
-            },
-            retry: () => {
-              liveSessionRef.current?.retryDirectiveResponse(continuation);
-            },
-            fallback: () => {
-              liveSessionRef.current?.cancelResponse();
-              setVoiceFallback(
-                t("interview.errors.firstAudioTimeout", {
-                  defaultValue:
-                    "Voice did not respond in time. Continuing in text mode.",
-                }),
-              );
-              void commitDirectiveAsText(directive);
-            },
+      commitQueueRef.current = commitQueueRef.current
+        .then(async () => {
+          const result = await submitRealtimeTurnMutation.mutateAsync({
+            sessionId: session.id,
+            payload,
           });
-          awaitingAudio = true;
-          return;
-        }
+          currentTurnIdRef.current = result.currentTurnId;
+          if (result.disposition !== "DUPLICATE" && result.assistant?.transcript) {
+            lastAssistantTranscriptRef.current = result.assistant.transcript;
+            setChatHistory((current) => [
+              ...current,
+              {
+                id: `ai-${responseId}`,
+                role: "ai",
+                content: result.assistant!.transcript,
+                timestamp: new Date(),
+              },
+            ]);
+          }
+          const question =
+            result.assistant?.question ??
+            extractSpokenQuestion(result.assistant?.transcript ?? "", currentQuestionRef.current);
+          if (question) {
+            currentQuestionRef.current = question;
+            setCurrentQuestion(question);
+          }
+          if (result.finished) await finishInterviewRef.current("finished");
+        })
+        .catch((error: unknown) => {
+          committedResponseIdsRef.current.delete(responseId);
+          setApiError(getApiErrorMessage(error, t("interview.errors.turnFailed")));
+        })
+        .finally(() => {
+          candidateTurnsByIdRef.current.delete(clientTurnId);
+          candidateIntentByTurnRef.current.delete(clientTurnId);
+          captureRetryTurnIdsRef.current.delete(clientTurnId);
+          responseClientTurnIdRef.current.delete(responseId);
+          assistantTranscriptByResponseRef.current.delete(responseId);
+          firstAudioAtByResponseRef.current.delete(responseId);
+          interruptedResponseIdsRef.current.delete(responseId);
+        });
+    },
+    [submitRealtimeTurnMutation, t],
+  );
 
-        await commitDirectiveAsText(directive);
-      } catch (error) {
-        if (getApiErrorCode(error) === "INTERVIEW_TURN_BUSY") {
-          liveSessionRef.current?.setMicEnabled(!userMutedRef.current);
-          resolvingToolCallRef.current = false;
-          setIsLoading(false);
-          return;
+  const handleCompletedCandidateTurn = useCallback(
+    (turn: CandidateTurn) => {
+      const session = activeSessionRef.current;
+      const realtime = liveSessionRef.current;
+      if (!session || !realtime || endingRef.current) return;
+      const language = session.language === "en" ? "en" : "vi";
+      const capture = assessCandidateCapture({
+        transcript: turn.transcript,
+        language,
+        currentQuestion: currentQuestionRef.current,
+        lastAssistantTranscript: lastAssistantTranscriptRef.current,
+        meanLogprob: turn.meanLogprob,
+      });
+      candidateTurnsByIdRef.current.set(turn.clientTurnId, turn);
+      dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+
+      if (!capture.accepted) {
+        captureFailureCountRef.current += 1;
+        captureRetryTurnIdsRef.current.add(turn.clientTurnId);
+        candidateIntentByTurnRef.current.set(turn.clientTurnId, "ANSWER");
+        realtime.requestCaptureRetry(turn.clientTurnId, language, currentQuestionRef.current);
+        if (captureFailureCountRef.current >= 2) {
+          setApiError(
+            t("interview.errors.captureRetryText", {
+              defaultValue: "Mic chưa nhận rõ hai lần. Bạn có thể chuyển sang nhập văn bản trong cùng buổi phỏng vấn.",
+            }),
+          );
         }
-        setApiError(
-          getApiErrorMessage(error, t("interview.errors.submitFailed")),
-        );
-        if (liveSessionRef.current?.isConnected) {
-          liveSessionRef.current.setMicEnabled(!userMutedRef.current);
-        }
-      } finally {
-        if (!awaitingAudio) {
-          resolvingToolCallRef.current = false;
-          setIsLoading(false);
-        }
+        return;
+      }
+
+      captureFailureCountRef.current = 0;
+      const intent = classifyIntent(turn.transcript);
+      candidateIntentByTurnRef.current.set(turn.clientTurnId, intent);
+      if (intent === "END") {
+        candidateTurnsByIdRef.current.delete(turn.clientTurnId);
+        candidateIntentByTurnRef.current.delete(turn.clientTurnId);
+        setIsEndDialogOpen(true);
+        dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+        return;
+      }
+      if (intent === "ANSWER" || intent === "NO_ANSWER") {
+        setChatHistory((current) => [
+          ...current,
+          {
+            id: `candidate-${turn.clientTurnId}`,
+            role: "user",
+            content: turn.transcript,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      if (intent === "ANSWER") realtime.requestCandidateResponse(turn);
+      else {
+        realtime.requestControl({
+          clientTurnId: turn.clientTurnId,
+          intent,
+          language,
+          currentQuestion: currentQuestionRef.current,
+        });
       }
     },
-    [commitDirectiveAsText, setVoiceFallback, submitRealtimeTurnMutation, t],
+    [t],
   );
+
   const connectRealtime = useCallback(
     async (clientSecret: string, stream: MediaStream) => {
-      if (stream.getAudioTracks().length === 0) {
-        throw new Error(t("interview.errors.noMicrophoneTrack"));
-      }
-
       disconnectRealtime();
       const realtimeSession = new OpenAIRealtimeSession();
       liveSessionRef.current = realtimeSession;
-      const candidateTurnBuffer = new CandidateTurnBuffer(900, (turn) => {
-        candidateTurnsByIdRef.current.set(turn.clientTurnId, turn);
-        dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
-        setIsLoading(true);
-        realtimeSession.setMicEnabled(false);
-        realtimeSession.requestTurnClassification(
-          turn.clientTurnId,
-          turn.transcript,
-        );
-      });
-      candidateTurnBufferRef.current = candidateTurnBuffer;
-
+      const language = activeSessionRef.current?.language === "en" ? "en" : "vi";
+      candidateTurnBufferRef.current = new CandidateTurnBuffer(
+        language === "vi" ? 1_100 : 700,
+        handleCompletedCandidateTurn,
+        400,
+      );
 
       realtimeSession.on((event: RealtimeEvent) => {
         switch (event.type) {
           case "connected":
             setIsLiveConnected(true);
-            setIsVoiceFallback(false);
             setApiError(null);
-            realtimeSession.setMicEnabled(!userMutedRef.current);
-            micOpenedAtRef.current = Date.now();
-            dispatchRealtime({
-              type: "SET_TRACK_AVAILABLE",
-              available: true,
-            });
             dispatchRealtime({ type: "CONNECTED" });
+            dispatchRealtime({ type: "SET_TRACK_AVAILABLE", available: true });
             break;
           case "disconnected":
             setIsLiveConnected(false);
-            dispatchRealtime({
-              type: "SET_TRACK_AVAILABLE",
-              available: false,
-            });
-            if (!endingRef.current) {
-              dispatchRealtime({ type: "CONNECTION_LOST", attempt: 1 });
-            }
-            break;
-          case "speech_started": {
-            candidateTurnBuffer.speechStarted(
-              event.itemId ?? `segment-${Date.now()}`,
-              Date.now(),
-            );
-            if (micOpenedAtRef.current !== null) {
-              firstSpeechDelayMsRef.current = Math.max(
-                0,
-                Date.now() - micOpenedAtRef.current,
-              );
-            }
-            const responseId = activeResponseIdRef.current;
-            if (
-              responseId &&
-              bargeInArmedRef.current &&
-              firstAudioAtByResponseRef.current.has(responseId)
-            ) {
-              bargeInArmedRef.current = false;
-              interruptedResponseIdsRef.current.add(responseId);
-              realtimeSession.cancelResponse();
-              dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
-            }
-            break;
-          }
-          case "speech_stopped":
-            candidateTurnBuffer.speechStopped(
-              event.itemId ?? `segment-${Date.now()}`,
-              Date.now(),
-            );
-            break;
-          case "user_transcript": {
-            const transcript = event.data?.trim();
-            if (!transcript || resolvingToolCallRef.current) break;
-            candidateTurnBuffer.addTranscript(
-              transcript,
-              event.itemId ?? `segment-${Date.now()}`,
-            );
-            break;
-          }
-          case "tool_call": {
-            const clientTurnId = event.clientTurnId;
-            const candidateTurn = clientTurnId
-              ? candidateTurnsByIdRef.current.get(clientTurnId)
-              : undefined;
-            if (
-              event.toolCall?.name === "decide_interview_turn" &&
-              clientTurnId &&
-              candidateTurn &&
-              !resolvingToolCallRef.current
-            ) {
-              const classification = parseRealtimeTurnClassification(
-                event.toolCall.arguments,
-              );
-              candidateTurnsByIdRef.current.delete(clientTurnId);
-              void resolveRealtimeTurn(
-                clientTurnId,
-                candidateTurn.transcript,
-                "AUDIO",
-                classification,
-                event.toolCall.callId,
-                candidateTurn,
-              );
-            }
-            break;
-          }
-          case "response_created":
-            if (event.responseId && event.directiveId) {
-              const previousResponse = activeResponseByDirectiveRef.current.get(
-                event.directiveId,
-              );
-              if (previousResponse && previousResponse !== event.responseId) {
-                break;
-              }
-              activeResponseByDirectiveRef.current.set(
-                event.directiveId,
-                event.responseId,
-              );
-              directiveIdByResponseRef.current.set(
-                event.responseId,
-                event.directiveId,
-              );
-              assistantTranscriptByResponseRef.current.set(
-                event.responseId,
-                "",
-              );
-              responseWatchdogRef.current.markResponseCreated(
-                event.directiveId,
-              );
-            }
-            break;
-          case "ai_speaking": {
-            const responseId = event.responseId;
-            const directiveId = responseId
-              ? directiveIdByResponseRef.current.get(responseId)
-              : undefined;
-            if (responseId) {
-              activeResponseIdRef.current = responseId;
-              firstAudioAtByResponseRef.current.set(
-                responseId,
-                firstAudioAtByResponseRef.current.get(responseId) ??
-                  new Date().toISOString(),
-              );
-            }
-            if (directiveId) {
-              responseWatchdogRef.current.markAudioStarted(directiveId);
-            }
-            resolvingToolCallRef.current = false;
-            setIsLoading(false);
-            setApiError(null);
-            realtimeSession.setMicEnabled(!userMutedRef.current);
-            bargeInArmedRef.current = false;
-            if (bargeInArmTimerRef.current !== null) {
-              clearTimeout(bargeInArmTimerRef.current);
-            }
-            bargeInArmTimerRef.current = setTimeout(() => {
-              bargeInArmedRef.current = true;
-              bargeInArmTimerRef.current = null;
-            }, 700);
-            dispatchRealtime({
-              type: "ASSISTANT_AUDIO_STARTED",
-              subtitle: responseId
-                ? (assistantTranscriptByResponseRef.current.get(responseId) ??
-                  "")
-                : "",
-            });
-            break;
-          }
-          case "ai_stopped": {
-            if (bargeInArmTimerRef.current !== null) {
-              clearTimeout(bargeInArmTimerRef.current);
-              bargeInArmTimerRef.current = null;
-            }
-            bargeInArmedRef.current = false;
-            const responseId = event.responseId;
-            if (responseId) {
-              const transcript =
-                assistantTranscriptByResponseRef.current
-                  .get(responseId)
-                  ?.trim() ?? "";
-              if (transcript) {
-                void commitAssistantTranscript({
-                  ...event,
-                  type: "ai_transcript_done",
-                  data: transcript,
-                });
-              } else {
-                const directiveId =
-                  directiveIdByResponseRef.current.get(responseId);
-                const directive = directiveId
-                  ? directivesByIdRef.current.get(directiveId)
-                  : undefined;
-                if (directive) {
-                  void commitDirectiveAsText(directive, false, responseId);
-                } else {
-                  assistantTranscriptByResponseRef.current.delete(responseId);
-                  firstAudioAtByResponseRef.current.delete(responseId);
-                  if (activeResponseIdRef.current === responseId) {
-                    activeResponseIdRef.current = null;
-                  }
-                }
-              }
-            }
-            questionStartedAtRef.current = new Date();
-            micOpenedAtRef.current = Date.now();
-            realtimeSession.setMicEnabled(!userMutedRef.current);
-            dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
-            break;
-          }
-          case "ai_interrupted": {
-            if (bargeInArmTimerRef.current !== null) {
-              clearTimeout(bargeInArmTimerRef.current);
-              bargeInArmTimerRef.current = null;
-            }
-            bargeInArmedRef.current = false;
-            const responseId = event.responseId;
-            if (responseId) {
-              interruptedResponseIdsRef.current.add(responseId);
-              const transcript =
-                assistantTranscriptByResponseRef.current
-                  .get(responseId)
-                  ?.trim() ?? "";
-              if (transcript) {
-                void commitAssistantTranscript({
-                  ...event,
-                  type: "ai_transcript_done",
-                  data: transcript,
-                });
-              } else {
-                const directiveId =
-                  directiveIdByResponseRef.current.get(responseId);
-                const directive = directiveId
-                  ? directivesByIdRef.current.get(directiveId)
-                  : undefined;
-                if (directive) {
-                  void commitDirectiveAsText(
-                    directive,
-                    false,
-                    responseId,
-                    true,
-                  );
-                } else {
-                  assistantTranscriptByResponseRef.current.delete(responseId);
-                  firstAudioAtByResponseRef.current.delete(responseId);
-                  interruptedResponseIdsRef.current.delete(responseId);
-                  if (activeResponseIdRef.current === responseId) {
-                    activeResponseIdRef.current = null;
-                  }
-                }
-              }
-            }
-            resolvingToolCallRef.current = false;
-            setIsLoading(false);
-            realtimeSession.setMicEnabled(!userMutedRef.current);
-            dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
-            break;
-          }
-          case "transcript_failed":
-            toast({
-              title: t("interview.errors.transcriptionFailedTitle", {
-                defaultValue: "A speech segment was unclear",
-              }),
-              description: t("interview.errors.transcriptionFailedDesc", {
-                defaultValue:
-                  "The captured answer is preserved. You can continue speaking.",
-              }),
-            });
-            break;
-          case "server_error":
-            setApiError(
-              event.data ||
-                t("interview.errors.realtimeResponseFailed", {
-                  defaultValue:
-                    "Alex could not finish that response. Your session is still connected.",
-                }),
-            );
+            if (!endingRef.current) dispatchRealtime({ type: "CONNECTION_LOST", attempt: 1 });
             break;
           case "transport_error":
+            setApiError(event.data ?? t("interview.errors.realtimeVoiceFailed"));
+            break;
+          case "server_error":
+            setApiError(event.data ?? t("interview.errors.realtimeVoiceFailed"));
+            break;
+          case "response_slow":
             setApiError(
-              event.data ||
-                t("interview.errors.realtimeTransportIssue", {
-                  defaultValue:
-                    "There is a temporary audio transport issue. Reconnecting only if the connection closes.",
-                }),
+              t("interview.errors.slowResponse", {
+                defaultValue: "Alex đang phản hồi chậm hơn bình thường…",
+              }),
             );
             break;
-          case "ai_transcript": {
-            const responseId = event.responseId;
-            if (!responseId || !event.data) break;
-            const transcript =
-              (assistantTranscriptByResponseRef.current.get(responseId) ?? "") +
-              event.data;
-            if (containsInterviewInternalMarker(transcript)) {
-              const directiveId =
-                directiveIdByResponseRef.current.get(responseId);
-              const directive = directiveId
-                ? directivesByIdRef.current.get(directiveId)
-                : undefined;
-              realtimeSession.cancelResponse();
-              if (
-                directive &&
-                !committingResponseIdsRef.current.has(responseId)
-              ) {
-                committingResponseIdsRef.current.add(responseId);
-                setVoiceFallback(
-                  t("interview.errors.internalResponseBlocked", {
-                    defaultValue:
-                      "The voice response was blocked and moved to text safely.",
-                  }),
-                );
-                void commitDirectiveAsText(directive).finally(() => {
-                  committingResponseIdsRef.current.delete(responseId);
-                });
-              }
-              break;
+          case "speech_started": {
+            const itemId = event.itemId ?? `speech-${crypto.randomUUID()}`;
+            candidateTurnBufferRef.current?.speechStarted(itemId, Date.now());
+            if (firstSpeechDelayMsRef.current === null && micOpenedAtRef.current !== null) {
+              firstSpeechDelayMsRef.current = Math.max(0, Date.now() - micOpenedAtRef.current);
             }
-            assistantTranscriptByResponseRef.current.set(
-              responseId,
-              transcript,
-            );
-            dispatchRealtime({
-              type: "ASSISTANT_SUBTITLE",
-              subtitle: event.data,
-            });
             break;
           }
+          case "user_transcript":
+            if (event.data) {
+              candidateTurnBufferRef.current?.addTranscript(
+                event.data,
+                event.itemId ?? `transcript-${crypto.randomUUID()}`,
+                event.transcriptLogprobs,
+              );
+            }
+            break;
+          case "speech_stopped":
+            candidateTurnBufferRef.current?.speechStopped(
+              event.itemId ?? `speech-${crypto.randomUUID()}`,
+              Date.now(),
+            );
+            break;
+          case "response_created":
+            if (event.responseId && event.clientTurnId) {
+              responseClientTurnIdRef.current.set(event.responseId, event.clientTurnId);
+            }
+            break;
+          case "ai_speaking":
+            if (event.responseId) {
+              firstAudioAtByResponseRef.current.set(event.responseId, new Date().toISOString());
+            }
+            setApiError(null);
+            dispatchRealtime({ type: "ASSISTANT_AUDIO_STARTED" });
+            break;
+          case "ai_transcript":
+            if (event.responseId && event.data) {
+              const current = assistantTranscriptByResponseRef.current.get(event.responseId) ?? "";
+              assistantTranscriptByResponseRef.current.set(event.responseId, current + event.data);
+              dispatchRealtime({ type: "ASSISTANT_SUBTITLE", subtitle: event.data });
+            }
+            break;
           case "ai_transcript_done":
             if (event.responseId && event.data) {
               assistantTranscriptByResponseRef.current.set(
@@ -1189,57 +768,36 @@ export default function Interview() {
               );
             }
             break;
-          case "response_done": {
-            const responseId = event.responseId;
-            const status = event.responseStatus;
-            if (!responseId || !status || status === "in_progress") break;
-            const hadAudio = firstAudioAtByResponseRef.current.has(responseId);
-            const directiveId =
-              event.directiveId ??
-              directiveIdByResponseRef.current.get(responseId);
-            if (directiveId) {
-              responseWatchdogRef.current.markResponseTerminal(
-                directiveId,
-                status,
-              );
+          case "ai_interrupted":
+            if (event.responseId) {
+              interruptedResponseIdsRef.current.add(event.responseId);
+              commitRealtimeExchange(event.responseId, true);
             }
+            dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
+            break;
+          case "ai_stopped":
+            if (event.responseId && event.purpose !== "opening" && event.purpose !== "closing") {
+              commitRealtimeExchange(event.responseId, false);
+            }
+            dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+            realtimeSession.setMicEnabled(!userMutedRef.current);
+            micOpenedAtRef.current = Date.now();
+            break;
+          case "transcript_failed":
+            setApiError(
+              t("interview.errors.transcriptionFailed", {
+                defaultValue: "Chưa nhận rõ giọng nói. Bạn hãy thử lại hoặc chuyển sang nhập văn bản.",
+              }),
+            );
+            break;
+          case "response_done":
             if (
-              status === "failed" ||
-              status === "incomplete" ||
-              (status === "cancelled" && !hadAudio)
+              event.responseStatus === "failed" ||
+              event.responseStatus === "incomplete"
             ) {
-              directiveIdByResponseRef.current.delete(responseId);
-              assistantTranscriptByResponseRef.current.delete(responseId);
-              firstAudioAtByResponseRef.current.delete(responseId);
-              interruptedResponseIdsRef.current.delete(responseId);
-              if (
-                directiveId &&
-                activeResponseByDirectiveRef.current.get(directiveId) ===
-                  responseId
-              ) {
-                activeResponseByDirectiveRef.current.delete(directiveId);
-              }
-              if (activeResponseIdRef.current === responseId) {
-                activeResponseIdRef.current = null;
-              }
-            }
-            if (status === "cancelled") {
-              const directive = directiveId
-                ? directivesByIdRef.current.get(directiveId)
-                : undefined;
-              if (
-                directive &&
-                !hadAudio &&
-                !committedDirectiveIdsRef.current.has(directive.directiveId)
-              ) {
-                void commitDirectiveAsText(directive, false, responseId, true);
-              }
-              resolvingToolCallRef.current = false;
-              setIsLoading(false);
-              realtimeSession.setMicEnabled(!userMutedRef.current);
+              setApiError(t("interview.errors.realtimeVoiceFailed"));
             }
             break;
-          }
         }
       });
 
@@ -1251,15 +809,7 @@ export default function Interview() {
       realtimeSession.setMicEnabled(!userMutedRef.current);
       micOpenedAtRef.current = Date.now();
     },
-    [
-      commitAssistantTranscript,
-      commitDirectiveAsText,
-      disconnectRealtime,
-      resolveRealtimeTurn,
-      setVoiceFallback,
-      t,
-      toast,
-    ],
+    [commitRealtimeExchange, disconnectRealtime, handleCompletedCandidateTurn, t],
   );
   const resetInterviewState = useCallback(() => {
     disconnectRealtime();
@@ -1283,7 +833,10 @@ export default function Interview() {
     endingRef.current = false;
     autoEndRef.current = false;
     liveClosingRequestedRef.current = false;
-    committedDirectiveIdsRef.current.clear();
+    committedResponseIdsRef.current.clear();
+    currentTurnIdRef.current = null;
+    lastAssistantTranscriptRef.current = "";
+    captureFailureCountRef.current = 0;
     userMutedRef.current = false;
     dispatchRealtime({ type: "SET_USER_MUTED", muted: false });
     questionStartedAtRef.current = null;
@@ -1488,13 +1041,16 @@ export default function Interview() {
       }
 
       try {
+        if (started.realtime.protocolVersion !== INTERVIEW_REALTIME_PROTOCOL_VERSION) {
+          throw new Error(
+            `Realtime protocol mismatch: expected ${INTERVIEW_REALTIME_PROTOCOL_VERSION}, received ${started.realtime.protocolVersion}. Restart both dev servers.`,
+          );
+        }
+        currentTurnIdRef.current = started.currentTurnId;
         await connectRealtime(started.realtime.clientSecret!, stream);
-        liveSessionRef.current?.setMicEnabled(false);
-        speakOfficialRealtimeQuestion(
-          liveSessionRef.current,
-          started.firstQuestion,
+        liveSessionRef.current?.requestOpening(
+          interviewerTurnText(started.firstMessage, started.firstQuestion),
           selectedLanguage,
-          started.firstMessage,
         );
       } catch (error) {
         setVoiceFallback(
@@ -1615,20 +1171,47 @@ export default function Interview() {
 
   const handleSubmitAnswer = async () => {
     const answer = userAnswer.trim();
-    if (!answer || !activeSession?.id || isLoading || isEnding) return;
-
+    const session = activeSessionRef.current;
+    if (!answer || !session?.id || isLoading || isEnding) return;
+    const clientTurnId = `text-${crypto.randomUUID()}`;
     setChatHistory((current) => [
       ...current,
-      {
-        id: `candidate-text-${Date.now()}`,
-        role: "user",
-        content: answer,
-        timestamp: new Date(),
-      },
+      { id: `candidate-${clientTurnId}`, role: "user", content: answer, timestamp: new Date() },
     ]);
     setUserAnswer("");
-    await resolveRealtimeTurn(`text-${crypto.randomUUID()}`, answer, "TEXT");
+    setIsLoading(true);
+    try {
+      const result = await submitRealtimeTurnMutation.mutateAsync({
+        sessionId: session.id,
+        payload: {
+          kind: "TEXT_FALLBACK",
+          clientTurnId,
+          questionTurnId: currentTurnIdRef.current,
+          text: answer,
+          intent: classifyIntent(answer),
+        },
+      });
+      currentTurnIdRef.current = result.currentTurnId;
+      if (result.assistant?.transcript && result.disposition !== "DUPLICATE") {
+        lastAssistantTranscriptRef.current = result.assistant.transcript;
+        setChatHistory((current) => [
+          ...current,
+          { id: `ai-${clientTurnId}`, role: "ai", content: result.assistant!.transcript, timestamp: new Date() },
+        ]);
+      }
+      const question = result.assistant?.question;
+      if (question) {
+        currentQuestionRef.current = question;
+        setCurrentQuestion(question);
+      }
+      if (result.finished) await finishInterviewRef.current("finished");
+    } catch (error) {
+      setApiError(getApiErrorMessage(error, t("interview.errors.turnFailed")));
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   const reconnectRealtime = useCallback(async (): Promise<boolean> => {
     if (!activeSession?.id || !canUseApi) return false;
 
@@ -1644,10 +1227,18 @@ export default function Interview() {
         activeSession.id,
       );
       if (!realtime.enabled || !realtime.clientSecret) return false;
+      if (realtime.protocolVersion !== INTERVIEW_REALTIME_PROTOCOL_VERSION) {
+        throw new Error(
+          `Realtime protocol mismatch: expected ${INTERVIEW_REALTIME_PROTOCOL_VERSION}, received ${realtime.protocolVersion}. Restart both dev servers.`,
+        );
+      }
 
       await connectRealtime(realtime.clientSecret, stream);
       return true;
-    } catch {
+    } catch (error) {
+      setApiError(
+        getApiErrorMessage(error, t('interview.errors.realtimeVoiceFailed')),
+      );
       return false;
     } finally {
       setIsLoading(false);
@@ -1658,27 +1249,42 @@ export default function Interview() {
     connectRealtime,
     refreshRealtimeTokenMutation,
     requestSessionMedia,
+    t,
   ]);
+
   const handleRealtimeIntent = (intent: RealtimeCandidateIntent) => {
     if (intent === "END") {
       setIsEndDialogOpen(true);
       return;
     }
+    if (intent === "ANSWER") return;
     const session = activeSessionRef.current;
-    if (!session || isLoading || resolvingToolCallRef.current) return;
-    const prompt = intentPrompt(intent, selectedLanguage);
-    setChatHistory((current) => [
-      ...current,
-      {
-        id: `command-${Date.now()}`,
-        role: "user",
-        content: prompt,
-        timestamp: new Date(),
-      },
-    ]);
-    void resolveRealtimeTurn(`command-${crypto.randomUUID()}`, prompt, "TEXT");
+    if (!session || isLoading || isEnding) return;
+    if (isVoiceFallback || !liveSessionRef.current?.isConnected) {
+      const text = controlText(intent, selectedLanguage);
+      setUserAnswer(text);
+      return;
+    }
+    const clientTurnId = `control-${crypto.randomUUID()}`;
+    const now = Date.now();
+    candidateTurnsByIdRef.current.set(clientTurnId, {
+      clientTurnId,
+      transcript: "",
+      itemIds: [],
+      startedAtMs: now,
+      endedAtMs: now,
+      durationSeconds: 0,
+      transcriptSegments: 0,
+    });
+    candidateIntentByTurnRef.current.set(clientTurnId, intent);
+    dispatchRealtime({ type: "CANDIDATE_TURN_ENDED" });
+    liveSessionRef.current.requestControl({
+      clientTurnId,
+      intent,
+      language: selectedLanguage,
+      currentQuestion: currentQuestionRef.current,
+    });
   };
-
   useEffect(() => {
     if (realtimeState.transport.status !== "RECONNECTING") return;
     let cancelled = false;
@@ -2113,16 +1719,10 @@ export default function Interview() {
             }
             voiceLabel={
               realtimeState.turn.status === "SPEAKING"
-                ? selectedLanguage === "vi"
-                  ? "Đang nói"
-                  : "Speaking"
+                ? t("interview.session.voiceState.speaking")
                 : realtimeState.turn.status === "THINKING"
-                  ? selectedLanguage === "vi"
-                    ? "Đang suy nghĩ"
-                    : "Thinking"
-                  : selectedLanguage === "vi"
-                    ? "Đang nghe"
-                    : "Listening"
+                  ? t("interview.session.voiceState.thinking")
+                  : t("interview.session.voiceState.listening")
             }
             subtitle={
               realtimeState.turn.status === "SPEAKING"
