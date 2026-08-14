@@ -76,7 +76,6 @@ import {
   type InterviewWorkspaceTab,
 } from "@/components/interview/types";
 import {
-  buildInterviewInitialMessages,
   containsInterviewInternalMarker,
   buildInterviewStartRequest,
   canOpenInterviewHistory,
@@ -242,6 +241,11 @@ export default function Interview() {
     async () => undefined,
   );
   const liveClosingRequestedRef = useRef(false);
+  const pendingOpeningRef = useRef<{
+    message: string;
+    question: string;
+  } | null>(null);
+  const openingCaptureLockedRef = useRef(false);
 
   const canUseApi = useAuthStore(
     (state) =>
@@ -443,6 +447,42 @@ export default function Interview() {
     setVoicePreference((current) => ({ ...current, speechSpeed }));
   }, []);
 
+  const presentPendingOpening = useCallback((responseId?: string) => {
+    const pending = pendingOpeningRef.current;
+    if (!pending) return;
+    const fallback = interviewerTurnText(pending.message, pending.question);
+    const generated = responseId
+      ? assistantTranscriptByResponseRef.current
+          .get(responseId)
+          ?.trim()
+          .normalize("NFC")
+      : undefined;
+    const transcript =
+      generated && !containsInterviewInternalMarker(generated)
+        ? generated
+        : fallback;
+
+    pendingOpeningRef.current = null;
+    openingCaptureLockedRef.current = false;
+    lastAssistantTranscriptRef.current = transcript;
+    currentQuestionRef.current = pending.question;
+    setCurrentQuestion(pending.question);
+    setChatHistory((current) => [
+      ...current,
+      {
+        id: responseId ? `ai-${responseId}` : "ai-opening-fallback",
+        role: "ai",
+        content: transcript,
+        timestamp: new Date(),
+      },
+    ]);
+    questionStartedAtRef.current = new Date();
+    if (responseId) {
+      assistantTranscriptByResponseRef.current.delete(responseId);
+      firstAudioAtByResponseRef.current.delete(responseId);
+    }
+  }, []);
+
   const disconnectRealtime = useCallback(() => {
     candidateTurnBufferRef.current?.clear();
     candidateTurnBufferRef.current = null;
@@ -463,12 +503,13 @@ export default function Interview() {
 
   const setVoiceFallback = useCallback(
     (reason: string) => {
+      presentPendingOpening();
       disconnectRealtime();
       setIsVoiceFallback(true);
       setApiError(reason);
       dispatchRealtime({ type: "SWITCH_TO_TEXT" });
     },
-    [disconnectRealtime],
+    [disconnectRealtime, presentPendingOpening],
   );
   const requestSessionMedia =
     useCallback(async (): Promise<MediaStream | null> => {
@@ -683,7 +724,12 @@ export default function Interview() {
   );
 
   const connectRealtime = useCallback(
-    async (clientSecret: string, stream: MediaStream) => {
+    async (
+      clientSecret: string,
+      stream: MediaStream,
+      initialMicEnabled = !userMutedRef.current &&
+        !openingCaptureLockedRef.current,
+    ) => {
       disconnectRealtime();
       const realtimeSession = new OpenAIRealtimeSession();
       liveSessionRef.current = realtimeSession;
@@ -752,7 +798,12 @@ export default function Interview() {
               firstAudioAtByResponseRef.current.set(event.responseId, new Date().toISOString());
             }
             setApiError(null);
-            dispatchRealtime({ type: "ASSISTANT_AUDIO_STARTED" });
+            dispatchRealtime({
+              type: "ASSISTANT_AUDIO_STARTED",
+              subtitle: event.responseId
+                ? assistantTranscriptByResponseRef.current.get(event.responseId)
+                : undefined,
+            });
             break;
           case "ai_transcript":
             if (event.responseId && event.data) {
@@ -770,6 +821,13 @@ export default function Interview() {
             }
             break;
           case "ai_interrupted":
+            if (event.purpose === "opening") {
+              presentPendingOpening(event.responseId);
+              dispatchRealtime({ type: "ASSISTANT_AUDIO_ENDED" });
+              realtimeSession.setMicEnabled(!userMutedRef.current);
+              micOpenedAtRef.current = Date.now();
+              break;
+            }
             if (event.responseId) {
               interruptedResponseIdsRef.current.add(event.responseId);
               commitRealtimeExchange(event.responseId, true);
@@ -777,6 +835,9 @@ export default function Interview() {
             dispatchRealtime({ type: "CANDIDATE_INTERRUPTED" });
             break;
           case "ai_stopped":
+            if (event.purpose === "opening") {
+              presentPendingOpening(event.responseId);
+            }
             if (event.responseId && event.purpose !== "opening" && event.purpose !== "closing") {
               commitRealtimeExchange(event.responseId, false);
             }
@@ -805,12 +866,18 @@ export default function Interview() {
       await realtimeSession.connect({
         clientSecret,
         stream,
-        initialMicEnabled: !userMutedRef.current,
+        initialMicEnabled,
       });
-      realtimeSession.setMicEnabled(!userMutedRef.current);
-      micOpenedAtRef.current = Date.now();
+      realtimeSession.setMicEnabled(initialMicEnabled);
+      micOpenedAtRef.current = initialMicEnabled ? Date.now() : null;
     },
-    [commitRealtimeExchange, disconnectRealtime, handleCompletedCandidateTurn, t],
+    [
+      commitRealtimeExchange,
+      disconnectRealtime,
+      handleCompletedCandidateTurn,
+      presentPendingOpening,
+      t,
+    ],
   );
   const resetInterviewState = useCallback(() => {
     disconnectRealtime();
@@ -834,6 +901,8 @@ export default function Interview() {
     endingRef.current = false;
     autoEndRef.current = false;
     liveClosingRequestedRef.current = false;
+    pendingOpeningRef.current = null;
+    openingCaptureLockedRef.current = false;
     committedResponseIdsRef.current.clear();
     currentTurnIdRef.current = null;
     lastAssistantTranscriptRef.current = "";
@@ -993,25 +1062,21 @@ export default function Interview() {
         experienceMode,
       });
 
-      const initialMessages = buildInterviewInitialMessages(
-        started.firstMessage,
-        started.firstQuestion,
-      ).map((content) => ({
-        role: "ai" as const,
-        content,
-        timestamp: new Date(),
-      }));
-
       activeSessionRef.current = started;
       currentQuestionRef.current = started.firstQuestion;
       currentInterviewerMessageRef.current = started.firstMessage ?? "";
+      pendingOpeningRef.current = {
+        message: started.firstMessage ?? "",
+        question: started.firstQuestion,
+      };
+      openingCaptureLockedRef.current = true;
       setActiveSession(started);
-      setCurrentQuestion(started.firstQuestion);
+      setCurrentQuestion("");
       setSecondsRemaining(
         secondsRemainingFromExpiry(started.expiresAt) ||
           started.maxDurationSeconds,
       );
-      setChatHistory(initialMessages);
+      setChatHistory([]);
       setPhase("interviewing");
       setSidebarOpen(false);
       posthog?.capture("interview_started", {
@@ -1048,7 +1113,8 @@ export default function Interview() {
           );
         }
         currentTurnIdRef.current = started.currentTurnId;
-        await connectRealtime(started.realtime.clientSecret!, stream);
+        await connectRealtime(started.realtime.clientSecret!, stream, false);
+        dispatchRealtime({ type: "ASSISTANT_RESPONSE_QUEUED" });
         liveSessionRef.current?.requestOpening(
           interviewerTurnText(started.firstMessage, started.firstQuestion),
           selectedLanguage,
@@ -1340,7 +1406,9 @@ export default function Interview() {
     const muted = !userMutedRef.current;
     userMutedRef.current = muted;
     dispatchRealtime({ type: "SET_USER_MUTED", muted });
-    liveSessionRef.current?.setMicEnabled(!muted);
+    liveSessionRef.current?.setMicEnabled(
+      !muted && !openingCaptureLockedRef.current,
+    );
   };
   useEffect(() => {
     if (phase !== "interviewing" || !activeSession?.expiresAt) return;

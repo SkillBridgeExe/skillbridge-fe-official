@@ -51,9 +51,15 @@ function renderSession(
 
 describe("InterviewSession", () => {
   it("keeps the self-camera primary and renders the realtime interviewer", () => {
-    const { container } = renderSession();
+    renderSession();
 
-    expect(container.querySelector("video")).toBeInTheDocument();
+    const camera = screen.getByRole("region", { name: "Self camera" });
+    const interviewer = screen.getByRole("group", {
+      name: "Alex AI interviewer",
+    });
+
+    expect(camera.querySelector("video")).toBeInTheDocument();
+    expect(camera).toContainElement(interviewer);
     expect(screen.getAllByText(/Alex/).length).toBeGreaterThan(0);
     expect(screen.getByText("05:00")).toBeInTheDocument();
     expect(
@@ -62,6 +68,69 @@ describe("InterviewSession", () => {
     expect(screen.queryByRole("button", { name: "Hint" })).not.toBeInTheDocument();
   });
 
+  it("hides the current-question card until a question is ready", () => {
+    renderSession({ currentQuestion: "" });
+
+    expect(screen.queryByText("Current question")).not.toBeInTheDocument();
+  });
+
+  it("keeps the question context before the camera and connection status only in the header", () => {
+    renderSession();
+
+    const context = screen.getByRole("complementary", {
+      name: "Interview context",
+    });
+    const camera = screen.getByRole("region", { name: "Self camera" });
+
+    expect(context).toContainElement(
+      screen.getByText("How do you decide between local state and server state?"),
+    );
+    expect(context.compareDocumentPosition(camera)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getAllByText("Connected")).toHaveLength(1);
+  });
+
+  it("shows the live assistant subtitle in the question panel while speaking", () => {
+    renderSession({
+      voiceState: "SPEAKING",
+      voiceLabel: "Speaking",
+      subtitle: "Let us go deeper into that decision.",
+    });
+
+    const context = screen.getByRole("complementary", {
+      name: "Interview context",
+    });
+    expect(context).toHaveTextContent("Alex is asking");
+    expect(context).toHaveTextContent("Let us go deeper into that decision.");
+    expect(
+      screen.queryByText("How do you decide between local state and server state?"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a preparation message while thinking without a pinned question", () => {
+    renderSession({
+      voiceState: "THINKING",
+      voiceLabel: "Thinking",
+      currentQuestion: "",
+      subtitle: undefined,
+    });
+
+    expect(
+      screen.getByText("Alex is preparing the next question..."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders one question panel and one collapsed transcript", () => {
+    renderSession();
+
+    expect(
+      screen.getAllByRole("complementary", { name: "Interview context" }),
+    ).toHaveLength(1);
+    const transcript = screen.getByText("Transcript").closest("details");
+    expect(transcript).toBeInTheDocument();
+    expect(transcript).not.toHaveAttribute("open");
+  });
 
   it("renders one End action in the header", () => {
     renderSession();

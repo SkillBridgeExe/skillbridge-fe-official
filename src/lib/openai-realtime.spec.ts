@@ -211,6 +211,279 @@ describe("OpenAIRealtimeSession single-loop scheduler", () => {
     expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
   });
 
+  it("waits for cleared after a playing response is cancelled", () => {
+    const session = new OpenAIRealtimeSession();
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    openChannel(session);
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: {
+          id: "resp-cancelled-playing",
+          status: "in_progress",
+          metadata: {
+            purpose: "candidate_turn",
+            clientTurnId: "candidate-1",
+          },
+        },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.started",
+        response_id: "resp-cancelled-playing",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.done",
+        response: {
+          id: "resp-cancelled-playing",
+          status: "cancelled",
+          metadata: {
+            purpose: "candidate_turn",
+            clientTurnId: "candidate-1",
+          },
+        },
+      }),
+    );
+
+    expect(runtime(session).activeResponse).not.toBeNull();
+    expect(events.filter((event) => event.type === "ai_interrupted")).toHaveLength(0);
+
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.cleared",
+        response_id: "resp-cancelled-playing",
+      }),
+    );
+
+    expect(runtime(session).activeResponse).toBeNull();
+    expect(events.filter((event) => event.type === "ai_interrupted")).toHaveLength(1);
+  });
+
+  it("keeps a healthy opening active beyond the first-audio deadline", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    session.requestOpening(
+      "Welcome to the interview. Tell me about the project you most recently worked on and the part you owned.",
+      "en",
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: {
+          id: "resp-opening-long",
+          status: "in_progress",
+          metadata: { purpose: "opening" },
+        },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.started",
+        response_id: "resp-opening-long",
+      }),
+    );
+
+    vi.advanceTimersByTime(12_001);
+
+    expect(
+      sentEvents(send).filter((event) => event.type === "response.cancel"),
+    ).toHaveLength(0);
+    expect(
+      sentEvents(send).filter(
+        (event) => event.type === "output_audio_buffer.clear",
+      ),
+    ).toHaveLength(0);
+    expect(runtime(session).activeResponse).not.toBeNull();
+
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.done",
+        response: {
+          id: "resp-opening-long",
+          status: "completed",
+          metadata: { purpose: "opening" },
+        },
+      }),
+    );
+    expect(runtime(session).activeResponse).not.toBeNull();
+
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.stopped",
+        response_id: "resp-opening-long",
+      }),
+    );
+    expect(runtime(session).activeResponse).toBeNull();
+  });
+
+  it("does not report a response as slow after audio has started", () => {
+    const session = new OpenAIRealtimeSession();
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    openChannel(session);
+    session.requestOpening("Welcome. Tell me about your latest project.", "en");
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: {
+          id: "resp-opening-started",
+          status: "in_progress",
+          metadata: { purpose: "opening" },
+        },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.started",
+        response_id: "resp-opening-started",
+      }),
+    );
+
+    vi.advanceTimersByTime(4_001);
+
+    expect(events.filter((event) => event.type === "response_slow")).toHaveLength(0);
+  });
+
+  it("force releases playback after its safety deadline without retrying", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    session.requestCandidateResponse(candidateTurn());
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: {
+          id: "resp-playback-stalled",
+          status: "in_progress",
+          metadata: {
+            purpose: "candidate_turn",
+            clientTurnId: "candidate-1",
+          },
+        },
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.started",
+        response_id: "resp-playback-stalled",
+      }),
+    );
+
+    vi.advanceTimersByTime(59_999);
+    expect(runtime(session).activeResponse).not.toBeNull();
+    expect(events.filter((event) => event.type === "ai_interrupted")).toHaveLength(0);
+
+    vi.advanceTimersByTime(1);
+    expect(runtime(session).activeResponse).toBeNull();
+    expect(
+      sentEvents(send).filter((event) => event.type === "response.create"),
+    ).toHaveLength(1);
+    expect(
+      sentEvents(send).filter(
+        (event) => event.type === "output_audio_buffer.clear",
+      ),
+    ).toHaveLength(1);
+    expect(events.filter((event) => event.type === "ai_interrupted")).toHaveLength(1);
+
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.cleared",
+        response_id: "resp-playback-stalled",
+      }),
+    );
+    expect(events.filter((event) => event.type === "ai_interrupted")).toHaveLength(1);
+  });
+
+  it("suppresses candidate capture throughout the opening", () => {
+    const session = new OpenAIRealtimeSession();
+    const send = openChannel(session);
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    session.requestOpening(
+      "Welcome to the interview. Tell me about your latest project.",
+      "en",
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "response.created",
+        response: {
+          id: "resp-opening-guarded",
+          status: "in_progress",
+          metadata: { purpose: "opening" },
+        },
+      }),
+    );
+
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_started",
+        item_id: "opening-pre-audio",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_stopped",
+        item_id: "opening-pre-audio",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "conversation.item.input_audio_transcription.completed",
+        item_id: "opening-pre-audio",
+        transcript: "Welcome to the interview",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "output_audio_buffer.started",
+        response_id: "resp-opening-guarded",
+      }),
+    );
+    vi.advanceTimersByTime(700);
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_started",
+        item_id: "opening-during-audio",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "input_audio_buffer.speech_stopped",
+        item_id: "opening-during-audio",
+      }),
+    );
+    runtime(session).handleEvent(
+      JSON.stringify({
+        type: "conversation.item.input_audio_transcription.completed",
+        item_id: "opening-during-audio",
+        transcript: "Tell me about your latest project",
+      }),
+    );
+
+    expect(
+      sentEvents(send).filter((event) => event.type === "response.cancel"),
+    ).toHaveLength(0);
+    expect(
+      sentEvents(send).filter(
+        (event) => event.type === "output_audio_buffer.clear",
+      ),
+    ).toHaveLength(0);
+    expect(
+      events.filter(
+        (event) =>
+          event.type === "speech_started" ||
+          event.type === "user_transcript" ||
+          event.type === "speech_stopped",
+      ),
+    ).toHaveLength(0);
+  });
+
   it("retries once only after failed terminal status without audio", () => {
     const session = new OpenAIRealtimeSession();
     const send = openChannel(session);
@@ -243,6 +516,28 @@ describe("OpenAIRealtimeSession single-loop scheduler", () => {
     vi.advanceTimersByTime(12_000);
     expect(sentEvents(send).filter((event) => event.type === "response.create")).toHaveLength(2);
     expect(runtime(session).activeResponse).toBeNull();
+  });
+
+  it("surfaces the opening fallback after its startup retry is exhausted", () => {
+    const session = new OpenAIRealtimeSession();
+    const events: RealtimeEvent[] = [];
+    session.on((event) => events.push(event));
+    openChannel(session);
+    session.requestOpening(
+      "Welcome to the interview. Tell me about your latest project.",
+      "en",
+    );
+
+    vi.advanceTimersByTime(12_000);
+    vi.advanceTimersByTime(12_000);
+
+    expect(runtime(session).activeResponse).toBeNull();
+    expect(
+      events.filter(
+        (event) =>
+          event.type === "ai_stopped" && event.purpose === "opening",
+      ),
+    ).toHaveLength(1);
   });
 
   it("restarts the barge-in arm window when duplicate audio-start events arrive", () => {

@@ -304,16 +304,6 @@ export function takeRecentInterviewSessions<T>(
   return sessions.slice(0, limit);
 }
 
-export function buildInterviewInitialMessages(
-  firstMessage: string | null | undefined,
-  firstQuestion: string | null | undefined,
-): string[] {
-  const content = uniqueNonEmptyStrings([firstMessage, firstQuestion]).join(
-    "\n\n",
-  );
-  return content ? [content] : [];
-}
-
 interface BuildInterviewStartRequestInput extends InterviewVoicePreference {
   selectedCvId: string | null;
   selectedMatchId: string | null;
@@ -543,14 +533,6 @@ export function coerceStringList(value: unknown): string[] {
   }
   if (typeof value === "string" && value.trim() !== "") return [value.trim()];
   return [];
-}
-
-function uniqueNonEmptyStrings(
-  messages: Array<string | null | undefined>,
-): string[] {
-  return Array.from(
-    new Set(messages.map((message) => message?.trim()).filter(Boolean)),
-  ) as string[];
 }
 
 function score(value: number | null | undefined): number | null {

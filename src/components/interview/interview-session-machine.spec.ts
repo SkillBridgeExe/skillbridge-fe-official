@@ -38,6 +38,21 @@ describe("interviewSessionReducer", () => {
     });
   });
 
+  it("shows thinking as soon as an assistant response is queued", () => {
+    const connected = interviewSessionReducer(initialInterviewSessionState, {
+      type: "CONNECTED",
+    });
+    const queued = interviewSessionReducer(connected, {
+      type: "ASSISTANT_RESPONSE_QUEUED",
+    });
+
+    expect(queued).toMatchObject({
+      transport: { status: "CONNECTED" },
+      turn: { status: "THINKING" },
+      mic: { userMuted: false },
+    });
+  });
+
   it("offers text fallback after reconnect timeout without ending the session", () => {
     const connected = interviewSessionReducer(initialInterviewSessionState, {
       type: "CONNECTED",

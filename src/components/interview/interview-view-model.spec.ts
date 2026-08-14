@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import {
-  buildInterviewInitialMessages,
   canOpenInterviewHistory,
   canSwitchInterviewWorkspace,
   buildInterviewStartRequest,
@@ -581,12 +580,6 @@ describe("interview view model", () => {
       expect(getInterviewEndIntent(answeredCount)).toBe(expected);
     },
   );
-
-  it("combines the opening message and first question into one interviewer bubble", () => {
-    expect(
-      buildInterviewInitialMessages("Welcome.", "Tell me about your project."),
-    ).toEqual(["Welcome.\n\nTell me about your project."]);
-  });
 
   it.each([
     ["CANCELLED", "cancelled"],
