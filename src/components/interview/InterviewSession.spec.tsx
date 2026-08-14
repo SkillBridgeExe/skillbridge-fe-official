@@ -51,15 +51,27 @@ function renderSession(
 
 describe("InterviewSession", () => {
   it("keeps the self-camera primary and renders the realtime interviewer", () => {
-    const { container } = renderSession();
+    renderSession();
 
-    expect(container.querySelector("video")).toBeInTheDocument();
+    const camera = screen.getByRole("region", { name: "Self camera" });
+    const interviewer = screen.getByRole("group", {
+      name: "Alex AI interviewer",
+    });
+
+    expect(camera.querySelector("video")).toBeInTheDocument();
+    expect(camera).toContainElement(interviewer);
     expect(screen.getAllByText(/Alex/).length).toBeGreaterThan(0);
     expect(screen.getByText("05:00")).toBeInTheDocument();
     expect(
       screen.getByText("How do you decide between local state and server state?"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Hint" })).not.toBeInTheDocument();
+  });
+
+  it("hides the current-question card until a question is ready", () => {
+    renderSession({ currentQuestion: "" });
+
+    expect(screen.queryByText("Current question")).not.toBeInTheDocument();
   });
 
 

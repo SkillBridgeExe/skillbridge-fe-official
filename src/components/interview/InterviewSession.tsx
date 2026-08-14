@@ -158,10 +158,14 @@ export function InterviewSession({
           </Alert>
         )}
 
-        <div className="grid min-h-[560px] gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
-          <section className="relative min-h-[320px] overflow-hidden rounded-2xl bg-slate-950 shadow-xl lg:min-h-[560px]">
+        <div className="space-y-4">
+          <section
+            className="relative aspect-video min-h-[280px] overflow-hidden rounded-2xl bg-slate-950 shadow-xl"
+            role="region"
+            aria-label="Self camera"
+          >
             {webcamError ? (
-              <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 text-slate-300">
+              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-3 text-slate-300">
                 <Video className="h-9 w-9 text-slate-500" />
                 <p className="text-sm font-semibold">{webcamError}</p>
               </div>
@@ -171,34 +175,51 @@ export function InterviewSession({
             <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur">
               SELF CAMERA
             </div>
-          </section>
-
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-1 flex-col items-center justify-center px-5 py-7">
-              <p className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+            {voiceState === "SPEAKING" && subtitle && (
+              <div className="absolute bottom-4 left-4 right-36 rounded-xl bg-black/65 px-4 py-3 text-sm leading-relaxed text-white backdrop-blur md:right-44">
+                {subtitle}
+              </div>
+            )}
+            <div
+              className="absolute bottom-3 right-3 flex w-28 flex-col items-center rounded-2xl border border-white/20 bg-slate-950/90 px-2 py-3 shadow-2xl backdrop-blur md:bottom-5 md:right-5 md:w-36 md:px-3 md:py-4"
+              role="group"
+              aria-label={`${interviewerName} AI interviewer`}
+            >
+              <p className="mb-2 max-w-full truncate text-[9px] font-bold uppercase tracking-[0.14em] text-slate-300 md:text-[10px]">
                 {interviewerName} · AI Interviewer
               </p>
-              <InterviewVoiceOrb state={voiceState} label={voiceLabel} subtitle={subtitle} />
-              <div className="mt-7 w-full rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{copy.currentQuestion}</p>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800">{currentQuestion}</p>
-              </div>
+              <InterviewVoiceOrb
+                state={voiceState}
+                label={voiceLabel}
+                variant="compact"
+              />
             </div>
+          </section>
 
-            <details className="group border-t border-slate-100 max-lg:[&[open]]:fixed max-lg:[&[open]]:inset-x-3 max-lg:[&[open]]:bottom-16 max-lg:[&[open]]:z-50 max-lg:[&[open]]:rounded-2xl max-lg:[&[open]]:border max-lg:[&[open]]:bg-white max-lg:[&[open]]:shadow-2xl">
-              <summary className="cursor-pointer list-none px-5 py-3 text-sm font-semibold text-slate-700">
-                Transcript <span className="text-xs font-normal text-slate-400">({chatHistory.length})</span>
-              </summary>
-              <div className="max-h-52 space-y-2 overflow-y-auto border-t border-slate-100 p-4">
-                {chatHistory.map((message, index) => (
-                  <div key={`${message.timestamp.getTime()}-${index}`} className={cn("text-sm", message.role === "user" ? "text-slate-800" : "text-slate-600")}>
-                    <span className="mr-2 text-[10px] font-bold uppercase text-slate-400">{message.role === "user" ? copy.you : interviewerName}</span>
-                    {message.content}
-                  </div>
-                ))}
-              </div>
-            </details>
-          </aside>
+          {currentQuestion && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {copy.currentQuestion}
+              </p>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800 md:text-base">
+                {currentQuestion}
+              </p>
+            </div>
+          )}
+
+          <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:[&[open]]:fixed max-lg:[&[open]]:inset-x-3 max-lg:[&[open]]:bottom-16 max-lg:[&[open]]:z-50 max-lg:[&[open]]:shadow-2xl">
+            <summary className="cursor-pointer list-none px-5 py-3 text-sm font-semibold text-slate-700">
+              Transcript <span className="text-xs font-normal text-slate-400">({chatHistory.length})</span>
+            </summary>
+            <div className="max-h-52 space-y-2 overflow-y-auto border-t border-slate-100 p-4">
+              {chatHistory.map((message, index) => (
+                <div key={`${message.timestamp.getTime()}-${index}`} className={cn("text-sm", message.role === "user" ? "text-slate-800" : "text-slate-600")}>
+                  <span className="mr-2 text-[10px] font-bold uppercase text-slate-400">{message.role === "user" ? copy.you : interviewerName}</span>
+                  {message.content}
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
 
         {showText && (

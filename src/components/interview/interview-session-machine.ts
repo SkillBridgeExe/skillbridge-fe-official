@@ -28,6 +28,7 @@ export interface InterviewSessionState {
 export type InterviewSessionAction =
   | { type: "CONNECTING" }
   | { type: "CONNECTED" }
+  | { type: "ASSISTANT_RESPONSE_QUEUED" }
   | { type: "CANDIDATE_TURN_ENDED" }
   | { type: "ASSISTANT_AUDIO_STARTED"; subtitle?: string }
   | { type: "ASSISTANT_SUBTITLE"; subtitle: string }
@@ -61,6 +62,7 @@ export function interviewSessionReducer(
         transport: { status: "CONNECTED" },
         turn: { status: "LISTENING" },
       };
+    case "ASSISTANT_RESPONSE_QUEUED":
     case "CANDIDATE_TURN_ENDED":
       return { ...state, turn: { status: "THINKING" } };
     case "ASSISTANT_AUDIO_STARTED":
