@@ -87,6 +87,9 @@ export function InterviewSession({
         interview: "Phỏng vấn",
         connected: "Đã kết nối",
         currentQuestion: "Câu hỏi hiện tại",
+        interviewContext: "Ngữ cảnh phỏng vấn",
+        alexAsking: "Alex đang hỏi",
+        preparingQuestion: "Alex đang chuẩn bị câu hỏi...",
         you: "Bạn",
         textPlaceholder: "Nhập câu trả lời trong cùng phiên…",
         reconnecting: "Đang kết nối lại…",
@@ -103,6 +106,9 @@ export function InterviewSession({
         interview: "Interview",
         connected: "Connected",
         currentQuestion: "Current question",
+        interviewContext: "Interview context",
+        alexAsking: "Alex is asking",
+        preparingQuestion: "Alex is preparing the next question...",
         you: "You",
         textPlaceholder: "Type your answer in the same session…",
         reconnecting: "Reconnecting…",
@@ -115,6 +121,16 @@ export function InterviewSession({
         feedback: "Quick feedback",
         end: "End",
       };
+  const isSpeaking = voiceState === "SPEAKING";
+  const questionLabel = isSpeaking
+    ? copy.alexAsking
+    : currentQuestion
+      ? copy.currentQuestion
+      : null;
+  const questionContent = isSpeaking
+    ? subtitle?.trim() || copy.preparingQuestion
+    : currentQuestion.trim() ||
+      (voiceState === "THINKING" ? copy.preparingQuestion : null);
 
   return (
     <main className="flex min-h-0 flex-1 flex-col bg-slate-50/60">
@@ -123,7 +139,6 @@ export function InterviewSession({
           <p className="truncate text-sm font-bold text-slate-900">
             {copy.interview} · {experienceMode === "MOCK" ? "Mock" : "Practice"}
           </p>
-          <p className="text-xs text-slate-500">{interviewerName} · AI Interviewer</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-600">
           <span
@@ -158,9 +173,38 @@ export function InterviewSession({
           </Alert>
         )}
 
-        <div className="space-y-4">
+        <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:items-start">
+          <aside
+            className="sticky top-0 z-20 order-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-start-2 lg:row-start-1 lg:p-5"
+            aria-label={copy.interviewContext}
+          >
+            <div className="mb-4 border-b border-slate-100 pb-3">
+              <p className="text-sm font-bold text-slate-900">
+                {interviewerName}
+              </p>
+              <p className="text-xs font-medium text-slate-500">
+                AI Interviewer
+              </p>
+            </div>
+            <div
+              className="max-h-28 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 lg:max-h-64"
+              aria-live="polite"
+            >
+              {questionLabel && (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-700">
+                  {questionLabel}
+                </p>
+              )}
+              {questionContent && (
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800 md:text-base">
+                  {questionContent}
+                </p>
+              )}
+            </div>
+          </aside>
+
           <section
-            className="relative aspect-video min-h-[280px] overflow-hidden rounded-2xl bg-slate-950 shadow-xl"
+            className="relative order-2 aspect-video min-h-[280px] overflow-hidden rounded-2xl bg-slate-950 shadow-xl lg:col-start-1 lg:row-span-2 lg:row-start-1"
             role="region"
             aria-label="Self camera"
           >
@@ -175,11 +219,6 @@ export function InterviewSession({
             <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur">
               SELF CAMERA
             </div>
-            {voiceState === "SPEAKING" && subtitle && (
-              <div className="absolute bottom-4 left-4 right-36 rounded-xl bg-black/65 px-4 py-3 text-sm leading-relaxed text-white backdrop-blur md:right-44">
-                {subtitle}
-              </div>
-            )}
             <div
               className="absolute bottom-3 right-3 flex w-28 flex-col items-center rounded-2xl border border-white/20 bg-slate-950/90 px-2 py-3 shadow-2xl backdrop-blur md:bottom-5 md:right-5 md:w-36 md:px-3 md:py-4"
               role="group"
@@ -196,18 +235,7 @@ export function InterviewSession({
             </div>
           </section>
 
-          {currentQuestion && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {copy.currentQuestion}
-              </p>
-              <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-800 md:text-base">
-                {currentQuestion}
-              </p>
-            </div>
-          )}
-
-          <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:[&[open]]:fixed max-lg:[&[open]]:inset-x-3 max-lg:[&[open]]:bottom-16 max-lg:[&[open]]:z-50 max-lg:[&[open]]:shadow-2xl">
+          <details className="group order-3 self-start rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-2 max-lg:[&[open]]:fixed max-lg:[&[open]]:inset-x-3 max-lg:[&[open]]:bottom-16 max-lg:[&[open]]:z-50 max-lg:[&[open]]:shadow-2xl">
             <summary className="cursor-pointer list-none px-5 py-3 text-sm font-semibold text-slate-700">
               Transcript <span className="text-xs font-normal text-slate-400">({chatHistory.length})</span>
             </summary>
