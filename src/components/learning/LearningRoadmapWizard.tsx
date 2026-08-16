@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
   GripVertical,
   Loader2,
   Sparkles,
@@ -375,6 +377,27 @@ export function LearningRoadmapWizard({
                   {t("learning.wizard.goal.jdNeedsDiagnosis")}
                 </div>
               ) : null}
+              {intent === "JD_APPLICATION" && initialMatchId ? (
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
+                      <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sky-950">
+                        {t("learning.wizard.context.matchTitle")}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-sky-800">
+                        {t("learning.wizard.context.matchBody")}
+                      </p>
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        {t("learning.wizard.context.matchReady")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {intent === "CAREER_ROLE" ? (
                 <div className="grid gap-4 md:grid-cols-3">
                   <Field label={t("learning.wizard.context.cv")}>
@@ -421,10 +444,16 @@ export function LearningRoadmapWizard({
                   </Field>
                 </div>
               ) : null}
+              {!intent ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                  {t("learning.wizard.context.missingGoal")}
+                </div>
+              ) : null}
               <WizardFooter
                 onBack={() => setStep("goal")}
                 onNext={createDraft}
                 busy={isBusy}
+                disabled={!intent}
                 nextLabel={
                   intent === "JD_APPLICATION" && !initialMatchId
                     ? t("learning.wizard.goDiagnosis")

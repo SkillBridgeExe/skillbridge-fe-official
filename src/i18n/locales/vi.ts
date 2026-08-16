@@ -372,6 +372,11 @@ export default {
           role: "Nghề mục tiêu",
           level: "Cấp độ mục tiêu",
           language: "Ngôn ngữ học",
+          matchTitle: "Dùng kết quả CV × JD hiện tại",
+          matchBody:
+            "Lộ trình sẽ lấy các khoảng trống kỹ năng từ phiên chẩn đoán này. Bạn không cần chọn lại CV hoặc mô tả công việc.",
+          matchReady: "Bối cảnh đã sẵn sàng",
+          missingGoal: "Chưa chọn mục tiêu học. Hãy quay lại để tiếp tục.",
         },
         languages: { vi: "Tiếng Việt", en: "Tiếng Anh", both: "Cả hai" },
         schedule: {

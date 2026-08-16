@@ -371,6 +371,11 @@ export default {
           role: "Target role",
           level: "Target level",
           language: "Learning language",
+          matchTitle: "Use the current CV × JD result",
+          matchBody:
+            "This roadmap will use the skill gaps from the diagnosis you just completed. You do not need to choose the CV or job description again.",
+          matchReady: "Context ready",
+          missingGoal: "No learning goal is selected yet. Go back to continue.",
         },
         languages: { vi: "Vietnamese", en: "English", both: "Both" },
         schedule: {

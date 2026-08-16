@@ -59,6 +59,40 @@ describe("LearningRoadmapWizard accessibility", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("shows the selected CV-JD context instead of a blank step when opened from a match", async () => {
+    mocks.createDraft.mockResolvedValue({
+      id: "roadmap-from-match",
+      revision: 1,
+      candidate_skills: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <LearningRoadmapWizard
+          initialMatchId="match-1"
+          onClose={vi.fn()}
+          onGenerated={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("learning.wizard.context.matchTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("learning.wizard.context.matchBody"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "learning.wizard.next" }));
+
+    await waitFor(() =>
+      expect(mocks.createDraft).toHaveBeenCalledWith({
+        intent: "JD_APPLICATION",
+        cv_match_id: "match-1",
+      }),
+    );
+  });
+
   it("runs the career draft, cadence, primary-resource, preview, and generation flow", async () => {
     const draft = {
       id: "roadmap-1",
