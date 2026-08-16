@@ -83,6 +83,12 @@ describe("LearningRoadmapWizard accessibility", () => {
       screen.getByText("learning.wizard.context.matchBody"),
     ).toBeInTheDocument();
 
+    const progress = screen.getByLabelText("learning.wizard.progress");
+    expect(
+      progress.querySelectorAll('[data-testid="learning-wizard-progress-segment"]'),
+    ).toHaveLength(4);
+    expect(progress.querySelectorAll('[data-active="true"]')).toHaveLength(1);
+
     fireEvent.click(screen.getByRole("button", { name: "learning.wizard.next" }));
 
     await waitFor(() =>

@@ -121,13 +121,10 @@ export function LearningRoadmapWizard({
     };
   }, [intent, t]);
 
-  const stepIndex = [
-    "goal",
-    "context",
-    "priorities",
-    "schedule",
-    "preview",
-  ].indexOf(step);
+  const progressSteps: Step[] = initialMatchId
+    ? ["context", "priorities", "schedule", "preview"]
+    : ["goal", "context", "priorities", "schedule", "preview"];
+  const stepIndex = progressSteps.indexOf(step);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -328,9 +325,11 @@ export function LearningRoadmapWizard({
               className="mb-3 flex gap-1.5"
               aria-label={t("learning.wizard.progress")}
             >
-              {[0, 1, 2, 3, 4].map((index) => (
+              {progressSteps.map((_, index) => (
                 <span
                   key={index}
+                  data-testid="learning-wizard-progress-segment"
+                  data-active={index <= stepIndex ? "true" : "false"}
                   className={`h-1.5 rounded-full ${index <= stepIndex ? "w-8 bg-primary" : "w-4 bg-slate-200"}`}
                 />
               ))}
