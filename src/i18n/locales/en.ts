@@ -1681,6 +1681,13 @@ export default {
         communication: "Communication",
         duration: "Duration: {{duration}}",
         answeredQuestions: "{{count}} answered question(s)",
+        overallScoreLabel: "Overall interview score",
+        overallBand: {
+          poor: "Needs improvement",
+          borderline: "Developing",
+          solid: "Solid",
+          outstanding: "Outstanding",
+        },
         scoreBasis: {
           criterion_rubric: "Rubric-scored",
           legacy_fallback: "Legacy score fallback",
@@ -1690,11 +1697,20 @@ export default {
         scoreBasisDescription:
           "The overall score is derived from system-owned criteria and weights.",
         summaryTitle: "AI Summary",
-        summaryDescription: "AI feedback summary",
-        strengths: "Strengths",
-        improve: "Improve",
-        emptyStrengths: "No strengths are available yet.",
-        emptyImprove: "No improvement items are available yet.",
+        summaryDescription: "An overall view from the final interview assessment",
+        expandSummary: "Show more",
+        collapseSummary: "Show less",
+        overviewTitle: "Feedback overview",
+        overviewDescription: "The most important signals from this interview",
+        strengthHighlights: "What you did well",
+        improvementPriorities: "Improvement priorities",
+        insufficientStrengthTitle:
+          "There is not enough evidence to confirm a strength yet.",
+        insufficientStrengthDescription:
+          "In your next practice, state your role, technical decision and resulting impact clearly.",
+        emptyImprovementTitle: "No improvement priority is confirmed yet.",
+        emptyImprovementDescription:
+          "Open Details to review the rubric or complete more answers.",
         technicalDelivery: "Technical Delivery",
         technicalDeliveryDescription: "Core technical competencies",
         communicationFlow: "Communication Flow",

@@ -357,6 +357,163 @@ describe("interview view model", () => {
     });
   });
 
+  it("builds three overview strengths from coaching, turns, then supported rubric evidence", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      coaching: {
+        summary: "Strong API ownership and clear trade-offs.",
+        strengths: ["Owns API integration"],
+        priorities: [],
+      },
+      turns: [{ ...detail.turns[0], strengths: [" owns api integration! ", "Measures delivery impact"] }],
+      finalScore: {
+        score_explanations: [
+          {
+            dimension: "technical_depth",
+            score: 82,
+            band: "solid",
+            uncertainty: "low",
+            weight: 0.4,
+            rubric_anchor: "Connects decisions to technical constraints",
+            evidence_quote: "We rejected local storage because of the XSS risk.",
+          },
+        ],
+      },
+    } as InterviewDetailResponseDto);
+
+    expect(result).toMatchObject({
+      overviewHighlights: {
+        strengths: [
+          { kind: "strength", title: "Owns API integration", detail: null, source: "coaching" },
+          { kind: "strength", title: "Measures delivery impact", detail: null, source: "turn" },
+          {
+            kind: "strength",
+            title: "Connects decisions to technical constraints",
+            detail: "We rejected local storage because of the XSS risk.",
+            source: "rubric",
+          },
+        ],
+      },
+    });
+  });
+
+  it("builds overview improvements in priority order and removes near duplicates", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      coaching: {
+        summary: "Needs more evidence.",
+        strengths: [],
+        priorities: [
+          {
+            track: "interview_practice",
+            title: "Quantify delivery impact",
+            why: "The answer described the work but not its measurable result.",
+          },
+        ],
+      },
+      turns: [{ ...detail.turns[0], improvements: ["quantify delivery impact!", "Explain the session trade-off"] }],
+      finalScore: {
+        score_explanations: [
+          {
+            dimension: "problem_solving",
+            score: 58,
+            band: "borderline",
+            uncertainty: "low",
+            weight: 0.25,
+            rubric_anchor: "The rejected option was not explained.",
+            evidence_quote: null,
+            improvement_hint: "State the rejected option and why it lost.",
+          },
+        ],
+      },
+      devPlan: {
+        learn_items: [],
+        cv_fix_items: [],
+        interview_practice_items: [
+          {
+            track: "interview_practice",
+            display_name: "Practice STAR answers",
+            priority: 0.8,
+            rationale: "Close with a measurable result.",
+          },
+        ],
+      },
+    } as InterviewDetailResponseDto);
+
+    expect(result).toMatchObject({
+      overviewHighlights: {
+        improvements: [
+          { kind: "improvement", title: "Quantify delivery impact", detail: "The answer described the work but not its measurable result.", source: "coaching" },
+          { kind: "improvement", title: "Explain the session trade-off", detail: null, source: "turn" },
+          { kind: "improvement", title: "State the rejected option and why it lost.", detail: null, source: "rubric" },
+        ],
+      },
+    });
+  });
+
+  it("does not invent a strength from unsupported or uncertain rubric data", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      coaching: { summary: "Not enough evidence.", strengths: [], priorities: [] },
+      turns: [{ ...detail.turns[0], strengths: [] }],
+      finalScore: {
+        score_explanations: [
+          {
+            dimension: "communication",
+            score: 74,
+            band: "solid",
+            uncertainty: "high",
+            weight: 0.2,
+            rubric_anchor: "Potentially clear communication",
+            evidence_quote: null,
+          },
+        ],
+      },
+    } as InterviewDetailResponseDto);
+
+    expect(result).toMatchObject({ overviewHighlights: { strengths: [] } });
+  });
+
+  it("uses the development plan when no higher-priority improvement exists", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      coaching: { summary: "Keep practicing.", strengths: [], priorities: [] },
+      turns: [{ ...detail.turns[0], improvements: [] }],
+      devPlan: {
+        learn_items: [],
+        cv_fix_items: [],
+        interview_practice_items: [
+          {
+            track: "interview_practice",
+            display_name: "Practice concise architecture answers",
+            priority: 0.9,
+            rationale: "Use one decision, one trade-off and one result.",
+          },
+        ],
+      },
+    } as InterviewDetailResponseDto);
+
+    expect(result).toMatchObject({
+      overviewHighlights: {
+        improvements: [
+          { kind: "improvement", title: "Practice concise architecture answers", detail: "Use one decision, one trade-off and one result.", source: "development_plan" },
+        ],
+      },
+    });
+  });
+
+  it("drops non-finite scores before they reach the results UI", () => {
+    const result = toInterviewResultViewModel({
+      ...detail,
+      overallScore: Number.POSITIVE_INFINITY,
+      semanticScore: Number.NEGATIVE_INFINITY,
+      llmScore: Number.NaN,
+      communicationScore: Number.POSITIVE_INFINITY,
+    });
+
+    expect(result).toMatchObject({ overallScore: null, semanticScore: null, llmScore: null, communicationScore: null });
+  });
+
   it("maps curated question metadata, rubric dimensions, coaching, and confidence evidence", () => {
     const richDetail: InterviewDetailResponseDto = {
       ...detail,
@@ -448,6 +605,7 @@ describe("interview view model", () => {
 
     expect(result.overallScore).toBe(82);
     expect(result.scoreBasis).toBe("criterion_rubric");
+    expect(result).toMatchObject({ overallBand: "outstanding" });
     expect(result.rubricDimensions).toEqual([
       {
         dimension: "technical_depth",

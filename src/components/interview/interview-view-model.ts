@@ -117,6 +117,29 @@ export interface InterviewScoreExplanationViewModel {
   improvement_hint: string | null;
 }
 
+export type InterviewResultHighlightSource =
+  | "coaching"
+  | "turn"
+  | "rubric"
+  | "development_plan";
+
+export interface InterviewResultHighlightViewModel {
+  kind: "strength" | "improvement";
+  title: string;
+  detail: string | null;
+  source: InterviewResultHighlightSource;
+}
+
+export interface InterviewResultOverviewHighlightsViewModel {
+  strengths: InterviewResultHighlightViewModel[];
+  improvements: InterviewResultHighlightViewModel[];
+}
+
+export type InterviewOverallBand = Exclude<
+  FinalScoreDto["overall_band"],
+  "legacy"
+>;
+
 export interface InterviewGapItemViewModel {
   /** null for skill-less gaps (communication_gap / behavioral_gap) — must still render. */
   skillCanonical: string | null;
@@ -145,6 +168,7 @@ export interface InterviewResultViewModel {
   sessionId: string;
   targetRole: string;
   overallScore: number | null;
+  overallBand: InterviewOverallBand | null;
   semanticScore: number | null;
   llmScore: number | null;
   communicationScore: number | null;
@@ -162,6 +186,7 @@ export interface InterviewResultViewModel {
   durationSeconds: number | null;
   questions: InterviewResultQuestionViewModel[];
   scoreExplanations: InterviewScoreExplanationViewModel[];
+  overviewHighlights: InterviewResultOverviewHighlightsViewModel;
   gapItems: InterviewGapItemViewModel[];
   scoreBasis: FinalScoreDto["score_basis"] | null;
 }
@@ -536,7 +561,7 @@ export function coerceStringList(value: unknown): string[] {
 }
 
 function score(value: number | null | undefined): number | null {
-  return value == null || Number.isNaN(value) ? null : Math.round(value);
+  return value == null || !Number.isFinite(value) ? null : Math.round(value);
 }
 
 function feedbackRecord(
@@ -582,6 +607,17 @@ function readScoreBasis(value: unknown): FinalScoreDto["score_basis"] | null {
     value.score_basis === "mixed" ||
     value.score_basis === "unscored"
     ? value.score_basis
+    : null;
+}
+
+function readOverallBand(value: unknown): InterviewOverallBand | null {
+  if (!isRecord(value)) return null;
+  const band = readString(value.overall_band);
+  return band === "poor" ||
+    band === "borderline" ||
+    band === "solid" ||
+    band === "outstanding"
+    ? band
     : null;
 }
 
@@ -736,6 +772,116 @@ function readScoreExplanations(
     );
 }
 
+function normalizeHighlightText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function takeUniqueHighlights(
+  candidates: InterviewResultHighlightViewModel[],
+): InterviewResultHighlightViewModel[] {
+  const seen = new Set<string>();
+  const highlights: InterviewResultHighlightViewModel[] = [];
+
+  for (const candidate of candidates) {
+    const title = candidate.title.trim();
+    const key = normalizeHighlightText(title);
+    if (!key || seen.has(key) || containsInterviewInternalMarker(title)) continue;
+
+    seen.add(key);
+    highlights.push({
+      ...candidate,
+      title,
+      detail:
+        candidate.detail && !containsInterviewInternalMarker(candidate.detail)
+          ? candidate.detail.trim() || null
+          : null,
+    });
+    if (highlights.length === 3) break;
+  }
+
+  return highlights;
+}
+
+function buildOverviewHighlights(input: {
+  coachingStrengths: string[];
+  coachingPriorities: InterviewCoachingPriorityViewModel[];
+  devPlanItems: InterviewDevPlanItemViewModel[];
+  questions: InterviewResultQuestionViewModel[];
+  scoreExplanations: InterviewScoreExplanationViewModel[];
+}): InterviewResultOverviewHighlightsViewModel {
+  const turnStrengths = input.questions.flatMap((question) => question.strengths);
+  const turnImprovements = input.questions.flatMap(
+    (question) => question.improvements,
+  );
+  const supportedRubricStrengths = input.scoreExplanations.filter(
+    (item) =>
+      (item.band === "solid" || item.band === "outstanding") &&
+      item.uncertainty !== "high" &&
+      Boolean(item.evidence_quote),
+  );
+
+  const strengths = takeUniqueHighlights([
+    ...input.coachingStrengths.map((title) => ({
+      kind: "strength" as const,
+      title,
+      detail: null,
+      source: "coaching" as const,
+    })),
+    ...turnStrengths.map((title) => ({
+      kind: "strength" as const,
+      title,
+      detail: null,
+      source: "turn" as const,
+    })),
+    ...supportedRubricStrengths.map((item) => ({
+      kind: "strength" as const,
+      title: item.rubric_anchor,
+      detail: item.evidence_quote,
+      source: "rubric" as const,
+    })),
+  ]);
+
+  const improvements = takeUniqueHighlights([
+    ...input.coachingPriorities.map((priority) => ({
+      kind: "improvement" as const,
+      title: priority.title,
+      detail: priority.why,
+      source: "coaching" as const,
+    })),
+    ...turnImprovements.map((title) => ({
+      kind: "improvement" as const,
+      title,
+      detail: null,
+      source: "turn" as const,
+    })),
+    ...input.scoreExplanations.flatMap((item) =>
+      item.improvement_hint
+        ? [
+            {
+              kind: "improvement" as const,
+              title: item.improvement_hint,
+              detail: null,
+              source: "rubric" as const,
+            },
+          ]
+        : [],
+    ),
+    ...input.devPlanItems.map((item) => ({
+      kind: "improvement" as const,
+      title: item.title,
+      detail: item.rationale || null,
+      source: "development_plan" as const,
+    })),
+  ]);
+
+  return { strengths, improvements };
+}
+
 function readGapItems(value: unknown): InterviewGapItemViewModel[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -795,11 +941,16 @@ export function toInterviewResultViewModel(
         answeredAt: turn.answeredAt ?? null,
       };
     });
+  const coachingStrengths = readCoachingStrengths(detail.coaching);
+  const coachingPriorities = readCoachingPriorities(detail.coaching);
+  const devPlanItems = readDevPlanItems(detail.devPlan);
+  const scoreExplanations = readScoreExplanations(detail.finalScore);
 
   return {
     sessionId: detail.id,
     targetRole: detail.targetRole,
     overallScore: finalScoreOverall ?? score(detail.overallScore),
+    overallBand: readOverallBand(detail.finalScore),
     semanticScore: score(detail.semanticScore),
     llmScore: score(detail.llmScore),
     communicationScore: score(detail.communicationScore),
@@ -816,12 +967,19 @@ export function toInterviewResultViewModel(
         ?.confidenceEvidence ?? [],
     rubricDimensions: readRubricDimensions(detail.finalScore),
     coachingSummary: readCoachingSummary(detail.coaching),
-    coachingStrengths: readCoachingStrengths(detail.coaching),
-    coachingPriorities: readCoachingPriorities(detail.coaching),
-    devPlanItems: readDevPlanItems(detail.devPlan),
+    coachingStrengths,
+    coachingPriorities,
+    devPlanItems,
     durationSeconds: detail.durationSeconds,
     questions,
-    scoreExplanations: readScoreExplanations(detail.finalScore),
+    scoreExplanations,
+    overviewHighlights: buildOverviewHighlights({
+      coachingStrengths,
+      coachingPriorities,
+      devPlanItems,
+      questions,
+      scoreExplanations,
+    }),
     gapItems: readGapItems(detail.gapItems),
     scoreBasis: readScoreBasis(detail.finalScore),
   };

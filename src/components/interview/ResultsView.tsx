@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
@@ -45,6 +44,7 @@ import {
   gapSeverityLevel,
   toInterviewResultViewModel,
   computeAnswerOvertimeDisplay,
+  type InterviewResultHighlightViewModel,
   type InterviewScoreExplanationViewModel,
 } from "./interview-view-model";
 
@@ -65,11 +65,9 @@ interface ResultsViewProps {
 export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("common");
-  const [activeTab, setActiveTab] = useState<"strengths" | "improve">(
-    "strengths",
-  );
   const [highlightedTurnId, setHighlightedTurnId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [expandedSignals, setExpandedSignals] = useState<Record<number, boolean>>({});
 
   const handleScrollToTurn = (turnId: string) => {
@@ -145,8 +143,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
     summary: t("interview.results.noSummary"),
   });
   const effectiveDuration = view.durationSeconds ?? duration ?? null;
-  const strengths = collectTurnItems(view.questions, "strengths");
-  const improvements = collectTurnItems(view.questions, "improvements");
+  const canExpandSummary = view.summary.length > 180;
 
   const phaseCounts = view.questions.reduce((acc, q) => {
     const rawPhase = q.topicPhase || 'SCREENING';
@@ -208,7 +205,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <ScoreDonut
               score={view.overallScore}
-              label={t("interview.stats.overall")}
+              label={t("interview.results.overallScoreLabel")}
             />
 
             {showDetails && (
@@ -244,6 +241,17 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
             <Badge variant="secondary" className="rounded-full">
               {view.targetRole.replace(/_/g, " ")}
             </Badge>
+            {view.overallBand ? (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "rounded-full font-semibold",
+                  overallBandClassName(view.overallBand),
+                )}
+              >
+                {t(`interview.results.overallBand.${view.overallBand}`)}
+              </Badge>
+            ) : null}
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
               {t("interview.results.duration", {
@@ -268,7 +276,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-5">
+      <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-5">
         <Card className="border-slate-200 bg-white shadow-sm md:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -285,67 +293,73 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+          <CardContent className="space-y-3">
+            <p
+              className={cn(
+                "rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700",
+                !isSummaryExpanded && canExpandSummary && "line-clamp-5",
+              )}
+            >
               {view.summary}
             </p>
+            {canExpandSummary ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs font-semibold text-slate-600"
+                aria-expanded={isSummaryExpanded}
+                onClick={() => setIsSummaryExpanded((value) => !value)}
+              >
+                {isSummaryExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                {isSummaryExpanded
+                  ? t("interview.results.collapseSummary")
+                  : t("interview.results.expandSummary")}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 bg-white shadow-sm md:col-span-3">
-          <CardHeader className="border-b border-slate-100 pb-3">
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) =>
-                setActiveTab(value as "strengths" | "improve")
-              }
-            >
-              <TabsList>
-                <TabsTrigger value="strengths" className="gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {t("interview.results.strengths")}
-                </TabsTrigger>
-                <TabsTrigger value="improve" className="gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  {t("interview.results.improve")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+                <Sparkles className="h-4 w-4 text-slate-600" />
+              </div>
+              <div>
+                <CardTitle className="text-sm">
+                  {t("interview.results.overviewTitle")}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t("interview.results.overviewDescription")}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="pt-4">
-            <ul className="space-y-3">
-              {(activeTab === "strengths" ? strengths : improvements).length ===
-              0 ? (
-                <li className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
-                  {activeTab === "strengths"
-                    ? t("interview.results.emptyStrengths")
-                    : t("interview.results.emptyImprove")}
-                </li>
-              ) : (
-                (activeTab === "strengths" ? strengths : improvements).map(
-                  (item, index) => (
-                    <li
-                      key={`${activeTab}-${index}-${item}`}
-                      className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm"
-                    >
-                      <span
-                        className={cn(
-                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
-                          activeTab === "strengths"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700",
-                        )}
-                      >
-                        {index + 1}
-                      </span>
-                      <span className="leading-relaxed text-slate-700">
-                        {item}
-                      </span>
-                    </li>
-                  ),
-                )
+          <CardContent className="space-y-6 pt-5">
+            <ResultHighlightList
+              kind="strength"
+              title={t("interview.results.strengthHighlights")}
+              items={view.overviewHighlights.strengths}
+              emptyTitle={t("interview.results.insufficientStrengthTitle")}
+              emptyDescription={t(
+                "interview.results.insufficientStrengthDescription",
               )}
-            </ul>
+            />
+            <div className="border-t border-slate-100" />
+            <ResultHighlightList
+              kind="improvement"
+              title={t("interview.results.improvementPriorities")}
+              items={view.overviewHighlights.improvements}
+              emptyTitle={t("interview.results.emptyImprovementTitle")}
+              emptyDescription={t(
+                "interview.results.emptyImprovementDescription",
+              )}
+            />
           </CardContent>
         </Card>
       </div>
@@ -388,8 +402,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         />
       </div>
 
-        </>
-      )}
       {view.gapItems && view.gapItems.length > 0 && (
         <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader>
@@ -511,7 +523,6 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </Card>
       </div>
 
-      {showDetails && (
       <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
         <CardHeader className="border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2">
@@ -798,6 +809,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
         </CardContent>
       </Card>
 
+        </>
       )}
       <Button
         size="lg"
@@ -1038,14 +1050,84 @@ function ScoreDonut({ score, label }: { score: number | null; label: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-black text-slate-900">
-          {score == null ? "N/A" : `${score}%`}
+        <span className="text-3xl font-black text-slate-900">
+          {score == null ? "N/A" : `${score}/100`}
         </span>
         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
           {label}
         </span>
       </div>
     </div>
+  );
+}
+
+function ResultHighlightList({
+  kind,
+  title,
+  items,
+  emptyTitle,
+  emptyDescription,
+}: {
+  kind: "strength" | "improvement";
+  title: string;
+  items: InterviewResultHighlightViewModel[];
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
+  const Icon = kind === "strength" ? CheckCircle2 : TrendingUp;
+  const isStrength = kind === "strength";
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Icon
+          className={cn(
+            "h-4 w-4",
+            isStrength ? "text-emerald-600" : "text-amber-600",
+          )}
+        />
+        <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-700">{emptyTitle}</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            {emptyDescription}
+          </p>
+        </div>
+      ) : (
+        <ol className="space-y-2.5">
+          {items.map((item, index) => (
+            <li
+              key={`${item.source}-${item.title}`}
+              className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5"
+            >
+              <span
+                className={cn(
+                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold",
+                  isStrength
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-amber-100 text-amber-700",
+                )}
+              >
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-relaxed text-slate-700">
+                  {item.title}
+                </p>
+                {item.detail ? (
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                    {item.detail}
+                  </p>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -1323,15 +1405,6 @@ function PlanItemList({
   );
 }
 
-function collectTurnItems(
-  questions: Array<{ strengths: string[]; improvements: string[] }>,
-  key: "strengths" | "improvements",
-): string[] {
-  return Array.from(
-    new Set(questions.flatMap((question) => question[key])),
-  ).slice(0, 6);
-}
-
 function formatMetricLabel(value: string): string {
   return value
     .replace(/_/g, " ")
@@ -1343,4 +1416,13 @@ function scoreColor(value: number | null): string {
   if (value >= 80) return "text-emerald-600";
   if (value >= 60) return "text-amber-600";
   return "text-red-600";
+}
+
+function overallBandClassName(
+  band: "poor" | "borderline" | "solid" | "outstanding",
+): string {
+  if (band === "outstanding") return "border-emerald-200 text-emerald-700";
+  if (band === "solid") return "border-cyan-200 text-cyan-700";
+  if (band === "borderline") return "border-amber-200 text-amber-700";
+  return "border-rose-200 text-rose-700";
 }

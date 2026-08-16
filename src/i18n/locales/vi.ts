@@ -1678,6 +1678,13 @@ export default {
         communication: "Giao tiếp",
         duration: "Thời lượng: {{duration}}",
         answeredQuestions: "{{count}} câu đã trả lời",
+        overallScoreLabel: "Tổng điểm phỏng vấn",
+        overallBand: {
+          poor: "Cần cải thiện",
+          borderline: "Cần củng cố",
+          solid: "Vững",
+          outstanding: "Nổi bật",
+        },
         scoreBasis: {
           criterion_rubric: "Chấm theo rubric",
           legacy_fallback: "Có fallback điểm cũ",
@@ -1687,11 +1694,20 @@ export default {
         scoreBasisDescription:
           "Điểm tổng được tính từ tiêu chí và trọng số do hệ thống kiểm soát.",
         summaryTitle: "Tóm tắt từ AI",
-        summaryDescription: "Tóm tắt feedback từ AI",
-        strengths: "Điểm mạnh",
-        improve: "Cần cải thiện",
-        emptyStrengths: "Chưa có điểm mạnh để hiển thị.",
-        emptyImprove: "Chưa có mục cần cải thiện để hiển thị.",
+        summaryDescription: "Nhận định tổng quan từ kết quả chấm cuối phiên",
+        expandSummary: "Xem thêm",
+        collapseSummary: "Thu gọn",
+        overviewTitle: "Feedback tổng quan",
+        overviewDescription: "Những tín hiệu quan trọng nhất từ phiên phỏng vấn",
+        strengthHighlights: "Bạn đang làm tốt",
+        improvementPriorities: "Ưu tiên cải thiện",
+        insufficientStrengthTitle:
+          "Chưa đủ bằng chứng để kết luận điểm mạnh.",
+        insufficientStrengthDescription:
+          "Ở lần luyện tiếp theo, hãy nêu rõ vai trò, quyết định kỹ thuật và kết quả bạn tạo ra.",
+        emptyImprovementTitle: "Chưa xác định được ưu tiên cải thiện.",
+        emptyImprovementDescription:
+          "Mở phần Chi tiết để xem rubric hoặc hoàn thành thêm câu trả lời.",
         technicalDelivery: "Trình bày kỹ thuật",
         technicalDeliveryDescription: "Năng lực kỹ thuật cốt lõi",
         communicationFlow: "Luồng giao tiếp",
