@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 import { LearningRoadmapWizard } from "./LearningRoadmapWizard";
 
 const mocks = vi.hoisted(() => ({
+  language: "en",
   getCvList: vi.fn(),
   createDraft: vi.fn(),
   updateDraft: vi.fn(),
@@ -26,7 +27,7 @@ vi.mock("react-i18next", () => {
   return {
     useTranslation: () => ({
       t,
-      i18n: { language: "en" },
+      i18n: { language: mocks.language },
     }),
   };
 });
@@ -40,7 +41,10 @@ vi.mock("@/services/learning-roadmaps-v2.service", () => ({
 }));
 
 describe("LearningRoadmapWizard accessibility", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    mocks.language = "en";
+    cleanup();
+  });
 
   it("exposes a modal dialog with a labeled close button and supports Escape", () => {
     const onClose = vi.fn();
@@ -99,7 +103,27 @@ describe("LearningRoadmapWizard accessibility", () => {
     );
   });
 
+  it("returns to the diagnosis when backing out of the match context step", () => {
+    const onClose = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <LearningRoadmapWizard
+          initialMatchId="match-1"
+          onClose={onClose}
+          onGenerated={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "learning.wizard.back" }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(screen.queryByText("learning.wizard.goal.jdTitle")).not.toBeInTheDocument();
+  });
+
   it("runs the career draft, cadence, primary-resource, preview, and generation flow", async () => {
+    mocks.language = "vi";
     const draft = {
       id: "roadmap-1",
       revision: 1,
@@ -121,7 +145,7 @@ describe("LearningRoadmapWizard accessibility", () => {
       cadence: {
         start_date: "2026-07-28",
         study_days_per_week: 3,
-        session_minutes: 60,
+        session_minutes: 45,
         timezone: "Asia/Ho_Chi_Minh",
       },
       estimated_completion_date: "2026-08-10",
@@ -190,6 +214,19 @@ describe("LearningRoadmapWizard accessibility", () => {
       }),
     );
     await screen.findByText("TypeScript quick start");
+    expect(screen.getByTestId("learning-wizard-preview-summary")).toHaveTextContent(
+      "learning.wizard.preview.focusSummary",
+    );
+    expect(screen.getByTestId("learning-wizard-session-summary")).toHaveAttribute(
+      "data-session-minutes",
+      "45",
+    );
+    expect(
+      screen
+        .getByTestId("learning-wizard-estimated-completion")
+        .querySelector("p:last-child"),
+    ).toHaveClass("whitespace-nowrap");
+    expect(screen.getByText("learning.wizard.preview.modules")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", {
         name: "learning.wizard.generateAction",

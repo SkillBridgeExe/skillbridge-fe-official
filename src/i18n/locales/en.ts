@@ -346,7 +346,7 @@ export default {
           context: "Choose the learning context",
           priorities: "What should you learn first?",
           schedule: "Set your real study calendar",
-          preview: "Review feasibility before generating",
+          preview: "Preview your learning roadmap",
         },
         priorities: {
           selectedTitle: "Skills to learn",
@@ -395,7 +395,7 @@ export default {
         },
         weekdays: { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun" },
         preview: {
-          modules: "Modules",
+          modules: "Skills",
           capacity: "Capacity",
           scheduled: "Scheduled",
           feasible: "Fits schedule",
@@ -406,6 +406,8 @@ export default {
           cadence: "Cadence",
           daysPerWeek: "{{count}} days/week",
           estimatedCompletion: "Estimated completion",
+          focusSummary: "Focus on {{count}} skills at the study pace you selected.",
+          noGapsSummary: "There are no remaining skill gaps to learn.",
           primaryResource: "Primary resource",
           supplementaryResource: "Supplementary resource",
           deferredLesson: "Learn later · Not enough available time",

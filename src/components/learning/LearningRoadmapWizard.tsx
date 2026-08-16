@@ -449,7 +449,7 @@ export function LearningRoadmapWizard({
                 </div>
               ) : null}
               <WizardFooter
-                onBack={() => setStep("goal")}
+                onBack={initialMatchId ? onClose : () => setStep("goal")}
                 onNext={createDraft}
                 busy={isBusy}
                 disabled={!intent}
@@ -627,6 +627,7 @@ export function LearningRoadmapWizard({
                     i18n.language,
                     t,
                   )}
+                  testId="learning-wizard-estimated-completion"
                 />
               </div>
               <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
@@ -707,7 +708,12 @@ export function LearningRoadmapWizard({
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-slate-500">{preview.summary}</p>
+              <p
+                data-testid="learning-wizard-preview-summary"
+                className="text-sm text-slate-500"
+              >
+                {formatPreviewSummary(preview, i18n.language, t)}
+              </p>
               <WizardFooter
                 onBack={() => setStep("schedule")}
                 onNext={generate}
@@ -885,11 +891,21 @@ function WizardFooter({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function Metric({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string | number;
+  testId?: string;
+}) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
+    <div data-testid={testId} className="min-w-0 rounded-2xl bg-slate-50 p-4">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+      <p className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold text-slate-900 sm:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }
@@ -911,10 +927,14 @@ function TrackSummary({ preview }: { preview: LearningRoadmapPreview }) {
             ? t("learning.wizard.track.fastTitle")
             : t("learning.wizard.track.foundationTitle")}
         </p>
-        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold">
+        <span
+          data-testid="learning-wizard-session-summary"
+          data-session-minutes={preview.cadence.session_minutes}
+          className="whitespace-nowrap rounded-full bg-white/80 px-3 py-1 text-xs font-semibold"
+        >
           {t("learning.wizard.track.sessionSummary", {
             count: preview.sessions.length,
-            minutes: 60,
+            minutes: preview.cadence.session_minutes,
           })}
         </span>
       </div>
@@ -1011,6 +1031,23 @@ function formatDisplayDate(
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatPreviewSummary(
+  preview: LearningRoadmapPreview,
+  locale: string,
+  translate: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const count = preview.modules.length;
+  if (locale.toLowerCase().startsWith("vi")) {
+    return translate(
+      count > 0
+        ? "learning.wizard.preview.focusSummary"
+        : "learning.wizard.preview.noGapsSummary",
+      { count },
+    );
+  }
+  return preview.summary.trim() || translate("learning.wizard.preview.focusSummary", { count });
 }
 
 function formatResourceDuration(
