@@ -26,6 +26,9 @@ vi.mock("react-i18next", () => ({
       if (key === "results.matched") return "Matched";
       if (key === "results.partial") return "Partial";
       if (key === "results.missing") return "Missing";
+      if (key === "results.needsFixCount") return `${opts?.count} to fix`;
+      if (key === "matchDepth.inputQualityTitle") return "Provisional result";
+      if (key === "matchDepth.inputQualityBody") return "The CV needs review before skill claims are treated as definitive.";
       if (key === "report.rail.unnormalizedChip") {
         return `Scored ${opts?.scored}/${opts?.total} readable requirements — ${opts?.unscored} out-of-scope requirements could not be evaluated`;
       }
@@ -170,6 +173,23 @@ describe("ScoreRail — match mode (with matchStats)", () => {
   it("renders FitBadge when fitVerdict is provided", () => {
     render(<ScoreRail overallScore={72} groups={reviewGroups} matchStats={matchStats} />);
     expect(screen.getByTestId("fit-badge")).toBeInTheDocument();
+  });
+
+  it("does not present per-skill counts or fit as definitive for suspect input", () => {
+    render(
+      <ScoreRail
+        overallScore={72}
+        groups={reviewGroups}
+        matchStats={{ ...matchStats, inputQuality: "suspect" }}
+      />,
+    );
+
+    expect(screen.getAllByText("Provisional result").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/needs review before skill claims/)).toBeInTheDocument();
+    expect(screen.queryByText("Matched")).toBeNull();
+    expect(screen.queryByText("Partial")).toBeNull();
+    expect(screen.queryByText("Missing")).toBeNull();
+    expect(screen.queryByTestId("fit-badge")).toBeNull();
   });
 
   it("renders match score title instead of review title", () => {
