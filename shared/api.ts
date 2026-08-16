@@ -81,7 +81,20 @@ export interface CvJdMatch {
   matchId?: string;
   match_id?: string | null;
   matchScore: number | null;
-  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED' | 'CV_INPUT_SUSPECT'>;
+  score_explanation?: {
+    state: "no_requirement_basis" | "cv_parse_suspect" | "cv_skills_unrecognized" | "complete" | "partial" | "gaps";
+    cv_input_quality: "usable" | "suspect" | "unusable";
+    matched_count: number;
+    partial_count: number;
+    missing_count: number;
+    required_coverage: number;
+    coverage_cap?: number;
+    cap_applied: boolean;
+    missing_skills: string[];
+    missing_required: string[];
+    partial_skills: string[];
+  };
   summary: string;
   hardSkills: SkillMatchItem[];
   softSkills: SkillMatchItem[];
@@ -116,6 +129,9 @@ export interface PerSkillContribution {
   strength: number;
   points_earned: number;
   points_possible: number;
+  evidence_status?: "found_in_cv" | "not_verified_from_cv";
+  evidence_reason?: "verified_quote" | "no_extracted_quote" | "quote_not_found_in_cv" | "cv_text_unavailable" | "cv_input_suspect" | "skill_not_extracted";
+  cv_evidence_text?: string;
 }
 
 export interface ScoringBreakdown {
@@ -512,7 +528,20 @@ export interface BeMissingSkill {
 export interface CvJdMatchParsedResponse {
   overall_score: number | null;
   match_ratio: number | null;
-  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED'>;
+  degraded_reasons?: Array<'NO_REQUIREMENT_BASIS' | 'CV_SKILLS_UNRECOGNIZED' | 'CV_INPUT_SUSPECT'>;
+  score_explanation?: {
+    state: "no_requirement_basis" | "cv_parse_suspect" | "cv_skills_unrecognized" | "complete" | "partial" | "gaps";
+    cv_input_quality: "usable" | "suspect" | "unusable";
+    matched_count: number;
+    partial_count: number;
+    missing_count: number;
+    required_coverage: number;
+    coverage_cap?: number;
+    cap_applied: boolean;
+    missing_skills: string[];
+    missing_required: string[];
+    partial_skills: string[];
+  };
   matched_skills: BeMatchedSkill[];
   partial_skills: BePartialSkill[];
   missing_skills: BeMissingSkill[];

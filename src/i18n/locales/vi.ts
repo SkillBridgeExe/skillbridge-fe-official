@@ -2302,9 +2302,18 @@ export default {
       matched: "Khớp",
       partial: "Một phần",
       missing: "Thiếu",
+      needsFixCount: "{{count}} cần sửa",
+      priorityMissingTitle: "Kỹ năng bắt buộc cần bổ sung:",
+      topMatchedTitle: "Điểm mạnh nổi bật đã khớp:",
+      filterAll: "Tất cả",
+      searchSkills: "Tìm nhanh kỹ năng...",
+      noSkillsFound: "Không tìm thấy kỹ năng nào phù hợp với bộ lọc.",
+      collapseSkills: "Thu gọn danh sách",
+      showAllSkills: "Xem tất cả {{count}} kỹ năng",
       ats: "ATS",
       structure: "Cấu trúc",
       radarTitle: "Radar đánh giá kỹ năng",
+      radarSubtitle: "Mức độ đáp ứng các nhóm kỹ năng trọng yếu",
       radarDescJd: "So sánh trực quan hồ sơ của bạn với yêu cầu công việc",
       radarDescNoJd: "Radar hiển thị khi bạn cung cấp JD để so sánh.",
       radarYou: "Hồ sơ của bạn",
@@ -2718,6 +2727,10 @@ export default {
       gapLevels_one: "thiếu {{count}} cấp",
       gapLevels_other: "thiếu {{count}} cấp",
       whyScore: "Vì sao có điểm này",
+      analysisHeadline: "Nhận định từ AI",
+      inputQualityTitle: "Kết quả tạm tính",
+      inputQualityBody:
+        "Hãy đọc lại CV trước khi xem các kỹ năng khớp hoặc thiếu là kết luận chắc chắn. Nên thử PDF có lớp văn bản rõ ràng.",
       capped: "Điểm bị giới hạn vì độ phủ kỹ năng bắt buộc còn thấp.",
       coverage: "Độ phủ bắt buộc",
       bandRationale: {
@@ -2726,6 +2739,28 @@ export default {
         fair: "Mới khớp một phần yêu cầu — điểm phản ánh số kỹ năng còn thiếu hoặc chưa đủ mạnh.",
         low: "Còn thiếu nhiều yêu cầu bắt buộc — đây là lý do điểm hiện ở mức thấp.",
       },
+      states: {
+        cv_parse_suspect:
+          "Hệ thống chưa thể đọc chắc chắn nội dung CV do định dạng hoặc font. Kết quả bên dưới có thể chưa đầy đủ; hãy kiểm tra lại file CV.",
+        cv_skills_unrecognized:
+          "Chưa tìm thấy kỹ năng yêu cầu trong CV, hoặc cách viết kỹ năng chưa được hệ thống nhận diện.",
+        no_requirement_basis:
+          "Chưa có đủ yêu cầu trong JD để đánh giá mức độ phù hợp.",
+        complete:
+          "Bạn đã đáp ứng toàn bộ kỹ năng yêu cầu! Điểm phản ánh mức độ phù hợp của CV với JD này.",
+        partial:
+          "Bạn đã đáp ứng {{matched}} kỹ năng, nhưng còn {{partial}} kỹ năng mới đáp ứng một phần.",
+        gaps:
+          "Bạn đã đáp ứng {{matched}} kỹ năng, nhưng còn thiếu {{missing}} kỹ năng yêu cầu.",
+      },
+      evidence: {
+        verified: "Tìm thấy trong CV",
+        unverified: "Chưa trích xuất được bằng chứng cụ thể từ CV",
+      },
+      missingRequiredHint:
+        "Kỹ năng bắt buộc của JD — chỉ bổ sung dự án, kinh nghiệm hoặc chứng chỉ nếu đó là sự thật.",
+      missingOptionalHint:
+        "Kỹ năng ưu tiên — bổ sung bằng chứng thật có thể tăng sức cạnh tranh.",
       inferredTitle: "Kỹ năng suy luận",
       inferredHint:
         "Đây là tín hiệu mềm suy ra từ công cụ hoặc hệ sinh thái liên quan. Chỉ dùng để giải thích, không đổi điểm.",
@@ -2886,6 +2921,9 @@ export default {
       chap2: "Cần cải thiện ưu tiên",
       chap3: "Chi tiết kỹ năng",
       chap4: "Kế hoạch hành động",
+      chap1Short: "Đọc vị năng lực & Radar",
+      chap2Short: "Cần cải thiện ưu tiên",
+      chap3Short: "Ma trận kỹ năng chi tiết",
       coverage: "{{pct}}% độ phủ",
       showDetails: "Xem chi tiết",
       hideDetails: "Thu gọn",

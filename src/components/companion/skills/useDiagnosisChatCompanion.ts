@@ -110,6 +110,9 @@ function isDailyLimitError(error: unknown): boolean {
  *                    non-baseline report with at least one closed/improved transition,
  *                    a grounded "what did I improve" chip is prepended to the chip list
  *                    — real data only (baseline/empty → no chip, no fabrication).
+ * @param enabled     whether the current diagnosis input is trustworthy enough to
+ *                    expose grounded chat. Disabled states keep the hook mounted for
+ *                    hook-order safety, but do not fetch, register, or send chat.
  * @returns           `sendQuestion` so a caller (e.g. the ProgressBanner "explain" button)
  *                    can prefill + send a question through the same chat pipeline.
  */
@@ -120,6 +123,7 @@ export function useDiagnosisChatCompanion(
   cvId?: string | null,
   progress?: ProgressReportDto | null,
   proveIt?: EvidenceItem | null,
+  enabled = true,
 ): { sendQuestion: (question: string, focusOverride?: DiagnosisChatFocus) => void } {
   const { t, i18n } = useTranslation("diagnosis");
   const { toast } = useToast();
@@ -127,7 +131,8 @@ export function useDiagnosisChatCompanion(
 
   // Chat target: prefer the JD match id (gap-report grounded). When a JD has NOT been
   // compared, the CV-only route (cvId) is the fallback target so the advisor still works.
-  const matchId = reviewData?.jdMatch?.matchId ?? null;
+  const matchId = enabled ? (reviewData?.jdMatch?.matchId ?? null) : null;
+  const chatCvId = enabled ? (cvId ?? null) : null;
   const previousMatchIdRef = useRef<string | null | undefined>(undefined);
 
   // F4: same query key (matchId + lang) as GapReportCard/TailorChecklist already on
@@ -145,8 +150,8 @@ export function useDiagnosisChatCompanion(
     [...restoredMessages].reverse().find((msg) => msg.role === "user")?.text.trim().slice(0, 60) ?? null;
 
   // Opener: REAL score + STATIC focus-keyed template. null until reviewData is ready.
-  const hasReview = typeof reviewData?.overallScore === "number";
-  const score = reviewData?.overallScore ?? 0;
+  const hasReview = enabled && typeof reviewData?.overallScore === "number";
+  const score = enabled ? (reviewData?.overallScore ?? 0) : 0;
   const opener = lastRestoredUserTopic
     ? t("companion.chat.continuity", { topic: lastRestoredUserTopic })
     : hasReview
@@ -162,13 +167,15 @@ export function useDiagnosisChatCompanion(
   // is viewing (cv_audit / skills_analysis / market_careers / gap_results). For cv_audit
   // we still swap the first chip for a GROUNDED one naming the WEAKEST dimension (anti-fab:
   // only interpolates a REAL dimension label). Other focuses use the focus set verbatim.
-  const baseSuggestions = t(`companion.chat.suggestionsByFocus.${focus}`, {
-    returnObjects: true,
-  }) as string[];
+  const baseSuggestions = enabled
+    ? (t(`companion.chat.suggestionsByFocus.${focus}`, {
+        returnObjects: true,
+      }) as string[])
+    : [];
   const weakestDim = reviewData?.dimensions?.length
     ? reviewData.dimensions.reduce((lo, d) => (d.score20 < lo.score20 ? d : lo))
     : null;
-  const focusSuggestions = focus === "cv_audit" && weakestDim
+  const focusSuggestions = enabled && focus === "cv_audit" && weakestDim
     ? [t("companion.chat.suggestDim", { dim: t(`review.dims.${weakestDim.key}`) }), ...baseSuggestions.slice(1)]
     : baseSuggestions;
 
@@ -176,11 +183,11 @@ export function useDiagnosisChatCompanion(
   // with at least one closed/improved transition since last scan. Anti-fab: never
   // shown for a baseline (nothing to compare) or a report with no closed/improved
   // transitions (nothing to celebrate) — real data only.
-  const hasProgressToExplain = Boolean(
+  const hasProgressToExplain = enabled && Boolean(
     progress && !progress.baseline &&
     progress.transitions.some((tr) => tr.kind === "closed" || tr.kind === "improved"),
   );
-  const proveItChip = proveIt
+  const proveItChip = enabled && proveIt
     ? t("companion.chat.proveitChip", { skill: proveIt.display_name })
     : null;
   const suggestions = [
@@ -194,7 +201,7 @@ export function useDiagnosisChatCompanion(
   //    flips the last assistant slot to an error row — never crashes. ──
   const chatMutation = useMutation({
     mutationFn: (vars: { question: string; focus?: DiagnosisChatFocus }) => {
-      if (!matchId && !cvId) {
+      if (!enabled || (!matchId && !chatCvId)) {
         // Neither a JD match nor a CV id → no chat target server-side at all.
         // Reject → failLastAssistant → friendly "assistant being connected" row.
         return Promise.reject(new Error("NO_CHAT_TARGET"));
@@ -204,7 +211,7 @@ export function useDiagnosisChatCompanion(
       // No thread payload — the BE grounds on its own persisted history.
       return askDiagnosisChat({
         matchId,
-        cvId,
+        cvId: chatCvId,
         question: vars.question,
         // Wave 2 entry points: an object-scoped send ("ask about THIS gap") beats the
         // tab-level focus for its one turn; everything else keeps the hook focus.
@@ -329,6 +336,7 @@ export function useDiagnosisChatCompanion(
 
   const onSend = useCallback(
     (question: string, focusOverride?: DiagnosisChatFocus) => {
+      if (!enabled) return;
       const text = question.trim();
       if (!text) return;
       // Guard against a double-send race — read LIVE store state, never a closed-over
@@ -349,7 +357,7 @@ export function useDiagnosisChatCompanion(
     },
     // runChat carries the send logic; the busy guard reads the store live, so this
     // callback deliberately closes over NO render-scoped pending flag.
-    [runChat],
+    [enabled, runChat],
   );
 
   /**
@@ -359,6 +367,7 @@ export function useDiagnosisChatCompanion(
    */
   const onRetry = useCallback(
     (index: number) => {
+      if (!enabled) return;
       // Same live-state guard as onSend (this callback is handed out the same stale way).
       const store = useCompanionStore.getState();
       if (isChatBusy(store)) return;
@@ -368,7 +377,7 @@ export function useDiagnosisChatCompanion(
       store.setChatAnswerTone(null);
       runChat(question, index, focusByRowRef.current[`${store.chatEpoch}:${index}`]);
     },
-    [runChat],
+    [enabled, runChat],
   );
 
   const onSuggestionTap = useCallback(
@@ -397,11 +406,11 @@ export function useDiagnosisChatCompanion(
 
   const onDeleteThread = useCallback(() => {
     useCompanionStore.getState().clearChat();
-    if (!matchId) {
+    if (!enabled || !matchId) {
       return;
     }
     deleteThreadMutation.mutate(matchId);
-  }, [deleteThreadMutation, matchId]);
+  }, [deleteThreadMutation, enabled, matchId]);
 
   const onAction = useCallback(
     (chip: ChatActionChip) => {
@@ -552,16 +561,22 @@ export function useDiagnosisChatCompanion(
   // A different match is a different persisted mascot memory. Clear local chat so
   // the next seed cannot mix two CV/JD conversations.
   useEffect(() => {
+    if (!enabled) {
+      useCompanionStore.getState().clearChat();
+      previousMatchIdRef.current = null;
+      return;
+    }
     const previous = previousMatchIdRef.current;
     if (previous !== undefined && previous !== matchId) {
       useCompanionStore.getState().clearChat();
     }
     previousMatchIdRef.current = matchId;
-  }, [matchId]);
+  }, [enabled, matchId]);
 
   // Restore persisted turns once when the local thread is still empty. This keeps
   // a live user draft/chat intact if the query resolves late.
   useEffect(() => {
+    if (!enabled) return;
     if (restoredMessages.length === 0) return;
     const store = useCompanionStore.getState();
     if (store.chatMessages.length > 0) return;
@@ -569,19 +584,21 @@ export function useDiagnosisChatCompanion(
     // Wave 2: the restore payload carries the BE-rebuilt memory mirror for these turns.
     store.setChatKnownState(chatThreadQuery.data?.known_state ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId, restoredMessages]);
+  }, [enabled, matchId, restoredMessages]);
 
   // Store-back the focus-aware opener + chips so CompanionShell (which subscribes to
   // chatOpener/chatSuggestions) REPAINTS on a tab switch. Without this, opener/chips flow
   // only through propsRef → getTurn(), which re-runs solely on a shell re-render — and a
   // tab switch does NOT re-render the shell, so the bubble showed stale content.
   useEffect(() => {
-    useCompanionStore.getState().setChatDisplay({ opener, suggestions });
+    useCompanionStore.getState().setChatDisplay(
+      enabled ? { opener, suggestions } : { opener: null, suggestions: [] },
+    );
     // suggestions is a fresh array each render → join to a stable string dep. opener is
     // ALSO in the deps and always changes per focus, so a tab switch re-fires this even
     // if two focuses' chip arrays happened to join to the same string.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opener, suggestions.join("")]);
+  }, [enabled, opener, suggestions.join("")]);
 
   // Refresh the props ref every render so getTurn reads fresh values (new opener on
   // a tab switch, latest onSend/onRetry) WITHOUT re-registering the context.
@@ -606,6 +623,11 @@ export function useDiagnosisChatCompanion(
   // only once means a bubble the user closed (closeBubble) STAYS closed.
   useEffect(() => {
     const store = useCompanionStore.getState();
+    if (!enabled) {
+      store.unregisterContext(CHAT_CONTEXT_ID);
+      store.clearChat();
+      return;
+    }
     store.registerContext({
       id: CHAT_CONTEXT_ID,
       priority: 5,
@@ -640,9 +662,9 @@ export function useDiagnosisChatCompanion(
       s.unregisterContext(CHAT_CONTEXT_ID);
       s.clearChat();
     };
-    // Mount-only: NEVER re-run (re-running would re-pop a closed bubble = Clippy).
-    // All referenced values (store getState, propsRef) are stable, so [] is correct.
-  }, []);
+    // Ordinary renders do not re-run this effect, so a closed bubble stays closed.
+    // It only re-runs when trust changes, which removes/reinstates the context.
+  }, [enabled]);
 
   return { sendQuestion: onSend };
 }

@@ -18,11 +18,12 @@ import { TailorChecklist } from "./TailorChecklist";
 import { GapReportCard } from "./GapReportCard";
 import { MatchInterviewPlanCard } from "./MatchInterviewPlanCard";
 import { RoadmapFromMatchSection } from "./RoadmapFromMatchSection";
-import { Ribbon, Chapter, SectionRule } from "./editorial";
+import { Chapter, SectionRule } from "./editorial";
 import { ScoreRail } from "./report/ScoreRail";
 import { NextStepsCard } from "./NextStepsCard";
 import { ProgressBanner } from "./ProgressBanner";
 import { ExtractionQualityBanner } from "./ExtractionQualityBanner";
+import { MatchSkillsMatrix } from "./MatchSkillsMatrix";
 import type { CvJdMatch, EvidenceLedger, EvidenceStrength, InferredSkill, SkillMatchItem, GapEvidenceItem, GapEmphasisItem } from "@shared/api";
 import { useNextStepsQuery, useGapReportQuery, useMatchProgressQuery } from "@/hooks/use-diagnosis";
 import { useCompanionStore } from "@/store/useCompanionStore";
@@ -30,7 +31,6 @@ import { pickTopNextStep, ctaForStep } from "@/components/companion/skills/diagn
 import { pickTopProveIt } from "@/components/companion/skills/prove-it";
 import { useElementIssuesCompanion } from "@/components/companion/skills/useElementIssuesCompanion";
 import { useDiagnosisChatCompanion, CHAT_CONTEXT_ID } from "@/components/companion/skills/useDiagnosisChatCompanion";
-import { FitBadge } from "./FitBadge";
 import { KeywordTable } from "./report/KeywordTable";
 import { buildDiagnosisReport } from "@/lib/diagnosis-report";
 import { dimensionIssueSlice } from "@/components/companion/skills/diagnosis-review";
@@ -156,87 +156,108 @@ function MatchNarrative({
   if (!jdMatch?.scoring_breakdown) return null;
   const breakdown = jdMatch.scoring_breakdown;
   const coverage = Math.round((jdMatch.required_coverage ?? 0) * 100);
-  // Band the SCORE, not the coverage: the bandRationale copy asserts why the
-  // score is high/low, and banding coverage made this panel call a 29-point
-  // match "strong" while the donut chip next to it said low (bug hunt 07-21).
-  // Map 3-band result to the 4-key bandRationale i18n: moderate → good.
   const matchBand = matchScoreBand(jdMatch.matchScore ?? coverage);
   const band = matchBand.band === "strong" ? "strong" : matchBand.band === "moderate" ? "good" : "low";
 
-  const hasPerSkill = !!breakdown.per_skill && breakdown.per_skill.length > 0;
-  const sortedSkills = hasPerSkill
-    ? [...breakdown.per_skill!].sort((a, b) => b.points_possible - a.points_possible)
-    : [];
-  const displaySkills = sortedSkills.slice(0, 8);
-  const remainingCount = sortedSkills.length - 8;
+  const isSuspect = jdMatch.score_explanation?.cv_input_quality === "suspect" || jdMatch.score_explanation?.cv_input_quality === "unusable" || jdMatch.degraded_reasons?.includes("CV_INPUT_SUSPECT");
+  const perSkills = breakdown.per_skill ?? [];
+  // A suspect extraction can still produce a numeric score, but its per-skill
+  // statuses are not trustworthy enough to present as definitive claims.
+  const requiredMissing = isSuspect ? [] : perSkills.filter(s => s.importance === "REQUIRED" && s.status === "missing");
+  const coreMatched = isSuspect ? [] : perSkills.filter(s => s.status === "matched");
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-bold text-slate-900">{t("matchDepth.whyScore")}</h3>
-      <div className="space-y-2 text-[13px] text-slate-900 leading-relaxed">
-        <p>
-          <span className="font-mono tabular-nums font-bold text-emerald-700">{breakdown.matched_count}</span> {t("results.matched")}
-          {" · "}
-          <span className="font-mono tabular-nums font-bold text-amber-700">{breakdown.partial_count}</span> {t("results.partial")}
-          {" · "}
-          <span className="font-mono tabular-nums font-bold text-rose-700">{breakdown.missing_count}</span> {t("results.missing")}
-          {" · "}
-          <span className="font-mono tabular-nums font-bold text-slate-500">{coverage}%</span> {t("matchDepth.coverage")}
-        </p>
-        <p className="text-[12px] text-slate-500 leading-relaxed">{t(`matchDepth.bandRationale.${band}`)}</p>
+    <div className="space-y-5">
+      {isSuspect && (
+        <div className="flex items-start gap-3 p-3.5 bg-rose-50 border border-rose-200 rounded-xl shadow-xs">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <p className="text-[13px] text-rose-800 leading-relaxed font-medium">
+            {t("matchDepth.states.cv_parse_suspect", { defaultValue: "Hệ thống phát hiện định dạng CV có thể làm giảm khả năng trích xuất chính xác." })}
+          </p>
+        </div>
+      )}
+
+      {/* AI Headline & Assessment */}
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          {t("matchDepth.analysisHeadline", { defaultValue: "Nhận định năng lực từ AI" })}
+        </h4>
+        <div className="text-[13.5px] text-slate-800 leading-relaxed font-medium">
+          {isSuspect ? (
+            <p>{t("matchDepth.inputQualityBody", { defaultValue: "CV cần được đọc lại trước khi kết luận kỹ năng nào đang thiếu." })}</p>
+          ) : jdMatch.score_explanation ? (
+            <p>
+              {t(`matchDepth.states.${jdMatch.score_explanation.state}`, {
+                matched: breakdown.matched_count,
+                partial: breakdown.partial_count,
+                missing: breakdown.missing_count,
+                defaultValue: `Bạn đã đáp ứng ${breakdown.matched_count} kỹ năng, nhưng còn thiếu ${breakdown.missing_count} kỹ năng yêu cầu trong JD.`
+              })}
+            </p>
+          ) : (
+            <p>{t(`matchDepth.bandRationale.${band}`)}</p>
+          )}
+        </div>
       </div>
 
-      {hasPerSkill && (
-        <div className="border border-slate-200/60 rounded-xl bg-slate-50/50 p-4 space-y-3 shadow-sm">
-          <div className="flex flex-col space-y-0.5">
-            <h4 className="text-xs font-bold text-slate-900">{t("matchDepth.perSkillTitle")}</h4>
-            <p className="text-[11px] text-slate-500 leading-relaxed">{t("matchDepth.perSkillHint")}</p>
+      {/* Priority Missing Skills */}
+      {requiredMissing.length > 0 && (
+        <div className="pt-4 border-t border-slate-100 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-rose-500" />
+            <span className="text-xs font-bold text-rose-700">
+              {t("results.priorityMissingTitle", { defaultValue: "Kỹ năng bắt buộc cần bổ sung:" })}
+            </span>
           </div>
-          <div className="divide-y divide-slate-200 text-xs">
-            {displaySkills.map((row, idx) => {
-              let badgeColor = "border-slate-300 text-slate-500 bg-white";
-              if (row.importance === "REQUIRED") {
-                badgeColor = "border-rose-200 text-rose-700 bg-rose-50";
-              } else if (row.importance === "PREFERRED") {
-                badgeColor = "border-amber-200 text-amber-700 bg-amber-50";
-              }
-
-              const earnedColor =
-                row.status === "matched"
-                  ? "text-emerald-700"
-                  : row.status === "partial"
-                  ? "text-amber-700"
-                  : "text-rose-700";
-
-              return (
-                <div key={idx} className="py-2.5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate text-slate-900 font-medium" title={row.display_name}>
-                      {row.display_name}
-                    </span>
-                    <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 shadow-sm", badgeColor)}>
-                      {t(`jdIntel.importance.${row.importance}`, { defaultValue: row.importance.replace(/_/g, " ") })}
-                    </span>
-                  </div>
-                  <div className="font-mono tabular-nums text-xs text-slate-500 shrink-0">
-                    <span className={cn("font-bold text-[13px]", earnedColor)}>{row.points_earned.toFixed(1)}</span>
-                    {" / "}
-                    <span>{row.points_possible.toFixed(1)}</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex flex-wrap gap-2">
+            {requiredMissing.slice(0, 8).map((s) => (
+              <span
+                key={s.canonical_name}
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-xs"
+              >
+                {s.display_name}
+              </span>
+            ))}
+            {requiredMissing.length > 8 && (
+              <span className="text-xs font-bold text-slate-400 self-center pl-1">
+                +{requiredMissing.length - 8}
+              </span>
+            )}
           </div>
-          {remainingCount > 0 && (
-            <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500 italic">
-              {t("matchDepth.perSkillMore", { count: remainingCount })}
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Top Matched Skills */}
+      {coreMatched.length > 0 && (
+        <div className="pt-4 border-t border-slate-100 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-xs font-bold text-emerald-700">
+              {t("results.topMatchedTitle", { defaultValue: "Điểm mạnh nổi bật đã khớp:" })}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {coreMatched.slice(0, 8).map((s) => (
+              <span
+                key={s.canonical_name}
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-xs"
+              >
+                {s.display_name}
+              </span>
+            ))}
+            {coreMatched.length > 8 && (
+              <span className="text-xs font-bold text-slate-400 self-center pl-1">
+                +{coreMatched.length - 8}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {breakdown.cap_applied && (
-        <p className="text-xs font-medium text-amber-700">{t("matchDepth.capped")}</p>
+        <p className="text-xs font-medium text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200/70">
+          {t("matchDepth.capped", { defaultValue: "Điểm số bị giới hạn do thiếu một số kỹ năng bắt buộc cốt lõi." })}
+        </p>
       )}
     </div>
   );
@@ -395,14 +416,17 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   const actionPlan = (reviewData?.actionPlan ?? []).slice(0, MAX_INSIGHT_ITEMS).map((item) => truncateText(item));
 
   const matchScore = jdMatch?.matchScore !== undefined ? jdMatch.matchScore : (reviewData?.overallScore ?? null);
+  const coverage = jdMatch ? Math.round((jdMatch.required_coverage ?? 0) * 100) : undefined;
   const isDegradedNoBasis = isJdMode && (matchScore === null || jdMatch?.degraded_reasons?.includes("NO_REQUIREMENT_BASIS"));
   const isDegradedUnrecognizedSkills = isJdMode && jdMatch?.degraded_reasons?.includes("CV_SKILLS_UNRECOGNIZED");
-  const isUnusable = reviewData?.extraction_quality?.input_quality === "unusable";
+  const inputQuality = jdMatch?.score_explanation?.cv_input_quality ?? reviewData?.extraction_quality?.input_quality;
+  const isUnusable = inputQuality === "unusable";
+  const isSuspect = inputQuality === "suspect" || inputQuality === "unusable" || jdMatch?.degraded_reasons?.includes("CV_INPUT_SUSPECT");
   // TRUST': the whole analysis (radar, gap report, tailor, roadmap, interview) is only meaningful
   // when we could actually score the input. When we couldn't (no requirement basis, or the CV text
   // is unreadable), showing those sections would contradict the honest "can't trust this" banner —
   // so gate every downstream chapter on this single flag and offer a re-scan instead.
-  const canTrustAnalysis = !isDegradedNoBasis && !isUnusable;
+  const canTrustAnalysis = !isDegradedNoBasis && !isUnusable && !isSuspect;
 
   const presentCount = hardSkills.filter((s) => s.status === "present").length;
   const missingCount = hardSkills.filter((s) => s.status === "missing").length;
@@ -480,6 +504,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
     lastCvId,
     progressQuery.data ?? null,
     provedItem,
+    canTrustAnalysis,
   );
   // ProgressBanner "Giải thích thêm" — hand off to the chat advisor: prefill + send
   // the same grounded question the chip offers, and open the chat bubble.
@@ -546,12 +571,6 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
   /* ── AI Insights Tab ── */
   const [insightTab, setInsightTab] = useState<"strengths" | "gaps">("strengths");
 
-  /* ── Ribbon data ── */
-  const coverage = jdMatch?.required_coverage != null
-    ? Math.round(jdMatch.required_coverage * 100)
-    : undefined;
-  const capApplied = jdMatch?.scoring_breakdown?.cap_applied ?? false;
-
   return (
     <div className="min-h-full flex flex-col lg:flex-row animate-in fade-in duration-500 w-full">
       {/* LEFT COLUMN: ScoreRail (Width = 300px, border-r, bg-white) */}
@@ -566,6 +585,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
               matched: presentCount,
               partial: partialCount,
               missing: missingCount,
+              inputQuality,
               coveragePercent: coverage,
               fitVerdict: fitVerdict ?? undefined,
               unnormalizedRequirements: unnormalizedSkillNames,
@@ -603,6 +623,25 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
               {t("degraded.unusableBody")}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scanAgain}
+              className="gap-1.5 text-xs rounded-full animate-none"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("degraded.unusableCta", { defaultValue: "Tải lên CV khác" })}
+            </Button>
+          </div>
+        ) : isSuspect ? (
+          <div className={cn(CARD, "mt-6 p-6 text-center space-y-4 max-w-2xl mx-auto") }>
+            <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto" />
+            <h3 className="text-sm font-bold text-slate-900">
+              {t("matchDepth.inputQualityTitle", { defaultValue: "Kết quả tạm tính" })}
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
+              {t("matchDepth.inputQualityBody", { defaultValue: "CV cần được đọc lại trước khi kết luận kỹ năng nào đang thiếu. Hãy thử tải lên bản PDF có lớp văn bản rõ hơn." })}
             </p>
             <Button
               variant="outline"
@@ -657,44 +696,35 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
               </div>
             )}
 
-            {/* Ribbon Stats / Badges moved to the top of audit tab inside right column */}
-            {isJdMode && !isDegradedNoBasis && !isUnusable && (
-              <div className="relative z-10 pb-6">
-                <div className="bg-white border border-slate-200/60 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                  <span className="text-xs font-semibold text-slate-500">
-                    {t("results.matchStats", { defaultValue: "Thống kê so khớp kỹ năng:" })}
-                  </span>
-                  <Ribbon
-                    matched={presentCount}
-                    partial={partialCount}
-                    missing={missingCount}
-                    coverage={coverage}
-                    capApplied={capApplied}
-                  />
-                  {fitVerdict && <FitBadge fit={fitVerdict} />}
-                </div>
-              </div>
-            )}
-
             {/* TRUST': actual analysis details */}
             {canTrustAnalysis && (
               <>
                 {/* ────────────────────────────────────────────────────────────────────
-                 *  CHƯƠNG 1 — Đọc vị: Radar + Narrative
+                 *  CHƯƠNG 1 — Đọc vị: Radar + Narrative + MatchSkillsMatrix
                  * ──────────────────────────────────────────────────────────────────── */}
                 {isJdMode && !isDegradedNoBasis && (
                   <>
-                    <div id="chapter-radar" className="py-6 md:py-8">
+                    <div id="chapter-radar" className="py-4 md:py-6 space-y-8">
                       <Chapter
                         kicker={`01`}
-                        title={t("editorial.chap1")}
+                        title={t("editorial.chap1", { defaultValue: "Đọc vị năng lực & Ma trận kỹ năng" })}
                       >
-                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pt-2">
-                          {/* Radar */}
-                          <div className="lg:col-span-3">
-                            {radarData.length > 0 ? (
-                                <>
-                                  <ResponsiveContainer width="100%" height={280}>
+                        {/* Single Unified Card */}
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                            {/* Left: Radar Chart (5 cols) */}
+                            <div className="lg:col-span-5 flex flex-col items-center justify-center">
+                              <div className="w-full mb-2">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 text-center lg:text-left">
+                                  {t("results.radarTitle", { defaultValue: "Biểu đồ phân bố năng lực" })}
+                                </h4>
+                                <p className="text-xs text-slate-500 text-center lg:text-left">
+                                  {t("results.radarSubtitle", { defaultValue: "Mức độ đáp ứng các nhóm kỹ năng trọng yếu" })}
+                                </p>
+                              </div>
+                              {radarData.length > 0 ? (
+                                <div className="w-full">
+                                  <ResponsiveContainer width="100%" height={260}>
                                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                                       <PolarGrid stroke="hsl(var(--border))" />
                                       <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }} />
@@ -704,22 +734,30 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                                       <Radar name="you" dataKey="you" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.12} strokeWidth={2} />
                                     </RadarChart>
                                   </ResponsiveContainer>
-                                  <div className="flex justify-center gap-6 mt-2">
+                                  <div className="flex justify-center gap-6 mt-2 pt-2 border-t border-slate-100">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-ink-accent"><div className="w-3 h-1 rounded-full bg-ink-accent" /><span>{t("results.radarYou")}</span></div>
                                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><div className="w-3 h-0.5 bg-slate-200 border-t border-dashed border-slate-200" /><span>{t("results.radarRequired")}</span></div>
                                   </div>
-                                </>
-                            ) : (
-                              <p className="py-16 text-center text-sm text-slate-500">{t("results.radarEmpty")}</p>
-                            )}
-                          </div>
+                                </div>
+                              ) : (
+                                <p className="py-16 text-center text-sm text-slate-500">{t("results.radarEmpty")}</p>
+                              )}
+                            </div>
 
-                          {/* Narrative ("Vì sao điểm này") */}
-                          <div className="lg:col-span-2 flex flex-col justify-center">
-                            <MatchNarrative jdMatch={jdMatch} t={t} />
+                            {/* Right: Narrative Breakdown (7 cols) */}
+                            <div className="lg:col-span-7 lg:border-l lg:border-slate-100 lg:pl-8 flex flex-col justify-center">
+                              <MatchNarrative jdMatch={jdMatch} t={t} />
+                            </div>
                           </div>
                         </div>
                       </Chapter>
+
+                      {/* Full Match Skills Breakdown Matrix */}
+                      {!isSuspect && jdMatch?.scoring_breakdown?.per_skill && jdMatch.scoring_breakdown.per_skill.length > 0 && (
+                        <div className="pt-2">
+                          <MatchSkillsMatrix skills={jdMatch.scoring_breakdown.per_skill} />
+                        </div>
+                      )}
                     </div>
                     <SectionRule />
                   </>
@@ -728,7 +766,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                 {/* ────────────────────────────────────────────────────────────────────
                  *  CHƯƠNG 2 — Cần cải thiện ưu tiên (GapReportCard)
                  * ──────────────────────────────────────────────────────────────────── */}
-                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && (
+                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && !isSuspect && (
                   <div id="gap-anchor" className="py-6 md:py-8">
                     <Chapter
                       kicker="02"
@@ -739,7 +777,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                   </div>
                 )}
 
-                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && <SectionRule />}
+                {ENABLE_DIAGNOSIS_ADDONS && isJdMode && jdMatch?.matchId && !isSuspect && <SectionRule />}
 
                 {/* ────────────────────────────────────────────────────────────────────
                  *  CHƯƠNG 3 — Chi tiết (collapsible)
@@ -851,7 +889,7 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                   >
                     <div className="space-y-6">
                       {/* Tailor */}
-                      {isJdMode && (
+                      {isJdMode && !isSuspect && (
                         <TailorChecklist
                           matchId={jdMatch?.matchId}
                           cvId={lastCvId}
@@ -860,10 +898,10 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
                       )}
 
                       {/* Interview Plan */}
-                      {isJdMode && jdMatch?.matchId && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
+                      {isJdMode && jdMatch?.matchId && !isSuspect && <MatchInterviewPlanCard matchId={jdMatch.matchId} />}
 
                       {/* Next Steps (Companion) */}
-                      {isJdMode && jdMatch?.matchId && <NextStepsCard matchId={jdMatch.matchId} />}
+                      {isJdMode && jdMatch?.matchId && !isSuspect && <NextStepsCard matchId={jdMatch.matchId} />}
 
                       {/* AI Insights: Tabbed Assessment & Magic Card */}
                       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -948,8 +986,10 @@ export function DiagnosisStep3Results({ activeTab }: DiagnosisStep3ResultsProps)
 
                       {/* CTA + inline learning roadmap derived from this match's GapReport */}
                       <div id="roadmap-anchor">
+                      {isJdMode && jdMatch?.matchId && !isSuspect && (
                         <RoadmapFromMatchSection matchId={jdMatch?.matchId} onScanAgain={scanAgain} />
-                      </div>
+                      )}
+                    </div>
                     </div>
                   </Chapter>
                 </div>

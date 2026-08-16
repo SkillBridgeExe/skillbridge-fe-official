@@ -43,7 +43,7 @@ export function ReportTopBar({ activeTab, onTabChange, mode = 'review', jdTitle,
   const isMatch = mode === 'match';
 
   const backLabelText = isMatch
-    ? t("review.matchTitle", { defaultValue: "Kết quả khớp CV–JD" })
+    ? (onBackToReview ? t("review.backToReview", { defaultValue: "Quay lại đánh giá CV" }) : t("review.backToHome", { defaultValue: "Quay lại" }))
     : roleName
       ? `${t("review.title", { defaultValue: "Phân tích CV" })} · ${roleName}`
       : t("review.title", { defaultValue: "Phân tích CV" });

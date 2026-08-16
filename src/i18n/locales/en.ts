@@ -2307,9 +2307,18 @@ export default {
       matched: "Matched",
       partial: "Partial",
       missing: "Missing",
+      needsFixCount: "{{count}} to fix",
+      priorityMissingTitle: "Required skills to add:",
+      topMatchedTitle: "Top matched strengths:",
+      filterAll: "All",
+      searchSkills: "Search skills...",
+      noSkillsFound: "No skills match this filter.",
+      collapseSkills: "Show fewer skills",
+      showAllSkills: "Show all {{count}} skills",
       ats: "ATS",
       structure: "Structure",
       radarTitle: "Skill assessment radar",
+      radarSubtitle: "How your profile covers the key skill groups",
       radarDescJd: "Visual comparison of your profile vs job expectations",
       radarDescNoJd: "Radar appears when a JD is provided for comparison.",
       radarYou: "Your profile",
@@ -2729,7 +2738,11 @@ export default {
       partial: "Partial:",
       gapLevels_one: "{{count}} level gap",
       gapLevels_other: "{{count}} level gap",
-      whyScore: "Why this score",
+      whyScore: "Why this score?",
+      analysisHeadline: "AI assessment",
+      inputQualityTitle: "Provisional result",
+      inputQualityBody:
+        "The CV needs to be read again before skill matches or gaps are treated as definitive. Try a text-based PDF with a clear text layer.",
       capped: "Score cap applied because required coverage is still limited.",
       coverage: "Required coverage",
       bandRationale: {
@@ -2738,6 +2751,28 @@ export default {
         fair: "You match part of the requirements — the score reflects the skills still missing or too weak.",
         low: "Several required items are missing — that's why the score is currently low.",
       },
+      states: {
+        cv_parse_suspect:
+          "The system could not accurately read the CV content due to formatting or font issues. The evaluation below might be incomplete. Please check your CV file.",
+        cv_skills_unrecognized:
+          "We did not find the required skills in your CV, or they are written in an unrecognizable format.",
+        no_requirement_basis:
+          "There are not enough job requirements to evaluate the match level.",
+        complete:
+          "You have met all required skills! The score reflects how well your CV matches this JD.",
+        partial:
+          "You have met {{matched}} skills, but {{partial}} skills are only partially met.",
+        gaps:
+          "You have met {{matched}} skills, but {{missing}} required skills are missing.",
+      },
+      evidence: {
+        verified: "Found in CV",
+        unverified: "Not verified from extracted CV text",
+      },
+      missingRequiredHint:
+        "Required JD skill — add a truthful project, experience, or certificate if you have one.",
+      missingOptionalHint:
+        "Preferred skill — adding truthful evidence can strengthen your application.",
       inferredTitle: "Inferred skills",
       inferredHint:
         "These are soft signals inferred from nearby tools or ecosystems. They explain context only and do not change the score.",
@@ -2897,6 +2932,9 @@ export default {
       chap2: "Priority Gaps",
       chap3: "Skill Details",
       chap4: "Action Plan",
+      chap1Short: "Understanding skills & Radar",
+      chap2Short: "Priority improvements",
+      chap3Short: "Detailed skill matrix",
       coverage: "{{pct}}% coverage",
       showDetails: "Show details",
       hideDetails: "Hide details",

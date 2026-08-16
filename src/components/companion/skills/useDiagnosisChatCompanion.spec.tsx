@@ -98,12 +98,14 @@ function Harness({
   focus,
   progress,
   data = reviewData,
+  enabled = true,
 }: {
   focus: DiagnosisChatFocus;
   progress?: ProgressReportDto | null;
   data?: CvReviewData;
+  enabled?: boolean;
 }) {
-  useDiagnosisChatCompanion(data, focus, undefined, "cv-1", progress);
+  useDiagnosisChatCompanion(data, focus, undefined, "cv-1", progress, undefined, enabled);
   return null;
 }
 
@@ -226,6 +228,20 @@ describe("useDiagnosisChatCompanion — focus drives store-backed opener/chips",
     unmount();
     expect(useCompanionStore.getState().chatOpener).toBeNull();
     expect(useCompanionStore.getState().chatSuggestions).toHaveLength(0);
+  });
+
+  it("does not expose grounded chat when the diagnosis input is untrusted", () => {
+    const qc = new QueryClient();
+    render(
+      <QueryClientProvider client={qc}>
+        <Harness focus="gap_results" enabled={false} />
+      </QueryClientProvider>,
+    );
+
+    expect(useCompanionStore.getState().contexts[CHAT_CONTEXT_ID]).toBeUndefined();
+    expect(useCompanionStore.getState().chatOpener).toBeNull();
+    expect(useCompanionStore.getState().chatSuggestions).toHaveLength(0);
+    expect(askDiagnosisChat).not.toHaveBeenCalled();
   });
 });
 
