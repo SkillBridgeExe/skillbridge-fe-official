@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
   GripVertical,
   Loader2,
   Sparkles,
@@ -119,13 +121,10 @@ export function LearningRoadmapWizard({
     };
   }, [intent, t]);
 
-  const stepIndex = [
-    "goal",
-    "context",
-    "priorities",
-    "schedule",
-    "preview",
-  ].indexOf(step);
+  const progressSteps: Step[] = initialMatchId
+    ? ["context", "priorities", "schedule", "preview"]
+    : ["goal", "context", "priorities", "schedule", "preview"];
+  const stepIndex = progressSteps.indexOf(step);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -326,9 +325,11 @@ export function LearningRoadmapWizard({
               className="mb-3 flex gap-1.5"
               aria-label={t("learning.wizard.progress")}
             >
-              {[0, 1, 2, 3, 4].map((index) => (
+              {progressSteps.map((_, index) => (
                 <span
                   key={index}
+                  data-testid="learning-wizard-progress-segment"
+                  data-active={index <= stepIndex ? "true" : "false"}
                   className={`h-1.5 rounded-full ${index <= stepIndex ? "w-8 bg-primary" : "w-4 bg-slate-200"}`}
                 />
               ))}
@@ -373,6 +374,27 @@ export function LearningRoadmapWizard({
               {intent === "JD_APPLICATION" && !initialMatchId ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                   {t("learning.wizard.goal.jdNeedsDiagnosis")}
+                </div>
+              ) : null}
+              {intent === "JD_APPLICATION" && initialMatchId ? (
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
+                      <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sky-950">
+                        {t("learning.wizard.context.matchTitle")}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-sky-800">
+                        {t("learning.wizard.context.matchBody")}
+                      </p>
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        {t("learning.wizard.context.matchReady")}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : null}
               {intent === "CAREER_ROLE" ? (
@@ -421,10 +443,16 @@ export function LearningRoadmapWizard({
                   </Field>
                 </div>
               ) : null}
+              {!intent ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                  {t("learning.wizard.context.missingGoal")}
+                </div>
+              ) : null}
               <WizardFooter
-                onBack={() => setStep("goal")}
+                onBack={initialMatchId ? onClose : () => setStep("goal")}
                 onNext={createDraft}
                 busy={isBusy}
+                disabled={!intent}
                 nextLabel={
                   intent === "JD_APPLICATION" && !initialMatchId
                     ? t("learning.wizard.goDiagnosis")
@@ -599,6 +627,7 @@ export function LearningRoadmapWizard({
                     i18n.language,
                     t,
                   )}
+                  testId="learning-wizard-estimated-completion"
                 />
               </div>
               <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
@@ -679,7 +708,12 @@ export function LearningRoadmapWizard({
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-slate-500">{preview.summary}</p>
+              <p
+                data-testid="learning-wizard-preview-summary"
+                className="text-sm text-slate-500"
+              >
+                {formatPreviewSummary(preview, i18n.language, t)}
+              </p>
               <WizardFooter
                 onBack={() => setStep("schedule")}
                 onNext={generate}
@@ -857,11 +891,21 @@ function WizardFooter({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function Metric({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string | number;
+  testId?: string;
+}) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
+    <div data-testid={testId} className="min-w-0 rounded-2xl bg-slate-50 p-4">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+      <p className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold text-slate-900 sm:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }
@@ -883,10 +927,14 @@ function TrackSummary({ preview }: { preview: LearningRoadmapPreview }) {
             ? t("learning.wizard.track.fastTitle")
             : t("learning.wizard.track.foundationTitle")}
         </p>
-        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold">
+        <span
+          data-testid="learning-wizard-session-summary"
+          data-session-minutes={preview.cadence.session_minutes}
+          className="whitespace-nowrap rounded-full bg-white/80 px-3 py-1 text-xs font-semibold"
+        >
           {t("learning.wizard.track.sessionSummary", {
             count: preview.sessions.length,
-            minutes: 60,
+            minutes: preview.cadence.session_minutes,
           })}
         </span>
       </div>
@@ -983,6 +1031,23 @@ function formatDisplayDate(
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatPreviewSummary(
+  preview: LearningRoadmapPreview,
+  locale: string,
+  translate: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const count = preview.modules.length;
+  if (locale.toLowerCase().startsWith("vi")) {
+    return translate(
+      count > 0
+        ? "learning.wizard.preview.focusSummary"
+        : "learning.wizard.preview.noGapsSummary",
+      { count },
+    );
+  }
+  return preview.summary.trim() || translate("learning.wizard.preview.focusSummary", { count });
 }
 
 function formatResourceDuration(
