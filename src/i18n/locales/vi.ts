@@ -347,7 +347,7 @@ export default {
           context: "Chọn bối cảnh học tập",
           priorities: "Bạn muốn học gì trước?",
           schedule: "Xếp lịch học thực tế",
-          preview: "Kiểm tra tính khả thi trước khi tạo",
+          preview: "Xem trước lộ trình học",
         },
         priorities: {
           selectedTitle: "Kỹ năng sẽ học",
@@ -372,6 +372,11 @@ export default {
           role: "Nghề mục tiêu",
           level: "Cấp độ mục tiêu",
           language: "Ngôn ngữ học",
+          matchTitle: "Dùng kết quả CV × JD hiện tại",
+          matchBody:
+            "Lộ trình sẽ lấy các khoảng trống kỹ năng từ phiên chẩn đoán này. Bạn không cần chọn lại CV hoặc mô tả công việc.",
+          matchReady: "Bối cảnh đã sẵn sàng",
+          missingGoal: "Chưa chọn mục tiêu học. Hãy quay lại để tiếp tục.",
         },
         languages: { vi: "Tiếng Việt", en: "Tiếng Anh", both: "Cả hai" },
         schedule: {
@@ -391,10 +396,10 @@ export default {
         },
         weekdays: { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN" },
         preview: {
-          modules: "Chủ đề",
+          modules: "Kỹ năng",
           capacity: "Quỹ thời gian",
           scheduled: "Đã xếp",
-          feasible: "Vừa lịch",
+          feasible: "Phù hợp lịch",
           deferred: "Cần thêm thời gian",
           resources: "Tài nguyên sẽ dùng",
           resourceMinutes: "{{count}} phút",
@@ -402,6 +407,8 @@ export default {
           cadence: "Nhịp học",
           daysPerWeek: "{{count}} ngày/tuần",
           estimatedCompletion: "Dự kiến hoàn thành",
+          focusSummary: "Tập trung vào {{count}} kỹ năng theo lịch học bạn đã chọn.",
+          noGapsSummary: "Hiện không còn khoảng trống kỹ năng cần học.",
           primaryResource: "Tài liệu chính",
           supplementaryResource: "Tài liệu bổ trợ",
           deferredLesson: "Để học sau · Không đủ quỹ thời gian",
