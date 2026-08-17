@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { InterviewDetailResponseDto } from "@/api/interview-api";
 import i18n from "@/i18n";
@@ -92,6 +92,21 @@ describe("ResultsView overview", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Bổ sung kết quả đo lường")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("uses the score overview space for the session facts", () => {
+    render(<ResultsView result={buildResult()} onRetry={vi.fn()} />);
+
+    const overview = screen.getByRole("region", {
+      name: "Tổng quan điểm phỏng vấn",
+    });
+
+    expect(within(overview).getByText("Thời lượng")).toBeInTheDocument();
+    expect(within(overview).getByText("07:52")).toBeInTheDocument();
+    expect(within(overview).getByText("Câu đã trả lời")).toBeInTheDocument();
+    expect(within(overview).getByText("1")).toBeInTheDocument();
+    expect(within(overview).getByText("Cách chấm điểm")).toBeInTheDocument();
+    expect(within(overview).getByText("Chấm theo rubric")).toBeInTheDocument();
   });
 
   it("uses an honest compact state when no supported strength exists", () => {

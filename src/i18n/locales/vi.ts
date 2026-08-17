@@ -1679,6 +1679,10 @@ export default {
         duration: "Thời lượng: {{duration}}",
         answeredQuestions: "{{count}} câu đã trả lời",
         overallScoreLabel: "Tổng điểm phỏng vấn",
+        scoreOverviewTitle: "Tổng quan điểm phỏng vấn",
+        durationLabel: "Thời lượng",
+        answeredLabel: "Câu đã trả lời",
+        scoringMethodLabel: "Cách chấm điểm",
         overallBand: {
           poor: "Cần cải thiện",
           borderline: "Cần củng cố",

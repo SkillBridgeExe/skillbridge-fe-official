@@ -1682,6 +1682,10 @@ export default {
         duration: "Duration: {{duration}}",
         answeredQuestions: "{{count}} answered question(s)",
         overallScoreLabel: "Overall interview score",
+        scoreOverviewTitle: "Interview score overview",
+        durationLabel: "Duration",
+        answeredLabel: "Answered",
+        scoringMethodLabel: "Scoring method",
         overallBand: {
           poor: "Needs improvement",
           borderline: "Developing",

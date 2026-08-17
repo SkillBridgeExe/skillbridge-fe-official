@@ -200,16 +200,63 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
       </Card>
         </div>
       )}
-      <Card className="border-slate-200 bg-white shadow-sm">
+      <Card
+        className="border-slate-200 bg-white shadow-sm"
+        role="region"
+        aria-label={t("interview.results.scoreOverviewTitle")}
+      >
         <CardContent className="p-6 md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="flex flex-col items-center gap-6 md:flex-row md:items-center">
             <ScoreDonut
               score={view.overallScore}
               label={t("interview.results.overallScoreLabel")}
             />
 
-            {showDetails && (
-            <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="w-full min-w-0 flex-1 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="rounded-full">
+                  {view.targetRole.replace(/_/g, " ")}
+                </Badge>
+                {view.overallBand ? (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full font-semibold",
+                      overallBandClassName(view.overallBand),
+                    )}
+                  >
+                    {t(`interview.results.overallBand.${view.overallBand}`)}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <ScoreOverviewStat
+                  icon={Clock}
+                  label={t("interview.results.durationLabel")}
+                  value={formatDuration(effectiveDuration)}
+                />
+                <ScoreOverviewStat
+                  icon={ListChecks}
+                  label={t("interview.results.answeredLabel")}
+                  value={String(view.questions.length)}
+                />
+                <ScoreOverviewStat
+                  icon={Shield}
+                  label={t("interview.results.scoringMethodLabel")}
+                  value={
+                    view.scoreBasis
+                      ? t(`interview.results.scoreBasis.${view.scoreBasis}`)
+                      : "—"
+                  }
+                  title={t("interview.results.scoreBasisDescription")}
+                />
+              </div>
+            </div>
+          </div>
+
+          {showDetails ? (
+            <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
               <ScoreCard
                 label={
                   view.scoreBasis === "criterion_rubric" || view.scoreBasis === "mixed"
@@ -234,45 +281,7 @@ export function ResultsView({ result, onRetry, duration }: ResultsViewProps) {
                 icon={Mic}
               />
             </div>
-            )}
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <Badge variant="secondary" className="rounded-full">
-              {view.targetRole.replace(/_/g, " ")}
-            </Badge>
-            {view.overallBand ? (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "rounded-full font-semibold",
-                  overallBandClassName(view.overallBand),
-                )}
-              >
-                {t(`interview.results.overallBand.${view.overallBand}`)}
-              </Badge>
-            ) : null}
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {t("interview.results.duration", {
-                duration: formatDuration(effectiveDuration),
-              })}
-            </span>
-            <span>
-              {t("interview.results.answeredQuestions", {
-                count: view.questions.length,
-              })}
-            </span>
-            {view.scoreBasis && (
-              <span
-                className="flex items-center gap-1"
-                title={t("interview.results.scoreBasisDescription")}
-              >
-                <Shield className="h-3.5 w-3.5" />
-                {t(`interview.results.scoreBasis.${view.scoreBasis}`)}
-              </span>
-            )}
-          </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -1050,12 +1059,41 @@ function ScoreDonut({ score, label }: { score: number | null; label: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black text-slate-900">
+        <span className="text-2xl font-black tabular-nums text-slate-900">
           {score == null ? "N/A" : `${score}/100`}
         </span>
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+        <span className="mt-1 max-w-24 text-center text-[9px] font-bold uppercase leading-3 tracking-[0.14em] text-slate-500">
           {label}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ScoreOverviewStat({
+  icon: Icon,
+  label,
+  value,
+  title,
+}: {
+  icon: typeof Clock;
+  label: string;
+  value: string;
+  title?: string;
+}) {
+  return (
+    <div
+      className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+      title={title}
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm ring-1 ring-slate-100">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+        </p>
+        <p className="truncate text-sm font-bold text-slate-800">{value}</p>
       </div>
     </div>
   );
