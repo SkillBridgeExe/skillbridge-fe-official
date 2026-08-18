@@ -69,7 +69,12 @@ describe("AdminOverview PayOS revenue controls", () => {
       terminal: 0,
       pending: 0,
       failed: 0,
+      paidChecked: 0,
+      verifiedPaid: 0,
+      unverifiedPaid: 0,
+      verificationFailed: 0,
       results: [{ orderCode: 123, status: "PAID" }],
+      paidVerificationResults: [],
     });
   });
 
@@ -135,5 +140,38 @@ describe("AdminOverview PayOS revenue controls", () => {
     );
     await waitFor(() => expect(getAdminUserSummary).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("PayOS sync complete: 1 paid order settled.")).toBeInTheDocument();
+  });
+
+  it("shows local paid orders that PayOS could not verify", async () => {
+    vi.mocked(reconcileAdminPaymentOrders).mockResolvedValueOnce({
+      provider: "PAYOS",
+      window: summary.window,
+      attempted: 0,
+      settled: 0,
+      terminal: 0,
+      pending: 0,
+      failed: 0,
+      paidChecked: 29,
+      verifiedPaid: 25,
+      unverifiedPaid: 4,
+      verificationFailed: 0,
+      results: [],
+      paidVerificationResults: [
+        { orderCode: 1, status: "NOT_FOUND" },
+        { orderCode: 2, status: "NOT_FOUND" },
+        { orderCode: 3, status: "NOT_FOUND" },
+        { orderCode: 4, status: "NOT_FOUND" },
+      ],
+    });
+    renderPage();
+    await screen.findByText("Paid revenue");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sync PayOS" }));
+
+    expect(
+      await screen.findByText(
+        "PayOS sync completed: 25 paid orders verified. 4 local paid orders were not found in PayOS.",
+      ),
+    ).toBeInTheDocument();
   });
 });

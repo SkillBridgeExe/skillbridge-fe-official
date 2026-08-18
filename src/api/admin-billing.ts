@@ -102,6 +102,20 @@ export interface AdminPaymentReconciliationResult {
   message?: string;
 }
 
+export type AdminPaymentVerificationStatus =
+  | "CONFIRMED_PAID"
+  | "NOT_PAID"
+  | "NOT_FOUND"
+  | "MISMATCH"
+  | "ERROR"
+  | "FAILED_RECONCILIATION";
+
+export interface AdminPaymentVerificationResult {
+  orderCode: number;
+  status: AdminPaymentVerificationStatus;
+  message?: string;
+}
+
 export interface AdminPaymentReconciliationResponse {
   provider: string;
   window: AdminRevenueWindow;
@@ -111,6 +125,11 @@ export interface AdminPaymentReconciliationResponse {
   pending: number;
   failed: number;
   results: AdminPaymentReconciliationResult[];
+  paidChecked?: number;
+  verifiedPaid?: number;
+  unverifiedPaid?: number;
+  verificationFailed?: number;
+  paidVerificationResults?: AdminPaymentVerificationResult[];
 }
 
 export interface AdminSubscriptionsQuery extends PaginationQuery {
@@ -270,7 +289,7 @@ export async function reconcileAdminPaymentOrdersApi(
   query: AdminUserSummaryQuery = {},
 ): Promise<AdminPaymentReconciliationResponse> {
   const envelope = await unwrapEnvelope<ApiEnvelope<AdminPaymentReconciliationResponse>>(
-    httpClient.post(API_ROUTES.ADMIN_BILLING.RECONCILE_ORDERS, query),
+    httpClient.post(API_ROUTES.ADMIN_BILLING.RECONCILE_ORDERS, query, { timeout: 120_000 }),
     "Failed to sync PayOS payments.",
   );
   return envelope.data;

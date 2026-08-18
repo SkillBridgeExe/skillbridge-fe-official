@@ -82,7 +82,12 @@ describe("admin-billing api", () => {
         terminal: 0,
         pending: 1,
         failed: 0,
+        paidChecked: 0,
+        verifiedPaid: 0,
+        unverifiedPaid: 0,
+        verificationFailed: 0,
         results: [],
+        paidVerificationResults: [],
       }) as never,
     );
 
@@ -91,6 +96,7 @@ describe("admin-billing api", () => {
     expect(httpClient.post).toHaveBeenCalledWith(
       API_ROUTES.ADMIN_BILLING.RECONCILE_ORDERS,
       { period: "THIS_YEAR" },
+      { timeout: 120_000 },
     );
   });
 });
